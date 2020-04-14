@@ -75,7 +75,8 @@ returns a new SQL expression::
     FROM interval
     WHERE interval."end" - interval.start > :param_1
 
-ORM methods such as :meth:`~.Query.filter_by` generally use ``getattr()`` to
+ORM methods such as :meth:`_query.Query.filter_by`
+generally use ``getattr()`` to
 locate attributes, so can also be used with hybrid attributes::
 
     >>> print(Session().query(Interval).filter_by(length=5))
@@ -213,10 +214,10 @@ Allowing Bulk ORM Update
 ------------------------
 
 A hybrid can define a custom "UPDATE" handler for when using the
-:meth:`.Query.update` method, allowing the hybrid to be used in the
+:meth:`_query.Query.update` method, allowing the hybrid to be used in the
 SET clause of the update.
 
-Normally, when using a hybrid with :meth:`.Query.update`, the SQL
+Normally, when using a hybrid with :meth:`_query.Query.update`, the SQL
 expression is used as the column that's the target of the SET.  If our
 ``Interval`` class had a hybrid ``start_point`` that linked to
 ``Interval.start``, this could be substituted directly::
@@ -225,7 +226,7 @@ expression is used as the column that's the target of the SET.  If our
 
 However, when using a composite hybrid like ``Interval.length``, this
 hybrid represents more than one column.   We can set up a handler that will
-accommodate a value passed to :meth:`.Query.update` which can affect
+accommodate a value passed to :meth:`_query.Query.update` which can affect
 this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
@@ -628,9 +629,11 @@ measurement, currencies and encrypted passwords.
 Building Transformers
 ----------------------
 
-A *transformer* is an object which can receive a :class:`.Query` object and
-return a new one.   The :class:`.Query` object includes a method
-:meth:`.with_transformation` that returns a new :class:`.Query` transformed by
+A *transformer* is an object which can receive a :class:`_query.Query`
+object and
+return a new one.   The :class:`_query.Query` object includes a method
+:meth:`.with_transformation` that returns a new :class:`_query.Query`
+transformed by
 the given function.
 
 We can combine this with the :class:`.Comparator` class to produce one type
@@ -665,10 +668,11 @@ simple::
             return self.parent.parent
 
 For the expression, things are not so clear.   We'd need to construct a
-:class:`.Query` where we :meth:`~.Query.join` twice along ``Node.parent`` to
+:class:`_query.Query` where we :meth:`_query.Query.join` twice along ``Node.
+parent`` to
 get to the ``grandparent``.   We can instead return a transforming callable
 that we'll combine with the :class:`.Comparator` class to receive any
-:class:`.Query` object, and return a new one that's joined to the
+:class:`_query.Query` object, and return a new one that's joined to the
 ``Node.parent`` attribute and filtered based on the given criterion::
 
     from sqlalchemy.ext.hybrid import Comparator
@@ -704,9 +708,10 @@ transforming callable, which then runs the given comparison operation in a
 particular context. Such as, in the example above, the ``operate`` method is
 called, given the :attr:`.Operators.eq` callable as well as the right side of
 the comparison ``Node(id=5)``.  A function ``transform`` is then returned which
-will transform a :class:`.Query` first to join to ``Node.parent``, then to
+will transform a :class:`_query.Query` first to join to ``Node.parent``,
+then to
 compare ``parent_alias`` using :attr:`.Operators.eq` against the left and right
-sides, passing into :class:`.Query.filter`:
+sides, passing into :class:`_query.Query.filter`:
 
 .. sourcecode:: pycon+sql
 
@@ -783,7 +788,7 @@ HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 
    .. seealso::
 
-    :attr:`.Mapper.all_orm_attributes`
+    :attr:`_orm.Mapper.all_orm_attributes`
 
 """
 
@@ -796,7 +801,7 @@ HYBRID_PROPERTY = util.symbol("HYBRID_PROPERTY")
 
    .. seealso::
 
-    :attr:`.Mapper.all_orm_attributes`
+    :attr:`_orm.Mapper.all_orm_attributes`
 
 """
 

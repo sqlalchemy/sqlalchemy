@@ -14,7 +14,7 @@
     will be emitted when the :class:`.Session` first requires a
     :class:`.SessionTransaction` be present, rather than whenever the
     :class:`.Session` were created or the previous :class:`.SessionTransaction`
-    were closed.   Interactions with the :class:`.Engine` and the database
+    were closed.   Interactions with the :class:`_engine.Engine` and the database
     itself remain unaffected.
 
     .. seealso::

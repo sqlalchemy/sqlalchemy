@@ -165,7 +165,7 @@ class HasCacheKey(HasMemoized):
         each one; these bound parameters must be consulted in order to
         execute the statement with the correct parameters.
 
-        a :class:`.ClauseElement` structure that does not implement
+        a :class:`_expression.ClauseElement` structure that does not implement
         a :meth:`._gen_cache_key` method and does not implement a
         :attr:`.traverse_internals` attribute will not be cacheable; when
         such an element is embedded into a larger structure, this method

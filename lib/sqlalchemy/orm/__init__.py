@@ -153,7 +153,8 @@ def deferred(*columns, **kw):
     not load unless accessed.
 
     :param \*columns: columns to be mapped.  This is typically a single
-     :class:`.Column` object, however a collection is supported in order
+     :class:`_schema.Column` object,
+     however a collection is supported in order
      to support multiple columns mapped under the same attribute.
 
     :param raiseload: boolean, if True, indicates an exception should be raised

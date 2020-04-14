@@ -2,7 +2,7 @@
     :tags: orm, bug
     :tickets: 5134
 
-    Deprecated logic in :meth:`.Query.distinct` that automatically adds
+    Deprecated logic in :meth:`_query.Query.distinct` that automatically adds
     columns in the ORDER BY clause to the columns clause; this will be removed
     in 2.0.
 

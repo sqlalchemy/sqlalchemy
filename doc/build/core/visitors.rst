@@ -6,7 +6,7 @@ that serve the purpose of generically **traversing** a Core SQL expression
 structure.   This is not unlike the Python ``ast`` module in that is presents
 a system by which a program can operate upon each component of a SQL
 expression.   Common purposes this serves are locating various kinds of
-elements such as :class:`.Table` or :class:`.BindParameter` objects,
+elements such as :class:`_schema.Table` or :class:`.BindParameter` objects,
 as well as altering the state of the structure such as replacing certain FROM
 clauses with others.
 

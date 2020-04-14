@@ -3,10 +3,10 @@
     :tickets: 4755
 
     Deprecated remaining engine-level introspection and utility methods
-    including :meth:`.Engine.run_callable`, :meth:`.Engine.transaction`,
-    :meth:`.Engine.table_names`, :meth:`.Engine.has_table`.   The utility
+    including :meth:`_engine.Engine.run_callable`, :meth:`_engine.Engine.transaction`,
+    :meth:`_engine.Engine.table_names`, :meth:`_engine.Engine.has_table`.   The utility
     methods are superseded by modern context-manager patterns, and the table
-    introspection tasks are suited by the :class:`.Inspector` object.
+    introspection tasks are suited by the :class:`_reflection.Inspector` object.
 
 .. change::
     :tags: changed, engine
@@ -30,6 +30,6 @@
     :tags: feature, engine
     :tickets: 4755
 
-    The :paramref:`.Table.autoload_with` parameter now accepts an :class:`.Inspector` object
-    directly, as well as any :class:`.Engine` or :class:`.Connection` as was the case before.
+    The :paramref:`_schema.Table.autoload_with` parameter now accepts an :class:`_reflection.Inspector` object
+    directly, as well as any :class:`_engine.Engine` or :class:`_engine.Connection` as was the case before.
 

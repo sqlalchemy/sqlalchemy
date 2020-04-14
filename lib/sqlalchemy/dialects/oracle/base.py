@@ -61,7 +61,7 @@ of isolation, however the SQLAlchemy Oracle dialect currently only has
 explicit support for "READ COMMITTED".  It is possible to emit a
 "SET TRANSACTION" statement on a connection in order to use SERIALIZABLE
 isolation, however the SQLAlchemy dialect will remain unaware of this setting,
-such as if the :meth:`.Connection.get_isolation_level` method is used;
+such as if the :meth:`_engine.Connection.get_isolation_level` method is used;
 this method is hardcoded to return "READ COMMITTED" right now.
 
 The AUTOCOMMIT isolation level is also supported by the cx_Oracle dialect.
@@ -304,7 +304,7 @@ Synonym/DBLINK Reflection
 When using reflection with Table objects, the dialect can optionally search
 for tables indicated by synonyms, either in local or remote schemas or
 accessed over DBLINK, by passing the flag ``oracle_resolve_synonyms=True`` as
-a keyword argument to the :class:`.Table` construct::
+a keyword argument to the :class:`_schema.Table` construct::
 
     some_table = Table('some_table', autoload=True,
                                 autoload_with=some_engine,
@@ -318,8 +318,8 @@ knows how to locate the table's information using DBLINK syntax(e.g.
 ``@dblink``).
 
 ``oracle_resolve_synonyms`` is accepted wherever reflection arguments are
-accepted, including methods such as :meth:`.MetaData.reflect` and
-:meth:`.Inspector.get_columns`.
+accepted, including methods such as :meth:`_schema.MetaData.reflect` and
+:meth:`_reflection.Inspector.get_columns`.
 
 If synonyms are not in use, this flag should be left disabled.
 
@@ -332,18 +332,22 @@ The Oracle dialect can return information about foreign key, unique, and
 CHECK constraints, as well as indexes on tables.
 
 Raw information regarding these constraints can be acquired using
-:meth:`.Inspector.get_foreign_keys`, :meth:`.Inspector.get_unique_constraints`,
-:meth:`.Inspector.get_check_constraints`, and :meth:`.Inspector.get_indexes`.
+:meth:`_reflection.Inspector.get_foreign_keys`,
+:meth:`_reflection.Inspector.get_unique_constraints`,
+:meth:`_reflection.Inspector.get_check_constraints`, and
+:meth:`_reflection.Inspector.get_indexes`.
 
 .. versionchanged:: 1.2  The Oracle dialect can now reflect UNIQUE and
    CHECK constraints.
 
-When using reflection at the :class:`.Table` level, the :class:`.Table`
+When using reflection at the :class:`_schema.Table` level, the
+:class:`_schema.Table`
 will also include these constraints.
 
 Note the following caveats:
 
-* When using the :meth:`.Inspector.get_check_constraints` method, Oracle
+* When using the :meth:`_reflection.Inspector.get_check_constraints` method,
+  Oracle
   builds a special "IS NOT NULL" constraint for columns that specify
   "NOT NULL".  This constraint is **not** returned by default; to include
   the "IS NOT NULL" constraints, pass the flag ``include_all=True``::
@@ -355,11 +359,13 @@ Note the following caveats:
       all_check_constraints = inspector.get_check_constraints(
           "some_table", include_all=True)
 
-* in most cases, when reflecting a :class:`.Table`, a UNIQUE constraint will
+* in most cases, when reflecting a :class:`_schema.Table`,
+  a UNIQUE constraint will
   **not** be available as a :class:`.UniqueConstraint` object, as Oracle
   mirrors unique constraints with a UNIQUE index in most cases (the exception
   seems to be when two or more unique constraints represent the same columns);
-  the :class:`.Table` will instead represent these using :class:`.Index`
+  the :class:`_schema.Table` will instead represent these using
+  :class:`.Index`
   with the ``unique=True`` flag set.
 
 * Oracle creates an implicit index for the primary key of a table; this index
@@ -371,11 +377,12 @@ Note the following caveats:
 Table names with SYSTEM/SYSAUX tablespaces
 -------------------------------------------
 
-The :meth:`.Inspector.get_table_names` and
-:meth:`.Inspector.get_temp_table_names`
+The :meth:`_reflection.Inspector.get_table_names` and
+:meth:`_reflection.Inspector.get_temp_table_names`
 methods each return a list of table names for the current engine. These methods
 are also part of the reflection which occurs within an operation such as
-:meth:`.MetaData.reflect`.  By default, these operations exclude the ``SYSTEM``
+:meth:`_schema.MetaData.reflect`.  By default,
+these operations exclude the ``SYSTEM``
 and ``SYSAUX`` tablespaces from the operation.   In order to change this, the
 default list of tablespaces excluded can be changed at the engine level using
 the ``exclude_tablespaces`` parameter::
@@ -392,15 +399,15 @@ DateTime Compatibility
 
 Oracle has no datatype known as ``DATETIME``, it instead has only ``DATE``,
 which can actually store a date and time value.  For this reason, the Oracle
-dialect provides a type :class:`.oracle.DATE` which is a subclass of
+dialect provides a type :class:`_oracle.DATE` which is a subclass of
 :class:`.DateTime`.   This type has no special behavior, and is only
 present as a "marker" for this type; additionally, when a database column
 is reflected and the type is reported as ``DATE``, the time-supporting
-:class:`.oracle.DATE` type is used.
+:class:`_oracle.DATE` type is used.
 
-.. versionchanged:: 0.9.4 Added :class:`.oracle.DATE` to subclass
+.. versionchanged:: 0.9.4 Added :class:`_oracle.DATE` to subclass
    :class:`.DateTime`.  This is a change as previous versions
-   would reflect a ``DATE`` column as :class:`.types.DATE`, which subclasses
+   would reflect a ``DATE`` column as :class:`_types.DATE`, which subclasses
    :class:`.Date`.   The only significance here is for schemes that are
    examining the type of column for use in special Python translations or
    for migrating schemas to other database backends.
@@ -411,7 +418,7 @@ Oracle Table Options
 -------------------------
 
 The CREATE TABLE phrase supports the following options with Oracle
-in conjunction with the :class:`.Table` construct:
+in conjunction with the :class:`_schema.Table` construct:
 
 
 * ``ON COMMIT``::
@@ -584,7 +591,7 @@ class DATE(sqltypes.DateTime):
     """Provide the oracle DATE type.
 
     This type has no special Python behavior, except that it subclasses
-    :class:`.types.DateTime`; this is to suit the fact that the Oracle
+    :class:`_types.DateTime`; this is to suit the fact that the Oracle
     ``DATE`` type supports a time value.
 
     .. versionadded:: 0.9.4

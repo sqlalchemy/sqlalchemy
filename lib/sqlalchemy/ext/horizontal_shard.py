@@ -197,7 +197,7 @@ class ShardedSession(Session):
         possible identity tokens (e.g. shard ids).
 
         .. versionchanged:: 1.4  Moved :meth:`.Session._identity_lookup` from
-           the :class:`.Query` object to the :class:`.Session`.
+           the :class:`_query.Query` object to the :class:`.Session`.
 
         """
 

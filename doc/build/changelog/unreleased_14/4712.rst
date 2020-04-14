@@ -2,7 +2,7 @@
     :tags: bug, engine
     :tickets: 4712
 
-    The :class:`.Connection` object will now not clear a rolled-back
+    The :class:`_engine.Connection` object will now not clear a rolled-back
     transaction  until the outermost transaction is explicitly rolled back.
     This is essentially the same behavior that the ORM :class:`.Session` has
     had for a long time, where an explicit call to ``.rollback()`` on all

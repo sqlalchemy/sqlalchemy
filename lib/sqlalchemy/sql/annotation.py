@@ -64,7 +64,8 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         return new
 
     def _deannotate(self, values=None, clone=False):
-        """return a copy of this :class:`.ClauseElement` with annotations
+        """return a copy of this :class:`_expression.ClauseElement`
+        with annotations
         removed.
 
         :param values: optional tuple of individual values
@@ -98,7 +99,8 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
         return Annotated(self, values)
 
     def _deannotate(self, values=None, clone=False):
-        """return a copy of this :class:`.ClauseElement` with annotations
+        """return a copy of this :class:`_expression.ClauseElement`
+        with annotations
         removed.
 
         :param values: optional tuple of individual values

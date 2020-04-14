@@ -13,18 +13,19 @@ class DDLEvents(event.Events):
     """
     Define event listeners for schema objects,
     that is, :class:`.SchemaItem` and other :class:`.SchemaEventTarget`
-    subclasses, including :class:`.MetaData`, :class:`.Table`,
-    :class:`.Column`.
+    subclasses, including :class:`_schema.MetaData`, :class:`_schema.Table`,
+    :class:`_schema.Column`.
 
-    :class:`.MetaData` and :class:`.Table` support events
+    :class:`_schema.MetaData` and :class:`_schema.Table` support events
     specifically regarding when CREATE and DROP
     DDL is emitted to the database.
 
     Attachment events are also provided to customize
     behavior whenever a child schema element is associated
-    with a parent, such as, when a :class:`.Column` is associated
-    with its :class:`.Table`, when a :class:`.ForeignKeyConstraint`
-    is associated with a :class:`.Table`, etc.
+    with a parent, such as, when a :class:`_schema.Column` is associated
+    with its :class:`_schema.Table`, when a
+    :class:`_schema.ForeignKeyConstraint`
+    is associated with a :class:`_schema.Table`, etc.
 
     Example using the ``after_create`` event::
 
@@ -59,7 +60,8 @@ class DDLEvents(event.Events):
 
     For all :class:`.DDLEvent` events, the ``propagate=True`` keyword argument
     will ensure that a given event handler is propagated to copies of the
-    object, which are made when using the :meth:`.Table.tometadata` method::
+    object, which are made when using the :meth:`_schema.Table.tometadata`
+    method::
 
         from sqlalchemy import DDL
         event.listen(
@@ -72,7 +74,7 @@ class DDLEvents(event.Events):
         new_table = some_table.tometadata(new_metadata)
 
     The above :class:`.DDL` object will also be associated with the
-    :class:`.Table` object represented by ``new_table``.
+    :class:`_schema.Table` object represented by ``new_table``.
 
     .. seealso::
 
@@ -92,9 +94,9 @@ class DDLEvents(event.Events):
     def before_create(self, target, connection, **kw):
         r"""Called before CREATE statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -107,16 +109,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def after_create(self, target, connection, **kw):
         r"""Called after CREATE statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          CREATE statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -129,16 +131,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def before_drop(self, target, connection, **kw):
         r"""Called before DROP statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements will be emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -151,16 +153,16 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def after_drop(self, target, connection, **kw):
         r"""Called after DROP statements are emitted.
 
-        :param target: the :class:`.MetaData` or :class:`.Table`
+        :param target: the :class:`_schema.MetaData` or :class:`_schema.Table`
          object which is the target of the event.
-        :param connection: the :class:`.Connection` where the
+        :param connection: the :class:`_engine.Connection` where the
          DROP statement or statements have been emitted.
         :param \**kw: additional keyword arguments relevant
          to the event.  The contents of this dictionary
@@ -173,7 +175,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
@@ -188,7 +190,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
@@ -203,13 +205,13 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """
 
     def column_reflect(self, inspector, table, column_info):
         """Called for each unit of 'column info' retrieved when
-        a :class:`.Table` is being reflected.
+        a :class:`_schema.Table` is being reflected.
 
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
@@ -226,13 +228,13 @@ class DDLEvents(event.Events):
             * ``default`` - the column's server default value.  This is
               normally specified as a plain string SQL expression, however the
               event can pass a :class:`.FetchedValue`, :class:`.DefaultClause`,
-              or :func:`.sql.expression.text` object as well.
+              or :func:`_expression.text` object as well.
 
               .. versionchanged:: 1.1.6
 
                     The :meth:`.DDLEvents.column_reflect` event allows a non
                     string :class:`.FetchedValue`,
-                    :func:`.sql.expression.text`, or derived object to be
+                    :func:`_expression.text`, or derived object to be
                     specified as the value of ``default`` in the column
                     dictionary.
 
@@ -240,12 +242,12 @@ class DDLEvents(event.Events):
 
         The event is called before any action is taken against
         this dictionary, and the contents can be modified.
-        The :class:`.Column` specific arguments ``info``, ``key``,
+        The :class:`_schema.Column` specific arguments ``info``, ``key``,
         and ``quote`` can also be added to the dictionary and
-        will be passed to the constructor of :class:`.Column`.
+        will be passed to the constructor of :class:`_schema.Column`.
 
         Note that this event is only meaningful if either
-        associated with the :class:`.Table` class across the
+        associated with the :class:`_schema.Table` class across the
         board, e.g.::
 
             from sqlalchemy.schema import Table
@@ -260,7 +262,7 @@ class DDLEvents(event.Events):
                     'column_reflect',
                     listen_for_reflect)
 
-        ...or with a specific :class:`.Table` instance using
+        ...or with a specific :class:`_schema.Table` instance using
         the ``listeners`` argument::
 
             def listen_for_reflect(inspector, table, column_info):
@@ -275,12 +277,13 @@ class DDLEvents(event.Events):
                 ])
 
         This because the reflection process initiated by ``autoload=True``
-        completes within the scope of the constructor for :class:`.Table`.
+        completes within the scope of the constructor for
+        :class:`_schema.Table`.
 
         :func:`.event.listen` also accepts the ``propagate=True``
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`.Table.tometadata` is used.
+        :meth:`_schema.Table.tometadata` is used.
 
         """

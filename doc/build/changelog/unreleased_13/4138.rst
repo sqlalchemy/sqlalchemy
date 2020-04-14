@@ -2,4 +2,4 @@
     :tags: schema
     :tickets: 4138
 
-    Add ``comment`` attribute to :class:`.Column` ``__repr__`` method.
+    Add ``comment`` attribute to :class:`_schema.Column` ``__repr__`` method.

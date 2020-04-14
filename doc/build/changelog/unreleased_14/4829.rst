@@ -2,11 +2,11 @@
     :tags: bug, orm
     :tickets: 4829
 
-    Added new entity-targeting capabilities to the :class:`.Query` object to
+    Added new entity-targeting capabilities to the :class:`_query.Query` object to
     help with the case where the :class:`.Session` is using a bind dictionary
-    against mapped classes, rather than a single bind, and the :class:`.Query`
+    against mapped classes, rather than a single bind, and the :class:`_query.Query`
     is against a Core statement that was ultimately generated from a method
-    such as :meth:`.Query.subquery`; a deep search is performed to locate
+    such as :meth:`_query.Query.subquery`; a deep search is performed to locate
     any ORM entity related to the query in order to locate a mapper if
     one is not otherwise present.
 

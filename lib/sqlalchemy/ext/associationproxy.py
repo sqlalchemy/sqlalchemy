@@ -114,7 +114,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         and/or subclassed directly.
 
         :param target_collection: Name of the collection we'll proxy to,
-          usually created with :func:`.relationship`.
+          usually created with :func:`_orm.relationship`.
 
         :param attr: Attribute on the collected instances we'll proxy
           for.  For example, given a target collection of [obj1, obj2], a
@@ -216,7 +216,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
                 keywords = association_proxy('kws', 'keyword')
 
         If we access this :class:`.AssociationProxy` from
-        :attr:`.Mapper.all_orm_descriptors`, and we want to view the
+        :attr:`_orm.Mapper.all_orm_descriptors`, and we want to view the
         target class for this proxy as mapped by ``User``::
 
             inspect(User).all_orm_descriptors["keywords"].for_class(User).target_class
@@ -467,7 +467,7 @@ class AssociationProxyInstance(object):
         """Return a tuple of ``(local_attr, remote_attr)``.
 
         This attribute is convenient when specifying a join
-        using :meth:`.Query.join` across two relationships::
+        using :meth:`_query.Query.join` across two relationships::
 
             sess.query(Parent).join(*Parent.proxied.attr)
 

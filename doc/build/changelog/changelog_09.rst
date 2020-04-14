@@ -60,7 +60,7 @@
         :versions: 1.0.5
 
         Added official support for a CTE used by the SELECT present
-        inside of :meth:`.Insert.from_select`.  This behavior worked
+        inside of :meth:`_expression.Insert.from_select`.  This behavior worked
         accidentally up until 0.9.9, when it no longer worked due to
         unrelated changes as part of :ticket:`3248`.   Note that this
         is the rendering of the WITH clause after the INSERT, before the
@@ -92,7 +92,7 @@
         :versions: 1.0.1
 
         Added the string value ``"none"`` to those accepted by the
-        :paramref:`.Pool.reset_on_return` parameter as a synonym for ``None``,
+        :paramref:`_pool.Pool.reset_on_return` parameter as a synonym for ``None``,
         so that string values can be used for all settings, allowing
         utilities like :func:`.engine_from_config` to be usable without
         issue.
@@ -102,10 +102,10 @@
         :tickets: 3362
         :versions: 1.0.0
 
-        Fixed issue where a :class:`.MetaData` object that used a naming
+        Fixed issue where a :class:`_schema.MetaData` object that used a naming
         convention would not properly work with pickle.  The attribute was
         skipped leading to inconsistencies and failures if the unpickled
-        :class:`.MetaData` object were used to base additional tables
+        :class:`_schema.MetaData` object were used to base additional tables
         from.
 
     .. change::
@@ -116,18 +116,18 @@
         Fixed a long-standing bug where the :class:`.Enum` type as used
         with the psycopg2 dialect in conjunction with non-ascii values
         and ``native_enum=False`` would fail to decode return results properly.
-        This stemmed from when the PG :class:`.postgresql.ENUM` type used
+        This stemmed from when the PG :class:`_postgresql.ENUM` type used
         to be a standalone type without a "non native" option.
 
     .. change::
         :tags: bug, orm
         :tickets: 3349
 
-        :class:`.Query` doesn't support joins, subselects, or special
-        FROM clauses when using the :meth:`.Query.update` or
-        :meth:`.Query.delete` methods; instead of silently ignoring these
-        fields if methods like :meth:`.Query.join` or
-        :meth:`.Query.select_from` has been called, a warning is emitted.
+        :class:`_query.Query` doesn't support joins, subselects, or special
+        FROM clauses when using the :meth:`_query.Query.update` or
+        :meth:`_query.Query.delete` methods; instead of silently ignoring these
+        fields if methods like :meth:`_query.Query.join` or
+        :meth:`_query.Query.select_from` has been called, a warning is emitted.
         As of 1.0.0b5 this will raise an error.
 
     .. change::
@@ -176,7 +176,7 @@
         :versions: 1.0.0b1
 
         Added a new entry ``"entity"`` to the dictionaries returned by
-        :attr:`.Query.column_descriptions`.  This refers to the primary ORM
+        :attr:`_query.Query.column_descriptions`.  This refers to the primary ORM
         mapped class or aliased class that is referred to by the expression.
         Compared to the existing entry for ``"type"``, it will always be
         a mapped entity, even if extracted from a column expression, or
@@ -248,7 +248,7 @@
         :tags: bug, orm
         :versions: 1.0.0b1
 
-        Fixed bug where TypeError raised when :meth:`.Query.join` called
+        Fixed bug where TypeError raised when :meth:`_query.Query.join` called
         with unknown kw arguments would raise its own TypeError due
         to broken formatting.  Pull request courtesy Malthe Borch.
 
@@ -257,11 +257,11 @@
         :tickets: 3302
         :versions: 1.0.0b1
 
-        Fixed bug in :class:`.Connection` and pool where the
-        :meth:`.Connection.invalidate` method, or an invalidation due
+        Fixed bug in :class:`_engine.Connection` and pool where the
+        :meth:`_engine.Connection.invalidate` method, or an invalidation due
         to a database disconnect, would fail if the
         ``isolation_level`` parameter had been used with
-        :meth:`.Connection.execution_options`; the "finalizer" that resets
+        :meth:`_engine.Connection.execution_options`; the "finalizer" that resets
         the isolation level would be called on the no longer opened connection.
 
     .. change::
@@ -270,7 +270,7 @@
         :versions: 1.0.0b1
 
         Added new parameter :paramref:`.Session.connection.execution_options`
-        which may be used to set up execution options on a :class:`.Connection`
+        which may be used to set up execution options on a :class:`_engine.Connection`
         when it is first checked out, before the transaction has begun.
         This is used to set up options such as isolation level on the
         connection before the transaction starts.
@@ -287,7 +287,7 @@
         :versions: 1.0.0b1
 
         A warning is emitted if the ``isolation_level`` parameter is used
-        with :meth:`.Connection.execution_options` when a :class:`.Transaction`
+        with :meth:`_engine.Connection.execution_options` when a :class:`.Transaction`
         is in play; DBAPIs and/or SQLAlchemy dialects such as psycopg2,
         MySQLdb may implicitly rollback or commit the transaction, or
         not change the setting til next transaction, so this is never safe.
@@ -345,13 +345,13 @@
         :tickets: 3298, 1765
 
         Fixed bug in 0.9's foreign key setup system, such that
-        the logic used to link a :class:`.ForeignKey` to its parent could fail
+        the logic used to link a :class:`_schema.ForeignKey` to its parent could fail
         when the foreign key used "link_to_name=True" in conjunction with
-        a target :class:`.Table` that would not receive its parent column until
+        a target :class:`_schema.Table` that would not receive its parent column until
         later, such as within a reflection + "useexisting" scenario,
         if the target column in fact had a key value different from its name,
         as would occur in reflection if column reflect events were used to
-        alter the .key of reflected :class:`.Column` objects so that the
+        alter the .key of reflected :class:`_schema.Column` objects so that the
         link_to_name becomes significant.  Also repaired support for column
         type via FK transmission in a similar way when target columns had a
         different key and were referenced using link_to_name.
@@ -361,8 +361,8 @@
         :versions: 1.0.0b1
 
         Added new user-space accessors for viewing transaction isolation
-        levels; :meth:`.Connection.get_isolation_level`,
-        :attr:`.Connection.default_isolation_level`.
+        levels; :meth:`_engine.Connection.get_isolation_level`,
+        :attr:`_engine.Connection.default_isolation_level`.
 
     .. change::
         :tags: bug, postgresql
@@ -371,7 +371,7 @@
 
         Fixed bug where PostgreSQL dialect would fail to render an
         expression in an :class:`.Index` that did not correspond directly
-        to a table-bound column; typically when a :func:`.text` construct
+        to a table-bound column; typically when a :func:`_expression.text` construct
         was one of the expressions within the index; or could misinterpret the
         list of expressions if one or more of them were such an expression.
 
@@ -381,7 +381,7 @@
         :tickets: 3287
 
         The "wildcard" loader options, in particular the one set up by
-        the :func:`.orm.load_only` option to cover all attributes not
+        the :func:`_orm.load_only` option to cover all attributes not
         explicitly mentioned, now takes into account the superclasses
         of a given entity, if that entity is mapped with inheritance mapping,
         so that attribute names within the superclasses are also omitted
@@ -404,7 +404,7 @@
         :tickets: 3285
 
         Fixed bug where if an exception were thrown at the start of a
-        :class:`.Query` before it fetched results, particularly when
+        :class:`_query.Query` before it fetched results, particularly when
         row processors can't be formed, the cursor would stay open with
         results pending and not actually be closed.  This is typically only
         an issue on an interpreter like PyPy where the cursor isn't
@@ -445,7 +445,7 @@
 
         Added new method :meth:`.Session.invalidate`, functions similarly
         to :meth:`.Session.close`, except also calls
-        :meth:`.Connection.invalidate`
+        :meth:`_engine.Connection.invalidate`
         on all connections, guaranteeing that they will not be returned to
         the connection pool.  This is useful in situations e.g. dealing
         with gevent timeouts when it is not safe to use the connection further,
@@ -504,7 +504,7 @@
 
         Fixed bug regarding expression mutations which could express
         itself as a "Could not locate column" error when using
-        :class:`.Query` to  select from multiple, anonymous column
+        :class:`_query.Query` to  select from multiple, anonymous column
         entities when querying against SQLite, as a side effect of the
         "join rewriting" feature used by the SQLite dialect.
 
@@ -525,8 +525,8 @@
         :tickets: 3232
         :versions: 1.0.0b1
 
-        Fixed bug where the ON clause for :meth:`.Query.join`,
-        and :meth:`.Query.outerjoin` to a single-inheritance subclass
+        Fixed bug where the ON clause for :meth:`_query.Query.join`,
+        and :meth:`_query.Query.outerjoin` to a single-inheritance subclass
         using ``of_type()`` would not render the "single table criteria" in
         the ON clause if the ``from_joinpoint=True`` flag were set.
 
@@ -589,17 +589,17 @@
         :versions: 1.0.0b1
         :tickets: 3200
 
-        The execution options passed to an :class:`.Engine` either via
+        The execution options passed to an :class:`_engine.Engine` either via
         :paramref:`.create_engine.execution_options` or
-        :meth:`.Engine.update_execution_options` are not passed to the
-        special :class:`.Connection` used to initialize the dialect
+        :meth:`_engine.Engine.update_execution_options` are not passed to the
+        special :class:`_engine.Connection` used to initialize the dialect
         within the "first connect" event; dialects will usually
         perform their own queries in this phase, and none of the
         current available  options should be applied here.  In
         particular, the "autocommit" option was causing an attempt to
         autocommit within this initial connect which would fail with
         an AttributeError due to the non-standard state of the
-        :class:`.Connection`.
+        :class:`_engine.Connection`.
 
     .. change::
         :tags: bug, sqlite
@@ -768,7 +768,7 @@
         * The value :func:`.null` can now be specified, which will always
           result in a NULL value resulting in the statement.
 
-        * A new parameter :paramref:`.JSON.none_as_null` is added, which
+        * A new parameter :paramref:`_types.JSON.none_as_null` is added, which
           when True indicates that the Python ``None`` value should be
           persisted as SQL NULL, rather than JSON-encoded ``'null'``.
 
@@ -809,7 +809,7 @@
         :versions: 1.0.0b1
         :tickets: 3141
 
-        Fixed bug in :class:`.postgresql.array` object where comparison
+        Fixed bug in :class:`_postgresql.array` object where comparison
         to a plain Python list would fail to use the correct array constructor.
         Pull request courtesy Andrew.
 
@@ -903,9 +903,9 @@
         :versions: 1.0.0b1
 
         Fixed a regression from 0.9.0 due to :ticket:`2736` where the
-        :meth:`.Query.select_from` method no longer set up the "from
-        entity" of the :class:`.Query` object correctly, so that
-        subsequent :meth:`.Query.filter_by` or :meth:`.Query.join`
+        :meth:`_query.Query.select_from` method no longer set up the "from
+        entity" of the :class:`_query.Query` object correctly, so that
+        subsequent :meth:`_query.Query.filter_by` or :meth:`_query.Query.join`
         calls would fail to check the appropriate "from" entity when
         searching for attributes by string name.
 
@@ -923,7 +923,7 @@
         :tickets: 3069
         :versions: 1.0.0b1
 
-        Fixed bug where multi-valued :class:`~.sql.expression.Insert` construct would fail
+        Fixed bug where multi-valued :class:`_expression.Insert` construct would fail
         to check subsequent values entries beyond the first one given
         for literal SQL expressions.
 
@@ -945,7 +945,7 @@
         The :meth:`.TypeEngine.with_variant` method will now accept a
         type class as an argument which is internally converted to an
         instance, using the same convention long established by other
-        constructs such as :class:`.Column`.
+        constructs such as :class:`_schema.Column`.
 
     .. change::
         :tags: bug, orm
@@ -978,7 +978,7 @@
         :tags: feature, postgresql
         :versions: 1.0.0b1
 
-        Added support for PostgreSQL JSONB via :class:`.JSONB`.  Pull request
+        Added support for PostgreSQL JSONB via :class:`_postgresql.JSONB`.  Pull request
         courtesy Damian Dimmich.
 
     .. change::
@@ -1078,11 +1078,11 @@
         :tickets: 3023
         :versions: 1.0.0b1
 
-        The :paramref:`.Column.nullable` flag is implicitly set to ``False``
-        when that :class:`.Column` is referred to in an explicit
+        The :paramref:`_schema.Column.nullable` flag is implicitly set to ``False``
+        when that :class:`_schema.Column` is referred to in an explicit
         :class:`.PrimaryKeyConstraint` for that table.  This behavior now
-        matches that of when the :class:`.Column` itself has the
-        :paramref:`.Column.primary_key` flag set to ``True``, which is
+        matches that of when the :class:`_schema.Column` itself has the
+        :paramref:`_schema.Column.primary_key` flag set to ``True``, which is
         intended to be an exactly equivalent case.
 
     .. change::
@@ -1090,7 +1090,7 @@
         :tickets: 3002
         :versions: 1.0.0b1
 
-        Added a new type :class:`.postgresql.OID` to the PostgreSQL dialect.
+        Added a new type :class:`_postgresql.OID` to the PostgreSQL dialect.
         While "oid" is generally a private type within PG that is not exposed
         in modern versions, there are some PG use cases such as large object
         support where these types might be exposed, as well as within some
@@ -1101,7 +1101,7 @@
         :tickets: 3080
         :versions: 1.0.0b1
 
-        Modified the behavior of :func:`.orm.load_only` such that primary key
+        Modified the behavior of :func:`_orm.load_only` such that primary key
         columns are always added to the list of columns to be "undeferred";
         otherwise, the ORM can't load the row's identity.   Apparently,
         one can defer the mapped primary keys and the ORM will fail, that
@@ -1213,8 +1213,8 @@
         :tickets: 2785
         :versions: 1.0.0b1
 
-        Added a new flag :paramref:`.ARRAY.zero_indexes` to the PostgreSQL
-        :class:`.ARRAY` type.  When set to ``True``, a value of one will be
+        Added a new flag :paramref:`_types.ARRAY.zero_indexes` to the PostgreSQL
+        :class:`_types.ARRAY` type.  When set to ``True``, a value of one will be
         added to all array index values before passing to the database, allowing
         better interoperability between Python style zero-based indexes and
         PostgreSQL one-based indexes.  Pull request courtesy Alexey Terentev.
@@ -1262,10 +1262,10 @@
         :versions: 1.0.0b1
 
         Liberalized the contract for :class:`.Index` a bit in that you can
-        specify a :func:`.text` expression as the target; the index no longer
+        specify a :func:`_expression.text` expression as the target; the index no longer
         needs to have a table-bound column present if the index is to be
         manually added to the table, either via inline declaration or via
-        :meth:`.Table.append_constraint`.
+        :meth:`_schema.Table.append_constraint`.
 
     .. change::
         :tags: bug, firebird
@@ -1342,8 +1342,8 @@
 
         Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
         the new rules for "where" and "having" woudn't take effect for the
-        "whereclause" and "having" kw arguments of the :func:`~.sql.expression.select` construct,
-        which is also what :class:`.Query` uses so wasn't working in the
+        "whereclause" and "having" kw arguments of the :func:`_expression.select` construct,
+        which is also what :class:`_query.Query` uses so wasn't working in the
         ORM either.
 
     .. change::
@@ -1410,7 +1410,7 @@
 
         Improved the check for "how to join from A to B" such that when
         a table has multiple, composite foreign keys targeting a parent table,
-        the :paramref:`.relationship.foreign_keys` argument will be properly
+        the :paramref:`_orm.relationship.foreign_keys` argument will be properly
         interpreted in order to resolve the ambiguity; previously this condition
         would raise that there were multiple FK paths when in fact the
         foreign_keys argument should be establishing which one is expected.
@@ -1439,12 +1439,12 @@
         :tags: feature, engine
         :tickets: 2978
 
-        An event listener can now be associated with a :class:`.Engine`,
-        after one or more :class:`.Connection` objects have been created
+        An event listener can now be associated with a :class:`_engine.Engine`,
+        after one or more :class:`_engine.Connection` objects have been created
         (such as by an orm :class:`.Session` or via explicit connect)
         and the listener will pick up events from those connections.
         Previously, performance concerns pushed the event transfer from
-        :class:`.Engine` to  :class:`.Connection` at init-time only, but
+        :class:`_engine.Engine` to  :class:`_engine.Connection` at init-time only, but
         we've inlined a bunch of conditional checks to make this possible
         without any additional function calls.
 
@@ -1459,7 +1459,7 @@
         :tags: bug, engine
         :tickets: 2985
 
-        A major improvement made to the mechanics by which the :class:`.Engine`
+        A major improvement made to the mechanics by which the :class:`_engine.Engine`
         recycles the connection pool when a "disconnect" condition is detected;
         instead of discarding the pool and explicitly closing out connections,
         the pool is retained and a "generational" timestamp is updated to
@@ -1474,7 +1474,7 @@
         :tags: bug, oracle
         :tickets: 2987
 
-        Added new datatype :class:`.oracle.DATE`, which is a subclass of
+        Added new datatype :class:`_oracle.DATE`, which is a subclass of
         :class:`.DateTime`.  As Oracle has no "datetime" type per se,
         it instead has only ``DATE``, it is appropriate here that the
         ``DATE`` type as present in the Oracle dialect be an instance of
@@ -1489,16 +1489,16 @@
         :tags: bug, sql
         :tickets: 2988
 
-        Fixed an 0.9 regression where a :class:`.Table` that failed to
+        Fixed an 0.9 regression where a :class:`_schema.Table` that failed to
         reflect correctly wouldn't be removed from the parent
-        :class:`.MetaData`, even though in an invalid state.  Pullreq
+        :class:`_schema.MetaData`, even though in an invalid state.  Pullreq
         courtesy Roman Podoliaka.
 
     .. change::
         :tags: bug, engine
 
         The :meth:`.ConnectionEvents.after_cursor_execute` event is now
-        emitted for the "_cursor_execute()" method of :class:`.Connection`;
+        emitted for the "_cursor_execute()" method of :class:`_engine.Connection`;
         this is the "quick" executor that is used for things like
         when a sequence is executed ahead of an INSERT statement, as well as
         for dialect startup checks like unicode returns, charset, etc.
@@ -1523,7 +1523,7 @@
     .. change::
         :tags: feature, sql
 
-        Added a new feature :func:`.schema.conv`, the purpose of which is to
+        Added a new feature :func:`_schema.conv`, the purpose of which is to
         mark a constraint name as already having had a naming convention applied.
         This token will be used by Alembic migrations as of Alembic 0.6.4
         in order to render constraints in migration scripts with names marked
@@ -1532,16 +1532,16 @@
     .. change::
         :tags: bug, sql
 
-        :paramref:`.MetaData.naming_convention` feature will now also
+        :paramref:`_schema.MetaData.naming_convention` feature will now also
         apply to :class:`.CheckConstraint` objects that are associated
-        directly with a :class:`.Column` instead of just on the
-        :class:`.Table`.
+        directly with a :class:`_schema.Column` instead of just on the
+        :class:`_schema.Table`.
 
     .. change::
         :tags: bug, sql
         :tickets: 2991
 
-        Fixed bug in new :paramref:`.MetaData.naming_convention` feature
+        Fixed bug in new :paramref:`_schema.MetaData.naming_convention` feature
         where the name of a check constraint making use of the
         `"%(constraint_name)s"` token would get doubled up for the
         constraint generated by a boolean or enum type, and overall
@@ -1554,7 +1554,7 @@
         A warning is emitted if the :meth:`.MapperEvents.before_configured`
         or :meth:`.MapperEvents.after_configured` events are applied to a
         specific mapper or mapped class, as the events are only invoked
-        for the :class:`.Mapper` target at the general level.
+        for the :class:`_orm.Mapper` target at the general level.
 
     .. change::
         :tags: feature, orm
@@ -1628,7 +1628,7 @@
         :tags: feature, orm
         :tickets: 2976
 
-        Added a new option to :paramref:`.relationship.innerjoin` which is
+        Added a new option to :paramref:`_orm.relationship.innerjoin` which is
         to specify the string ``"nested"``.  When set to ``"nested"`` as opposed
         to ``True``, the "chaining" of joins will parenthesize the inner join on the
         right side of an existing outer join, instead of chaining as a string
@@ -1657,7 +1657,7 @@
         :tickets: 2974
 
         Adjusted the logic which applies names to the .c collection when
-        a no-name :class:`.BindParameter` is received, e.g. via :func:`.sql.literal`
+        a no-name :class:`.BindParameter` is received, e.g. via :func:`_expression.literal`
         or similar; the "key" of the bind param is used as the key within
         .c. rather than the rendered name.  Since these binds have "anonymous"
         names in any case, this allows individual bound parameters to
@@ -1667,7 +1667,7 @@
         :tags: bug, sql
         :tickets: 2974
 
-        Some changes to how the :attr:`.FromClause.c` collection behaves
+        Some changes to how the :attr:`_expression.FromClause.c` collection behaves
         when presented with duplicate columns.  The behavior of emitting a
         warning and replacing the old column with the same name still
         remains to some degree; the replacement in particular is to maintain
@@ -1678,7 +1678,7 @@
         list of columns rather than the unique set of key names.  This helps
         with situations where SELECT statements with same-named columns
         are used in unions and such, so that the union can match the columns
-        up positionally and also there's some chance of :meth:`.FromClause.corresponding_column`
+        up positionally and also there's some chance of :meth:`_expression.FromClause.corresponding_column`
         still being usable here (it can now return a column that is only
         in selectable.c._all_columns and not otherwise named).
         The new collection is underscored as we still need to decide where this
@@ -1690,7 +1690,7 @@
     .. change::
         :tags: bug, sql
 
-        Fixed issue in new :meth:`.TextClause.columns` method where the ordering
+        Fixed issue in new :meth:`_expression.TextClause.columns` method where the ordering
         of columns given positionally would not be preserved.   This could
         have potential impact in positional situations such as applying the
         resulting :class:`.TextAsFrom` object to a union.
@@ -1727,16 +1727,16 @@
         :tickets: 2973
 
         Fixed bug where events set to listen at the class
-        level (e.g. on the :class:`.Mapper` or :class:`.ClassManager`
+        level (e.g. on the :class:`_orm.Mapper` or :class:`.ClassManager`
         level, as opposed to on an individual mapped class, and also on
-        :class:`.Connection`) that also made use of internal argument conversion
+        :class:`_engine.Connection`) that also made use of internal argument conversion
         (which is most within those categories) would fail to be removable.
 
     .. change::
         :tags: bug, orm
 
         Fixed regression from 0.8 where using an option like
-        :func:`.orm.lazyload` with the "wildcard" expression, e.g. ``"*"``,
+        :func:`_orm.lazyload` with the "wildcard" expression, e.g. ``"*"``,
         would raise an assertion error in the case where the query didn't
         contain any actual entities.  This assertion is meant for other cases
         and was catching this one inadvertently.
@@ -1781,7 +1781,7 @@
 
         The SQLite dialect will now skip unsupported arguments when reflecting
         types; such as if it encounters a string like ``INTEGER(5)``, the
-        :class:`.INTEGER` type will be instantiated without the "5" being included,
+        :class:`_types.INTEGER` type will be instantiated without the "5" being included,
         based on detecting a ``TypeError`` on the first attempt.
 
     .. change::
@@ -1801,14 +1801,14 @@
         :tags: postgresql, feature
 
         Added the :attr:`.TypeEngine.python_type` convenience accessor onto the
-        :class:`.postgresql.ARRAY` type.  Pull request courtesy Alexey Terentev.
+        :class:`_postgresql.ARRAY` type.  Pull request courtesy Alexey Terentev.
 
     .. change::
         :tags: examples, feature
 
         Added optional "changed" column to the versioned rows example, as well
-        as support for when the versioned :class:`.Table` has an explicit
-        :paramref:`~.Table.schema` argument.   Pull request
+        as support for when the versioned :class:`_schema.Table` has an explicit
+        :paramref:`_schema.Table.schema` argument.   Pull request
         courtesy jplaverdure.
 
     .. change::
@@ -1921,7 +1921,7 @@
         :tags: feature, sql
 
         Added :paramref:`.MetaData.reflect.**dialect_kwargs`
-        to support dialect-level reflection options for all :class:`.Table`
+        to support dialect-level reflection options for all :class:`_schema.Table`
         objects reflected.
 
     .. change::
@@ -1929,13 +1929,13 @@
         :tickets: 2922
 
         Added a new dialect-level argument ``postgresql_ignore_search_path``;
-        this argument is accepted by both the :class:`.Table` constructor
-        as well as by the :meth:`.MetaData.reflect` method.  When in use
+        this argument is accepted by both the :class:`_schema.Table` constructor
+        as well as by the :meth:`_schema.MetaData.reflect` method.  When in use
         against PostgreSQL, a foreign-key referenced table which specifies
         a remote schema name will retain that schema name even if the name
         is present in the ``search_path``; the default behavior since 0.7.3
         has been that schemas present in ``search_path`` would not be copied
-        to reflected :class:`.ForeignKey` objects.  The documentation has been
+        to reflected :class:`_schema.ForeignKey` objects.  The documentation has been
         updated to describe in detail the behavior of the ``pg_get_constraintdef()``
         function and how the ``postgresql_ignore_search_path`` feature essentially
         determines if we will honor the schema qualification reported by
@@ -1949,12 +1949,12 @@
         :tags: bug, sql
         :tickets: 2913
 
-        The behavior of :meth:`.Table.tometadata` has been adjusted such that
-        the schema target of a :class:`.ForeignKey` will not be changed unless
+        The behavior of :meth:`_schema.Table.tometadata` has been adjusted such that
+        the schema target of a :class:`_schema.ForeignKey` will not be changed unless
         that schema matches that of the parent table.  That is, if
         a table "schema_a.user" has a foreign key to "schema_b.order.id",
         the "schema_b" target will be maintained whether or not the
-        "schema" argument is passed to :meth:`.Table.tometadata`.  However
+        "schema" argument is passed to :meth:`_schema.Table.tometadata`.  However
         if a table "schema_a.user" refers to "schema_a.order.id", the presence
         of "schema_a" will be updated on both the parent and referred tables.
         This is a behavioral change hence isn't likely to be backported to
@@ -1964,7 +1964,7 @@
         Additionally, a new parameter has been added
         :paramref:`.Table.tometadata.referred_schema_fn`.  This refers to a
         callable function which will be used to determine the new referred
-        schema for any :class:`.ForeignKeyConstraint` encountered in the
+        schema for any :class:`_schema.ForeignKeyConstraint` encountered in the
         tometadata operation.  This callable can be used to revert to the
         previous behavior or to customize how referred schemas are treated
         on a per-constraint basis.
@@ -1973,14 +1973,14 @@
         :tags: bug, orm
         :tickets: 2932
 
-        Fixed bug in new :class:`.TextAsFrom` construct where :class:`.Column`-
+        Fixed bug in new :class:`.TextAsFrom` construct where :class:`_schema.Column`-
         oriented row lookups were not matching up to the ad-hoc :class:`.ColumnClause`
         objects that :class:`.TextAsFrom` generates, thereby making it not
-        usable as a target in :meth:`.Query.from_statement`.  Also fixed
-        :meth:`.Query.from_statement` mechanics to not mistake a :class:`.TextAsFrom`
-        for a :class:`.Select` construct.  This bug is also an 0.9 regression
-        as the :meth:`.Text.columns` method is called to accommodate the
-        :paramref:`.text.typemap` argument.
+        usable as a target in :meth:`_query.Query.from_statement`.  Also fixed
+        :meth:`_query.Query.from_statement` mechanics to not mistake a :class:`.TextAsFrom`
+        for a :class:`_expression.Select` construct.  This bug is also an 0.9 regression
+        as the :meth:`_expression.TextClause.columns` method is called to accommodate the
+        :paramref:`_expression.text.typemap` argument.
 
     .. change::
         :tags: feature, sql
@@ -1991,9 +1991,9 @@
         on a recipe in the wiki, the new feature uses schema-events to set up
         names as various schema objects are associated with each other.  The
         events then expose a configuration system through a new argument
-        :paramref:`.MetaData.naming_convention`.  This system allows production
+        :paramref:`_schema.MetaData.naming_convention`.  This system allows production
         of both simple and custom naming schemes for constraints and indexes
-        on a per-:class:`.MetaData` basis.
+        on a per-:class:`_schema.MetaData` basis.
 
         .. seealso::
 
@@ -2015,7 +2015,7 @@
         Added a new parameter :paramref:`.Operators.op.is_comparison`.  This
         flag allows a custom op from :meth:`.Operators.op` to be considered
         as a "comparison" operator, thus usable for custom
-        :paramref:`.relationship.primaryjoin` conditions.
+        :paramref:`_orm.relationship.primaryjoin` conditions.
 
         .. seealso::
 
@@ -2068,9 +2068,9 @@
         :tickets: 2918
 
         Fixed an 0.9 regression where the automatic aliasing applied by
-        :class:`.Query` and in other situations where selects or joins
+        :class:`_query.Query` and in other situations where selects or joins
         were aliased (such as joined table inheritance) could fail if a
-        user-defined :class:`.Column` subclass were used in the expression.
+        user-defined :class:`_schema.Column` subclass were used in the expression.
         In this case, the subclass would fail to propagate ORM-specific
         "annotations" along needed by the adaptation.  The "expression
         annotations" system has been corrected to account for this case.
@@ -2078,9 +2078,9 @@
     .. change::
         :tags: feature, orm
 
-        Support is improved for supplying a :func:`.join` construct as the
-        target of :paramref:`.relationship.secondary` for the purposes
-        of creating very complex :func:`.relationship` join conditions.
+        Support is improved for supplying a :func:`_expression.join` construct as the
+        target of :paramref:`_orm.relationship.secondary` for the purposes
+        of creating very complex :func:`_orm.relationship` join conditions.
         The change includes adjustments to query joining, joined eager loading
         to not render a SELECT subquery, changes to lazy loading such that
         the "secondary" target is properly included in the SELECT, and
@@ -2102,7 +2102,7 @@
         where a more specific type is adapted to a more generic one - this
         use case is needed by some third party tools such as ``sqlacodegen``.
         The specific cases that needed repair within this test suite were that
-        of :class:`.mysql.ENUM` being downcast into a :class:`.types.Enum`,
+        of :class:`.mysql.ENUM` being downcast into a :class:`_types.Enum`,
         and that of SQLite date types being cast into generic date types.
         The ``adapt()`` method needed to become more specific here to counteract
         the removal of a "catch all" ``**kwargs`` collection on the base
@@ -2124,7 +2124,7 @@
         the columns, or if both are present, that the column lists match
         exactly.  If an inconsistent set of columns in the
         :class:`.PrimaryKeyConstraint`
-        and within the :class:`.Table` marked as ``primary_key=True`` are
+        and within the :class:`_schema.Table` marked as ``primary_key=True`` are
         present, a warning is emitted, and the list of columns is taken
         only from the :class:`.PrimaryKeyConstraint` alone as was the case
         in previous releases.
@@ -2141,13 +2141,13 @@
 
         The system by which schema constructs and certain SQL constructs
         accept dialect-specific keyword arguments has been enhanced.  This
-        system includes commonly the :class:`.Table` and :class:`.Index` constructs,
+        system includes commonly the :class:`_schema.Table` and :class:`.Index` constructs,
         which accept a wide variety of dialect-specific arguments such as
         ``mysql_engine`` and ``postgresql_where``, as well as the constructs
         :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`,
-        :class:`.Update`, :class:`~.sql.expression.Insert` and :class:`.Delete`, and also
-        newly added kwarg capability to :class:`.ForeignKeyConstraint`
-        and :class:`.ForeignKey`.  The change is that participating dialects
+        :class:`_expression.Update`, :class:`_expression.Insert` and :class:`_expression.Delete`, and also
+        newly added kwarg capability to :class:`_schema.ForeignKeyConstraint`
+        and :class:`_schema.ForeignKey`.  The change is that participating dialects
         can now specify acceptable argument lists for these constructs, allowing
         an argument error to be raised if an invalid keyword is specified for
         a particular dialect.  If the dialect portion of the keyword is unrecognized,
@@ -2162,7 +2162,7 @@
     .. change::
         :tags: bug, sql
 
-        A :class:`.UniqueConstraint` created inline with a :class:`.Table`
+        A :class:`.UniqueConstraint` created inline with a :class:`_schema.Table`
         that has no columns within it will be skipped.  Pullreq courtesy
         Derek Harland.
 
@@ -2183,9 +2183,9 @@
         with the same name across tables.  This also changes the name used for
         the bound parameter in the SET clause to "<tablename>_<colname>" for
         the non-primary table only; as this parameter is typically specified
-        using the :class:`.Column` object directly this should not have an
+        using the :class:`_schema.Column` object directly this should not have an
         impact on applications.   The fix takes effect for both
-        :meth:`.Table.update` as well as :meth:`.Query.update` in the ORM.
+        :meth:`_schema.Table.update` as well as :meth:`_query.Query.update` in the ORM.
 
     .. change::
         :tags: bug, oracle
@@ -2229,7 +2229,7 @@
         :tickets: 2908
 
         Fixed a bug involving the new flattened JOIN structures which
-        are used with :func:`.joinedload()` (thereby causing a regression
+        are used with :func:`_orm.joinedload()` (thereby causing a regression
         in joined eager loading) as well as :func:`.aliased`
         in conjunction with the ``flat=True`` flag and joined-table inheritance;
         basically multiple joins across a "parent JOIN sub" entity using different
@@ -2269,12 +2269,12 @@
         :tags: bug, mysql, pool, engine
         :tickets: 2907
 
-        :class:`.Connection` now associates a new
+        :class:`_engine.Connection` now associates a new
         :class:`.RootTransaction` or :class:`.TwoPhaseTransaction`
         with its immediate :class:`._ConnectionFairy` as a "reset handler"
         for the span of that transaction, which takes over the task
         of calling commit() or rollback() for the "reset on return" behavior
-        of :class:`.Pool` if the transaction was not otherwise completed.
+        of :class:`_pool.Pool` if the transaction was not otherwise completed.
         This resolves the issue that a picky transaction
         like that of MySQL two-phase will be
         properly closed out when the connection is closed without an
@@ -2293,14 +2293,14 @@
     .. change::
         :tags: feature, pool, engine
 
-        Added a new pool event :meth:`.PoolEvents.invalidate`.  Called when
+        Added a new pool event :meth:`_events.PoolEvents.invalidate`.  Called when
         a DBAPI connection is to be marked as "invalidated" and discarded
         from the pool.
 
     .. change::
         :tags: bug, pool
 
-        The argument names for the :meth:`.PoolEvents.reset` event have been
+        The argument names for the :meth:`_events.PoolEvents.reset` event have been
         renamed to ``dbapi_connection`` and ``connection_record`` in order
         to maintain consistency with all the other pool events.  It is expected
         that any existing listeners for this relatively new and
@@ -2369,8 +2369,8 @@
     .. change::
         :tags: feature, schema
 
-        The :paramref:`.Table.extend_existing` and :paramref:`.Table.autoload_replace`
-        parameters are now available on the :meth:`.MetaData.reflect`
+        The :paramref:`_schema.Table.extend_existing` and :paramref:`_schema.Table.autoload_replace`
+        parameters are now available on the :meth:`_schema.MetaData.reflect`
         method.
 
     .. change::
@@ -2436,9 +2436,9 @@
         :tickets: 2828
 
         Declarative does an extra check to detect if the same
-        :class:`.Column` is mapped multiple times under different properties
+        :class:`_schema.Column` is mapped multiple times under different properties
         (which typically should be a :func:`.synonym` instead) or if two
-        or more :class:`.Column` objects are given the same name, raising
+        or more :class:`_schema.Column` objects are given the same name, raising
         a warning if this condition is detected.
 
     .. change::
@@ -2468,7 +2468,7 @@
         :tickets: 2581
 
         Support for PostgreSQL JSON has been added, using the new
-        :class:`.JSON` type.   Huge thanks to Nathan Rice for
+        :class:`_types.JSON` type.   Huge thanks to Nathan Rice for
         implementing and testing this.
 
     .. change::
@@ -2493,12 +2493,12 @@
         :tags: bug, sql
         :tickets: 2883
 
-        The :class:`.ForeignKey` class more aggressively checks the given
+        The :class:`_schema.ForeignKey` class more aggressively checks the given
         column argument.   If not a string, it checks that the object is
         at least a :class:`.ColumnClause`, or an object that resolves to one,
         and that the ``.table`` attribute, if present, refers to a
-        :class:`.TableClause` or subclass, and not something like an
-        :class:`.Alias`.  Otherwise, a :class:`.ArgumentError` is raised.
+        :class:`_expression.TableClause` or subclass, and not something like an
+        :class:`_expression.Alias`.  Otherwise, a :class:`.ArgumentError` is raised.
 
 
     .. change::
@@ -2517,7 +2517,7 @@
         :tags: feature, postgresql
 
         Added support for PostgreSQL TSVECTOR via the
-        :class:`.postgresql.TSVECTOR` type.  Pull request courtesy
+        :class:`_postgresql.TSVECTOR` type.  Pull request courtesy
         Noufal Ibrahim.
 
     .. change::
@@ -2554,9 +2554,9 @@
 
         The :class:`.DeferredReflection` class has been enhanced to provide
         automatic reflection support for the "secondary" table referred
-        to by a :func:`.relationship`.   "secondary", when specified
-        either as a string table name, or as a :class:`.Table` object with
-        only a name and :class:`.MetaData` object will also be included
+        to by a :func:`_orm.relationship`.   "secondary", when specified
+        either as a string table name, or as a :class:`_schema.Table` object with
+        only a name and :class:`_schema.MetaData` object will also be included
         in the reflection process when :meth:`.DeferredReflection.prepare`
         is called.
 
@@ -2597,17 +2597,17 @@
 
         Fixed bug where in Py2K a unicode literal would not be accepted
         as the string name of a class or other argument within
-        declarative using :func:`.relationship`.
+        declarative using :func:`_orm.relationship`.
 
     .. change::
         :tags: feature, sql
         :tickets: 2877, 2882
 
-        New improvements to the :func:`.text` construct, including
+        New improvements to the :func:`_expression.text` construct, including
         more flexible ways to set up bound parameters and return types;
-        in particular, a :func:`.text` can now be turned into a full
+        in particular, a :func:`_expression.text` can now be turned into a full
         FROM-object, embeddable in other statements as an alias or CTE
-        using the new method :meth:`.TextClause.columns`.   The :func:`.text`
+        using the new method :meth:`_expression.TextClause.columns`.   The :func:`_expression.text`
         construct can also render "inline" bound parameters when the construct
         is compiled in a "literal bound" context.
 
@@ -2619,12 +2619,12 @@
         :tags: feature, sql
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
-        is added with the new :meth:`.GenerativeSelect.with_for_update` method.
+        is added with the new :meth:`_expression.GenerativeSelect.with_for_update` method.
         This method supports a more straightforward system of setting
         dialect-specific options compared to the ``for_update`` keyword
-        argument of :func:`~.sql.expression.select`, and also includes support for the
+        argument of :func:`_expression.select`, and also includes support for the
         SQL standard ``FOR UPDATE OF`` clause.   The ORM also includes
-        a new corresponding method :meth:`.Query.with_for_update`.
+        a new corresponding method :meth:`_query.Query.with_for_update`.
         Pull request courtesy Mario Lassnig.
 
         .. seealso::
@@ -2635,8 +2635,8 @@
         :tags: feature, orm
 
         A new API for specifying the ``FOR UPDATE`` clause of a ``SELECT``
-        is added with the new :meth:`.Query.with_for_update` method,
-        to complement the new :meth:`.GenerativeSelect.with_for_update` method.
+        is added with the new :meth:`_query.Query.with_for_update` method,
+        to complement the new :meth:`_expression.GenerativeSelect.with_for_update` method.
         Pull request courtesy Mario Lassnig.
 
         .. seealso::
@@ -2719,7 +2719,7 @@
         :tags: bug, orm
         :tickets: 2833
 
-        The ``viewonly`` flag on :func:`.relationship` will now prevent
+        The ``viewonly`` flag on :func:`_orm.relationship` will now prevent
         attribute history from being written on behalf of the target attribute.
         This has the effect of the object not being written to the
         Session.dirty list if it is mutated.  Previously, the object would
@@ -2750,7 +2750,7 @@
         :tags: bug, orm
 
         Fixed bug where usage of new :class:`.Bundle` object would cause
-        the :attr:`.Query.column_descriptions` attribute to fail.
+        the :attr:`_query.Query.column_descriptions` attribute to fail.
 
     .. change::
         :tags: bug, examples
@@ -2836,8 +2836,8 @@
         new copy is assigned the actual type of the compared column.  Previously,
         this logic would occur on the given :func:`.bindparam` in place.
         Additionally, a similar process now occurs for :func:`.bindparam` constructs
-        passed to :meth:`.ValuesBase.values` for an :class:`~.sql.expression.Insert` or
-        :class:`.Update` construct, within the compilation phase of the
+        passed to :meth:`.ValuesBase.values` for an :class:`_expression.Insert` or
+        :class:`_expression.Update` construct, within the compilation phase of the
         construct.
 
         These are both subtle behavioral changes which may impact some
@@ -2853,8 +2853,8 @@
 
         An overhaul of expression handling for special symbols particularly
         with conjunctions, e.g.
-        ``None`` :func:`.expression.null` :func:`.expression.true`
-        :func:`.expression.false`, including consistency in rendering NULL
+        ``None`` :func:`_expression.null` :func:`_expression.true`
+        :func:`_expression.false`, including consistency in rendering NULL
         in conjunctions, "short-circuiting" of :func:`.and_` and :func:`.or_`
         expressions which contain boolean constants, and rendering of
         boolean constants and expressions as compared to "1" or "0" for backends
@@ -2885,12 +2885,12 @@
         :tags: feature, sql
         :tickets: 2716
 
-        The :meth:`.Table.tometadata` method now produces copies of
+        The :meth:`_schema.Table.tometadata` method now produces copies of
         all :attr:`.SchemaItem.info` dictionaries from all :class:`.SchemaItem`
         objects within the structure including columns, constraints,
         foreign keys, etc.   As these dictionaries
         are copies, they are independent of the original dictionary.
-        Previously, only the ``.info`` dictionary of :class:`.Column` was transferred
+        Previously, only the ``.info`` dictionary of :class:`_schema.Column` was transferred
         within this operation, and it was only linked in place, not copied.
 
     .. change::
@@ -2914,7 +2914,7 @@
     .. change::
         :tags: feature, sql
 
-        The ``default`` argument of :class:`.Column` now accepts a class
+        The ``default`` argument of :class:`_schema.Column` now accepts a class
         or object method as an argument, in addition to a standalone function;
         will properly detect if the "context" argument is accepted or not.
 
@@ -2941,7 +2941,7 @@
         :tags: bug, sql
         :tickets: 2831
 
-        The erroneous kw arg "schema" has been removed from the :class:`.ForeignKey`
+        The erroneous kw arg "schema" has been removed from the :class:`_schema.ForeignKey`
         object. this was an accidental commit that did nothing; a warning is raised
         in 0.8.3 when this kw arg is used.
 
@@ -2949,7 +2949,7 @@
         :tags: feature, orm
         :tickets: 1418
 
-        Added a new load option :func:`.orm.load_only`.  This allows a series
+        Added a new load option :func:`_orm.load_only`.  This allows a series
         of column names to be specified as loading "only" those attributes,
         deferring the rest.
 
@@ -2958,8 +2958,8 @@
         :tickets: 1418
 
         The system of loader options has been entirely rearchitected to build
-        upon a much more comprehensive base, the :class:`.Load` object.  This
-        base allows any common loader option like :func:`.joinedload`,
+        upon a much more comprehensive base, the :class:`_orm.Load` object.  This
+        base allows any common loader option like :func:`_orm.joinedload`,
         :func:`.defer`, etc. to be used in a "chained" style for the purpose
         of specifying options down a path, such as ``joinedload("foo").subqueryload("bar")``.
         The new system supersedes the usage of dot-separated path names,
@@ -2974,7 +2974,7 @@
         :tickets: 2824
 
         The :func:`.composite` construct now maintains the return object
-        when used in a column-oriented :class:`.Query`, rather than expanding
+        when used in a column-oriented :class:`_query.Query`, rather than expanding
         out into individual columns.  This makes use of the new :class:`.Bundle`
         feature internally.  This behavior is backwards incompatible; to
         select from a composite column which will expand out, use
@@ -2989,12 +2989,12 @@
         :tickets: 2824
 
         A new construct :class:`.Bundle` is added, which allows for specification
-        of groups of column expressions to a :class:`.Query` construct.
+        of groups of column expressions to a :class:`_query.Query` construct.
         The group of columns are returned as a single tuple by default.  The
         behavior of :class:`.Bundle` can be overridden however to provide
         any sort of result processing to the returned row.  The behavior
         of :class:`.Bundle` is also embedded into composite attributes now
-        when they are used in a column-oriented :class:`.Query`.
+        when they are used in a column-oriented :class:`_query.Query`.
 
         .. seealso::
 
@@ -3010,9 +3010,9 @@
         instead of relying upon various ``quote=True`` flags being passed around,
         these flags are converted into rich string objects with quoting information
         included at the point at which they are passed to common schema constructs
-        like :class:`.Table`, :class:`.Column`, etc.   This solves the issue
+        like :class:`_schema.Table`, :class:`_schema.Column`, etc.   This solves the issue
         of various methods that don't correctly honor the "quote" flag such
-        as :meth:`.Engine.has_table` and related methods.  The :class:`.quoted_name`
+        as :meth:`_engine.Engine.has_table` and related methods.  The :class:`.quoted_name`
         object is a string subclass that can also be used explicitly if needed;
         the object will hold onto the quoting preferences passed and will
         also bypass the "name normalization" performed by dialects that
@@ -3040,7 +3040,7 @@
         :tags: feature, orm
         :tickets: 2793
 
-        The ``eager_defaults`` flag of :class:`.Mapper` will now allow the
+        The ``eager_defaults`` flag of :class:`_orm.Mapper` will now allow the
         newly generated default values to be fetched using an inline
         RETURNING clause, rather than a second SELECT statement, for backends
         that support RETURNING.
@@ -3134,8 +3134,8 @@
         :tags: feature, sql
         :tickets: 722
 
-        Added new method to the :func:`~.sql.expression.insert` construct
-        :meth:`.Insert.from_select`.  Given a list of columns and
+        Added new method to the :func:`_expression.insert` construct
+        :meth:`_expression.Insert.from_select`.  Given a list of columns and
         a selectable, renders ``INSERT INTO (table) (columns) SELECT ..``.
         While this feature is highlighted as part of 0.9 it is also
         backported to 0.8.3.
@@ -3158,19 +3158,19 @@
         :tags: bug, sql
         :tickets: 1765
 
-        The resolution of :class:`.ForeignKey` objects to their
-        target :class:`.Column` has been reworked to be as
+        The resolution of :class:`_schema.ForeignKey` objects to their
+        target :class:`_schema.Column` has been reworked to be as
         immediate as possible, based on the moment that the
-        target :class:`.Column` is associated with the same
-        :class:`.MetaData` as this :class:`.ForeignKey`, rather
+        target :class:`_schema.Column` is associated with the same
+        :class:`_schema.MetaData` as this :class:`_schema.ForeignKey`, rather
         than waiting for the first time a join is constructed,
         or similar. This along with other improvements allows
         earlier detection of some foreign key configuration
         issues.  Also included here is a rework of the
         type-propagation system, so that
         it should be reliable now to set the type as ``None``
-        on any :class:`.Column` that refers to another via
-        :class:`.ForeignKey` - the type will be copied from the
+        on any :class:`_schema.Column` that refers to another via
+        :class:`_schema.ForeignKey` - the type will be copied from the
         target column as soon as that other column is associated,
         and now works for composite foreign keys as well.
 
@@ -3247,8 +3247,8 @@
         are no longer impacted by this workaround.
 
         As part of this change, a new argument ``flat=True`` has been added
-        to the :func:`.orm.aliased`, :meth:`.Join.alias`, and
-        :func:`.orm.with_polymorphic` functions, which allows an "alias" of a
+        to the :func:`_orm.aliased`, :meth:`_expression.Join.alias`, and
+        :func:`_orm.with_polymorphic` functions, which allows an "alias" of a
         JOIN to be produced which applies an anonymous alias to each component
         table within the join, rather than producing a subquery.
 
@@ -3325,13 +3325,13 @@
         :tags: bug, orm
         :tickets: 2736
 
-        The "auto-aliasing" behavior of the :meth:`.Query.select_from`
+        The "auto-aliasing" behavior of the :meth:`_query.Query.select_from`
         method has been turned off.  The specific behavior is now
-        available via a new method :meth:`.Query.select_entity_from`.
+        available via a new method :meth:`_query.Query.select_entity_from`.
         The auto-aliasing behavior here was never well documented and
-        is generally not what's desired, as :meth:`.Query.select_from`
+        is generally not what's desired, as :meth:`_query.Query.select_from`
         has become more oriented towards controlling how a JOIN is
-        rendered.  :meth:`.Query.select_entity_from` will also be made
+        rendered.  :meth:`_query.Query.select_entity_from` will also be made
         available in 0.8 so that applications which rely on the auto-aliasing
         can shift their applications to use this method.
 

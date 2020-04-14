@@ -56,7 +56,7 @@ Behavioral Changes - ORM
 Composite attributes are now returned as their object form when queried on a per-attribute basis
 ------------------------------------------------------------------------------------------------
 
-Using a :class:`.Query` in conjunction with a composite attribute now returns the object
+Using a :class:`_query.Query` in conjunction with a composite attribute now returns the object
 type maintained by that composite, rather than being broken out into individual
 columns.   Using the mapping setup at :ref:`mapper_composite`::
 
@@ -82,11 +82,10 @@ accessor::
 
 .. _migration_2736:
 
-:meth:`.Query.select_from` no longer applies the clause to corresponding entities
------------------------------------------------------------------------------------------------
-
-The :meth:`.Query.select_from` method has been popularized in recent versions
-as a means of controlling the first thing that a :class:`.Query` object
+:meth:`_query.Query.select_from` no longer applies the clause to corresponding entities
+----------------------------------------------------------------------------------------
+The :meth:`_query.Query.select_from` method has been popularized in recent versions
+as a means of controlling the first thing that a :class:`_query.Query` object
 "selects from", typically for the purposes of controlling how a JOIN will
 render.
 
@@ -108,14 +107,14 @@ The above statement predictably renders SQL like the following::
 
 If we wanted to reverse the order of the left and right elements of the
 JOIN, the documentation would lead us to believe we could use
-:meth:`.Query.select_from` to do so::
+:meth:`_query.Query.select_from` to do so::
 
     q = session.query(User).\
             select_from(select_stmt).\
             join(User, User.id == select_stmt.c.id).\
             filter(User.name == 'ed')
 
-However, in version 0.8 and earlier, the above use of :meth:`.Query.select_from`
+However, in version 0.8 and earlier, the above use of :meth:`_query.Query.select_from`
 would apply the ``select_stmt`` to **replace** the ``User`` entity, as it
 selects from the ``user`` table which is compatible with ``User``::
 
@@ -130,8 +129,8 @@ The above statement is a mess, the ON clause refers ``anon_1.id = anon_1.id``,
 our WHERE clause has been replaced with ``anon_1`` as well.
 
 This behavior is quite intentional, but has a different use case from that
-which has become popular for :meth:`.Query.select_from`.  The above behavior
-is now available by a new method known as :meth:`.Query.select_entity_from`.
+which has become popular for :meth:`_query.Query.select_from`.  The above behavior
+is now available by a new method known as :meth:`_query.Query.select_entity_from`.
 This is a lesser used behavior that in modern SQLAlchemy is roughly equivalent
 to selecting from a customized :func:`.aliased` construct::
 
@@ -150,7 +149,7 @@ the SQL we expect::
     WHERE "user".id = :id_1) AS anon_1 JOIN "user" ON "user".id = id
     WHERE "user".name = :name_1
 
-The :meth:`.Query.select_entity_from` method will be available in SQLAlchemy
+The :meth:`_query.Query.select_entity_from` method will be available in SQLAlchemy
 **0.8.2**, so applications which rely on the old behavior can transition
 to this method first, ensure all tests continue to function, then upgrade
 to 0.9 without issue.
@@ -163,7 +162,7 @@ to 0.9 without issue.
 ``viewonly=True`` on ``relationship()`` prevents history from taking effect
 ---------------------------------------------------------------------------
 
-The ``viewonly`` flag on :func:`.relationship` is applied to prevent changes
+The ``viewonly`` flag on :func:`_orm.relationship` is applied to prevent changes
 to the target attribute from having any effect within the flush process.
 This is achieved by eliminating the attribute from being considered during
 the flush.  However, up until now, changes to the attribute would still
@@ -601,7 +600,7 @@ generated::
 PostgreSQL CREATE TYPE <x> AS ENUM now applies quoting to values
 ----------------------------------------------------------------
 
-The :class:`.postgresql.ENUM` type will now apply escaping to single quote
+The :class:`_postgresql.ENUM` type will now apply escaping to single quote
 signs within the enumerated values::
 
     >>> from sqlalchemy.dialects import postgresql
@@ -656,9 +655,9 @@ such as listener targets, to be garbage collected when they go out of scope.
 New Query Options API; ``load_only()`` option
 ---------------------------------------------
 
-The system of loader options such as :func:`.orm.joinedload`,
-:func:`.orm.subqueryload`, :func:`.orm.lazyload`, :func:`.orm.defer`, etc.
-all build upon a new system known as :class:`.Load`.  :class:`.Load` provides
+The system of loader options such as :func:`_orm.joinedload`,
+:func:`_orm.subqueryload`, :func:`_orm.lazyload`, :func:`_orm.defer`, etc.
+all build upon a new system known as :class:`_orm.Load`.  :class:`_orm.Load` provides
 a "method chained" (a.k.a. :term:`generative`) approach to loader options, so that
 instead of joining together long paths using dots or multiple attribute names,
 an explicit loader style is given for each path.
@@ -680,7 +679,7 @@ option has to be used::
 
 Loader options are now chainable, so the same ``joinedload(x)`` method is applied
 equally to each link, without the need to keep straight between
-:func:`.joinedload` and :func:`.joinedload_all`::
+:func:`_orm.joinedload` and :func:`_orm.joinedload_all`::
 
     query(User).options(joinedload("orders").joinedload("items").joinedload("keywords"))
 
@@ -742,15 +741,15 @@ path for each column::
 
 **New Way**
 
-A single :class:`.Load` object that arrives at the target path can have
-:meth:`.Load.defer` called upon it repeatedly::
+A single :class:`_orm.Load` object that arrives at the target path can have
+:meth:`_orm.Load.defer` called upon it repeatedly::
 
     query(User).options(defaultload("orders").defer("description").defer("isopen"))
 
 The Load Class
 ^^^^^^^^^^^^^^^
 
-The :class:`.Load` class can be used directly to provide a "bound" target,
+The :class:`_orm.Load` class can be used directly to provide a "bound" target,
 especially when multiple parent entities are present::
 
     from sqlalchemy.orm import Load
@@ -776,7 +775,7 @@ loading only the given columns and deferring the rest::
 Class-specific Wildcards
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Using :class:`.Load`, a wildcard may be used to set the loading for all
+Using :class:`_orm.Load`, a wildcard may be used to set the loading for all
 relationships (or perhaps columns) on a given entity, without affecting any
 others::
 
@@ -801,9 +800,9 @@ others::
 New ``text()`` Capabilities
 ---------------------------
 
-The :func:`.text` construct gains new methods:
+The :func:`_expression.text` construct gains new methods:
 
-* :meth:`.TextClause.bindparams` allows bound parameter types and values
+* :meth:`_expression.TextClause.bindparams` allows bound parameter types and values
   to be set flexibly::
 
       # setup values
@@ -819,8 +818,8 @@ The :func:`.text` construct gains new methods:
                 bindparam("timestamp", type_=DateTime()
             ).bindparam(timestamp=datetime(2012, 11, 10, 15, 12, 35))
 
-* :meth:`.TextClause.columns` supersedes the ``typemap`` option
-  of :func:`.text`, returning a new construct :class:`.TextAsFrom`::
+* :meth:`_expression.TextClause.columns` supersedes the ``typemap`` option
+  of :func:`_expression.text`, returning a new construct :class:`.TextAsFrom`::
 
       # turn a text() into an alias(), with a .c. collection:
       stmt = text("SELECT id, name FROM user").columns(id=Integer, name=String)
@@ -846,8 +845,8 @@ INSERT from SELECT
 
 After literally years of pointless procrastination this relatively minor
 syntactical feature has been added, and is also backported to 0.8.3,
-so technically isn't "new" in 0.9.   A :func:`~.sql.expression.select` construct or other
-compatible construct can be passed to the new method :meth:`.Insert.from_select`
+so technically isn't "new" in 0.9.   A :func:`_expression.select` construct or other
+compatible construct can be passed to the new method :meth:`_expression.Insert.from_select`
 where it will be used to render an ``INSERT .. SELECT`` construct::
 
     >>> from sqlalchemy.sql import table, column
@@ -859,7 +858,7 @@ where it will be used to render an ``INSERT .. SELECT`` construct::
     WHERE t2.y = :y_1
 
 The construct is smart enough to also accommodate ORM objects such as classes
-and :class:`.Query` objects::
+and :class:`_query.Query` objects::
 
     s = Session()
     q = s.query(User.id, User.name).filter_by(name='ed')
@@ -882,7 +881,7 @@ An attempt is made to simplify the specification of the ``FOR UPDATE``
 clause on ``SELECT`` statements made within Core and ORM, and support is added
 for the ``FOR UPDATE OF`` SQL supported by PostgreSQL and Oracle.
 
-Using the core :meth:`.GenerativeSelect.with_for_update`, options like ``FOR SHARE`` and
+Using the core :meth:`_expression.GenerativeSelect.with_for_update`, options like ``FOR SHARE`` and
 ``NOWAIT`` can be specified individually, rather than linking to arbitrary
 string codes::
 
@@ -892,9 +891,9 @@ On Posgtresql the above statement might render like::
 
     SELECT table.a, table.b FROM table FOR SHARE OF table NOWAIT
 
-The :class:`.Query` object gains a similar method :meth:`.Query.with_for_update`
+The :class:`_query.Query` object gains a similar method :meth:`_query.Query.with_for_update`
 which behaves in the same way.  This method supersedes the existing
-:meth:`.Query.with_lockmode` method, which translated ``FOR UPDATE`` clauses
+:meth:`_query.Query.with_lockmode` method, which translated ``FOR UPDATE`` clauses
 using a different system.   At the moment, the "lockmode" string argument is still
 accepted by the :meth:`.Session.refresh` method.
 
@@ -1037,12 +1036,12 @@ from a backref::
 PostgreSQL JSON Type
 --------------------
 
-The PostgreSQL dialect now features a :class:`.postgresql.JSON` type to
-complement the :class:`.postgresql.HSTORE` type.
+The PostgreSQL dialect now features a :class:`_postgresql.JSON` type to
+complement the :class:`_postgresql.HSTORE` type.
 
 .. seealso::
 
-    :class:`.postgresql.JSON`
+    :class:`_postgresql.JSON`
 
 :ticket:`2581`
 
@@ -1057,7 +1056,7 @@ as well as the :class:`.DeferredReflection` class.  Essentially, the extension
 provides a base class :class:`.AutomapBase` which automatically generates
 mapped classes and relationships between them based on given table metadata.
 
-The :class:`.MetaData` in use normally might be produced via reflection, but
+The :class:`_schema.MetaData` in use normally might be produced via reflection, but
 there is no requirement that reflection is used.   The most basic usage
 illustrates how :mod:`sqlalchemy.ext.automap` is able to deliver mapped
 classes, including relationships, based on a reflected schema::
@@ -1158,8 +1157,8 @@ SELECT often degrades performance on platforms like PostgreSQL and MySQL::
                 ) AS anon_1 ON a.id=anon_1.b_id
 
 A JOIN like the above form is commonplace when working with joined-table inheritance structures;
-any time :meth:`.Query.join` is used to join from some parent to a joined-table subclass, or
-when :func:`.joinedload` is used similarly, SQLAlchemy's ORM would always make sure a nested
+any time :meth:`_query.Query.join` is used to join from some parent to a joined-table subclass, or
+when :func:`_orm.joinedload` is used similarly, SQLAlchemy's ORM would always make sure a nested
 JOIN was never rendered, lest the query wouldn't be able to run on SQLite.  Even though
 the Core has always supported a JOIN of the more compact form, the ORM had to avoid it.
 
@@ -1210,11 +1209,11 @@ Many-to-many joins and eagerloads will right nest the "secondary" and "right" ta
     (order_item JOIN item ON order_item.item_id = item.id AND item.type = 'subitem')
     ON order_item.order_id = order.id
 
-All of these joins, when rendered with a :class:`.Select` statement that specifically
+All of these joins, when rendered with a :class:`_expression.Select` statement that specifically
 specifies ``use_labels=True``, which is true for all the queries the ORM emits,
 are candidates for "join rewriting", which is the process of rewriting all those right-nested
 joins into nested SELECT statements, while maintaining the identical labeling used by
-the :class:`.Select`.  So SQLite, the one database that won't support this very
+the :class:`_expression.Select`.  So SQLite, the one database that won't support this very
 common SQL syntax even in 2013, shoulders the extra complexity itself,
 with the above queries rewritten as::
 
@@ -1255,7 +1254,7 @@ with the above queries rewritten as::
     will automatically disable themselves when SQLite version **3.7.16**
     or greater is detected, as SQLite has repaired support for right-nested joins.
 
-The :meth:`.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
+The :meth:`_expression.Join.alias`, :func:`.aliased` and :func:`.with_polymorphic` functions now
 support a new argument, ``flat=True``, which is used to construct aliases of joined-table
 entities without embedding into a SELECT.   This flag is not on by default, to help with
 backwards compatibility - but now a "polymorphic" selectable can be joined as a target
@@ -1310,7 +1309,7 @@ the new "right-nested joins are OK" logic would kick in, and we'd get::
     FROM users LEFT OUTER JOIN (orders JOIN items ON <onclause>) ON <onclause>
 
 Since we missed the boat on that, to avoid further regressions we've added the above
-functionality by specifying the string ``"nested"`` to :paramref:`.joinedload.innerjoin`::
+functionality by specifying the string ``"nested"`` to :paramref:`_orm.joinedload.innerjoin`::
 
     query(User).options(joinedload("orders", innerjoin=False).joinedload("items", innerjoin="nested"))
 
@@ -1323,7 +1322,7 @@ This feature is new in 0.9.4.
 ORM can efficiently fetch just-generated INSERT/UPDATE defaults using RETURNING
 -------------------------------------------------------------------------------
 
-The :class:`.Mapper` has long supported an undocumented flag known as
+The :class:`_orm.Mapper` has long supported an undocumented flag known as
 ``eager_defaults=True``.  The effect of this flag is that when an INSERT or UPDATE
 proceeds, and the row is known to have server-generated default values,
 a SELECT would immediately follow it in order to "eagerly" load those new values.
@@ -1339,7 +1338,7 @@ emit a RETURNING clause for these values, so on a backend with strong RETURNING
 support in particular PostgreSQL, the ORM can fetch newly generated default
 and SQL expression values inline with the INSERT or UPDATE.  ``eager_defaults``,
 when enabled, makes use of RETURNING automatically when the target backend
-and :class:`.Table` supports "implicit returning".
+and :class:`_schema.Table` supports "implicit returning".
 
 .. _change_2836:
 
@@ -1360,7 +1359,7 @@ That is, when subquery loading on a many-to-one from A->B::
 
 Since ``a.b_id`` is a non-distinct foreign key, DISTINCT is applied so that
 redundant ``a.b_id`` are eliminated.  The behavior can be turned on or off
-unconditionally for a particular :func:`.relationship` using the flag
+unconditionally for a particular :func:`_orm.relationship` using the flag
 ``distinct_target_key``, setting the value to ``True`` for unconditionally
 on, ``False`` for unconditionally off, and ``None`` for the feature to take
 effect when the target SELECT is against columns that do not comprise a full
@@ -1486,13 +1485,13 @@ Schema identifiers now carry along their own quoting information
 ---------------------------------------------------------------------
 
 This change simplifies the Core's usage of so-called "quote" flags, such
-as the ``quote`` flag passed to :class:`.Table` and :class:`.Column`.  The flag
+as the ``quote`` flag passed to :class:`_schema.Table` and :class:`_schema.Column`.  The flag
 is now internalized within the string name itself, which is now represented
 as an instance of  :class:`.quoted_name`, a string subclass.   The
 :class:`.IdentifierPreparer` now relies solely on the quoting preferences
 reported by the :class:`.quoted_name` object rather than checking for any
 explicit ``quote`` flags in most cases.   The issue resolved here includes
-that various case-sensitive methods such as :meth:`.Engine.has_table` as well
+that various case-sensitive methods such as :meth:`_engine.Engine.has_table` as well
 as similar methods within dialects now function with explicitly quoted names,
 without the need to complicate or introduce backwards-incompatible changes
 to those APIs (many of which are 3rd party) with the details of quoting flags -
@@ -1643,7 +1642,7 @@ The logic which "upgrades" a :func:`.bindparam` construct to take on the
 type of the enclosing expression has been improved in two ways.  First, the
 :func:`.bindparam` object is **copied** before the new type is assigned, so that
 the given :func:`.bindparam` is not mutated in place.  Secondly, this same
-operation occurs when an :class:`~.sql.expression.Insert` or :class:`.Update` construct is compiled,
+operation occurs when an :class:`_expression.Insert` or :class:`_expression.Update` construct is compiled,
 regarding the "values" that were set in the statement via the :meth:`.ValuesBase.values`
 method.
 
@@ -1660,7 +1659,7 @@ is of type ``String``, then ``expr.right``, that is the right side of the
 binary expression, will take on the ``String`` type.   Previously, ``bp`` itself
 would have been changed in place to have ``String`` as its type.
 
-Similarly, this operation occurs in an :class:`~.sql.expression.Insert` or :class:`.Update`::
+Similarly, this operation occurs in an :class:`_expression.Insert` or :class:`_expression.Update`::
 
     stmt = mytable.update().values(col=bp)
 
@@ -1679,7 +1678,7 @@ The potentially backwards-compatible changes involve two unlikely
 scenarios.  Since the bound parameter is
 **cloned**, users should not be relying upon making in-place changes to a
 :func:`.bindparam` construct once created.   Additionally, code which uses
-:func:`.bindparam` within an :class:`~.sql.expression.Insert` or :class:`.Update` statement
+:func:`.bindparam` within an :class:`_expression.Insert` or :class:`_expression.Update` statement
 which is relying on the fact that the :func:`.bindparam` is not typed according
 to the column being assigned towards will no longer function in that way.
 
@@ -1691,39 +1690,39 @@ to the column being assigned towards will no longer function in that way.
 Columns can reliably get their type from a column referred to via ForeignKey
 ----------------------------------------------------------------------------
 
-There's a long standing behavior which says that a :class:`.Column` can be
-declared without a type, as long as that :class:`.Column` is referred to
-by a :class:`.ForeignKeyConstraint`, and the type from the referenced column
+There's a long standing behavior which says that a :class:`_schema.Column` can be
+declared without a type, as long as that :class:`_schema.Column` is referred to
+by a :class:`_schema.ForeignKeyConstraint`, and the type from the referenced column
 will be copied into this one.   The problem has been that this feature never
 worked very well and wasn't maintained.   The core issue was that the
-:class:`.ForeignKey` object doesn't know what target :class:`.Column` it
+:class:`_schema.ForeignKey` object doesn't know what target :class:`_schema.Column` it
 refers to until it is asked, typically the first time the foreign key is used
-to construct a :class:`.Join`.   So until that time, the parent :class:`.Column`
+to construct a :class:`_expression.Join`.   So until that time, the parent :class:`_schema.Column`
 would not have a type, or more specifically, it would have a default type
 of :class:`.NullType`.
 
 While it's taken a long time, the work to reorganize the initialization of
-:class:`.ForeignKey` objects has been completed such that this feature can
-finally work acceptably.  At the core of the change is that the :attr:`.ForeignKey.column`
-attribute no longer lazily initializes the location of the target :class:`.Column`;
-the issue with this system was that the owning :class:`.Column` would be stuck
-with :class:`.NullType` as its type until the :class:`.ForeignKey` happened to
+:class:`_schema.ForeignKey` objects has been completed such that this feature can
+finally work acceptably.  At the core of the change is that the :attr:`_schema.ForeignKey.column`
+attribute no longer lazily initializes the location of the target :class:`_schema.Column`;
+the issue with this system was that the owning :class:`_schema.Column` would be stuck
+with :class:`.NullType` as its type until the :class:`_schema.ForeignKey` happened to
 be used.
 
-In the new version, the :class:`.ForeignKey` coordinates with the eventual
-:class:`.Column` it will refer to using internal attachment events, so that the
-moment the referencing :class:`.Column` is associated with the
-:class:`.MetaData`, all :class:`.ForeignKey` objects that
+In the new version, the :class:`_schema.ForeignKey` coordinates with the eventual
+:class:`_schema.Column` it will refer to using internal attachment events, so that the
+moment the referencing :class:`_schema.Column` is associated with the
+:class:`_schema.MetaData`, all :class:`_schema.ForeignKey` objects that
 refer to it will be sent a message that they need to initialize their parent
 column.   This system is more complicated but works more solidly; as a bonus,
-there are now tests in place for a wide variety of :class:`.Column` /
-:class:`.ForeignKey` configuration scenarios and error messages have been
+there are now tests in place for a wide variety of :class:`_schema.Column` /
+:class:`_schema.ForeignKey` configuration scenarios and error messages have been
 improved to be very specific to no less than seven different error conditions.
 
 Scenarios which now work correctly include:
 
-1. The type on a :class:`.Column` is immediately present as soon as the
-   target :class:`.Column` becomes associated with the same :class:`.MetaData`;
+1. The type on a :class:`_schema.Column` is immediately present as soon as the
+   target :class:`_schema.Column` becomes associated with the same :class:`_schema.MetaData`;
    this works no matter which side is configured first::
 
     >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKey
@@ -1735,7 +1734,7 @@ Scenarios which now work correctly include:
     >>> t2.c.t1id.type
     Integer()
 
-2. The system now works with :class:`.ForeignKeyConstraint` as well::
+2. The system now works with :class:`_schema.ForeignKeyConstraint` as well::
 
     >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKeyConstraint
     >>> metadata = MetaData()
@@ -1754,8 +1753,8 @@ Scenarios which now work correctly include:
     >>> t2.c.t1b.type
     Integer()
 
-3. It even works for "multiple hops" - that is, a :class:`.ForeignKey` that refers to a
-   :class:`.Column` that refers to another :class:`.Column`::
+3. It even works for "multiple hops" - that is, a :class:`_schema.ForeignKey` that refers to a
+   :class:`_schema.Column` that refers to another :class:`_schema.Column`::
 
     >>> from sqlalchemy import Table, MetaData, Column, Integer, ForeignKey
     >>> metadata = MetaData()

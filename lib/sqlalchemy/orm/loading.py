@@ -106,7 +106,7 @@ def instances(query, cursor, context):
 
 @util.preload_module("sqlalchemy.orm.query")
 def merge_result(query, iterator, load=True):
-    """Merge a result into this :class:`.Query` object's Session."""
+    """Merge a result into this :class:`_query.Query` object's Session."""
     querylib = util.preloaded.orm_query
 
     session = query.session

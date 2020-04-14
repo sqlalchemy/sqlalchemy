@@ -3,8 +3,8 @@
    :tickets: 4643
 
    Remove deprecated method ``get_primary_keys` in the :class:`.Dialect` and
-   :class:`.Inspector` classes. Please refer to the
-   :meth:`.Dialect.get_pk_constraint` and :meth:`.Inspector.get_primary_keys`
+   :class:`_reflection.Inspector` classes. Please refer to the
+   :meth:`.Dialect.get_pk_constraint` and :meth:`_reflection.Inspector.get_primary_keys`
    methods.
 
    Remove deprecated event ``dbapi_error`` and the method
@@ -53,7 +53,7 @@
    maintaining strong identity references.
    This change also removes the class ``StrongInstanceDict``.
 
-   Remove deprecated parameter ``mapper.order_by``. Use :meth:`.Query.order_by`
+   Remove deprecated parameter ``mapper.order_by``. Use :meth:`_query.Query.order_by`
    to determine the ordering of a result set.
 
    Remove deprecated parameter ``Session._enable_transaction_accounting`.
@@ -74,7 +74,7 @@
    ``ClauseElement.__or__`` and attribute ``Over.func``.
 
    Remove deprecated ``FromClause.count`` method. Please use the
-   :class:`.functions.count` function available from the
+   :class:`_functions.count` function available from the
    :attr:`.func` namespace.
 
 .. change::
@@ -82,8 +82,8 @@
    :tickets: 4643
 
    Remove deprecated parameters ``text.bindparams`` and ``text.typemap``.
-   Please refer to the :meth:`.TextClause.bindparams` and
-   :meth:`.TextClause.columns` methods.
+   Please refer to the :meth:`_expression.TextClause.bindparams` and
+   :meth:`_expression.TextClause.columns` methods.
 
    Remove deprecated parameter ``Table.useexisting``. Please use
-   :paramref:`.Table.extend_existing`.
+   :paramref:`_schema.Table.extend_existing`.

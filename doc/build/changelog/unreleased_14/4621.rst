@@ -2,11 +2,11 @@
     :tags: bug, sql
     :tickets: 4621
 
-    The :class:`.Join` construct no longer considers the "onclause" as a source
+    The :class:`_expression.Join` construct no longer considers the "onclause" as a source
     of additional FROM objects to be omitted from the FROM list of an enclosing
-    :class:`.Select` object as standalone FROM objects. This applies to an ON
+    :class:`_expression.Select` object as standalone FROM objects. This applies to an ON
     clause that includes a reference to another  FROM object outside the JOIN;
     while this is usually not correct from a SQL perspective, it's also
     incorrect for it to be omitted, and the behavioral change makes the
-    :class:`.Select` / :class:`.Join` behave a bit more intuitively.
+    :class:`_expression.Select` / :class:`_expression.Join` behave a bit more intuitively.
 

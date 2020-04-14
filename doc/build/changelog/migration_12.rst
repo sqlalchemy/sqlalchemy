@@ -40,17 +40,17 @@ New Features and Improvements - ORM
 
 The :mod:`sqlalchemy.ext.baked` extension, first introduced in the 1.0 series,
 allows for the construction of a so-called :class:`.BakedQuery` object,
-which is an object that generates a :class:`.Query` object in conjunction
+which is an object that generates a :class:`_query.Query` object in conjunction
 with a cache key representing the structure of the query; this cache key
 is then linked to the resulting string SQL statement so that subsequent use
 of another :class:`.BakedQuery` with the same structure will bypass all the
-overhead of building the :class:`.Query` object, building the core
-:func:`~.sql.expression.select` object within, as well as the compilation of the :func:`~.sql.expression.select`
+overhead of building the :class:`_query.Query` object, building the core
+:func:`_expression.select` object within, as well as the compilation of the :func:`_expression.select`
 into a string, cutting out well the majority of function call overhead normally
-associated with constructing and emitting an ORM :class:`.Query` object.
+associated with constructing and emitting an ORM :class:`_query.Query` object.
 
 The :class:`.BakedQuery` is now used by default by the ORM when it generates
-a "lazy" query for the lazy load of a :func:`.relationship` construct, e.g.
+a "lazy" query for the lazy load of a :func:`_orm.relationship` construct, e.g.
 that of the default ``lazy="select"`` relationship loader strategy.  This
 will allow for a significant reduction in function calls within the scope
 of an application's use of lazy load queries to load collections and related
@@ -62,9 +62,9 @@ for objects that have additional loader options in effect subsequent
 to the lazy load.
 
 The caching behavior can be disabled on a per-relationship basis using the
-:paramref:`.relationship.bake_queries` flag, which is available for
+:paramref:`_orm.relationship.bake_queries` flag, which is available for
 very unusual cases, such as a relationship that uses a custom
-:class:`.Query` implementation that's not compatible with caching.
+:class:`_query.Query` implementation that's not compatible with caching.
 
 
 :ticket:`3954`
@@ -138,11 +138,11 @@ The above SELECT statement includes these advantages:
   significantly
 
 * Because the query only fetches for a given list of primary key identifiers,
-  "selectin" loading is potentially compatible with :meth:`.Query.yield_per` to
+  "selectin" loading is potentially compatible with :meth:`_query.Query.yield_per` to
   operate on chunks of a SELECT result at a time, provided that the
   database driver allows for multiple, simultaneous cursors (SQLite, PostgreSQL;
   **not** MySQL drivers or SQL Server ODBC drivers).   Neither joined eager
-  loading nor subquery eager loading are compatible with :meth:`.Query.yield_per`.
+  loading nor subquery eager loading are compatible with :meth:`_query.Query.yield_per`.
 
 The disadvantages of selectin eager loading are potentially large SQL
 queries, with large lists of IN parameters.  The list of IN parameters themselves
@@ -217,9 +217,9 @@ are loaded with additional SELECT statements:
 ORM attributes that can receive ad-hoc SQL expressions
 ------------------------------------------------------
 
-A new ORM attribute type :func:`.orm.query_expression` is added which
-is similar to :func:`.orm.deferred`, except its SQL expression
-is determined at query time using a new option :func:`.orm.with_expression`;
+A new ORM attribute type :func:`_orm.query_expression` is added which
+is similar to :func:`_orm.deferred`, except its SQL expression
+is determined at query time using a new option :func:`_orm.with_expression`;
 if not specified, the attribute defaults to ``None``::
 
     from sqlalchemy.orm import query_expression
@@ -250,7 +250,7 @@ if not specified, the attribute defaults to ``None``::
 ORM Support of multiple-table deletes
 -------------------------------------
 
-The ORM :meth:`.Query.delete` method supports multiple-table criteria
+The ORM :meth:`_query.Query.delete` method supports multiple-table criteria
 for DELETE, as introduced in :ref:`change_959`.   The feature works
 in the same manner as multiple-table criteria for UPDATE, first
 introduced in 0.8 and described at :ref:`change_orm_2365`.
@@ -277,7 +277,7 @@ Support for bulk updates of hybrids, composites
 
 Both hybrid attributes (e.g. :mod:`sqlalchemy.ext.hybrid`) as well as composite
 attributes (:ref:`mapper_composite`) now support being used in the
-SET clause of an UPDATE statement when using :meth:`.Query.update`.
+SET clause of an UPDATE statement when using :meth:`_query.Query.update`.
 
 For hybrids, simple expressions can be used directly, or the new decorator
 :meth:`.hybrid_property.update_expression` can be used to break a value
@@ -477,8 +477,8 @@ Added "for update" arguments to Session.refresh
 ------------------------------------------------
 
 Added new argument :paramref:`.Session.refresh.with_for_update` to the
-:meth:`.Session.refresh` method.  When the :meth:`.Query.with_lockmode`
-method were deprecated in favor of :meth:`.Query.with_for_update`,
+:meth:`.Session.refresh` method.  When the :meth:`_query.Query.with_lockmode`
+method were deprecated in favor of :meth:`_query.Query.with_for_update`,
 the :meth:`.Session.refresh` method was never updated to reflect
 the new option::
 
@@ -486,7 +486,7 @@ the new option::
 
 The :paramref:`.Session.refresh.with_for_update` argument accepts a dictionary
 of options that will be passed as the same arguments which are sent to
-:meth:`.Query.with_for_update`::
+:meth:`_query.Query.with_for_update`::
 
     session.refresh(some_objects, with_for_update={"read": True})
 
@@ -858,8 +858,8 @@ Support for SQL Comments on Table, Column, includes DDL, reflection
 -------------------------------------------------------------------
 
 The Core receives support for string comments associated with tables
-and columns.   These are specified via the :paramref:`.Table.comment` and
-:paramref:`.Column.comment` arguments::
+and columns.   These are specified via the :paramref:`_schema.Table.comment` and
+:paramref:`_schema.Column.comment` arguments::
 
     Table(
         'my_table', metadata,
@@ -869,9 +869,9 @@ and columns.   These are specified via the :paramref:`.Table.comment` and
 
 Above, DDL will be rendered appropriately upon table create to associate
 the above comments with the table/ column within the schema.  When
-the above table is autoloaded or inspected with :meth:`.Inspector.get_columns`,
+the above table is autoloaded or inspected with :meth:`_reflection.Inspector.get_columns`,
 the comments are included.   The table comment is also available independently
-using the :meth:`.Inspector.get_table_comment` method.
+using the :meth:`_reflection.Inspector.get_table_comment` method.
 
 Current backend support includes MySQL, PostgreSQL, and Oracle.
 
@@ -882,7 +882,7 @@ Current backend support includes MySQL, PostgreSQL, and Oracle.
 Multiple-table criteria support for DELETE
 ------------------------------------------
 
-The :class:`.Delete` construct now supports multiple-table criteria,
+The :class:`_expression.Delete` construct now supports multiple-table criteria,
 implemented for those backends which support it, currently these are
 PostgreSQL, MySQL and Microsoft SQL Server (support is also added to the
 currently non-working Sybase dialect).   The feature works in the same
@@ -1032,8 +1032,8 @@ Parameter helper for multi-valued INSERT with contextual default generator
 A default generation function, e.g. that described at
 :ref:`context_default_functions`, can look at the current parameters relevant
 to the statement via the :attr:`.DefaultExecutionContext.current_parameters`
-attribute.  However, in the case of a :class:`~.sql.expression.Insert` construct that specifies
-multiple VALUES clauses via the :meth:`.Insert.values` method, the user-defined
+attribute.  However, in the case of a :class:`_expression.Insert` construct that specifies
+multiple VALUES clauses via the :meth:`_expression.Insert.values` method, the user-defined
 function is called multiple times, once for each parameter set, however there
 was no way to know which subset of keys in
 :attr:`.DefaultExecutionContext.current_parameters` apply to that column.  A
@@ -1108,7 +1108,7 @@ able to load within the scope of the event.
 Fixed issue involving single-table inheritance with ``select_from()``
 ---------------------------------------------------------------------
 
-The :meth:`.Query.select_from` method now honors the single-table inheritance
+The :meth:`_query.Query.select_from` method now honors the single-table inheritance
 column discriminator when generating SQL; previously, only the expressions
 in the query column list would be taken into account.
 
@@ -1120,7 +1120,7 @@ Would generate SQL as::
 
     SELECT employee.id FROM employee WHERE employee.type IN ('manager')
 
-However, if ``Manager`` were only specified by :meth:`.Query.select_from`
+However, if ``Manager`` were only specified by :meth:`_query.Query.select_from`
 and not in the columns list, the discriminator would not be added::
 
     sess.query(func.count(1)).select_from(Manager)
@@ -1129,7 +1129,7 @@ would generate::
 
     SELECT count(1) FROM employee
 
-With the fix, :meth:`.Query.select_from` now works correctly and we get::
+With the fix, :meth:`_query.Query.select_from` now works correctly and we get::
 
     SELECT count(1) FROM employee WHERE employee.type IN ('manager')
 
@@ -1305,8 +1305,8 @@ beta testing, it can be restored with a deprecation.
 Refinements to post_update in conjunction with onupdate
 -------------------------------------------------------
 
-A relationship that uses the :paramref:`.relationship.post_update` feature
-will now interact better with a column that has an :paramref:`.Column.onupdate`
+A relationship that uses the :paramref:`_orm.relationship.post_update` feature
+will now interact better with a column that has an :paramref:`_schema.Column.onupdate`
 value set.   If an object is inserted with an explicit value for the column,
 it is re-stated during the UPDATE so that the "onupdate" rule does not
 overwrite it::
@@ -1455,7 +1455,7 @@ As most user-defined operators tend to be "comparison" operators, often
 one of the many special operators defined by PostgreSQL, the
 :paramref:`.Operators.op.is_comparison` flag has been repaired to follow
 its documented behavior of allowing the return type to be :class:`.Boolean`
-in all cases, including for :class:`.ARRAY` and :class:`.JSON`::
+in all cases, including for :class:`_types.ARRAY` and :class:`_types.JSON`::
 
     >>> column('x', types.String(50)).op('-%>', is_comparison=True)(None).type
     Boolean()
@@ -1477,11 +1477,11 @@ for on-the-fly boolean operators::
 Percent signs in literal_column() now conditionally escaped
 -----------------------------------------------------------
 
-The :obj:`.literal_column` construct now escapes percent sign characters
+The :obj:`_expression.literal_column` construct now escapes percent sign characters
 conditionally, based on whether or not the DBAPI in use makes use of a
 percent-sign-sensitive paramstyle or not (e.g. 'format' or 'pyformat').
 
-Previously, it was not possible to produce a :obj:`.literal_column`
+Previously, it was not possible to produce a :obj:`_expression.literal_column`
 construct that stated a single percent sign::
 
     >>> from sqlalchemy import literal_column
@@ -1513,7 +1513,7 @@ is also refined to only occur when appropriate.
 The column-level COLLATE keyword now quotes the collation name
 --------------------------------------------------------------
 
-A bug in the :func:`.expression.collate` and :meth:`.ColumnOperators.collate`
+A bug in the :func:`_expression.collate` and :meth:`.ColumnOperators.collate`
 functions, used to supply ad-hoc column collations at the statement level,
 is fixed, where a case sensitive name would not be quoted::
 
@@ -1547,7 +1547,7 @@ poorly, particularly with INSERT statements.   To alleviate this, psycopg2
 has added `Fast Execution Helpers <http://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_
 which rework statements into fewer server round trips by sending multiple
 DML statements in batch.   SQLAlchemy 1.2 now includes support for these
-helpers to be used transparently whenever the :class:`.Engine` makes use
+helpers to be used transparently whenever the :class:`_engine.Engine` makes use
 of ``cursor.executemany()`` to invoke a statement against multiple parameter
 sets.   The feature is off by default and can be enabled using the
 ``use_batch_mode`` argument on :func:`.create_engine`::
@@ -1572,7 +1572,7 @@ Support for fields specification in INTERVAL, including full reflection
 
 The "fields" specifier in PostgreSQL's INTERVAL datatype allows specification
 of which fields of the interval to store, including such values as "YEAR",
-"MONTH", "YEAR TO MONTH", etc.   The :class:`.postgresql.INTERVAL` datatype
+"MONTH", "YEAR TO MONTH", etc.   The :class:`_postgresql.INTERVAL` datatype
 now allows these values to be specified::
 
     from sqlalchemy.dialects.postgresql import INTERVAL
@@ -1604,8 +1604,8 @@ Support for INSERT..ON DUPLICATE KEY UPDATE
 
 The ``ON DUPLICATE KEY UPDATE`` clause of ``INSERT`` supported by MySQL
 is now supported using a MySQL-specific version of the
-:class:`~.expression.Insert` object, via :func:`sqlalchemy.dialects.mysql.dml.insert`.
-This :class:`~.expression.Insert` subclass adds a new method
+:class:`_expression.Insert` object, via :func:`sqlalchemy.dialects.mysql.dml.insert`.
+This :class:`_expression.Insert` subclass adds a new method
 :meth:`~.mysql.dml.Insert.on_duplicate_key_update` that implements MySQL's syntax::
 
     from sqlalchemy.dialects.mysql import insert
@@ -1708,11 +1708,11 @@ Oracle Unique, Check constraints now reflected
 ----------------------------------------------
 
 UNIQUE and CHECK constraints now reflect via
-:meth:`.Inspector.get_unique_constraints` and
-:meth:`.Inspector.get_check_constraints`.  A :class:`.Table` object  that's
+:meth:`_reflection.Inspector.get_unique_constraints` and
+:meth:`_reflection.Inspector.get_check_constraints`.  A :class:`_schema.Table` object  that's
 reflected will now include :class:`.CheckConstraint` objects as well.
 See the notes at :ref:`oracle_constraint_reflection` for information
-on behavioral quirks here, including that most :class:`.Table` objects
+on behavioral quirks here, including that most :class:`_schema.Table` objects
 will still not include any :class:`.UniqueConstraint` objects as these
 usually represent via :class:`.Index`.
 
@@ -1729,8 +1729,8 @@ Oracle foreign key constraint names are now "name normalized"
 -------------------------------------------------------------
 
 The names of foreign key constraints as delivered to a
-:class:`.ForeignKeyConstraint` object during table reflection as well as
-within the :meth:`.Inspector.get_foreign_keys` method will now be
+:class:`_schema.ForeignKeyConstraint` object during table reflection as well as
+within the :meth:`_reflection.Inspector.get_foreign_keys` method will now be
 "name normalized", that is, expressed as lower case for a case insensitive
 name, rather than the raw UPPERCASE format that Oracle uses::
 
@@ -1805,5 +1805,5 @@ AUTOCOMMIT isolation level support
 ----------------------------------
 
 Both the PyODBC and pymssql dialects now support the "AUTOCOMMIT" isolation
-level as set by :meth:`.Connection.execution_options` which will establish
+level as set by :meth:`_engine.Connection.execution_options` which will establish
 the correct flags on the DBAPI connection object.

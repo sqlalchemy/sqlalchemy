@@ -2,7 +2,7 @@
     :tags: bug, oracle
     :tickets: 4971
 
-    The :class:`.oracle.INTERVAL` class of the Oracle dialect is now correctly
+    The :class:`_oracle.INTERVAL` class of the Oracle dialect is now correctly
     a subclass of the abstract version of :class:`.Interval` as well as the
     correct "emulated" base class, which allows for correct behavior under both
     native and non-native modes; previously it was only based on

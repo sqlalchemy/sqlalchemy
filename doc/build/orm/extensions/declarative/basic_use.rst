@@ -10,7 +10,7 @@ Basic Use
     :ref:`mapper_config_toplevel`.
 
 SQLAlchemy object-relational configuration involves the
-combination of :class:`.Table`, :func:`.mapper`, and class
+combination of :class:`_schema.Table`, :func:`.mapper`, and class
 objects to define a mapped class.
 :mod:`~sqlalchemy.ext.declarative` allows all three to be
 expressed at once within the class declaration. As much as
@@ -32,7 +32,7 @@ As a simple example::
 
 Above, the :func:`declarative_base` callable returns a new base class from
 which all mapped classes should inherit. When the class definition is
-completed, a new :class:`.Table` and :func:`.mapper` will have been generated.
+completed, a new :class:`_schema.Table` and :func:`.mapper` will have been generated.
 
 The resulting table and mapper are accessible via
 ``__table__`` and ``__mapper__`` attributes on the
@@ -47,7 +47,7 @@ The resulting table and mapper are accessible via
 Defining Attributes
 ===================
 
-In the previous example, the :class:`.Column` objects are
+In the previous example, the :class:`_schema.Column` objects are
 automatically named with the name of the attribute to which they are
 assigned.
 
@@ -61,7 +61,7 @@ just give the column a name.  Below, column "some_table_id" is mapped to the
         id = Column("some_table_id", Integer, primary_key=True)
 
 Attributes may be added to the class after its construction, and they will be
-added to the underlying :class:`.Table` and
+added to the underlying :class:`_schema.Table` and
 :func:`.mapper` definitions as appropriate::
 
     SomeClass.data = Column('data', Unicode)
@@ -88,17 +88,17 @@ Accessing the MetaData
 ======================
 
 The :func:`declarative_base` base class contains a
-:class:`.MetaData` object where newly defined
-:class:`.Table` objects are collected. This object is
+:class:`_schema.MetaData` object where newly defined
+:class:`_schema.Table` objects are collected. This object is
 intended to be accessed directly for
-:class:`.MetaData`-specific operations. Such as, to issue
+:class:`_schema.MetaData`-specific operations. Such as, to issue
 CREATE statements for all tables::
 
     engine = create_engine('sqlite://')
     Base.metadata.create_all(engine)
 
 :func:`declarative_base` can also receive a pre-existing
-:class:`.MetaData` object, which allows a
+:class:`_schema.MetaData` object, which allows a
 declarative setup to be associated with an already
 existing traditional collection of :class:`~sqlalchemy.schema.Table`
 objects::
@@ -119,9 +119,9 @@ to the named attributes::
 Mapper Configuration
 ====================
 
-Declarative makes use of the :func:`~.orm.mapper` function internally
+Declarative makes use of the :func:`_orm.mapper` function internally
 when it creates the mapping to the declared table.   The options
-for :func:`~.orm.mapper` are passed directly through via the
+for :func:`_orm.mapper` are passed directly through via the
 ``__mapper_args__`` class attribute.  As always, arguments which reference
 locally mapped columns can reference them directly from within the
 class declaration::

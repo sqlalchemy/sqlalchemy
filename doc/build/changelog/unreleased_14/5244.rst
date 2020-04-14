@@ -2,5 +2,5 @@
     :tags: change, reflection
     :tickets: 5244
 
-    The :meth:`.Inspector.reflecttable` was renamed to
-    :meth:`.Inspector.reflect_table`.
+    The :meth:`_reflection.Inspector.reflecttable` was renamed to
+    :meth:`_reflection.Inspector.reflect_table`.
