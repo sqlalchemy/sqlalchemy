@@ -23,22 +23,22 @@ Glossary
         A term used in SQLAlchemy to describe a SQL construct that represents
         a collection of rows.   It's largely similar to the concept of a
         "relation" in :term:`relational algebra`.  In SQLAlchemy, objects
-        that subclass the :class:`.Selectable` class are considered to be
+        that subclass the :class:`expression.Selectable` class are considered to be
         usable as "selectables" when using SQLAlchemy Core.  The two most
-        common constructs are that of the :class:`.Table` and that of the
-        :class:`.Select` statement.
+        common constructs are that of the :class:`_schema.Table` and that of the
+        :class:`_expression.Select` statement.
 
     annotations
         Annotations are a concept used internally by SQLAlchemy in order to store
-        additional information along with :class:`.ClauseElement` objects.  A Python
+        additional information along with :class:`_expression.ClauseElement` objects.  A Python
         dictionary is associated with a copy of the object, which contains key/value
         pairs significant to various internal systems, mostly within the ORM::
 
             some_column = Column('some_column', Integer)
             some_column_annotated = some_column._annotate({"entity": User})
 
-        The annotation system differs from the public dictionary :attr:`.Column.info`
-        in that the above annotation operation creates a *copy* of the new :class:`.Column`,
+        The annotation system differs from the public dictionary :attr:`_schema.Column.info`
+        in that the above annotation operation creates a *copy* of the new :class:`_schema.Column`,
         rather than considering all annotation values to be part of a single
         unit.  The ORM creates copies of expression objects in order to
         apply annotations that are specific to their context, such as to differentiate
@@ -90,7 +90,7 @@ Glossary
 
         The ``MyClass`` class will be :term:`mapped` when its definition
         is complete, at which point the ``id`` and ``data`` attributes,
-        starting out as :class:`.Column` objects, will be replaced
+        starting out as :class:`_schema.Column` objects, will be replaced
         by the :term:`instrumentation` system with instances
         of :class:`.InstrumentedAttribute`, which are descriptors that
         provide the above mentioned ``__get__()``, ``__set__()`` and
@@ -145,7 +145,7 @@ Glossary
         The term "metadata" generally refers to "data that describes data";
         data that itself represents the format and/or structure of some other
         kind of data.  In SQLAlchemy, the term "metadata" typically refers  to
-        the :class:`.MetaData` construct, which is a collection of information
+        the :class:`_schema.MetaData` construct, which is a collection of information
         about the tables, columns, constraints, and other :term:`DDL` objects
         that may exist in a particular database.
 
@@ -189,9 +189,9 @@ Glossary
         A term used in SQLAlchemy to describe how an ORM persistence action that
         takes place on a particular object would extend into other objects
         which are directly associated with that object.  In SQLAlchemy, these
-        object associations are configured using the :func:`.relationship`
-        construct.   :func:`.relationship` contains a parameter called
-        :paramref:`.relationship.cascade` which provides options on how certain
+        object associations are configured using the :func:`_orm.relationship`
+        construct.   :func:`_orm.relationship` contains a parameter called
+        :paramref:`_orm.relationship.cascade` which provides options on how certain
         persistence operations may cascade.
 
         The term "cascades" as well as the general architecture of this system
@@ -294,7 +294,7 @@ Glossary
         an attribute that is populated with its database-side value
         at the same time as when the object itself is loaded from the database.
         In SQLAlchemy, "eager loading" usually refers to related collections
-        of objects that are mapped using the :func:`.relationship` construct.
+        of objects that are mapped using the :func:`_orm.relationship` construct.
         Eager loading is the opposite of :term:`lazy loading`.
 
         .. seealso::
@@ -305,7 +305,7 @@ Glossary
     mapping
     mapped
         We say a class is "mapped" when it has been passed through the
-        :func:`.orm.mapper` function.   This process associates the
+        :func:`_orm.mapper` function.   This process associates the
         class with a database table or other :term:`selectable`
         construct, so that instances of it can be persisted
         using a :class:`.Session` as well as loaded using a
@@ -356,12 +356,12 @@ Glossary
         additional state added to the object.
 
         The two SQLAlchemy objects that make the most use of
-        method chaining are the :class:`~.expression.Select`
+        method chaining are the :class:`_expression.Select`
         object and the :class:`.orm.query.Query` object.
-        For example, a :class:`~.expression.Select` object can
+        For example, a :class:`_expression.Select` object can
         be assigned two expressions to its WHERE clause as well
-        as an ORDER BY clause by calling upon the :meth:`~.Select.where`
-        and :meth:`~.Select.order_by` methods::
+        as an ORDER BY clause by calling upon the :meth:`_expression.Select.where`
+        and :meth:`_expression.Select.order_by` methods::
 
             stmt = select([user.c.name]).\
                         where(user.c.id > 5).\
@@ -369,7 +369,7 @@ Glossary
                         order_by(user.c.name)
 
         Each method call above returns a copy of the original
-        :class:`~.expression.Select` object with additional qualifiers
+        :class:`_expression.Select` object with additional qualifiers
         added.
 
         .. seealso::

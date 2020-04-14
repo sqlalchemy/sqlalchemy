@@ -166,7 +166,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         an anonymously named column.
 
         An interim approach to providing named columns for a function
-        as a FROM clause is to build a :func:`.select` with the
+        as a FROM clause is to build a :func:`_expression.select` with the
         desired columns::
 
             from sqlalchemy.sql import column
@@ -201,7 +201,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
             from sqlalchemy import over
             over(func.row_number(), order_by='x')
 
-        See :func:`~.expression.over` for a full description.
+        See :func:`_expression.over` for a full description.
 
         """
         return Over(
@@ -219,7 +219,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         set aggregate" functions, including :class:`.percentile_cont`,
         :class:`.rank`, :class:`.dense_rank`, etc.
 
-        See :func:`~.expression.within_group` for a full description.
+        See :func:`_expression.within_group` for a full description.
 
         .. versionadded:: 1.1
 
@@ -283,7 +283,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         to manipulate the "left" and "right" sides of the ON clause of a JOIN
         expression. The purpose of this method is to provide a SQL function
         construct that can also supply this information to the ORM, when used
-        with the :paramref:`.relationship.primaryjoin` parameter.  The return
+        with the :paramref:`_orm.relationship.primaryjoin` parameter.
+        The return
         value is a containment object called :class:`.FunctionAsBinary`.
 
         An ORM example is as follows::
@@ -346,7 +347,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         return None
 
     def alias(self, name=None, flat=False):
-        r"""Produce a :class:`.Alias` construct against this
+        r"""Produce a :class:`_expression.Alias` construct against this
         :class:`.FunctionElement`.
 
         This construct wraps the function in a named alias which
@@ -378,7 +379,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         return Alias._construct(self, name)
 
     def select(self):
-        """Produce a :func:`~.expression.select` construct
+        """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
         This is shorthand for::
@@ -399,8 +400,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         produce a SELECT construct.
 
         Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.scalar` method of :class:`.Connection`
-        or :class:`.Engine`.
+        the :meth:`.Connectable.scalar` method of :class:`_engine.Connection`
+        or :class:`_engine.Engine`.
 
         """
         return self.select().execute().scalar()
@@ -413,8 +414,8 @@ class FunctionElement(Executable, ColumnElement, FromClause):
         produce a SELECT construct.
 
         Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.execute` method of :class:`.Connection`
-        or :class:`.Engine`.
+        the :meth:`.Connectable.execute` method of :class:`_engine.Connection`
+        or :class:`_engine.Engine`.
 
         """
         return self.select().execute()
@@ -523,7 +524,8 @@ class _FunctionGenerator(object):
     :class:`.Function`.
     This object meets the "column" interface, including comparison and labeling
     functions.  The object can also be passed the :meth:`~.Connectable.execute`
-    method of a :class:`.Connection` or :class:`.Engine`, where it will be
+    method of a :class:`_engine.Connection` or :class:`_engine.Engine`,
+    where it will be
     wrapped inside of a SELECT statement first::
 
         print(connection.execute(func.current_timestamp()).scalar())
@@ -944,7 +946,7 @@ class array_agg(GenericFunction):
     """support for the ARRAY_AGG function.
 
     The ``func.array_agg(expr)`` construct returns an expression of
-    type :class:`.types.ARRAY`.
+    type :class:`_types.ARRAY`.
 
     e.g.::
 
@@ -954,8 +956,8 @@ class array_agg(GenericFunction):
 
     .. seealso::
 
-        :func:`.postgresql.array_agg` - PostgreSQL-specific version that
-        returns :class:`.postgresql.ARRAY`, which has PG-specific operators
+        :func:`_postgresql.array_agg` - PostgreSQL-specific version that
+        returns :class:`_postgresql.ARRAY`, which has PG-specific operators
         added.
 
     """
@@ -1013,7 +1015,7 @@ class percentile_cont(OrderedSetAgg):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is the same as the sort expression,
-    or if the arguments are an array, an :class:`.types.ARRAY` of the sort
+    or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
 
     .. versionadded:: 1.1
@@ -1030,7 +1032,7 @@ class percentile_disc(OrderedSetAgg):
     modifier to supply a sort expression to operate upon.
 
     The return type of this function is the same as the sort expression,
-    or if the arguments are an array, an :class:`.types.ARRAY` of the sort
+    or if the arguments are an array, an :class:`_types.ARRAY` of the sort
     expression's type.
 
     .. versionadded:: 1.1
@@ -1104,7 +1106,7 @@ class cube(GenericFunction):
     r"""Implement the ``CUBE`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
-    e.g. :meth:`.Select.group_by`::
+    e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
             [func.sum(table.c.value), table.c.col_1, table.c.col_2]
@@ -1120,7 +1122,7 @@ class rollup(GenericFunction):
     r"""Implement the ``ROLLUP`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
-    e.g. :meth:`.Select.group_by`::
+    e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
             [func.sum(table.c.value), table.c.col_1, table.c.col_2]
@@ -1136,7 +1138,7 @@ class grouping_sets(GenericFunction):
     r"""Implement the ``GROUPING SETS`` grouping operation.
 
     This function is used as part of the GROUP BY of a statement,
-    e.g. :meth:`.Select.group_by`::
+    e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
             [func.sum(table.c.value), table.c.col_1, table.c.col_2]

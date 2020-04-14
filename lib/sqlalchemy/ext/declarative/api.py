@@ -83,10 +83,11 @@ class DeclarativeMeta(type):
 
 
 def synonym_for(name, map_column=False):
-    """Decorator that produces an :func:`.orm.synonym` attribute in conjunction
+    """Decorator that produces an :func:`_orm.synonym`
+    attribute in conjunction
     with a Python descriptor.
 
-    The function being decorated is passed to :func:`.orm.synonym` as the
+    The function being decorated is passed to :func:`_orm.synonym` as the
     :paramref:`.orm.synonym.descriptor` parameter::
 
         class MyClass(Base):
@@ -108,7 +109,7 @@ def synonym_for(name, map_column=False):
 
         :ref:`synonyms` - Overview of synonyms
 
-        :func:`.orm.synonym` - the mapper-level function
+        :func:`_orm.synonym` - the mapper-level function
 
         :ref:`mapper_hybrids` - The Hybrid Attribute extension provides an
         updated approach to augmenting attribute behavior more flexibly than
@@ -349,7 +350,7 @@ def declarative_base(
 
     :param class_registry: optional dictionary that will serve as the
       registry of class names-> mapped classes when string names
-      are used to identify classes inside of :func:`.relationship`
+      are used to identify classes inside of :func:`_orm.relationship`
       and others.  Allows two or more declarative base classes
       to share the same registry of class names for simplified
       inter-base relationships.
@@ -531,7 +532,7 @@ class AbstractConcreteBase(ConcreteBase):
 
         .. seealso::
 
-            :func:`.orm.configure_mappers`
+            :func:`_orm.configure_mappers`
 
 
     Example::
@@ -682,17 +683,17 @@ class DeferredReflection(object):
     a deferred reflection step.
 
     Normally, declarative can be used with reflection by
-    setting a :class:`.Table` object using autoload=True
+    setting a :class:`_schema.Table` object using autoload=True
     as the ``__table__`` attribute on a declarative class.
-    The caveat is that the :class:`.Table` must be fully
+    The caveat is that the :class:`_schema.Table` must be fully
     reflected, or at the very least have a primary key column,
     at the point at which a normal declarative mapping is
-    constructed, meaning the :class:`.Engine` must be available
+    constructed, meaning the :class:`_engine.Engine` must be available
     at class declaration time.
 
     The :class:`.DeferredReflection` mixin moves the construction
     of mappers to be at a later point, after a specific
-    method is called which first reflects all :class:`.Table`
+    method is called which first reflects all :class:`_schema.Table`
     objects created so far.   Classes can define it as such::
 
         from sqlalchemy.ext.declarative import declarative_base
@@ -746,7 +747,7 @@ class DeferredReflection(object):
 
     @classmethod
     def prepare(cls, engine):
-        """Reflect all :class:`.Table` objects for all current
+        """Reflect all :class:`_schema.Table` objects for all current
         :class:`.DeferredReflection` subclasses"""
 
         to_map = _DeferredMapperConfig.classes_for_base(cls)

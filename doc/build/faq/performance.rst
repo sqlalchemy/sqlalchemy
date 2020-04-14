@@ -36,7 +36,7 @@ Logging SQL will also illustrate if dozens/hundreds of queries are
 being issued which could be better organized into much fewer queries.
 When using the SQLAlchemy ORM, the "eager loading"
 feature is provided to partially (:func:`.contains_eager()`) or fully
-(:func:`.joinedload()`, :func:`.subqueryload()`)
+(:func:`_orm.joinedload()`, :func:`.subqueryload()`)
 automate this activity, but without
 the ORM "eager loading" typically means to use joins so that results across multiple
 tables can be loaded in one result set instead of multiplying numbers
@@ -160,7 +160,7 @@ If on the other hand you see many thousands of calls related to fetching rows,
 or very long calls to ``fetchall()``, it may
 mean your query is returning more rows than expected, or that the fetching
 of rows itself is slow.   The ORM itself typically uses ``fetchall()`` to fetch
-rows (or ``fetchmany()`` if the :meth:`.Query.yield_per` option is used).
+rows (or ``fetchmany()`` if the :meth:`_query.Query.yield_per` option is used).
 
 An inordinately large number of rows would be indicated
 by a very slow call to ``fetchall()`` at the DBAPI level::
@@ -171,7 +171,7 @@ An unexpectedly large number of rows, even if the ultimate result doesn't seem
 to have many rows, can be the result of a cartesian product - when multiple
 sets of rows are combined together without appropriately joining the tables
 together.   It's often easy to produce this behavior with SQLAlchemy Core or
-ORM query if the wrong :class:`.Column` objects are used in a complex query,
+ORM query if the wrong :class:`_schema.Column` objects are used in a complex query,
 pulling in additional FROM clauses that are unexpected.
 
 On the other hand, a fast call to ``fetchall()`` at the DBAPI level, but then

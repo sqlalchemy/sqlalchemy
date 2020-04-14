@@ -69,9 +69,9 @@ class QueryableAttribute(
 
         :class:`.MapperProperty`
 
-        :attr:`.Mapper.all_orm_descriptors`
+        :attr:`_orm.Mapper.all_orm_descriptors`
 
-        :attr:`.Mapper.attrs`
+        :attr:`_orm.Mapper.attrs`
     """
 
     is_attribute = True
@@ -128,12 +128,13 @@ class QueryableAttribute(
 
         * If the attribute is a column-mapped property, i.e.
           :class:`.ColumnProperty`, which is mapped directly
-          to a schema-level :class:`.Column` object, this attribute
+          to a schema-level :class:`_schema.Column` object, this attribute
           will return the :attr:`.SchemaItem.info` dictionary associated
-          with the core-level :class:`.Column` object.
+          with the core-level :class:`_schema.Column` object.
 
         * If the attribute is a :class:`.ColumnProperty` but is mapped to
-          any other kind of SQL expression other than a :class:`.Column`,
+          any other kind of SQL expression other than a
+          :class:`_schema.Column`,
           the attribute will refer to the :attr:`.MapperProperty.info`
           dictionary associated directly with the :class:`.ColumnProperty`,
           assuming the SQL expression itself does not have its own ``.info``
@@ -148,7 +149,7 @@ class QueryableAttribute(
         * To access the :attr:`.MapperProperty.info` dictionary of the
           :class:`.MapperProperty` unconditionally, including for a
           :class:`.ColumnProperty` that's associated directly with a
-          :class:`.schema.Column`, the attribute can be referred to using
+          :class:`_schema.Column`, the attribute can be referred to using
           :attr:`.QueryableAttribute.property` attribute, as
           ``MyClass.someattribute.property.info``.
 
@@ -165,7 +166,7 @@ class QueryableAttribute(
     def parent(self):
         """Return an inspection instance representing the parent.
 
-        This will be either an instance of :class:`.Mapper`
+        This will be either an instance of :class:`_orm.Mapper`
         or :class:`.AliasedInsp`, depending upon the nature
         of the parent entity which this attribute is associated
         with.
@@ -182,7 +183,7 @@ class QueryableAttribute(
 
     def _query_clause_element(self):
         """like __clause_element__(), but called specifically
-        by :class:`.Query` to allow special behavior."""
+        by :class:`_query.Query` to allow special behavior."""
 
         return self.comparator._query_clause_element()
 
@@ -516,7 +517,7 @@ class AttributeImpl(object):
             The :paramref:`.AttributeImpl.extension` parameter is deprecated
             and will be removed in a future release, corresponding to the
             "extension" parameter on the :class:`.MapperProprty` classes
-            like :func:`.column_property` and :func:`.relationship`  The
+            like :func:`.column_property` and :func:`_orm.relationship`  The
             events system is now used.
 
         :param compare_function:
@@ -1596,7 +1597,7 @@ class History(History):
     attribute.
 
     The easiest way to get a :class:`.History` object for a particular
-    attribute on an object is to use the :func:`.inspect` function::
+    attribute on an object is to use the :func:`_sa.inspect` function::
 
         from sqlalchemy import inspect
 

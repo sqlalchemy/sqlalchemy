@@ -5,7 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""The :class:`.FromClause` class of SQL expression elements, representing
+"""The :class:`_expression.FromClause` class of SQL expression elements,
+representing
 SQL tables and derived rowsets.
 
 """
@@ -123,8 +124,8 @@ def _offset_or_limit_clause_asint(clause, attrname):
 
 
 def subquery(alias, *args, **kwargs):
-    r"""Return an :class:`.Alias` object derived
-    from a :class:`.Select`.
+    r"""Return an :class:`_expression.Alias` object derived
+    from a :class:`_expression.Select`.
 
     name
       alias name
@@ -156,7 +157,7 @@ class HasPrefixes(object):
     @_generative
     @_document_text_coercion(
         "expr",
-        ":meth:`.HasPrefixes.prefix_with`",
+        ":meth:`_expression.HasPrefixes.prefix_with`",
         ":paramref:`.HasPrefixes.prefix_with.*expr`",
     )
     def prefix_with(self, *expr, **kw):
@@ -175,9 +176,10 @@ class HasPrefixes(object):
                 "/*+ BKA(t1) */", dialect="mysql")
 
         Multiple prefixes can be specified by multiple calls
-        to :meth:`.prefix_with`.
+        to :meth:`_expression.HasPrefixes.prefix_with`.
 
-        :param \*expr: textual or :class:`.ClauseElement` construct which
+        :param \*expr: textual or :class:`_expression.ClauseElement`
+         construct which
          will be rendered following the INSERT, UPDATE, or DELETE
          keyword.
         :param \**kw: A single keyword 'dialect' is accepted.  This is an
@@ -207,7 +209,7 @@ class HasSuffixes(object):
     @_generative
     @_document_text_coercion(
         "expr",
-        ":meth:`.HasSuffixes.suffix_with`",
+        ":meth:`_expression.HasSuffixes.suffix_with`",
         ":paramref:`.HasSuffixes.suffix_with.*expr`",
     )
     def suffix_with(self, *expr, **kw):
@@ -222,9 +224,10 @@ class HasSuffixes(object):
                 "cycle empno set y_cycle to 1 default 0", dialect="oracle")
 
         Multiple suffixes can be specified by multiple calls
-        to :meth:`.suffix_with`.
+        to :meth:`_expression.HasSuffixes.suffix_with`.
 
-        :param \*expr: textual or :class:`.ClauseElement` construct which
+        :param \*expr: textual or :class:`_expression.ClauseElement`
+         construct which
          will be rendered following the target clause.
         :param \**kw: A single keyword 'dialect' is accepted.  This is an
          optional string dialect name which will
@@ -251,17 +254,19 @@ class FromClause(Selectable):
     """Represent an element that can be used within the ``FROM``
     clause of a ``SELECT`` statement.
 
-    The most common forms of :class:`.FromClause` are the
-    :class:`.Table` and the :func:`.select` constructs.  Key
-    features common to all :class:`.FromClause` objects include:
+    The most common forms of :class:`_expression.FromClause` are the
+    :class:`_schema.Table` and the :func:`_expression.select` constructs.  Key
+    features common to all :class:`_expression.FromClause` objects include:
 
     * a :attr:`.c` collection, which provides per-name access to a collection
-      of :class:`.ColumnElement` objects.
+      of :class:`_expression.ColumnElement` objects.
     * a :attr:`.primary_key` attribute, which is a collection of all those
-      :class:`.ColumnElement` objects that indicate the ``primary_key`` flag.
+      :class:`_expression.ColumnElement`
+      objects that indicate the ``primary_key`` flag.
     * Methods to generate various derivations of a "from" clause, including
-      :meth:`.FromClause.alias`, :meth:`.FromClause.join`,
-      :meth:`.FromClause.select`.
+      :meth:`_expression.FromClause.alias`,
+      :meth:`_expression.FromClause.join`,
+      :meth:`_expression.FromClause.select`.
 
 
     """
@@ -278,14 +283,15 @@ class FromClause(Selectable):
 
     _textual = False
     """a marker that allows us to easily distinguish a :class:`.TextAsFrom`
-    or similar object from other kinds of :class:`.FromClause` objects."""
+    or similar object from other kinds of :class:`_expression.FromClause`
+    objects."""
 
     schema = None
-    """Define the 'schema' attribute for this :class:`.FromClause`.
+    """Define the 'schema' attribute for this :class:`_expression.FromClause`.
 
     This is typically ``None`` for most objects except that of
-    :class:`.Table`, where it is taken as the value of the
-    :paramref:`.Table.schema` argument.
+    :class:`_schema.Table`, where it is taken as the value of the
+    :paramref:`_schema.Table.schema` argument.
 
     """
 
@@ -298,17 +304,17 @@ class FromClause(Selectable):
         "1.1",
         message="The :meth:`.FromClause.count` method is deprecated, "
         "and will be removed in a future release.   Please use the "
-        ":class:`.functions.count` function available from the "
+        ":class:`_functions.count` function available from the "
         ":attr:`.func` namespace.",
     )
     @util.dependencies("sqlalchemy.sql.functions")
     def count(self, functions, whereclause=None, **params):
         """return a SELECT COUNT generated against this
-        :class:`.FromClause`.
+        :class:`_expression.FromClause`.
 
         .. seealso::
 
-            :class:`.functions.count`
+            :class:`_functions.count`
 
         """
 
@@ -324,11 +330,11 @@ class FromClause(Selectable):
         )
 
     def select(self, whereclause=None, **params):
-        """return a SELECT of this :class:`.FromClause`.
+        """return a SELECT of this :class:`_expression.FromClause`.
 
         .. seealso::
 
-            :func:`~.sql.expression.select` - general purpose
+            :func:`_expression.select` - general purpose
             method which allows for arbitrary column lists.
 
         """
@@ -336,7 +342,8 @@ class FromClause(Selectable):
         return Select([self], whereclause, **params)
 
     def join(self, right, onclause=None, isouter=False, full=False):
-        """Return a :class:`.Join` from this :class:`.FromClause`
+        """Return a :class:`_expression.Join` from this
+        :class:`_expression.FromClause`
         to another :class:`FromClause`.
 
         E.g.::
@@ -353,12 +360,14 @@ class FromClause(Selectable):
             JOIN address ON user.id = address.user_id
 
         :param right: the right side of the join; this is any
-         :class:`.FromClause` object such as a :class:`.Table` object, and
+         :class:`_expression.FromClause` object such as a
+         :class:`_schema.Table` object, and
          may also be a selectable-compatible object such as an ORM-mapped
          class.
 
         :param onclause: a SQL expression representing the ON clause of the
-         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join.  If left at ``None``, :meth:`_expression.FromClause.join`
+         will attempt to
          join the two tables based on a foreign key relationship.
 
         :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
@@ -370,16 +379,17 @@ class FromClause(Selectable):
 
         .. seealso::
 
-            :func:`.join` - standalone function
+            :func:`_expression.join` - standalone function
 
-            :class:`.Join` - the type of object produced
+            :class:`_expression.Join` - the type of object produced
 
         """
 
         return Join(self, right, onclause, isouter, full)
 
     def outerjoin(self, right, onclause=None, full=False):
-        """Return a :class:`.Join` from this :class:`.FromClause`
+        """Return a :class:`_expression.Join` from this
+        :class:`_expression.FromClause`
         to another :class:`FromClause`, with the "isouter" flag set to
         True.
 
@@ -398,12 +408,14 @@ class FromClause(Selectable):
                 isouter=True)
 
         :param right: the right side of the join; this is any
-         :class:`.FromClause` object such as a :class:`.Table` object, and
+         :class:`_expression.FromClause` object such as a
+         :class:`_schema.Table` object, and
          may also be a selectable-compatible object such as an ORM-mapped
          class.
 
         :param onclause: a SQL expression representing the ON clause of the
-         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join.  If left at ``None``, :meth:`_expression.FromClause.join`
+         will attempt to
          join the two tables based on a foreign key relationship.
 
         :param full: if True, render a FULL OUTER JOIN, instead of
@@ -413,39 +425,40 @@ class FromClause(Selectable):
 
         .. seealso::
 
-            :meth:`.FromClause.join`
+            :meth:`_expression.FromClause.join`
 
-            :class:`.Join`
+            :class:`_expression.Join`
 
         """
 
         return Join(self, right, onclause, True, full)
 
     def alias(self, name=None, flat=False):
-        """return an alias of this :class:`.FromClause`.
+        """return an alias of this :class:`_expression.FromClause`.
 
         E.g.::
 
             a2 = some_table.alias('a2')
 
-        The above code creates an :class:`.Alias` object which can be used
+        The above code creates an :class:`_expression.Alias`
+        object which can be used
         as a FROM clause in any SELECT statement.
 
         .. seealso::
 
             :ref:`core_tutorial_aliases`
 
-            :func:`~.expression.alias`
+            :func:`_expression.alias`
 
         """
 
         return Alias._construct(self, name)
 
     def lateral(self, name=None):
-        """Return a LATERAL alias of this :class:`.FromClause`.
+        """Return a LATERAL alias of this :class:`_expression.FromClause`.
 
-        The return value is the :class:`.Lateral` construct also
-        provided by the top-level :func:`~.expression.lateral` function.
+        The return value is the :class:`_expression.Lateral` construct also
+        provided by the top-level :func:`_expression.lateral` function.
 
         .. versionadded:: 1.1
 
@@ -457,16 +470,17 @@ class FromClause(Selectable):
         return Lateral._construct(self, name)
 
     def tablesample(self, sampling, name=None, seed=None):
-        """Return a TABLESAMPLE alias of this :class:`.FromClause`.
+        """Return a TABLESAMPLE alias of this :class:`_expression.FromClause`.
 
-        The return value is the :class:`.TableSample` construct also
-        provided by the top-level :func:`~.expression.tablesample` function.
+        The return value is the :class:`_expression.TableSample`
+        construct also
+        provided by the top-level :func:`_expression.tablesample` function.
 
         .. versionadded:: 1.1
 
         .. seealso::
 
-            :func:`~.expression.tablesample` - usage guidelines and parameters
+            :func:`_expression.tablesample` - usage guidelines and parameters
 
         """
         return TableSample._construct(self, sampling, name, seed)
@@ -496,7 +510,7 @@ class FromClause(Selectable):
     @util.dependencies("sqlalchemy.sql.util")
     def replace_selectable(self, sqlutil, old, alias):
         """replace all occurrences of FromClause 'old' with the given Alias
-        object, returning a copy of this :class:`.FromClause`.
+        object, returning a copy of this :class:`_expression.FromClause`.
 
         """
 
@@ -516,20 +530,24 @@ class FromClause(Selectable):
         return col
 
     def corresponding_column(self, column, require_embedded=False):
-        """Given a :class:`.ColumnElement`, return the exported
-        :class:`.ColumnElement` object from this :class:`.Selectable`
+        """Given a :class:`_expression.ColumnElement`, return the exported
+        :class:`_expression.ColumnElement` object from this
+        :class:`expression.Selectable`
         which corresponds to that original
         :class:`~sqlalchemy.schema.Column` via a common ancestor
         column.
 
-        :param column: the target :class:`.ColumnElement` to be matched
+        :param column: the target :class:`_expression.ColumnElement`
+                      to be matched
 
         :param require_embedded: only return corresponding columns for
-         the given :class:`.ColumnElement`, if the given
-         :class:`.ColumnElement` is actually present within a sub-element
-         of this :class:`.FromClause`.  Normally the column will match if
+         the given :class:`_expression.ColumnElement`, if the given
+         :class:`_expression.ColumnElement`
+         is actually present within a sub-element
+         of this :class:`_expression.FromClause`.
+         Normally the column will match if
          it merely shares a common ancestor with one of the exported
-         columns of this :class:`.FromClause`.
+         columns of this :class:`_expression.FromClause`.
 
         """
 
@@ -615,8 +633,9 @@ class FromClause(Selectable):
 
     @_memoized_property
     def columns(self):
-        """A named-based collection of :class:`.ColumnElement` objects
-        maintained by this :class:`.FromClause`.
+        """A named-based collection of :class:`_expression.ColumnElement`
+        objects
+        maintained by this :class:`_expression.FromClause`.
 
         The :attr:`.columns`, or :attr:`.c` collection, is the gateway
         to the construction of SQL expressions using table-bound or
@@ -710,18 +729,22 @@ class FromClause(Selectable):
 
 
 class Join(FromClause):
-    """represent a ``JOIN`` construct between two :class:`.FromClause`
+    """represent a ``JOIN`` construct between two
+    :class:`_expression.FromClause`
     elements.
 
-    The public constructor function for :class:`.Join` is the module-level
-    :func:`.join()` function, as well as the :meth:`.FromClause.join` method
-    of any :class:`.FromClause` (e.g. such as :class:`.Table`).
+    The public constructor function for :class:`_expression.Join`
+    is the module-level
+    :func:`_expression.join()` function, as well as the
+    :meth:`_expression.FromClause.join` method
+    of any :class:`_expression.FromClause` (e.g. such as
+    :class:`_schema.Table`).
 
     .. seealso::
 
-        :func:`.join`
+        :func:`_expression.join`
 
-        :meth:`.FromClause.join`
+        :meth:`_expression.FromClause.join`
 
     """
 
@@ -730,11 +753,11 @@ class Join(FromClause):
     _is_join = True
 
     def __init__(self, left, right, onclause=None, isouter=False, full=False):
-        """Construct a new :class:`.Join`.
+        """Construct a new :class:`_expression.Join`.
 
-        The usual entrypoint here is the :func:`~.expression.join`
-        function or the :meth:`.FromClause.join` method of any
-        :class:`.FromClause` object.
+        The usual entrypoint here is the :func:`_expression.join`
+        function or the :meth:`_expression.FromClause.join` method of any
+        :class:`_expression.FromClause` object.
 
         """
         self.left = _interpret_as_from(left)
@@ -752,11 +775,11 @@ class Join(FromClause):
     def _create_outerjoin(cls, left, right, onclause=None, full=False):
         """Return an ``OUTER JOIN`` clause element.
 
-        The returned object is an instance of :class:`.Join`.
+        The returned object is an instance of :class:`_expression.Join`.
 
         Similar functionality is also available via the
-        :meth:`~.FromClause.outerjoin()` method on any
-        :class:`.FromClause`.
+        :meth:`_expression.FromClause.outerjoin()` method on any
+        :class:`_expression.FromClause`.
 
         :param left: The left side of the join.
 
@@ -766,9 +789,10 @@ class Join(FromClause):
           derived from foreign key relationships established between
           left and right otherwise.
 
-        To chain joins together, use the :meth:`.FromClause.join` or
-        :meth:`.FromClause.outerjoin` methods on the resulting
-        :class:`.Join` object.
+        To chain joins together, use the :meth:`_expression.FromClause.join`
+        or
+        :meth:`_expression.FromClause.outerjoin` methods on the resulting
+        :class:`_expression.Join` object.
 
         """
         return cls(left, right, onclause, isouter=True, full=full)
@@ -777,7 +801,8 @@ class Join(FromClause):
     def _create_join(
         cls, left, right, onclause=None, isouter=False, full=False
     ):
-        """Produce a :class:`.Join` object, given two :class:`.FromClause`
+        """Produce a :class:`_expression.Join` object, given two
+        :class:`_expression.FromClause`
         expressions.
 
         E.g.::
@@ -792,18 +817,21 @@ class Join(FromClause):
             JOIN address ON user.id = address.user_id
 
         Similar functionality is available given any
-        :class:`.FromClause` object (e.g. such as a :class:`.Table`) using
-        the :meth:`.FromClause.join` method.
+        :class:`_expression.FromClause` object (e.g. such as a
+        :class:`_schema.Table`) using
+        the :meth:`_expression.FromClause.join` method.
 
         :param left: The left side of the join.
 
         :param right: the right side of the join; this is any
-         :class:`.FromClause` object such as a :class:`.Table` object, and
+         :class:`_expression.FromClause` object such as a
+         :class:`_schema.Table` object, and
          may also be a selectable-compatible object such as an ORM-mapped
          class.
 
         :param onclause: a SQL expression representing the ON clause of the
-         join.  If left at ``None``, :meth:`.FromClause.join` will attempt to
+         join.  If left at ``None``, :meth:`_expression.FromClause.join`
+         will attempt to
          join the two tables based on a foreign key relationship.
 
         :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
@@ -814,9 +842,10 @@ class Join(FromClause):
 
         .. seealso::
 
-            :meth:`.FromClause.join` - method form, based on a given left side
+            :meth:`_expression.FromClause.join` - method form,
+            based on a given left side
 
-            :class:`.Join` - the type of object produced
+            :class:`_expression.Join` - the type of object produced
 
         """
 
@@ -1056,9 +1085,11 @@ class Join(FromClause):
             )
 
     def select(self, whereclause=None, **kwargs):
-        r"""Create a :class:`.Select` from this :class:`.Join`.
+        r"""Create a :class:`_expression.Select` from this
+        :class:`_expression.Join`.
 
-        The equivalent long-hand form, given a :class:`.Join` object
+        The equivalent long-hand form, given a :class:`_expression.Join`
+        object
         ``j``, is::
 
             from sqlalchemy import select
@@ -1083,11 +1114,11 @@ class Join(FromClause):
 
     @util.dependencies("sqlalchemy.sql.util")
     def alias(self, sqlutil, name=None, flat=False):
-        r"""return an alias of this :class:`.Join`.
+        r"""return an alias of this :class:`_expression.Join`.
 
         The default behavior here is to first produce a SELECT
-        construct from this :class:`.Join`, then to produce an
-        :class:`.Alias` from that.  So given a join of the form::
+        construct from this :class:`_expression.Join`, then to produce an
+        :class:`_expression.Alias` from that.  So given a join of the form::
 
             j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
 
@@ -1103,7 +1134,8 @@ class Join(FromClause):
                 FROM table_a
                 JOIN table_b ON table_a.id = table_b.a_id) AS anon_1
 
-        The equivalent long-hand form, given a :class:`.Join` object
+        The equivalent long-hand form, given a :class:`_expression.Join`
+        object
         ``j``, is::
 
             from sqlalchemy import select, alias
@@ -1115,20 +1147,22 @@ class Join(FromClause):
                 name=name
             )
 
-        The selectable produced by :meth:`.Join.alias` features the same
+        The selectable produced by :meth:`_expression.Join.alias`
+        features the same
         columns as that of the two individual selectables presented under
         a single name - the individual columns are "auto-labeled", meaning
-        the ``.c.`` collection of the resulting :class:`.Alias` represents
+        the ``.c.`` collection of the resulting :class:`_expression.Alias`
+        represents
         the names of the individual columns using a
         ``<tablename>_<columname>`` scheme::
 
             j.c.table_a_id
             j.c.table_b_a_id
 
-        :meth:`.Join.alias` also features an alternate
+        :meth:`_expression.Join.alias` also features an alternate
         option for aliasing joins which produces no enclosing SELECT and
         does not normally apply labels to the column names.  The
-        ``flat=True`` option will call :meth:`.FromClause.alias`
+        ``flat=True`` option will call :meth:`_expression.FromClause.alias`
         against the left and right sides individually.
         Using this option, no new ``SELECT`` is produced;
         we instead, from a construct as below::
@@ -1157,8 +1191,9 @@ class Join(FromClause):
                     ON table_b_1.id = table_c_1.b_id
             ) ON table_a_1.id = table_b_1.a_id
 
-        The standalone :func:`~.expression.alias` function as well as the
-        base :meth:`.FromClause.alias` method also support the ``flat=True``
+        The standalone :func:`_expression.alias` function as well as the
+        base :meth:`_expression.FromClause.alias`
+        method also support the ``flat=True``
         argument as a no-op, so that the argument can be passed to the
         ``alias()`` method of any selectable.
 
@@ -1169,7 +1204,7 @@ class Join(FromClause):
         :param name: name given to the alias.
 
         :param flat: if True, produce an alias of the left and right
-         sides of this :class:`.Join` and return the join of those
+         sides of this :class:`_expression.Join` and return the join of those
          two selectables.   This produces join expression that does not
          include an enclosing SELECT.
 
@@ -1179,7 +1214,7 @@ class Join(FromClause):
 
             :ref:`core_tutorial_aliases`
 
-            :func:`~.expression.alias`
+            :func:`_expression.alias`
 
         """
         if flat:
@@ -1224,9 +1259,10 @@ class Alias(FromClause):
     sub-select within a SQL statement using the ``AS`` keyword (or
     without the keyword on certain databases such as Oracle).
 
-    This object is constructed from the :func:`~.expression.alias` module
-    level function as well as the :meth:`.FromClause.alias` method available
-    on all :class:`.FromClause` subclasses.
+    This object is constructed from the :func:`_expression.alias` module
+    level function as well as the :meth:`_expression.FromClause.alias`
+    method available
+    on all :class:`_expression.FromClause` subclasses.
 
     """
 
@@ -1256,24 +1292,30 @@ class Alias(FromClause):
 
     @classmethod
     def _factory(cls, selectable, name=None, flat=False):
-        """Return an :class:`.Alias` object.
+        """Return an :class:`_expression.Alias` object.
 
-        An :class:`.Alias` represents any :class:`.FromClause`
+        An :class:`_expression.Alias` represents any
+        :class:`_expression.FromClause`
         with an alternate name assigned within SQL, typically using the ``AS``
         clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
 
         Similar functionality is available via the
-        :meth:`~.FromClause.alias` method
-        available on all :class:`.FromClause` subclasses.   In terms of a
-        SELECT object as generated from the :func:`.select` function, the
-        :meth:`.SelectBase.alias` method returns an :class:`.Alias` or
+        :meth:`_expression.FromClause.alias` method
+        available on all :class:`_expression.FromClause` subclasses.
+        In terms of a
+        SELECT object as generated from the :func:`_expression.select`
+        function, the
+        :meth:`_expression.SelectBase.alias` method returns an
+        :class:`_expression.Alias` or
         similar object which represents a named, parenthesized subquery.
 
-        When an :class:`.Alias` is created from a :class:`.Table` object,
+        When an :class:`_expression.Alias` is created from a
+        :class:`_schema.Table` object,
         this has the effect of the table being rendered
         as ``tablename AS aliasname`` in a SELECT statement.
 
-        For :func:`.select` objects, the effect is that of creating a named
+        For :func:`_expression.select` objects,
+        the effect is that of creating a named
         subquery, i.e. ``(select ...) AS aliasname``.
 
         The ``name`` parameter is optional, and provides the name
@@ -1284,7 +1326,7 @@ class Alias(FromClause):
         same name for each successive compilation of the same statement
         object.
 
-        :param selectable: any :class:`.FromClause` subclass,
+        :param selectable: any :class:`_expression.FromClause` subclass,
             such as a table, select statement, etc.
 
         :param name: string name to be assigned as the alias.
@@ -1292,7 +1334,8 @@ class Alias(FromClause):
             at compile time.
 
         :param flat: Will be passed through to if the given selectable
-         is an instance of :class:`.Join` - see :meth:`.Join.alias`
+         is an instance of :class:`_expression.Join` - see
+         :meth:`_expression.Join.alias`
          for details.
 
          .. versionadded:: 0.9.0
@@ -1394,9 +1437,10 @@ class Alias(FromClause):
 class Lateral(Alias):
     """Represent a LATERAL subquery.
 
-    This object is constructed from the :func:`~.expression.lateral` module
-    level function as well as the :meth:`.FromClause.lateral` method available
-    on all :class:`.FromClause` subclasses.
+    This object is constructed from the :func:`_expression.lateral` module
+    level function as well as the :meth:`_expression.FromClause.lateral`
+    method available
+    on all :class:`_expression.FromClause` subclasses.
 
     While LATERAL is part of the SQL standard, currently only more recent
     PostgreSQL versions provide support for this keyword.
@@ -1414,9 +1458,10 @@ class Lateral(Alias):
 
     @classmethod
     def _factory(cls, selectable, name=None):
-        """Return a :class:`.Lateral` object.
+        """Return a :class:`_expression.Lateral` object.
 
-        :class:`.Lateral` is an :class:`.Alias` subclass that represents
+        :class:`_expression.Lateral` is an :class:`_expression.Alias`
+        subclass that represents
         a subquery with the LATERAL keyword applied to it.
 
         The special behavior of a LATERAL subquery is that it appears in the
@@ -1438,15 +1483,16 @@ class Lateral(Alias):
 class TableSample(Alias):
     """Represent a TABLESAMPLE clause.
 
-    This object is constructed from the :func:`~.expression.tablesample` module
-    level function as well as the :meth:`.FromClause.tablesample` method
-    available on all :class:`.FromClause` subclasses.
+    This object is constructed from the :func:`_expression.tablesample` module
+    level function as well as the :meth:`_expression.FromClause.tablesample`
+    method
+    available on all :class:`_expression.FromClause` subclasses.
 
     .. versionadded:: 1.1
 
     .. seealso::
 
-        :func:`~.expression.tablesample`
+        :func:`_expression.tablesample`
 
     """
 
@@ -1454,13 +1500,15 @@ class TableSample(Alias):
 
     @classmethod
     def _factory(cls, selectable, sampling, name=None, seed=None):
-        """Return a :class:`.TableSample` object.
+        """Return a :class:`_expression.TableSample` object.
 
-        :class:`.TableSample` is an :class:`.Alias` subclass that represents
+        :class:`_expression.TableSample` is an :class:`_expression.Alias`
+        subclass that represents
         a table with the TABLESAMPLE clause applied to it.
-        :func:`~.expression.tablesample`
-        is also available from the :class:`.FromClause` class via the
-        :meth:`.FromClause.tablesample` method.
+        :func:`_expression.tablesample`
+        is also available from the :class:`_expression.FromClause`
+        class via the
+        :meth:`_expression.FromClause.tablesample` method.
 
         The TABLESAMPLE clause allows selecting a randomly selected approximate
         percentage of rows from a table. It supports multiple sampling methods,
@@ -1486,7 +1534,7 @@ class TableSample(Alias):
         .. versionadded:: 1.1
 
         :param sampling: a ``float`` percentage between 0 and 100 or
-            :class:`.functions.Function`.
+            :class:`_functions.Function`.
 
         :param name: optional alias name
 
@@ -1514,8 +1562,8 @@ class TableSample(Alias):
 class CTE(Generative, HasPrefixes, HasSuffixes, Alias):
     """Represent a Common Table Expression.
 
-    The :class:`.CTE` object is obtained using the
-    :meth:`.SelectBase.cte` method from any selectable.
+    The :class:`_expression.CTE` object is obtained using the
+    :meth:`_expression.SelectBase.cte` method from any selectable.
     See that method for complete examples.
 
     """
@@ -1524,9 +1572,10 @@ class CTE(Generative, HasPrefixes, HasSuffixes, Alias):
 
     @classmethod
     def _factory(cls, selectable, name=None, recursive=False):
-        r"""Return a new :class:`.CTE`, or Common Table Expression instance.
+        r"""Return a new :class:`_expression.CTE`,
+        or Common Table Expression instance.
 
-        Please see :meth:`.HasCte.cte` for detail on CTE usage.
+        Please see :meth:`_expression.HasCTE.cte` for detail on CTE usage.
 
         """
         return _interpret_as_from(selectable).cte(
@@ -1570,16 +1619,17 @@ class CTE(Generative, HasPrefixes, HasSuffixes, Alias):
                 col._make_proxy(self)
 
     def alias(self, name=None, flat=False):
-        """Return an :class:`.Alias` of this :class:`.CTE`.
+        """Return an :class:`_expression.Alias` of this
+        :class:`_expression.CTE`.
 
         This method is a CTE-specific specialization of the
-        :class:`.FromClause.alias` method.
+        :class:`_expression.FromClause.alias` method.
 
         .. seealso::
 
             :ref:`core_tutorial_aliases`
 
-            :func:`~.expression.alias`
+            :func:`_expression.alias`
 
         """
         return CTE._construct(
@@ -1620,7 +1670,8 @@ class HasCTE(object):
     """
 
     def cte(self, name=None, recursive=False):
-        r"""Return a new :class:`.CTE`, or Common Table Expression instance.
+        r"""Return a new :class:`_expression.CTE`,
+        or Common Table Expression instance.
 
         Common table expressions are a SQL standard whereby SELECT
         statements can draw upon secondary statements specified along
@@ -1637,13 +1688,14 @@ class HasCTE(object):
         .. versionchanged:: 1.1 Added support for UPDATE/INSERT/DELETE as
            CTE, CTEs added to UPDATE/INSERT/DELETE.
 
-        SQLAlchemy detects :class:`.CTE` objects, which are treated
-        similarly to :class:`.Alias` objects, as special elements
+        SQLAlchemy detects :class:`_expression.CTE` objects, which are treated
+        similarly to :class:`_expression.Alias` objects, as special elements
         to be delivered to the FROM clause of the statement as well
         as to a WITH clause at the top of the statement.
 
         For special prefixes such as PostgreSQL "MATERIALIZED" and
-        "NOT MATERIALIZED", the :meth:`.CTE.prefix_with` method may be
+        "NOT MATERIALIZED", the :meth:`_expression.CTE.prefix_with`
+        method may be
         used to establish these.
 
         .. versionchanged:: 1.3.13 Added support for prefixes.
@@ -1781,7 +1833,7 @@ class HasCTE(object):
         .. seealso::
 
             :meth:`.orm.query.Query.cte` - ORM version of
-            :meth:`.HasCTE.cte`.
+            :meth:`_expression.HasCTE.cte`.
 
         """
         return CTE._construct(self, name=name, recursive=recursive)
@@ -1845,7 +1897,7 @@ class TableClause(Immutable, FromClause):
 
     This is a lightweight table object that has only a name and a
     collection of columns, which are typically produced
-    by the :func:`.expression.column` function::
+    by the :func:`_expression.column` function::
 
         from sqlalchemy import table, column
 
@@ -1855,16 +1907,17 @@ class TableClause(Immutable, FromClause):
                 column("description"),
         )
 
-    The :class:`.TableClause` construct serves as the base for
-    the more commonly used :class:`~.schema.Table` object, providing
-    the usual set of :class:`~.expression.FromClause` services including
+    The :class:`_expression.TableClause` construct serves as the base for
+    the more commonly used :class:`_schema.Table` object, providing
+    the usual set of :class:`_expression.FromClause` services including
     the ``.c.`` collection and statement generation methods.
 
     It does **not** provide all the additional schema-level services
-    of :class:`~.schema.Table`, including constraints, references to other
-    tables, or support for :class:`.MetaData`-level services.  It's useful
+    of :class:`_schema.Table`, including constraints, references to other
+    tables, or support for :class:`_schema.MetaData`-level services.
+    It's useful
     on its own as an ad-hoc construct used to generate quick SQL
-    statements when a more fully fledged :class:`~.schema.Table`
+    statements when a more fully fledged :class:`_schema.Table`
     is not on hand.
 
     """
@@ -1874,27 +1927,29 @@ class TableClause(Immutable, FromClause):
     named_with_column = True
 
     implicit_returning = False
-    """:class:`.TableClause` doesn't support having a primary key or column
+    """:class:`_expression.TableClause`
+    doesn't support having a primary key or column
     -level defaults, so implicit returning doesn't apply."""
 
     _autoincrement_column = None
     """No PK or default support so no autoincrement column."""
 
     def __init__(self, name, *columns):
-        """Produce a new :class:`.TableClause`.
+        """Produce a new :class:`_expression.TableClause`.
 
-        The object returned is an instance of :class:`.TableClause`, which
+        The object returned is an instance of :class:`_expression.TableClause`
+        , which
         represents the "syntactical" portion of the schema-level
-        :class:`~.schema.Table` object.
+        :class:`_schema.Table` object.
         It may be used to construct lightweight table constructs.
 
-        .. versionchanged:: 1.0.0 :func:`.expression.table` can now
+        .. versionchanged:: 1.0.0 :func:`_expression.table` can now
            be imported from the plain ``sqlalchemy`` namespace like any
            other SQL element.
 
         :param name: Name of the table.
 
-        :param columns: A collection of :func:`.expression.column` constructs.
+        :param columns: A collection of :func:`_expression.column` constructs.
 
         """
 
@@ -1928,14 +1983,14 @@ class TableClause(Immutable, FromClause):
 
     @util.dependencies("sqlalchemy.sql.dml")
     def insert(self, dml, values=None, inline=False, **kwargs):
-        """Generate an :func:`.insert` construct against this
-        :class:`.TableClause`.
+        """Generate an :func:`_expression.insert` construct against this
+        :class:`_expression.TableClause`.
 
         E.g.::
 
             table.insert().values(name='foo')
 
-        See :func:`.insert` for argument and usage information.
+        See :func:`_expression.insert` for argument and usage information.
 
         """
 
@@ -1945,14 +2000,14 @@ class TableClause(Immutable, FromClause):
     def update(
         self, dml, whereclause=None, values=None, inline=False, **kwargs
     ):
-        """Generate an :func:`.update` construct against this
-        :class:`.TableClause`.
+        """Generate an :func:`_expression.update` construct against this
+        :class:`_expression.TableClause`.
 
         E.g.::
 
             table.update().where(table.c.id==7).values(name='foo')
 
-        See :func:`.update` for argument and usage information.
+        See :func:`_expression.update` for argument and usage information.
 
         """
 
@@ -1966,14 +2021,14 @@ class TableClause(Immutable, FromClause):
 
     @util.dependencies("sqlalchemy.sql.dml")
     def delete(self, dml, whereclause=None, **kwargs):
-        """Generate a :func:`.delete` construct against this
-        :class:`.TableClause`.
+        """Generate a :func:`_expression.delete` construct against this
+        :class:`_expression.TableClause`.
 
         E.g.::
 
             table.delete().where(table.c.id==7)
 
-        See :func:`.delete` for argument and usage information.
+        See :func:`_expression.delete` for argument and usage information.
 
         """
 
@@ -1987,7 +2042,7 @@ class TableClause(Immutable, FromClause):
 class ForUpdateArg(ClauseElement):
     @classmethod
     def parse_legacy_select(self, arg):
-        """Parse the for_update argument of :func:`.select`.
+        """Parse the for_update argument of :func:`_expression.select`.
 
         :param mode: Defines the lockmode to use.
 
@@ -2058,7 +2113,8 @@ class ForUpdateArg(ClauseElement):
         skip_locked=False,
         key_share=False,
     ):
-        """Represents arguments specified to :meth:`.Select.for_update`.
+        """Represents arguments specified to
+        :meth:`_expression.Select.for_update`.
 
         .. versionadded:: 0.9.0
 
@@ -2080,7 +2136,8 @@ class SelectBase(HasCTE, Executable, FromClause):
     """Base class for SELECT statements.
 
 
-    This includes :class:`.Select`, :class:`.CompoundSelect` and
+    This includes :class:`_expression.Select`,
+    :class:`_selectable.CompoundSelect` and
     :class:`.TextAsFrom`.
 
 
@@ -2105,7 +2162,7 @@ class SelectBase(HasCTE, Executable, FromClause):
 
         .. seealso::
 
-            :meth:`~.SelectBase.as_scalar`.
+            :meth:`_expression.SelectBase.as_scalar`.
 
         """
         return self.as_scalar().label(name)
@@ -2146,16 +2203,19 @@ class GenerativeSelect(SelectBase):
     """Base class for SELECT statements where additional elements can be
     added.
 
-    This serves as the base for :class:`.Select` and :class:`.CompoundSelect`
+    This serves as the base for :class:`_expression.Select` and
+    :class:`_selectable.CompoundSelect`
     where elements such as ORDER BY, GROUP BY can be added and column
     rendering can be controlled.  Compare to :class:`.TextAsFrom`, which,
-    while it subclasses :class:`.SelectBase` and is also a SELECT construct,
+    while it subclasses :class:`_expression.SelectBase`
+    and is also a SELECT construct,
     represents a fixed textual string which cannot be altered at this level,
     only wrapped as a subquery.
 
-    .. versionadded:: 0.9.0 :class:`.GenerativeSelect` was added to
-       provide functionality specific to :class:`.Select` and
-       :class:`.CompoundSelect` while allowing :class:`.SelectBase` to be
+    .. versionadded:: 0.9.0 :class:`_expression.GenerativeSelect` was added to
+       provide functionality specific to :class:`_expression.Select` and
+       :class:`_selectable.CompoundSelect` while allowing
+       :class:`_expression.SelectBase` to be
        used for other SELECT-like objects, e.g. :class:`.TextAsFrom`.
 
     """
@@ -2230,7 +2290,8 @@ class GenerativeSelect(SelectBase):
         skip_locked=False,
         key_share=False,
     ):
-        """Specify a ``FOR UPDATE`` clause for this :class:`.GenerativeSelect`.
+        """Specify a ``FOR UPDATE`` clause for this
+        :class:`_expression.GenerativeSelect`.
 
         E.g.::
 
@@ -2259,7 +2320,8 @@ class GenerativeSelect(SelectBase):
          ``nowait``, will render ``FOR SHARE NOWAIT``.
 
         :param of: SQL expression or list of SQL expression elements
-         (typically :class:`.Column` objects or a compatible expression) which
+         (typically :class:`_schema.Column`
+         objects or a compatible expression) which
          will render into a ``FOR UPDATE OF`` clause; supported by PostgreSQL
          and Oracle.  May render as a table or as a column depending on
          backend.
@@ -2342,7 +2404,7 @@ class GenerativeSelect(SelectBase):
         support ``LIMIT`` will attempt to provide similar
         functionality.
 
-        .. versionchanged:: 1.0.0 - :meth:`.Select.limit` can now
+        .. versionchanged:: 1.0.0 - :meth:`_expression.Select.limit` can now
            accept arbitrary SQL expressions as well as integer values.
 
         :param limit: an integer LIMIT parameter, or a SQL expression
@@ -2364,7 +2426,7 @@ class GenerativeSelect(SelectBase):
         functionality.
 
 
-        .. versionchanged:: 1.0.0 - :meth:`.Select.offset` can now
+        .. versionchanged:: 1.0.0 - :meth:`_expression.Select.offset` can now
            accept arbitrary SQL expressions as well as integer values.
 
         :param offset: an integer OFFSET parameter, or a SQL expression
@@ -2383,7 +2445,8 @@ class GenerativeSelect(SelectBase):
 
             stmt = select([table]).order_by(table.c.id, table.c.name)
 
-        :param \*order_by: a series of :class:`.ColumnElement` constructs
+        :param \*order_by: a series of :class:`_expression.ColumnElement`
+         constructs
          which will be used to generate an ORDER BY clause.
 
         .. seealso::
@@ -2404,7 +2467,8 @@ class GenerativeSelect(SelectBase):
             stmt = select([table.c.name, func.max(table.c.stat)]).\
             group_by(table.c.name)
 
-        :param \*group_by: a series of :class:`.ColumnElement` constructs
+        :param \*group_by: a series of :class:`_expression.ColumnElement`
+         constructs
          which will be used to generate an GROUP BY clause.
 
         .. seealso::
@@ -2421,12 +2485,13 @@ class GenerativeSelect(SelectBase):
         The criterion will be appended to any pre-existing ORDER BY criterion.
 
         This is an **in-place** mutation method; the
-        :meth:`~.GenerativeSelect.order_by` method is preferred, as it
+        :meth:`_expression.GenerativeSelect.order_by` method is preferred,
+        as it
         provides standard :term:`method chaining`.
 
         .. seealso::
 
-            :meth:`.GenerativeSelect.order_by`
+            :meth:`_expression.GenerativeSelect.order_by`
 
         """
         if len(clauses) == 1 and clauses[0] is None:
@@ -2445,12 +2510,13 @@ class GenerativeSelect(SelectBase):
         The criterion will be appended to any pre-existing GROUP BY criterion.
 
         This is an **in-place** mutation method; the
-        :meth:`~.GenerativeSelect.group_by` method is preferred, as it
+        :meth:`_expression.GenerativeSelect.group_by` method is preferred,
+        as it
         provides standard :term:`method chaining`.
 
         .. seealso::
 
-            :meth:`.GenerativeSelect.group_by`
+            :meth:`_expression.GenerativeSelect.group_by`
 
         """
         if len(clauses) == 1 and clauses[0] is None:
@@ -2480,17 +2546,17 @@ class CompoundSelect(GenerativeSelect):
 
     .. seealso::
 
-        :func:`.union`
+        :func:`_expression.union`
 
-        :func:`.union_all`
+        :func:`_expression.union_all`
 
-        :func:`.intersect`
+        :func:`_expression.intersect`
 
-        :func:`.intersect_all`
+        :func:`_expression.intersect_all`
 
-        :func:`.except`
+        :func:`_expression.except`
 
-        :func:`.except_all`
+        :func:`_expression.except_all`
 
     """
 
@@ -2546,13 +2612,13 @@ class CompoundSelect(GenerativeSelect):
         r"""Return a ``UNION`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         A similar :func:`union()` method is available on all
-        :class:`.FromClause` subclasses.
+        :class:`_expression.FromClause` subclasses.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
            available keyword arguments are the same as those of
@@ -2566,13 +2632,13 @@ class CompoundSelect(GenerativeSelect):
         r"""Return a ``UNION ALL`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         A similar :func:`union_all()` method is available on all
-        :class:`.FromClause` subclasses.
+        :class:`_expression.FromClause` subclasses.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
           available keyword arguments are the same as those of
@@ -2586,10 +2652,10 @@ class CompoundSelect(GenerativeSelect):
         r"""Return an ``EXCEPT`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
           available keyword arguments are the same as those of
@@ -2603,10 +2669,10 @@ class CompoundSelect(GenerativeSelect):
         r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
           available keyword arguments are the same as those of
@@ -2620,10 +2686,10 @@ class CompoundSelect(GenerativeSelect):
         r"""Return an ``INTERSECT`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
           available keyword arguments are the same as those of
@@ -2637,10 +2703,10 @@ class CompoundSelect(GenerativeSelect):
         r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
         The returned object is an instance of
-        :class:`.CompoundSelect`.
+        :class:`_selectable.CompoundSelect`.
 
         \*selects
-          a list of :class:`.Select` instances.
+          a list of :class:`_expression.Select` instances.
 
         \**kwargs
           available keyword arguments are the same as those of
@@ -2760,7 +2826,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     @util.deprecated_params(
         autocommit=(
             "0.6",
-            "The :paramref:`.select.autocommit` parameter is deprecated "
+            "The :paramref:`_expression.select.autocommit` "
+            "parameter is deprecated "
             "and will be removed in a future release.  Please refer to "
             "the :paramref:`.Connection.execution_options.autocommit` "
             "parameter in conjunction with the the "
@@ -2769,9 +2836,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         ),
         for_update=(
             "0.9",
-            "The :paramref:`.select.for_update` parameter is deprecated and "
+            "The :paramref:`_expression.select.for_update` "
+            "parameter is deprecated and "
             "will be removed in a future release.  Please refer to the "
-            ":meth:`.Select.with_for_update` to specify the "
+            ":meth:`_expression.Select.with_for_update` to specify the "
             "structure of the ``FOR UPDATE`` clause.",
         ),
     )
@@ -2787,84 +2855,103 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         suffixes=None,
         **kwargs
     ):
-        """Construct a new :class:`.Select`.
+        """Construct a new :class:`_expression.Select`.
 
         Similar functionality is also available via the
-        :meth:`.FromClause.select` method on any :class:`.FromClause`.
+        :meth:`_expression.FromClause.select` method on any
+        :class:`_expression.FromClause`.
 
-        All arguments which accept :class:`.ClauseElement` arguments also
+        All arguments which accept :class:`_expression.ClauseElement`
+        arguments also
         accept string arguments, which will be converted as appropriate into
-        either :func:`.text()` or :func:`.literal_column()` constructs.
+        either :func:`_expression.text()` or
+        :func:`_expression.literal_column()` constructs.
 
         .. seealso::
 
             :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`.select`.
+            :func:`_expression.select`.
 
         :param columns:
-          A list of :class:`.ColumnElement` or :class:`.FromClause`
+          A list of :class:`_expression.ColumnElement` or
+          :class:`_expression.FromClause`
           objects which will form the columns clause of the resulting
           statement.   For those objects that are instances of
-          :class:`.FromClause` (typically :class:`.Table` or :class:`.Alias`
-          objects), the :attr:`.FromClause.c` collection is extracted
-          to form a collection of :class:`.ColumnElement` objects.
+          :class:`_expression.FromClause` (typically :class:`_schema.Table`
+          or :class:`_expression.Alias`
+          objects), the :attr:`_expression.FromClause.c`
+          collection is extracted
+          to form a collection of :class:`_expression.ColumnElement` objects.
 
-          This parameter will also accept :class:`.Text` constructs as
+          This parameter will also accept :class:`_expression.TextClause`
+          constructs as
           given, as well as ORM-mapped classes.
 
           .. note::
 
-            The :paramref:`.select.columns` parameter is not available
-            in the method form of :func:`.select`, e.g.
-            :meth:`.FromClause.select`.
+            The :paramref:`_expression.select.columns`
+            parameter is not available
+            in the method form of :func:`_expression.select`, e.g.
+            :meth:`_expression.FromClause.select`.
 
           .. seealso::
 
-            :meth:`.Select.column`
+            :meth:`_expression.Select.column`
 
-            :meth:`.Select.with_only_columns`
+            :meth:`_expression.Select.with_only_columns`
 
         :param whereclause:
-          A :class:`.ClauseElement` expression which will be used to form the
+          A :class:`_expression.ClauseElement`
+          expression which will be used to form the
           ``WHERE`` clause.   It is typically preferable to add WHERE
-          criterion to an existing :class:`.Select` using method chaining
-          with :meth:`.Select.where`.
+          criterion to an existing :class:`_expression.Select`
+          using method chaining
+          with :meth:`_expression.Select.where`.
 
           .. seealso::
 
-            :meth:`.Select.where`
+            :meth:`_expression.Select.where`
 
         :param from_obj:
-          A list of :class:`.ClauseElement` objects which will be added to the
+          A list of :class:`_expression.ClauseElement`
+          objects which will be added to the
           ``FROM`` clause of the resulting statement.  This is equivalent
-          to calling :meth:`.Select.select_from` using method chaining on
-          an existing :class:`.Select` object.
+          to calling :meth:`_expression.Select.select_from`
+          using method chaining on
+          an existing :class:`_expression.Select` object.
 
           .. seealso::
 
-            :meth:`.Select.select_from` - full description of explicit
+            :meth:`_expression.Select.select_from`
+            - full description of explicit
             FROM clause specification.
 
         :param autocommit: legacy autocommit parameter.
 
         :param bind=None:
-          an :class:`~.Engine` or :class:`~.Connection` instance
+          an :class:`_engine.Engine` or :class:`_engine.Connection` instance
           to which the
-          resulting :class:`.Select` object will be bound.  The
-          :class:`.Select` object will otherwise automatically bind to
+          resulting :class:`_expression.Select` object will be bound.  The
+          :class:`_expression.Select`
+          object will otherwise automatically bind to
           whatever :class:`~.base.Connectable` instances can be located within
-          its contained :class:`.ClauseElement` members.
+          its contained :class:`_expression.ClauseElement` members.
 
         :param correlate=True:
-          indicates that this :class:`.Select` object should have its
-          contained :class:`.FromClause` elements "correlated" to an enclosing
-          :class:`.Select` object.  It is typically preferable to specify
-          correlations on an existing :class:`.Select` construct using
-          :meth:`.Select.correlate`.
+          indicates that this :class:`_expression.Select`
+          object should have its
+          contained :class:`_expression.FromClause`
+          elements "correlated" to an enclosing
+          :class:`_expression.Select` object.
+          It is typically preferable to specify
+          correlations on an existing :class:`_expression.Select`
+          construct using
+          :meth:`_expression.Select.correlate`.
 
           .. seealso::
 
-            :meth:`.Select.correlate` - full description of correlation.
+            :meth:`_expression.Select.correlate`
+            - full description of correlation.
 
         :param distinct=False:
           when ``True``, applies a ``DISTINCT`` qualifier to the columns
@@ -2875,12 +2962,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           is understood by the PostgreSQL dialect to render the
           ``DISTINCT ON (<columns>)`` syntax.
 
-          ``distinct`` is also available on an existing :class:`.Select`
-          object via the :meth:`~.Select.distinct` method.
+          ``distinct`` is also available on an existing
+          :class:`_expression.Select`
+          object via the :meth:`_expression.Select.distinct` method.
 
           .. seealso::
 
-            :meth:`.Select.distinct`
+            :meth:`_expression.Select.distinct`
 
         :param for_update=False:
           when ``True``, applies ``FOR UPDATE`` to the end of the
@@ -2898,62 +2986,69 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
          .. seealso::
 
-            :meth:`.Select.with_for_update` - improved API for
+            :meth:`_expression.Select.with_for_update` - improved API for
             specifying the ``FOR UPDATE`` clause.
 
         :param group_by:
-          a list of :class:`.ClauseElement` objects which will comprise the
+          a list of :class:`_expression.ClauseElement`
+          objects which will comprise the
           ``GROUP BY`` clause of the resulting select.  This parameter
           is typically specified more naturally using the
-          :meth:`.Select.group_by` method on an existing :class:`.Select`.
+          :meth:`_expression.Select.group_by` method on an existing
+          :class:`_expression.Select`.
 
           .. seealso::
 
-            :meth:`.Select.group_by`
+            :meth:`_expression.Select.group_by`
 
         :param having:
-          a :class:`.ClauseElement` that will comprise the ``HAVING`` clause
+          a :class:`_expression.ClauseElement`
+          that will comprise the ``HAVING`` clause
           of the resulting select when ``GROUP BY`` is used.  This parameter
           is typically specified more naturally using the
-          :meth:`.Select.having` method on an existing :class:`.Select`.
+          :meth:`_expression.Select.having` method on an existing
+          :class:`_expression.Select`.
 
           .. seealso::
 
-            :meth:`.Select.having`
+            :meth:`_expression.Select.having`
 
         :param limit=None:
           a numerical value which usually renders as a ``LIMIT``
           expression in the resulting select.  Backends that don't
           support ``LIMIT`` will attempt to provide similar
           functionality.    This parameter is typically specified more
-          naturally using the :meth:`.Select.limit` method on an existing
-          :class:`.Select`.
+          naturally using the :meth:`_expression.Select.limit`
+          method on an existing
+          :class:`_expression.Select`.
 
           .. seealso::
 
-            :meth:`.Select.limit`
+            :meth:`_expression.Select.limit`
 
         :param offset=None:
           a numeric value which usually renders as an ``OFFSET``
           expression in the resulting select.  Backends that don't
           support ``OFFSET`` will attempt to provide similar
           functionality.  This parameter is typically specified more naturally
-          using the :meth:`.Select.offset` method on an existing
-          :class:`.Select`.
+          using the :meth:`_expression.Select.offset` method on an existing
+          :class:`_expression.Select`.
 
           .. seealso::
 
-            :meth:`.Select.offset`
+            :meth:`_expression.Select.offset`
 
         :param order_by:
-          a scalar or list of :class:`.ClauseElement` objects which will
+          a scalar or list of :class:`_expression.ClauseElement`
+          objects which will
           comprise the ``ORDER BY`` clause of the resulting select.
           This parameter is typically specified more naturally using the
-          :meth:`.Select.order_by` method on an existing :class:`.Select`.
+          :meth:`_expression.Select.order_by` method on an existing
+          :class:`_expression.Select`.
 
           .. seealso::
 
-            :meth:`.Select.order_by`
+            :meth:`_expression.Select.order_by`
 
         :param use_labels=False:
           when ``True``, the statement will be generated using labels
@@ -2961,16 +3056,18 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
           column with its parent table's (or aliases) name so that name
           conflicts between columns in different tables don't occur.
           The format of the label is <tablename>_<column>.  The "c"
-          collection of the resulting :class:`.Select` object will use these
+          collection of the resulting :class:`_expression.Select`
+          object will use these
           names as well for targeting column members.
 
           This parameter can also be specified on an existing
-          :class:`.Select` object using the :meth:`.Select.apply_labels`
+          :class:`_expression.Select` object using the
+          :meth:`_expression.Select.apply_labels`
           method.
 
           .. seealso::
 
-            :meth:`.Select.apply_labels`
+            :meth:`_expression.Select.apply_labels`
 
         """
         self._auto_correlate = correlate
@@ -3158,9 +3255,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         return self._get_display_froms()
 
     def with_statement_hint(self, text, dialect_name="*"):
-        """add a statement hint to this :class:`.Select`.
+        """add a statement hint to this :class:`_expression.Select`.
 
-        This method is similar to :meth:`.Select.with_hint` except that
+        This method is similar to :meth:`_expression.Select.with_hint`
+        except that
         it does not require an individual table, and instead applies to the
         statement as a whole.
 
@@ -3172,7 +3270,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         .. seealso::
 
-            :meth:`.Select.with_hint`
+            :meth:`_expression.Select.with_hint`
 
             :meth:.`.Select.prefix_with` - generic SELECT prefixing which also
             can suit some database-specific HINT syntaxes such as MySQL
@@ -3184,11 +3282,12 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
     @_generative
     def with_hint(self, selectable, text, dialect_name="*"):
         r"""Add an indexing or other executional context hint for the given
-        selectable to this :class:`.Select`.
+        selectable to this :class:`_expression.Select`.
 
         The text of the hint is rendered in the appropriate
         location for the database backend in use, relative
-        to the given :class:`.Table` or :class:`.Alias` passed as the
+        to the given :class:`_schema.Table` or :class:`_expression.Alias`
+        passed as the
         ``selectable`` argument. The dialect implementation
         typically uses Python string substitution syntax
         with the token ``%(name)s`` to render the name of
@@ -3212,7 +3311,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
         .. seealso::
 
-            :meth:`.Select.with_statement_hint`
+            :meth:`_expression.Select.with_statement_hint`
 
         """
         if selectable is None:
@@ -3364,9 +3463,10 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
                 my_select = my_select.column(table.c.new_column)
 
-            See the documentation for :meth:`.Select.with_only_columns`
+            See the documentation for
+            :meth:`_expression.Select.with_only_columns`
             for guidelines on adding /replacing the columns of a
-            :class:`.Select` object.
+            :class:`_expression.Select` object.
 
         """
         self.append_column(column)
@@ -3381,7 +3481,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         comparison in the WHERE clause of the statement.   The primary purpose
         of this method is to automatically construct a select statement
         with all uniquely-named columns, without the need to use
-        table-qualified labels as :meth:`.apply_labels` does.
+        table-qualified labels as :meth:`_expression.Select.apply_labels` does
+        .
 
         When columns are omitted based on foreign key, the referred-to
         column is the one that's kept.  When columns are omitted based on
@@ -3403,11 +3504,11 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def with_only_columns(self, columns):
-        r"""Return a new :func:`.select` construct with its columns
+        r"""Return a new :func:`_expression.select` construct with its columns
         clause replaced with the given columns.
 
         This method is exactly equivalent to as if the original
-        :func:`.select` had been called with the given columns
+        :func:`_expression.select` had been called with the given columns
         clause.   I.e. a statement::
 
             s = select([table1.c.a, table1.c.b])
@@ -3433,7 +3534,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         The preferred way to maintain a specific FROM clause
         in the construct, assuming it won't be represented anywhere
         else (i.e. not in the WHERE clause, etc.) is to set it using
-        :meth:`.Select.select_from`::
+        :meth:`_expression.Select.select_from`::
 
             >>> s1 = select([table1.c.a, table2.c.b]).\
             ...         select_from(table1.join(table2,
@@ -3443,13 +3544,16 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
 
         Care should also be taken to use the correct
-        set of column objects passed to :meth:`.Select.with_only_columns`.
+        set of column objects passed to
+        :meth:`_expression.Select.with_only_columns`.
         Since the method is essentially equivalent to calling the
-        :func:`.select` construct in the first place with the given
-        columns, the columns passed to :meth:`.Select.with_only_columns`
+        :func:`_expression.select` construct in the first place with the given
+        columns, the columns passed to
+        :meth:`_expression.Select.with_only_columns`
         should usually be a subset of those which were passed
-        to the :func:`.select` construct, not those which are available
-        from the ``.c`` collection of that :func:`.select`.  That
+        to the :func:`_expression.select` construct,
+        not those which are available
+        from the ``.c`` collection of that :func:`_expression.select`.  That
         is::
 
             s = select([table1.c.a, table1.c.b]).select_from(table1)
@@ -3466,7 +3570,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             FROM (SELECT t1.a AS a, t1.b AS b
             FROM t1), t1
 
-        Since the :func:`.select` construct is essentially being
+        Since the :func:`_expression.select` construct is essentially being
         asked to select both from ``table1`` as well as itself.
 
         """
@@ -3517,7 +3621,7 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def select_from(self, fromclause):
-        r"""return a new :func:`.select` construct with the
+        r"""return a new :func:`_expression.select` construct with the
         given FROM expression
         merged into its list of FROM objects.
 
@@ -3531,14 +3635,17 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
                 )
 
         The "from" list is a unique set on the identity of each element,
-        so adding an already present :class:`.Table` or other selectable
-        will have no effect.   Passing a :class:`.Join` that refers
-        to an already present :class:`.Table` or other selectable will have
+        so adding an already present :class:`_schema.Table`
+        or other selectable
+        will have no effect.   Passing a :class:`_expression.Join` that refers
+        to an already present :class:`_schema.Table`
+        or other selectable will have
         the effect of concealing the presence of that selectable as
         an individual element in the rendered FROM list, instead
         rendering it into a JOIN clause.
 
-        While the typical purpose of :meth:`.Select.select_from` is to
+        While the typical purpose of :meth:`_expression.Select.select_from`
+        is to
         replace the default, derived FROM clause with a join, it can
         also be called with individual table elements, multiple times
         if desired, in the case that the FROM clause cannot be fully
@@ -3551,41 +3658,52 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def correlate(self, *fromclauses):
-        r"""return a new :class:`.Select` which will correlate the given FROM
-        clauses to that of an enclosing :class:`.Select`.
+        r"""return a new :class:`_expression.Select`
+        which will correlate the given FROM
+        clauses to that of an enclosing :class:`_expression.Select`.
 
-        Calling this method turns off the :class:`.Select` object's
+        Calling this method turns off the :class:`_expression.Select` object's
         default behavior of "auto-correlation".  Normally, FROM elements
-        which appear in a :class:`.Select` that encloses this one via
+        which appear in a :class:`_expression.Select`
+        that encloses this one via
         its :term:`WHERE clause`, ORDER BY, HAVING or
-        :term:`columns clause` will be omitted from this :class:`.Select`
+        :term:`columns clause` will be omitted from this
+        :class:`_expression.Select`
         object's :term:`FROM clause`.
         Setting an explicit correlation collection using the
-        :meth:`.Select.correlate` method provides a fixed list of FROM objects
+        :meth:`_expression.Select.correlate`
+        method provides a fixed list of FROM objects
         that can potentially take place in this process.
 
-        When :meth:`.Select.correlate` is used to apply specific FROM clauses
+        When :meth:`_expression.Select.correlate`
+        is used to apply specific FROM clauses
         for correlation, the FROM elements become candidates for
-        correlation regardless of how deeply nested this :class:`.Select`
-        object is, relative to an enclosing :class:`.Select` which refers to
+        correlation regardless of how deeply nested this
+        :class:`_expression.Select`
+        object is, relative to an enclosing :class:`_expression.Select`
+        which refers to
         the same FROM object.  This is in contrast to the behavior of
         "auto-correlation" which only correlates to an immediate enclosing
-        :class:`.Select`.   Multi-level correlation ensures that the link
-        between enclosed and enclosing :class:`.Select` is always via
+        :class:`_expression.Select`.
+        Multi-level correlation ensures that the link
+        between enclosed and enclosing :class:`_expression.Select`
+        is always via
         at least one WHERE/ORDER BY/HAVING/columns clause in order for
         correlation to take place.
 
-        If ``None`` is passed, the :class:`.Select` object will correlate
+        If ``None`` is passed, the :class:`_expression.Select`
+        object will correlate
         none of its FROM entries, and all will render unconditionally
         in the local FROM clause.
 
-        :param \*fromclauses: a list of one or more :class:`.FromClause`
+        :param \*fromclauses: a list of one or more
+         :class:`_expression.FromClause`
          constructs, or other compatible constructs (i.e. ORM-mapped
          classes) to become part of the correlate collection.
 
         .. seealso::
 
-            :meth:`.Select.correlate_except`
+            :meth:`_expression.Select.correlate_except`
 
             :ref:`correlated_subqueries`
 
@@ -3600,26 +3718,29 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
 
     @_generative
     def correlate_except(self, *fromclauses):
-        r"""return a new :class:`.Select` which will omit the given FROM
+        r"""return a new :class:`_expression.Select`
+        which will omit the given FROM
         clauses from the auto-correlation process.
 
-        Calling :meth:`.Select.correlate_except` turns off the
-        :class:`.Select` object's default behavior of
+        Calling :meth:`_expression.Select.correlate_except` turns off the
+        :class:`_expression.Select` object's default behavior of
         "auto-correlation" for the given FROM elements.  An element
         specified here will unconditionally appear in the FROM list, while
         all other FROM elements remain subject to normal auto-correlation
         behaviors.
 
-        If ``None`` is passed, the :class:`.Select` object will correlate
+        If ``None`` is passed, the :class:`_expression.Select`
+        object will correlate
         all of its FROM entries.
 
-        :param \*fromclauses: a list of one or more :class:`.FromClause`
+        :param \*fromclauses: a list of one or more
+         :class:`_expression.FromClause`
          constructs, or other compatible constructs (i.e. ORM-mapped
          classes) to become part of the correlate-exception collection.
 
         .. seealso::
 
-            :meth:`.Select.correlate`
+            :meth:`_expression.Select.correlate`
 
             :ref:`correlated_subqueries`
 
@@ -3638,7 +3759,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         construct.
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.correlate` method is preferred, as it provides
+        :meth:`_expression.Select.correlate` method is preferred,
+        as it provides
         standard :term:`method chaining`.
 
         """
@@ -3657,12 +3779,13 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
             my_select.append_column(some_table.c.new_column)
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.column` method is preferred, as it provides standard
+        :meth:`_expression.Select.column` method is preferred,
+        as it provides standard
         :term:`method chaining`.
 
-        See the documentation for :meth:`.Select.with_only_columns`
+        See the documentation for :meth:`_expression.Select.with_only_columns`
         for guidelines on adding /replacing the columns of a
-        :class:`.Select` object.
+        :class:`_expression.Select` object.
 
         """
         self._reset_exported()
@@ -3678,7 +3801,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         construct.
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.prefix_with` method is preferred, as it provides
+        :meth:`_expression.Select.prefix_with` method is preferred,
+        as it provides
         standard :term:`method chaining`.
 
         """
@@ -3692,7 +3816,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         The expression will be joined to existing WHERE criterion via AND.
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.where` method is preferred, as it provides standard
+        :meth:`_expression.Select.where` method is preferred,
+        as it provides standard
         :term:`method chaining`.
 
         """
@@ -3707,7 +3832,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         The expression will be joined to existing HAVING criterion via AND.
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.having` method is preferred, as it provides standard
+        :meth:`_expression.Select.having` method is preferred,
+        as it provides standard
         :term:`method chaining`.
 
         """
@@ -3719,7 +3845,8 @@ class Select(HasPrefixes, HasSuffixes, GenerativeSelect):
         FROM clause.
 
         This is an **in-place** mutation method; the
-        :meth:`~.Select.select_from` method is preferred, as it provides
+        :meth:`_expression.Select.select_from` method is preferred,
+        as it provides
         standard :term:`method chaining`.
 
         """
@@ -3892,7 +4019,7 @@ class ScalarSelect(Generative, Grouping):
     @_generative
     def where(self, crit):
         """Apply a WHERE clause to the SELECT statement referred to
-        by this :class:`.ScalarSelect`.
+        by this :class:`_expression.ScalarSelect`.
 
         """
         self.element = self.element.where(crit)
@@ -3910,8 +4037,8 @@ class Exists(UnaryExpression):
     _from_objects = []
 
     def __init__(self, *args, **kwargs):
-        """Construct a new :class:`.Exists` against an existing
-        :class:`.Select` object.
+        """Construct a new :class:`_expression.Exists` against an existing
+        :class:`_expression.Select` object.
 
         Calling styles are of the following forms::
 
@@ -3956,8 +4083,10 @@ class Exists(UnaryExpression):
         return e
 
     def select_from(self, clause):
-        """return a new :class:`.Exists` construct, applying the given
-        expression to the :meth:`.Select.select_from` method of the select
+        """return a new :class:`_expression.Exists` construct,
+        applying the given
+        expression to the :meth:`_expression.Select.select_from`
+        method of the select
         statement contained.
 
         """
@@ -3976,23 +4105,27 @@ class Exists(UnaryExpression):
 
 
 class TextAsFrom(SelectBase):
-    """Wrap a :class:`.TextClause` construct within a :class:`.SelectBase`
+    """Wrap a :class:`_expression.TextClause` construct within a
+    :class:`_expression.SelectBase`
     interface.
 
-    This allows the :class:`.TextClause` object to gain a ``.c`` collection
-    and other FROM-like capabilities such as :meth:`.FromClause.alias`,
-    :meth:`.SelectBase.cte`, etc.
+    This allows the :class:`_expression.TextClause` object to gain a ``.
+    c`` collection
+    and other FROM-like capabilities such as
+    :meth:`_expression.FromClause.alias`,
+    :meth:`_expression.SelectBase.cte`, etc.
 
     The :class:`.TextAsFrom` construct is produced via the
-    :meth:`.TextClause.columns` method - see that method for details.
+    :meth:`_expression.TextClause.columns`
+    method - see that method for details.
 
     .. versionadded:: 0.9.0
 
     .. seealso::
 
-        :func:`.text`
+        :func:`_expression.text`
 
-        :meth:`.TextClause.columns`
+        :meth:`_expression.TextClause.columns`
 
     """
 

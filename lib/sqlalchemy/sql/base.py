@@ -349,8 +349,9 @@ class Executable(Generative):
         execution.
 
         Execution options can be set on a per-statement or
-        per :class:`.Connection` basis.   Additionally, the
-        :class:`.Engine` and ORM :class:`~.orm.query.Query` objects provide
+        per :class:`_engine.Connection` basis.   Additionally, the
+        :class:`_engine.Engine` and ORM :class:`~.orm.query.Query`
+        objects provide
         access to execution options which they in turn configure upon
         connections.
 
@@ -363,14 +364,14 @@ class Executable(Generative):
         Note that only a subset of possible execution options can be applied
         to a statement - these include "autocommit" and "stream_results",
         but not "isolation_level" or "compiled_cache".
-        See :meth:`.Connection.execution_options` for a full list of
+        See :meth:`_engine.Connection.execution_options` for a full list of
         possible options.
 
         .. seealso::
 
-            :meth:`.Connection.execution_options`
+            :meth:`_engine.Connection.execution_options`
 
-            :meth:`.Query.execution_options`
+            :meth:`_query.Query.execution_options`
 
             :meth:`.Executable.get_execution_options`
 
@@ -424,7 +425,8 @@ class Executable(Generative):
 
     @property
     def bind(self):
-        """Returns the :class:`.Engine` or :class:`.Connection` to
+        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
+        to
         which this :class:`.Executable` is bound, or None if none found.
 
         This is a traversal which checks locally, then

@@ -25,10 +25,11 @@ from ..util import threading
 
 class QueuePool(Pool):
 
-    """A :class:`.Pool` that imposes a limit on the number of open connections.
+    """A :class:`_pool.Pool`
+    that imposes a limit on the number of open connections.
 
     :class:`.QueuePool` is the default pooling implementation used for
-    all :class:`.Engine` objects, unless the SQLite dialect is in use.
+    all :class:`_engine.Engine` objects, unless the SQLite dialect is in use.
 
     """
 
@@ -45,7 +46,7 @@ class QueuePool(Pool):
         Construct a QueuePool.
 
         :param creator: a callable function that returns a DB-API
-          connection object, same as that of :paramref:`.Pool.creator`.
+          connection object, same as that of :paramref:`_pool.Pool.creator`.
 
         :param pool_size: The size of the pool to be maintained,
           defaults to 5. This is the largest number of connections that
@@ -88,9 +89,9 @@ class QueuePool(Pool):
             :ref:`pool_disconnects`
 
         :param \**kw: Other keyword arguments including
-          :paramref:`.Pool.recycle`, :paramref:`.Pool.echo`,
-          :paramref:`.Pool.reset_on_return` and others are passed to the
-          :class:`.Pool` constructor.
+          :paramref:`_pool.Pool.recycle`, :paramref:`_pool.Pool.echo`,
+          :paramref:`_pool.Pool.reset_on_return` and others are passed to the
+          :class:`_pool.Pool` constructor.
 
         """
         Pool.__init__(self, creator, **kw)
@@ -275,7 +276,7 @@ class SingletonThreadPool(Pool):
        for production use.
 
 
-    Options are the same as those of :class:`.Pool`, as well as:
+    Options are the same as those of :class:`_pool.Pool`, as well as:
 
     :param pool_size: The number of threads in which to maintain connections
         at once.  Defaults to five.
@@ -420,7 +421,7 @@ class StaticPool(Pool):
 
 class AssertionPool(Pool):
 
-    """A :class:`.Pool` that allows at most one checked out connection at
+    """A :class:`_pool.Pool` that allows at most one checked out connection at
     any given time.
 
     This will raise an exception if more than one connection is checked out

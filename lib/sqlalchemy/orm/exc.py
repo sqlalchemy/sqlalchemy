@@ -109,7 +109,7 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
     row corresponding to an object's known primary key identity.
 
     A refresh operation proceeds when an expired attribute is
-    accessed on an object, or when :meth:`.Query.get` is
+    accessed on an object, or when :meth:`_query.Query.get` is
     used to retrieve an object which is, upon retrieval, detected
     as expired.   A SELECT is emitted for the target row
     based on primary key; if no row is returned, this

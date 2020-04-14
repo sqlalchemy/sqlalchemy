@@ -47,7 +47,7 @@ details.
 Controlling DDL Sequences
 -------------------------
 
-The :class:`~.schema.DDL` construct introduced previously also has the
+The :class:`_schema.DDL` construct introduced previously also has the
 ability to be invoked conditionally based on inspection of the
 database.  This feature is available using the :meth:`.DDLElement.execute_if`
 method.  For example, if we wanted to create a trigger but only on
@@ -167,8 +167,8 @@ The event-driven DDL system described in the previous section
 :ref:`schema_ddl_sequences` is available with other :class:`.DDLElement`
 objects as well.  However, when dealing with the built-in constructs
 such as :class:`.CreateIndex`, :class:`.CreateSequence`, etc, the event
-system is of **limited** use, as methods like :meth:`.Table.create` and
-:meth:`.MetaData.create_all` will invoke these constructs unconditionally.
+system is of **limited** use, as methods like :meth:`_schema.Table.create` and
+:meth:`_schema.MetaData.create_all` will invoke these constructs unconditionally.
 In a future SQLAlchemy release, the DDL event system including conditional
 execution will taken into account for built-in constructs that currently
 invoke in all cases.
@@ -220,7 +220,7 @@ While the above example is against the built-in :class:`.AddConstraint`
 and :class:`.DropConstraint` objects, the main usefulness of DDL events
 for now remains focused on the use of the :class:`.DDL` construct itself,
 as well as with user-defined subclasses of :class:`.DDLElement` that aren't
-already part of the :meth:`.MetaData.create_all`, :meth:`.Table.create`,
+already part of the :meth:`_schema.MetaData.create_all`, :meth:`_schema.Table.create`,
 and corresponding "drop" processes.
 
 .. _schema_api_ddl:

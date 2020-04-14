@@ -445,7 +445,7 @@ Querying with Association Proxies
 ---------------------------------
 
 The :class:`.AssociationProxy` features simple SQL construction capabilities
-which relate down to the underlying :func:`.relationship` in use as well
+which relate down to the underlying :func:`_orm.relationship` in use as well
 as the target attribute.  For example, the :meth:`.RelationshipProperty.Comparator.any`
 and :meth:`.RelationshipProperty.Comparator.has` operations are available, and will produce
 a "nested" EXISTS clause, such as in our basic association object example::
@@ -479,7 +479,7 @@ and ``.contains()`` is available for a proxy to a scalar collection::
         AND keyword.id = userkeywords.keyword_id
         AND keyword.keyword = :keyword_1)
 
-:class:`.AssociationProxy` can be used with :meth:`.Query.join` somewhat manually
+:class:`.AssociationProxy` can be used with :meth:`_query.Query.join` somewhat manually
 using the :attr:`~.AssociationProxy.attr` attribute in a star-args context::
 
     q = session.query(User).join(*User.keywords.attr)

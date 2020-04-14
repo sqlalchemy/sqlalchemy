@@ -283,7 +283,7 @@ class Compiled(object):
 
         :param dialect: :class:`.Dialect` to compile against.
 
-        :param statement: :class:`.ClauseElement` to be compiled.
+        :param statement: :class:`_expression.ClauseElement` to be compiled.
 
         :param bind: Optional Engine or Connection to compile this
           statement against.
@@ -445,7 +445,7 @@ class prefix_anon_map(dict):
 class SQLCompiler(Compiled):
     """Default implementation of :class:`.Compiled`.
 
-    Compiles :class:`.ClauseElement` objects into SQL strings.
+    Compiles :class:`_expression.ClauseElement` objects into SQL strings.
 
     """
 
@@ -531,7 +531,7 @@ class SQLCompiler(Compiled):
 
         :param dialect: :class:`.Dialect` to be used
 
-        :param statement: :class:`.ClauseElement` to be compiled
+        :param statement: :class:`_expression.ClauseElement` to be compiled
 
         :param column_keys:  a list of column names to be compiled into an
          INSERT or UPDATE statement.
@@ -2772,10 +2772,12 @@ class StrSQLCompiler(SQLCompiler):
 
     The :class:`.StrSQLCompiler` is invoked whenever a Core expression
     element is directly stringified without calling upon the
-    :meth:`.ClauseElement.compile` method.   It can render a limited set
+    :meth:`_expression.ClauseElement.compile` method.
+    It can render a limited set
     of non-standard SQL constructs to assist in basic stringification,
     however for more substantial custom or dialect-specific SQL constructs,
-    it will be necessary to make use of :meth:`.ClauseElement.compile`
+    it will be necessary to make use of
+    :meth:`_expression.ClauseElement.compile`
     directly.
 
     .. seealso::

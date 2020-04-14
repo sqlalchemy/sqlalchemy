@@ -51,7 +51,8 @@ class TLEngine(base.Engine):
         "The 'threadlocal' engine strategy is deprecated, and will be "
         "removed in a future release.  The strategy is no longer relevant "
         "to modern usage patterns (including that of the ORM "
-        ":class:`.Session` object) which make use of a :class:`.Connection` "
+        ":class:`.Session` object) which make use of a "
+        ":class:`_engine.Connection` "
         "object in order to invoke statements.",
     )
     def __init__(self, *args, **kwargs):

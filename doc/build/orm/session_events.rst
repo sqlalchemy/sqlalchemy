@@ -102,8 +102,8 @@ The events are:
 * :meth:`.MapperEvents.before_delete`
 * :meth:`.MapperEvents.after_delete`
 
-Each event is passed the :class:`.Mapper`,
-the mapped object itself, and the :class:`.Connection` which is being
+Each event is passed the :class:`_orm.Mapper`,
+the mapped object itself, and the :class:`_engine.Connection` which is being
 used to emit an INSERT, UPDATE or DELETE statement.     The appeal of these
 events is clear, in that if an application wants to tie some activity to
 when a specific type of object is persisted with an INSERT, the hook is
@@ -127,10 +127,10 @@ events include:
 * Mapped relationship attribute set/del events,
   i.e. ``someobject.related = someotherobject``
 
-The reason the :class:`.Connection` is passed is that it is encouraged that
-**simple SQL operations take place here**, directly on the :class:`.Connection`,
+The reason the :class:`_engine.Connection` is passed is that it is encouraged that
+**simple SQL operations take place here**, directly on the :class:`_engine.Connection`,
 such as incrementing counters or inserting extra rows within log tables.
-When dealing with the :class:`.Connection`, it is expected that Core-level
+When dealing with the :class:`_engine.Connection`, it is expected that Core-level
 SQL operations will be used; e.g. those described in :ref:`sqlexpression_toplevel`.
 
 There are also many per-object operations that don't need to be handled
@@ -392,7 +392,7 @@ Transaction Events
 
 Transaction events allow an application to be notified when transaction
 boundaries occur at the :class:`.Session` level as well as when the
-:class:`.Session` changes the transactional state on :class:`.Connection`
+:class:`.Session` changes the transactional state on :class:`_engine.Connection`
 objects.
 
 * :meth:`.SessionEvents.after_transaction_create`,

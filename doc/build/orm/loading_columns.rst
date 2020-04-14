@@ -13,10 +13,10 @@ Deferred Column Loading
 
 Deferred column loading allows particular columns of a table be loaded only
 upon direct access, instead of when the entity is queried using
-:class:`.Query`.  This feature is useful when one wants to avoid
+:class:`_query.Query`.  This feature is useful when one wants to avoid
 loading a large text or binary field into memory when it's not needed.
 Individual columns can be lazy loaded by themselves or placed into groups that
-lazy-load together, using the :func:`.orm.deferred` function to
+lazy-load together, using the :func:`_orm.deferred` function to
 mark them as "deferred". In the example below, we define a mapping that will load each of
 ``.excerpt`` and ``.photo`` in separate, individual-row SELECT statements when each
 attribute is first referenced on the individual object instance::
@@ -33,8 +33,8 @@ attribute is first referenced on the individual object instance::
         excerpt = deferred(Column(Text))
         photo = deferred(Column(Binary))
 
-Classical mappings as always place the usage of :func:`.orm.deferred` in the
-``properties`` dictionary against the table-bound :class:`.Column`::
+Classical mappings as always place the usage of :func:`_orm.deferred` in the
+``properties`` dictionary against the table-bound :class:`_schema.Column`::
 
     mapper(Book, book_table, properties={
         'photo':deferred(book_table.c.photo)
@@ -63,9 +63,9 @@ Deferred Column Loader Query Options
 ------------------------------------
 
 Columns can be marked as "deferred" or reset to "undeferred" at query time
-using options which are passed to the :meth:`.Query.options` method; the most
-basic query options are :func:`.orm.defer` and
-:func:`.orm.undefer`::
+using options which are passed to the :meth:`_query.Query.options` method; the most
+basic query options are :func:`_orm.defer` and
+:func:`_orm.undefer`::
 
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import undefer
@@ -77,8 +77,8 @@ basic query options are :func:`.orm.defer` and
 Above, the "summary" column will not load until accessed, and the "excerpt"
 column will load immediately even if it was mapped as a "deferred" column.
 
-:func:`.orm.deferred` attributes which are marked with a "group" can be undeferred
-using :func:`.orm.undefer_group`, sending in the group name::
+:func:`_orm.deferred` attributes which are marked with a "group" can be undeferred
+using :func:`_orm.undefer_group`, sending in the group name::
 
     from sqlalchemy.orm import undefer_group
 
@@ -90,7 +90,7 @@ using :func:`.orm.undefer_group`, sending in the group name::
 Deferred Loading across Multiple Entities
 -----------------------------------------
 
-To specify column deferral for a :class:`.Query` that loads multiple types of
+To specify column deferral for a :class:`_query.Query` that loads multiple types of
 entities at once, the deferral options may be specified more explicitly using
 class-bound attributes, rather than string names::
 
@@ -107,7 +107,7 @@ further levels of relationships, as well as onto column-oriented attributes at
 that path. Such as, to load ``Author`` instances, then joined-eager-load the
 ``Author.books`` collection for each author, then apply deferral options to
 column-oriented attributes onto each ``Book`` entity from that relationship,
-the :func:`.joinedload` loader option can be combined with the :func:`.load_only`
+the :func:`_orm.joinedload` loader option can be combined with the :func:`.load_only`
 option (described later in this section) to defer all ``Book`` columns except
 those explicitly specified::
 
@@ -119,7 +119,7 @@ those explicitly specified::
             )
 
 Option structures as above can also be organized in more complex ways, such
-as hierarchically using the :meth:`.Load.options`
+as hierarchically using the :meth:`_orm.Load.options`
 method, which allows multiple sub-options to be chained to a common parent
 option at once.  Any mixture of string names and class-bound attribute objects
 may be used::
@@ -139,14 +139,14 @@ may be used::
                 )
             )
 
-.. versionadded:: 1.3.6  Added :meth:`.Load.options` to allow easier
+.. versionadded:: 1.3.6  Added :meth:`_orm.Load.options` to allow easier
    construction of hierarchies of loader options.
 
-Another way to apply options to a path is to use the :func:`.orm.defaultload`
+Another way to apply options to a path is to use the :func:`_orm.defaultload`
 function.   This function is used to indicate a particular path within a loader
 option structure without actually setting any options at that level, so that further
-sub-options may be applied.  The :func:`.orm.defaultload` function can be used
-to create the same structure as we did above using :meth:`.Load.options` as::
+sub-options may be applied.  The :func:`_orm.defaultload` function can be used
+to create the same structure as we did above using :meth:`_orm.Load.options` as::
 
     query = session.query(Author)
     query = query.options(
@@ -182,7 +182,7 @@ and "excerpt" fields in the SELECT, along with the primary key columns which
 are always used by the ORM.
 
 A similar function is available with less verbosity by using the
-:func:`.orm.load_only` option.  This is a so-called **exclusionary** option
+:func:`_orm.load_only` option.  This is a so-called **exclusionary** option
 which will apply deferred behavior to all column attributes except those
 that are named::
 
@@ -194,14 +194,14 @@ Wildcard and Exclusionary Options with Multiple-Entity Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Wildcard options and exclusionary options such as :func:`.load_only` may
-only be applied to a single entity at a time within a :class:`.Query`.  To
-suit the less common case where a :class:`.Query` is returning multiple
+only be applied to a single entity at a time within a :class:`_query.Query`.  To
+suit the less common case where a :class:`_query.Query` is returning multiple
 primary entities at once, a special calling style may be required in order
 to apply a wildcard or exclusionary option, which is to use the
-:class:`.Load` object to indicate the starting entity for a deferral option.
-Such as, if we were loading ``Book`` and ``Author`` at once, the :class:`.Query`
+:class:`_orm.Load` object to indicate the starting entity for a deferral option.
+Such as, if we were loading ``Book`` and ``Author`` at once, the :class:`_query.Query`
 will raise an informative error if we try to apply :func:`.load_only` to
-both at once.  Using :class:`.Load` looks like::
+both at once.  Using :class:`_orm.Load` looks like::
 
     from sqlalchemy.orm import Load
 
@@ -210,12 +210,12 @@ both at once.  Using :class:`.Load` looks like::
                 Load(Book).load_only("summary", "excerpt")
             )
 
-Above, :class:`.Load` is used in conjunction with the exclusionary option
+Above, :class:`_orm.Load` is used in conjunction with the exclusionary option
 :func:`.load_only` so that the deferral of all other columns only takes
 place for the ``Book`` class and not the ``Author`` class.   Again,
-the :class:`.Query` object should raise an informative error message when
+the :class:`_query.Query` object should raise an informative error message when
 the above calling style is actually required that describes those cases
-where explicit use of :class:`.Load` is needed.
+where explicit use of :class:`_orm.Load` is needed.
 
 Column Deferral API
 -------------------
@@ -254,7 +254,7 @@ The bundle allows columns to be grouped together::
 
 The bundle can be subclassed to provide custom behaviors when results
 are fetched.  The method :meth:`.Bundle.create_row_processor` is given
-the :class:`.Query` and a set of "row processor" functions at query execution
+the :class:`_query.Query` and a set of "row processor" functions at query execution
 time; these processor functions when given a result row will return the
 individual attribute value, which can then be adapted into any kind of
 return data structure.  Below illustrates replacing the usual :class:`.KeyedTuple`

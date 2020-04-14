@@ -101,7 +101,7 @@ Produces::
 
     The above ``InsertFromSelect`` construct is only an example, this actual
     functionality is already available using the
-    :meth:`.Insert.from_select` method.
+    :meth:`_expression.Insert.from_select` method.
 
 .. note::
 
@@ -140,7 +140,8 @@ supported.
 Enabling Autocommit on a Construct
 ==================================
 
-Recall from the section :ref:`autocommit` that the :class:`.Engine`, when
+Recall from the section :ref:`autocommit` that the :class:`_engine.Engine`,
+when
 asked to execute a construct in the absence of a user-defined transaction,
 detects if the given construct represents DML or DDL, that is, a data
 modification or data definition statement, which requires (or may require,
@@ -165,7 +166,7 @@ is a "frozen" dictionary which supplies a generative ``union()`` method)::
 
 More succinctly, if the construct is truly similar to an INSERT, UPDATE, or
 DELETE, :class:`.UpdateBase` can be used, which already is a subclass
-of :class:`.Executable`, :class:`.ClauseElement` and includes the
+of :class:`.Executable`, :class:`_expression.ClauseElement` and includes the
 ``autocommit`` flag::
 
     from sqlalchemy.sql.expression import UpdateBase
@@ -404,7 +405,7 @@ from ..sql import visitors
 
 def compiles(class_, *specs):
     """Register a function as a compiler for a
-    given :class:`.ClauseElement` type."""
+    given :class:`_expression.ClauseElement` type."""
 
     def decorate(fn):
         # get an existing @compiles handler
@@ -454,7 +455,7 @@ def compiles(class_, *specs):
 
 def deregister(class_):
     """Remove all custom compilers associated with a given
-    :class:`.ClauseElement` type."""
+    :class:`_expression.ClauseElement` type."""
 
     if hasattr(class_, "_compiler_dispatcher"):
         # regenerate default _compiler_dispatch

@@ -103,7 +103,7 @@ def instances(query, cursor, context):
 
 @util.dependencies("sqlalchemy.orm.query")
 def merge_result(querylib, query, iterator, load=True):
-    """Merge a result into this :class:`.Query` object's Session."""
+    """Merge a result into this :class:`_query.Query` object's Session."""
 
     session = query.session
     if load:

@@ -7,7 +7,7 @@
 """Routines to handle the string class registry used by declarative.
 
 This system allows specification of classes and expressions used in
-:func:`.relationship` using strings.
+:func:`_orm.relationship` using strings.
 
 """
 import weakref

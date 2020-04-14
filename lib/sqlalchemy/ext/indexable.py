@@ -6,20 +6,20 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 """Define attributes on ORM-mapped classes that have "index" attributes for
-columns with :class:`~.types.Indexable` types.
+columns with :class:`_types.Indexable` types.
 
 "index" means the attribute is associated with an element of an
-:class:`~.types.Indexable` column with the predefined index to access it.
-The :class:`~.types.Indexable` types include types such as
-:class:`~.types.ARRAY`, :class:`~.types.JSON` and
-:class:`~.postgresql.HSTORE`.
+:class:`_types.Indexable` column with the predefined index to access it.
+The :class:`_types.Indexable` types include types such as
+:class:`_types.ARRAY`, :class:`_types.JSON` and
+:class:`_postgresql.HSTORE`.
 
 
 
 The :mod:`~sqlalchemy.ext.indexable` extension provides
-:class:`~.schema.Column`-like interface for any element of an
-:class:`~.types.Indexable` typed column. In simple cases, it can be
-treated as a :class:`~.schema.Column` - mapped attribute.
+:class:`_schema.Column`-like interface for any element of an
+:class:`_types.Indexable` typed column. In simple cases, it can be
+treated as a :class:`_schema.Column` - mapped attribute.
 
 
 .. versionadded:: 1.1
@@ -192,7 +192,7 @@ where we want to also include automatic casting plus ``astext()``::
             return expr.astext.cast(self.cast_type)
 
 The above subclass can be used with the PostgreSQL-specific
-version of :class:`.postgresql.JSON`::
+version of :class:`_postgresql.JSON`::
 
     from sqlalchemy import Column, Integer
     from sqlalchemy.ext.declarative import declarative_base
@@ -234,7 +234,7 @@ __all__ = ["index_property"]
 
 class index_property(hybrid_property):  # noqa
     """A property generator. The generated property describes an object
-    attribute that corresponds to an :class:`~.types.Indexable`
+    attribute that corresponds to an :class:`_types.Indexable`
     column.
 
     .. versionadded:: 1.1

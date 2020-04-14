@@ -11,7 +11,7 @@ extensions that ride on top of the SQLAlchemy :func:`.mapper` construct.
 
 While the documentation typically refers to Declarative for most examples,
 the following sections will provide detailed information on how the
-Declarative API interacts with the basic :func:`.mapper` and Core :class:`.Table`
+Declarative API interacts with the basic :func:`.mapper` and Core :class:`_schema.Table`
 systems, as well as how sophisticated patterns can be built using systems
 such as mixins.
 

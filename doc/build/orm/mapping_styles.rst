@@ -7,7 +7,7 @@ The "Classical" style is SQLAlchemy's original mapping API, whereas
 "Declarative" is the richer and more succinct system that builds on top
 of "Classical".   Both styles may be used interchangeably, as the end
 result of each is exactly the same - a user-defined class mapped by the
-:func:`.mapper` function onto a selectable unit, typically a :class:`.Table`.
+:func:`.mapper` function onto a selectable unit, typically a :class:`_schema.Table`.
 
 Declarative Mapping
 ===================
@@ -16,7 +16,7 @@ The *Declarative Mapping* is the typical way that
 mappings are constructed in modern SQLAlchemy.
 Making use of the :ref:`declarative_toplevel`
 system, the components of the user-defined class as well as the
-:class:`.Table` metadata to which the class is mapped are defined
+:class:`_schema.Table` metadata to which the class is mapped are defined
 at once::
 
     from sqlalchemy.ext.declarative import declarative_base
@@ -68,7 +68,7 @@ SQLAlchemy's original class mapping API, and is still the base mapping
 system provided by the ORM.
 
 In "classical" form, the table metadata is created separately with the
-:class:`.Table` construct, then associated with the ``User`` class via
+:class:`_schema.Table` construct, then associated with the ``User`` class via
 the :func:`.mapper` function::
 
     from sqlalchemy import Table, MetaData, Column, Integer, String, ForeignKey
@@ -92,8 +92,8 @@ the :func:`.mapper` function::
     mapper(User, user)
 
 Information about mapped attributes, such as relationships to other classes, are provided
-via the ``properties`` dictionary.  The example below illustrates a second :class:`.Table`
-object, mapped to a class called ``Address``, then linked to ``User`` via :func:`.relationship`::
+via the ``properties`` dictionary.  The example below illustrates a second :class:`_schema.Table`
+object, mapped to a class called ``Address``, then linked to ``User`` via :func:`_orm.relationship`::
 
     address = Table('address', metadata,
                 Column('id', Integer, primary_key=True),
@@ -109,13 +109,13 @@ object, mapped to a class called ``Address``, then linked to ``User`` via :func:
 
 When using classical mappings, classes must be provided directly without the benefit
 of the "string lookup" system provided by Declarative.  SQL expressions are typically
-specified in terms of the :class:`.Table` objects, i.e. ``address.c.id`` above
+specified in terms of the :class:`_schema.Table` objects, i.e. ``address.c.id`` above
 for the ``Address`` relationship, and not ``Address.id``, as ``Address`` may not
 yet be linked to table metadata, nor can we specify a string here.
 
 Some examples in the documentation still use the classical approach, but note that
 the classical as well as Declarative approaches are **fully interchangeable**.  Both
-systems ultimately create the same configuration, consisting of a :class:`.Table`,
+systems ultimately create the same configuration, consisting of a :class:`_schema.Table`,
 user-defined class, linked together with a :func:`.mapper`.  When we talk about
 "the behavior of :func:`.mapper`", this includes when using the Declarative system
 as well - it's still used, just behind the scenes.
@@ -123,15 +123,15 @@ as well - it's still used, just behind the scenes.
 Runtime Introspection of Mappings, Objects
 ==========================================
 
-The :class:`.Mapper` object is available from any mapped class, regardless
+The :class:`_orm.Mapper` object is available from any mapped class, regardless
 of method, using the :ref:`core_inspection_toplevel` system.  Using the
-:func:`.inspect` function, one can acquire the :class:`.Mapper` from a
+:func:`_sa.inspect` function, one can acquire the :class:`_orm.Mapper` from a
 mapped class::
 
     >>> from sqlalchemy import inspect
     >>> insp = inspect(User)
 
-Detailed information is available including :attr:`.Mapper.columns`::
+Detailed information is available including :attr:`_orm.Mapper.columns`::
 
     >>> insp.columns
     <sqlalchemy.util._collections.OrderedProperties object at 0x102f407f8>
@@ -144,7 +144,7 @@ via individual names::
     >>> insp.columns.name
     Column('name', String(length=50), table=<user>)
 
-Other namespaces include :attr:`.Mapper.all_orm_descriptors`, which includes all mapped
+Other namespaces include :attr:`_orm.Mapper.all_orm_descriptors`, which includes all mapped
 attributes as well as hybrids, association proxies::
 
     >>> insp.all_orm_descriptors
@@ -152,7 +152,7 @@ attributes as well as hybrids, association proxies::
     >>> insp.all_orm_descriptors.keys()
     ['fullname', 'nickname', 'name', 'id']
 
-As well as :attr:`.Mapper.column_attrs`::
+As well as :attr:`_orm.Mapper.column_attrs`::
 
     >>> list(insp.column_attrs)
     [<ColumnProperty at 0x10403fde0; id>, <ColumnProperty at 0x10403fce8; name>, <ColumnProperty at 0x1040e9050; fullname>, <ColumnProperty at 0x1040e9148; nickname>]
@@ -165,6 +165,6 @@ As well as :attr:`.Mapper.column_attrs`::
 
     :ref:`core_inspection_toplevel`
 
-    :class:`.Mapper`
+    :class:`_orm.Mapper`
 
     :class:`.InstanceState`

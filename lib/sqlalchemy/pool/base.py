@@ -32,8 +32,8 @@ class _ConnDialect(object):
     """partial implementation of :class:`.Dialect`
     which provides DBAPI connection methods.
 
-    When a :class:`.Pool` is combined with an :class:`.Engine`,
-    the :class:`.Engine` replaces this with its own
+    When a :class:`_pool.Pool` is combined with an :class:`_engine.Engine`,
+    the :class:`_engine.Engine` replaces this with its own
     :class:`.Dialect`.
 
     """
@@ -63,14 +63,14 @@ class Pool(log.Identified):
     @util.deprecated_params(
         use_threadlocal=(
             "1.3",
-            "The :paramref:`.Pool.use_threadlocal` parameter is "
+            "The :paramref:`_pool.Pool.use_threadlocal` parameter is "
             "deprecated and will be removed in a future release.",
         ),
         listeners=(
             "0.7",
             ":class:`.PoolListener` is deprecated in favor of the "
-            ":class:`.PoolEvents` listener interface.  The "
-            ":paramref:`.Pool.listeners` parameter will be removed in a "
+            ":class:`_events.PoolEvents` listener interface.  The "
+            ":paramref:`_pool.Pool.listeners` parameter will be removed in a "
             "future release.",
         ),
     )
@@ -111,7 +111,7 @@ class Pool(log.Identified):
          which defaults to ``sys.stdout`` for output..   If set to the string
          ``"debug"``, the logging will include pool checkouts and checkins.
 
-         The :paramref:`.Pool.echo` parameter can also be set from the
+         The :paramref:`_pool.Pool.echo` parameter can also be set from the
          :func:`.create_engine` call by using the
          :paramref:`.create_engine.echo_pool` parameter.
 
@@ -124,7 +124,7 @@ class Pool(log.Identified):
           :meth:`connect` within the same application thread will be
           guaranteed to return the same connection object that is already
           checked out.   This is a legacy use case and the flag has no
-          effect when using the pool with a :class:`.Engine` object.
+          effect when using the pool with a :class:`_engine.Engine` object.
 
         :param reset_on_return: Determine steps to take on
           connections as they are returned to the pool.
@@ -179,7 +179,7 @@ class Pool(log.Identified):
          as it is handled by the engine creation strategy.
 
          .. versionadded:: 1.1 - ``dialect`` is now a public parameter
-            to the :class:`.Pool`.
+            to the :class:`_pool.Pool`.
 
         :param pre_ping: if True, the pool will emit a "ping" (typically
          "SELECT 1", but is dialect-specific) on the connection
@@ -275,9 +275,9 @@ class Pool(log.Identified):
 
     @util.deprecated(
         "0.7",
-        "The :meth:`.Pool.add_listener` method is deprecated and "
+        "The :meth:`_pool.Pool.add_listener` method is deprecated and "
         "will be removed in a future release.  Please use the "
-        ":class:`.PoolEvents` listener interface.",
+        ":class:`_events.PoolEvents` listener interface.",
     )
     def add_listener(self, listener):
         """Add a :class:`.PoolListener`-like object to this pool.
@@ -293,10 +293,11 @@ class Pool(log.Identified):
         """Produce a DBAPI connection that is not referenced by any
         thread-local context.
 
-        This method is equivalent to :meth:`.Pool.connect` when the
-        :paramref:`.Pool.use_threadlocal` flag is not set to True.
-        When :paramref:`.Pool.use_threadlocal` is True, the
-        :meth:`.Pool.unique_connection` method provides a means of bypassing
+        This method is equivalent to :meth:`_pool.Pool.connect` when the
+        :paramref:`_pool.Pool.use_threadlocal` flag is not set to True.
+        When :paramref:`_pool.Pool.use_threadlocal` is True, the
+        :meth:`_pool.Pool.unique_connection`
+        method provides a means of bypassing
         the threadlocal context.
 
         """
@@ -325,11 +326,11 @@ class Pool(log.Identified):
             connection.invalidate(exception)
 
     def recreate(self):
-        """Return a new :class:`.Pool`, of the same class as this one
+        """Return a new :class:`_pool.Pool`, of the same class as this one
         and configured with identical creation arguments.
 
         This method is used in conjunction with :meth:`dispose`
-        to close out an entire :class:`.Pool` and create a new one in
+        to close out an entire :class:`_pool.Pool` and create a new one in
         its place.
 
         """
@@ -373,7 +374,7 @@ class Pool(log.Identified):
         return _ConnectionFairy._checkout(self, self._threadconns)
 
     def _return_conn(self, record):
-        """Given a _ConnectionRecord, return it to the :class:`.Pool`.
+        """Given a _ConnectionRecord, return it to the :class:`_pool.Pool`.
 
         This method is called when an instrumented DBAPI connection
         has its ``close()`` method called.
@@ -403,7 +404,7 @@ class Pool(log.Identified):
 class _ConnectionRecord(object):
 
     """Internal object which maintains an individual DBAPI connection
-    referenced by a :class:`.Pool`.
+    referenced by a :class:`_pool.Pool`.
 
     The :class:`._ConnectionRecord` object always exists for any particular
     DBAPI connection whether or not that DBAPI connection has been
@@ -417,12 +418,14 @@ class _ConnectionRecord(object):
     method is called, the DBAPI connection associated with this
     :class:`._ConnectionRecord`
     will be discarded, but the :class:`._ConnectionRecord` may be used again,
-    in which case a new DBAPI connection is produced when the :class:`.Pool`
+    in which case a new DBAPI connection is produced when the
+    :class:`_pool.Pool`
     next uses this record.
 
     The :class:`._ConnectionRecord` is delivered along with connection
-    pool events, including :meth:`.PoolEvents.connect` and
-    :meth:`.PoolEvents.checkout`, however :class:`._ConnectionRecord` still
+    pool events, including :meth:`_events.PoolEvents.connect` and
+    :meth:`_events.PoolEvents.checkout`, however :class:`._ConnectionRecord`
+    still
     remains an internal object whose API and internals may change.
 
     .. seealso::
@@ -457,7 +460,7 @@ class _ConnectionRecord(object):
         """The ``.info`` dictionary associated with the DBAPI connection.
 
         This dictionary is shared among the :attr:`._ConnectionFairy.info`
-        and :attr:`.Connection.info` accessors.
+        and :attr:`_engine.Connection.info` accessors.
 
         .. note::
 
@@ -544,7 +547,8 @@ class _ConnectionRecord(object):
 
         This method is called for all connection invalidations, including
         when the :meth:`._ConnectionFairy.invalidate` or
-        :meth:`.Connection.invalidate` methods are called, as well as when any
+        :meth:`_engine.Connection.invalidate` methods are called,
+        as well as when any
         so-called "automatic invalidation" condition occurs.
 
         :param e: an exception object indicating a reason for the invalidation.
@@ -718,9 +722,9 @@ class _ConnectionFairy(object):
     """Proxies a DBAPI connection and provides return-on-dereference
     support.
 
-    This is an internal object used by the :class:`.Pool` implementation
+    This is an internal object used by the :class:`_pool.Pool` implementation
     to provide context management to a DBAPI connection delivered by
-    that :class:`.Pool`.
+    that :class:`_pool.Pool`.
 
     The name "fairy" is inspired by the fact that the
     :class:`._ConnectionFairy` object's lifespan is transitory, as it lasts
@@ -756,10 +760,11 @@ class _ConnectionFairy(object):
     rather than directly against the dialect-level do_rollback() and
     do_commit() methods.
 
-    In practice, a :class:`.Connection` assigns a :class:`.Transaction` object
+    In practice, a :class:`_engine.Connection` assigns a :class:`.Transaction`
+    object
     to this variable when one is in scope so that the :class:`.Transaction`
     takes the job of committing or rolling back on return if
-    :meth:`.Connection.close` is called while the :class:`.Transaction`
+    :meth:`_engine.Connection.close` is called while the :class:`.Transaction`
     still exists.
 
     This is essentially an "event handler" of sorts but is simplified as an
@@ -910,7 +915,8 @@ class _ConnectionFairy(object):
         The data here will follow along with the DBAPI connection including
         after it is returned to the connection pool and used again
         in subsequent instances of :class:`._ConnectionFairy`.  It is shared
-        with the :attr:`._ConnectionRecord.info` and :attr:`.Connection.info`
+        with the :attr:`._ConnectionRecord.info` and
+        :attr:`_engine.Connection.info`
         accessors.
 
         The dictionary associated with a particular DBAPI connection is
@@ -941,7 +947,7 @@ class _ConnectionFairy(object):
         """Mark this connection as invalidated.
 
         This method can be called directly, and is also called as a result
-        of the :meth:`.Connection.invalidate` method.   When invoked,
+        of the :meth:`_engine.Connection.invalidate` method.   When invoked,
         the DBAPI connection is immediately closed and discarded from
         further use by the pool.  The invalidation mechanism proceeds
         via the :meth:`._ConnectionRecord.invalidate` internal method.

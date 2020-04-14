@@ -8,10 +8,10 @@ Mapping a Class against Multiple Tables
 =======================================
 
 Mappers can be constructed against arbitrary relational units (called
-*selectables*) in addition to plain tables. For example, the :func:`~.expression.join`
+*selectables*) in addition to plain tables. For example, the :func:`_expression.join`
 function creates a selectable unit comprised of
 multiple tables, complete with its own composite primary key, which can be
-mapped in the same way as a :class:`.Table`::
+mapped in the same way as a :class:`_schema.Table`::
 
     from sqlalchemy import Table, Column, Integer, \
             String, MetaData, join, ForeignKey
@@ -95,8 +95,8 @@ is represented from an ``AddressUser`` object as
                 connection.execute(q_table.insert(), {"id": target.id})
 
     where above, a row is INSERTed into the ``q_table`` table by creating an
-    INSERT construct with :meth:`.Table.insert`, then executing it  using the
-    given :class:`.Connection` which is the same one being used to emit other
+    INSERT construct with :meth:`_schema.Table.insert`, then executing it  using the
+    given :class:`_engine.Connection` which is the same one being used to emit other
     SQL for the flush process.   The user-supplied logic would have to detect
     that the LEFT OUTER JOIN from "p" to "q" does not have an entry for the "q"
     side.
@@ -105,9 +105,9 @@ is represented from an ``AddressUser`` object as
 Mapping a Class against Arbitrary Selects
 =========================================
 
-Similar to mapping against a join, a plain :func:`~.expression.select` object can be used with a
+Similar to mapping against a join, a plain :func:`_expression.select` object can be used with a
 mapper as well.  The example fragment below illustrates mapping a class
-called ``Customer`` to a :func:`~.expression.select` which includes a join to a
+called ``Customer`` to a :func:`_expression.select` which includes a join to a
 subquery::
 
     from sqlalchemy import select, func
@@ -149,7 +149,7 @@ key.
     by direct query construction.   The practice is to some degree
     based on the very early history of SQLAlchemy where the :func:`.mapper`
     construct was meant to represent the primary querying interface;
-    in modern usage, the :class:`.Query` object can be used to construct
+    in modern usage, the :class:`_query.Query` object can be used to construct
     virtually any SELECT statement, including complex composites, and should
     be favored over the "map-to-selectable" approach.
 
@@ -161,7 +161,7 @@ In modern SQLAlchemy, a particular class is mapped by only one so-called
 functionality: querying, persistence, and instrumentation of the mapped class.
 The rationale of the primary mapper relates to the fact that the
 :func:`.mapper` modifies the class itself, not only persisting it towards a
-particular :class:`.Table`, but also :term:`instrumenting` attributes upon the
+particular :class:`_schema.Table`, but also :term:`instrumenting` attributes upon the
 class which are structured specifically according to the table metadata.   It's
 not possible for more than one mapper to be associated with a class in equal
 measure, since only one mapper can actually instrument the class.

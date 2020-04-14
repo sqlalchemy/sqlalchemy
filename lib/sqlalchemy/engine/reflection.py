@@ -62,35 +62,36 @@ class Inspector(object):
     consistent interface as well as caching support for previously
     fetched metadata.
 
-    A :class:`.Inspector` object is usually created via the
-    :func:`.inspect` function::
+    A :class:`_reflection.Inspector` object is usually created via the
+    :func:`_sa.inspect` function::
 
         from sqlalchemy import inspect, create_engine
         engine = create_engine('...')
         insp = inspect(engine)
 
     The inspection method above is equivalent to using the
-    :meth:`.Inspector.from_engine` method, i.e.::
+    :meth:`_reflection.Inspector.from_engine` method, i.e.::
 
         engine = create_engine('...')
         insp = Inspector.from_engine(engine)
 
     Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` may opt
-    to return an :class:`.Inspector` subclass that provides additional
+    to return an :class:`_reflection.Inspector`
+    subclass that provides additional
     methods specific to the dialect's target database.
 
     """
 
     def __init__(self, bind):
-        """Initialize a new :class:`.Inspector`.
+        """Initialize a new :class:`_reflection.Inspector`.
 
         :param bind: a :class:`~sqlalchemy.engine.Connectable`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
 
-        For a dialect-specific instance of :class:`.Inspector`, see
-        :meth:`.Inspector.from_engine`
+        For a dialect-specific instance of :class:`_reflection.Inspector`, see
+        :meth:`_reflection.Inspector.from_engine`
 
         """
         # this might not be a connection, it could be an engine.
@@ -120,12 +121,13 @@ class Inspector(object):
           :class:`~sqlalchemy.engine.Connection`.
 
         This method differs from direct a direct constructor call of
-        :class:`.Inspector` in that the
+        :class:`_reflection.Inspector` in that the
         :class:`~sqlalchemy.engine.interfaces.Dialect` is given a chance to
-        provide a dialect-specific :class:`.Inspector` instance, which may
+        provide a dialect-specific :class:`_reflection.Inspector` instance,
+        which may
         provide additional methods.
 
-        See the example at :class:`.Inspector`.
+        See the example at :class:`_reflection.Inspector`.
 
         """
         if hasattr(bind.dialect, "inspector"):
@@ -162,7 +164,8 @@ class Inspector(object):
             "1.0",
             "The :paramref:`get_table_names.order_by` parameter is deprecated "
             "and will be removed in a future release.  Please refer to "
-            ":meth:`.Inspector.get_sorted_table_and_fkc_names` for a "
+            ":meth:`_reflection.Inspector.get_sorted_table_and_fkc_names` "
+            "for a "
             "more comprehensive solution to resolving foreign key cycles "
             "between tables.",
         )
@@ -171,7 +174,8 @@ class Inspector(object):
         """Return all table names in referred to within a particular schema.
 
         The names are expected to be real tables only, not views.
-        Views are instead returned using the :meth:`.Inspector.get_view_names`
+        Views are instead returned using the
+        :meth:`_reflection.Inspector.get_view_names`
         method.
 
 
@@ -188,9 +192,9 @@ class Inspector(object):
 
         .. seealso::
 
-            :meth:`.Inspector.get_sorted_table_and_fkc_names`
+            :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
 
-            :attr:`.MetaData.sorted_tables`
+            :attr:`_schema.MetaData.sorted_tables`
 
         """
 
@@ -227,10 +231,10 @@ class Inspector(object):
 
         .. seealso::
 
-            :meth:`.Inspector.get_table_names`
+            :meth:`_reflection.Inspector.get_table_names`
 
             :func:`.sort_tables_and_constraints` - similar method which works
-             with an already-given :class:`.MetaData`.
+             with an already-given :class:`_schema.MetaData`.
 
         """
         if hasattr(self.dialect, "get_table_names"):
@@ -396,9 +400,10 @@ class Inspector(object):
 
     @deprecated(
         "0.7",
-        "The :meth:`.Inspector.get_primary_keys` method is deprecated and "
+        "The :meth:`_reflection.Inspector.get_primary_keys` "
+        "method is deprecated and "
         "will be removed in a future release.  Please refer to the "
-        ":meth:`.Inspector.get_pk_constraint` method.",
+        ":meth:`_reflection.Inspector.get_pk_constraint` method.",
     )
     def get_primary_keys(self, table_name, schema=None, **kw):
         """Return information about primary keys in `table_name`.

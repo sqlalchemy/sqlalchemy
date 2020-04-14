@@ -60,10 +60,10 @@ displays.
 ---------------
 
 The "baked" query feature is an unusual new approach which allows for
-straightforward construction an invocation of :class:`.Query` objects
+straightforward construction an invocation of :class:`_query.Query` objects
 using caching, which upon successive calls features vastly reduced
 Python function call overhead (over 75%).    By  specifying a
-:class:`.Query` object as a series of lambdas which are only invoked
+:class:`_query.Query` object as a series of lambdas which are only invoked
 once, a query as a pre-compiled unit begins to be feasible::
 
     from sqlalchemy.ext import baked
@@ -102,7 +102,7 @@ overhauled to support new capabilities.
 A function decorated with :class:`.declared_attr` is now called only **after**
 any mixin-based column copies are generated.  This means the function can
 call upon mixin-established columns and will receive a reference to the correct
-:class:`.Column` object::
+:class:`_schema.Column` object::
 
     class HasFooBar(object):
         foobar = Column(Integer)
@@ -116,7 +116,7 @@ call upon mixin-established columns and will receive a reference to the correct
         id = Column(Integer, primary_key=True)
 
 Above, ``SomeClass.foobar_prop`` will be invoked against ``SomeClass``,
-and ``SomeClass.foobar`` will be the final :class:`.Column` object that is
+and ``SomeClass.foobar`` will be the final :class:`_schema.Column` object that is
 to be mapped to ``SomeClass``, as opposed to the non-copied object present
 directly on ``HasFooBar``, even though the columns aren't mapped yet.
 
@@ -264,10 +264,10 @@ of load that's improved the most::
     print("Total time: %d" % (time.time() - now))
 
 Local MacBookPro results bench from 19 seconds for 0.9 down to 14 seconds for
-1.0.  The :meth:`.Query.yield_per` call is always a good idea when batching
+1.0.  The :meth:`_query.Query.yield_per` call is always a good idea when batching
 huge numbers of rows, as it prevents the Python interpreter from having
 to allocate a huge amount of memory for all objects and their instrumentation
-at once.  Without the :meth:`.Query.yield_per`, the above script on the
+at once.  Without the :meth:`_query.Query.yield_per`, the above script on the
 MacBookPro is 31 seconds on 0.9 and 26 seconds on 1.0, the extra time spent
 setting up very large memory buffers.
 
@@ -421,12 +421,12 @@ Session.get_bind() will receive the Mapper in all relevant Query cases
 ----------------------------------------------------------------------
 
 A series of issues were repaired where the :meth:`.Session.get_bind`
-would not receive the primary :class:`.Mapper` of the :class:`.Query`,
+would not receive the primary :class:`_orm.Mapper` of the :class:`_query.Query`,
 even though this mapper was readily available (the primary mapper is the
 single mapper, or alternatively the first mapper, that is associated with
-a :class:`.Query` object).
+a :class:`_query.Query` object).
 
-The :class:`.Mapper` object, when passed to :meth:`.Session.get_bind`,
+The :class:`_orm.Mapper` object, when passed to :meth:`.Session.get_bind`,
 is typically used by sessions that make use of the
 :paramref:`.Session.binds` parameter to associate mappers with a
 series of engines (although in this use case, things frequently
@@ -438,11 +438,11 @@ so-called "routing" session that routes queries to different backends.
 
 These scenarios include:
 
-* :meth:`.Query.count`::
+* :meth:`_query.Query.count`::
 
         session.query(User).count()
 
-* :meth:`.Query.update` and :meth:`.Query.delete`, both for the UPDATE/DELETE
+* :meth:`_query.Query.update` and :meth:`_query.Query.delete`, both for the UPDATE/DELETE
   statement as well as for the SELECT used by the "fetch" strategy::
 
         session.query(User).filter(User.id == 15).update(
@@ -473,12 +473,12 @@ These scenarios include:
 -----------------------------
 
 The :attr:`.InspectionAttr.info` collection is now available on every kind
-of object that one would retrieve from the :attr:`.Mapper.all_orm_descriptors`
+of object that one would retrieve from the :attr:`_orm.Mapper.all_orm_descriptors`
 collection.  This includes :class:`.hybrid_property` and :func:`.association_proxy`.
 However, as these objects are class-bound descriptors, they must be accessed
 **separately** from the class to which they are attached in order to get
 at the attribute.  Below this is illustrated using the
-:attr:`.Mapper.all_orm_descriptors` namespace::
+:attr:`_orm.Mapper.all_orm_descriptors` namespace::
 
     class SomeObject(Base):
         # ...
@@ -491,8 +491,8 @@ at the attribute.  Below this is illustrated using the
     inspect(SomeObject).all_orm_descriptors.some_prop.info['foo'] = 'bar'
 
 It is also available as a constructor argument for all :class:`.SchemaItem`
-objects (e.g. :class:`.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
-as remaining ORM constructs such as :func:`.orm.synonym`.
+objects (e.g. :class:`_schema.ForeignKey`, :class:`.UniqueConstraint` etc.) as well
+as remaining ORM constructs such as :func:`_orm.synonym`.
 
 :ticket:`2971`
 
@@ -585,10 +585,10 @@ New Features and Improvements - Core
 Select/Query LIMIT / OFFSET may be specified as an arbitrary SQL expression
 ---------------------------------------------------------------------------
 
-The :meth:`.Select.limit` and :meth:`.Select.offset` methods now accept
+The :meth:`_expression.Select.limit` and :meth:`_expression.Select.offset` methods now accept
 any SQL expression, in addition to integer values, as arguments.  The ORM
-:class:`.Query` object also passes through any expression to the underlying
-:class:`.Select` object.   Typically
+:class:`_query.Query` object also passes through any expression to the underlying
+:class:`_expression.Select` object.   Typically
 this is used to allow a bound parameter to be passed, which can be substituted
 with a value later::
 
@@ -610,11 +610,11 @@ than the integer value.
 The ``use_alter`` flag on ``ForeignKeyConstraint`` is (usually) no longer needed
 --------------------------------------------------------------------------------
 
-The :meth:`.MetaData.create_all` and :meth:`.MetaData.drop_all` methods will
+The :meth:`_schema.MetaData.create_all` and :meth:`_schema.MetaData.drop_all` methods will
 now make use of a system that automatically renders an ALTER statement
 for foreign key constraints that are involved in mutually-dependent cycles
 between tables, without the
-need to specify :paramref:`.ForeignKeyConstraint.use_alter`.   Additionally,
+need to specify :paramref:`_schema.ForeignKeyConstraint.use_alter`.   Additionally,
 the foreign key constraints no longer need to have a name in order to be
 created via ALTER; only the DROP operation requires a name.   In the case
 of a DROP, the feature will ensure that only constraints which have
@@ -622,8 +622,8 @@ explicit names are actually included as ALTER statements.  In the
 case of an unresolvable cycle within a DROP, the system emits
 a succinct and clear error message now if the DROP cannot proceed.
 
-The :paramref:`.ForeignKeyConstraint.use_alter` and
-:paramref:`.ForeignKey.use_alter` flags remain in place, and continue to have
+The :paramref:`_schema.ForeignKeyConstraint.use_alter` and
+:paramref:`_schema.ForeignKey.use_alter` flags remain in place, and continue to have
 the same effect of establishing those constraints for which ALTER is
 required during a CREATE/DROP scenario.
 
@@ -634,7 +634,7 @@ are dropped with **no** ordering, which is usually fine on SQLite unless
 constraints are enabled. To resolve the warning and proceed with at least
 a partial ordering on a SQLite database, particularly one where constraints
 are enabled, re-apply "use_alter" flags to those
-:class:`.ForeignKey` and :class:`.ForeignKeyConstraint` objects which should
+:class:`_schema.ForeignKey` and :class:`_schema.ForeignKeyConstraint` objects which should
 be explicitly omitted from the sort.
 
 .. seealso::
@@ -737,7 +737,7 @@ Constraints referring to unattached Columns can auto-attach to the Table when th
 -----------------------------------------------------------------------------------------------------------------
 
 Since at least version 0.8, a :class:`.Constraint` has had the ability to
-"auto-attach" itself to a :class:`.Table` based on being passed table-attached columns::
+"auto-attach" itself to a :class:`_schema.Table` based on being passed table-attached columns::
 
     from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
 
@@ -753,9 +753,9 @@ Since at least version 0.8, a :class:`.Constraint` has had the ability to
     assert uq in t.constraints
 
 In order to assist with some cases that tend to come up with declarative,
-this same auto-attachment logic can now function even if the :class:`.Column`
-objects are not yet associated with the :class:`.Table`; additional events
-are established such that when those :class:`.Column` objects are associated,
+this same auto-attachment logic can now function even if the :class:`_schema.Column`
+objects are not yet associated with the :class:`_schema.Table`; additional events
+are established such that when those :class:`_schema.Column` objects are associated,
 the :class:`.Constraint` is also added::
 
     from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
@@ -774,8 +774,8 @@ the :class:`.Constraint` is also added::
 The above feature was a late add as of version 1.0.0b3.  A fix as of
 version 1.0.4 for :ticket:`3411` ensures that this logic
 does not occur if the :class:`.Constraint` refers to a mixture of
-:class:`.Column` objects and string column names; as we do not yet have
-tracking for the addition of names to a :class:`.Table`::
+:class:`_schema.Column` objects and string column names; as we do not yet have
+tracking for the addition of names to a :class:`_schema.Table`::
 
     from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
 
@@ -793,13 +793,13 @@ tracking for the addition of names to a :class:`.Table`::
     assert uq not in t.constraints
 
 Above, the attachment event for column "a" to table "t" will fire off before
-column "b" is attached (as "a" is stated in the :class:`.Table` constructor
+column "b" is attached (as "a" is stated in the :class:`_schema.Table` constructor
 before "b"), and the constraint will fail to locate "b" if it were to attempt
 an attachment.  For consistency, if the constraint refers to any string names,
 the autoattach-on-column-attach logic is skipped.
 
-The original auto-attach logic of course remains in place, if the :class:`.Table`
-already contains all the target :class:`.Column` objects at the time
+The original auto-attach logic of course remains in place, if the :class:`_schema.Table`
+already contains all the target :class:`_schema.Column` objects at the time
 the :class:`.Constraint` is constructed::
 
     from sqlalchemy import Table, Column, MetaData, Integer, UniqueConstraint
@@ -828,7 +828,7 @@ the :class:`.Constraint` is constructed::
 INSERT FROM SELECT now includes Python and SQL-expression defaults
 ------------------------------------------------------------------
 
-:meth:`.Insert.from_select` now includes Python and SQL-expression defaults if
+:meth:`_expression.Insert.from_select` now includes Python and SQL-expression defaults if
 otherwise unspecified; the limitation where non-server column defaults
 aren't included in an INSERT FROM SELECT is now lifted and these
 expressions are rendered as constants into the SELECT statement::
@@ -859,7 +859,7 @@ Column server defaults now render literal values
 ------------------------------------------------
 
 The "literal binds" compiler flag is switched on when a
-:class:`.DefaultClause`, set up by :paramref:`.Column.server_default`
+:class:`.DefaultClause`, set up by :paramref:`_schema.Column.server_default`
 is present as a SQL expression to be compiled.  This allows literals
 embedded in SQL to render correctly, such as::
 
@@ -893,7 +893,7 @@ bound parameters, which are useless in DDL.
 UniqueConstraint is now part of the Table reflection process
 ------------------------------------------------------------
 
-A :class:`.Table` object populated using ``autoload=True`` will now
+A :class:`_schema.Table` object populated using ``autoload=True`` will now
 include :class:`.UniqueConstraint` constructs as well as
 :class:`.Index` constructs.  This logic has a few caveats for
 PostgreSQL and MySQL:
@@ -903,17 +903,17 @@ PostgreSQL
 
 PostgreSQL has the behavior such that when a UNIQUE constraint is
 created, it implicitly creates a UNIQUE INDEX corresponding to that
-constraint as well. The :meth:`.Inspector.get_indexes` and the
-:meth:`.Inspector.get_unique_constraints` methods will continue to
+constraint as well. The :meth:`_reflection.Inspector.get_indexes` and the
+:meth:`_reflection.Inspector.get_unique_constraints` methods will continue to
 **both** return these entries distinctly, where
-:meth:`.Inspector.get_indexes` now features a token
+:meth:`_reflection.Inspector.get_indexes` now features a token
 ``duplicates_constraint`` within the index entry  indicating the
 corresponding constraint when detected.   However, when performing
 full table reflection using  ``Table(..., autoload=True)``, the
 :class:`.Index` construct is detected as being linked to the
 :class:`.UniqueConstraint`, and is **not** present within the
-:attr:`.Table.indexes` collection; only the :class:`.UniqueConstraint`
-will be present in the :attr:`.Table.constraints` collection.   This
+:attr:`_schema.Table.indexes` collection; only the :class:`.UniqueConstraint`
+will be present in the :attr:`_schema.Table.constraints` collection.   This
 deduplication logic works by joining to the ``pg_constraint`` table
 when querying ``pg_index`` to see if the two constructs are linked.
 
@@ -923,17 +923,17 @@ MySQL
 MySQL does not have separate concepts for a UNIQUE INDEX and a UNIQUE
 constraint.  While it supports both syntaxes when creating tables and indexes,
 it does not store them any differently. The
-:meth:`.Inspector.get_indexes`
-and the :meth:`.Inspector.get_unique_constraints` methods will continue to
+:meth:`_reflection.Inspector.get_indexes`
+and the :meth:`_reflection.Inspector.get_unique_constraints` methods will continue to
 **both** return an entry for a UNIQUE index in MySQL,
-where :meth:`.Inspector.get_unique_constraints` features a new token
+where :meth:`_reflection.Inspector.get_unique_constraints` features a new token
 ``duplicates_index`` within the constraint entry indicating that this is a
 dupe entry corresponding to that index.  However, when performing
 full table reflection using ``Table(..., autoload=True)``,
 the :class:`.UniqueConstraint` construct is
-**not** part of the fully reflected :class:`.Table` construct under any
+**not** part of the fully reflected :class:`_schema.Table` construct under any
 circumstances; this construct is always represented by a :class:`.Index`
-with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+with the ``unique=True`` setting present in the :attr:`_schema.Table.indexes`
 collection.
 
 .. seealso::
@@ -1001,7 +1001,7 @@ Key Behavioral Changes - ORM
 query.update() now resolves string names into mapped attribute names
 --------------------------------------------------------------------
 
-The documentation for :meth:`.Query.update` states that the given
+The documentation for :meth:`_query.Query.update` states that the given
 ``values`` dictionary is "a dictionary with attributes names as keys",
 implying that these are mapped attribute names.  Unfortunately, the function
 was designed more in mind to receive attributes and SQL expressions and
@@ -1021,7 +1021,7 @@ The string names are now resolved as attribute names in earnest::
         name = Column('user_name', String(50))
 
 Above, the column ``user_name`` is mapped as ``name``.  Previously,
-a call to :meth:`.Query.update` that was passed strings would have to
+a call to :meth:`_query.Query.update` that was passed strings would have to
 have been called as follows::
 
     session.query(User).update({'user_name': 'moonbeam'})
@@ -1234,7 +1234,7 @@ attribute set operation on a many-to-one is received; previously, the "old" valu
 would be "None" if it had been not set otherwise; it now will send the
 value :data:`.orm.attributes.NEVER_SET`, which is a value that may be sent
 to an attribute listener now.   This symbol may also be received when
-calling on mapper utility functions such as :meth:`.Mapper.primary_key_from_instance`;
+calling on mapper utility functions such as :meth:`_orm.Mapper.primary_key_from_instance`;
 if the primary key attributes have no setting at all, whereas the value
 would be ``None`` before, it will now be the :data:`.orm.attributes.NEVER_SET`
 symbol, and no change to the object's state occurs.
@@ -1331,7 +1331,7 @@ that rely on :meth:`.Session.expunge` such as :func:`.make_transient`.
 Joined/Subquery eager loading explicitly disallowed with yield_per
 ------------------------------------------------------------------
 
-In order to make the :meth:`.Query.yield_per` method easier to use,
+In order to make the :meth:`_query.Query.yield_per` method easier to use,
 an exception is raised if any subquery eager loaders, or joined
 eager loaders that would use collections, are
 to take effect when yield_per is used, as these are currently not compatible
@@ -1341,7 +1341,7 @@ an asterisk::
 
     q = sess.query(Object).options(lazyload('*')).yield_per(100)
 
-or use :meth:`.Query.enable_eagerloads`::
+or use :meth:`_query.Query.enable_eagerloads`::
 
     q = sess.query(Object).enable_eagerloads(False).yield_per(100)
 
@@ -1574,8 +1574,8 @@ The unused ``result`` member is now removed::
 Right inner join nesting now the default for joinedload with innerjoin=True
 ---------------------------------------------------------------------------
 
-The behavior of :paramref:`.joinedload.innerjoin` as well as
-:paramref:`.relationship.innerjoin` is now to use "nested"
+The behavior of :paramref:`_orm.joinedload.innerjoin` as well as
+:paramref:`_orm.relationship.innerjoin` is now to use "nested"
 inner joins, that is, right-nested, as the default behavior when an
 inner join joined eager load is chained to an outer join eager load.  In
 order to get the old behavior of chaining all joined eager loads as
@@ -1595,7 +1595,7 @@ With the new default, this will render the FROM clause in the form::
 
 That is, using a right-nested join for the INNER join so that the full
 result of ``users`` can be returned.   The use of an INNER join is more efficient
-than using an OUTER join, and allows the :paramref:`.joinedload.innerjoin`
+than using an OUTER join, and allows the :paramref:`_orm.joinedload.innerjoin`
 optimization parameter to take effect in all cases.
 
 To get the older behavior, use ``innerjoin="unnested"``::
@@ -1671,10 +1671,10 @@ query.update() / query.delete() raises if used with join(), select_from(), from_
 --------------------------------------------------------------------------------------
 
 A warning is emitted in SQLAlchemy 0.9.10 (not yet released as of
-June 9, 2015) when the :meth:`.Query.update` or :meth:`.Query.delete` methods
-are invoked against a query which has also called upon :meth:`.Query.join`,
-:meth:`.Query.outerjoin`,
-:meth:`.Query.select_from` or :meth:`.Query.from_self`.  These are unsupported
+June 9, 2015) when the :meth:`_query.Query.update` or :meth:`_query.Query.delete` methods
+are invoked against a query which has also called upon :meth:`_query.Query.join`,
+:meth:`_query.Query.outerjoin`,
+:meth:`_query.Query.select_from` or :meth:`_query.Query.from_self`.  These are unsupported
 use cases which silently fail in the 0.9 series up until 0.9.10 where it emits
 a warning.  In 1.0, these cases raise an exception.
 
@@ -1684,7 +1684,7 @@ a warning.  In 1.0, these cases raise an exception.
 query.update() with ``synchronize_session='evaluate'`` raises on multi-table update
 -----------------------------------------------------------------------------------
 
-The "evaluator" for :meth:`.Query.update` won't work with multi-table
+The "evaluator" for :meth:`_query.Query.update` won't work with multi-table
 updates, and needs to be set to ``synchronize_session=False`` or
 ``synchronize_session='fetch'`` when multiple tables are present.
 The new behavior is that an explicit exception is now raised, with a message
@@ -1714,7 +1714,7 @@ Given a single-table inheritance mapping, such as::
     class FooWidget(Widget):
         pass
 
-Using :meth:`.Query.from_self` or :meth:`.Query.count` against a subclass
+Using :meth:`_query.Query.from_self` or :meth:`_query.Query.count` against a subclass
 would produce a subquery, but then add the "WHERE" criteria for subtypes
 to the outside::
 
@@ -1795,7 +1795,7 @@ SQL output::
     SELECT related.id AS related_id
     FROM related JOIN widget ON related.id = widget.related_id AND widget.type IN (:type_1)
 
-Above, because we joined to a subclass ``FooWidget``, :meth:`.Query.join`
+Above, because we joined to a subclass ``FooWidget``, :meth:`_query.Query.join`
 knew to add the ``AND widget.type IN ('foo')`` criteria to the ON clause.
 
 The change here is that the ``AND widget.type IN()`` criteria is now appended
@@ -1835,9 +1835,9 @@ Since SQLAlchemy's inception, there has always been an emphasis on not getting
 in the way of the usage of plain text.   The Core and ORM expression systems
 were intended to allow any number of points at which the user can just
 use plain text SQL expressions, not just in the sense that you can send a
-full SQL string to :meth:`.Connection.execute`, but that you can send strings
-with SQL expressions into many functions, such as :meth:`.Select.where`,
-:meth:`.Query.filter`, and :meth:`.Select.order_by`.
+full SQL string to :meth:`_engine.Connection.execute`, but that you can send strings
+with SQL expressions into many functions, such as :meth:`_expression.Select.where`,
+:meth:`_query.Query.filter`, and :meth:`_expression.Select.order_by`.
 
 Note that by "SQL expressions" we mean a **full fragment of a SQL string**,
 such as::
@@ -1853,12 +1853,12 @@ behavior of passing string values that become parameterized::
     stmt = select([sometable]).where(sometable.c.somecolumn == 'value')
 
 The Core tutorial has long featured an example of the use of this technique,
-using a :func:`.select` construct where virtually all components of it
+using a :func:`_expression.select` construct where virtually all components of it
 are specified as straight strings.  However, despite this long-standing
 behavior and example, users are apparently surprised that this behavior
 exists, and when asking around the community, I was unable to find any user
 that was in fact *not* surprised that you can send a full string into a method
-like :meth:`.Query.filter`.
+like :meth:`_query.Query.filter`.
 
 So the change here is to encourage the user to qualify textual strings when
 composing SQL that is partially or fully composed from textual fragments.
@@ -1905,26 +1905,26 @@ to get rid of the warnings we would rewrite our statement as follows::
         ]).where(text("a = b")).select_from(text("sometable"))
 
 and as the warnings suggest, we can give our statement more specificity
-about the text if we use :func:`.column` and :func:`.table`::
+about the text if we use :func:`_expression.column` and :func:`.table`::
 
     from sqlalchemy import select, text, column, table
 
     stmt = select([column("a"), column("b")]).\
         where(text("a = b")).select_from(table("sometable"))
 
-Where note also that :func:`.table` and :func:`.column` can now
+Where note also that :func:`.table` and :func:`_expression.column` can now
 be imported from "sqlalchemy" without the "sql" part.
 
-The behavior here applies to :func:`.select` as well as to key methods
-on :class:`.Query`, including :meth:`.Query.filter`,
-:meth:`.Query.from_statement` and :meth:`.Query.having`.
+The behavior here applies to :func:`_expression.select` as well as to key methods
+on :class:`_query.Query`, including :meth:`_query.Query.filter`,
+:meth:`_query.Query.from_statement` and :meth:`_query.Query.having`.
 
 ORDER BY and GROUP BY are special cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There is one case where usage of a string has special meaning, and as part
 of this change we have enhanced its functionality.  When we have a
-:func:`.select` or :class:`.Query` that refers to some column name or named
+:func:`_expression.select` or :class:`_query.Query` that refers to some column name or named
 label, we might want to GROUP BY and/or ORDER BY known columns or labels::
 
     stmt = select([
@@ -1963,16 +1963,16 @@ OVER clause as well as a DISTINCT ON clause that refers to columns (e.g. the
 PostgreSQL syntax).
 
 We can still specify any arbitrary expression for ORDER BY or others using
-:func:`.text`::
+:func:`_expression.text`::
 
     stmt = select([users]).order_by(text("some special expression"))
 
 The upshot of the whole change is that SQLAlchemy now would like us
 to tell it when a string is sent that this string is explicitly
-a :func:`.text` construct, or a column, table, etc., and if we use it as a
+a :func:`_expression.text` construct, or a column, table, etc., and if we use it as a
 label name in an order by, group by, or other expression, SQLAlchemy expects
 that the string resolves to something known, else it should again
-be qualified with :func:`.text` or similar.
+be qualified with :func:`_expression.text` or similar.
 
 :ticket:`2992`
 
@@ -1982,7 +1982,7 @@ Python-side defaults invoked for each row individually when using a multivalued 
 --------------------------------------------------------------------------------------
 
 Support for Python-side column defaults when using the multi-valued
-version of :meth:`.Insert.values` were essentially not implemented, and
+version of :meth:`_expression.Insert.values` were essentially not implemented, and
 would only work "by accident" in specific situations, when the dialect in
 use was using a non-positional (e.g. named) style of bound parameter, and
 when it was not necessary that a Python-side callable be invoked for each
@@ -2078,8 +2078,8 @@ removals during iteration, and instead raises ``RuntimeError``.
 The INSERT...FROM SELECT construct now implies ``inline=True``
 --------------------------------------------------------------
 
-Using :meth:`.Insert.from_select` now implies ``inline=True``
-on :func:`.insert`.  This helps to fix a bug where an
+Using :meth:`_expression.Insert.from_select` now implies ``inline=True``
+on :func:`_expression.insert`.  This helps to fix a bug where an
 INSERT...FROM SELECT construct would inadvertently be compiled
 as "implicit returning" on supporting backends, which would
 cause breakage in the case of an INSERT that inserts zero rows
@@ -2095,7 +2095,7 @@ apply.   Previously, there was a documentation note that one
 may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
 don't support returning and therefore can't do "implicit" returning,
 but there's no reason an INSERT...FROM SELECT needs implicit returning
-in any case.   Regular explicit :meth:`.Insert.returning` should
+in any case.   Regular explicit :meth:`_expression.Insert.returning` should
 be used to return variable numbers of result rows if inserted
 data is needed.
 
@@ -2106,8 +2106,8 @@ data is needed.
 ``autoload_with`` now implies ``autoload=True``
 -----------------------------------------------
 
-A :class:`.Table` can be set up for reflection by passing
-:paramref:`.Table.autoload_with` alone::
+A :class:`_schema.Table` can be set up for reflection by passing
+:paramref:`_schema.Table.autoload_with` alone::
 
     my_table = Table('my_table', metadata, autoload_with=some_engine)
 
@@ -2119,7 +2119,7 @@ DBAPI exception wrapping and handle_error() event improvements
 --------------------------------------------------------------
 
 SQLAlchemy's wrapping of DBAPI exceptions was not taking place in the
-case where a :class:`.Connection` object was invalidated, and then tried
+case where a :class:`_engine.Connection` object was invalidated, and then tried
 to reconnect and encountered an error; this has been resolved.
 
 Additionally, the recently added :meth:`.ConnectionEvents.handle_error`
@@ -2128,8 +2128,8 @@ reconnect, and when :func:`.create_engine` is used given a custom connection
 function via :paramref:`.create_engine.creator`.
 
 The :class:`.ExceptionContext` object has a new datamember
-:attr:`.ExceptionContext.engine` that will always refer to the :class:`.Engine`
-in use, in those cases when the :class:`.Connection` object is not available
+:attr:`.ExceptionContext.engine` that will always refer to the :class:`_engine.Engine`
+in use, in those cases when the :class:`_engine.Connection` object is not available
 (e.g. on initial connect).
 
 
@@ -2140,13 +2140,13 @@ in use, in those cases when the :class:`.Connection` object is not available
 ForeignKeyConstraint.columns is now a ColumnCollection
 ------------------------------------------------------
 
-:attr:`.ForeignKeyConstraint.columns` was previously a plain list
-containing either strings or :class:`.Column` objects, depending on
-how the :class:`.ForeignKeyConstraint` was constructed and whether it was
-associated with a table.  The collection is now a :class:`.ColumnCollection`,
-and is only initialized after the :class:`.ForeignKeyConstraint` is
-associated with a :class:`.Table`.  A new accessor
-:attr:`.ForeignKeyConstraint.column_keys`
+:attr:`_schema.ForeignKeyConstraint.columns` was previously a plain list
+containing either strings or :class:`_schema.Column` objects, depending on
+how the :class:`_schema.ForeignKeyConstraint` was constructed and whether it was
+associated with a table.  The collection is now a :class:`_expression.ColumnCollection`,
+and is only initialized after the :class:`_schema.ForeignKeyConstraint` is
+associated with a :class:`_schema.Table`.  A new accessor
+:attr:`_schema.ForeignKeyConstraint.column_keys`
 is added to unconditionally return string keys for the local set of
 columns regardless of how the object was constructed or its current
 state.
@@ -2157,14 +2157,14 @@ state.
 MetaData.sorted_tables accessor is "deterministic"
 --------------------------------------------------
 
-The sorting of tables resulting from the :attr:`.MetaData.sorted_tables`
+The sorting of tables resulting from the :attr:`_schema.MetaData.sorted_tables`
 accessor is "deterministic"; the ordering should be the same in all cases
 regardless of Python hashing.   This is done by first sorting the tables
 by name before passing them to the topological algorithm, which maintains
 that ordering as it iterates.
 
 Note that this change does **not** yet apply to the ordering applied
-when emitting :meth:`.MetaData.create_all` or :meth:`.MetaData.drop_all`.
+when emitting :meth:`_schema.MetaData.create_all` or :meth:`_schema.MetaData.drop_all`.
 
 :ticket:`3084`
 
@@ -2194,16 +2194,16 @@ labeled uniquely.
 SQLite/Oracle have distinct methods for temporary table/view name reporting
 ---------------------------------------------------------------------------
 
-The :meth:`.Inspector.get_table_names` and :meth:`.Inspector.get_view_names`
+The :meth:`_reflection.Inspector.get_table_names` and :meth:`_reflection.Inspector.get_view_names`
 methods in the case of SQLite/Oracle would also return the names of temporary
 tables and views, which is not provided by any other dialect (in the case
 of MySQL at least it is not even possible).  This logic has been moved
-out to two new methods :meth:`.Inspector.get_temp_table_names` and
-:meth:`.Inspector.get_temp_view_names`.
+out to two new methods :meth:`_reflection.Inspector.get_temp_table_names` and
+:meth:`_reflection.Inspector.get_temp_view_names`.
 
 Note that reflection of a specific named temporary table or temporary view,
 either by ``Table('name', autoload=True)`` or via methods like
-:meth:`.Inspector.get_columns` continues to function for most if not all
+:meth:`_reflection.Inspector.get_columns` continues to function for most if not all
 dialects.   For SQLite specifically, there is a bug fix for UNIQUE constraint
 reflection from temp tables as well, which is :ticket:`3203`.
 
@@ -2217,12 +2217,12 @@ Dialect Improvements and Changes - PostgreSQL
 Overhaul of ENUM type create/drop rules
 ---------------------------------------
 
-The rules for PostgreSQL :class:`.postgresql.ENUM` have been made more strict
+The rules for PostgreSQL :class:`_postgresql.ENUM` have been made more strict
 with regards to creating and dropping of the TYPE.
 
-An :class:`.postgresql.ENUM` that is created **without** being explicitly
-associated with a :class:`.MetaData` object will be created *and* dropped
-corresponding to :meth:`.Table.create` and :meth:`.Table.drop`::
+An :class:`_postgresql.ENUM` that is created **without** being explicitly
+associated with a :class:`_schema.MetaData` object will be created *and* dropped
+corresponding to :meth:`_schema.Table.create` and :meth:`_schema.Table.drop`::
 
     table = Table('sometable', metadata,
         Column('some_enum', ENUM('a', 'b', 'c', name='myenum'))
@@ -2236,10 +2236,10 @@ above DROP operation will now fail.    In order to accommodate the use case
 of a common shared enumerated type, the behavior of a metadata-associated
 enumeration has been enhanced.
 
-An :class:`.postgresql.ENUM` that is created **with** being explicitly
-associated with a :class:`.MetaData` object will *not* be created *or* dropped
-corresponding to :meth:`.Table.create` and :meth:`.Table.drop`, with
-the exception of :meth:`.Table.create` called with the ``checkfirst=True``
+An :class:`_postgresql.ENUM` that is created **with** being explicitly
+associated with a :class:`_schema.MetaData` object will *not* be created *or* dropped
+corresponding to :meth:`_schema.Table.create` and :meth:`_schema.Table.drop`, with
+the exception of :meth:`_schema.Table.create` called with the ``checkfirst=True``
 flag::
 
     my_enum = ENUM('a', 'b', 'c', name='myenum', metadata=metadata)
@@ -2268,7 +2268,7 @@ New PostgreSQL Table options
 
 Added support for PG table options TABLESPACE, ON COMMIT,
 WITH(OUT) OIDS, and INHERITS, when rendering DDL via
-the :class:`.Table` construct.
+the :class:`_schema.Table` construct.
 
 .. seealso::
 
@@ -2281,7 +2281,7 @@ the :class:`.Table` construct.
 New get_enums() method with PostgreSQL Dialect
 ----------------------------------------------
 
-The :func:`.inspect` method returns a :class:`.PGInspector` object in the
+The :func:`_sa.inspect` method returns a :class:`.PGInspector` object in the
 case of PostgreSQL, which includes a new :meth:`.PGInspector.get_enums`
 method that returns information on all available ``ENUM`` types::
 
@@ -2305,10 +2305,10 @@ Changes are as follows:
 * the :class:`Table` construct with ``autoload=True`` will now match a name
   that exists in the database as a materialized view or foreign table.
 
-* :meth:`.Inspector.get_view_names` will return plain and materialized view
+* :meth:`_reflection.Inspector.get_view_names` will return plain and materialized view
   names.
 
-* :meth:`.Inspector.get_table_names` does **not** change for PostgreSQL, it
+* :meth:`_reflection.Inspector.get_table_names` does **not** change for PostgreSQL, it
   continues to return only the names of plain tables.
 
 * A new method :meth:`.PGInspector.get_foreign_table_names` is added which
@@ -2626,7 +2626,7 @@ when using ODBC to avoid this issue entirely.
 SQL Server 2012 large text / binary types render as VARCHAR, NVARCHAR, VARBINARY
 --------------------------------------------------------------------------------
 
-The rendering of the :class:`.Text`, :class:`.UnicodeText`, and :class:`.LargeBinary`
+The rendering of the :class:`_expression.TextClause`, :class:`.UnicodeText`, and :class:`.LargeBinary`
 types has been changed for SQL Server 2012 and greater, with options
 to control the behavior completely, based on deprecation guidelines from
 Microsoft.  See :ref:`mssql_large_type_deprecation` for details.
@@ -2640,7 +2640,7 @@ Improved support for CTEs in Oracle
 -----------------------------------
 
 CTE support has been fixed up for Oracle, and there is also a new feature
-:meth:`.CTE.with_suffixes` that can assist with Oracle's special directives::
+:meth:`_expression.CTE.with_suffixes` that can assist with Oracle's special directives::
 
     included_parts = select([
         part.c.sub_part, part.c.part, part.c.quantity

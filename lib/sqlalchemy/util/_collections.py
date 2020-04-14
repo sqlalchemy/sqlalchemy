@@ -50,7 +50,7 @@ class KeyedTuple(AbstractKeyedTuple):
         >>> k.two
         2
 
-    Result rows returned by :class:`.Query` that contain multiple
+    Result rows returned by :class:`_query.Query` that contain multiple
     ORM entities and/or column expressions make use of this
     class to return rows.
 
@@ -63,7 +63,7 @@ class KeyedTuple(AbstractKeyedTuple):
     receives its list of keys in place.   The subtype approach
     of ``collections.namedtuple()`` introduces significant complexity
     and performance overhead, which is not necessary for the
-    :class:`.Query` object's use case.
+    :class:`_query.Query` object's use case.
 
     .. seealso::
 

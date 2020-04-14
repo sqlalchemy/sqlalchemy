@@ -62,12 +62,12 @@ __all__ = (
 
 
 class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
-    """Represent a particular class attribute mapped by :class:`.Mapper`.
+    """Represent a particular class attribute mapped by :class:`_orm.Mapper`.
 
     The most common occurrences of :class:`.MapperProperty` are the
-    mapped :class:`.Column`, which is represented in a mapping as
+    mapped :class:`_schema.Column`, which is represented in a mapping as
     an instance of :class:`.ColumnProperty`,
-    and a reference to another class produced by :func:`.relationship`,
+    and a reference to another class produced by :func:`_orm.relationship`,
     represented in the mapping as an instance of
     :class:`.RelationshipProperty`.
 
@@ -102,7 +102,8 @@ class MapperProperty(_MappedAttribute, InspectionAttr, util.MemoizedSlots):
 
         The dictionary is generated when first accessed.  Alternatively,
         it can be specified as a constructor argument to the
-        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        :func:`.column_property`, :func:`_orm.relationship`, or
+        :func:`.composite`
         functions.
 
         .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also
@@ -633,7 +634,7 @@ class MapperOption(object):
     """
 
     def process_query(self, query):
-        """Apply a modification to the given :class:`.Query`."""
+        """Apply a modification to the given :class:`_query.Query`."""
 
     def process_query_conditionally(self, query):
         """same as process_query(), except that this option may not
@@ -651,14 +652,15 @@ class MapperOption(object):
     def _generate_cache_key(self, path):
         """Used by the "baked lazy loader" to see if this option can be cached.
 
-        The "baked lazy loader" refers to the :class:`.Query` that is
+        The "baked lazy loader" refers to the :class:`_query.Query` that is
         produced during a lazy load operation for a mapped relationship.
         It does not yet apply to the "lazy" load operation for deferred
         or expired column attributes, however this may change in the future.
 
         This loader generates SQL for a query only once and attempts to  cache
         it; from that point on, if the SQL has been cached it will no longer
-        run the :meth:`.Query.options` method of the :class:`.Query`.   The
+        run the :meth:`_query.Query.options` method of the
+        :class:`_query.Query`.   The
         :class:`.MapperOption` object that wishes to participate within a lazy
         load operation therefore needs to tell the baked loader that it either
         needs to forego this caching, or that it needs to include the state of
@@ -672,7 +674,7 @@ class MapperOption(object):
         not cache the SQL when this :class:`.MapperOption` is present.
         This is the safest option and ensures both that the option is
         invoked every time, and also that the cache isn't filled up with
-        an unlimited number of :class:`.Query` objects for an unlimited
+        an unlimited number of :class:`_query.Query` objects for an unlimited
         number of :class:`.MapperOption` objects.
 
         .. versionchanged:: 1.2.8 the default return value of
@@ -680,7 +682,8 @@ class MapperOption(object):
            was ``None`` indicating "safe to cache, don't include as part of
            the cache key"
 
-        To enable caching of :class:`.Query` objects within lazy loaders, a
+        To enable caching of :class:`_query.Query` objects within lazy loaders
+        , a
         given :class:`.MapperOption` that returns a cache key must return a key
         that uniquely identifies the complete state of this option, which will
         match any other :class:`.MapperOption` that itself retains the
@@ -690,7 +693,7 @@ class MapperOption(object):
 
         If the :class:`.MapperOption` does not apply to the given path and
         would not affect query results on such a path, it should return None,
-        indicating the :class:`.Query` is safe to cache for this given
+        indicating the :class:`_query.Query` is safe to cache for this given
         loader path and that this :class:`.MapperOption` need not be
         part of the cache key.
 

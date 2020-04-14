@@ -168,7 +168,7 @@ EXT_SKIP = util.symbol("EXT_SKIP")
 
 ONETOMANY = util.symbol(
     "ONETOMANY",
-    """Indicates the one-to-many direction for a :func:`.relationship`.
+    """Indicates the one-to-many direction for a :func:`_orm.relationship`.
 
     This symbol is typically used by the internals but may be exposed within
     certain API features.
@@ -178,7 +178,7 @@ ONETOMANY = util.symbol(
 
 MANYTOONE = util.symbol(
     "MANYTOONE",
-    """Indicates the many-to-one direction for a :func:`.relationship`.
+    """Indicates the many-to-one direction for a :func:`_orm.relationship`.
 
     This symbol is typically used by the internals but may be exposed within
     certain API features.
@@ -188,7 +188,7 @@ MANYTOONE = util.symbol(
 
 MANYTOMANY = util.symbol(
     "MANYTOMANY",
-    """Indicates the many-to-many direction for a :func:`.relationship`.
+    """Indicates the many-to-many direction for a :func:`_orm.relationship`.
 
     This symbol is typically used by the internals but may be exposed within
     certain API features.
@@ -301,7 +301,7 @@ def object_state(instance):
     Raises :class:`sqlalchemy.orm.exc.UnmappedInstanceError`
     if no mapping is configured.
 
-    Equivalent functionality is available via the :func:`.inspect`
+    Equivalent functionality is available via the :func:`_sa.inspect`
     function as::
 
         inspect(instance)
@@ -339,7 +339,7 @@ def _class_to_mapper(class_or_mapper):
 
 
 def _mapper_or_none(entity):
-    """Return the :class:`.Mapper` for the given class or None if the
+    """Return the :class:`_orm.Mapper` for the given class or None if the
     class is not mapped.
     """
 
@@ -352,7 +352,7 @@ def _mapper_or_none(entity):
 
 def _is_mapped_class(entity):
     """Return True if the given object is a mapped class,
-    :class:`.Mapper`, or :class:`.AliasedClass`.
+    :class:`_orm.Mapper`, or :class:`.AliasedClass`.
     """
 
     insp = inspection.inspect(entity, False)
@@ -432,14 +432,14 @@ def _inspect_mapped_class(class_, configure=False):
 
 
 def class_mapper(class_, configure=True):
-    """Given a class, return the primary :class:`.Mapper` associated
+    """Given a class, return the primary :class:`_orm.Mapper` associated
     with the key.
 
     Raises :exc:`.UnmappedClassError` if no mapping is configured
     on the given class, or :exc:`.ArgumentError` if a non-class
     object is passed.
 
-    Equivalent functionality is available via the :func:`.inspect`
+    Equivalent functionality is available via the :func:`_sa.inspect`
     function as::
 
         inspect(some_mapped_class)
@@ -461,7 +461,7 @@ def class_mapper(class_, configure=True):
 
 class InspectionAttr(object):
     """A base class applied to all ORM objects that can be returned
-    by the :func:`.inspect` function.
+    by the :func:`_sa.inspect` function.
 
     The attributes defined here allow the usage of simple boolean
     checks to test basic facts about the object returned.
@@ -477,7 +477,8 @@ class InspectionAttr(object):
     __slots__ = ()
 
     is_selectable = False
-    """Return True if this object is an instance of :class:`.Selectable`."""
+    """Return True if this object is an instance of """
+    """:class:`expression.Selectable`."""
 
     is_aliased_class = False
     """True if this object is an instance of :class:`.AliasedClass`."""
@@ -486,7 +487,7 @@ class InspectionAttr(object):
     """True if this object is an instance of :class:`.InstanceState`."""
 
     is_mapper = False
-    """True if this object is an instance of :class:`.Mapper`."""
+    """True if this object is an instance of :class:`_orm.Mapper`."""
 
     is_property = False
     """True if this object is an instance of :class:`.MapperProperty`."""
@@ -503,7 +504,7 @@ class InspectionAttr(object):
 
     .. seealso::
 
-        :attr:`.Mapper.all_orm_descriptors`
+        :attr:`_orm.Mapper.all_orm_descriptors`
 
     """
 
@@ -515,7 +516,8 @@ class InspectionAttr(object):
     """
 
     is_clause_element = False
-    """True if this object is an instance of :class:`.ClauseElement`."""
+    """True if this object is an instance of """
+    """:class:`_expression.ClauseElement`."""
 
     extension_type = NOT_EXTENSION
     """The extension type, if any.
@@ -548,7 +550,8 @@ class InspectionAttrInfo(InspectionAttr):
 
         The dictionary is generated when first accessed.  Alternatively,
         it can be specified as a constructor argument to the
-        :func:`.column_property`, :func:`.relationship`, or :func:`.composite`
+        :func:`.column_property`, :func:`_orm.relationship`, or
+        :func:`.composite`
         functions.
 
         .. versionchanged:: 1.0.0 :attr:`.MapperProperty.info` is also

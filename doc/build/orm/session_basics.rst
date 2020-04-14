@@ -8,7 +8,7 @@ What does the Session do ?
 In the most general sense, the :class:`~.Session` establishes all
 conversations with the database and represents a "holding zone" for all the
 objects which you've loaded or associated with it during its lifespan. It
-provides the entrypoint to acquire a :class:`.Query` object, which sends
+provides the entrypoint to acquire a :class:`_query.Query` object, which sends
 queries to the database using the :class:`~.Session` object's current database
 connection, populating result rows into objects that are then stored in the
 :class:`.Session`, inside a structure called the `Identity Map
@@ -18,8 +18,8 @@ object with a particular primary key".
 
 The :class:`.Session` begins in an essentially stateless form. Once queries
 are issued or other objects are persisted with it, it requests a connection
-resource from an :class:`.Engine` that is associated either with the
-:class:`.Session` itself or with the mapped :class:`.Table` objects being
+resource from an :class:`_engine.Engine` that is associated either with the
+:class:`.Session` itself or with the mapped :class:`_schema.Table` objects being
 operated upon. This connection represents an ongoing transaction, which
 remains in effect until the :class:`.Session` is instructed to commit or roll
 back its pending state.
@@ -77,11 +77,11 @@ Above, the :class:`.sessionmaker` call creates a factory for us,
 which we assign to the name ``Session``.  This factory, when
 called, will create a new :class:`.Session` object using the configurational
 arguments we've given the factory.  In this case, as is typical,
-we've configured the factory to specify a particular :class:`.Engine` for
+we've configured the factory to specify a particular :class:`_engine.Engine` for
 connection resources.
 
-A typical setup will associate the :class:`.sessionmaker` with an :class:`.Engine`,
-so that each :class:`.Session` generated will use this :class:`.Engine`
+A typical setup will associate the :class:`.sessionmaker` with an :class:`_engine.Engine`,
+so that each :class:`.Session` generated will use this :class:`_engine.Engine`
 to acquire connection resources.   This association can
 be set up as in the example above, using the ``bind`` argument.
 
@@ -101,7 +101,7 @@ Adding Additional Configuration to an Existing sessionmaker()
 -------------------------------------------------------------
 
 A common scenario is where the :class:`.sessionmaker` is invoked
-at module import time, however the generation of one or more :class:`.Engine`
+at module import time, however the generation of one or more :class:`_engine.Engine`
 instances to be associated with the :class:`.sessionmaker` has not yet proceeded.
 For this use case, the :class:`.sessionmaker` construct offers the
 :meth:`.sessionmaker.configure` method, which will place additional configuration
@@ -136,7 +136,7 @@ what most of the application wants, specific arguments can be passed to the
 :class:`.sessionmaker` factory's :meth:`.sessionmaker.__call__` method.
 These arguments will override whatever
 configurations have already been placed, such as below, where a new :class:`.Session`
-is constructed against a specific :class:`.Connection`::
+is constructed against a specific :class:`_engine.Connection`::
 
     # at the module level, the global sessionmaker,
     # bound to a specific Engine
@@ -148,7 +148,7 @@ is constructed against a specific :class:`.Connection`::
     session = Session(bind=conn)
 
 The typical rationale for the association of a :class:`.Session` with a specific
-:class:`.Connection` is that of a test fixture that maintains an external
+:class:`_engine.Connection` is that of a test fixture that maintains an external
 transaction - see :ref:`session_external_transaction` for an example of this.
 
 
@@ -514,7 +514,7 @@ expires all instances along transaction boundaries, so that with a normally
 isolated transaction, there shouldn't be any issue of instances representing
 data which is stale with regards to the current transaction.
 
-The :class:`.Query` object is introduced in great detail in
+The :class:`_query.Query` object is introduced in great detail in
 :ref:`ormtutorial_toplevel`, and further documented in
 :ref:`query_api_toplevel`.
 
@@ -566,7 +566,7 @@ Deleting Objects Referenced from Collections and Scalar Relationships
 
 The ORM in general never modifies the contents of a collection or scalar
 relationship during the flush process.  This means, if your class has a
-:func:`.relationship` that refers to a collection of objects, or a reference
+:func:`_orm.relationship` that refers to a collection of objects, or a reference
 to a single object such as many-to-one, the contents of this attribute will
 not be modified when the flush process occurs.  Instead, if the :class:`.Session`
 is expired afterwards, either through the expire-on-commit behavior of
@@ -588,7 +588,7 @@ A common confusion that arises regarding this behavior involves the use of the
 :meth:`~.Session.delete` method.   When :meth:`.Session.delete` is invoked upon
 an object and the :class:`.Session` is flushed, the row is deleted from the
 database.  Rows that refer to the target row via  foreign key, assuming they
-are tracked using a :func:`.relationship` between the two mapped object types,
+are tracked using a :func:`_orm.relationship` between the two mapped object types,
 will also see their foreign key attributes UPDATED to null, or if delete
 cascade is set up, the related rows will be deleted as well. However, even
 though rows related to the deleted object might be themselves modified as well,
@@ -647,7 +647,7 @@ The ``delete-orphan`` cascade can also be applied to a many-to-one
 or one-to-one relationship, so that when an object is de-associated from its
 parent, it is also automatically marked for deletion.   Using ``delete-orphan``
 cascade on a many-to-one or one-to-one requires an additional flag
-:paramref:`.relationship.single_parent` which invokes an assertion
+:paramref:`_orm.relationship.single_parent` which invokes an assertion
 that this related object is not to shared with any other parent simultaneously::
 
     class User(Base):

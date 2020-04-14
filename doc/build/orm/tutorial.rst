@@ -63,7 +63,7 @@ the SQL behind a popup window so it doesn't get in our way; just click the
 "SQL" links to see what's being generated.
 
 The return value of :func:`.create_engine` is an instance of
-:class:`.Engine`, and it represents the core interface to the
+:class:`_engine.Engine`, and it represents the core interface to the
 database, adapted through a :term:`dialect` that handles the details
 of the database and :term:`DBAPI` in use.  In this case the SQLite
 dialect will interpret instructions to the Python built-in ``sqlite3``
@@ -71,14 +71,14 @@ module.
 
 .. sidebar:: Lazy Connecting
 
-    The :class:`.Engine`, when first returned by :func:`.create_engine`,
+    The :class:`_engine.Engine`, when first returned by :func:`.create_engine`,
     has not actually tried to connect to the database yet; that happens
     only the first time it is asked to perform a task against the database.
 
-The first time a method like :meth:`.Engine.execute` or :meth:`.Engine.connect`
-is called, the :class:`.Engine` establishes a real :term:`DBAPI` connection to the
+The first time a method like :meth:`_engine.Engine.execute` or :meth:`_engine.Engine.connect`
+is called, the :class:`_engine.Engine` establishes a real :term:`DBAPI` connection to the
 database, which is then used to emit the SQL.  When using the ORM, we typically
-don't use the :class:`.Engine` directly once created; instead, it's used
+don't use the :class:`_engine.Engine` directly once created; instead, it's used
 behind the scenes by the ORM as we'll see shortly.
 
 .. seealso::
@@ -137,7 +137,7 @@ the table name, and names and datatypes of columns::
 
 A class using Declarative at a minimum
 needs a ``__tablename__`` attribute, and at least one
-:class:`.Column` which is part of a primary key [#]_.  SQLAlchemy never makes any
+:class:`_schema.Column` which is part of a primary key [#]_.  SQLAlchemy never makes any
 assumptions by itself about the table to which
 a class refers, including that it has no built-in conventions for names,
 datatypes, or constraints.   But this doesn't mean
@@ -145,7 +145,7 @@ boilerplate is required; instead, you're encouraged to create your
 own automated conventions using helper functions and mixin classes, which
 is described in detail at :ref:`declarative_mixins`.
 
-When our class is constructed, Declarative replaces all the :class:`.Column`
+When our class is constructed, Declarative replaces all the :class:`_schema.Column`
 objects with special Python accessors known as :term:`descriptors`; this is a
 process known as :term:`instrumentation`.   The "instrumented" mapped class
 will provide us with the means to refer to our table in a SQL context as well
@@ -164,7 +164,7 @@ Create a Schema
 
 With our ``User`` class constructed via the Declarative system, we have defined information about
 our table, known as :term:`table metadata`.   The object used by SQLAlchemy to represent
-this information for a specific table is called the :class:`.Table` object, and here Declarative has made
+this information for a specific table is called the :class:`_schema.Table` object, and here Declarative has made
 one for us.  We can see this object by inspecting the ``__table__`` attribute::
 
     >>> User.__table__ # doctest: +NORMALIZE_WHITESPACE
@@ -179,29 +179,29 @@ one for us.  We can see this object by inspecting the ``__table__`` attribute::
     The Declarative system, though highly recommended,
     is not required in order to use SQLAlchemy's ORM.
     Outside of Declarative, any
-    plain Python class can be mapped to any :class:`.Table`
+    plain Python class can be mapped to any :class:`_schema.Table`
     using the :func:`.mapper` function directly; this
     less common usage is described at :ref:`classical_mapping`.
 
 When we declared our class, Declarative used a Python metaclass in order to
 perform additional activities once the class declaration was complete; within
-this phase, it then created a :class:`.Table` object according to our
+this phase, it then created a :class:`_schema.Table` object according to our
 specifications, and associated it with the class by constructing
-a :class:`.Mapper` object.  This object is a behind-the-scenes object we normally
+a :class:`_orm.Mapper` object.  This object is a behind-the-scenes object we normally
 don't need to deal with directly (though it can provide plenty of information
 about our mapping when we need it).
 
-The :class:`.Table` object is a member of a larger collection
-known as :class:`.MetaData`.  When using Declarative,
+The :class:`_schema.Table` object is a member of a larger collection
+known as :class:`_schema.MetaData`.  When using Declarative,
 this object is available using the ``.metadata``
 attribute of our declarative base class.
 
-The :class:`.MetaData`
+The :class:`_schema.MetaData`
 is a :term:`registry` which includes the ability to emit a limited set
 of schema generation commands to the database.  As our SQLite database
-does not actually have a ``users`` table present, we can use :class:`.MetaData`
+does not actually have a ``users`` table present, we can use :class:`_schema.MetaData`
 to issue CREATE TABLE statements to the database for all tables that don't yet exist.
-Below, we call the :meth:`.MetaData.create_all` method, passing in our :class:`.Engine`
+Below, we call the :meth:`_schema.MetaData.create_all` method, passing in our :class:`_engine.Engine`
 as a source of database connectivity.  We will see that special commands are
 first emitted to check for the presence of the ``users`` table, and following that
 the actual ``CREATE TABLE`` statement:
@@ -342,9 +342,9 @@ instantiate a :class:`~sqlalchemy.orm.session.Session`::
     >>> session = Session()
 
 The above :class:`~sqlalchemy.orm.session.Session` is associated with our
-SQLite-enabled :class:`.Engine`, but it hasn't opened any connections yet. When it's first
+SQLite-enabled :class:`_engine.Engine`, but it hasn't opened any connections yet. When it's first
 used, it retrieves a connection from a pool of connections maintained by the
-:class:`.Engine`, and holds onto it until we commit all changes and/or close the
+:class:`_engine.Engine`, and holds onto it until we commit all changes and/or close the
 session object.
 
 
@@ -638,8 +638,8 @@ class:
     <User(name='fred', fullname='Fred Flintstone', nickname='freddy')> fred
 
 You can control the names of individual column expressions using the
-:meth:`~.ColumnElement.label` construct, which is available from
-any :class:`.ColumnElement`-derived object, as well as any class attribute which
+:meth:`_expression.ColumnElement.label` construct, which is available from
+any :class:`_expression.ColumnElement`-derived object, as well as any class attribute which
 is mapped to one (such as ``User.name``):
 
 .. sourcecode:: python+sql
@@ -846,11 +846,11 @@ Here's a rundown of some of the most common operators used in
 Returning Lists and Scalars
 ---------------------------
 
-A number of methods on :class:`.Query`
+A number of methods on :class:`_query.Query`
 immediately issue SQL and return a value containing loaded
 database results.  Here's a brief tour:
 
-* :meth:`~.Query.all()` returns a list:
+* :meth:`_query.Query.all()` returns a list:
 
   .. sourcecode:: python+sql
 
@@ -868,7 +868,7 @@ database results.  Here's a brief tour:
 
   .. warning::
 
-        When the :class:`.Query` object returns lists of ORM-mapped objects
+        When the :class:`_query.Query` object returns lists of ORM-mapped objects
         such as the ``User`` object above, the entries are **deduplicated**
         based on primary key, as the results are interpreted from the SQL
         result set.  That is, if SQL query returns a row with ``id=7`` twice,
@@ -881,7 +881,7 @@ database results.  Here's a brief tour:
             :ref:`faq_query_deduplicating`
 
 
-* :meth:`~.Query.first()` applies a limit of one and returns
+* :meth:`_query.Query.first()` applies a limit of one and returns
   the first result as a scalar:
 
   .. sourcecode:: python+sql
@@ -897,7 +897,7 @@ database results.  Here's a brief tour:
       ('%ed', 1, 0)
       {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
-* :meth:`~.Query.one()` fully fetches all rows, and if not
+* :meth:`_query.Query.one()` fully fetches all rows, and if not
   exactly one object identity or composite row is present in the result, raises
   an error.  With multiple rows found:
 
@@ -917,17 +917,17 @@ database results.  Here's a brief tour:
       ...
       NoResultFound: No row was found for one()
 
-  The :meth:`~.Query.one` method is great for systems that expect to handle
+  The :meth:`_query.Query.one` method is great for systems that expect to handle
   "no items found" versus "multiple items found" differently; such as a RESTful
   web service, which may want to raise a "404 not found" when no results are found,
   but raise an application error when multiple results are found.
 
-* :meth:`~.Query.one_or_none` is like :meth:`~.Query.one`, except that if no
+* :meth:`_query.Query.one_or_none` is like :meth:`_query.Query.one`, except that if no
   results are found, it doesn't raise an error; it just returns ``None``. Like
-  :meth:`~.Query.one`, however, it does raise an error if multiple results are
+  :meth:`_query.Query.one`, however, it does raise an error if multiple results are
   found.
 
-* :meth:`~.Query.scalar` invokes the :meth:`~.Query.one` method, and upon
+* :meth:`_query.Query.scalar` invokes the :meth:`_query.Query.one` method, and upon
   success returns the first column of the row:
 
   .. sourcecode:: python+sql
@@ -948,7 +948,7 @@ Using Textual SQL
 
 Literal strings can be used flexibly with
 :class:`~sqlalchemy.orm.query.Query`, by specifying their use
-with the :func:`~.expression.text` construct, which is accepted
+with the :func:`_expression.text` construct, which is accepted
 by most applicable methods.  For example,
 :meth:`~sqlalchemy.orm.query.Query.filter()` and
 :meth:`~sqlalchemy.orm.query.Query.order_by()`:
@@ -989,7 +989,7 @@ method:
     (224, 'fred')
     {stop}<User(name='fred', fullname='Fred Flintstone', nickname='freddy')>
 
-To use an entirely string-based statement, a :func:`.text` construct
+To use an entirely string-based statement, a :func:`_expression.text` construct
 representing a complete statement can be passed to
 :meth:`~sqlalchemy.orm.query.Query.from_statement()`.  Without additional
 specifiers, the columns in the string SQL are matched to the model columns
@@ -1010,10 +1010,10 @@ dealing with complex statements that contain duplicate column names or when
 using anonymized ORM constructs that don't easily match to specific names.
 Additionally, there is typing behavior present in our mapped columns that
 we might find necessary when handling result rows.  For these cases,
-the :func:`~.expression.text` construct allows us to link its textual SQL
+the :func:`_expression.text` construct allows us to link its textual SQL
 to Core or ORM-mapped column expressions positionally; we can achieve this
 by passing column expressions as positional arguments to the
-:meth:`.TextClause.columns` method:
+:meth:`_expression.TextClause.columns` method:
 
 .. sourcecode:: python+sql
 
@@ -1027,12 +1027,12 @@ by passing column expressions as positional arguments to the
 
 .. versionadded:: 1.1
 
-    The :meth:`.TextClause.columns` method now accepts column expressions
+    The :meth:`_expression.TextClause.columns` method now accepts column expressions
     which will be matched positionally to a plain text SQL result set,
     eliminating the need for column names to match or even be unique in the
     SQL statement.
 
-When selecting from a :func:`~.expression.text` construct, the :class:`.Query`
+When selecting from a :func:`_expression.text` construct, the :class:`_query.Query`
 may still specify what columns and entities are to be returned; instead of
 ``query(User)`` we can also ask for the columns individually, as in
 any other case:
@@ -1049,7 +1049,7 @@ any other case:
 
 .. seealso::
 
-    :ref:`sqlexpression_text` - The :func:`.text` construct explained
+    :ref:`sqlexpression_text` - The :func:`_expression.text` construct explained
     from the perspective of Core-only queries.
 
 Counting
@@ -1073,7 +1073,7 @@ counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
 
 .. sidebar:: Counting on ``count()``
 
-    :meth:`.Query.count` used to be a very complicated method
+    :meth:`_query.Query.count` used to be a very complicated method
     when it would try to guess whether or not a subquery was needed
     around the
     existing query, and in some exotic cases it wouldn't do the right thing.
@@ -1081,7 +1081,7 @@ counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
     and always returns the right answer.  Use ``func.count()`` if a
     particular statement absolutely cannot tolerate the subquery being present.
 
-The :meth:`~.Query.count()` method is used to determine
+The :meth:`_query.Query.count()` method is used to determine
 how many rows the SQL statement would return.   Looking
 at the generated SQL above, SQLAlchemy always places whatever it is we are
 querying into a subquery, then counts the rows from that.   In some cases
@@ -1114,7 +1114,7 @@ To achieve our simple ``SELECT count(*) FROM table``, we can apply it as:
     ('*',)
     {stop}4
 
-The usage of :meth:`~.Query.select_from` can be removed if we express the count in terms
+The usage of :meth:`_query.Query.select_from` can be removed if we express the count in terms
 of the ``User`` primary key directly:
 
 .. sourcecode:: python+sql
@@ -1156,26 +1156,26 @@ declarative, we define this table along with its mapped class, ``Address``:
     >>> User.addresses = relationship(
     ...     "Address", order_by=Address.id, back_populates="user")
 
-The above class introduces the :class:`.ForeignKey` construct, which is a
-directive applied to :class:`.Column` that indicates that values in this
+The above class introduces the :class:`_schema.ForeignKey` construct, which is a
+directive applied to :class:`_schema.Column` that indicates that values in this
 column should be :term:`constrained` to be values present in the named remote
 column. This is a core feature of relational databases, and is the "glue" that
 transforms an otherwise unconnected collection of tables to have rich
-overlapping relationships. The :class:`.ForeignKey` above expresses that
+overlapping relationships. The :class:`_schema.ForeignKey` above expresses that
 values in the ``addresses.user_id`` column should be constrained to
 those values in the ``users.id`` column, i.e. its primary key.
 
-A second directive, known as :func:`.relationship`,
+A second directive, known as :func:`_orm.relationship`,
 tells the ORM that the ``Address`` class itself should be linked
 to the ``User`` class, using the attribute ``Address.user``.
-:func:`.relationship` uses the foreign key
+:func:`_orm.relationship` uses the foreign key
 relationships between the two tables to determine the nature of
 this linkage, determining that ``Address.user`` will be :term:`many to one`.
-An additional :func:`.relationship` directive is placed on the
+An additional :func:`_orm.relationship` directive is placed on the
 ``User`` mapped class under the attribute ``User.addresses``.  In both
-:func:`.relationship` directives, the parameter
-:paramref:`.relationship.back_populates` is assigned to refer to the
-complementary attribute names; by doing so, each :func:`.relationship`
+:func:`_orm.relationship` directives, the parameter
+:paramref:`_orm.relationship.back_populates` is assigned to refer to the
+complementary attribute names; by doing so, each :func:`_orm.relationship`
 can make intelligent decision about the same relationship as expressed
 in reverse;  on one side, ``Address.user`` refers to a ``User`` instance,
 and on the other side, ``User.addresses`` refers to a list of
@@ -1183,16 +1183,16 @@ and on the other side, ``User.addresses`` refers to a list of
 
 .. note::
 
-    The :paramref:`.relationship.back_populates` parameter is a newer
+    The :paramref:`_orm.relationship.back_populates` parameter is a newer
     version of a very common SQLAlchemy feature called
-    :paramref:`.relationship.backref`.  The :paramref:`.relationship.backref`
+    :paramref:`_orm.relationship.backref`.  The :paramref:`_orm.relationship.backref`
     parameter hasn't gone anywhere and will always remain available!
-    The :paramref:`.relationship.back_populates` is the same thing, except
+    The :paramref:`_orm.relationship.back_populates` is the same thing, except
     a little more verbose and easier to manipulate.  For an overview
     of the entire topic, see the section :ref:`relationships_backref`.
 
 The reverse side of a many-to-one relationship is always :term:`one to many`.
-A full catalog of available :func:`.relationship` configurations
+A full catalog of available :func:`_orm.relationship` configurations
 is at :ref:`relationship_patterns`.
 
 The two complementing relationships ``Address.user`` and ``User.addresses``
@@ -1200,7 +1200,7 @@ are referred to as a :term:`bidirectional relationship`, and is a key
 feature of the SQLAlchemy ORM.   The section :ref:`relationships_backref`
 discusses the "backref" feature in detail.
 
-Arguments to :func:`.relationship` which concern the remote class
+Arguments to :func:`_orm.relationship` which concern the remote class
 can be specified using strings, assuming the Declarative system is in
 use.   Once all mappings are complete, these strings are evaluated
 as Python expressions in order to produce the actual argument, in the
@@ -1208,7 +1208,7 @@ above case the ``User`` class.   The names which are allowed during
 this evaluation include, among other things, the names of all classes
 which have been created in terms of the declared base.
 
-See the docstring for :func:`.relationship` for more detail on argument style.
+See the docstring for :func:`_orm.relationship` for more detail on argument style.
 
 .. topic:: Did you know ?
 
@@ -1337,14 +1337,14 @@ to optimize the loading of this collection in a bit.
 Querying with Joins
 ===================
 
-Now that we have two tables, we can show some more features of :class:`.Query`,
+Now that we have two tables, we can show some more features of :class:`_query.Query`,
 specifically how to create queries that deal with both tables at the same time.
 The `Wikipedia page on SQL JOIN
 <http://en.wikipedia.org/wiki/Join_%28SQL%29>`_ offers a good introduction to
 join techniques, several of which we'll illustrate here.
 
 To construct a simple implicit join between ``User`` and ``Address``,
-we can use :meth:`.Query.filter()` to equate their related columns together.
+we can use :meth:`_query.Query.filter()` to equate their related columns together.
 Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql
@@ -1370,7 +1370,7 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
     <Address(email_address='jack@google.com')>
 
 The actual SQL JOIN syntax, on the other hand, is most easily achieved
-using the :meth:`.Query.join` method:
+using the :meth:`_query.Query.join` method:
 
 .. sourcecode:: python+sql
 
@@ -1386,9 +1386,9 @@ using the :meth:`.Query.join` method:
     ('jack@google.com',)
     {stop}[<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>]
 
-:meth:`.Query.join` knows how to join between ``User``
+:meth:`_query.Query.join` knows how to join between ``User``
 and ``Address`` because there's only one foreign key between them. If there
-were no foreign keys, or several, :meth:`.Query.join`
+were no foreign keys, or several, :meth:`_query.Query.join`
 works better when one of the following forms are used::
 
     query.join(Address, User.id==Address.user_id)    # explicit condition
@@ -1397,20 +1397,20 @@ works better when one of the following forms are used::
     query.join('addresses')                          # same, using a string
 
 As you would expect, the same idea is used for "outer" joins, using the
-:meth:`~.Query.outerjoin` function::
+:meth:`_query.Query.outerjoin` function::
 
     query.outerjoin(User.addresses)   # LEFT OUTER JOIN
 
-The reference documentation for :meth:`~.Query.join` contains detailed information
-and examples of the calling styles accepted by this method; :meth:`~.Query.join`
+The reference documentation for :meth:`_query.Query.join` contains detailed information
+and examples of the calling styles accepted by this method; :meth:`_query.Query.join`
 is an important method at the center of usage for any SQL-fluent application.
 
-.. topic:: What does :class:`.Query` select from if there's multiple entities?
+.. topic:: What does :class:`_query.Query` select from if there's multiple entities?
 
-    The :meth:`.Query.join` method will **typically join from the leftmost
+    The :meth:`_query.Query.join` method will **typically join from the leftmost
     item** in the list of entities, when the ON clause is omitted, or if the
     ON clause is a plain SQL expression.  To control the first entity in the list
-    of JOINs, use the :meth:`.Query.select_from` method::
+    of JOINs, use the :meth:`_query.Query.select_from` method::
 
         query = session.query(User, Address).select_from(Address).join(User)
 
@@ -1470,7 +1470,7 @@ get rows back for those users who don't have any addresses, e.g.::
 Using the :class:`~sqlalchemy.orm.query.Query`, we build a statement like this
 from the inside out. The ``statement`` accessor returns a SQL expression
 representing the statement generated by a particular
-:class:`~sqlalchemy.orm.query.Query` - this is an instance of a :func:`~.expression.select`
+:class:`~sqlalchemy.orm.query.Query` - this is an instance of a :func:`_expression.select`
 construct, which are described in :ref:`sqlexpression_toplevel`::
 
     >>> from sqlalchemy.sql import func
@@ -1653,7 +1653,7 @@ and behavior:
 
     query.filter(Address.user.has(name='ed'))
 
-* :meth:`.Query.with_parent` (used for any relationship)::
+* :meth:`_query.Query.with_parent` (used for any relationship)::
 
     session.query(Address).with_parent(someuser, 'addresses')
 
@@ -1666,15 +1666,15 @@ was emitted.  If you want to reduce the number of queries (dramatically, in many
 we can apply an :term:`eager load` to the query operation.   SQLAlchemy
 offers three types of eager loading, two of which are automatic, and a third
 which involves custom criterion.   All three are usually invoked via functions known
-as query options which give additional instructions to the :class:`.Query` on how
-we would like various attributes to be loaded, via the :meth:`.Query.options` method.
+as query options which give additional instructions to the :class:`_query.Query` on how
+we would like various attributes to be loaded, via the :meth:`_query.Query.options` method.
 
 Selectin Load
 -------------
 
 In this case we'd like to indicate that ``User.addresses`` should load eagerly.
 A good choice for loading a set of objects as well as their related collections
-is the :func:`.orm.selectinload` option, which emits a second SELECT statement
+is the :func:`_orm.selectinload` option, which emits a second SELECT statement
 that fully loads the collections associated with the results just loaded.
 The name "selectin" originates from the fact that the SELECT statement
 uses an IN clause in order to locate related rows for multiple objects
@@ -1711,7 +1711,7 @@ Joined Load
 -----------
 
 The other automatic eager loading function is more well known and is called
-:func:`.orm.joinedload`.   This style of loading emits a JOIN, by default
+:func:`_orm.joinedload`.   This style of loading emits a JOIN, by default
 a LEFT OUTER JOIN, so that the lead object as well as the related object
 or collection is loaded in one step.   We illustrate loading the same
 ``addresses`` collection in this way - note that even though the ``User.addresses``
@@ -1744,13 +1744,13 @@ will emit the extra join regardless:
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
 Note that even though the OUTER JOIN resulted in two rows, we still only got
-one instance of ``User`` back.  This is because :class:`.Query` applies a "uniquing"
+one instance of ``User`` back.  This is because :class:`_query.Query` applies a "uniquing"
 strategy, based on object identity, to the returned entities.  This is specifically
 so that joined eager loading can be applied without affecting the query results.
 
-While :func:`.joinedload` has been around for a long time, :func:`.selectinload`
+While :func:`_orm.joinedload` has been around for a long time, :func:`.selectinload`
 is a newer form of eager loading.   :func:`.selectinload` tends to be more appropriate
-for loading related collections while :func:`.joinedload` tends to be better suited
+for loading related collections while :func:`_orm.joinedload` tends to be better suited
 for many-to-one relationships, due to the fact that only one row is loaded
 for both the lead and the related object.   Another form of loading,
 :func:`.subqueryload`, also exists, which can be used in place of
@@ -1759,11 +1759,11 @@ backends.
 
 .. topic:: ``joinedload()`` is not a replacement for ``join()``
 
-   The join created by :func:`.joinedload` is anonymously aliased such that
-   it **does not affect the query results**.   An :meth:`.Query.order_by`
-   or :meth:`.Query.filter` call **cannot** reference these aliased
+   The join created by :func:`_orm.joinedload` is anonymously aliased such that
+   it **does not affect the query results**.   An :meth:`_query.Query.order_by`
+   or :meth:`_query.Query.filter` call **cannot** reference these aliased
    tables - so-called "user space" joins are constructed using
-   :meth:`.Query.join`.   The rationale for this is that :func:`.joinedload` is only
+   :meth:`_query.Query.join`.   The rationale for this is that :func:`_orm.joinedload` is only
    applied in order to affect how related objects or collections are loaded
    as an optimizing detail - it can be added or removed with no impact
    on actual results.   See the section :ref:`zen_of_eager_loading` for
@@ -1775,11 +1775,11 @@ Explicit Join + Eagerload
 A third style of eager loading is when we are constructing a JOIN explicitly in
 order to locate the primary rows, and would like to additionally apply the extra
 table to a related object or collection on the primary object.   This feature
-is supplied via the :func:`.orm.contains_eager` function, and is most
+is supplied via the :func:`_orm.contains_eager` function, and is most
 typically useful for pre-loading the many-to-one object on a query that needs
 to filter on that same object.  Below we illustrate loading an ``Address``
 row as well as the related ``User`` object, filtering on the ``User`` named
-"jack" and using :func:`.orm.contains_eager` to apply the "user" columns to the ``Address.user``
+"jack" and using :func:`_orm.contains_eager` to apply the "user" columns to the ``Address.user``
 attribute:
 
 .. sourcecode:: python+sql
@@ -1905,7 +1905,7 @@ the ``Address.user`` relationship via the ``User`` class already::
     ...     def __repr__(self):
     ...         return "<Address(email_address='%s')>" % self.email_address
 
-Now when we load the user ``jack`` (below using :meth:`~.Query.get`,
+Now when we load the user ``jack`` (below using :meth:`_query.Query.get`,
 which loads by primary key), removing an address from the
 corresponding ``addresses`` collection will result in that ``Address``
 being deleted:
@@ -2000,7 +2000,7 @@ relationship. We'll sneak in some other features too, just to take a tour.
 We'll make our application a blog application, where users can write
 ``BlogPost`` items, which have ``Keyword`` items associated with them.
 
-For a plain many-to-many, we need to create an un-mapped :class:`.Table` construct
+For a plain many-to-many, we need to create an un-mapped :class:`_schema.Table` construct
 to serve as the association table.  This looks like the following::
 
     >>> from sqlalchemy import Table, Text
@@ -2010,14 +2010,14 @@ to serve as the association table.  This looks like the following::
     ...     Column('keyword_id', ForeignKey('keywords.id'), primary_key=True)
     ... )
 
-Above, we can see declaring a :class:`.Table` directly is a little different
-than declaring a mapped class.  :class:`.Table` is a constructor function, so
-each individual :class:`.Column` argument is separated by a comma.  The
-:class:`.Column` object is also given its name explicitly, rather than it being
+Above, we can see declaring a :class:`_schema.Table` directly is a little different
+than declaring a mapped class.  :class:`_schema.Table` is a constructor function, so
+each individual :class:`_schema.Column` argument is separated by a comma.  The
+:class:`_schema.Column` object is also given its name explicitly, rather than it being
 taken from an assigned attribute name.
 
 Next we define ``BlogPost`` and ``Keyword``, using complementary
-:func:`.relationship` constructs, each referring to the ``post_keywords``
+:func:`_orm.relationship` constructs, each referring to the ``post_keywords``
 table as an association table::
 
     >>> class BlogPost(Base):

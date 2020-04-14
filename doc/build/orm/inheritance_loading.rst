@@ -20,10 +20,10 @@ of a particular subclass is queried up front, we can use it in our query as
 something to filter on, and it also will be loaded when we get our objects
 back.   If it's not queried up front, it gets loaded later when we first need
 to access it.   Basic control of this behavior is provided using the
-:func:`.orm.with_polymorphic` function, as well as two variants, the mapper
+:func:`_orm.with_polymorphic` function, as well as two variants, the mapper
 configuration :paramref:`.mapper.with_polymorphic` in conjunction with
-the :paramref:`.mapper.polymorphic_load` option, and the :class:`.Query`
--level :meth:`.Query.with_polymorphic` method.    The "with_polymorphic" family
+the :paramref:`.mapper.polymorphic_load` option, and the :class:`_query.Query`
+-level :meth:`_query.Query.with_polymorphic` method.    The "with_polymorphic" family
 each provide a means of specifying which specific subclasses of a particular
 base class should be included within a query, which implies what columns and
 tables will be available in the SELECT.
@@ -36,7 +36,7 @@ Using with_polymorphic
 For the following sections, assume the ``Employee`` / ``Engineer`` / ``Manager``
 examples introduced in :ref:`inheritance_toplevel`.
 
-Normally, when a :class:`.Query` specifies the base class of an
+Normally, when a :class:`_query.Query` specifies the base class of an
 inheritance hierarchy, only the columns that are local to that base
 class are queried::
 
@@ -55,9 +55,9 @@ inheritance case, since the ``Employee`` entity does not refer to these columns
 (note that for single-table inheritance, this is common if Declarative is used,
 but not for a classical mapping).
 
-To solve both of these issues, the :func:`.orm.with_polymorphic` function
+To solve both of these issues, the :func:`_orm.with_polymorphic` function
 provides a special :class:`.AliasedClass` that represents a range of
-columns across subclasses. This object can be used in a :class:`.Query`
+columns across subclasses. This object can be used in a :class:`_query.Query`
 like any other alias.  When queried, it represents all the columns present in
 the classes given::
 
@@ -91,7 +91,7 @@ statement for the above would be:
 Where above, the additional tables / columns for "engineer" and "manager" are
 included.  Similar behavior occurs in the case of single table inheritance.
 
-:func:`.orm.with_polymorphic` accepts a single class or
+:func:`_orm.with_polymorphic` accepts a single class or
 mapper, a list of classes/mappers, or the string ``'*'`` to indicate all
 subclasses:
 
@@ -109,8 +109,8 @@ subclasses:
 Using aliasing with with_polymorphic
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.orm.with_polymorphic` function also provides "aliasing" of the
-polymorphic selectable itself, meaning, two different :func:`.orm.with_polymorphic`
+The :func:`_orm.with_polymorphic` function also provides "aliasing" of the
+polymorphic selectable itself, meaning, two different :func:`_orm.with_polymorphic`
 entities, referring to the same class hierarchy, can be used together.  This
 is available using the :paramref:`.orm.with_polymorphic.aliased` flag.
 For a polymorphic selectable that is across multiple tables, the default behavior
@@ -171,7 +171,7 @@ with the same name:
 
 The creation of subqueries above is very verbose.  While it creates the best
 encapsulation of the two distinct queries, it may be inefficient.
-:func:`.orm.with_polymorphic` includes an additional flag to help with this
+:func:`_orm.with_polymorphic` includes an additional flag to help with this
 situation, :paramref:`.orm.with_polymorphic.flat`, which will "flatten" the
 subquery / join combination into straight joins, applying aliasing to the
 individual tables instead.   Setting :paramref:`.orm.with_polymorphic.flat`
@@ -232,8 +232,8 @@ modern database versions now support this syntax.
 Referring to Specific Subclass Attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The entity returned by :func:`.orm.with_polymorphic` is an :class:`.AliasedClass`
-object, which can be used in a :class:`.Query` like any other alias, including
+The entity returned by :func:`_orm.with_polymorphic` is an :class:`.AliasedClass`
+object, which can be used in a :class:`_query.Query` like any other alias, including
 named attributes for those attributes on the ``Employee`` class.   In our
 previous example, ``eng_plus_manager`` becomes the entity that we use to refer to the
 three-way outer join above.  It also includes namespaces for each class named
@@ -254,7 +254,7 @@ specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``
 Setting with_polymorphic at mapper configuration time
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.orm.with_polymorphic` function serves the purpose of allowing
+The :func:`_orm.with_polymorphic` function serves the purpose of allowing
 "eager" loading of attributes from subclass tables, as well as the ability
 to refer to the attributes from subclass tables at query time.   Historically,
 the "eager loading" of columns has been the more important part of the
@@ -285,11 +285,11 @@ efficient from a SQL perspective.   For single table inheritance, specifying the
 asterisk is often a good idea as the load is still against a single table only,
 but an additional lazy load of subclass-mapped columns will be prevented.
 
-Using :func:`.orm.with_polymorphic` or :meth:`.Query.with_polymorphic`
+Using :func:`_orm.with_polymorphic` or :meth:`_query.Query.with_polymorphic`
 will override the mapper-level :paramref:`.mapper.with_polymorphic` setting.
 
 The :paramref:`.mapper.with_polymorphic` option also accepts a list of
-classes just like :func:`.orm.with_polymorphic` to polymorphically load among
+classes just like :func:`_orm.with_polymorphic` to polymorphically load among
 a subset of classes.  However, when using Declarative, providing classes
 to this list is not directly possible as the subclasses we'd like to add
 are not available yet.   Instead, we can specify on each subclass
@@ -323,11 +323,11 @@ exactly as though they had been appended to the
 Setting with_polymorphic against a query
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.orm.with_polymorphic` function evolved from a query-level
-method :meth:`.Query.with_polymorphic`.  This method has the same purpose
-as :func:`.orm.with_polymorphic`, except is not as
+The :func:`_orm.with_polymorphic` function evolved from a query-level
+method :meth:`_query.Query.with_polymorphic`.  This method has the same purpose
+as :func:`_orm.with_polymorphic`, except is not as
 flexible in its usage patterns in that it only applies to the first entity
-of the :class:`.Query`.   It then takes effect for all occurrences of
+of the :class:`_query.Query`.   It then takes effect for all occurrences of
 that entity, so that the entity (and its subclasses) can be referred to
 directly, rather than using an alias object.  For simple cases it might be
 considered to be more succinct::
@@ -341,25 +341,25 @@ considered to be more succinct::
             )
         )
 
-The :meth:`.Query.with_polymorphic` method has a more complicated job
-than the :func:`.orm.with_polymorphic` function, as it needs to correctly
+The :meth:`_query.Query.with_polymorphic` method has a more complicated job
+than the :func:`_orm.with_polymorphic` function, as it needs to correctly
 transform entities like ``Engineer`` and ``Manager`` appropriately, but
 not interfere with other entities.  If its flexibility is lacking, switch
-to using :func:`.orm.with_polymorphic`.
+to using :func:`_orm.with_polymorphic`.
 
 .. _polymorphic_selectin:
 
 Polymorphic Selectin Loading
 ----------------------------
 
-An alternative to using the :func:`.orm.with_polymorphic` family of
+An alternative to using the :func:`_orm.with_polymorphic` family of
 functions to "eagerly" load the additional subclasses on an inheritance
 mapping, primarily when using joined table inheritance, is to use polymorphic
 "selectin" loading.   This is an eager loading
 feature which works similarly to the :ref:`selectin_eager_loading` feature
 of relationship loading.   Given our example mapping, we can instruct
 a load of ``Employee`` to emit an extra SELECT per subclass by using
-the :func:`.orm.selectin_polymorphic` loader option::
+the :func:`_orm.selectin_polymorphic` loader option::
 
     from sqlalchemy.orm import selectin_polymorphic
 
@@ -434,8 +434,8 @@ using the value ``"selectin"`` on a per-subclass basis::
         }
 
 
-Unlike when using :func:`.orm.with_polymorphic`, when using the
-:func:`.orm.selectin_polymorphic` style of loading, we do **not** have the
+Unlike when using :func:`_orm.with_polymorphic`, when using the
+:func:`_orm.selectin_polymorphic` style of loading, we do **not** have the
 ability to refer to the ``Engineer`` or ``Manager`` entities within our main
 query as filter, order by, or other criteria, as these entities are not present
 in the initial query that is used to locate results.   However, we can apply
@@ -443,7 +443,7 @@ loader options that apply towards ``Engineer`` or ``Manager``, which will take
 effect when the secondary SELECT is emitted.  Below we assume ``Manager`` has
 an additional relationship ``Manager.paperwork``, that we'd like to eagerly
 load as well.  We can use any type of eager loading, such as joined eager
-loading via the :func:`.joinedload` function::
+loading via the :func:`_orm.joinedload` function::
 
     from sqlalchemy.orm import joinedload
     from sqlalchemy.orm import selectin_polymorphic
@@ -542,7 +542,7 @@ similarly to the following:
     (1,)
 
 Combining "selectin" polymorhic loading with query-time
-:func:`.orm.with_polymorphic` usage is also possible (though this is very
+:func:`_orm.with_polymorphic` usage is also possible (though this is very
 outer-space stuff!); assuming the above mappings had no ``polymorphic_load``
 set up, we could get the same result as follows::
 
@@ -558,14 +558,14 @@ set up, we could get the same result as follows::
 Referring to specific subtypes on relationships
 -----------------------------------------------
 
-Mapped attributes which correspond to a :func:`.relationship` are used
+Mapped attributes which correspond to a :func:`_orm.relationship` are used
 in querying in order to refer to the linkage between two mappings.  Common
-uses for this are to refer to a :func:`.relationship` in :meth:`.Query.join`
-as well as in loader options like :func:`.joinedload`.   When using
-:func:`.relationship` where the target class is an inheritance hierarchy,
+uses for this are to refer to a :func:`_orm.relationship` in :meth:`_query.Query.join`
+as well as in loader options like :func:`_orm.joinedload`.   When using
+:func:`_orm.relationship` where the target class is an inheritance hierarchy,
 the API allows that the join, eager load, or other linkage should target a specific
-subclass, alias, or :func:`.orm.with_polymorphic` alias, of that class hierarchy,
-rather than the class directly targeted by the :func:`.relationship`.
+subclass, alias, or :func:`_orm.with_polymorphic` alias, of that class hierarchy,
+rather than the class directly targeted by the :func:`_orm.relationship`.
 
 The :func:`~sqlalchemy.orm.interfaces.PropComparator.of_type` method allows the
 construction of joins along :func:`~sqlalchemy.orm.relationship` paths while
@@ -606,7 +606,7 @@ with a ``Company`` object. We'll add a ``company_id`` column to the
         __mapper_args__ = {'polymorphic_identity':'manager'}
 
 When querying from ``Company`` onto the ``Employee`` relationship, the
-:meth:`.Query.join` method as well as operators like :meth:`.PropComparator.any`
+:meth:`_query.Query.join` method as well as operators like :meth:`.PropComparator.any`
 and :meth:`.PropComparator.has` will create
 a join from ``company`` to ``employee``, without including ``engineer`` or
 ``manager`` in the mix. If we wish to have criterion which is specifically
@@ -648,7 +648,7 @@ such as when the embedded criterion is in terms of a subclass::
 Eager Loading of Specific or Polymorphic Subtypes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :func:`.joinedload`, :func:`.subqueryload`, :func:`.contains_eager` and
+The :func:`_orm.joinedload`, :func:`.subqueryload`, :func:`.contains_eager` and
 other eagerloader options support
 paths which make use of :func:`~.PropComparator.of_type`.
 Below, we load ``Company`` rows while eagerly loading related ``Engineer``
@@ -661,8 +661,8 @@ objects, querying the ``employee`` and ``engineer`` tables simultaneously::
             )
         )
 
-As is the case with :meth:`.Query.join`, :meth:`~.PropComparator.of_type`
-can be used to combine eager loading and :func:`.orm.with_polymorphic`,
+As is the case with :meth:`_query.Query.join`, :meth:`~.PropComparator.of_type`
+can be used to combine eager loading and :func:`_orm.with_polymorphic`,
 so that all sub-attributes of all referenced subtypes
 can be loaded::
 
@@ -680,8 +680,8 @@ can be loaded::
 .. note::
 
     When using :func:`.with_polymorphic` in conjunction with
-    :func:`.joinedload`, the :func:`.with_polymorphic` object must be against
-    an "aliased" object, that is an instance of :class:`.Alias`, so that the
+    :func:`_orm.joinedload`, the :func:`.with_polymorphic` object must be against
+    an "aliased" object, that is an instance of :class:`_expression.Alias`, so that the
     polymorphic selectable is aliased (an informative error message is raised
     otherwise).
 
@@ -689,7 +689,7 @@ can be loaded::
     :paramref:`.with_polymorphic.aliased` or :paramref:`.flat` flag, which will
     apply this aliasing automatically.  However, if the
     :paramref:`.with_polymorphic.selectable` argument is being used to pass an
-    object that is already an :class:`.Alias` object then this flag should
+    object that is already an :class:`_expression.Alias` object then this flag should
     **not** be set.  The "flat" option implies the "aliased" option and is an
     alternate form of aliasing against join objects that produces fewer
     subqueries.
@@ -698,7 +698,7 @@ Once :meth:`~.PropComparator.of_type` is the target of the eager load,
 that's the entity we would use for subsequent chaining, not the original class
 or derived class.  If we wanted to further eager load a collection on the
 eager-loaded ``Engineer`` class, we access this class from the namespace of the
-:func:`.orm.with_polymorphic` object::
+:func:`_orm.with_polymorphic` object::
 
     session.query(Company).\
         options(
@@ -732,7 +732,7 @@ The above query will emit SQL like:
 We will then get a collection of ``Engineer`` objects back, which will
 contain all columns from ``employee`` and ``engineer`` loaded.
 
-However, when emitting a :class:`.Query` against a base class, the behavior
+However, when emitting a :class:`_query.Query` against a base class, the behavior
 is to load only from the base table::
 
     session.query(Employee).all()
@@ -770,7 +770,7 @@ issued along the lines of:
     WHERE ? = engineer.id
     [2]
 
-The :func:`.orm.with_polymorphic`
+The :func:`_orm.with_polymorphic`
 function and related configuration options allow us to instead emit a JOIN up
 front which will conditionally load against ``employee``, ``engineer``, or
 ``manager``, very much like joined eager loading works for relationships,
@@ -803,7 +803,7 @@ The above produces a query which joins the ``employee`` table to both the
         ON employee.id = manager.id
     []
 
-The section :ref:`with_polymorphic` discusses the :func:`.orm.with_polymorphic`
+The section :ref:`with_polymorphic` discusses the :func:`_orm.with_polymorphic`
 function and its configurational variants.
 
 .. seealso::
@@ -815,11 +815,11 @@ function and its configurational variants.
 Loading objects with single table inheritance
 ---------------------------------------------
 
-In modern Declarative, single inheritance mappings produce :class:`.Column`
+In modern Declarative, single inheritance mappings produce :class:`_schema.Column`
 objects that are mapped only to a subclass, and not available from the
 superclass, even though they are present on the same table.
 In our example from :ref:`single_inheritance`, the ``Manager`` mapping for example had a
-:class:`.Column` specified::
+:class:`_schema.Column` specified::
 
     class Manager(Employee):
         manager_data = Column(String(50))
@@ -867,7 +867,7 @@ for those columns, in a similar way to joined inheritance::
     FROM employee
     WHERE employee.id = ? AND employee.type IN (?)
 
-The :func:`.orm.with_polymorphic` function serves a similar role as  joined
+The :func:`_orm.with_polymorphic` function serves a similar role as  joined
 inheritance in the case of single inheritance; it allows both for eager loading
 of subclass attributes as well as specification of subclasses in a query,
 just without the overhead of using OUTER JOIN::
