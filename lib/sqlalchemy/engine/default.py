@@ -446,7 +446,7 @@ class DefaultDialect(interfaces.Dialect):
 
         This method looks for a dictionary called
         ``colspecs`` as a class or instance-level variable,
-        and passes on to :func:`.types.adapt_type`.
+        and passes on to :func:`_types.adapt_type`.
 
         """
         return sqltypes.adapt_type(typeobj, self.colspecs)
@@ -1446,12 +1446,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     generation function, e.g. as described at :ref:`context_default_functions`.
     It consists of a dictionary which includes entries for each column/value
     pair that is to be part of the INSERT or UPDATE statement. The keys of the
-    dictionary will be the key value of each :class:`.Column`, which is usually
+    dictionary will be the key value of each :class:`_schema.Column`,
+    which is usually
     synonymous with the name.
 
     Note that the :attr:`.DefaultExecutionContext.current_parameters` attribute
     does not accommodate for the "multi-values" feature of the
-    :meth:`.Insert.values` method.  The
+    :meth:`_expression.Insert.values` method.  The
     :meth:`.DefaultExecutionContext.get_current_parameters` method should be
     preferred.
 
@@ -1471,11 +1472,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         :ref:`context_default_functions`. When invoked, a dictionary is
         returned which includes entries for each column/value pair that is part
         of the INSERT or UPDATE statement. The keys of the dictionary will be
-        the key value of each :class:`.Column`, which is usually synonymous
+        the key value of each :class:`_schema.Column`,
+        which is usually synonymous
         with the name.
 
         :param isolate_multiinsert_groups=True: indicates that multi-valued
-         INSERT constructs created using :meth:`.Insert.values` should be
+         INSERT constructs created using :meth:`_expression.Insert.values`
+         should be
          handled by returning only the subset of parameters that are local
          to the current column default invocation.   When ``False``, the
          raw parameters of the statement are returned including the

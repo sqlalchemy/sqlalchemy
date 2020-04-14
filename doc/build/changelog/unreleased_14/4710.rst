@@ -21,7 +21,7 @@
     :tags: change, orm
     :tickets: 4710
 
-    The "KeyedTuple" class returned by :class:`.Query` is now replaced with the
+    The "KeyedTuple" class returned by :class:`_query.Query` is now replaced with the
     Core :class:`.Row` class, which behaves in the same way as KeyedTuple.
     In SQLAlchemy 2.0, both Core and ORM will return result rows using the same
     :class:`.Row` object.   In the interim, Core uses a backwards-compatibility

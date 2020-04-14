@@ -97,8 +97,8 @@ as that the ``NLS_LANG`` environment variable is set appropriately, so that
 the VARCHAR2 and CLOB datatypes can accommodate the data.
 
 In the case that the Oracle database is not configured with a Unicode character
-set, the two options are to use the :class:`.oracle.NCHAR` and
-:class:`.oracle.NCLOB` datatypes explicitly, or to pass the flag
+set, the two options are to use the :class:`_oracle.NCHAR` and
+:class:`_oracle.NCLOB` datatypes explicitly, or to pass the flag
 ``use_nchar_for_unicode=True`` to :func:`.create_engine`, which will cause the
 SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
 :class:`.UnicodeText` datatypes instead of VARCHAR/CLOB.
@@ -260,12 +260,12 @@ Precision Numerics
 
 SQLAlchemy's numeric types can handle receiving and returning values as Python
 ``Decimal`` objects or float objects.  When a :class:`.Numeric` object, or a
-subclass such as :class:`.Float`, :class:`.oracle.DOUBLE_PRECISION` etc. is in
+subclass such as :class:`.Float`, :class:`_oracle.DOUBLE_PRECISION` etc. is in
 use, the :paramref:`.Numeric.asdecimal` flag determines if values should be
 coerced to ``Decimal`` upon return, or returned as float objects.   To make
 matters more complicated under Oracle, Oracle's ``NUMBER`` type can also
 represent integer values if the "scale" is zero, so the Oracle-specific
-:class:`.oracle.NUMBER` type takes this into account as well.
+:class:`_oracle.NUMBER` type takes this into account as well.
 
 The cx_Oracle dialect makes extensive use of connection- and cursor-level
 "outputtypehandler" callables in order to coerce numeric values as requested.

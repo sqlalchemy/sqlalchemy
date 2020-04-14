@@ -11,7 +11,7 @@
     "anon_1" label, that is, ``CAST(table.colname AS INTEGER) AS colname``.
     If the inner expression doesn't have a name, then the previous "anonymous
     label" logic is used.  When using SELECT statements that make use of
-    :meth:`.Select.apply_labels`, such as those emitted by the ORM, the
+    :meth:`_expression.Select.apply_labels`, such as those emitted by the ORM, the
     labeling logic will produce ``<tablename>_<inner column name>`` in the same
     was as if the column were named alone.   The logic applies right now to the
     :func:`.cast` and :func:`.type_coerce` constructs as well as some

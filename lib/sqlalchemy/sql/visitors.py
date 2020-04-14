@@ -228,35 +228,37 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """Visit a :class:`.HasCacheKey` object."""
 
     dp_clauseelement = symbol("CE")
-    """Visit a :class:`.ClauseElement` object."""
+    """Visit a :class:`_expression.ClauseElement` object."""
 
     dp_fromclause_canonical_column_collection = symbol("FC")
-    """Visit a :class:`.FromClause` object in the context of the
+    """Visit a :class:`_expression.FromClause` object in the context of the
     ``columns`` attribute.
 
     The column collection is "canonical", meaning it is the originally
     defined location of the :class:`.ColumnClause` objects.   Right now
-    this means that the object being visited is a :class:`.TableClause`
-    or :class:`.Table` object only.
+    this means that the object being visited is a
+    :class:`_expression.TableClause`
+    or :class:`_schema.Table` object only.
 
     """
 
     dp_clauseelement_tuples = symbol("CT")
-    """Visit a list of tuples which contain :class:`.ClauseElement`
+    """Visit a list of tuples which contain :class:`_expression.ClauseElement`
     objects.
 
     """
 
     dp_clauseelement_list = symbol("CL")
-    """Visit a list of :class:`.ClauseElement` objects.
+    """Visit a list of :class:`_expression.ClauseElement` objects.
 
     """
 
     dp_clauseelement_unordered_set = symbol("CU")
-    """Visit an unordered set of :class:`.ClauseElement` objects. """
+    """Visit an unordered set of :class:`_expression.ClauseElement`
+    objects. """
 
     dp_fromclause_ordered_set = symbol("CO")
-    """Visit an ordered set of :class:`.FromClause` objects. """
+    """Visit an ordered set of :class:`_expression.FromClause` objects. """
 
     dp_string = symbol("S")
     """Visit a plain string value.
@@ -320,7 +322,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """visit a dialect options structure."""
 
     dp_string_clauseelement_dict = symbol("CD")
-    """Visit a dictionary of string keys to :class:`.ClauseElement`
+    """Visit a dictionary of string keys to :class:`_expression.ClauseElement`
     objects.
 
     """
@@ -361,18 +363,20 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_prefix_sequence = symbol("PS")
-    """Visit the sequence represented by :class:`.HasPrefixes`
-    or :class:`.HasSuffixes`.
+    """Visit the sequence represented by :class:`_expression.HasPrefixes`
+    or :class:`_expression.HasSuffixes`.
 
     """
 
     dp_table_hint_list = symbol("TH")
-    """Visit the ``_hints`` collection of a :class:`.Select` object.
+    """Visit the ``_hints`` collection of a :class:`_expression.Select` object
+    .
 
     """
 
     dp_statement_hint_list = symbol("SH")
-    """Visit the ``_statement_hints`` collection of a :class:`.Select`
+    """Visit the ``_statement_hints`` collection of a
+    :class:`_expression.Select`
     object.
 
     """
@@ -383,7 +387,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_dml_ordered_values = symbol("DML_OV")
-    """visit the values() ordered tuple list of an :class:`.Update` object."""
+    """visit the values() ordered tuple list of an
+    :class:`_expression.Update` object."""
 
     dp_dml_values = symbol("DML_V")
     """visit the values() dictionary of a :class:`.ValuesBase`
@@ -393,7 +398,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     dp_dml_multi_values = symbol("DML_MV")
     """visit the values() multi-valued list of dictionaries of an
-    :class:`~.sql.expression.Insert` object.
+    :class:`_expression.Insert` object.
 
     """
 
@@ -401,7 +406,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 class ExtendedInternalTraversal(InternalTraversal):
     """defines additional symbols that are useful in caching applications.
 
-    Traversals for :class:`.ClauseElement` objects only need to use
+    Traversals for :class:`_expression.ClauseElement` objects only need to use
     those symbols present in :class:`.InternalTraversal`.  However, for
     additional caching use cases within the ORM, symbols dealing with the
     :class:`.HasCacheKey` class are added here.
@@ -570,14 +575,18 @@ def iterate(obj, opts):
 
     The central API feature used by the :func:`.visitors.iterate` and
     :func:`.visitors.iterate_depthfirst` functions is the
-    :meth:`.ClauseElement.get_children` method of :class:`.ClauseElement`
-    objects.  This method should return all the :class:`.ClauseElement` objects
-    which are associated with a particular :class:`.ClauseElement` object.
+    :meth:`_expression.ClauseElement.get_children` method of
+    :class:`_expression.ClauseElement`
+    objects.  This method should return all the
+    :class:`_expression.ClauseElement` objects
+    which are associated with a particular :class:`_expression.ClauseElement`
+    object.
     For example, a :class:`.Case` structure will refer to a series of
-    :class:`.ColumnElement` objects within its "whens" and "else\_" member
+    :class:`_expression.ColumnElement`
+    objects within its "whens" and "else\_" member
     variables.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -603,7 +612,7 @@ def iterate_depthfirst(obj, opts):
 
     traversal is configured to be depth-first.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -637,11 +646,13 @@ def traverse_using(iterator, obj, visitors):
     functions.
 
     :param iterator: an iterable or sequence which will yield
-     :class:`.ClauseElement` structures; the iterator is assumed to be the
+     :class:`_expression.ClauseElement`
+     structures; the iterator is assumed to be the
      product of the :func:`.visitors.iterate` or
      :func:`.visitors.iterate_depthfirst` functions.
 
-    :param obj: the :class:`.ClauseElement` that was used as the target of the
+    :param obj: the :class:`_expression.ClauseElement`
+     that was used as the target of the
      :func:`.iterate` or :func:`.iterate_depthfirst` function.
 
     :param visitors: dictionary of visit functions.  See :func:`.traverse`
@@ -679,7 +690,7 @@ def traverse(obj, opts, visitors):
     The iteration of objects uses the :func:`.visitors.iterate` function,
     which does a breadth-first traversal using a stack.
 
-    :param obj: :class:`.ClauseElement` structure to be traversed
+    :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
     :param opts: dictionary of iteration options.   This dictionary is usually
      empty in modern usage.
@@ -718,9 +729,12 @@ def cloned_traverse(obj, opts, visitors):
 
     The central API feature used by the :func:`.visitors.cloned_traverse`
     and :func:`.visitors.replacement_traverse` functions, in addition to the
-    :meth:`.ClauseElement.get_children` function that is used to achieve
-    the iteration, is the :meth:`.ClauseElement._copy_internals` method.
-    For a :class:`.ClauseElement` structure to support cloning and replacement
+    :meth:`_expression.ClauseElement.get_children`
+    function that is used to achieve
+    the iteration, is the :meth:`_expression.ClauseElement._copy_internals`
+    method.
+    For a :class:`_expression.ClauseElement`
+    structure to support cloning and replacement
     traversals correctly, it needs to be able to pass a cloning function into
     its internal members in order to make copies of them.
 

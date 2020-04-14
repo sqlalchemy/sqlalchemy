@@ -40,7 +40,7 @@ __all__ = [
 class ColumnProperty(StrategizedProperty):
     """Describes an object attribute that corresponds to a table column.
 
-    Public constructor is the :func:`.orm.column_property` function.
+    Public constructor is the :func:`_orm.column_property` function.
 
     """
 
@@ -71,12 +71,13 @@ class ColumnProperty(StrategizedProperty):
         r"""Provide a column-level property for use with a mapping.
 
         Column-based properties can normally be applied to the mapper's
-        ``properties`` dictionary using the :class:`.Column` element directly.
+        ``properties`` dictionary using the :class:`_schema.Column`
+        element directly.
         Use this function when the given column is not directly present within
         the mapper's selectable; examples include SQL expressions, functions,
         and scalar SELECT queries.
 
-        The :func:`.orm.column_property` function returns an instance of
+        The :func:`_orm.column_property` function returns an instance of
         :class:`.ColumnProperty`.
 
         Columns that aren't present in the mapper's selectable won't be

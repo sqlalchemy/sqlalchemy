@@ -27,7 +27,7 @@ class scoped_session(object):
     session_factory = None
     """The `session_factory` provided to `__init__` is stored in this
     attribute and may be accessed at a later time.  This can be useful when
-    a new non-scoped :class:`.Session` or :class:`.Connection` to the
+    a new non-scoped :class:`.Session` or :class:`_engine.Connection` to the
     database is needed."""
 
     def __init__(self, session_factory, scopefunc=None):
@@ -112,7 +112,8 @@ class scoped_session(object):
         self.session_factory.configure(**kwargs)
 
     def query_property(self, query_cls=None):
-        """return a class property which produces a :class:`.Query` object
+        """return a class property which produces a :class:`_query.Query`
+        object
         against the class and the current :class:`.Session` when called.
 
         e.g.::

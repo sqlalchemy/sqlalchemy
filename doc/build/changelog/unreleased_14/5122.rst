@@ -3,14 +3,14 @@
     :tickets: 5122
 
     A query that is against a mapped inheritance subclass which also uses
-    :meth:`.Query.select_entity_from` or a similar technique in order  to
+    :meth:`_query.Query.select_entity_from` or a similar technique in order  to
     provide an existing subquery to SELECT from, will now raise an error if the
     given subquery returns entities that do not correspond to the given
     subclass, that is, they are sibling or superclasses in the same hierarchy.
     Previously, these would be returned without error.  Additionally, if the
     inheritance mapping is a single-inheritance mapping, the given subquery
     must apply the appropriate filtering against the polymorphic discriminator
-    column in order to avoid this error; previously, the :class:`.Query` would
+    column in order to avoid this error; previously, the :class:`_query.Query` would
     add this criteria to the outside query however this interferes with some
     kinds of query that return other kinds of entities as well.
 

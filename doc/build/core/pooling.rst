@@ -17,14 +17,14 @@ maintain a "pool" of active database connections in memory which are
 reused across requests.
 
 SQLAlchemy includes several connection pool implementations
-which integrate with the :class:`.Engine`.  They can also be used
+which integrate with the :class:`_engine.Engine`.  They can also be used
 directly for applications that want to add pooling to an otherwise
 plain DBAPI approach.
 
 Connection Pool Configuration
 -----------------------------
 
-The :class:`~.engine.Engine` returned by the
+The :class:`_engine.Engine` returned by the
 :func:`~sqlalchemy.create_engine` function in most cases has a :class:`.QueuePool`
 integrated, pre-configured with reasonable pooling defaults.  If
 you're reading this section only to learn how to enable pooling - congratulations!
@@ -80,7 +80,7 @@ Disabling pooling using :class:`.NullPool`::
 Using a Custom Connection Function
 ----------------------------------
 
-All :class:`.Pool` classes accept an argument ``creator`` which is
+All :class:`_pool.Pool` classes accept an argument ``creator`` which is
 a callable that creates a new connection.  :func:`.create_engine`
 accepts this function to pass onto the pool via an argument of
 the same name::
@@ -96,7 +96,7 @@ the same name::
     engine = create_engine('postgresql+psycopg2://', creator=getconn)
 
 For most "initialize on connection" routines, it's more convenient
-to use the :class:`.PoolEvents` event hooks, so that the usual URL argument to
+to use the :class:`_events.PoolEvents` event hooks, so that the usual URL argument to
 :func:`.create_engine` is still usable.  ``creator`` is there as
 a last resort for when a DBAPI has some form of ``connect``
 that is not at all supported by SQLAlchemy.
@@ -104,7 +104,7 @@ that is not at all supported by SQLAlchemy.
 Constructing a Pool
 -------------------
 
-To use a :class:`.Pool` by itself, the ``creator`` function is
+To use a :class:`_pool.Pool` by itself, the ``creator`` function is
 the only argument that's required and is passed first, followed
 by any additional options::
 
@@ -117,7 +117,7 @@ by any additional options::
 
     mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
 
-DBAPI connections can then be procured from the pool using the :meth:`.Pool.connect`
+DBAPI connections can then be procured from the pool using the :meth:`_pool.Pool.connect`
 function.  The return value of this method is a DBAPI connection that's contained
 within a transparent proxy::
 
@@ -147,9 +147,9 @@ existing transaction on the connection is removed, not only ensuring
 that no existing state remains on next usage, but also so that table
 and row locks are released as well as that any isolated data snapshots
 are removed.   This behavior can be disabled using the ``reset_on_return``
-option of :class:`.Pool`.
+option of :class:`_pool.Pool`.
 
-A particular pre-created :class:`.Pool` can be shared with one or more
+A particular pre-created :class:`_pool.Pool` can be shared with one or more
 engines by passing it to the ``pool`` argument of :func:`.create_engine`::
 
     e = create_engine('postgresql://', pool=mypool)
@@ -159,7 +159,7 @@ Pool Events
 
 Connection pools support an event interface that allows hooks to execute
 upon first connect, upon each new connection, and upon checkout and
-checkin of connections.   See :class:`.PoolEvents` for details.
+checkin of connections.   See :class:`_events.PoolEvents` for details.
 
 .. _pool_disconnects:
 
@@ -193,7 +193,7 @@ It is critical to note that the pre-ping approach **does not accommodate for
 connections dropped in the middle of transactions or other SQL operations**.
 If the database becomes unavailable while a transaction is in progress, the
 transaction will be lost and the database error will be raised.   While
-the :class:`.Connection` object will detect a "disconnect" situation and
+the :class:`_engine.Connection` object will detect a "disconnect" situation and
 recycle the connection as well as invalidate the rest of the connection pool
 when this condition occurs,
 the individual operation where the exception was raised will be lost, and it's
@@ -201,7 +201,7 @@ up to the application to either abandon
 the operation, or retry the whole transaction again.
 
 Pessimistic testing of connections upon checkout is achievable by
-using the :paramref:`.Pool.pre_ping` argument, available from :func:`.create_engine`
+using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`.create_engine`
 via the :paramref:`.create_engine.pool_pre_ping` argument::
 
     engine = create_engine("mysql+pymysql://user:pw@host/db", pool_pre_ping=True)
@@ -225,7 +225,7 @@ to three times before giving up, propagating the database error last received.
     Python latency.   As such, this statement is **not logged in the SQL
     echo output**, and will not show up in SQLAlchemy's engine logging.
 
-.. versionadded:: 1.2 Added "pre-ping" capability to the :class:`.Pool`
+.. versionadded:: 1.2 Added "pre-ping" capability to the :class:`_pool.Pool`
    class.
 
 Custom / Legacy Pessimistic Ping
@@ -281,9 +281,9 @@ behaviors are needed::
 
 The above recipe has the advantage that we are making use of SQLAlchemy's
 facilities for detecting those DBAPI exceptions that are known to indicate
-a "disconnect" situation, as well as the :class:`.Engine` object's ability
+a "disconnect" situation, as well as the :class:`_engine.Engine` object's ability
 to correctly invalidate the current connection pool when this condition
-occurs and allowing the current :class:`.Connection` to re-validate onto
+occurs and allowing the current :class:`_engine.Connection` to re-validate onto
 a new DBAPI connection.
 
 
@@ -296,13 +296,13 @@ a transaction, the other approach to dealing with stale / closed connections is
 to let SQLAlchemy handle disconnects as  they occur, at which point all
 connections in the pool are invalidated, meaning they are assumed to be
 stale and will be refreshed upon next checkout.  This behavior assumes the
-:class:`.Pool` is used in conjunction with a :class:`.Engine`.
-The :class:`.Engine` has logic which can detect
+:class:`_pool.Pool` is used in conjunction with a :class:`_engine.Engine`.
+The :class:`_engine.Engine` has logic which can detect
 disconnection events and refresh the pool automatically.
 
-When the :class:`.Connection` attempts to use a DBAPI connection, and an
+When the :class:`_engine.Connection` attempts to use a DBAPI connection, and an
 exception is raised that corresponds to a "disconnect" event, the connection
-is invalidated. The :class:`.Connection` then calls the :meth:`.Pool.recreate`
+is invalidated. The :class:`_engine.Connection` then calls the :meth:`_pool.Pool.recreate`
 method, effectively invalidating all connections not currently checked out so
 that they are replaced with new ones upon next checkout.  This flow is
 illustrated by the code example below::
@@ -351,7 +351,7 @@ period of time::
 Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
 upon next checkout.   Note that the invalidation **only** occurs during checkout - not on
 any connections that are held in a checked out state.     ``pool_recycle`` is a function
-of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` is in use.
+of the :class:`_pool.Pool` itself, independent of whether or not an :class:`_engine.Engine` is in use.
 
 
 .. _pool_connection_invalidation:
@@ -359,7 +359,7 @@ of the :class:`.Pool` itself, independent of whether or not an :class:`.Engine` 
 More on Invalidation
 ^^^^^^^^^^^^^^^^^^^^
 
-The :class:`.Pool` provides "connection invalidation" services which allow
+The :class:`_pool.Pool` provides "connection invalidation" services which allow
 both explicit invalidation of a connection as well as automatic invalidation
 in response to conditions that are determined to render a connection unusable.
 
@@ -368,7 +368,7 @@ pool and discarded.  The ``.close()`` method is called on this connection
 if it is not clear that the connection itself might not be closed, however
 if this method fails, the exception is logged but the operation still proceeds.
 
-When using a :class:`.Engine`, the :meth:`.Connection.invalidate` method is
+When using a :class:`_engine.Engine`, the :meth:`_engine.Connection.invalidate` method is
 the usual entrypoint to explicit invalidation.   Other conditions by which
 a DBAPI connection might be invalidated include:
 
@@ -389,11 +389,11 @@ a DBAPI connection might be invalidated include:
   A final attempt at calling ``.close()`` on the connection will be made,
   and it is then discarded.
 
-* When a listener implementing :meth:`.PoolEvents.checkout` raises the
+* When a listener implementing :meth:`_events.PoolEvents.checkout` raises the
   :class:`~sqlalchemy.exc.DisconnectionError` exception, indicating that the connection
   won't be usable and a new connection attempt needs to be made.
 
-All invalidations which occur will invoke the :meth:`.PoolEvents.invalidate`
+All invalidations which occur will invoke the :meth:`_events.PoolEvents.invalidate`
 event.
 
 .. _pool_use_lifo:
@@ -436,7 +436,7 @@ Using Connection Pools with Multiprocessing
 -------------------------------------------
 
 It's critical that when using a connection pool, and by extension when
-using an :class:`.Engine` created via :func:`.create_engine`, that
+using an :class:`_engine.Engine` created via :func:`.create_engine`, that
 the pooled connections **are not shared to a forked process**.  TCP connections
 are represented as file descriptors, which usually work across process
 boundaries, meaning this will cause concurrent access to the file descriptor
@@ -444,8 +444,8 @@ on behalf of two or more entirely independent Python interpreter states.
 
 There are two approaches to dealing with this.
 
-The first is, either create a new :class:`.Engine` within the child
-process, or upon an existing :class:`.Engine`, call :meth:`.Engine.dispose`
+The first is, either create a new :class:`_engine.Engine` within the child
+process, or upon an existing :class:`_engine.Engine`, call :meth:`_engine.Engine.dispose`
 before the child process uses any connections.  This will remove all existing
 connections from the pool so that it makes all new ones.  Below is
 a simple version using ``multiprocessing.Process``, but this idea
@@ -461,7 +461,7 @@ should be adapted to the style of forking in use::
 
     p = Process(target=run_in_process)
 
-The next approach is to instrument the :class:`.Pool` itself with events
+The next approach is to instrument the :class:`_pool.Pool` itself with events
 so that connections are automatically invalidated in the subprocess.
 This is a little more magical but probably more foolproof::
 

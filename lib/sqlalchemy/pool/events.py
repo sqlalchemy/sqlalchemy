@@ -11,7 +11,7 @@ from ..engine.base import Engine
 
 
 class PoolEvents(event.Events):
-    """Available events for :class:`.Pool`.
+    """Available events for :class:`_pool.Pool`.
 
     The methods here define the name of an event as well
     as the names of members that are passed to listener
@@ -26,11 +26,11 @@ class PoolEvents(event.Events):
 
         event.listen(Pool, 'checkout', my_on_checkout)
 
-    In addition to accepting the :class:`.Pool` class and
-    :class:`.Pool` instances, :class:`.PoolEvents` also accepts
-    :class:`.Engine` objects and the :class:`.Engine` class as
+    In addition to accepting the :class:`_pool.Pool` class and
+    :class:`_pool.Pool` instances, :class:`_events.PoolEvents` also accepts
+    :class:`_engine.Engine` objects and the :class:`_engine.Engine` class as
     targets, which will be resolved to the ``.pool`` attribute of the
-    given engine or the :class:`.Pool` class::
+    given engine or the :class:`_pool.Pool` class::
 
         engine = create_engine("postgresql://scott:tiger@localhost/test")
 
@@ -56,7 +56,7 @@ class PoolEvents(event.Events):
 
     def connect(self, dbapi_connection, connection_record):
         """Called at the moment a particular DBAPI connection is first
-        created for a given :class:`.Pool`.
+        created for a given :class:`_pool.Pool`.
 
         This event allows one to capture the point directly after which
         the DBAPI module-level ``.connect()`` method has been used in order
@@ -71,13 +71,16 @@ class PoolEvents(event.Events):
 
     def first_connect(self, dbapi_connection, connection_record):
         """Called exactly once for the first time a DBAPI connection is
-        checked out from a particular :class:`.Pool`.
+        checked out from a particular :class:`_pool.Pool`.
 
-        The rationale for :meth:`.PoolEvents.first_connect` is to determine
+        The rationale for :meth:`_events.PoolEvents.first_connect`
+        is to determine
         information about a particular series of database connections based
         on the settings used for all connections.  Since a particular
-        :class:`.Pool` refers to a single "creator" function (which in terms
-        of a :class:`.Engine` refers to the URL and connection options used),
+        :class:`_pool.Pool`
+        refers to a single "creator" function (which in terms
+        of a :class:`_engine.Engine`
+        refers to the URL and connection options used),
         it is typically valid to make observations about a single connection
         that can be safely assumed to be valid about all subsequent
         connections, such as the database version, the server and client
@@ -108,7 +111,7 @@ class PoolEvents(event.Events):
         using the new connection.
 
         .. seealso:: :meth:`.ConnectionEvents.engine_connect` - a similar event
-           which occurs upon creation of a new :class:`.Connection`.
+           which occurs upon creation of a new :class:`_engine.Connection`.
 
         """
 
@@ -136,8 +139,8 @@ class PoolEvents(event.Events):
         pool argument.
 
 
-        The :meth:`.PoolEvents.reset` event is usually followed by the
-        :meth:`.PoolEvents.checkin` event is called, except in those
+        The :meth:`_events.PoolEvents.reset` event is usually followed by the
+        :meth:`_events.PoolEvents.checkin` event is called, except in those
         cases where the connection is discarded immediately after reset.
 
         :param dbapi_connection: a DBAPI connection.

@@ -8,7 +8,7 @@ Mappers support the concept of configurable :term:`cascade` behavior on
 to how operations performed on a "parent" object relative to a
 particular :class:`.Session` should be propagated to items
 referred to by that relationship (e.g. "child" objects), and is
-affected by the :paramref:`.relationship.cascade` option.
+affected by the :paramref:`_orm.relationship.cascade` option.
 
 The default behavior of cascade is limited to cascades of the
 so-called :ref:`cascade_save_update` and :ref:`cascade_merge` settings.
@@ -18,7 +18,7 @@ these settings are appropriate for related objects which only exist as
 long as they are attached to their parent, and are otherwise deleted.
 
 Cascade behavior is configured using the
-:paramref:`~.relationship.cascade` option on
+:paramref:`_orm.relationship.cascade` option on
 :func:`~sqlalchemy.orm.relationship`::
 
     class Order(Base):
@@ -49,7 +49,7 @@ its arguments back into :func:`~sqlalchemy.orm.relationship`::
     stating "The sections we have just covered can be a bit confusing.
     However, in practice, it all works out nicely."
 
-The default value of :paramref:`~.relationship.cascade` is ``save-update, merge``.
+The default value of :paramref:`_orm.relationship.cascade` is ``save-update, merge``.
 The typical alternative setting for this parameter is either
 ``all`` or more commonly ``all, delete-orphan``.  The ``all`` symbol
 is a synonym for ``save-update, merge, refresh-expire, expunge, delete``,
@@ -58,7 +58,7 @@ object should follow along with its parent in all cases, and be deleted once
 it is no longer associated with that parent.
 
 The list of available values which can be specified for
-the :paramref:`~.relationship.cascade` parameter are described in the following subsections.
+the :paramref:`_orm.relationship.cascade` parameter are described in the following subsections.
 
 .. _cascade_save_update:
 
@@ -67,7 +67,7 @@ save-update
 
 ``save-update`` cascade indicates that when an object is placed into a
 :class:`.Session` via :meth:`.Session.add`, all the objects associated
-with it via this :func:`.relationship` should also be added to that
+with it via this :func:`_orm.relationship` should also be added to that
 same :class:`.Session`.  Suppose we have an object ``user1`` with two
 related objects ``address1``, ``address2``::
 
@@ -121,7 +121,7 @@ it takes place in both directions for bi-directional relationships, e.g.
 backrefs, meaning that the association of a child object with a particular parent
 can have the effect of the parent object being implicitly associated with that
 child object's :class:`.Session`; this pattern, as well as how to modify its
-behavior using the :paramref:`~.relationship.cascade_backrefs` flag,
+behavior using the :paramref:`_orm.relationship.cascade_backrefs` flag,
 is discussed in the section :ref:`backref_cascade`.
 
 .. _cascade_delete:
@@ -198,7 +198,7 @@ deleting the row entirely.
     cascade is not specified.   Database level "ON DELETE" cascades are specific to the
     "FOREIGN KEY" construct of the relational database; SQLAlchemy allows
     configuration of these schema-level constructs at the :term:`DDL` level
-    using options on :class:`.ForeignKeyConstraint` which are described
+    using options on :class:`_schema.ForeignKeyConstraint` which are described
     at :ref:`on_update_on_delete`.
 
     It is important to note the differences between the ORM and the relational
@@ -225,7 +225,7 @@ deleting the row entirely.
           level.  An attempt by SQLAlchemy to set the column to NULL will
           fail with a simple NOT NULL constraint exception.
 
-        * The other, more special case way is to set the :paramref:`~.relationship.passive_deletes`
+        * The other, more special case way is to set the :paramref:`_orm.relationship.passive_deletes`
           flag to the string ``"all"``.  This has the effect of entirely
           disabling SQLAlchemy's behavior of setting the foreign key column
           to NULL, and a DELETE will be emitted for the parent row without
@@ -247,7 +247,7 @@ deleting the row entirely.
 
     * SQLAlchemy doesn't **need** to be this sophisticated, as we instead provide
       smooth integration with the database's own ``ON DELETE`` functionality,
-      by using the :paramref:`~.relationship.passive_deletes` option in conjunction
+      by using the :paramref:`_orm.relationship.passive_deletes` option in conjunction
       with properly configured foreign key constraints.   Under this behavior,
       SQLAlchemy only emits DELETE for those rows that are already locally
       present in the :class:`.Session`; for any collections that are unloaded,
@@ -262,12 +262,12 @@ deleting the row entirely.
       this can easily result in constraint violations if there are other objects
       referring to this "one" side from the "many", so it typically is only
       useful when a relationship is in fact a "one to one".  The
-      :paramref:`~.relationship.single_parent` flag should be used to establish
+      :paramref:`_orm.relationship.single_parent` flag should be used to establish
       an in-Python assertion for this case.
 
 
-When using a :func:`.relationship` that also includes a many-to-many
-table using the :paramref:`~.relationship.secondary` option, SQLAlchemy's
+When using a :func:`_orm.relationship` that also includes a many-to-many
+table using the :paramref:`_orm.relationship.secondary` option, SQLAlchemy's
 delete cascade handles the rows in this many-to-many table automatically.
 Just like, as described in :ref:`relationships_many_to_many_deletion`,
 the addition or removal of an object from a many-to-many collection
@@ -294,7 +294,7 @@ have one parent at a time, so is configured in the vast majority of cases
 on a one-to-many relationship.   Setting it on a many-to-one or
 many-to-many relationship is more awkward; for this use case,
 SQLAlchemy requires that the :func:`~sqlalchemy.orm.relationship`
-be configured with the :paramref:`~.relationship.single_parent` argument,
+be configured with the :paramref:`_orm.relationship.single_parent` argument,
 establishes Python-side validation that ensures the object
 is associated with only one parent at a time.
 
@@ -357,7 +357,7 @@ place::
     >>> i1 in session
     True
 
-This behavior can be disabled using the :paramref:`~.relationship.cascade_backrefs` flag::
+This behavior can be disabled using the :paramref:`_orm.relationship.cascade_backrefs` flag::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, backref='order',

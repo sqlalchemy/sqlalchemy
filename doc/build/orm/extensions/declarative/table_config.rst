@@ -7,8 +7,8 @@ Table Configuration
 .. seealso::
 
     This section describes specifics about how the Declarative system
-    defines :class:`.Table` objects that are to be mapped with the
-    SQLAlchemy ORM.  For general information on :class:`.Table` objects
+    defines :class:`_schema.Table` objects that are to be mapped with the
+    SQLAlchemy ORM.  For general information on :class:`_schema.Table` objects
     see :ref:`metadata_describing_toplevel`.
 
 Table arguments other than the name, metadata, and mapped Column
@@ -77,13 +77,13 @@ and pass it to declarative classes::
 
 Some configuration schemes may find it more appropriate to use ``__table__``,
 such as those which already take advantage of the data-driven nature of
-:class:`.Table` to customize and/or automate schema definition.
+:class:`_schema.Table` to customize and/or automate schema definition.
 
 Note that when the ``__table__`` approach is used, the object is immediately
-usable as a plain :class:`.Table` within the class declaration body itself,
+usable as a plain :class:`_schema.Table` within the class declaration body itself,
 as a Python class is only another syntactical block.  Below this is illustrated
 by using the ``id`` column in the ``primaryjoin`` condition of a
-:func:`.relationship`::
+:func:`_orm.relationship`::
 
     class MyClass(Base):
         __table__ = Table('my_table', Base.metadata,
@@ -115,7 +115,7 @@ generating a synonym for ``name``::
 Using Reflection with Declarative
 =================================
 
-It's easy to set up a :class:`.Table` that uses ``autoload=True``
+It's easy to set up a :class:`_schema.Table` that uses ``autoload=True``
 in conjunction with a mapped class::
 
     class MyClass(Base):
@@ -123,7 +123,7 @@ in conjunction with a mapped class::
                         autoload=True, autoload_with=some_engine)
 
 However, one improvement that can be made here is to not
-require the :class:`.Engine` to be available when classes are
+require the :class:`_engine.Engine` to be available when classes are
 being first declared.   To achieve this, use the
 :class:`.DeferredReflection` mixin, which sets up mappings
 only after a special ``prepare(engine)`` step is called::

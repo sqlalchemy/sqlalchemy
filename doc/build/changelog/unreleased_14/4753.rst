@@ -2,16 +2,16 @@
     :tags: change,engine
     :tickets: 4753
 
-    The :func:`~.sql.expression.select` construct and related constructs now allow for
+    The :func:`_expression.select` construct and related constructs now allow for
     duplication of column labels and columns themselves in the columns clause,
     mirroring exactly how column expressions were passed in.   This allows
     the tuples returned by an executed result to match what was SELECTed
-    for in the first place, which is how the ORM :class:`.Query` works, so
+    for in the first place, which is how the ORM :class:`_query.Query` works, so
     this establishes better cross-compatibility between the two constructs.
     Additionally, it allows column-positioning-sensitive structures such as
-    UNIONs (i.e. :class:`.CompoundSelect`) to be more intuitively constructed
+    UNIONs (i.e. :class:`_selectable.CompoundSelect`) to be more intuitively constructed
     in those cases where a particular column might appear in more than one
-    place.   To support this change, the :class:`.ColumnCollection` has been
+    place.   To support this change, the :class:`_expression.ColumnCollection` has been
     revised to support duplicate columns as well as to allow integer index
     access.
 

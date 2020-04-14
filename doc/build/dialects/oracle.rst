@@ -18,7 +18,7 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
                 NUMBER, NVARCHAR, NVARCHAR2, RAW, TIMESTAMP, VARCHAR, \
                 VARCHAR2
 
-.. versionadded:: 1.2.19 Added :class:`.NCHAR` to the list of datatypes
+.. versionadded:: 1.2.19 Added :class:`_types.NCHAR` to the list of datatypes
    exported by the Oracle dialect.
 
 Types which are specific to Oracle, or have Oracle-specific

@@ -4,7 +4,7 @@
 
     The :meth:`.Index.create` and :meth:`.Index.drop` methods now have a
     parameter :paramref:`.Index.create.checkfirst`, in the same way as that of
-    :class:`.Table` and :class:`.Sequence`, which when enabled will cause the
+    :class:`_schema.Table` and :class:`.Sequence`, which when enabled will cause the
     operation to detect if the index exists (or not) before performing a create
     or drop operation.
 

@@ -3,7 +3,7 @@
     :tickets: 4994
 
     An error is raised if any persistence-related "cascade" settings are made
-    on a :func:`.relationship` that also sets up viewonly=True.   The "cascade"
+    on a :func:`_orm.relationship` that also sets up viewonly=True.   The "cascade"
     settings now default to non-persistence related settings only when viewonly
     is also set.  This is the continuation from :ticket:`4993` where this
     setting was changed to emit a warning in 1.3.

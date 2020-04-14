@@ -4,10 +4,10 @@
 
     Added support for use of the :class:`.Sequence` construct with MariaDB 10.3
     and greater, as this is now supported by this database.  The construct
-    integrates with the :class:`.Table` object in the same way that it does for
+    integrates with the :class:`_schema.Table` object in the same way that it does for
     other databases like PostrgreSQL and Oracle; if is present on the integer
     primary key "autoincrement" column, it is used to generate defaults.   For
-    backwards compatibility, to support a :class:`.Table` that has a
+    backwards compatibility, to support a :class:`_schema.Table` that has a
     :class:`.Sequence` on it to support sequence only databases like Oracle,
     while still not having the sequence fire off for MariaDB, the optional=True
     flag should be set, which indicates the sequence should only be used to

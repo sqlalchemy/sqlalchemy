@@ -3,6 +3,6 @@
     :tickets: 5192
 
     The :func:`.eagerload` and :func:`.relation` were old aliases and are
-    now deprecated. Use :func:`.joinedload` and :func:`.relationship`
+    now deprecated. Use :func:`_orm.joinedload` and :func:`_orm.relationship`
     respectively.
 

@@ -107,7 +107,7 @@ Using Custom Datatypes at the Core Level
 A non-ORM means of affecting the value of a column in a way that suits
 converting data between how it is represented in Python, vs. how it is
 represented in the database, can be achieved by using a custom datatype that is
-applied to the mapped :class:`.Table` metadata.     This is more common in the
+applied to the mapped :class:`_schema.Table` metadata.     This is more common in the
 case of some style of encoding / decoding that occurs both as data goes to the
 database and as it is returned; read more about this in the Core documentation
 at :ref:`types_typedecorator`.
@@ -147,7 +147,7 @@ The approach above will work, but there's more we can add. While our
 ``EmailAddress`` object will shuttle the value through the ``email``
 descriptor and into the ``_email`` mapped attribute, the class level
 ``EmailAddress.email`` attribute does not have the usual expression semantics
-usable with :class:`.Query`. To provide these, we instead use the
+usable with :class:`_query.Query`. To provide these, we instead use the
 :mod:`~sqlalchemy.ext.hybrid` extension as follows::
 
     from sqlalchemy.ext.hybrid import hybrid_property
@@ -343,7 +343,7 @@ which take place for column expressions are most directly redefined at the
 type level -  see the
 section :ref:`types_operators` for a description.
 
-ORM level functions like :func:`.column_property`, :func:`.relationship`,
+ORM level functions like :func:`.column_property`, :func:`_orm.relationship`,
 and :func:`.composite` also provide for operator redefinition at the ORM
 level, by passing a :class:`.PropComparator` subclass to the ``comparator_factory``
 argument of each function.  Customization of operators at this level is a

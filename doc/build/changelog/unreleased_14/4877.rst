@@ -2,10 +2,10 @@
     :tags: bug, engine
     :tickets: 4877
 
-    Deprecated the behavior by which a :class:`.Column` can be used as the key
-    in a result set row lookup, when that :class:`.Column` is not part of the
+    Deprecated the behavior by which a :class:`_schema.Column` can be used as the key
+    in a result set row lookup, when that :class:`_schema.Column` is not part of the
     SQL selectable that is being selected; that is, it is only matched on name.
     A deprecation warning is now emitted for this case.   Various ORM use
-    cases, such as those involving :func:`.text` constructs, have been improved
+    cases, such as those involving :func:`_expression.text` constructs, have been improved
     so that this fallback logic is avoided in most cases.
 

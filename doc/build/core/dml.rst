@@ -2,7 +2,7 @@ Insert, Updates, Deletes
 ========================
 
 INSERT, UPDATE and DELETE statements build on a hierarchy starting
-with :class:`.UpdateBase`.   The :class:`~.sql.expression.Insert` and :class:`.Update`
+with :class:`.UpdateBase`.   The :class:`_expression.Insert` and :class:`_expression.Update`
 constructs build on the intermediary :class:`.ValuesBase`.
 
 .. currentmodule:: sqlalchemy.sql.expression

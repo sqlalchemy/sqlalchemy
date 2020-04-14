@@ -66,38 +66,43 @@ class Inspector(object):
     consistent interface as well as caching support for previously
     fetched metadata.
 
-    A :class:`.Inspector` object is usually created via the
-    :func:`.inspect` function, which may be passed an :class:`.Engine`
-    or a :class:`.Connection`::
+    A :class:`_reflection.Inspector` object is usually created via the
+    :func:`_sa.inspect` function, which may be passed an
+    :class:`_engine.Engine`
+    or a :class:`_engine.Connection`::
 
         from sqlalchemy import inspect, create_engine
         engine = create_engine('...')
         insp = inspect(engine)
 
     Where above, the :class:`~sqlalchemy.engine.interfaces.Dialect` associated
-    with the engine may opt to return an :class:`.Inspector` subclass that
+    with the engine may opt to return an :class:`_reflection.Inspector`
+    subclass that
     provides additional methods specific to the dialect's target database.
 
     """
 
     @util.deprecated(
         "1.4",
-        "The __init__() method on :class:`.Inspector` is deprecated and "
+        "The __init__() method on :class:`_reflection.Inspector` "
+        "is deprecated and "
         "will be removed in a future release.  Please use the "
         ":func:`.sqlalchemy.inspect` "
-        "function on an :class:`.Engine` or :class:`.Connection` in order to "
-        "acquire an :class:`.Inspector`.",
+        "function on an :class:`_engine.Engine` or "
+        ":class:`_engine.Connection` "
+        "in order to "
+        "acquire an :class:`_reflection.Inspector`.",
     )
     def __init__(self, bind):
-        """Initialize a new :class:`.Inspector`.
+        """Initialize a new :class:`_reflection.Inspector`.
 
         :param bind: a :class:`~sqlalchemy.engine.Connectable`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
 
-        For a dialect-specific instance of :class:`.Inspector`, see
-        :meth:`.Inspector.from_engine`
+        For a dialect-specific instance of :class:`_reflection.Inspector`, see
+        :meth:`_reflection.Inspector.from_engine`
 
         """
         return self._init_legacy(bind)
@@ -135,11 +140,14 @@ class Inspector(object):
     @classmethod
     @util.deprecated(
         "1.4",
-        "The from_engine() method on :class:`.Inspector` is deprecated and "
+        "The from_engine() method on :class:`_reflection.Inspector` "
+        "is deprecated and "
         "will be removed in a future release.  Please use the "
         ":func:`.sqlalchemy.inspect` "
-        "function on an :class:`.Engine` or :class:`.Connection` in order to "
-        "acquire an :class:`.Inspector`.",
+        "function on an :class:`_engine.Engine` or "
+        ":class:`_engine.Connection` "
+        "in order to "
+        "acquire an :class:`_reflection.Inspector`.",
     )
     def from_engine(cls, bind):
         """Construct a new dialect-specific Inspector object from the given
@@ -151,12 +159,13 @@ class Inspector(object):
           :class:`~sqlalchemy.engine.Connection`.
 
         This method differs from direct a direct constructor call of
-        :class:`.Inspector` in that the
+        :class:`_reflection.Inspector` in that the
         :class:`~sqlalchemy.engine.interfaces.Dialect` is given a chance to
-        provide a dialect-specific :class:`.Inspector` instance, which may
+        provide a dialect-specific :class:`_reflection.Inspector` instance,
+        which may
         provide additional methods.
 
-        See the example at :class:`.Inspector`.
+        See the example at :class:`_reflection.Inspector`.
 
         """
         return cls._construct(cls._init_legacy, bind)
@@ -182,7 +191,8 @@ class Inspector(object):
         transaction.
 
         This essentially allows connect()/close() to be called if we detected
-        that we're against an :class:`.Engine` and not a :class:`.Connection`.
+        that we're against an :class:`_engine.Engine` and not a
+        :class:`_engine.Connection`.
 
         """
         if self._op_context_requires_connect:
@@ -197,7 +207,8 @@ class Inspector(object):
 
     @contextlib.contextmanager
     def _inspection_context(self):
-        """Return an :class:`.Inspector` from this one that will run all
+        """Return an :class:`_reflection.Inspector`
+        from this one that will run all
         operations on a single connection.
 
         """
@@ -233,7 +244,8 @@ class Inspector(object):
         """Return all table names in referred to within a particular schema.
 
         The names are expected to be real tables only, not views.
-        Views are instead returned using the :meth:`.Inspector.get_view_names`
+        Views are instead returned using the
+        :meth:`_reflection.Inspector.get_view_names`
         method.
 
 
@@ -250,9 +262,9 @@ class Inspector(object):
 
         .. seealso::
 
-            :meth:`.Inspector.get_sorted_table_and_fkc_names`
+            :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
 
-            :attr:`.MetaData.sorted_tables`
+            :attr:`_schema.MetaData.sorted_tables`
 
         """
 
@@ -289,10 +301,10 @@ class Inspector(object):
 
         .. seealso::
 
-            :meth:`.Inspector.get_table_names`
+            :meth:`_reflection.Inspector.get_table_names`
 
             :func:`.sort_tables_and_constraints` - similar method which works
-             with an already-given :class:`.MetaData`.
+             with an already-given :class:`_schema.MetaData`.
 
         """
 
@@ -646,9 +658,10 @@ class Inspector(object):
             )
 
     @util.deprecated_20(
-        ":meth:`.Inspector.reflecttable`",
-        "The :meth:`.Inspector.reflecttable` method was renamed to "
-        ":meth:`.Inspector.reflect_table`. This deprecated alias "
+        ":meth:`_reflection.Inspector.reflecttable`",
+        "The :meth:`_reflection.Inspector.reflecttable` "
+        "method was renamed to "
+        ":meth:`_reflection.Inspector.reflect_table`. This deprecated alias "
         "will be removed in a future release.",
     )
     def reflecttable(self, *args, **kwargs):

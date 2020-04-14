@@ -3,9 +3,9 @@
     :tickets: 4194
 
     Fixed bug where a versioning column specified on a mapper against a
-    :func:`~.sql.expression.select` construct where the version_id_col itself were against the
+    :func:`_expression.select` construct where the version_id_col itself were against the
     underlying table would incur additional loads when accessed, even if the
     value were locally persisted by the flush.  The actual fix is a result of
-    the changes in :ticket:`4617`,  by fact that a :func:`~.sql.expression.select` object no
+    the changes in :ticket:`4617`,  by fact that a :func:`_expression.select` object no
     longer has a ``.c`` attribute and therefore does not confuse the mapper
     into thinking there's an unknown column value present.

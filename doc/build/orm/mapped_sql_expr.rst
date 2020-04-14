@@ -46,7 +46,7 @@ can be dual purposed at the instance and class level.  Often, the SQL expression
 must be distinguished from the Python expression, which can be achieved using
 :meth:`.hybrid_property.expression`.  Below we illustrate the case where a conditional
 needs to be present inside the hybrid, using the ``if`` statement in Python and the
-:func:`.sql.expression.case` construct for SQL expressions::
+:func:`_expression.case` construct for SQL expressions::
 
     from sqlalchemy.ext.hybrid import hybrid_property
     from sqlalchemy.sql import case
@@ -75,8 +75,8 @@ needs to be present inside the hybrid, using the ``if`` statement in Python and 
 Using column_property
 ---------------------
 
-The :func:`.orm.column_property` function can be used to map a SQL
-expression in a manner similar to a regularly mapped :class:`.Column`.
+The :func:`_orm.column_property` function can be used to map a SQL
+expression in a manner similar to a regularly mapped :class:`_schema.Column`.
 With this technique, the attribute is loaded
 along with all other column-mapped attributes at load time.  This is in some
 cases an advantage over the usage of hybrids, as the value can be loaded
@@ -85,12 +85,12 @@ the expression is one which links to other tables (typically as a correlated
 subquery) to access data that wouldn't normally be
 available on an already loaded object.
 
-Disadvantages to using :func:`.orm.column_property` for SQL expressions include that
+Disadvantages to using :func:`_orm.column_property` for SQL expressions include that
 the expression must be compatible with the SELECT statement emitted for the class
 as a whole, and there are also some configurational quirks which can occur
-when using :func:`.orm.column_property` from declarative mixins.
+when using :func:`_orm.column_property` from declarative mixins.
 
-Our "fullname" example can be expressed using :func:`.orm.column_property` as
+Our "fullname" example can be expressed using :func:`_orm.column_property` as
 follows::
 
     from sqlalchemy.orm import column_property
@@ -102,7 +102,7 @@ follows::
         lastname = Column(String(50))
         fullname = column_property(firstname + " " + lastname)
 
-Correlated subqueries may be used as well.  Below we use the :func:`~.sql.expression.select`
+Correlated subqueries may be used as well.  Below we use the :func:`_expression.select`
 construct to create a SELECT that links together the count of ``Address``
 objects available for a particular ``User``::
 
@@ -128,7 +128,7 @@ objects available for a particular ``User``::
                 correlate_except(Address)
         )
 
-In the above example, we define a :func:`~.sql.expression.select` construct like the following::
+In the above example, we define a :func:`_expression.select` construct like the following::
 
     select([func.count(Address.id)]).\
         where(Address.user_id==id).\
@@ -136,12 +136,12 @@ In the above example, we define a :func:`~.sql.expression.select` construct like
 
 The meaning of the above statement is, select the count of ``Address.id`` rows
 where the ``Address.user_id`` column is equated to ``id``, which in the context
-of the ``User`` class is the :class:`.Column` named ``id`` (note that ``id`` is
+of the ``User`` class is the :class:`_schema.Column` named ``id`` (note that ``id`` is
 also the name of a Python built in function, which is not what we want to use
 here - if we were outside of the ``User`` class definition, we'd use ``User.id``).
 
-The :meth:`.select.correlate_except` directive indicates that each element in the
-FROM clause of this :func:`~.sql.expression.select` may be omitted from the FROM list (that is, correlated
+The :meth:`_expression.select.correlate_except` directive indicates that each element in the
+FROM clause of this :func:`_expression.select` may be omitted from the FROM list (that is, correlated
 to the enclosing SELECT statement against ``User``) except for the one corresponding
 to ``Address``.  This isn't strictly necessary, but prevents ``Address`` from
 being inadvertently omitted from the FROM list in the case of a long string
@@ -150,7 +150,7 @@ of joins between ``User`` and ``Address`` tables where SELECT statements against
 
 If import issues prevent the :func:`.column_property` from being defined
 inline with the class, it can be assigned to the class after both
-are configured.   In Declarative this has the effect of calling :meth:`.Mapper.add_property`
+are configured.   In Declarative this has the effect of calling :meth:`_orm.Mapper.add_property`
 to add an additional property after the fact::
 
     User.address_count = column_property(
@@ -217,7 +217,7 @@ the :class:`.ColumnProperty` directly within the mapping definition::
 Using a plain descriptor
 ------------------------
 
-In cases where a SQL query more elaborate than what :func:`.orm.column_property`
+In cases where a SQL query more elaborate than what :func:`_orm.column_property`
 or :class:`.hybrid_property` can provide must be emitted, a regular Python
 function accessed as an attribute can be used, assuming the expression
 only needs to be available on an already-loaded instance.   The function
@@ -295,7 +295,7 @@ The :func:`.query_expression` mapping has these caveats:
   expired**.  Once the object is expired, either via :meth:`.Session.expire`
   or via the expire_on_commit behavior of :meth:`.Session.commit`, the value is
   removed from the attribute and will return ``None`` on subsequent access.
-  Only by running a new :class:`.Query` that touches the object which includes
+  Only by running a new :class:`_query.Query` that touches the object which includes
   a new :func:`.with_expression` directive will the attribute be set to a
   non-None value.
 

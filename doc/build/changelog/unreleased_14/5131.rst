@@ -2,7 +2,7 @@
     :tags: usecase, engine
     :tickets: 5131
 
-    The :meth:`.Connection.connect` method is deprecated as is the concept of
-    "connection branching", which copies a :class:`.Connection` into a new one
+    The :meth:`_engine.Connection.connect` method is deprecated as is the concept of
+    "connection branching", which copies a :class:`_engine.Connection` into a new one
     that has a no-op ".close()" method.  This pattern is oriented around the
     "connectionless execution" concept which is also being removed in 2.0.

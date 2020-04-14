@@ -9,6 +9,6 @@
     and are not otherwise in an inheriting sibling/overriding arrangement, and
     will populate the same foreign key column, a warning is emitted at mapper
     configuration time warning that a conflict may arise.  A new parameter
-    :paramref:`.relationship.overlaps` is added to suit those very rare cases
+    :paramref:`_orm.relationship.overlaps` is added to suit those very rare cases
     where such an overlapping persistence arrangement may be unavoidable.
 

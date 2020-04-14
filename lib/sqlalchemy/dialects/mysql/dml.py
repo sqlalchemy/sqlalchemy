@@ -31,12 +31,13 @@ class Insert(StandardInsert):
         This attribute provides all columns in this row to be referenceable
         such that they will render within a ``VALUES()`` function inside the
         ON DUPLICATE KEY UPDATE clause.    The attribute is named ``.inserted``
-        so as not to conflict with the existing :meth:`.Insert.values` method.
+        so as not to conflict with the existing
+        :meth:`_expression.Insert.values` method.
 
         .. seealso::
 
             :ref:`mysql_insert_on_duplicate_key_update` - example of how
-            to use :attr:`.Insert.inserted`
+            to use :attr:`_expression.Insert.inserted`
 
         """
         return self.inserted_alias.columns
@@ -56,7 +57,7 @@ class Insert(StandardInsert):
 
         .. warning:: This dictionary does **not** take into account
            Python-specified default UPDATE values or generation functions,
-           e.g. those specified using :paramref:`.Column.onupdate`.
+           e.g. those specified using :paramref:`_schema.Column.onupdate`.
            These values will not be exercised for an ON DUPLICATE KEY UPDATE
            style of UPDATE, unless values are manually specified here.
 
@@ -71,7 +72,8 @@ class Insert(StandardInsert):
 
          Passing a list of 2-tuples indicates that the parameter assignments
          in the UPDATE clause should be ordered as sent, in a manner similar
-         to that described for the :class:`.Update` construct overall
+         to that described for the :class:`_expression.Update`
+         construct overall
          in :ref:`updates_order_parameters`::
 
             insert().on_duplicate_key_update(

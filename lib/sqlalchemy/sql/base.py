@@ -519,8 +519,9 @@ class Executable(Generative):
         execution.
 
         Execution options can be set on a per-statement or
-        per :class:`.Connection` basis.   Additionally, the
-        :class:`.Engine` and ORM :class:`~.orm.query.Query` objects provide
+        per :class:`_engine.Connection` basis.   Additionally, the
+        :class:`_engine.Engine` and ORM :class:`~.orm.query.Query`
+        objects provide
         access to execution options which they in turn configure upon
         connections.
 
@@ -533,14 +534,14 @@ class Executable(Generative):
         Note that only a subset of possible execution options can be applied
         to a statement - these include "autocommit" and "stream_results",
         but not "isolation_level" or "compiled_cache".
-        See :meth:`.Connection.execution_options` for a full list of
+        See :meth:`_engine.Connection.execution_options` for a full list of
         possible options.
 
         .. seealso::
 
-            :meth:`.Connection.execution_options`
+            :meth:`_engine.Connection.execution_options`
 
-            :meth:`.Query.execution_options`
+            :meth:`_query.Query.execution_options`
 
             :meth:`.Executable.get_execution_options`
 
@@ -573,7 +574,8 @@ class Executable(Generative):
     @util.deprecated_20(
         ":meth:`.Executable.execute`",
         alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "by the :meth:`_engine.Connection.execute` method of "
+        ":class:`_engine.Connection`, "
         "or in the ORM by the :meth:`.Session.execute` method of "
         ":class:`.Session`.",
     )
@@ -595,7 +597,8 @@ class Executable(Generative):
     @util.deprecated_20(
         ":meth:`.Executable.scalar`",
         alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`.Connection.execute` method of :class:`.Connection`, "
+        "by the :meth:`_engine.Connection.execute` method of "
+        ":class:`_engine.Connection`, "
         "or in the ORM by the :meth:`.Session.execute` method of "
         ":class:`.Session`; the :meth:`.Result.scalar` method can then be "
         "used to return a scalar result.",
@@ -609,7 +612,8 @@ class Executable(Generative):
 
     @property
     def bind(self):
-        """Returns the :class:`.Engine` or :class:`.Connection` to
+        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
+        to
         which this :class:`.Executable` is bound, or None if none found.
 
         This is a traversal which checks locally, then
@@ -675,14 +679,19 @@ class SchemaVisitor(ClauseVisitor):
 
 
 class ColumnCollection(object):
-    """Collection of :class:`.ColumnElement` instances, typically for
+    """Collection of :class:`_expression.ColumnElement` instances,
+    typically for
     selectables.
 
-    The :class:`.ColumnCollection` has both mapping- and sequence- like
-    behaviors.   A :class:`.ColumnCollection` usually stores :class:`.Column`
+    The :class:`_expression.ColumnCollection`
+    has both mapping- and sequence- like
+    behaviors.   A :class:`_expression.ColumnCollection` usually stores
+    :class:`_schema.Column`
     objects, which are then accessible both via mapping style access as well
-    as attribute access style.  The name for which a :class:`.Column` would
-    be present is normally that of the :paramref:`.Column.key` parameter,
+    as attribute access style.  The name for which a :class:`_schema.Column`
+    would
+    be present is normally that of the :paramref:`_schema.Column.key`
+    parameter,
     however depending on the context, it may be stored under a special label
     name::
 
@@ -706,7 +715,8 @@ class ColumnCollection(object):
         >>> cc[1]
         Column('y', Integer(), table=None)
 
-    .. versionadded:: 1.4 :class:`.ColumnCollection` allows integer-based
+    .. versionadded:: 1.4 :class:`_expression.ColumnCollection`
+       allows integer-based
        index access to the collection.
 
     Iterating the collection yields the column expressions in order::
@@ -715,7 +725,8 @@ class ColumnCollection(object):
         [Column('x', Integer(), table=None),
          Column('y', Integer(), table=None)]
 
-    The base :class:`.ColumnCollection` object can store duplicates, which can
+    The base :class:`_expression.ColumnCollection` object can store duplicates
+    , which can
     mean either two columns with the same key, in which case the column
     returned by key  access is **arbitrary**::
 
@@ -730,18 +741,21 @@ class ColumnCollection(object):
         True
 
     Or it can also mean the same column multiple times.   These cases are
-    supported as :class:`.ColumnCollection` is used to represent the columns in
+    supported as :class:`_expression.ColumnCollection`
+    is used to represent the columns in
     a SELECT statement which may include duplicates.
 
     A special subclass :class:`.DedupeColumnCollection` exists which instead
     maintains SQLAlchemy's older behavior of not allowing duplicates; this
-    collection is used for schema level objects like :class:`.Table` and
+    collection is used for schema level objects like :class:`_schema.Table`
+    and
     :class:`.PrimaryKeyConstraint` where this deduping is helpful.  The
     :class:`.DedupeColumnCollection` class also has additional mutation methods
     as the schema constructs have more use cases that require removal and
     replacement of columns.
 
-    .. versionchanged:: 1.4 :class:`.ColumnCollection` now stores duplicate
+    .. versionchanged:: 1.4 :class:`_expression.ColumnCollection`
+       now stores duplicate
        column keys as well as the same column in multiple positions.  The
        :class:`.DedupeColumnCollection` class is added to maintain the
        former behavior in those cases where deduplication as well as
@@ -884,28 +898,34 @@ class ColumnCollection(object):
         return ImmutableColumnCollection(self)
 
     def corresponding_column(self, column, require_embedded=False):
-        """Given a :class:`.ColumnElement`, return the exported
-        :class:`.ColumnElement` object from this :class:`.ColumnCollection`
-        which corresponds to that original :class:`.ColumnElement` via a common
+        """Given a :class:`_expression.ColumnElement`, return the exported
+        :class:`_expression.ColumnElement` object from this
+        :class:`_expression.ColumnCollection`
+        which corresponds to that original :class:`_expression.ColumnElement`
+        via a common
         ancestor column.
 
-        :param column: the target :class:`.ColumnElement` to be matched
+        :param column: the target :class:`_expression.ColumnElement`
+                      to be matched
 
         :param require_embedded: only return corresponding columns for
-         the given :class:`.ColumnElement`, if the given
-         :class:`.ColumnElement` is actually present within a sub-element
-         of this :class:`.Selectable`.  Normally the column will match if
+         the given :class:`_expression.ColumnElement`, if the given
+         :class:`_expression.ColumnElement`
+         is actually present within a sub-element
+         of this :class:`expression.Selectable`.
+         Normally the column will match if
          it merely shares a common ancestor with one of the exported
-         columns of this :class:`.Selectable`.
+         columns of this :class:`expression.Selectable`.
 
         .. seealso::
 
-            :meth:`.Selectable.corresponding_column` - invokes this method
+            :meth:`expression.Selectable.corresponding_column`
+            - invokes this method
             against the collection returned by
-            :attr:`.Selectable.exported_columns`.
+            :attr:`expression.Selectable.exported_columns`.
 
         .. versionchanged:: 1.4 the implementation for ``corresponding_column``
-           was moved onto the :class:`.ColumnCollection` itself.
+           was moved onto the :class:`_expression.ColumnCollection` itself.
 
         """
 
@@ -976,9 +996,10 @@ class ColumnCollection(object):
 
 
 class DedupeColumnCollection(ColumnCollection):
-    """A :class:`.ColumnCollection` that maintains deduplicating behavior.
+    """A :class:`_expression.ColumnCollection`
+    that maintains deduplicating behavior.
 
-    This is useful by schema level objects such as :class:`.Table` and
+    This is useful by schema level objects such as :class:`_schema.Table` and
     :class:`.PrimaryKeyConstraint`.    The collection includes more
     sophisticated mutator methods as well to suit schema objects which
     require mutable column collections.

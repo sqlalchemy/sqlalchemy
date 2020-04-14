@@ -79,7 +79,8 @@ to ``MyISAM`` for this value, although newer versions may be defaulting
 to ``InnoDB``.  The ``InnoDB`` engine is typically preferred for its support
 of transactions and foreign keys.
 
-A :class:`.Table` that is created in a MySQL database with a storage engine
+A :class:`_schema.Table`
+that is created in a MySQL database with a storage engine
 of ``MyISAM`` will be essentially non-transactional, meaning any
 INSERT/UPDATE/DELETE statement referring to this table will be invoked as
 autocommit.   It also will have no support for foreign key constraints; while
@@ -122,7 +123,8 @@ All MySQL dialects support setting of transaction isolation level both via a
 dialect-specific parameter :paramref:`.create_engine.isolation_level` accepted
 by :func:`.create_engine`, as well as the
 :paramref:`.Connection.execution_options.isolation_level` argument as passed to
-:meth:`.Connection.execution_options`. This feature works by issuing the
+:meth:`_engine.Connection.execution_options`.
+This feature works by issuing the
 command ``SET SESSION TRANSACTION ISOLATION LEVEL <level>`` for each new
 connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
 techniques are used.
@@ -174,7 +176,8 @@ foreign key::
   )
 
 You can disable this behavior by passing ``False`` to the
-:paramref:`~.Column.autoincrement` argument of :class:`.Column`.  This flag
+:paramref:`_schema.Column.autoincrement` argument of :class:`_schema.Column`.
+This flag
 can also be used to enable auto-increment on a secondary column in a
 multi-column key for some storage engines::
 
@@ -301,7 +304,8 @@ MySQL features two varieties of identifier "quoting style", one using
 backticks and the other using quotes, e.g. ```some_identifier```  vs.
 ``"some_identifier"``.   All MySQL dialects detect which version
 is in use by checking the value of ``sql_mode`` when a connection is first
-established with a particular :class:`.Engine`.  This quoting style comes
+established with a particular :class:`_engine.Engine`.
+This quoting style comes
 into play when rendering table and column names as well as when reflecting
 existing database structures.  The detection is entirely automatic and
 no special configuration is needed to use either quoting style.
@@ -323,7 +327,8 @@ available.
 * INSERT..ON DUPLICATE KEY UPDATE:  See
   :ref:`mysql_insert_on_duplicate_key_update`
 
-* SELECT pragma, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
+* SELECT pragma, use :meth:`_expression.Select.prefix_with` and
+  :meth:`_query.Query.prefix_with`::
 
     select(...).prefix_with(['HIGH_PRIORITY', 'SQL_SMALL_RESULT'])
 
@@ -331,11 +336,13 @@ available.
 
     update(..., mysql_limit=10)
 
-* optimizer hints, use :meth:`.Select.prefix_with` and :meth:`.Query.prefix_with`::
+* optimizer hints, use :meth:`_expression.Select.prefix_with` and
+  :meth:`_query.Query.prefix_with`::
 
     select(...).prefix_with("/*+ NO_RANGE_OPTIMIZATION(t4 PRIMARY) */")
 
-* index hints, use :meth:`.Select.with_hint` and :meth:`.Query.with_hint`::
+* index hints, use :meth:`_expression.Select.with_hint` and
+  :meth:`_query.Query.with_hint`::
 
     select(...).with_hint(some_table, "USE INDEX xyz")
 
@@ -379,7 +386,8 @@ from the proposed insertion.   These values are normally specified using
 keyword arguments passed to the
 :meth:`~.mysql.Insert.on_duplicate_key_update`
 given column key values (usually the name of the column, unless it
-specifies :paramref:`.Column.key`) as keys and literal or SQL expressions
+specifies :paramref:`_schema.Column.key`
+) as keys and literal or SQL expressions
 as values::
 
     on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
@@ -396,7 +404,8 @@ forms are accepted, including a single dictionary::
 
 as well as a list of 2-tuples, which will automatically provide
 a parameter-ordered UPDATE statement in a manner similar to that described
-at :ref:`updates_order_parameters`.  Unlike the :class:`.Update` object,
+at :ref:`updates_order_parameters`.  Unlike the :class:`_expression.Update`
+object,
 no special flag is needed to specify the intent since the argument form is
 this context is unambiguous::
 
@@ -412,9 +421,10 @@ this context is unambiguous::
 
 .. warning::
 
-    The :meth:`.Insert.on_duplicate_key_update` method does **not** take into
+    The :meth:`_expression.Insert.on_duplicate_key_update`
+    method does **not** take into
     account Python-side default UPDATE values or generation functions, e.g.
-    e.g. those specified using :paramref:`.Column.onupdate`.
+    e.g. those specified using :paramref:`_schema.Column.onupdate`.
     These values will not be exercised for an ON DUPLICATE KEY style of UPDATE,
     unless they are manually specified explicitly in the parameters.
 
@@ -423,7 +433,7 @@ this context is unambiguous::
 In order to refer to the proposed insertion row, the special alias
 :attr:`~.mysql.Insert.inserted` is available as an attribute on
 the :class:`.mysql.Insert` object; this object is a
-:class:`.ColumnCollection` which contains all columns of the target
+:class:`_expression.ColumnCollection` which contains all columns of the target
 table::
 
     from sqlalchemy.dialects.mysql import insert
@@ -586,7 +596,8 @@ Foreign Key Arguments to Avoid
 
 MySQL does not support the foreign key arguments "DEFERRABLE", "INITIALLY",
 or "MATCH".  Using the ``deferrable`` or ``initially`` keyword argument with
-:class:`.ForeignKeyConstraint` or :class:`.ForeignKey` will have the effect of
+:class:`_schema.ForeignKeyConstraint` or :class:`_schema.ForeignKey`
+will have the effect of
 these keywords being rendered in a DDL expression, which will then raise an
 error on MySQL.  In order to use these keywords on a foreign key while having
 them ignored on a MySQL backend, use a custom compile rule::
@@ -601,7 +612,7 @@ them ignored on a MySQL backend, use a custom compile rule::
 
 .. versionchanged:: 0.9.0 - the MySQL backend no longer silently ignores
    the ``deferrable`` or ``initially`` keyword arguments of
-   :class:`.ForeignKeyConstraint` and :class:`.ForeignKey`.
+   :class:`_schema.ForeignKeyConstraint` and :class:`_schema.ForeignKey`.
 
 The "MATCH" keyword is in fact more insidious, and is explicitly disallowed
 by SQLAlchemy in conjunction with the MySQL backend.  This argument is
@@ -613,7 +624,7 @@ ForeignKeyConstraint at DDL definition time.
 
 .. versionadded:: 0.9.0 - the MySQL backend will raise a
    :class:`.CompileError` when the ``match`` keyword is used with
-   :class:`.ForeignKeyConstraint` or :class:`.ForeignKey`.
+   :class:`_schema.ForeignKeyConstraint` or :class:`_schema.ForeignKey`.
 
 Reflection of Foreign Key Constraints
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -645,14 +656,16 @@ these constraints.  However, MySQL does not have a unique constraint
 construct that is separate from a unique index; that is, the "UNIQUE"
 constraint on MySQL is equivalent to creating a "UNIQUE INDEX".
 
-When reflecting these constructs, the :meth:`.Inspector.get_indexes`
-and the :meth:`.Inspector.get_unique_constraints` methods will **both**
+When reflecting these constructs, the
+:meth:`_reflection.Inspector.get_indexes`
+and the :meth:`_reflection.Inspector.get_unique_constraints`
+methods will **both**
 return an entry for a UNIQUE index in MySQL.  However, when performing
 full table reflection using ``Table(..., autoload=True)``,
 the :class:`.UniqueConstraint` construct is
-**not** part of the fully reflected :class:`.Table` construct under any
+**not** part of the fully reflected :class:`_schema.Table` construct under any
 circumstances; this construct is always represented by a :class:`.Index`
-with the ``unique=True`` setting present in the :attr:`.Table.indexes`
+with the ``unique=True`` setting present in the :attr:`_schema.Table.indexes`
 collection.
 
 
@@ -1438,7 +1451,7 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         .. note::
 
-          this usage is deprecated.  :meth:`.Select.prefix_with`
+          this usage is deprecated.  :meth:`_expression.Select.prefix_with`
           should be used for special keywords at the start
           of a SELECT.
 

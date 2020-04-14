@@ -3,7 +3,7 @@
     :tickets: 5001
 
     Fixed issue where when constructing constraints from ORM-bound columns,
-    primarily :class:`.ForeignKey` objects but also :class:`.UniqueConstraint`,
+    primarily :class:`_schema.ForeignKey` objects but also :class:`.UniqueConstraint`,
     :class:`.CheckConstraint` and others, the ORM-level
     :class:`.InstrumentedAttribute` is discarded entirely, and all ORM-level
     annotations from the columns are removed; this is so that the constraints

@@ -3,13 +3,13 @@
     :tickets: 5221
 
     Enhanced the disambiguating labels feature of the
-    :func:`~.sql.expression.select` construct such that when a select statement
+    :func:`_expression.select` construct such that when a select statement
     is used in a subquery, repeated column names from different tables are now
     automatically labeled with a unique label name, without the need to use the
     full "apply_labels()" feature that conbines tablename plus column name.
     The disambigated labels are available as plain string keys in the .c
     collection of the subquery, and most importantly the feature allows an ORM
-    :func:`.orm.aliased` construct against the combination of an entity and an
+    :func:`_orm.aliased` construct against the combination of an entity and an
     arbitrary subquery to work correctly, targeting the correct columns despite
     same-named columns in the source tables, without the need for an "apply
     labels" warning.
@@ -19,4 +19,4 @@
 
         :ref:`migration_20_query_from_self` - Illustrates the new
         disambiguation feature as part of a strategy to migrate away from the
-        :meth:`.Query.from_self` method.
+        :meth:`_query.Query.from_self` method.

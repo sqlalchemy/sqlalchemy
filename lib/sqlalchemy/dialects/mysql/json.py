@@ -17,7 +17,7 @@ class JSON(sqltypes.JSON):
     support JSON at the time of this writing.
 
     The :class:`.mysql.JSON` type supports persistence of JSON values
-    as well as the core index operations provided by :class:`.types.JSON`
+    as well as the core index operations provided by :class:`_types.JSON`
     datatype, by adapting the operations to render the ``JSON_EXTRACT``
     function at the database level.
 

@@ -6,7 +6,7 @@ Using the Session
 
 .. module:: sqlalchemy.orm.session
 
-The :func:`.orm.mapper` function and :mod:`~sqlalchemy.ext.declarative` extensions
+The :func:`_orm.mapper` function and :mod:`~sqlalchemy.ext.declarative` extensions
 are the primary configurational interface for the ORM. Once mappings are
 configured, the primary usage interface for persistence operations is the
 :class:`.Session`.

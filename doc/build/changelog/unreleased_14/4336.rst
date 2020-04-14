@@ -2,9 +2,9 @@
    :tags: bug, sql
    :tickets: 4336
 
-   Reworked the :meth:`.ClauseElement.compare` methods in terms of a new
+   Reworked the :meth:`_expression.ClauseElement.compare` methods in terms of a new
    visitor-based approach, and additionally added test coverage ensuring that
-   all :class:`.ClauseElement` subclasses can be accurately compared
+   all :class:`_expression.ClauseElement` subclasses can be accurately compared
    against each other in terms of structure.   Structural comparison
    capability is used to a small degree within the ORM currently, however
    it also may form the basis for new caching features.

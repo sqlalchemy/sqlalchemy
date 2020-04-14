@@ -143,27 +143,27 @@ database is also available. This is known as the "Inspector"::
 Limitations of Reflection
 -------------------------
 
-It's important to note that the reflection process recreates :class:`.Table`
+It's important to note that the reflection process recreates :class:`_schema.Table`
 metadata using only information which is represented in the relational database.
 This process by definition cannot restore aspects of a schema that aren't
 actually stored in the database.   State which is not available from reflection
 includes but is not limited to:
 
 * Client side defaults, either Python functions or SQL expressions defined using
-  the ``default`` keyword of :class:`.Column` (note this is separate from ``server_default``,
+  the ``default`` keyword of :class:`_schema.Column` (note this is separate from ``server_default``,
   which specifically is what's available via reflection).
 
 * Column information, e.g. data that might have been placed into the
-  :attr:`.Column.info` dictionary
+  :attr:`_schema.Column.info` dictionary
 
-* The value of the ``.quote`` setting for :class:`.Column` or :class:`.Table`
+* The value of the ``.quote`` setting for :class:`_schema.Column` or :class:`_schema.Table`
 
-* The association of a particular :class:`.Sequence` with a given :class:`.Column`
+* The association of a particular :class:`.Sequence` with a given :class:`_schema.Column`
 
 The relational database also in many cases reports on table metadata in a
-different format than what was specified in SQLAlchemy.   The :class:`.Table`
+different format than what was specified in SQLAlchemy.   The :class:`_schema.Table`
 objects returned from reflection cannot be always relied upon to produce the identical
-DDL as the original Python-defined :class:`.Table` objects.   Areas where
+DDL as the original Python-defined :class:`_schema.Table` objects.   Areas where
 this occurs includes server defaults, column-associated sequences and various
 idiosyncrasies regarding constraints and datatypes.   Server side defaults may
 be returned with cast directives (typically PostgreSQL will include a ``::<type>``

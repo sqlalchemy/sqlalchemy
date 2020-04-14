@@ -29,7 +29,7 @@ SQLAlchemy 2.0 Transition
     shortcomings that would be unknown today.   The vast majority of Python
     packages that are today taken for granted did not exist. SQLAlchemy itself
     struggled with major API adjustments through versions 0.1 to 0.5, with such
-    major concepts as :class:`.Connection`, :class:`.orm.query.Query`, and the
+    major concepts as :class:`_engine.Connection`, :class:`.orm.query.Query`, and the
     Declarative mapping approach only being conceived and added to releases
     gradually over a period of a several years.
 
@@ -198,9 +198,9 @@ of Core use cases, it's the pattern that is already recommended::
         conn.execute(some_table.insert().values(foo='bar'))
 
 For "commit as you go, or rollback instead" usage, which resembles how the
-:class:`.orm.Session` is normally used today, new ``.commit()`` and
-``.rollback()`` methods will also be added to :class:`.Connection` itself.
-These will typically be used in conjunction with the :meth:`.Engine.connect`
+:class:`_orm.Session` is normally used today, new ``.commit()`` and
+``.rollback()`` methods will also be added to :class:`_engine.Connection` itself.
+These will typically be used in conjunction with the :meth:`_engine.Engine.connect`
 method::
 
     # 1.4 / 2.0 code
@@ -216,7 +216,7 @@ method::
         conn.execute(text("some other SQL"))
         conn.rollback()
 
-Above, the ``engine.connect()`` method will return a :class:`.Connection` that
+Above, the ``engine.connect()`` method will return a :class:`_engine.Connection` that
 features **autobegin**, meaning the ``begin()`` event is emitted when the
 execute method is first used (note however that there is no actual "BEGIN" in
 the Python DBAPI).   This is the same as how the ORM :class:`.Session` will
@@ -252,7 +252,7 @@ the :class:`.Session` will not allow any database activity outside of the
 above transaction block.  The 1.4 change :ref:`change_5074` is part of this
 architecture.
 
-In the case of both core :class:`.Connection` as well as orm :class:`.Session`,
+In the case of both core :class:`_engine.Connection` as well as orm :class:`.Session`,
 if neither ``.commit()`` nor ``.rollback()`` are called, the connection is
 returned to the pool normally where an implicit (yes, still need this one)
 rollback will occur.  This is the case already for Core and ORM::
@@ -313,11 +313,11 @@ support is available for PostgreSQL, MySQL, SQL Server, and as of SQLAlchemy
   a lot of ``engine.execute()`` calls that will need to be adjusted.
 
 "Connectionless" execution refers to the still fairly popular pattern of
-invoking ``.execute()`` from the :class:`.Engine`::
+invoking ``.execute()`` from the :class:`_engine.Engine`::
 
   result = engine.execute(some_statement)
 
-The above operation implicitly procures a :class:`.Connection` object,
+The above operation implicitly procures a :class:`_engine.Connection` object,
 and runs the ``.execute()`` method on it.   This seems like a pretty simple
 and intuitive method to have so that people who just need to invoke a few
 SQL statements don't need all the verbosity with connecting and all that.
@@ -371,14 +371,14 @@ de-emphasize for many years.
 
 Because implicit execution is removed, there's really no reason for "bound"
 metadata to exist.  There are many internal structures that are involved with
-locating the "bind" for a particular statement, to see if an :class:`.Engine`
+locating the "bind" for a particular statement, to see if an :class:`_engine.Engine`
 is associated with some SQL statement exists which necessarily involves an
 additional traversal of the statement, just to find the correct dialect with
 which to compile it.  This complex and error-prone logic can be removed from
 Core by removing "bound" metadata.
 
 Overall, the above executional patterns were introduced in SQLAlchemy's
-very first 0.1 release before the :class:`.Connection` object even existed.
+very first 0.1 release before the :class:`_engine.Connection` object even existed.
 After many years of de-emphasizing these patterns, "implicit, connectionless"
 execution and "bound metadata" are no longer as widely used so in 2.0 we seek
 to finally reduce the number of choices for how to execute a statement in
@@ -440,7 +440,7 @@ Slight Caveat - there still may need to be a "statement.execute()" kind of featu
 To suit the use case of ORM "dynamic" relationships as well as Flask-oriented
 ORM patterns, there still may be some semblance of "implicit" execution of
 a statement, however, it won't really be "connectionless".   Likely, a statement
-can be directly bound to a :class:`.Connection` or :class:`.Session` once
+can be directly bound to a :class:`_engine.Connection` or :class:`.Session` once
 constructed::
 
   # 1.4 / 2.0 code (tentative)
@@ -466,9 +466,9 @@ execute() method more strict, .execution_options() are available on ORM Session
 
 The use of execution options is expected to be more prominent as the Core and
 ORM are largely unified at the statement handling level.   To suit this,
-the :class:`.orm.Session` will be able to receive execution options local
+the :class:`_orm.Session` will be able to receive execution options local
 to a series of statement executions in the same way as that of
-:class:`.Connection`::
+:class:`_engine.Connection`::
 
     # 1.4 / 2.0 code
 
@@ -586,7 +586,7 @@ Result rows unified between Core and ORM on named-tuple interface
 ==================================================================
 
 Already part of 1.4, the previous ``KeyedTuple`` class that was used when
-selecting rows from the :class:`.Query` object has been replaced by the
+selecting rows from the :class:`_query.Query` object has been replaced by the
 :class:`.Row` class, which is the base of the same :class:`.Row` that comes
 back with Core statement results (in 1.4 it is the :class:`.LegacyRow` class).
 
@@ -719,7 +719,7 @@ to make for a pattern such as::
     # "classical" mapping:
     base.mapper(MyClass, my_table)
 
-In 2.0, an application that still wishes to use a separate :class:`.Table` and
+In 2.0, an application that still wishes to use a separate :class:`_schema.Table` and
 does not want to use Declarative with ``__table__``, can instead use the above
 pattern which basically does the same thing.
 
@@ -730,8 +730,8 @@ ORM Query Unified with Core Select
 .. admonition:: Certainty: tentative
 
   Tenative overall, however there will almost definitely be
-  architectural changes in :class:`.Query` that move it closer to
-  :func:`.select`.
+  architectural changes in :class:`_query.Query` that move it closer to
+  :func:`_expression.select`.
 
   The ``session.query(<cls>)`` pattern itself will likely **not** be fully
   removed.   As this pattern is extremely prevalent and numerous within any
@@ -740,29 +740,29 @@ ORM Query Unified with Core Select
   that a transition to 2.0 won't require a rewrite of every ``session.query()``
   call, however it will be a legacy pattern that may warn as such.
 
-Ever wonder why SQLAlchemy :func:`~.sql.expression.select` uses :meth:`.Select.where` to add
-a WHERE clause and :class:`.Query` uses :meth:`.Query.filter` ?   Same here!
-The :class:`.Query` object was not part of SQLAlchemy's original concept.
-Originally, the idea was that the :class:`.Mapper` construct itself would
-be able to select rows, and that :class:`.Table` objects, not classes,
+Ever wonder why SQLAlchemy :func:`_expression.select` uses :meth:`_expression.Select.where` to add
+a WHERE clause and :class:`_query.Query` uses :meth:`_query.Query.filter` ?   Same here!
+The :class:`_query.Query` object was not part of SQLAlchemy's original concept.
+Originally, the idea was that the :class:`_orm.Mapper` construct itself would
+be able to select rows, and that :class:`_schema.Table` objects, not classes,
 would be used to create the various criteria in a Core-style approach.   The
-:class:`.Query` was basically an extension that was proposed by a user who
+:class:`_query.Query` was basically an extension that was proposed by a user who
 quite plainly had a better idea of how to build up SQL queries.   The
-"buildable" approach of :class:`.Query`, originally called ``SelectResults``,
-was also adapted to the Core SQL objects, so that :func:`~.sql.expression.select` gained
-methods like :meth:`.Select.where`, rather than being an all-at-once composed
+"buildable" approach of :class:`_query.Query`, originally called ``SelectResults``,
+was also adapted to the Core SQL objects, so that :func:`_expression.select` gained
+methods like :meth:`_expression.Select.where`, rather than being an all-at-once composed
 object.  Later on, ORM classes gained the ability to be used directly in
-constructing SQL criteria.    :class:`.Query` evolved over many years to
-eventually support production of all the SQL that :func:`~.sql.expression.select` does, to
+constructing SQL criteria.    :class:`_query.Query` evolved over many years to
+eventually support production of all the SQL that :func:`_expression.select` does, to
 the point where having both forms has now become redundant.
 
 SQLAlchemy 2.0 will resolve the inconsistency here by promoting the concept
-of :func:`~.sql.expression.select` to be the single way that one constructs a SELECT construct.
+of :func:`_expression.select` to be the single way that one constructs a SELECT construct.
 For Core usage, the ``select()`` works mostly as it does now, except that it
 gains a real working ``.join()`` method that will append JOIN conditions to the
-statement in the same way as works for :meth:`.Query.join` right now.
+statement in the same way as works for :meth:`_query.Query.join` right now.
 
-For ORM use however, one can construct a :func:`~.sql.expression.select` using ORM objects, and
+For ORM use however, one can construct a :func:`_expression.select` using ORM objects, and
 then when delivered to the ``.invoke()`` or ``.execute()`` method of
 :class:`.Session`, it will be interpreted appropriately::
 
@@ -774,8 +774,8 @@ then when delivered to the ``.invoke()`` or ``.execute()`` method of
 
     rows = session.execute(stmt).all()
 
-Similarly, methods like :meth:`.Query.update` and :meth:`.Query.delete` are now
-replaced by usage of the :func:`.update` and :func:`.delete` constructs directly::
+Similarly, methods like :meth:`_query.Query.update` and :meth:`_query.Query.delete` are now
+replaced by usage of the :func:`_expression.update` and :func:`_expression.delete` constructs directly::
 
     from sqlalchemy.future import update
 
@@ -795,8 +795,8 @@ ORM Query relationship patterns simplified
 Joining / loading on relationships uses attributes, not strings
 ----------------------------------------------------------------
 
-This refers to patterns such as that of :meth:`.Query.join` as well as
-query options like :func:`.joinedload` which currently accept a mixture of
+This refers to patterns such as that of :meth:`_query.Query.join` as well as
+query options like :func:`_orm.joinedload` which currently accept a mixture of
 string attribute names or actual class attributes.   The string calling form
 leaves a lot more ambiguity and is also more complicated internally, so will
 be deprecated in 1.4 and removed by 2.0.  This means the following won't work::
@@ -848,7 +848,7 @@ attributes in a list will also be removed::
 join(..., aliased=True), from_joinpoint removed
 -----------------------------------------------
 
-The ``aliased=True`` option on :meth:`.Query.join` is another feature that
+The ``aliased=True`` option on :meth:`_query.Query.join` is another feature that
 seems to be almost never used, based on extensive code searches to find
 actual use of this feature.   The internal complexity that the ``aliased=True``
 flag requires is **enormous**, and will be going away in 2.0.
@@ -881,14 +881,14 @@ parameter ever being used in real world applications::
     filter(Node.name == 'some sub child')
 
 The ``aliased=True`` and ``from_joinpoint`` parameters were developed at a time
-when the :class:`.Query` object didn't yet have good capabilities regarding
+when the :class:`_query.Query` object didn't yet have good capabilities regarding
 joining along relationship attributes, functions like
 :meth:`.PropComparator.of_type` did not exist, and the :func:`.aliased`
 construct itself didn't exist early on.
 
 The above patterns are all suited by standard use of the :func:`.aliased`
 construct, resulting in a much clearer query as well as removing hundreds of
-lines of complexity from the internals of :class:`.Query` (or whatever it is
+lines of complexity from the internals of :class:`_query.Query` (or whatever it is
 to be called in 2.0 :) ) ::
 
   n1 = aliased(Node)
@@ -914,13 +914,13 @@ of the form ``(target, onclause)`` as well::
 
 
 
-By using attributes instead of strings above, the :meth:`.Query.join` method
+By using attributes instead of strings above, the :meth:`_query.Query.join` method
 no longer needs the almost never-used option of ``from_joinpoint``.
 
 Other ORM Query patterns changed
 =================================
 
-This section will collect various :class:`.Query` patterns and how they work
+This section will collect various :class:`_query.Query` patterns and how they work
 in terms of :func:`.future.select`.
 
 .. _migration_20_query_distinct:
@@ -928,7 +928,7 @@ in terms of :func:`.future.select`.
 Using DISTINCT with additional columns, but only select the entity
 -------------------------------------------------------------------
 
-:class:`.Query` will automatically add columns in the ORDER BY when
+:class:`_query.Query` will automatically add columns in the ORDER BY when
 distinct is used.  The following query will select from all User columns
 as well as "address.email_address" but only return User objects::
 
@@ -956,28 +956,28 @@ and the limiting of the entities/columns to ``User`` is done on the result::
 Selecting from the query itself as a subquery, e.g. "from_self()"
 -------------------------------------------------------------------
 
-The :meth:`.Query.from_self` method is a very complicated method that is rarely
-used.   The purpose of this method is to convert a :class:`.Query` into a
-subquery, then return a new :class:`.Query` which SELECTs from that subquery.
+The :meth:`_query.Query.from_self` method is a very complicated method that is rarely
+used.   The purpose of this method is to convert a :class:`_query.Query` into a
+subquery, then return a new :class:`_query.Query` which SELECTs from that subquery.
 The elaborate aspect of this method is that the returned query applies
 automatic translation of ORM entities and columns to be stated in the SELECT in
 terms of the subquery, as well as that it allows the entities and columns to be
 SELECTed from to be modified.
 
-Because :meth:`.Query.from_self` packs an intense amount of implicit
+Because :meth:`_query.Query.from_self` packs an intense amount of implicit
 translation into the SQL it produces, while it does allow a certain kind of
 pattern to be executed very succinctly, real world use of this method is
 infrequent as it is not simple to understand.
 
 In SQLAlchemy 2.0, as the :func:`.future.select` construct will be expected
-to handle every pattern the ORM :class:`.Query` does now, the pattern of
-:meth:`.Query.from_self` can be invoked now by making use of the
-:func:`.orm.aliased` function in conjunction with a subquery, that is
-the :meth:`.Query.subquery` or :meth:`.Select.subquery` method.    Version 1.4
-of SQLAlchemy has enhanced the ability of the :func:`.orm.aliased` construct
+to handle every pattern the ORM :class:`_query.Query` does now, the pattern of
+:meth:`_query.Query.from_self` can be invoked now by making use of the
+:func:`_orm.aliased` function in conjunction with a subquery, that is
+the :meth:`_query.Query.subquery` or :meth:`_expression.Select.subquery` method.    Version 1.4
+of SQLAlchemy has enhanced the ability of the :func:`_orm.aliased` construct
 to correctly extract columns from a given subquery.
 
-Starting with a :meth:`.Query.from_self` query that selects from two different
+Starting with a :meth:`_query.Query.from_self` query that selects from two different
 entities, then converts itself to select just one of the entities from
 a subquery::
 
@@ -1000,7 +1000,7 @@ column::
 The SQL query above illustrates the automatic translation of the "user" and
 "address" tables in terms of the anonymously named subquery.
 
-In 2.0, we perform these steps explicitly using :func:`.orm.aliased`::
+In 2.0, we perform these steps explicitly using :func:`_orm.aliased`::
 
   # 1.4/2.0 code
 
@@ -1020,7 +1020,7 @@ In 2.0, we perform these steps explicitly using :func:`.orm.aliased`::
 
 The above query renders the identical SQL structure, but uses a more
 succinct labeling scheme that doesn't pull in table names (that labeling
-scheme is still available if the :meth:`.Select.apply_labels` method is used)::
+scheme is still available if the :meth:`_expression.Select.apply_labels` method is used)::
 
   SELECT anon_1.id AS anon_1_id
   FROM (
@@ -1067,7 +1067,7 @@ Transparent Statement Compilation Caching replaces "Baked" queries, works in Cor
   Pending further architectural prototyping and performance testing
 
 A major restructuring of the Core internals as well as of that of the ORM
-:class:`.Query` will be reorganizing the major statement objects to have very
+:class:`_query.Query` will be reorganizing the major statement objects to have very
 simplified "builder" internals, that is, when you construct an object like
 ``select(table).where(criteria).join(some_table)``, the arguments passed are
 simply stored and as little processing as possible will occur.   Then there is
@@ -1271,12 +1271,12 @@ of asyncio-everything, here are the bulletpoints:
   to keep up with SQLAlchemy's own capabilities and they likely don't really
   work for lots of existing use cases either.
 
-* Essentially, it is hoped that the re-architecting of :class:`.Connection`
+* Essentially, it is hoped that the re-architecting of :class:`_engine.Connection`
   to no longer support things like "autocommit" and "connectionless"
   execution, as well as the changes to how result fetching will work with the
   ``Result`` which is hoped to be simpler in how it interacts with
   the cursor, will make it **much easier** to build async versions of
-  SQLAlchemy's :class:`.Connection`.  The simplified model of
+  SQLAlchemy's :class:`_engine.Connection`.  The simplified model of
   ``Connection.execute()`` and ``Session.execute()`` as the single point of
   invocation of queries should also make things easier.
 

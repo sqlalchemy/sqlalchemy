@@ -122,7 +122,7 @@ will result in an error::
 In a situation like this, Declarative can't be sure
 of the intent, especially if the ``start_date`` columns had, for example,
 different types.   A situation like this can be resolved by using
-:class:`.declared_attr` to define the :class:`.Column` conditionally, taking
+:class:`.declared_attr` to define the :class:`_schema.Column` conditionally, taking
 care to return the **existing column** via the parent ``__table__`` if it
 already exists::
 
@@ -152,13 +152,13 @@ already exists::
 
 Above, when ``Manager`` is mapped, the ``start_date`` column is
 already present on the ``Person`` class.  Declarative lets us return
-that :class:`.Column` as a result in this case, where it knows to skip
+that :class:`_schema.Column` as a result in this case, where it knows to skip
 re-assigning the same column. If the mapping is mis-configured such
 that the ``start_date`` column is accidentally re-assigned to a
 different table (such as, if we changed ``Manager`` to be joined
 inheritance without fixing ``start_date``), an error is raised which
-indicates an existing :class:`.Column` is trying to be re-assigned to
-a different owning :class:`.Table`.
+indicates an existing :class:`_schema.Column` is trying to be re-assigned to
+a different owning :class:`_schema.Table`.
 
 The same concept can be used with mixin classes (see
 :ref:`declarative_mixins`)::
@@ -184,7 +184,7 @@ The above mixin checks the local ``__table__`` attribute for the column.
 Because we're using single table inheritance, we're sure that in this case,
 ``cls.__table__`` refers to ``Person.__table__``.  If we were mixing joined-
 and single-table inheritance, we might want our mixin to check more carefully
-if ``cls.__table__`` is really the :class:`.Table` we're looking for.
+if ``cls.__table__`` is really the :class:`_schema.Table` we're looking for.
 
 .. _declarative_concrete_table:
 
@@ -208,7 +208,7 @@ Concrete is defined as a subclass which has its own table and sets the
 
 Usage of an abstract base class is a little less straightforward as it
 requires usage of :func:`~sqlalchemy.orm.util.polymorphic_union`,
-which needs to be created with the :class:`.Table` objects
+which needs to be created with the :class:`_schema.Table` objects
 before the class is built::
 
     engineers = Table('engineers', Base.metadata,

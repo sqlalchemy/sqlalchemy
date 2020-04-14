@@ -86,7 +86,7 @@ All PostgreSQL dialects support setting of transaction isolation level
 both via a dialect-specific parameter
 :paramref:`.create_engine.isolation_level` accepted by :func:`.create_engine`,
 as well as the :paramref:`.Connection.execution_options.isolation_level`
-argument as passed to :meth:`.Connection.execution_options`.
+argument as passed to :meth:`_engine.Connection.execution_options`.
 When using a non-psycopg2 dialect, this feature works by issuing the command
 ``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL <level>`` for
 each new connection.  For the special AUTOCOMMIT isolation level,
@@ -129,11 +129,13 @@ Remote-Schema Table Introspection and PostgreSQL search_path
 name schemas **other** than ``public`` explicitly within ``Table`` definitions.
 
 The PostgreSQL dialect can reflect tables from any schema.  The
-:paramref:`.Table.schema` argument, or alternatively the
+:paramref:`_schema.Table.schema` argument, or alternatively the
 :paramref:`.MetaData.reflect.schema` argument determines which schema will
-be searched for the table or tables.   The reflected :class:`.Table` objects
+be searched for the table or tables.   The reflected :class:`_schema.Table`
+objects
 will in all cases retain this ``.schema`` attribute as was specified.
-However, with regards to tables which these :class:`.Table` objects refer to
+However, with regards to tables which these :class:`_schema.Table`
+objects refer to
 via foreign key constraint, a decision must be made as to how the ``.schema``
 is represented in those remote tables, in the case where that remote
 schema name is also a member of the current
@@ -205,7 +207,8 @@ reflection process as follows::
     ...
     <sqlalchemy.engine.result.ResultProxy object at 0x101612ed0>
 
-The above process would deliver to the :attr:`.MetaData.tables` collection
+The above process would deliver to the :attr:`_schema.MetaData.tables`
+collection
 ``referred`` table named **without** the schema::
 
     >>> meta.tables['referred'].schema is None
@@ -214,8 +217,8 @@ The above process would deliver to the :attr:`.MetaData.tables` collection
 To alter the behavior of reflection such that the referred schema is
 maintained regardless of the ``search_path`` setting, use the
 ``postgresql_ignore_search_path`` option, which can be specified as a
-dialect-specific argument to both :class:`.Table` as well as
-:meth:`.MetaData.reflect`::
+dialect-specific argument to both :class:`_schema.Table` as well as
+:meth:`_schema.MetaData.reflect`::
 
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
@@ -239,7 +242,7 @@ We will now have ``test_schema.referred`` stored as schema-qualified::
     you just stick to the simplest use pattern: leave the ``search_path`` set
     to its default of ``public`` only, never refer to the name ``public`` as
     an explicit schema name otherwise, and refer to all other schema names
-    explicitly when building up a :class:`.Table` object.  The options
+    explicitly when building up a :class:`_schema.Table` object.  The options
     described here are only for those users who can't, or prefer not to, stay
     within these guidelines.
 
@@ -251,8 +254,8 @@ which is in the ``public`` (i.e. default) schema will always have the
 ``.schema`` attribute set to ``None``.
 
 .. versionadded:: 0.9.2 Added the ``postgresql_ignore_search_path``
-   dialect-level option accepted by :class:`.Table` and
-   :meth:`.MetaData.reflect`.
+   dialect-level option accepted by :class:`_schema.Table` and
+   :meth:`_schema.MetaData.reflect`.
 
 
 .. seealso::
@@ -304,7 +307,7 @@ or they may be *inferred* by stating the columns and conditions that comprise
 the indexes.
 
 SQLAlchemy provides ``ON CONFLICT`` support via the PostgreSQL-specific
-:func:`.postgresql.insert()` function, which provides
+:func:`_postgresql.insert()` function, which provides
 the generative methods :meth:`~.postgresql.Insert.on_conflict_do_update`
 and :meth:`~.postgresql.Insert.on_conflict_do_nothing`::
 
@@ -331,7 +334,7 @@ Both methods supply the "target" of the conflict using either the
 named constraint or by column inference:
 
 * The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
-  specifies a sequence containing string column names, :class:`.Column`
+  specifies a sequence containing string column names, :class:`_schema.Column`
   objects, and/or SQL expression elements, which would identify a unique
   index::
 
@@ -381,8 +384,9 @@ named constraint or by column inference:
   constraint is unnamed, then inference will be used, where the expressions
   and optional WHERE clause of the constraint will be spelled out in the
   construct.  This use is especially convenient
-  to refer to the named or unnamed primary key of a :class:`.Table` using the
-  :attr:`.Table.primary_key` attribute::
+  to refer to the named or unnamed primary key of a :class:`_schema.Table`
+  using the
+  :attr:`_schema.Table.primary_key` attribute::
 
     do_update_stmt = insert_stmt.on_conflict_do_update(
         constraint=my_table.primary_key,
@@ -407,17 +411,19 @@ for UPDATE::
 
 .. warning::
 
-    The :meth:`.Insert.on_conflict_do_update` method does **not** take into
+    The :meth:`_expression.Insert.on_conflict_do_update`
+    method does **not** take into
     account Python-side default UPDATE values or generation functions, e.g.
-    those specified using :paramref:`.Column.onupdate`.
+    those specified using :paramref:`_schema.Column.onupdate`.
     These values will not be exercised for an ON CONFLICT style of UPDATE,
     unless they are manually specified in the
     :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
 
 In order to refer to the proposed insertion row, the special alias
 :attr:`~.postgresql.Insert.excluded` is available as an attribute on
-the :class:`.postgresql.Insert` object; this object is a
-:class:`.ColumnCollection` which alias contains all columns of the target
+the :class:`_postgresql.Insert` object; this object is a
+:class:`_expression.ColumnCollection`
+which alias contains all columns of the target
 table::
 
     from sqlalchemy.dialects.postgresql import insert
@@ -432,7 +438,7 @@ table::
         )
     conn.execute(do_update_stmt)
 
-The :meth:`.Insert.on_conflict_do_update` method also accepts
+The :meth:`_expression.Insert.on_conflict_do_update` method also accepts
 a WHERE clause using the :paramref:`.Insert.on_conflict_do_update.where`
 parameter, which will limit those rows which receive an UPDATE::
 
@@ -484,7 +490,8 @@ Full Text Search
 ----------------
 
 SQLAlchemy makes available the PostgreSQL ``@@`` operator via the
-:meth:`.ColumnElement.match` method on any textual column expression.
+:meth:`_expression.ColumnElement.match`
+method on any textual column expression.
 On a PostgreSQL dialect, an expression like the following::
 
     select([sometable.c.text.match("search string")])
@@ -505,7 +512,7 @@ Emits the equivalent of::
 
     SELECT to_tsvector('fat cats ate rats') @@ to_tsquery('cat & rat')
 
-The :class:`.postgresql.TSVECTOR` type can provide for explicit CAST::
+The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 
     from sqlalchemy.dialects.postgresql import TSVECTOR
     from sqlalchemy import select, cast
@@ -613,8 +620,9 @@ The :class:`.Index` construct allows these to be specified via the
         })
 
 Note that the keys in the ``postgresql_ops`` dictionary are the "key" name of
-the :class:`.Column`, i.e. the name used to access it from the ``.c``
-collection of :class:`.Table`, which can be configured to be different than
+the :class:`_schema.Column`, i.e. the name used to access it from the ``.c``
+collection of :class:`_schema.Table`,
+which can be configured to be different than
 the actual name of the column as expressed in the database.
 
 If ``postgresql_ops`` is to be used against a complex SQL expression such
@@ -666,7 +674,7 @@ The tablespace can be specified on :class:`.Index` using the
 
 .. versionadded:: 1.1
 
-Note that the same option is available on :class:`.Table` as well.
+Note that the same option is available on :class:`_schema.Table` as well.
 
 .. _postgresql_index_concurrently:
 
@@ -722,25 +730,30 @@ PostgreSQL Index Reflection
 
 The PostgreSQL database creates a UNIQUE INDEX implicitly whenever the
 UNIQUE CONSTRAINT construct is used.   When inspecting a table using
-:class:`.Inspector`, the :meth:`.Inspector.get_indexes`
-and the :meth:`.Inspector.get_unique_constraints` will report on these
+:class:`_reflection.Inspector`, the :meth:`_reflection.Inspector.get_indexes`
+and the :meth:`_reflection.Inspector.get_unique_constraints`
+will report on these
 two constructs distinctly; in the case of the index, the key
 ``duplicates_constraint`` will be present in the index entry if it is
 detected as mirroring a constraint.   When performing reflection using
 ``Table(..., autoload=True)``, the UNIQUE INDEX is **not** returned
-in :attr:`.Table.indexes` when it is detected as mirroring a
-:class:`.UniqueConstraint` in the :attr:`.Table.constraints` collection.
+in :attr:`_schema.Table.indexes` when it is detected as mirroring a
+:class:`.UniqueConstraint` in the :attr:`_schema.Table.constraints` collection
+.
 
-.. versionchanged:: 1.0.0 - :class:`.Table` reflection now includes
-   :class:`.UniqueConstraint` objects present in the :attr:`.Table.constraints`
+.. versionchanged:: 1.0.0 - :class:`_schema.Table` reflection now includes
+   :class:`.UniqueConstraint` objects present in the
+   :attr:`_schema.Table.constraints`
    collection; the PostgreSQL backend will no longer include a "mirrored"
-   :class:`.Index` construct in :attr:`.Table.indexes` if it is detected
+   :class:`.Index` construct in :attr:`_schema.Table.indexes`
+   if it is detected
    as corresponding to a unique constraint.
 
 Special Reflection Options
 --------------------------
 
-The :class:`.Inspector` used for the PostgreSQL backend is an instance
+The :class:`_reflection.Inspector`
+used for the PostgreSQL backend is an instance
 of :class:`.PGInspector`, which offers additional methods::
 
     from sqlalchemy import create_engine, inspect
@@ -759,7 +772,7 @@ PostgreSQL Table Options
 ------------------------
 
 Several options for CREATE TABLE are supported directly by the PostgreSQL
-dialect in conjunction with the :class:`.Table` construct:
+dialect in conjunction with the :class:`_schema.Table` construct:
 
 * ``TABLESPACE``::
 
@@ -805,13 +818,13 @@ ARRAY Types
 The PostgreSQL dialect supports arrays, both as multidimensional column types
 as well as array literals:
 
-* :class:`.postgresql.ARRAY` - ARRAY datatype
+* :class:`_postgresql.ARRAY` - ARRAY datatype
 
-* :class:`.postgresql.array` - array literal
+* :class:`_postgresql.array` - array literal
 
-* :func:`.postgresql.array_agg` - ARRAY_AGG SQL function
+* :func:`_postgresql.array_agg` - ARRAY_AGG SQL function
 
-* :class:`.postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
+* :class:`_postgresql.aggregate_order_by` - helper for PG's ORDER BY aggregate
   function syntax.
 
 JSON Types
@@ -821,18 +834,18 @@ The PostgreSQL dialect supports both JSON and JSONB datatypes, including
 psycopg2's native support and support for all of PostgreSQL's special
 operators:
 
-* :class:`.postgresql.JSON`
+* :class:`_postgresql.JSON`
 
-* :class:`.postgresql.JSONB`
+* :class:`_postgresql.JSONB`
 
 HSTORE Type
 -----------
 
 The PostgreSQL HSTORE type as well as hstore literals are supported:
 
-* :class:`.postgresql.HSTORE` - HSTORE datatype
+* :class:`_postgresql.HSTORE` - HSTORE datatype
 
-* :class:`.postgresql.hstore` - hstore literal
+* :class:`_postgresql.hstore` - hstore literal
 
 ENUM Types
 ----------
@@ -843,7 +856,7 @@ complexity on the SQLAlchemy side in terms of when this type should be
 CREATED and DROPPED.   The type object is also an independently reflectable
 entity.   The following sections should be consulted:
 
-* :class:`.postgresql.ENUM` - DDL and typing support for ENUM.
+* :class:`_postgresql.ENUM` - DDL and typing support for ENUM.
 
 * :meth:`.PGInspector.get_enums` - retrieve a listing of current ENUM types
 
@@ -858,7 +871,7 @@ Using ENUM with ARRAY
 The combination of ENUM and ARRAY is not directly supported by backend
 DBAPIs at this time.   In order to send and receive an ARRAY of ENUM,
 use the following workaround type, which decorates the
-:class:`.postgresql.ARRAY` datatype.
+:class:`_postgresql.ARRAY` datatype.
 
 .. sourcecode:: python
 
@@ -1268,7 +1281,7 @@ PGUuid = UUID
 
 class TSVECTOR(sqltypes.TypeEngine):
 
-    """The :class:`.postgresql.TSVECTOR` type implements the PostgreSQL
+    """The :class:`_postgresql.TSVECTOR` type implements the PostgreSQL
     text search type TSVECTOR.
 
     It can be used to do full text queries on natural language
@@ -1289,12 +1302,12 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     """PostgreSQL ENUM type.
 
-    This is a subclass of :class:`.types.Enum` which includes
+    This is a subclass of :class:`_types.Enum` which includes
     support for PG's ``CREATE TYPE`` and ``DROP TYPE``.
 
-    When the builtin type :class:`.types.Enum` is used and the
+    When the builtin type :class:`_types.Enum` is used and the
     :paramref:`.Enum.native_enum` flag is left at its default of
-    True, the PostgreSQL backend will use a :class:`.postgresql.ENUM`
+    True, the PostgreSQL backend will use a :class:`_postgresql.ENUM`
     type as the implementation, so the special create/drop rules
     will be used.
 
@@ -1303,9 +1316,10 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
     parent table, in that it may be "owned" by just a single table, or
     may be shared among many tables.
 
-    When using :class:`.types.Enum` or :class:`.postgresql.ENUM`
+    When using :class:`_types.Enum` or :class:`_postgresql.ENUM`
     in an "inline" fashion, the ``CREATE TYPE`` and ``DROP TYPE`` is emitted
-    corresponding to when the :meth:`.Table.create` and :meth:`.Table.drop`
+    corresponding to when the :meth:`_schema.Table.create` and
+    :meth:`_schema.Table.drop`
     methods are called::
 
         table = Table('sometable', metadata,
@@ -1316,9 +1330,9 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         table.drop(engine)  # will emit DROP TABLE and DROP ENUM
 
     To use a common enumerated type between multiple tables, the best
-    practice is to declare the :class:`.types.Enum` or
-    :class:`.postgresql.ENUM` independently, and associate it with the
-    :class:`.MetaData` object itself::
+    practice is to declare the :class:`_types.Enum` or
+    :class:`_postgresql.ENUM` independently, and associate it with the
+    :class:`_schema.MetaData` object itself::
 
         my_enum = ENUM('a', 'b', 'c', name='myenum', metadata=metadata)
 
@@ -1353,7 +1367,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         my_enum.create(engine)
         my_enum.drop(engine)
 
-    .. versionchanged:: 1.0.0 The PostgreSQL :class:`.postgresql.ENUM` type
+    .. versionchanged:: 1.0.0 The PostgreSQL :class:`_postgresql.ENUM` type
        now behaves more strictly with regards to CREATE/DROP.  A metadata-level
        ENUM type will only be created and dropped at the metadata level,
        not the table level, with the exception of
@@ -1366,10 +1380,10 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
     native_enum = True
 
     def __init__(self, *enums, **kw):
-        """Construct an :class:`~.postgresql.ENUM`.
+        """Construct an :class:`_postgresql.ENUM`.
 
         Arguments are the same as that of
-        :class:`.types.Enum`, but also including
+        :class:`_types.Enum`, but also including
         the following parameters.
 
         :param create_type: Defaults to True.
@@ -1397,7 +1411,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     @classmethod
     def adapt_emulated_to_native(cls, impl, **kw):
-        """Produce a PostgreSQL native :class:`.postgresql.ENUM` from plain
+        """Produce a PostgreSQL native :class:`_postgresql.ENUM` from plain
         :class:`.Enum`.
 
         """
@@ -1412,13 +1426,13 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     def create(self, bind=None, checkfirst=True):
         """Emit ``CREATE TYPE`` for this
-        :class:`~.postgresql.ENUM`.
+        :class:`_postgresql.ENUM`.
 
         If the underlying dialect does not support
         PostgreSQL CREATE TYPE, no action is taken.
 
-        :param bind: a connectable :class:`.Engine`,
-         :class:`.Connection`, or similar object to emit
+        :param bind: a connectable :class:`_engine.Engine`,
+         :class:`_engine.Connection`, or similar object to emit
          SQL.
         :param checkfirst: if ``True``, a query against
          the PG catalog will be first performed to see
@@ -1436,13 +1450,13 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
 
     def drop(self, bind=None, checkfirst=True):
         """Emit ``DROP TYPE`` for this
-        :class:`~.postgresql.ENUM`.
+        :class:`_postgresql.ENUM`.
 
         If the underlying dialect does not support
         PostgreSQL DROP TYPE, no action is taken.
 
-        :param bind: a connectable :class:`.Engine`,
-         :class:`.Connection`, or similar object to emit
+        :param bind: a connectable :class:`_engine.Engine`,
+         :class:`_engine.Connection`, or similar object to emit
          SQL.
         :param checkfirst: if ``True``, a query against
          the PG catalog will be first performed to see
@@ -2276,7 +2290,8 @@ class PGInspector(reflection.Inspector):
     def get_foreign_table_names(self, schema=None):
         """Return a list of FOREIGN TABLE names.
 
-        Behavior is similar to that of :meth:`.Inspector.get_table_names`,
+        Behavior is similar to that of
+        :meth:`_reflection.Inspector.get_table_names`,
         except that the list is limited to those tables that report a
         ``relkind`` value of ``f``.
 

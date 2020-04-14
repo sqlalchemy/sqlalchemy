@@ -327,7 +327,8 @@ class CursorResultMetaData(ResultMetaData):
 
         The remaining fairly common case is that of the textual SQL
         that includes at least partial column information; this is when
-        we use a :class:`.TextualSelect` construct.   This construct may have
+        we use a :class:`_expression.TextualSelect` construct.
+        This construct may have
         unordered or ordered column information.  In the ordered case, we
         merge the cursor.description and the compiled construct's information
         positionally, and warn if there are additional description names
@@ -350,7 +351,8 @@ class CursorResultMetaData(ResultMetaData):
         SQLAlchemy for all cases up through te 0.9 series.   Positional
         matching for compiled SQL expressions was introduced in 1.0 as a
         major performance feature, and positional matching for textual
-        :class:`.TextualSelect` objects in 1.1.  As name matching is no longer
+        :class:`_expression.TextualSelect` objects in 1.1.
+        As name matching is no longer
         a common case, it was acceptable to factor it into smaller generator-
         oriented methods that are easier to understand, but incur slightly
         more performance overhead.
@@ -1245,14 +1247,14 @@ class BaseResult(object):
         corresponding to the list of primary key columns
         in the target table.
 
-        This only applies to single row :func:`~.sql.expression.insert`
+        This only applies to single row :func:`_expression.insert`
         constructs which did not explicitly specify
-        :meth:`.Insert.returning`.
+        :meth:`_expression.Insert.returning`.
 
         Note that primary key columns which specify a
         server_default clause,
         or otherwise do not qualify as "autoincrement"
-        columns (see the notes at :class:`.Column`), and were
+        columns (see the notes at :class:`_schema.Column`), and were
         generated using the database-side default, will
         appear in this list as ``None`` unless the backend
         supports "returning" and the insert statement executed
@@ -1504,7 +1506,7 @@ class BaseResult(object):
     def is_insert(self):
         """True if this :class:`.ResultProxy` is the result
         of a executing an expression language compiled
-        :func:`.expression.insert` construct.
+        :func:`_expression.insert` construct.
 
         When True, this implies that the
         :attr:`inserted_primary_key` attribute is accessible,
@@ -1562,7 +1564,8 @@ class ResultProxy(BaseResult):
 
         In the case of a result that is the product of
         :ref:`connectionless execution <dbengine_implicit>`,
-        the underlying :class:`.Connection` object is also closed, which
+        the underlying :class:`_engine.Connection` object is also closed,
+        which
         :term:`releases` DBAPI connection resources.
 
         .. deprecated:: 2.0 "connectionless" execution is deprecated and will

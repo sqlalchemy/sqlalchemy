@@ -2,7 +2,7 @@
     :tags: bug, mssql
     :tickets: 4980
 
-    Fixed the base class of the :class:`.mssql.DATETIMEOFFSET` datatype to
+    Fixed the base class of the :class:`_mssql.DATETIMEOFFSET` datatype to
     be based on the :class:`.DateTime` class hierarchy, as this is a
     datetime-holding datatype.
 
