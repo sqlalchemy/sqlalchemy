@@ -39,21 +39,21 @@ class SequenceTest(fixtures.TablesTest):
             Column("data", String(50)),
         )
 
-    def test_insert_roundtrip(self):
-        config.db.execute(self.tables.seq_pk.insert(), data="some data")
-        self._assert_round_trip(self.tables.seq_pk, config.db)
+    def test_insert_roundtrip(self, connection):
+        connection.execute(self.tables.seq_pk.insert(), data="some data")
+        self._assert_round_trip(self.tables.seq_pk, connection)
 
-    def test_insert_lastrowid(self):
-        r = config.db.execute(self.tables.seq_pk.insert(), data="some data")
+    def test_insert_lastrowid(self, connection):
+        r = connection.execute(self.tables.seq_pk.insert(), data="some data")
         eq_(r.inserted_primary_key, [1])
 
-    def test_nextval_direct(self):
-        r = config.db.execute(self.tables.seq_pk.c.id.default)
+    def test_nextval_direct(self, connection):
+        r = connection.execute(self.tables.seq_pk.c.id.default)
         eq_(r, 1)
 
     @requirements.sequences_optional
-    def test_optional_seq(self):
-        r = config.db.execute(
+    def test_optional_seq(self, connection):
+        r = connection.execute(
             self.tables.seq_opt_pk.insert(), data="some data"
         )
         eq_(r.inserted_primary_key, [1])
@@ -67,7 +67,7 @@ class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):
     __requires__ = ("sequences",)
     __backend__ = True
 
-    def test_literal_binds_inline_compile(self):
+    def test_literal_binds_inline_compile(self, connection):
         table = Table(
             "x",
             MetaData(),
@@ -77,14 +77,14 @@ class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):
 
         stmt = table.insert().values(q=5)
 
-        seq_nextval = testing.db.dialect.statement_compiler(
-            statement=None, dialect=testing.db.dialect
+        seq_nextval = connection.dialect.statement_compiler(
+            statement=None, dialect=connection.dialect
         ).visit_sequence(Sequence("y_seq"))
         self.assert_compile(
             stmt,
             "INSERT INTO x (y, q) VALUES (%s, 5)" % (seq_nextval,),
             literal_binds=True,
-            dialect=testing.db.dialect,
+            dialect=connection.dialect,
         )
 
 
@@ -92,65 +92,65 @@ class HasSequenceTest(fixtures.TestBase):
     __requires__ = ("sequences",)
     __backend__ = True
 
-    def test_has_sequence(self):
+    def test_has_sequence(self, connection):
         s1 = Sequence("user_id_seq")
-        testing.db.execute(schema.CreateSequence(s1))
+        connection.execute(schema.CreateSequence(s1))
         try:
             eq_(
-                testing.db.dialect.has_sequence(testing.db, "user_id_seq"),
+                connection.dialect.has_sequence(connection, "user_id_seq"),
                 True,
             )
         finally:
-            testing.db.execute(schema.DropSequence(s1))
+            connection.execute(schema.DropSequence(s1))
 
     @testing.requires.schemas
-    def test_has_sequence_schema(self):
+    def test_has_sequence_schema(self, connection):
         s1 = Sequence("user_id_seq", schema=config.test_schema)
-        testing.db.execute(schema.CreateSequence(s1))
+        connection.execute(schema.CreateSequence(s1))
         try:
             eq_(
-                testing.db.dialect.has_sequence(
-                    testing.db, "user_id_seq", schema=config.test_schema
+                connection.dialect.has_sequence(
+                    connection, "user_id_seq", schema=config.test_schema
                 ),
                 True,
             )
         finally:
-            testing.db.execute(schema.DropSequence(s1))
+            connection.execute(schema.DropSequence(s1))
 
-    def test_has_sequence_neg(self):
-        eq_(testing.db.dialect.has_sequence(testing.db, "user_id_seq"), False)
+    def test_has_sequence_neg(self, connection):
+        eq_(connection.dialect.has_sequence(connection, "user_id_seq"), False)
 
     @testing.requires.schemas
-    def test_has_sequence_schemas_neg(self):
+    def test_has_sequence_schemas_neg(self, connection):
         eq_(
-            testing.db.dialect.has_sequence(
-                testing.db, "user_id_seq", schema=config.test_schema
+            connection.dialect.has_sequence(
+                connection, "user_id_seq", schema=config.test_schema
             ),
             False,
         )
 
     @testing.requires.schemas
-    def test_has_sequence_default_not_in_remote(self):
+    def test_has_sequence_default_not_in_remote(self, connection):
         s1 = Sequence("user_id_seq")
-        testing.db.execute(schema.CreateSequence(s1))
+        connection.execute(schema.CreateSequence(s1))
         try:
             eq_(
-                testing.db.dialect.has_sequence(
-                    testing.db, "user_id_seq", schema=config.test_schema
+                connection.dialect.has_sequence(
+                    connection, "user_id_seq", schema=config.test_schema
                 ),
                 False,
             )
         finally:
-            testing.db.execute(schema.DropSequence(s1))
+            connection.execute(schema.DropSequence(s1))
 
     @testing.requires.schemas
-    def test_has_sequence_remote_not_in_default(self):
+    def test_has_sequence_remote_not_in_default(self, connection):
         s1 = Sequence("user_id_seq", schema=config.test_schema)
-        testing.db.execute(schema.CreateSequence(s1))
+        connection.execute(schema.CreateSequence(s1))
         try:
             eq_(
-                testing.db.dialect.has_sequence(testing.db, "user_id_seq"),
+                connection.dialect.has_sequence(connection, "user_id_seq"),
                 False,
             )
         finally:
-            testing.db.execute(schema.DropSequence(s1))
+            connection.execute(schema.DropSequence(s1))
