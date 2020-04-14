@@ -1213,7 +1213,7 @@ class EnumSetTest(
         t2 = Table("table", m2, autoload=True)
 
         # TODO: what's wrong with the last element ?  is there
-        # latin-1 stuff forcing its way in ?
+        #       latin-1 stuff forcing its way in ?
 
         eq_(
             t2.c.value.type.enums[0:2], [u("réveillé"), u("drôle")]

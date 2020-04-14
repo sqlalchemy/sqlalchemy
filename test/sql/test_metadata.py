@@ -670,7 +670,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
 class ToMetaDataTest(fixtures.TestBase, ComparesTables):
     @testing.requires.check_constraints
     def test_copy(self):
-        # TODO: modernize this test
+        # TODO: modernize this test for 2.0
 
         from sqlalchemy.testing.schema import Table
 
