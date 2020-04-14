@@ -77,7 +77,7 @@ and want less output generated, set it to ``False``. This tutorial will format
 the SQL behind a popup window so it doesn't get in our way; just click the
 "SQL" links to see what's being generated.
 
-The return value of :func:`.create_engine` is an instance of
+The return value of :func:`_sa.create_engine` is an instance of
 :class:`_engine.Engine`, and it represents the core interface to the
 database, adapted through a :term:`dialect` that handles the details
 of the database and :term:`DBAPI` in use.  In this case the SQLite
@@ -86,7 +86,7 @@ module.
 
 .. sidebar:: Lazy Connecting
 
-    The :class:`_engine.Engine`, when first returned by :func:`.create_engine`,
+    The :class:`_engine.Engine`, when first returned by :func:`_sa.create_engine`,
     has not actually tried to connect to the database yet; that happens
     only the first time it is asked to perform a task against the database.
 
@@ -96,7 +96,7 @@ database, which is then used to emit the SQL.
 
 .. seealso::
 
-    :ref:`database_urls` - includes examples of :func:`.create_engine`
+    :ref:`database_urls` - includes examples of :func:`_sa.create_engine`
     connecting to several kinds of databases with links to more information.
 
 Define and Create Tables
@@ -288,7 +288,7 @@ DBAPI connection, the result, known as a
 :class:`~sqlalchemy.engine.ResultProxy` object, is analogous to the DBAPI
 cursor object. In the case of an INSERT, we can get important information from
 it, such as the primary key values which were generated from our statement
-using :attr:`.ResultProxy.inserted_primary_key`:
+using :attr:`_engine.ResultProxy.inserted_primary_key`:
 
 .. sourcecode:: pycon+sql
 
@@ -303,7 +303,7 @@ at a newly generated primary key value, even though the method of generating
 them is different across different databases; each database's
 :class:`~sqlalchemy.engine.interfaces.Dialect` knows the specific steps needed to
 determine the correct value (or values; note that
-:attr:`.ResultProxy.inserted_primary_key`
+:attr:`_engine.ResultProxy.inserted_primary_key`
 returns a list so that it supports composite primary keys).    Methods here
 range from using ``cursor.lastrowid``, to selecting from a database-specific
 function, to using ``INSERT..RETURNING`` syntax; this all occurs transparently.
@@ -447,11 +447,11 @@ SELECT directly as keys:
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
 
-The :class:`.ResultProxy` object features "auto-close" behavior that closes the
+The :class:`_engine.ResultProxy` object features "auto-close" behavior that closes the
 underlying DBAPI ``cursor`` object when all pending result rows have been
-fetched.   If a :class:`.ResultProxy` is to be discarded before such an
+fetched.   If a :class:`_engine.ResultProxy` is to be discarded before such an
 autoclose has occurred, it can be explicitly closed using the
-:meth:`.ResultProxy.close` method:
+:meth:`_engine.ResultProxy.close` method:
 
 .. sourcecode:: pycon+sql
 
@@ -2266,7 +2266,7 @@ Both of :meth:`_expression.TableClause.update` and
 :meth:`_expression.TableClause.delete` are associated with *matched row counts*.  This is a
 number indicating the number of rows that were matched by the WHERE clause.
 Note that by "matched", this includes rows where no UPDATE actually took place.
-The value is available as :attr:`~.ResultProxy.rowcount`:
+The value is available as :attr:`_engine.ResultProxy.rowcount`:
 
 .. sourcecode:: pycon+sql
 

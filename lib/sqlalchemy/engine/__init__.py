@@ -113,7 +113,7 @@ def create_engine(*args, **kwargs):
     as well as the
     :class:`_pool.Pool`.  Specific dialects also accept keyword arguments that
     are unique to that dialect.   Here, we describe the parameters
-    that are common to most :func:`.create_engine()` usage.
+    that are common to most :func:`_sa.create_engine()` usage.
 
     Once established, the newly resulting :class:`_engine.Engine` will
     request a connection from the underlying :class:`_pool.Pool` once
@@ -121,7 +121,7 @@ def create_engine(*args, **kwargs):
     such as :meth:`_engine.Engine.execute` is invoked.   The
     :class:`_pool.Pool` in turn
     will establish the first actual DBAPI connection when this request
-    is received.   The :func:`.create_engine` call itself does **not**
+    is received.   The :func:`_sa.create_engine` call itself does **not**
     establish any actual DBAPI connections directly.
 
     .. seealso::
@@ -151,7 +151,7 @@ def create_engine(*args, **kwargs):
 
         .. deprecated:: 1.3
 
-            The :paramref:`.create_engine.convert_unicode` parameter
+            The :paramref:`_sa.create_engine.convert_unicode` parameter
             is deprecated and will be removed in a future release.
             All modern DBAPIs now support Python Unicode directly and this
             parameter is unnecessary.
@@ -321,14 +321,15 @@ def create_engine(*args, **kwargs):
         characters. If less than 6, labels are generated as
         "_(counter)". If ``None``, the value of
         ``dialect.max_identifier_length``, which may be affected via the
-        :paramref:`.create_engine.max_identifier_length` parameter,
-        is used instead.   The value of :paramref:`.create_engine.label_length`
+        :paramref:`_sa.create_engine.max_identifier_length` parameter,
+        is used instead.   The value of
+        :paramref:`_sa.create_engine.label_length`
         may not be larger than that of
-        :paramref:`.create_engine.max_identfier_length`.
+        :paramref:`_sa.create_engine.max_identfier_length`.
 
         .. seealso::
 
-            :paramref:`.create_engine.max_identifier_length`
+            :paramref:`_sa.create_engine.max_identifier_length`
 
     :param listeners: A list of one or more
         :class:`~sqlalchemy.interfaces.PoolListener` objects which will
@@ -352,7 +353,7 @@ def create_engine(*args, **kwargs):
 
         .. seealso::
 
-            :paramref:`.create_engine.label_length`
+            :paramref:`_sa.create_engine.label_length`
 
     :param max_overflow=10: the number of connections to allow in
         connection pool "overflow", that is connections that can be
@@ -492,7 +493,7 @@ def engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
     ``sqlalchemy.url``, ``sqlalchemy.echo``, etc.  The 'prefix' argument
     indicates the prefix to be searched for.  Each matching key (after the
     prefix is stripped) is treated as though it were the corresponding keyword
-    argument to a :func:`.create_engine` call.
+    argument to a :func:`_sa.create_engine` call.
 
     The only required key is (assuming the default prefix) ``sqlalchemy.url``,
     which provides the :ref:`database URL <database_urls>`.

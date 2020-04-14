@@ -125,11 +125,13 @@ For the duration of the SQLAlchemy 1.3 series, the default max identifier
 length will remain at 30, even if compatibility version 12.2 or greater is in
 use.  When the newer version is detected, a warning will be emitted upon first
 connect, which refers the user to make use of the
-:paramref:`.create_engine.max_identifier_length` parameter in order to assure
+:paramref:`_sa.create_engine.max_identifier_length`
+parameter in order to assure
 forwards compatibility with SQLAlchemy 1.4, which will be changing this value
 to 128 when compatibility version 12.2 or greater is detected.
 
-Using :paramref:`.create_engine.max_identifier_length`, the effective identifier
+Using :paramref:`_sa.create_engine.max_identifier_length`,
+the effective identifier
 length used by the SQLAlchemy dialect will be used as given, overriding the
 current default value of 30, so that when Oracle 12.2 or greater is used, the
 newer identifier length may be taken advantage of::
@@ -192,14 +194,15 @@ when the identifier length is changed without the name of the index or
 constraint first being adjusted.
 
 Therefore, applications are strongly advised to make use of
-:paramref:`.create_engine.max_identifier_length` in order to maintain control
+:paramref:`_sa.create_engine.max_identifier_length`
+in order to maintain control
 of the generation of truncated names, and to fully review and test all database
 migrations in a staging environment when changing this value to ensure that the
 impact of this change has been mitigated.
 
 
 .. versionadded:: 1.3.9 Added the
-   :paramref:`.create_engine.max_identifier_length` parameter; the Oracle
+   :paramref:`_sa.create_engine.max_identifier_length` parameter; the Oracle
    dialect now detects compatibility version 12.2 or greater and warns
    about upcoming max identitifier length changes in SQLAlchemy 1.4.
 
@@ -216,12 +219,12 @@ There are two options which affect its behavior:
 
 * the "FIRST ROWS()" optimization keyword is not used by default.  To enable
   the usage of this optimization directive, specify ``optimize_limits=True``
-  to :func:`.create_engine`.
+  to :func:`_sa.create_engine`.
 * the values passed for the limit/offset are sent as bound parameters.   Some
   users have observed that Oracle produces a poor query plan when the values
   are sent as binds and not rendered literally.   To render the limit/offset
   values literally within the SQL statement, specify
-  ``use_binds_for_limits=False`` to :func:`.create_engine`.
+  ``use_binds_for_limits=False`` to :func:`_sa.create_engine`.
 
 Some users have reported better performance when the entirely different
 approach of a window query is used, i.e. ROW_NUMBER() OVER (ORDER BY), to
@@ -250,7 +253,7 @@ on the Oracle backend.  By default, "implicit returning" typically only
 fetches the value of a single ``nextval(some_seq)`` expression embedded into
 an INSERT in order to increment a sequence within an INSERT statement and get
 the value back at the same time. To disable this feature across the board,
-specify ``implicit_returning=False`` to :func:`.create_engine`::
+specify ``implicit_returning=False`` to :func:`_sa.create_engine`::
 
     engine = create_engine("oracle://scott:tiger@dsn",
                            implicit_returning=False)

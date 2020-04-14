@@ -19,11 +19,11 @@ Basic Usage
 ===========
 
 Recall from :doc:`/core/engines` that an :class:`_engine.Engine` is created via
-the :func:`.create_engine` call::
+the :func:`_sa.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')
 
-The typical usage of :func:`.create_engine()` is once per particular database
+The typical usage of :func:`_sa.create_engine()` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`_engine.Engine` manages many individual :term:`DBAPI` connections on behalf of
 the process and is intended to be called upon in a concurrent fashion. The
@@ -56,11 +56,11 @@ end of the block.  The :class:`_engine.Connection`, is a **proxy** object for an
 actual DBAPI connection. The DBAPI connection is retrieved from the connection
 pool at the point at which :class:`_engine.Connection` is created.
 
-The object returned is known as :class:`.ResultProxy`, which
+The object returned is known as :class:`_engine.ResultProxy`, which
 references a DBAPI cursor and provides methods for fetching rows
 similar to that of the DBAPI cursor.   The DBAPI cursor will be closed
-by the :class:`.ResultProxy` when all of its result rows (if any) are
-exhausted.  A :class:`.ResultProxy` that returns no rows, such as that of
+by the :class:`_engine.ResultProxy` when all of its result rows (if any) are
+exhausted.  A :class:`_engine.ResultProxy` that returns no rows, such as that of
 an UPDATE statement (without any returned rows),
 releases cursor resources immediately upon construction.
 
@@ -341,7 +341,7 @@ In both "connectionless" examples, the
 :class:`~sqlalchemy.engine.Connection` is created behind the scenes; the
 :class:`~sqlalchemy.engine.ResultProxy` returned by the ``execute()``
 call references the :class:`~sqlalchemy.engine.Connection` used to issue
-the SQL statement. When the :class:`.ResultProxy` is closed, the underlying
+the SQL statement. When the :class:`_engine.ResultProxy` is closed, the underlying
 :class:`_engine.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
 
@@ -650,7 +650,7 @@ Multiple result set support is available from a raw DBAPI cursor using the
 Registering New Dialects
 ========================
 
-The :func:`.create_engine` function call locates the given dialect
+The :func:`_sa.create_engine` function call locates the given dialect
 using setuptools entrypoints.   These entry points can be established
 for third party dialects within the setup.py script.  For example,
 to create a new dialect "foodialect://", the steps are as follows:

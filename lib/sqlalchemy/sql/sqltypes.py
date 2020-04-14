@@ -190,8 +190,8 @@ class String(Concatenable, TypeEngine):
           In the rare circumstance that the DBAPI does not support
           Python unicode under Python 2, SQLAlchemy will use its own
           encoder/decoder functionality on strings, referring to the
-          value of the :paramref:`.create_engine.encoding` parameter
-          parameter passed to :func:`.create_engine` as the encoding.
+          value of the :paramref:`_sa.create_engine.encoding` parameter
+          parameter passed to :func:`_sa.create_engine` as the encoding.
 
           For the extremely rare case that Python Unicode
           is to be encoded/decoded by SQLAlchemy on a backend
@@ -221,7 +221,7 @@ class String(Concatenable, TypeEngine):
 
           .. seealso::
 
-            :paramref:`.create_engine.convert_unicode` -
+            :paramref:`_sa.create_engine.convert_unicode` -
             :class:`_engine.Engine`-wide parameter
 
         :param unicode_error: Optional, a method to use to handle Unicode
@@ -380,7 +380,7 @@ class Unicode(String):
     directly, SQLAlchemy does the encoding and decoding
     outside of the DBAPI.   The encoding in this scenario
     is determined by the ``encoding`` flag passed to
-    :func:`.create_engine`.
+    :func:`_sa.create_engine`.
 
     When using the :class:`.Unicode` type, it is only appropriate
     to pass Python ``unicode`` objects, and not plain ``str``.
@@ -2112,9 +2112,9 @@ class JSON(Indexable, TypeEngine):
     psycopg2 dialect, psycopg2 may be using its own custom loader function.
 
     In order to affect the serializer / deserializer, they are currently
-    configurable at the :func:`.create_engine` level via the
-    :paramref:`.create_engine.json_serializer` and
-    :paramref:`.create_engine.json_deserializer` parameters.  For example,
+    configurable at the :func:`_sa.create_engine` level via the
+    :paramref:`_sa.create_engine.json_serializer` and
+    :paramref:`_sa.create_engine.json_deserializer` parameters.  For example,
     to turn off ``ensure_ascii``::
 
         engine = create_engine(

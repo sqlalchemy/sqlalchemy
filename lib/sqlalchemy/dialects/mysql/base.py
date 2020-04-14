@@ -29,7 +29,7 @@ Connection Timeouts and Disconnects
 MySQL features an automatic connection close behavior, for connections that
 have been idle for a fixed period of time, defaulting to eight hours.
 To circumvent having this issue, use
-the :paramref:`.create_engine.pool_recycle` option which ensures that
+the :paramref:`_sa.create_engine.pool_recycle` option which ensures that
 a connection will be discarded and replaced with a new one if it has been
 present in the pool for a fixed number of seconds::
 
@@ -120,8 +120,9 @@ Transaction Isolation Level
 ---------------------------
 
 All MySQL dialects support setting of transaction isolation level both via a
-dialect-specific parameter :paramref:`.create_engine.isolation_level` accepted
-by :func:`.create_engine`, as well as the
+dialect-specific parameter :paramref:`_sa.create_engine.isolation_level`
+accepted
+by :func:`_sa.create_engine`, as well as the
 :paramref:`.Connection.execution_options.isolation_level` argument as passed to
 :meth:`_engine.Connection.execution_options`.
 This feature works by issuing the
@@ -129,7 +130,7 @@ command ``SET SESSION TRANSACTION ISOLATION LEVEL <level>`` for each new
 connection.  For the special AUTOCOMMIT isolation level, DBAPI-specific
 techniques are used.
 
-To set isolation level using :func:`.create_engine`::
+To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
                     "mysql://scott:tiger@localhost/test",
@@ -198,7 +199,7 @@ will receive results.  The most typical way of invoking this feature is via the
 :paramref:`.Connection.execution_options.stream_results` connection execution
 option.   Server side cursors can also be enabled for all SELECT statements
 unconditionally by passing ``server_side_cursors=True`` to
-:func:`.create_engine`.
+:func:`_sa.create_engine`.
 
 .. versionadded:: 1.1.4 - added server-side cursor support.
 
@@ -468,7 +469,7 @@ This setting is currently hardcoded.
 
 .. seealso::
 
-    :attr:`.ResultProxy.rowcount`
+    :attr:`_engine.ResultProxy.rowcount`
 
 
 CAST Support

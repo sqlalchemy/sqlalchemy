@@ -1743,7 +1743,8 @@ class SessionEvents(event.Events):
               :meth:`_query.Query.update`.
             * ``context`` The :class:`.QueryContext` object, corresponding
               to the invocation of an ORM query.
-            * ``result`` the :class:`.ResultProxy` returned as a result of the
+            * ``result`` the :class:`_engine.ResultProxy`
+              returned as a result of the
               bulk UPDATE operation.
 
         .. seealso::
@@ -1778,7 +1779,8 @@ class SessionEvents(event.Events):
               was called upon.
             * ``context`` The :class:`.QueryContext` object, corresponding
               to the invocation of an ORM query.
-            * ``result`` the :class:`.ResultProxy` returned as a result of the
+            * ``result`` the :class:`_engine.ResultProxy`
+              returned as a result of the
               bulk DELETE operation.
 
         .. seealso::

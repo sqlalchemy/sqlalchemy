@@ -5,7 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-"""Define result set constructs including :class:`.ResultProxy`
+"""Define result set constructs including :class:`_engine.ResultProxy`
 and :class:`.RowProxy`."""
 
 
@@ -119,8 +119,8 @@ class RowProxy(BaseRowProxy):
     """Represent a single result row.
 
     The :class:`.RowProxy` object is retrieved from a database result, from the
-    :class:`.ResultProxy` object using methods like
-    :meth:`.ResultProxy.fetchall`.
+    :class:`_engine.ResultProxy` object using methods like
+    :meth:`_engine.ResultProxy.fetchall`.
 
     The :class:`.RowProxy` object seeks to act mostly like a Python named
     tuple, but also provides some Python dictionary behaviors at the same time.
@@ -753,7 +753,7 @@ class ResultProxy(object):
     .. seealso::
 
         :ref:`coretutorial_selecting` - introductory material for accessing
-        :class:`.ResultProxy` and :class:`.RowProxy` objects.
+        :class:`_engine.ResultProxy` and :class:`.RowProxy` objects.
 
     """
 
@@ -828,7 +828,7 @@ class ResultProxy(object):
 
         .. note::
 
-           Notes regarding :attr:`.ResultProxy.rowcount`:
+           Notes regarding :attr:`_engine.ResultProxy.rowcount`:
 
 
            * This attribute returns the number of rows *matched*,
@@ -841,18 +841,20 @@ class ResultProxy(object):
              rowcount is configured by default to return the match
              count in all cases.
 
-           * :attr:`.ResultProxy.rowcount` is *only* useful in conjunction
+           * :attr:`_engine.ResultProxy.rowcount`
+             is *only* useful in conjunction
              with an UPDATE or DELETE statement.  Contrary to what the Python
              DBAPI says, it does *not* return the
              number of rows available from the results of a SELECT statement
              as DBAPIs cannot support this functionality when rows are
              unbuffered.
 
-           * :attr:`.ResultProxy.rowcount` may not be fully implemented by
+           * :attr:`_engine.ResultProxy.rowcount`
+             may not be fully implemented by
              all dialects.  In particular, most DBAPIs do not support an
              aggregate rowcount result from an executemany call.
-             The :meth:`.ResultProxy.supports_sane_rowcount` and
-             :meth:`.ResultProxy.supports_sane_multi_rowcount` methods
+             The :meth:`_engine.ResultProxy.supports_sane_rowcount` and
+             :meth:`_engine.ResultProxy.supports_sane_multi_rowcount` methods
              will report from the dialect if each usage is known to be
              supported.
 
@@ -892,19 +894,19 @@ class ResultProxy(object):
 
     @property
     def returns_rows(self):
-        """True if this :class:`.ResultProxy` returns rows.
+        """True if this :class:`_engine.ResultProxy` returns rows.
 
         I.e. if it is legal to call the methods
-        :meth:`~.ResultProxy.fetchone`,
-        :meth:`~.ResultProxy.fetchmany`
-        :meth:`~.ResultProxy.fetchall`.
+        :meth:`_engine.ResultProxy.fetchone`,
+        :meth:`_engine.ResultProxy.fetchmany`
+        :meth:`_engine.ResultProxy.fetchall`.
 
         """
         return self._metadata is not None
 
     @property
     def is_insert(self):
-        """True if this :class:`.ResultProxy` is the result
+        """True if this :class:`_engine.ResultProxy` is the result
         of a executing an expression language compiled
         :func:`_expression.insert` construct.
 
@@ -922,7 +924,7 @@ class ResultProxy(object):
         return self._saved_cursor.description
 
     def _soft_close(self):
-        """Soft close this :class:`.ResultProxy`.
+        """Soft close this :class:`_engine.ResultProxy`.
 
         This releases all DBAPI cursor resources, but leaves the
         ResultProxy "open" from a semantic perspective, meaning the
@@ -940,7 +942,7 @@ class ResultProxy(object):
 
         .. seealso::
 
-            :meth:`.ResultProxy.close`
+            :meth:`_engine.ResultProxy.close`
 
 
         """
@@ -958,10 +960,13 @@ class ResultProxy(object):
 
         This closes out the underlying DBAPI cursor corresponding
         to the statement execution, if one is still present.  Note that the
-        DBAPI cursor is automatically released when the :class:`.ResultProxy`
-        exhausts all available rows.  :meth:`.ResultProxy.close` is generally
+        DBAPI cursor is automatically released when the
+        :class:`_engine.ResultProxy`
+        exhausts all available rows.  :meth:`_engine.ResultProxy.close`
+        is generally
         an optional method except in the case when discarding a
-        :class:`.ResultProxy` that still has additional rows pending for fetch.
+        :class:`_engine.ResultProxy`
+        that still has additional rows pending for fetch.
 
         In the case of a result that is the product of
         :ref:`connectionless execution <dbengine_implicit>`,
@@ -973,15 +978,19 @@ class ResultProxy(object):
         the fetch methods, which will raise a :class:`.ResourceClosedError`
         on subsequent use.
 
-        .. versionchanged:: 1.0.0 - the :meth:`.ResultProxy.close` method
+        .. versionchanged:: 1.0.0 - the :meth:`_engine.ResultProxy.close`
+           method
            has been separated out from the process that releases the underlying
            DBAPI cursor resource.   The "auto close" feature of the
            :class:`_engine.Connection` now performs a so-called "soft close",
            which
            releases the underlying DBAPI cursor, but allows the
-           :class:`.ResultProxy` to still behave as an open-but-exhausted
-           result set; the actual :meth:`.ResultProxy.close` method is never
-           called.    It is still safe to discard a :class:`.ResultProxy`
+           :class:`_engine.ResultProxy`
+           to still behave as an open-but-exhausted
+           result set; the actual :meth:`_engine.ResultProxy.close`
+           method is never
+           called.    It is still safe to discard a
+           :class:`_engine.ResultProxy`
            that has been fully exhausted without calling this method.
 
         .. seealso::
@@ -1186,7 +1195,7 @@ class ResultProxy(object):
     def supports_sane_rowcount(self):
         """Return ``supports_sane_rowcount`` from the dialect.
 
-        See :attr:`.ResultProxy.rowcount` for background.
+        See :attr:`_engine.ResultProxy.rowcount` for background.
 
         """
 
@@ -1195,7 +1204,7 @@ class ResultProxy(object):
     def supports_sane_multi_rowcount(self):
         """Return ``supports_sane_multi_rowcount`` from the dialect.
 
-        See :attr:`.ResultProxy.rowcount` for background.
+        See :attr:`_engine.ResultProxy.rowcount` for background.
 
         """
 
@@ -1263,8 +1272,8 @@ class ResultProxy(object):
         cursor resource is released, and the object may be safely
         discarded.
 
-        Subsequent calls to :meth:`.ResultProxy.fetchall` will return
-        an empty list.   After the :meth:`.ResultProxy.close` method is
+        Subsequent calls to :meth:`_engine.ResultProxy.fetchall` will return
+        an empty list.   After the :meth:`_engine.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
         :return: a list of :class:`.RowProxy` objects
@@ -1288,9 +1297,10 @@ class ResultProxy(object):
         cursor resource is released, and the object may be safely
         discarded.
 
-        Calls to :meth:`.ResultProxy.fetchmany` after all rows have been
+        Calls to :meth:`_engine.ResultProxy.fetchmany`
+        after all rows have been
         exhausted will return
-        an empty list.   After the :meth:`.ResultProxy.close` method is
+        an empty list.   After the :meth:`_engine.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
         :return: a list of :class:`.RowProxy` objects
@@ -1314,9 +1324,9 @@ class ResultProxy(object):
         cursor resource is released, and the object may be safely
         discarded.
 
-        Calls to :meth:`.ResultProxy.fetchone` after all rows have
+        Calls to :meth:`_engine.ResultProxy.fetchone` after all rows have
         been exhausted will return ``None``.
-        After the :meth:`.ResultProxy.close` method is
+        After the :meth:`_engine.ResultProxy.close` method is
         called, the method will raise :class:`.ResourceClosedError`.
 
         :return: a :class:`.RowProxy` object, or None if no rows remain
@@ -1338,7 +1348,8 @@ class ResultProxy(object):
         """Fetch the first row and then close the result set unconditionally.
 
         After calling this method, the object is fully closed,
-        e.g. the :meth:`.ResultProxy.close` method will have been called.
+        e.g. the :meth:`_engine.ResultProxy.close`
+        method will have been called.
 
         :return: a :class:`.RowProxy` object, or None if no rows remain
 
@@ -1365,7 +1376,8 @@ class ResultProxy(object):
         """Fetch the first column of the first row, and close the result set.
 
         After calling this method, the object is fully closed,
-        e.g. the :meth:`.ResultProxy.close` method will have been called.
+        e.g. the :meth:`_engine.ResultProxy.close`
+        method will have been called.
 
         :return: a Python scalar value , or None if no rows remain
 
@@ -1541,7 +1553,7 @@ class BufferedColumnResultProxy(ResultProxy):
     databases where result rows contain "live" results that fall out
     of scope unless explicitly fetched.
 
-    .. versionchanged:: 1.2  This :class:`.ResultProxy` is not used by
+    .. versionchanged:: 1.2  This :class:`_engine.ResultProxy` is not used by
        any SQLAlchemy-included dialects.
 
     """

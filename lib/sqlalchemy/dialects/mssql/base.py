@@ -171,7 +171,8 @@ The process for fetching this value has several variants:
   * Other dialects such as pymssql will call upon
     ``SELECT scope_identity() AS lastrowid`` subsequent to an INSERT
     statement. If the flag ``use_scope_identity=False`` is passed to
-    :func:`.create_engine`, the statement ``SELECT @@identity AS lastrowid``
+    :func:`_sa.create_engine`,
+    the statement ``SELECT @@identity AS lastrowid``
     is used instead.
 
 A table that contains an ``IDENTITY`` column will prohibit an INSERT statement
@@ -272,8 +273,8 @@ Transaction Isolation Level
 
 All SQL Server dialects support setting of transaction isolation level
 both via a dialect-specific parameter
-:paramref:`.create_engine.isolation_level`
-accepted by :func:`.create_engine`,
+:paramref:`_sa.create_engine.isolation_level`
+accepted by :func:`_sa.create_engine`,
 as well as the :paramref:`.Connection.execution_options.isolation_level`
 argument as passed to
 :meth:`_engine.Connection.execution_options`.
@@ -281,7 +282,7 @@ This feature works by issuing the
 command ``SET TRANSACTION ISOLATION LEVEL <level>`` for
 each new connection.
 
-To set isolation level using :func:`.create_engine`::
+To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
         "mssql+pyodbc://scott:tiger@ms_2008",
@@ -373,7 +374,7 @@ behavior of this flag is as follows:
   or ``False`` based on whether 2012 or greater is detected.
 
 * The flag can be set to either ``True`` or ``False`` when the dialect
-  is created, typically via :func:`.create_engine`::
+  is created, typically via :func:`_sa.create_engine`::
 
         eng = create_engine("mssql+pymssql://user:pass@host/db",
                         deprecate_large_types=True)
@@ -476,7 +477,7 @@ below::
 This mode of behavior is now off by default, as it appears to have served
 no purpose; however in the case that legacy applications rely upon it,
 it is available using the ``legacy_schema_aliasing`` argument to
-:func:`.create_engine` as illustrated above.
+:func:`_sa.create_engine` as illustrated above.
 
 .. versionchanged:: 1.1 the ``legacy_schema_aliasing`` flag introduced
    in version 1.0.5 to allow disabling of legacy mode for schemas now
@@ -617,7 +618,7 @@ Declarative form::
 
 
 This option can also be specified engine-wide using the
-``implicit_returning=False`` argument on :func:`.create_engine`.
+``implicit_returning=False`` argument on :func:`_sa.create_engine`.
 
 .. _mssql_rowcount_versioning:
 

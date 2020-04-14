@@ -154,13 +154,15 @@ class ShardedQuery(Query):
 
 
 class ShardedResult(object):
-    """A value object that represents multiple :class:`.ResultProxy` objects.
+    """A value object that represents multiple :class:`_engine.ResultProxy`
+    objects.
 
     This is used by the :meth:`.ShardedQuery._execute_crud` hook to return
-    an object that takes the place of the single :class:`.ResultProxy`.
+    an object that takes the place of the single :class:`_engine.ResultProxy`.
 
     Attribute include ``result_proxies``, which is a sequence of the
-    actual :class:`.ResultProxy` objects, as well as ``aggregate_rowcount``
+    actual :class:`_engine.ResultProxy` objects,
+    as well as ``aggregate_rowcount``
     or ``rowcount``, which is the sum of all the individual rowcount values.
 
     .. versionadded::  1.3

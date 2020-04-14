@@ -424,7 +424,7 @@ Glossary
         :term:`dialect` system is constructed around the
         operation of the DBAPI, providing individual dialect
         classes which service a specific DBAPI on top of a
-        specific database engine; for example, the :func:`.create_engine`
+        specific database engine; for example, the :func:`_sa.create_engine`
         URL ``postgresql+psycopg2://@localhost/test``
         refers to the :mod:`psycopg2 <.postgresql.psycopg2>`
         DBAPI/dialect combination, whereas the URL ``mysql+mysqldb://@localhost/test``

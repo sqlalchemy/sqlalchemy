@@ -33,7 +33,7 @@ If ``dbname`` is not present, then the value of ``hostname`` in the
 URL is used directly as the DSN passed to ``cx_Oracle.connect()``.
 
 Additional connection arguments may be sent to the ``cx_Oracle.connect()``
-function using the :paramref:`.create_engine.connect_args` dictionary.
+function using the :paramref:`_sa.create_engine.connect_args` dictionary.
 Any cx_Oracle parameter value and/or constant may be passed, such as::
 
     import cx_Oracle
@@ -55,11 +55,12 @@ within the URL, which includes parameters such as ``mode``, ``purity``,
 .. versionchanged:: 1.3 the cx_oracle dialect now accepts all argument names
    within the URL string itself, to be passed to the cx_Oracle DBAPI.   As
    was the case earlier but not correctly documented, the
-   :paramref:`.create_engine.connect_args` parameter also accepts all
+   :paramref:`_sa.create_engine.connect_args` parameter also accepts all
    cx_Oracle DBAPI connect arguments.
 
 There are also options that are consumed by the SQLAlchemy cx_oracle dialect
-itself.  These options are always passed directly to :func:`.create_engine`,
+itself.  These options are always passed directly to :func:`_sa.create_engine`
+,
 such as::
 
     e = create_engine(
@@ -99,14 +100,15 @@ the VARCHAR2 and CLOB datatypes can accommodate the data.
 In the case that the Oracle database is not configured with a Unicode character
 set, the two options are to use the :class:`_oracle.NCHAR` and
 :class:`_oracle.NCLOB` datatypes explicitly, or to pass the flag
-``use_nchar_for_unicode=True`` to :func:`.create_engine`, which will cause the
+``use_nchar_for_unicode=True`` to :func:`_sa.create_engine`,
+which will cause the
 SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
 :class:`.UnicodeText` datatypes instead of VARCHAR/CLOB.
 
 .. versionchanged:: 1.3  The :class:`.Unicode` and :class:`.UnicodeText`
    datatypes now correspond to the ``VARCHAR2`` and ``CLOB`` Oracle datatypes
    unless the ``use_nchar_for_unicode=True`` is passed to the dialect
-   when :func:`.create_engine` is called.
+   when :func:`_sa.create_engine` is called.
 
 When result sets are fetched that include strings, under Python 3 the cx_Oracle
 DBAPI returns all strings as Python Unicode objects, since Python 3 only has a
@@ -118,7 +120,7 @@ made use of converters that were supplied by cx_Oracle but were found to be
 non-performant; SQLAlchemy's own converters are used for the string to Unicode
 conversion under Python 2.  To disable the Python 2 Unicode conversion for
 VARCHAR2, CHAR, and CLOB, the flag ``coerce_to_unicode=False`` can be passed to
-:func:`.create_engine`.
+:func:`_sa.create_engine`.
 
 .. versionchanged:: 1.3 Unicode conversion is applied to all string values
    by default under python 2.  The ``coerce_to_unicode`` now defaults to True
@@ -235,7 +237,7 @@ As of the 6 series, this limitation has been lifted.  Nevertheless, because
 SQLAlchemy pre-reads these LOBs up front, this issue is avoided in any case.
 
 To disable the auto "read()" feature of the dialect, the flag
-``auto_convert_lobs=False`` may be passed to :func:`.create_engine`.  Under
+``auto_convert_lobs=False`` may be passed to :func:`_sa.create_engine`.  Under
 the cx_Oracle 5 series, having this flag turned off means there is the chance
 of reading from a stale LOB object if not read as it is fetched.   With
 cx_Oracle 6, this issue is resolved.
@@ -281,7 +283,7 @@ When no typing objects are present, as when executing plain SQL strings, a
 default "outputtypehandler" is present which will generally return numeric
 values which specify precision and scale as Python ``Decimal`` objects.  To
 disable this coercion to decimal for performance reasons, pass the flag
-``coerce_to_decimal=False`` to :func:`.create_engine`::
+``coerce_to_decimal=False`` to :func:`_sa.create_engine`::
 
     engine = create_engine("oracle+cx_oracle://dsn", coerce_to_decimal=False)
 
@@ -770,7 +772,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             "in a future release.  As of version 1.3, it defaults to False "
             "rather than True.  The 'threaded' option can be passed to "
             "cx_Oracle directly in the URL query string passed to "
-            ":func:`.create_engine`.",
+            ":func:`_sa.create_engine`.",
         )
     )
     def __init__(

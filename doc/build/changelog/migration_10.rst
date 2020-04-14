@@ -648,14 +648,14 @@ be explicitly omitted from the sort.
 ResultProxy "auto close" is now a "soft" close
 ----------------------------------------------
 
-For many releases, the :class:`.ResultProxy` object has always been
+For many releases, the :class:`_engine.ResultProxy` object has always been
 automatically closed out at the point at which all result rows have been
 fetched.  This was to allow usage of the object without the need to call
-upon :meth:`.ResultProxy.close` explicitly; as all DBAPI resources had been
+upon :meth:`_engine.ResultProxy.close` explicitly; as all DBAPI resources had been
 freed, the object was safe to discard.   However, the object maintained
 a strict "closed" behavior, which meant that any subsequent calls to
-:meth:`.ResultProxy.fetchone`, :meth:`.ResultProxy.fetchmany` or
-:meth:`.ResultProxy.fetchall` would now raise a :class:`.ResourceClosedError`::
+:meth:`_engine.ResultProxy.fetchone`, :meth:`_engine.ResultProxy.fetchmany` or
+:meth:`_engine.ResultProxy.fetchall` would now raise a :class:`.ResourceClosedError`::
 
     >>> result = connection.execute(stmt)
     >>> result.fetchone()
@@ -671,13 +671,13 @@ are exhausted.  It also interferes with behavior for some implementations of
 result proxy, such as the :class:`.BufferedColumnResultProxy` used by the
 cx_oracle dialect for certain datatypes.
 
-To solve this, the "closed" state of the :class:`.ResultProxy` has been
+To solve this, the "closed" state of the :class:`_engine.ResultProxy` has been
 broken into two states; a "soft close" which does the majority of what
 "close" does, in that it releases the DBAPI cursor and in the case of a
 "close with result" object will also release the connection, and a
 "closed" state which is everything included by "soft close" as well as
-establishing the fetch methods as "closed".   The :meth:`.ResultProxy.close`
-method is now never called implicitly, only the :meth:`.ResultProxy._soft_close`
+establishing the fetch methods as "closed".   The :meth:`_engine.ResultProxy.close`
+method is now never called implicitly, only the :meth:`_engine.ResultProxy._soft_close`
 method which is non-public::
 
     >>> result = connection.execute(stmt)
@@ -2090,7 +2090,7 @@ A similar change is also applied to an INSERT..VALUES
 with multiple parameter sets; implicit RETURNING will no longer emit
 for this statement either.  As both of these constructs deal
 with variable numbers of rows, the
-:attr:`.ResultProxy.inserted_primary_key` accessor does not
+:attr:`_engine.ResultProxy.inserted_primary_key` accessor does not
 apply.   Previously, there was a documentation note that one
 may prefer ``inline=True`` with INSERT..FROM SELECT as some databases
 don't support returning and therefore can't do "implicit" returning,
@@ -2122,10 +2122,10 @@ SQLAlchemy's wrapping of DBAPI exceptions was not taking place in the
 case where a :class:`_engine.Connection` object was invalidated, and then tried
 to reconnect and encountered an error; this has been resolved.
 
-Additionally, the recently added :meth:`.ConnectionEvents.handle_error`
+Additionally, the recently added :meth:`_events.ConnectionEvents.handle_error`
 event is now invoked for errors that occur upon initial connect, upon
-reconnect, and when :func:`.create_engine` is used given a custom connection
-function via :paramref:`.create_engine.creator`.
+reconnect, and when :func:`_sa.create_engine` is used given a custom connection
+function via :paramref:`_sa.create_engine.creator`.
 
 The :class:`.ExceptionContext` object has a new datamember
 :attr:`.ExceptionContext.engine` that will always refer to the :class:`_engine.Engine`
@@ -2400,7 +2400,7 @@ by PostgreSQL as of 9.4.  SQLAlchemy allows this using
 PG8000 dialect supports client side encoding
 --------------------------------------------
 
-The :paramref:`.create_engine.encoding` parameter is now honored
+The :paramref:`_sa.create_engine.encoding` parameter is now honored
 by the pg8000 dialect, using on connect handler which
 emits ``SET CLIENT_ENCODING`` matching the selected encoding.
 
@@ -2495,7 +2495,7 @@ supports unicode fully including MySQL-python with use_unicode=0.
 MySQL internal "no such table" exceptions not passed to event handlers
 ----------------------------------------------------------------------
 
-The MySQL dialect will now disable :meth:`.ConnectionEvents.handle_error`
+The MySQL dialect will now disable :meth:`_events.ConnectionEvents.handle_error`
 events from firing for those statements which it uses internally
 to detect if a table exists or not.   This is achieved using an
 execution option ``skip_user_error_events`` that disables the handle

@@ -1341,7 +1341,7 @@
       :tickets: 2732
 
       Fixed a bug where the routine to detect the correct kwargs
-      being sent to :func:`.create_engine` would fail in some cases,
+      being sent to :func:`_sa.create_engine` would fail in some cases,
       such as with the Sybase dialect.
 
     .. change::
@@ -1645,7 +1645,7 @@
 
       Fixed bug whereby a DBAPI that can return "0"
       for cursor.lastrowid would not function correctly
-      in conjunction with :attr:`.ResultProxy.inserted_primary_key`.
+      in conjunction with :attr:`_engine.ResultProxy.inserted_primary_key`.
 
     .. change::
       :tags: bug, mssql
@@ -2366,7 +2366,7 @@
         Added new :meth:`_events.PoolEvents.reset` hook to capture
         the event before a connection is auto-rolled back, upon
         return to the pool.   Together with
-        :meth:`.ConnectionEvents.rollback` this allows all rollback
+        :meth:`_events.ConnectionEvents.rollback` this allows all rollback
         events to be intercepted.
 
 .. changelog::
@@ -3733,4 +3733,4 @@
         :tags: sql, removed
 
         The long-deprecated and non-functional ``assert_unicode`` flag on
-        :func:`.create_engine` as well as :class:`.String` is removed.
+        :func:`_sa.create_engine` as well as :class:`.String` is removed.

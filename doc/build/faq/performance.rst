@@ -20,7 +20,7 @@ Query Profiling
 ^^^^^^^^^^^^^^^
 
 Sometimes just plain SQL logging (enabled via python's logging module
-or via the ``echo=True`` argument on :func:`.create_engine`) can give an
+or via the ``echo=True`` argument on :func:`_sa.create_engine`) can give an
 idea how long things are taking.  For example, if you log something
 right after a SQL operation, you'd see something like this in your
 log::
@@ -68,8 +68,8 @@ using a recipe like the following::
         logger.debug("Query Complete!")
         logger.debug("Total Time: %f", total)
 
-Above, we use the :meth:`.ConnectionEvents.before_cursor_execute` and
-:meth:`.ConnectionEvents.after_cursor_execute` events to establish an interception
+Above, we use the :meth:`_events.ConnectionEvents.before_cursor_execute` and
+:meth:`_events.ConnectionEvents.after_cursor_execute` events to establish an interception
 point around when a statement is executed.  We attach a timer onto the
 connection using the :class:`._ConnectionRecord.info` dictionary; we use a
 stack here for the occasional case where the cursor execute events may be nested.
@@ -175,7 +175,7 @@ ORM query if the wrong :class:`_schema.Column` objects are used in a complex que
 pulling in additional FROM clauses that are unexpected.
 
 On the other hand, a fast call to ``fetchall()`` at the DBAPI level, but then
-slowness when SQLAlchemy's :class:`.ResultProxy` is asked to do a ``fetchall()``,
+slowness when SQLAlchemy's :class:`_engine.ResultProxy` is asked to do a ``fetchall()``,
 may indicate slowness in processing of datatypes, such as unicode conversions
 and similar::
 

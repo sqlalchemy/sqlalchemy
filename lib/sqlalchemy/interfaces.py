@@ -178,7 +178,7 @@ class ConnectionProxy(object):
 
        :class:`.ConnectionProxy` is deprecated and will be removed in a future
        release.  Please refer to :func:`.event.listen` in conjunction with
-       the :class:`.ConnectionEvents` listener interface.
+       the :class:`_events.ConnectionEvents` listener interface.
 
     Either or both of the ``execute()`` and ``cursor_execute()``
     may be implemented to intercept compiled statement and

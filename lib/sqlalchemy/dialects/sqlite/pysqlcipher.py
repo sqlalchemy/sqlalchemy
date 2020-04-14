@@ -69,7 +69,8 @@ dialect here defaults to using the :class:`.SingletonThreadPool`
 implementation,
 instead of the :class:`.NullPool` pool used by pysqlite.  As always, the pool
 implementation is entirely configurable using the
-:paramref:`.create_engine.poolclass` parameter; the :class:`.StaticPool` may
+:paramref:`_sa.create_engine.poolclass` parameter; the :class:`.StaticPool`
+may
 be more feasible for single-threaded use, or :class:`.NullPool` may be used
 to prevent unencrypted connections from being held open for long periods of
 time, at the expense of slower startup time for new connections.

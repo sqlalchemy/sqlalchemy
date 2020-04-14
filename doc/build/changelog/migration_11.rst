@@ -1079,7 +1079,7 @@ identifiable base for system-level exceptions such as ``KeyboardInterrupt``,
 ``SystemExit``, and notably the ``GreenletExit`` exception that's used by
 eventlet and gevent. This exception class is now intercepted by the exception-
 handling routines of :class:`_engine.Connection`, and includes handling by the
-:meth:`~.ConnectionEvents.handle_error` event.  The :class:`_engine.Connection` is now
+:meth:`_events.ConnectionEvents.handle_error` event.  The :class:`_engine.Connection` is now
 **invalidated** by default in the case of a system level exception that is not
 a subclass of ``Exception``, as it is assumed an operation was interrupted and
 the connection may be in an unusable state.  The MySQL drivers are most
@@ -1421,7 +1421,7 @@ The flag also works at the ORM level::
 ResultSet column matching enhancements; positional column setup for textual SQL
 -------------------------------------------------------------------------------
 
-A series of improvements were made to the :class:`.ResultProxy` system
+A series of improvements were made to the :class:`_engine.ResultProxy` system
 in the 1.0 series as part of :ticket:`918`, which reorganizes the internals
 to match cursor-bound result columns with table/ORM metadata positionally,
 rather than by matching names, for compiled SQL constructs that contain full
@@ -2666,7 +2666,7 @@ Added support for AUTOCOMMIT "isolation level"
 ----------------------------------------------
 
 The MySQL dialect now accepts the value "AUTOCOMMIT" for the
-:paramref:`.create_engine.isolation_level` and
+:paramref:`_sa.create_engine.isolation_level` and
 :paramref:`.Connection.execution_options.isolation_level`
 parameters::
 
@@ -2790,7 +2790,7 @@ use by the sqlite3_module.xBestIndex method", however SQLAlchemy's translation
 of these dotted column names is no longer required with this version, so is
 turned off when version 3.10.0 or greater is detected.
 
-Overall, the SQLAlchemy :class:`.ResultProxy` as of the 1.0 series relies much
+Overall, the SQLAlchemy :class:`_engine.ResultProxy` as of the 1.0 series relies much
 less on column names in result sets when delivering results for Core and ORM
 SQL constructs, so the importance of this issue was already lessened in any
 case.
@@ -2846,7 +2846,7 @@ Added transaction isolation level support for SQL Server
 --------------------------------------------------------
 
 All SQL Server dialects support transaction isolation level settings
-via the :paramref:`.create_engine.isolation_level` and
+via the :paramref:`_sa.create_engine.isolation_level` and
 :paramref:`.Connection.execution_options.isolation_level`
 parameters.  The four standard levels are supported as well as
 ``SNAPSHOT``::

@@ -24,7 +24,7 @@ For more detail, see :ref:`engines_toplevel` and :ref:`pooling_toplevel`.
 How do I pass custom connect arguments to my database API?
 ----------------------------------------------------------
 
-The :func:`.create_engine` call accepts additional arguments either
+The :func:`_sa.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
 
     e = create_engine("mysql://scott:tiger@localhost/test",
@@ -46,7 +46,7 @@ The primary cause of this error is that the MySQL connection has timed out
 and has been closed by the server.   The MySQL server closes connections
 which have been idle a period of time which defaults to eight hours.
 To accommodate this, the immediate setting is to enable the
-:paramref:`.create_engine.pool_recycle` setting, which will ensure that a
+:paramref:`_sa.create_engine.pool_recycle` setting, which will ensure that a
 connection which is older than a set amount of seconds will be discarded
 and replaced with a new connection when it is next checked out.
 

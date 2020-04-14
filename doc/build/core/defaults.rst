@@ -234,14 +234,14 @@ inline.
 When the statement is executed with a single set of parameters (that is, it is
 not an "executemany" style execution), the returned
 :class:`~sqlalchemy.engine.ResultProxy` will contain a collection accessible
-via :meth:`.ResultProxy.postfetch_cols` which contains a list of all
+via :meth:`_engine.ResultProxy.postfetch_cols` which contains a list of all
 :class:`~sqlalchemy.schema.Column` objects which had an inline-executed
 default. Similarly, all parameters which were bound to the statement, including
 all Python and SQL expressions which were pre-executed, are present in the
-:meth:`.ResultProxy.last_inserted_params` or
-:meth:`.ResultProxy.last_updated_params` collections on
+:meth:`_engine.ResultProxy.last_inserted_params` or
+:meth:`_engine.ResultProxy.last_updated_params` collections on
 :class:`~sqlalchemy.engine.ResultProxy`. The
-:attr:`.ResultProxy.inserted_primary_key` collection contains a list of primary
+:attr:`_engine.ResultProxy.inserted_primary_key` collection contains a list of primary
 key values for the row inserted (a list so that single-column and composite-
 column primary keys are represented in the same format).
 

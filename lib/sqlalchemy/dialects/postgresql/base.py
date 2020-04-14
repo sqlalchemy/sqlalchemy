@@ -41,7 +41,7 @@ apply; no RETURNING clause is emitted nor is the sequence pre-executed in this
 case.
 
 To force the usage of RETURNING by default off, specify the flag
-``implicit_returning=False`` to :func:`.create_engine`.
+``implicit_returning=False`` to :func:`_sa.create_engine`.
 
 PostgreSQL 10 IDENTITY columns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +84,8 @@ Transaction Isolation Level
 
 All PostgreSQL dialects support setting of transaction isolation level
 both via a dialect-specific parameter
-:paramref:`.create_engine.isolation_level` accepted by :func:`.create_engine`,
+:paramref:`_sa.create_engine.isolation_level` accepted by
+:func:`_sa.create_engine`,
 as well as the :paramref:`.Connection.execution_options.isolation_level`
 argument as passed to :meth:`_engine.Connection.execution_options`.
 When using a non-psycopg2 dialect, this feature works by issuing the command
@@ -92,7 +93,7 @@ When using a non-psycopg2 dialect, this feature works by issuing the command
 each new connection.  For the special AUTOCOMMIT isolation level,
 DBAPI-specific techniques are used.
 
-To set isolation level using :func:`.create_engine`::
+To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
         "postgresql+pg8000://scott:tiger@localhost/test",

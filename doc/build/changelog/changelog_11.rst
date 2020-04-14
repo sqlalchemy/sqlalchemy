@@ -633,7 +633,7 @@
         :versions: 1.2.0b1
         :tickets: 3955
 
-        Changed the mechanics of :class:`.ResultProxy` to unconditionally
+        Changed the mechanics of :class:`_engine.ResultProxy` to unconditionally
         delay the "autoclose" step until the :class:`_engine.Connection` is done
         with the object; in the case where PostgreSQL ON CONFLICT with
         RETURNING returns no rows, autoclose was occurring in this previously
@@ -1399,7 +1399,7 @@
 
         The ``BaseException`` exception class is now intercepted by the
         exception-handling routines of :class:`_engine.Connection`, and includes
-        handling by the :meth:`~.ConnectionEvents.handle_error`
+        handling by the :meth:`_events.ConnectionEvents.handle_error`
         event.  The :class:`_engine.Connection` is now **invalidated** by default in
         the case of a system level exception that is not a subclass of
         ``Exception``, including ``KeyboardInterrupt`` and the greenlet
@@ -1905,7 +1905,7 @@
         :tags: feature, sql
 
         Negative integer indexes are now accommodated by rows
-        returned from a :class:`.ResultProxy`.  Pull request courtesy
+        returned from a :class:`_engine.ResultProxy`.  Pull request courtesy
         Emanuele Gaifas.
 
         .. seealso::
@@ -1950,8 +1950,8 @@
         :tags: feature, engine
 
         Added connection pool events :meth:`ConnectionEvents.close`,
-        :meth:`.ConnectionEvents.detach`,
-        :meth:`.ConnectionEvents.close_detached`.
+        :meth:`_events.ConnectionEvents.detach`,
+        :meth:`_events.ConnectionEvents.close_detached`.
 
     .. change::
         :tags: bug, orm, mysql
@@ -1973,7 +1973,7 @@
         :tickets: 3534
 
         Added basic isolation level support to the SQL Server dialects
-        via :paramref:`.create_engine.isolation_level` and
+        via :paramref:`_sa.create_engine.isolation_level` and
         :paramref:`.Connection.execution_options.isolation_level`
         parameters.
 
@@ -2226,7 +2226,7 @@
         to an ORM or Core table model, no system of labeling or de-duping of
         common column names needs to occur, which also means there's no need
         to worry about how label names match to ORM columns and so-forth.  In
-        addition, the :class:`.ResultProxy` has been further enhanced to
+        addition, the :class:`_engine.ResultProxy` has been further enhanced to
         map column and string keys to a row with greater precision in some
         cases.
 

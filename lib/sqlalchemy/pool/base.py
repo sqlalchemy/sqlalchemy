@@ -112,8 +112,8 @@ class Pool(log.Identified):
          ``"debug"``, the logging will include pool checkouts and checkins.
 
          The :paramref:`_pool.Pool.echo` parameter can also be set from the
-         :func:`.create_engine` call by using the
-         :paramref:`.create_engine.echo_pool` parameter.
+         :func:`_sa.create_engine` call by using the
+         :paramref:`_sa.create_engine.echo_pool` parameter.
 
          .. seealso::
 
@@ -164,7 +164,7 @@ class Pool(log.Identified):
         :param events: a list of 2-tuples, each of the form
          ``(callable, target)`` which will be passed to :func:`.event.listen`
          upon construction.   Provided here so that event listeners
-         can be assigned via :func:`.create_engine` before dialect-level
+         can be assigned via :func:`_sa.create_engine` before dialect-level
          listeners are applied.
 
         :param listeners: A list of :class:`.PoolListener`-like objects or
@@ -175,7 +175,7 @@ class Pool(log.Identified):
         :param dialect: a :class:`.Dialect` that will handle the job
          of calling rollback(), close(), or commit() on DBAPI connections.
          If omitted, a built-in "stub" dialect is used.   Applications that
-         make use of :func:`~.create_engine` should not use this parameter
+         make use of :func:`_sa.create_engine` should not use this parameter
          as it is handled by the engine creation strategy.
 
          .. versionadded:: 1.1 - ``dialect`` is now a public parameter

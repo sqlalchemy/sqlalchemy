@@ -62,7 +62,7 @@ and want less output generated, set it to ``False``. This tutorial will format
 the SQL behind a popup window so it doesn't get in our way; just click the
 "SQL" links to see what's being generated.
 
-The return value of :func:`.create_engine` is an instance of
+The return value of :func:`_sa.create_engine` is an instance of
 :class:`_engine.Engine`, and it represents the core interface to the
 database, adapted through a :term:`dialect` that handles the details
 of the database and :term:`DBAPI` in use.  In this case the SQLite
@@ -71,7 +71,7 @@ module.
 
 .. sidebar:: Lazy Connecting
 
-    The :class:`_engine.Engine`, when first returned by :func:`.create_engine`,
+    The :class:`_engine.Engine`, when first returned by :func:`_sa.create_engine`,
     has not actually tried to connect to the database yet; that happens
     only the first time it is asked to perform a task against the database.
 
@@ -83,7 +83,7 @@ behind the scenes by the ORM as we'll see shortly.
 
 .. seealso::
 
-    :ref:`database_urls` - includes examples of :func:`.create_engine`
+    :ref:`database_urls` - includes examples of :func:`_sa.create_engine`
     connecting to several kinds of databases with links to more information.
 
 Declare a Mapping

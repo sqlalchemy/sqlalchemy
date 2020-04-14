@@ -154,7 +154,7 @@ class JSON(sqltypes.JSON):
     may be called upon the result type.
 
     Custom serializers and deserializers are specified at the dialect level,
-    that is using :func:`.create_engine`.  The reason for this is that when
+    that is using :func:`_sa.create_engine`.  The reason for this is that when
     using psycopg2, the DBAPI only allows serializers at the per-cursor
     or per-connection level.   E.g.::
 
@@ -274,7 +274,7 @@ class JSONB(JSON):
     are shared with the :class:`_types.JSON` class,
     using the ``json_serializer``
     and ``json_deserializer`` keyword arguments.  These must be specified
-    at the dialect level using :func:`.create_engine`.  When using
+    at the dialect level using :func:`_sa.create_engine`.  When using
     psycopg2, the serializers are associated with the jsonb type using
     ``psycopg2.extras.register_default_jsonb`` on a per-connection basis,
     in the same way that ``psycopg2.extras.register_default_json`` is used

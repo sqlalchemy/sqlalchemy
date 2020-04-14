@@ -545,7 +545,8 @@ class ColumnOperators(Operators):
 
           This "false" expression has historically had different behaviors
           in older SQLAlchemy versions, see
-          :paramref:`.create_engine.empty_in_strategy` for behavioral options.
+          :paramref:`_sa.create_engine.empty_in_strategy`
+          for behavioral options.
 
           .. versionchanged:: 1.2 simplified the behavior of "empty in"
              expressions
@@ -614,7 +615,7 @@ class ColumnOperators(Operators):
         In the case that ``other`` is an empty sequence, the compiler
         produces an "empty not in" expression.   This defaults to the
         expression "1 = 1" to produce true in all cases.  The
-        :paramref:`.create_engine.empty_in_strategy` may be used to
+        :paramref:`_sa.create_engine.empty_in_strategy` may be used to
         alter this behavior.
 
         .. versionchanged:: 1.2  The :meth:`.ColumnOperators.in_` and

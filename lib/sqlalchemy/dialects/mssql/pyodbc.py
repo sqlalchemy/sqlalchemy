@@ -103,7 +103,8 @@ Microsoft ODBC drivers.  The feature is enabled by setting the flag
 ``.fast_executemany`` on the DBAPI cursor when an executemany call is to be
 used.   The SQLAlchemy pyodbc SQL Server dialect supports setting this flag
 automatically when the ``.fast_executemany`` flag is passed to
-:func:`.create_engine`; note that the ODBC driver must be the Microsoft driver
+:func:`_sa.create_engine`
+; note that the ODBC driver must be the Microsoft driver
 in order to use this flag::
 
     engine = create_engine(

@@ -72,7 +72,8 @@ as the "database" portion of the SQLAlchemy url (that is, following a slash)::
 
 .. note::  The "uri=true" parameter must appear in the **query string**
    of the URL.  It will not currently work as expected if it is only
-   present in the :paramref:`.create_engine.connect_args` parameter dictionary.
+   present in the :paramref:`_sa.create_engine.connect_args`
+   parameter dictionary.
 
 The logic reconciles the simultaneous presence of SQLAlchemy's query string and
 SQLite's query string by separating out the parameters that belong to the
@@ -99,15 +100,17 @@ Regarding future parameters added to either the Python or native drivers. new
 parameter names added to the SQLite URI scheme should be automatically
 accommodated by this scheme.  New parameter names added to the Python driver
 side can be accommodated by specifying them in the
-:paramref:`.create_engine.connect_args` dictionary, until dialect support is
+:paramref:`_sa.create_engine.connect_args` dictionary,
+until dialect support is
 added by SQLAlchemy.   For the less likely case that the native SQLite driver
 adds a new parameter name that overlaps with one of the existing, known Python
 driver parameters (such as "timeout" perhaps), SQLAlchemy's dialect would
 require adjustment for the URL scheme to continue to support this.
 
 As is always the case for all SQLAlchemy dialects, the entire "URL" process
-can be bypassed in :func:`.create_engine` through the use of the
-:paramref:`.create_engine.creator` parameter which allows for a custom callable
+can be bypassed in :func:`_sa.create_engine` through the use of the
+:paramref:`_sa.create_engine.creator`
+parameter which allows for a custom callable
 that creates a Python sqlite3 driver level connection directly.
 
 .. versionadded:: 1.3.9
@@ -326,7 +329,7 @@ ourselves. This is achieved using two event listeners::
 
 .. warning:: When using the above recipe, it is advised to not use the
    :paramref:`.Connection.execution_options.isolation_level` setting on
-   :class:`_engine.Connection` and :func:`.create_engine`
+   :class:`_engine.Connection` and :func:`_sa.create_engine`
    with the SQLite driver,
    as this function necessarily will also alter the ".isolation_level" setting.
 
