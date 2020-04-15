@@ -41,15 +41,14 @@ class CollateTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "data": "collate data1"},
-                    {"id": 2, "data": "collate data2"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "data": "collate data1"},
+                {"id": 2, "data": "collate data2"},
+            ],
+        )
 
     def _assert_result(self, select, result):
         with config.db.connect() as conn:
@@ -91,16 +90,15 @@ class OrderByLabelTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2, "q": "q1", "p": "p3"},
-                    {"id": 2, "x": 2, "y": 3, "q": "q2", "p": "p2"},
-                    {"id": 3, "x": 3, "y": 4, "q": "q3", "p": "p1"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2, "q": "q1", "p": "p3"},
+                {"id": 2, "x": 2, "y": 3, "q": "q2", "p": "p2"},
+                {"id": 3, "x": 3, "y": 4, "q": "q3", "p": "p1"},
+            ],
+        )
 
     def _assert_result(self, select, result):
         with config.db.connect() as conn:
@@ -165,17 +163,16 @@ class LimitOffsetTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2},
-                    {"id": 2, "x": 2, "y": 3},
-                    {"id": 3, "x": 3, "y": 4},
-                    {"id": 4, "x": 4, "y": 5},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ],
+        )
 
     def _assert_result(self, select, result, params=()):
         with config.db.connect() as conn:
@@ -323,22 +320,21 @@ class JoinTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.a.insert(),
-                [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.a.insert(),
+            [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}],
+        )
 
-            conn.execute(
-                cls.tables.b.insert(),
-                [
-                    {"id": 1, "a_id": 1},
-                    {"id": 2, "a_id": 1},
-                    {"id": 4, "a_id": 2},
-                    {"id": 5, "a_id": 3},
-                ],
-            )
+        connection.execute(
+            cls.tables.b.insert(),
+            [
+                {"id": 1, "a_id": 1},
+                {"id": 2, "a_id": 1},
+                {"id": 4, "a_id": 2},
+                {"id": 5, "a_id": 3},
+            ],
+        )
 
     def test_inner_join_fk(self):
         a, b = self.tables("a", "b")
@@ -420,17 +416,16 @@ class CompoundSelectTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2},
-                    {"id": 2, "x": 2, "y": 3},
-                    {"id": 3, "x": 3, "y": 4},
-                    {"id": 4, "x": 4, "y": 5},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ],
+        )
 
     def _assert_result(self, select, result, params=()):
         with config.db.connect() as conn:
@@ -565,17 +560,16 @@ class PostCompileParamsTest(
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2, "z": "z1"},
-                    {"id": 2, "x": 2, "y": 3, "z": "z2"},
-                    {"id": 3, "x": 3, "y": 4, "z": "z3"},
-                    {"id": 4, "x": 4, "y": 5, "z": "z4"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2, "z": "z1"},
+                {"id": 2, "x": 2, "y": 3, "z": "z2"},
+                {"id": 3, "x": 3, "y": 4, "z": "z3"},
+                {"id": 4, "x": 4, "y": 5, "z": "z4"},
+            ],
+        )
 
     def test_compile(self):
         table = self.tables.some_table
@@ -683,17 +677,16 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2, "z": "z1"},
-                    {"id": 2, "x": 2, "y": 3, "z": "z2"},
-                    {"id": 3, "x": 3, "y": 4, "z": "z3"},
-                    {"id": 4, "x": 4, "y": 5, "z": "z4"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2, "z": "z1"},
+                {"id": 2, "x": 2, "y": 3, "z": "z2"},
+                {"id": 3, "x": 3, "y": 4, "z": "z3"},
+                {"id": 4, "x": 4, "y": 5, "z": "z4"},
+            ],
+        )
 
     def _assert_result(self, select, result, params=()):
         with config.db.connect() as conn:
@@ -885,23 +878,22 @@ class LikeFunctionsTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "data": "abcdefg"},
-                    {"id": 2, "data": "ab/cdefg"},
-                    {"id": 3, "data": "ab%cdefg"},
-                    {"id": 4, "data": "ab_cdefg"},
-                    {"id": 5, "data": "abcde/fg"},
-                    {"id": 6, "data": "abcde%fg"},
-                    {"id": 7, "data": "ab#cdefg"},
-                    {"id": 8, "data": "ab9cdefg"},
-                    {"id": 9, "data": "abcde#fg"},
-                    {"id": 10, "data": "abcd9fg"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "data": "abcdefg"},
+                {"id": 2, "data": "ab/cdefg"},
+                {"id": 3, "data": "ab%cdefg"},
+                {"id": 4, "data": "ab_cdefg"},
+                {"id": 5, "data": "abcde/fg"},
+                {"id": 6, "data": "abcde%fg"},
+                {"id": 7, "data": "ab#cdefg"},
+                {"id": 8, "data": "ab9cdefg"},
+                {"id": 9, "data": "abcde#fg"},
+                {"id": 10, "data": "abcd9fg"},
+            ],
+        )
 
     def _test(self, expr, expected):
         some_table = self.tables.some_table
@@ -997,12 +989,11 @@ class ComputedColumnTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.begin() as conn:
-            conn.execute(
-                cls.tables.square.insert(),
-                [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.square.insert(),
+            [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
+        )
 
     def test_select_all(self):
         with config.db.connect() as conn:

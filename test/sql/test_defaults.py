@@ -1446,11 +1446,12 @@ class InsertFromSelectTest(fixtures.TablesTest):
         Table("data", metadata, Column("x", Integer), Column("y", Integer))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         data = cls.tables.data
 
-        with testing.db.connect() as conn:
-            conn.execute(data.insert(), [{"x": 2, "y": 5}, {"x": 7, "y": 12}])
+        connection.execute(
+            data.insert(), [{"x": 2, "y": 5}, {"x": 7, "y": 12}]
+        )
 
     @testing.provide_metadata
     def test_insert_from_select_override_defaults(self, connection):

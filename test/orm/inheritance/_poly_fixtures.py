@@ -151,7 +151,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
 
         cls.e1 = e1 = Engineer(
             name="dilbert",
@@ -209,7 +209,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         cls.c2 = c2 = Company(name="Elbonia, Inc.")
         c2.employees = [e3]
 
-        sess = create_session()
+        sess = create_session(connection)
         sess.add(c1)
         sess.add(c2)
         sess.flush()

@@ -805,10 +805,10 @@ class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
         mapper(D, d, inherits=A, polymorphic_identity="d")
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, C, B = (cls.classes.A, cls.classes.C, cls.classes.B)
 
-        sess = create_session()
+        sess = create_session(connection)
         sess.add_all(
             [
                 B(name="b1"),
@@ -3533,8 +3533,8 @@ class LabelCollideTest(fixtures.MappedTest):
         mapper(cls.classes.Bar, cls.tables.foo_bar)
 
     @classmethod
-    def insert_data(cls):
-        s = Session()
+    def insert_data(cls, connection):
+        s = Session(connection)
         s.add_all([cls.classes.Foo(id=1, bar_id=2), cls.classes.Bar(id=3)])
         s.commit()
 

@@ -3000,8 +3000,8 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         ]
 
     @classmethod
-    def insert_data(cls):
-        s = Session(testing.db)
+    def insert_data(cls, connection):
+        s = Session(connection)
         s.add_all(cls._fixture_data())
         s.commit()
 
@@ -3228,8 +3228,8 @@ class InnerJoinSplicingWSecondaryTest(
         ]
 
     @classmethod
-    def insert_data(cls):
-        s = Session(testing.db)
+    def insert_data(cls, connection):
+        s = Session(connection)
         s.add_all(cls._fixture_data())
         s.commit()
 
@@ -4236,25 +4236,34 @@ class MixedSelfReferentialEagerTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         b_table, a_table = cls.tables.b_table, cls.tables.a_table
 
-        a_table.insert().execute(dict(id=1), dict(id=2), dict(id=3))
-        b_table.insert().execute(
-            dict(id=1, parent_a_id=2, parent_b1_id=None, parent_b2_id=None),
-            dict(id=2, parent_a_id=1, parent_b1_id=1, parent_b2_id=None),
-            dict(id=3, parent_a_id=1, parent_b1_id=1, parent_b2_id=2),
-            dict(id=4, parent_a_id=3, parent_b1_id=1, parent_b2_id=None),
-            dict(id=5, parent_a_id=3, parent_b1_id=None, parent_b2_id=2),
-            dict(id=6, parent_a_id=1, parent_b1_id=1, parent_b2_id=3),
-            dict(id=7, parent_a_id=2, parent_b1_id=None, parent_b2_id=3),
-            dict(id=8, parent_a_id=2, parent_b1_id=1, parent_b2_id=2),
-            dict(id=9, parent_a_id=None, parent_b1_id=1, parent_b2_id=None),
-            dict(id=10, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
-            dict(id=11, parent_a_id=3, parent_b1_id=1, parent_b2_id=8),
-            dict(id=12, parent_a_id=2, parent_b1_id=5, parent_b2_id=2),
-            dict(id=13, parent_a_id=3, parent_b1_id=4, parent_b2_id=4),
-            dict(id=14, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
+        connection.execute(
+            a_table.insert(), [dict(id=1), dict(id=2), dict(id=3)]
+        )
+        connection.execute(
+            b_table.insert(),
+            [
+                dict(
+                    id=1, parent_a_id=2, parent_b1_id=None, parent_b2_id=None
+                ),
+                dict(id=2, parent_a_id=1, parent_b1_id=1, parent_b2_id=None),
+                dict(id=3, parent_a_id=1, parent_b1_id=1, parent_b2_id=2),
+                dict(id=4, parent_a_id=3, parent_b1_id=1, parent_b2_id=None),
+                dict(id=5, parent_a_id=3, parent_b1_id=None, parent_b2_id=2),
+                dict(id=6, parent_a_id=1, parent_b1_id=1, parent_b2_id=3),
+                dict(id=7, parent_a_id=2, parent_b1_id=None, parent_b2_id=3),
+                dict(id=8, parent_a_id=2, parent_b1_id=1, parent_b2_id=2),
+                dict(
+                    id=9, parent_a_id=None, parent_b1_id=1, parent_b2_id=None
+                ),
+                dict(id=10, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
+                dict(id=11, parent_a_id=3, parent_b1_id=1, parent_b2_id=8),
+                dict(id=12, parent_a_id=2, parent_b1_id=5, parent_b2_id=2),
+                dict(id=13, parent_a_id=3, parent_b1_id=4, parent_b2_id=4),
+                dict(id=14, parent_a_id=3, parent_b1_id=7, parent_b2_id=2),
+            ],
         )
 
     def test_eager_load(self):
@@ -4854,16 +4863,18 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         stuff, users = cls.tables.stuff, cls.tables.users
 
-        users.insert().execute(
+        connection.execute(
+            users.insert(),
             {"id": 1, "name": "user1"},
             {"id": 2, "name": "user2"},
             {"id": 3, "name": "user3"},
         )
 
-        stuff.insert().execute(
+        connection.execute(
+            stuff.insert(),
             {"id": 1, "user_id": 1, "date": datetime.date(2007, 10, 15)},
             {"id": 2, "user_id": 1, "date": datetime.date(2007, 12, 15)},
             {"id": 3, "user_id": 1, "date": datetime.date(2007, 11, 15)},
@@ -5567,9 +5578,9 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
             b_id = Column(ForeignKey("b.id"))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C = cls.classes("A", "B", "C")
-        s = Session()
+        s = Session(connection)
         s.add(A(id=1, bs=[B(cs=[C()])]))
         s.add(A(id=2))
         s.commit()

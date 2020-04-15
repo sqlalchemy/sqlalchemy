@@ -1,4 +1,3 @@
-from .. import config
 from .. import fixtures
 from ..assertions import eq_
 from ..schema import Column
@@ -23,17 +22,16 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.some_table.insert(),
-                [
-                    {"id": 1, "x": 1, "y": 2},
-                    {"id": 2, "x": 2, "y": 3},
-                    {"id": 3, "x": 3, "y": 4},
-                    {"id": 4, "x": 4, "y": 5},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.some_table.insert(),
+            [
+                {"id": 1, "x": 1, "y": 2},
+                {"id": 2, "x": 2, "y": 3},
+                {"id": 3, "x": 3, "y": 4},
+                {"id": 4, "x": 4, "y": 5},
+            ],
+        )
 
     def _assert_result(self, conn, select, result, params=()):
         eq_(conn.execute(select, params).fetchall(), result)

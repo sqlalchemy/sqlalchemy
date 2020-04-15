@@ -58,10 +58,10 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C = cls.classes("A", "B", "C")
 
-        s = Session(testing.db)
+        s = Session(connection)
         s.add_all([A(id=i) for i in range(1, 4)])
         s.flush()
         s.add_all(
@@ -198,9 +198,9 @@ class AltSelectableTest(
         A.b = relationship(B_viacd, primaryjoin=A.b_id == j.c.b_id)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C, D = cls.classes("A", "B", "C", "D")
-        sess = Session()
+        sess = Session(connection)
 
         for obj in [
             B(id=1),

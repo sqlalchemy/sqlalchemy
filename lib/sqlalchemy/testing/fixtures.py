@@ -135,7 +135,8 @@ class TablesTest(TestBase):
     def _setup_once_inserts(cls):
         if cls.run_inserts == "once":
             cls._load_fixtures()
-            cls.insert_data()
+            with cls.bind.begin() as conn:
+                cls.insert_data(conn)
 
     @classmethod
     def _setup_once_tables(cls):
@@ -157,7 +158,8 @@ class TablesTest(TestBase):
     def _setup_each_inserts(self):
         if self.run_inserts == "each":
             self._load_fixtures()
-            self.insert_data()
+            with self.bind.begin() as conn:
+                self.insert_data(conn)
 
     def _teardown_each_tables(self):
         if self.run_define_tables == "each":
@@ -224,7 +226,7 @@ class TablesTest(TestBase):
         return {}
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         pass
 
     def sql_count_(self, count, fn):

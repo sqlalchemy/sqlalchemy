@@ -1,4 +1,3 @@
-from .. import config
 from .. import fixtures
 from ..assertions import eq_
 from ..schema import Column
@@ -21,16 +20,15 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.connect() as conn:
-            conn.execute(
-                cls.tables.plain_pk.insert(),
-                [
-                    {"id": 1, "data": "d1"},
-                    {"id": 2, "data": "d2"},
-                    {"id": 3, "data": "d3"},
-                ],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.plain_pk.insert(),
+            [
+                {"id": 1, "data": "d1"},
+                {"id": 2, "data": "d2"},
+                {"id": 3, "data": "d3"},
+            ],
+        )
 
     def test_update(self, connection):
         t = self.tables.plain_pk

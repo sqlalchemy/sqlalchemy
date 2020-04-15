@@ -1576,7 +1576,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         mapper(Foo, foo)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Pref, User, Extra = (
             cls.classes.Pref,
             cls.classes.User,
@@ -1586,7 +1586,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         u1 = User(name="ed", pref=Pref(data="pref 1", extra=[Extra()]))
         u2 = User(name="jack", pref=Pref(data="pref 2", extra=[Extra()]))
         u3 = User(name="foo", pref=Pref(data="pref 3", extra=[Extra()]))
-        sess = create_session()
+        sess = create_session(connection)
         sess.add_all((u1, u2, u3))
         sess.flush()
         sess.close()

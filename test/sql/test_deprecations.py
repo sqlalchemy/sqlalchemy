@@ -879,21 +879,19 @@ class KeyTargetingTest(fixtures.TablesTest):
             )
 
     @classmethod
-    def insert_data(cls):
-        with testing.db.connect() as conn:
-            conn.execute(cls.tables.keyed1.insert(), dict(b="a1", q="c1"))
-            conn.execute(cls.tables.keyed2.insert(), dict(a="a2", b="b2"))
-            conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
-            conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
-            conn.execute(cls.tables.content.insert(), type="t1")
+    def insert_data(cls, connection):
+        conn = connection
+        conn.execute(cls.tables.keyed1.insert(), dict(b="a1", q="c1"))
+        conn.execute(cls.tables.keyed2.insert(), dict(a="a2", b="b2"))
+        conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
+        conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
+        conn.execute(cls.tables.content.insert(), type="t1")
 
-            if testing.requires.schemas.enabled:
-                conn.execute(
-                    cls.tables[
-                        "%s.wschema" % testing.config.test_schema
-                    ].insert(),
-                    dict(b="a1", q="c1"),
-                )
+        if testing.requires.schemas.enabled:
+            conn.execute(
+                cls.tables["%s.wschema" % testing.config.test_schema].insert(),
+                dict(b="a1", q="c1"),
+            )
 
     def test_column_label_overlap_fallback(self, connection):
         content, bar = self.tables.content, self.tables.bar
@@ -1109,15 +1107,14 @@ class ResultProxyTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         users = cls.tables.users
 
-        with testing.db.connect() as conn:
-            conn.execute(
-                users.insert(),
-                dict(user_id=1, user_name="john"),
-                dict(user_id=2, user_name="jack"),
-            )
+        connection.execute(
+            users.insert(),
+            dict(user_id=1, user_name="john"),
+            dict(user_id=2, user_name="jack"),
+        )
 
     def test_column_accessor_textual_select(self, connection):
         users = self.tables.users
@@ -1481,12 +1478,10 @@ class PositionalTextTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with testing.db.connect() as conn:
-            conn.execute(
-                cls.tables.text1.insert(),
-                [dict(a="a1", b="b1", c="c1", d="d1")],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.text1.insert(), [dict(a="a1", b="b1", c="c1", d="d1")],
+        )
 
     def test_anon_aliased_overlapping(self, connection):
         text1 = self.tables.text1

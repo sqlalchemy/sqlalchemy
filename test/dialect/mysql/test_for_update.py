@@ -43,12 +43,12 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             __table_args__ = {"mysql_engine": "InnoDB"}
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
         B = cls.classes.B
 
         # all the x/y are < 10
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 A(x=5, y=5, bs=[B(x=4, y=4), B(x=2, y=8), B(x=7, y=1)]),

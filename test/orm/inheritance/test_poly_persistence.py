@@ -318,7 +318,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         redefine_colprop = cls.redefine_colprop
         include_base = cls.include_base
 
@@ -356,7 +356,7 @@ class RoundTripTest(PolymorphTest):
             ),
         ]
 
-        session = Session()
+        session = Session(connection)
         c = Company(name="company1")
         c.employees = employees
         session.add(c)

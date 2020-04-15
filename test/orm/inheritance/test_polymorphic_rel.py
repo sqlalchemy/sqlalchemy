@@ -47,8 +47,8 @@ class _PolymorphicTestBase(object):
         )
 
     @classmethod
-    def insert_data(cls):
-        super(_PolymorphicTestBase, cls).insert_data()
+    def insert_data(cls, connection):
+        super(_PolymorphicTestBase, cls).insert_data(connection)
 
         global all_employees, c1_employees, c2_employees
         global c1, c2, e1, e2, e3, b1, m1

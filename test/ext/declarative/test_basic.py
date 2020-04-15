@@ -2185,7 +2185,7 @@ def _produce_test(inline, stringbased):
                     )
 
         @classmethod
-        def insert_data(cls):
+        def insert_data(cls, connection):
             params = [
                 dict(list(zip(("id", "name"), column_values)))
                 for column_values in [
@@ -2196,8 +2196,9 @@ def _produce_test(inline, stringbased):
                 ]
             ]
 
-            User.__table__.insert().execute(params)
-            Address.__table__.insert().execute(
+            connection.execute(User.__table__.insert(), params)
+            connection.execute(
+                Address.__table__.insert(),
                 [
                     dict(list(zip(("id", "user_id", "email"), column_values)))
                     for column_values in [
@@ -2207,7 +2208,7 @@ def _produce_test(inline, stringbased):
                         (4, 8, "ed@lala.com"),
                         (5, 9, "fred@fred.com"),
                     ]
-                ]
+                ],
             )
 
         def test_aliased_join(self):
