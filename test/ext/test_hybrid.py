@@ -579,8 +579,8 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
                 return self.fname
 
     @classmethod
-    def insert_data(cls):
-        s = Session()
+    def insert_data(cls, connection):
+        s = Session(connection)
         jill = cls.classes.Person(id=3, first_name="jill")
         s.add(jill)
         s.commit()

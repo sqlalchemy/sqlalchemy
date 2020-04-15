@@ -159,10 +159,10 @@ class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
             __mapper_args__ = {"polymorphic_identity": "b"}
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
 
-        session = Session(testing.db)
+        session = Session(connection)
         session.add_all(
             [
                 A(id=1, discriminator="a"),
@@ -1972,14 +1972,18 @@ class DistinctPKTest(fixtures.MappedTest):
             pass
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         person_insert = person_table.insert()
-        person_insert.execute(id=1, name="alice")
-        person_insert.execute(id=2, name="bob")
+        connection.execute(person_insert, dict(id=1, name="alice"))
+        connection.execute(person_insert, dict(id=2, name="bob"))
 
         employee_insert = employee_table.insert()
-        employee_insert.execute(id=2, salary=250, person_id=1)  # alice
-        employee_insert.execute(id=3, salary=200, person_id=2)  # bob
+        connection.execute(
+            employee_insert, dict(id=2, salary=250, person_id=1)
+        )  # alice
+        connection.execute(
+            employee_insert, dict(id=3, salary=200, person_id=2)
+        )  # bob
 
     def test_implicit(self):
         person_mapper = mapper(Person, person_table)

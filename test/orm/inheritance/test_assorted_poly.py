@@ -1249,11 +1249,11 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         Status, Person, Engineer, Manager, Car = cls.classes(
             "Status", "Person", "Engineer", "Manager", "Car"
         )
-        session = create_session()
+        session = create_session(connection)
 
         active = Status(name="active")
         dead = Status(name="dead")

@@ -36,8 +36,8 @@ class RowFetchTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.plain_pk.insert(),
             [
                 {"id": 1, "data": "d1"},
@@ -46,7 +46,7 @@ class RowFetchTest(fixtures.TablesTest):
             ],
         )
 
-        config.db.execute(
+        connection.execute(
             cls.tables.has_dates.insert(),
             [{"id": 1, "today": datetime.datetime(2006, 5, 12, 12, 0, 0)}],
         )

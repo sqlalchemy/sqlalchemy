@@ -21,8 +21,8 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.plain_pk.insert(),
             [
                 {"id": 1, "data": "d1"},

@@ -35,8 +35,8 @@ class CollateTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "data": "collate data1"},
@@ -83,8 +83,8 @@ class OrderByLabelTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "x": 1, "y": 2, "q": "q1", "p": "p3"},
@@ -155,8 +155,8 @@ class LimitOffsetTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "x": 1, "y": 2},
@@ -250,8 +250,8 @@ class CompoundSelectTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "x": 1, "y": 2},
@@ -377,8 +377,8 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "x": 1, "y": 2, "z": "z1"},
@@ -565,8 +565,8 @@ class LikeFunctionsTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        config.db.execute(
+    def insert_data(cls, connection):
+        connection.execute(
             cls.tables.some_table.insert(),
             [
                 {"id": 1, "data": "abcdefg"},
@@ -676,12 +676,11 @@ class ComputedColumnTest(fixtures.TablesTest):
         )
 
     @classmethod
-    def insert_data(cls):
-        with config.db.begin() as conn:
-            conn.execute(
-                cls.tables.square.insert(),
-                [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
-            )
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.square.insert(),
+            [{"id": 1, "side": 10}, {"id": 10, "side": 42}],
+        )
 
     def test_select_all(self):
         with config.db.connect() as conn:

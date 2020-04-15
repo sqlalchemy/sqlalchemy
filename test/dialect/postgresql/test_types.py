@@ -79,20 +79,24 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         data_table = cls.tables.data_table
 
-        data_table.insert().execute(
-            {"data": 3},
-            {"data": 5},
-            {"data": 7},
-            {"data": 2},
-            {"data": 15},
-            {"data": 12},
-            {"data": 6},
-            {"data": 478},
-            {"data": 52},
-            {"data": 9},
+        connection.execute(
+            data_table.insert().values(
+                [
+                    {"data": 3},
+                    {"data": 5},
+                    {"data": 7},
+                    {"data": 2},
+                    {"data": 15},
+                    {"data": 12},
+                    {"data": 6},
+                    {"data": 478},
+                    {"data": 52},
+                    {"data": 9},
+                ]
+            )
         )
 
     @testing.fails_on(

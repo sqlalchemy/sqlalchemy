@@ -74,11 +74,13 @@ class MergeTest(fixtures.MappedTest):
         mapper(Child, child)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         parent, child = cls.tables.parent, cls.tables.child
 
-        parent.insert().execute({"id": 1, "data": "p1"})
-        child.insert().execute({"id": 1, "data": "p1c1", "parent_id": 1})
+        connection.execute(parent.insert(), {"id": 1, "data": "p1"})
+        connection.execute(
+            child.insert(), {"id": 1, "data": "p1c1", "parent_id": 1}
+        )
 
     def test_merge_no_load(self):
         Parent = self.classes.Parent
@@ -183,13 +185,15 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         mapper(Child, child)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         parent, child = cls.tables.parent, cls.tables.child
 
-        child.insert().execute(
-            [{"id": i, "data": "c%d" % i} for i in range(1, 251)]
+        connection.execute(
+            child.insert(),
+            [{"id": i, "data": "c%d" % i} for i in range(1, 251)],
         )
-        parent.insert().execute(
+        connection.execute(
+            parent.insert(),
             [
                 {
                     "id": i,
@@ -197,7 +201,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
                     "child_id": (i % 250) + 1,
                 }
                 for i in range(1, 1000)
-            ]
+            ],
         )
 
     def test_many_to_one_load_no_identity(self):
@@ -286,9 +290,9 @@ class MergeBackrefsTest(fixtures.MappedTest):
         mapper(D, d)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 A(
@@ -352,9 +356,9 @@ class DeferOptionsTest(fixtures.MappedTest):
         mapper(A, a)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
-        s = Session()
+        s = Session(connection)
         s.add_all(
             [
                 A(
@@ -654,9 +658,9 @@ class SelectInEagerLoadTest(fixtures.MappedTest):
         mapper(C, c)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C = cls.classes("A", "B", "C")
-        s = Session()
+        s = Session(connection)
         s.add(A(bs=[B(cs=[C()]), B(cs=[C()])]))
         s.commit()
 
@@ -785,9 +789,9 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
         mapper(G, g)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B, C, D, E, F, G = cls.classes("A", "B", "C", "D", "E", "F", "G")
-        s = Session()
+        s = Session(connection)
         s.add(
             A(
                 bs=[B(cs=[C(ds=[D()])]), B(cs=[C()])],
@@ -1151,9 +1155,9 @@ class AnnotatedOverheadTest(fixtures.MappedTest):
         mapper(A, a)
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A = cls.classes.A
-        s = Session()
+        s = Session(connection)
         s.add_all([A(data="asdf") for i in range(5)])
         s.commit()
 

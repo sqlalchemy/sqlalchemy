@@ -653,9 +653,9 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
             a_id = Column(ForeignKey("a.id"))
 
     @classmethod
-    def insert_data(cls):
+    def insert_data(cls, connection):
         A, B = cls.classes("A", "B")
-        s = Session(testing.db)
+        s = Session(connection)
         s.add(A(bs=[B(), B(), B()]))
         s.commit()
 
