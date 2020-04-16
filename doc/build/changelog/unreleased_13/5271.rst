@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 5271
+
+    Fix a regression introduced by the reflection of computed column in
+    MSSQL when using SQL server versions before 2012, which does not support
+    the ``concat`` function.
