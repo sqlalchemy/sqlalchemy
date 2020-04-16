@@ -97,7 +97,7 @@ def create_db(cfg, eng, ident):
     """Dynamically create a database for testing.
 
     Used when a test run will employ multiple processes, e.g., when run
-    via `tox` or `py.test -n4`.
+    via `tox` or `pytest -n4`.
     """
     raise NotImplementedError("no DB creation routine for cfg: %s" % eng.url)
 

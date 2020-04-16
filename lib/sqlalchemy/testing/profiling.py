@@ -236,7 +236,7 @@ def function_call_count(variance=0.05, times=1, warmup=0):
 
     """
 
-    # use signature-rewriting decorator function so that py.test fixtures
+    # use signature-rewriting decorator function so that pytest fixtures
     # still work on py27.  In Py3, update_wrapper() alone is good enough,
     # likely due to the introduction of __signature__.
 
