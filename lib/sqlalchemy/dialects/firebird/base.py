@@ -525,8 +525,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
             result += "FIRST %s " % self.process(select._limit_clause, **kw)
         if select._offset_clause is not None:
             result += "SKIP %s " % self.process(select._offset_clause, **kw)
-        if select._distinct:
-            result += "DISTINCT "
+        result += super(FBCompiler, self).get_select_precolumns(select, **kw)
         return result
 
     def limit_clause(self, select, **kw):

@@ -1636,9 +1636,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def get_select_precolumns(self, select, **kw):
         """ MS-SQL puts TOP, it's version of LIMIT here """
 
-        s = ""
-        if select._distinct:
-            s += "DISTINCT "
+        s = super(MSSQLCompiler, self).get_select_precolumns(select, **kw)
 
         if select._simple_int_limit and (
             select._offset_clause is None
@@ -1649,12 +1647,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
             # so have to use literal here.
             kw["literal_execute"] = True
             s += "TOP %s " % self.process(select._limit_clause, **kw)
-        if s:
-            return s
-        else:
-            return compiler.SQLCompiler.get_select_precolumns(
-                self, select, **kw
-            )
+
+        return s
 
     def get_from_hint_text(self, table, text):
         return text

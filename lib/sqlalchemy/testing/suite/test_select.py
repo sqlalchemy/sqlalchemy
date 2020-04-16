@@ -12,6 +12,7 @@ from ..schema import Column
 from ..schema import Table
 from ... import bindparam
 from ... import case
+from ... import column
 from ... import Computed
 from ... import false
 from ... import func
@@ -20,6 +21,7 @@ from ... import literal_column
 from ... import null
 from ... import select
 from ... import String
+from ... import table
 from ... import testing
 from ... import text
 from ... import true
@@ -1014,6 +1016,19 @@ class ComputedColumnTest(fixtures.TablesTest):
                 .order_by(self.tables.square.c.id)
             ).fetchall()
             eq_(res, [(100, 40), (1764, 168)])
+
+
+class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("standard_cursor_sql",)
+
+    @testing.fails_if(testing.requires.supports_distinct_on)
+    def test_distinct_on(self):
+        stm = select(["*"]).distinct(column("q")).select_from(table("foo"))
+        with testing.expect_deprecated(
+            "DISTINCT ON is currently supported only by the PostgreSQL "
+        ):
+            self.assert_compile(stm, "SELECT DISTINCT * FROM foo")
 
 
 class IsOrIsNotDistinctFromTest(fixtures.TablesTest):

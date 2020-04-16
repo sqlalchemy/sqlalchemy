@@ -1693,6 +1693,8 @@ class PGCompiler(compiler.SQLCompiler):
         return "ONLY " + sqltext
 
     def get_select_precolumns(self, select, **kw):
+        # Do not call super().get_select_precolumns because
+        # it will warn/raise when distinct on is present
         if select._distinct or select._distinct_on:
             if select._distinct_on:
                 return (

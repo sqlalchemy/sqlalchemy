@@ -1170,6 +1170,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def supports_distinct_on(self):
+        """If a backend supports the DISTINCT ON in a select"""
+        return exclusions.closed()
+
+    @property
     def supports_is_distinct_from(self):
         """Supports some form of "x IS [NOT] DISTINCT FROM y" construct.
         Different dialects will implement their own flavour, e.g.,

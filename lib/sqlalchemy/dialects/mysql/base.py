@@ -1450,19 +1450,22 @@ class MySQLCompiler(compiler.SQLCompiler):
     def get_select_precolumns(self, select, **kw):
         """Add special MySQL keywords in place of DISTINCT.
 
-        .. note::
-
-          this usage is deprecated.  :meth:`_expression.Select.prefix_with`
-          should be used for special keywords at the start
-          of a SELECT.
+        .. deprecated 1.4:: this usage is deprecated.
+           :meth:`_expression.Select.prefix_with` should be used for special
+           keywords at the start of a SELECT.
 
         """
         if isinstance(select._distinct, util.string_types):
+            util.warn_deprecated(
+                "Sending string values for 'distinct' is deprecated in the "
+                "MySQL dialect and will be removed in a future release.  "
+                "Please use :meth:`.Select.prefix_with` for special keywords "
+                "at the start of a SELECT statement",
+                version="1.4",
+            )
             return select._distinct.upper() + " "
-        elif select._distinct:
-            return "DISTINCT "
-        else:
-            return ""
+
+        return super(MySQLCompiler, self).get_select_precolumns(select, **kw)
 
     def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
         if from_linter:

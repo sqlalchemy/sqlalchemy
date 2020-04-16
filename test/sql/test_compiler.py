@@ -1462,6 +1462,13 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT count(DISTINCT mytable.myid) AS count_1 FROM mytable",
         )
 
+    def test_distinct_on(self):
+        with testing.expect_deprecated(
+            "DISTINCT ON is currently supported only by the PostgreSQL "
+            "dialect"
+        ):
+            select(["*"]).distinct(table1.c.myid).compile()
+
     def test_where_empty(self):
         self.assert_compile(
             select([table1.c.myid]).where(
