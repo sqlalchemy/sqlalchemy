@@ -90,7 +90,7 @@ class DocTest(fixtures.TestBase):
         self._run_doctest("core/tutorial.rst")
 
 
-# unicode checker courtesy py.test
+# unicode checker courtesy pytest
 
 
 def _get_unicode_checker():

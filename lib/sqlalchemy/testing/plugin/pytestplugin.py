@@ -245,7 +245,7 @@ def _parametrize_cls(module, cls):
             for arg, val in zip(argname_split, param.values):
                 cls_variables[arg] = val
         parametrized_name = "_".join(
-            # token is a string, but in py2k py.test is giving us a unicode,
+            # token is a string, but in py2k pytest is giving us a unicode,
             # so call str() on it.
             str(re.sub(r"\W", "", token))
             for param in full_param_set
@@ -289,7 +289,7 @@ def pytest_runtest_teardown(item):
     # ...but this works better as the hook here rather than
     # using a finalizer, as the finalizer seems to get in the way
     # of the test reporting failures correctly (you get a bunch of
-    # py.test assertion stuff instead)
+    # pytest assertion stuff instead)
     test_teardown(item)
 
 

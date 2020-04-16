@@ -23,7 +23,7 @@ from ..ext.declarative import DeclarativeMeta
 
 
 # whether or not we use unittest changes things dramatically,
-# as far as how py.test collection works.
+# as far as how pytest collection works.
 
 
 class TestBase(object):

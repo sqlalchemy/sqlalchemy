@@ -10,7 +10,7 @@
 this module is designed to work as a testing-framework-agnostic library,
 created so that multiple test frameworks can be supported at once
 (mostly so that we can migrate to new ones). The current target
-is py.test.
+is pytest.
 
 """
 
@@ -199,7 +199,7 @@ def memoize_important_follower_config(dict_):
 
     This invokes in the parent process after normal config is set up.
 
-    This is necessary as py.test seems to not be using forking, so we
+    This is necessary as pytest seems to not be using forking, so we
     start with nothing in memory, *but* it isn't running our argparse
     callables, so we have to just copy all of that over.
 
