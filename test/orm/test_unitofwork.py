@@ -29,6 +29,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedDict
@@ -2789,21 +2790,42 @@ class SaveTest2(_fixtures.FixtureTest):
         self.assert_sql_execution(
             testing.db,
             session.flush,
-            CompiledSQL(
-                "INSERT INTO users (name) VALUES (:name)", {"name": "u1"}
-            ),
-            CompiledSQL(
-                "INSERT INTO users (name) VALUES (:name)", {"name": "u2"}
-            ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                {"user_id": 1, "email_address": "a1"},
-            ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                {"user_id": 2, "email_address": "a2"},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "u1"}, {"name": "u2"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        [
+                            {"user_id": 1, "email_address": "a1"},
+                            {"user_id": 2, "email_address": "a2"},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        {"name": "u1"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        {"name": "u2"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        {"user_id": 1, "email_address": "a1"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        {"user_id": 2, "email_address": "a2"},
+                    ),
+                ],
             ),
         )
 

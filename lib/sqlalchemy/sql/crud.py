@@ -157,6 +157,12 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         values = _extend_values_for_multiparams(
             compiler, stmt, compile_state, values, kw
         )
+    elif not values and compiler.for_executemany:
+        # convert an "INSERT DEFAULT VALUES"
+        # into INSERT (firstcol) VALUES (DEFAULT) which can be turned
+        # into an in-place multi values.  This supports
+        # insert_executemany_returning mode :)
+        values = [(stmt.table.columns[0], "DEFAULT")]
 
     return values
 

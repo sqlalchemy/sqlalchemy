@@ -40,6 +40,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.schema import Column
@@ -1829,10 +1830,20 @@ class JoinedNoFKSortingTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            CompiledSQL("INSERT INTO a () VALUES ()", {}),
-            CompiledSQL("INSERT INTO a () VALUES ()", {}),
-            CompiledSQL("INSERT INTO a () VALUES ()", {}),
-            CompiledSQL("INSERT INTO a () VALUES ()", {}),
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO a (id) VALUES (DEFAULT)", [{}, {}, {}, {}]
+                    ),
+                ],
+                [
+                    CompiledSQL("INSERT INTO a () VALUES ()", {}),
+                    CompiledSQL("INSERT INTO a () VALUES ()", {}),
+                    CompiledSQL("INSERT INTO a () VALUES ()", {}),
+                    CompiledSQL("INSERT INTO a () VALUES ()", {}),
+                ],
+            ),
             AllOf(
                 CompiledSQL(
                     "INSERT INTO b (id) VALUES (:id)", [{"id": 1}, {"id": 3}]

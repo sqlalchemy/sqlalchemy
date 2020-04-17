@@ -25,6 +25,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -910,21 +911,37 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             testing.db,
             sess.flush,
             RegexSQL("^INSERT INTO person", {"data": "some data"}),
-            RegexSQL(
-                "^INSERT INTO ball",
-                lambda c: {"person_id": p.id, "data": "some data"},
-            ),
-            RegexSQL(
-                "^INSERT INTO ball",
-                lambda c: {"person_id": p.id, "data": "some data"},
-            ),
-            RegexSQL(
-                "^INSERT INTO ball",
-                lambda c: {"person_id": p.id, "data": "some data"},
-            ),
-            RegexSQL(
-                "^INSERT INTO ball",
-                lambda c: {"person_id": p.id, "data": "some data"},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    RegexSQL(
+                        "^INSERT INTO ball",
+                        lambda c: [
+                            {"person_id": p.id, "data": "some data"},
+                            {"person_id": p.id, "data": "some data"},
+                            {"person_id": p.id, "data": "some data"},
+                            {"person_id": p.id, "data": "some data"},
+                        ],
+                    )
+                ],
+                [
+                    RegexSQL(
+                        "^INSERT INTO ball",
+                        lambda c: {"person_id": p.id, "data": "some data"},
+                    ),
+                    RegexSQL(
+                        "^INSERT INTO ball",
+                        lambda c: {"person_id": p.id, "data": "some data"},
+                    ),
+                    RegexSQL(
+                        "^INSERT INTO ball",
+                        lambda c: {"person_id": p.id, "data": "some data"},
+                    ),
+                    RegexSQL(
+                        "^INSERT INTO ball",
+                        lambda c: {"person_id": p.id, "data": "some data"},
+                    ),
+                ],
             ),
             CompiledSQL(
                 "UPDATE person SET favorite_ball_id=:favorite_ball_id "
@@ -1054,25 +1071,42 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            CompiledSQL(
-                "INSERT INTO ball (person_id, data) "
-                "VALUES (:person_id, :data)",
-                {"person_id": None, "data": "some data"},
-            ),
-            CompiledSQL(
-                "INSERT INTO ball (person_id, data) "
-                "VALUES (:person_id, :data)",
-                {"person_id": None, "data": "some data"},
-            ),
-            CompiledSQL(
-                "INSERT INTO ball (person_id, data) "
-                "VALUES (:person_id, :data)",
-                {"person_id": None, "data": "some data"},
-            ),
-            CompiledSQL(
-                "INSERT INTO ball (person_id, data) "
-                "VALUES (:person_id, :data)",
-                {"person_id": None, "data": "some data"},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO ball (person_id, data) "
+                        "VALUES (:person_id, :data)",
+                        [
+                            {"person_id": None, "data": "some data"},
+                            {"person_id": None, "data": "some data"},
+                            {"person_id": None, "data": "some data"},
+                            {"person_id": None, "data": "some data"},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO ball (person_id, data) "
+                        "VALUES (:person_id, :data)",
+                        {"person_id": None, "data": "some data"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO ball (person_id, data) "
+                        "VALUES (:person_id, :data)",
+                        {"person_id": None, "data": "some data"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO ball (person_id, data) "
+                        "VALUES (:person_id, :data)",
+                        {"person_id": None, "data": "some data"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO ball (person_id, data) "
+                        "VALUES (:person_id, :data)",
+                        {"person_id": None, "data": "some data"},
+                    ),
+                ],
             ),
             CompiledSQL(
                 "INSERT INTO person (favorite_ball_id, data) "

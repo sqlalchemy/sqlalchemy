@@ -594,6 +594,75 @@ as was present previously.
 
 :ticket:`4826`
 
+.. _change_5263:
+
+ORM Batch inserts with psycopg2 now batch statements with RETURNING in most cases
+---------------------------------------------------------------------------------
+
+The change in :ref:`change_5401` adds support for "executemany" + "RETURNING"
+at the same time in Core, which is now enabled for the psycopg2 dialect
+by default using the psycopg2 ``execute_values()`` extension.   The ORM flush
+process now makes use of this feature such that the retrieval of newly generated
+primary key values and server defaults can be achieved while not losing the
+performance benefits of being able to batch INSERT statements together.  Additionally,
+psycopg2's ``execute_values()`` extension itself provides a five-fold performance
+improvement over psycopg2's default "executemany" implementation, by rewriting
+an INSERT statement to include many "VALUES" expressions all in one statement
+rather than invoking the same statement repeatedly, as psycopg2 lacks the ability
+to PREPARE the statement ahead of time as would normally be expected for this
+approach to be performant.
+
+SQLAlchemy includes a :ref:`performance suite <examples_performance>` within
+its examples, where we can compare the times generated for the "batch_inserts"
+runner against 1.3 and 1.4, revealing a 3x-5x speedup for most flavors
+of batch insert::
+
+    # 1.3
+    $ python -m examples.performance bulk_inserts --dburl postgresql://scott:tiger@localhost/test
+    test_flush_no_pk : (100000 iterations); total time 14.051527 sec
+    test_bulk_save_return_pks : (100000 iterations); total time 15.002470 sec
+    test_flush_pk_given : (100000 iterations); total time 7.863680 sec
+    test_bulk_save : (100000 iterations); total time 6.780378 sec
+    test_bulk_insert_mappings :  (100000 iterations); total time 5.363070 sec
+    test_core_insert : (100000 iterations); total time 5.362647 sec
+
+    # 1.4 with enhancement
+    $ python -m examples.performance bulk_inserts --dburl postgresql://scott:tiger@localhost/test
+    test_flush_no_pk : (100000 iterations); total time 3.820807 sec
+    test_bulk_save_return_pks : (100000 iterations); total time 3.176378 sec
+    test_flush_pk_given : (100000 iterations); total time 4.037789 sec
+    test_bulk_save : (100000 iterations); total time 2.604446 sec
+    test_bulk_insert_mappings : (100000 iterations); total time 1.204897 sec
+    test_core_insert : (100000 iterations); total time 0.958976 sec
+
+Note that the ``execute_values()`` extension modifies the INSERT statement in the psycopg2
+layer, **after** it's been logged by SQLAlchemy.  So with SQL logging, one will see the
+parameter sets batched together, but the joining of multiple "values" will not be visible
+on the application side::
+
+    2020-06-27 19:08:18,166 INFO sqlalchemy.engine.Engine INSERT INTO a (data) VALUES (%(data)s) RETURNING a.id
+    2020-06-27 19:08:18,166 INFO sqlalchemy.engine.Engine [generated in 0.00698s] ({'data': 'data 1'}, {'data': 'data 2'}, {'data': 'data 3'}, {'data': 'data 4'}, {'data': 'data 5'}, {'data': 'data 6'}, {'data': 'data 7'}, {'data': 'data 8'}  ... displaying 10 of 4999 total bound parameter sets ...  {'data': 'data 4998'}, {'data': 'data 4999'})
+    2020-06-27 19:08:18,254 INFO sqlalchemy.engine.Engine COMMIT
+
+The ultimate INSERT statement can be seen by enabling statement logging on the PostgreSQL side::
+
+    2020-06-27 19:08:18.169 EDT [26960] LOG:  statement: INSERT INTO a (data)
+    VALUES ('data 1'),('data 2'),('data 3'),('data 4'),('data 5'),('data 6'),('data
+    7'),('data 8'),('data 9'),('data 10'),('data 11'),('data 12'),
+    ... ('data 999'),('data 1000') RETURNING a.id
+
+    2020-06-27 19:08:18.175 EDT
+    [26960] LOG:  statement: INSERT INTO a (data) VALUES ('data 1001'),('data
+    1002'),('data 1003'),('data 1004'),('data 1005 '),('data 1006'),('data
+    1007'),('data 1008'),('data 1009'),('data 1010'),('data 1011'), ...
+
+The feature batches rows into groups of 1000 by default which can be affected
+using the ``executemany_values_page_size`` argument documented at
+:ref:`psycopg2_executemany_mode`.
+
+:ticket:`5263`
+
+
 .. _change_orm_update_returning_14:
 
 ORM Bulk Update and Delete use RETURNING for "fetch" strategy when available
@@ -1591,7 +1660,10 @@ psycopg2 dialect features "execute_values" with RETURNING for INSERT statements 
 The first half of a significant performance enhancement for PostgreSQL when
 using both Core and ORM, the psycopg2 dialect now uses
 ``psycopg2.extras.execute_values()`` by default for compiled INSERT statements
-and also implements RETURNING support in this mode.
+and also implements RETURNING support in this mode.   The other half of this
+change is :ref:`change_5263` which allows the ORM to take advantage of
+RETURNING with executemany (i.e. batching of INSERT statements) so that ORM
+bulk inserts with psycopg2 are up to 400% faster depending on specifics.
 
 This extension method allows many rows to be INSERTed within a single
 statement, using an extended VALUES clause for the statement.  While

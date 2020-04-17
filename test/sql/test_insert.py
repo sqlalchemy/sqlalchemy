@@ -936,9 +936,23 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         dialect = default.DefaultDialect()
         dialect.supports_empty_insert = dialect.supports_default_values = True
 
-        stmt = table1.insert().values({})  # hide from 2to3
+        stmt = table1.insert().values({})
         self.assert_compile(
             stmt, "INSERT INTO mytable DEFAULT VALUES", dialect=dialect
+        )
+
+    def test_supports_empty_insert_true_executemany_mode(self):
+        table1 = self.tables.mytable
+
+        dialect = default.DefaultDialect()
+        dialect.supports_empty_insert = dialect.supports_default_values = True
+
+        stmt = table1.insert().values({})
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable (myid) VALUES (DEFAULT)",
+            dialect=dialect,
+            for_executemany=True,
         )
 
     def test_supports_empty_insert_false(self):

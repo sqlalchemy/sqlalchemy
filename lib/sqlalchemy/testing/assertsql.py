@@ -325,6 +325,14 @@ class EachOf(AssertRule):
             super(EachOf, self).no_more_statements()
 
 
+class Conditional(EachOf):
+    def __init__(self, condition, rules, else_rules):
+        if condition:
+            super(Conditional, self).__init__(*rules)
+        else:
+            super(Conditional, self).__init__(*else_rules)
+
+
 class Or(AllOf):
     def process_statement(self, execute_observed):
         for rule in self.rules:
