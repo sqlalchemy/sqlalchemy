@@ -10,14 +10,27 @@
     :name: pymssql
     :dbapi: pymssql
     :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>/?charset=utf8
-    :url: http://pymssql.org/
 
 pymssql is a Python module that provides a Python DBAPI interface around
-`FreeTDS <http://www.freetds.org/>`_.  Compatible builds are available for
-Linux, MacOSX and Windows platforms.
+`FreeTDS <http://www.freetds.org/>`_.
 
-Modern versions of this driver work very well with SQL Server and
-FreeTDS from Linux and is highly recommended.
+Modern versions of this driver worked very well with SQL Server and FreeTDS
+from Linux and were highly recommended.   However, pymssql is currently
+unmaintained and has fallen behind the progress of the Microsoft ODBC driver in
+its support for newer features of SQL Server. The latest official release of
+pymssql at the time of this docuemnt is August, 2018 and lacks support for:
+
+1. table-valued parameters (TVPs),
+2. ``datetimeoffset`` columns using timezone-aware ``datetime`` objects
+   (values are sent and retrieved as strings), and
+3. encrypted connections (e.g., to Azure SQL), when pymssql is installed from
+   the pre-built wheels. Support for encrypted connections requires building
+   pymssql from source, which can be a nuisance, especially under Windows.
+
+The above features are all supported by mssql+pyodbc when using Microsoft's
+ODBC Driver for SQL Server (msodbcsql), which is now available for Windows,
+(several flavors of) Linux, and macOS.
+
 
 """  # noqa
 import re
