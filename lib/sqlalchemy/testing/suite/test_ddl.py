@@ -45,6 +45,7 @@ class TableDDLTest(fixtures.TestBase):
         self._simple_roundtrip(table)
 
     @requirements.create_table
+    @requirements.schemas
     @util.provide_metadata
     def test_create_table_schema(self):
         table = self._simple_fixture(schema=config.test_schema)
