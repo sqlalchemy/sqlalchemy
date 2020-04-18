@@ -16,7 +16,6 @@
 
     This dialect is a stub only and is likely non functional at this time.
 
-
 """
 from sqlalchemy.connectors.mxodbc import MxODBCConnector
 from sqlalchemy.dialects.sybase.base import SybaseDialect

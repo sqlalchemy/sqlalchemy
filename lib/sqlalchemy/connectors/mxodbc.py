@@ -17,6 +17,10 @@ possible for this to be used on other database platforms.
 
 For more info on mxODBC, see http://www.egenix.com/
 
+.. deprecated:: 1.4 The mxODBC DBAPI is deprecated and will be removed
+   in a future version. Please use one of the supported DBAPIs to
+   connect to mssql.
+
 """
 
 import re
@@ -24,6 +28,7 @@ import sys
 import warnings
 
 from . import Connector
+from ..util import warn_deprecated
 
 
 class MxODBCConnector(Connector):
@@ -50,6 +55,13 @@ class MxODBCConnector(Connector):
             from mx.ODBC import iODBC as Module
         else:
             raise ImportError("Unrecognized platform for mxODBC import")
+
+        warn_deprecated(
+            "The mxODBC DBAPI is deprecated and will be removed"
+            "in a future version. Please use one of the supported DBAPIs to"
+            "connect to mssql.",
+            version="1.4",
+        )
         return Module
 
     @classmethod

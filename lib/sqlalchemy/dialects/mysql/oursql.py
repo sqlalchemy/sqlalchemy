@@ -19,6 +19,10 @@
     and is **not tested as part of SQLAlchemy's continuous integration**.
     The recommended MySQL dialects are mysqlclient and PyMySQL.
 
+.. deprecated:: 1.4 The OurSQL DBAPI is deprecated and will be removed
+   in a future version. Please use one of the supported DBAPIs to
+   connect to mysql.
+
 Unicode
 -------
 
@@ -68,6 +72,12 @@ class MySQLDialect_oursql(MySQLDialect):
 
     @classmethod
     def dbapi(cls):
+        util.warn_deprecated(
+            "The OurSQL DBAPI is deprecated and will be removed "
+            "in a future version. Please use one of the supported DBAPIs to "
+            "connect to mysql.",
+            version="1.4",
+        )
         return __import__("oursql")
 
     def do_execute(self, cursor, statement, parameters, context=None):

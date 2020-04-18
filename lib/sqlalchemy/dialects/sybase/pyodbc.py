@@ -12,7 +12,6 @@
     :connectstring: sybase+pyodbc://<username>:<password>@<dsnname>[/<database>]
     :url: http://pypi.python.org/pypi/pyodbc/
 
-
 Unicode Support
 ---------------
 
@@ -80,6 +79,10 @@ class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pyodbc
 
     colspecs = {sqltypes.Numeric: _SybNumeric_pyodbc}
+
+    @classmethod
+    def dbapi(cls):
+        return PyODBCConnector.dbapi()
 
 
 dialect = SybaseDialect_pyodbc

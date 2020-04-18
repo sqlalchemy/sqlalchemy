@@ -20,6 +20,9 @@
     dialect is not tested within continuous integration and is likely to have
     many issues and caveats not currently handled.
 
+.. deprecated:: 1.4 The Sybase dialect is deprecated and will be removed
+   in a future version.
+
 """
 
 import re
@@ -647,6 +650,14 @@ class SybaseDialect(default.DefaultDialect):
     inspector = SybaseInspector
 
     construct_arguments = []
+
+    def __init__(self, *args, **kwargs):
+        util.warn_deprecated(
+            "The Sybase dialect is deprecated and will be removed "
+            "in a future version.",
+            version="1.4",
+        )
+        super(SybaseDialect, self).__init__(*args, **kwargs)
 
     def _get_default_schema_name(self, connection):
         return connection.scalar(

@@ -12,6 +12,10 @@
     :connectstring: mssql+mxodbc://<username>:<password>@<dsnname>
     :url: http://www.egenix.com/
 
+.. deprecated:: 1.4 The mxODBC DBAPI is deprecated and will be removed
+   in a future version. Please use one of the supported DBAPIs to
+   connect to mssql.
+
 Execution Modes
 ---------------
 

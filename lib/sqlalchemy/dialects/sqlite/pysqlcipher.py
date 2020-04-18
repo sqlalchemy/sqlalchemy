@@ -99,6 +99,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
                 from pysqlcipher3 import dbapi2 as sqlcipher
             except ImportError:
                 raise e
+
         return sqlcipher
 
     @classmethod

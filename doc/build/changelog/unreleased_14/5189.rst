@@ -1,0 +1,10 @@
+.. change::
+    :tags: dialects, deprecations
+    :tickets: 5189
+
+    Deprecate unsupported dialects and dbapi
+    - Deprecate dialects firefis and sybase.
+    - Deprecate DBAPI
+      - adodbapi and mxODBC for mssql
+      - oursql for mysql
+      - pygresql and py-postgresql for postgresql

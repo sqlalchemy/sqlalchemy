@@ -7,7 +7,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.dialects.mssql import adodbapi
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql import pymssql
 from sqlalchemy.dialects.mssql import pyodbc
@@ -217,32 +216,6 @@ class ParseConnectTest(fixtures.TestBase):
                     "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
                     "Database=somedb%3BPORT%3D50001;UID='someuser;PORT=50001';"
                     "PWD='somepw;PORT=50001'"
-                ],
-                {},
-            ],
-            connection,
-        )
-
-    def test_adodbapi_token_injection(self):
-        token1 = "someuser%3BPORT%3D50001"
-        token2 = "somepw%3BPORT%3D50001"
-        token3 = "somehost%3BPORT%3D50001"
-        token4 = "someport%3BPORT%3D50001"
-
-        # this URL format is all wrong
-        u = url.make_url(
-            "mssql+adodbapi://@/?user=%s&password=%s&host=%s&port=%s"
-            % (token1, token2, token3, token4)
-        )
-        dialect = adodbapi.dialect()
-        connection = dialect.create_connect_args(u)
-        eq_(
-            [
-                [
-                    "Provider=SQLOLEDB;"
-                    "Data Source='somehost;PORT=50001', 'someport;PORT=50001';"
-                    "Initial Catalog=None;User Id='someuser;PORT=50001';"
-                    "Password='somepw;PORT=50001'"
                 ],
                 {},
             ],

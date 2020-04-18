@@ -5,7 +5,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import adodbapi  # noqa
 from . import base  # noqa
 from . import mxodbc  # noqa
 from . import pymssql  # noqa

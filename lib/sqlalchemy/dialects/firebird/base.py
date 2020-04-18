@@ -16,6 +16,10 @@ r"""
     dialect is not tested within continuous integration and is likely to have
     many issues and caveats not currently handled.
 
+.. deprecated:: 1.4 This dialect is deprecated and will be removed
+    in a future version. This dialect is superseded by the external
+    version available at external-dialect_.
+
 Firebird Dialects
 -----------------
 
@@ -73,7 +77,7 @@ the SQLAlchemy ``returning()`` method, such as::
 
 
 .. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
-
+.. _external-dialect: https://github.com/pauldex/sqlalchemy-firebird
 """
 
 import datetime
@@ -647,6 +651,15 @@ class FBDialect(default.DefaultDialect):
     # will be autodetected off upon
     # first connect
     _version_two = True
+
+    def __init__(self, *args, **kwargs):
+        util.warn_deprecated(
+            "The firebird dialect is deprecated and will be removed "
+            "in a future version. This dialect is superseded by the external "
+            "dialect https://github.com/pauldex/sqlalchemy-firebird.",
+            version="1.4",
+        )
+        super(FBDialect, self).__init__(*args, **kwargs)
 
     def initialize(self, connection):
         super(FBDialect, self).initialize(connection)

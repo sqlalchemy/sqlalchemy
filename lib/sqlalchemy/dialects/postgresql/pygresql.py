@@ -17,6 +17,10 @@
     integration** and may have unresolved issues.  The recommended PostgreSQL
     dialect is psycopg2.
 
+.. deprecated:: 1.4 The pygresql DBAPI is deprecated and will be removed
+   in a future version. Please use one of the supported DBAPIs to
+   connect to PostgreSQL.
+
 """  # noqa
 
 import decimal
@@ -196,6 +200,13 @@ class PGDialect_pygresql(PGDialect):
     @classmethod
     def dbapi(cls):
         import pgdb
+
+        util.warn_deprecated(
+            "The pygresql DBAPI is deprecated and will be removed "
+            "in a future version. Please use one of the supported DBAPIs to "
+            "connect to PostgreSQL.",
+            version="1.4",
+        )
 
         return pgdb
 

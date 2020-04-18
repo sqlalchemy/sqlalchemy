@@ -17,6 +17,13 @@
     integration** and may have unresolved issues.  The recommended PostgreSQL
     driver is psycopg2.
 
+.. deprecated:: 1.4 The py-postgresql DBAPI is deprecated and will be removed
+   in a future version. This DBAPI is superseded by the external
+    version available at external-dialect_. Please use the external version or
+    one of the supported DBAPIs to connect to PostgreSQL.
+
+.. TODO update link
+.. _external-dialect: https://github.com/PyGreSQL
 
 """  # noqa
 
@@ -68,6 +75,15 @@ class PGDialect_pypostgresql(PGDialect):
     @classmethod
     def dbapi(cls):
         from postgresql.driver import dbapi20
+
+        # TODO update link
+        util.warn_deprecated(
+            "The py-postgresql DBAPI is deprecated and will be removed "
+            "in a future version. This DBAPI is superseded by the external"
+            "version available at https://github.com/PyGreSQL. Please "
+            "use one of the supported DBAPIs to connect to PostgreSQL.",
+            version="1.4",
+        )
 
         return dbapi20
 

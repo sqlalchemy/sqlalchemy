@@ -22,12 +22,12 @@ Included Dialects
     oracle
     mssql
 
-Included, but not currently supported dialects
-----------------------------------------------
+Deprecated, no longer supported dialects
+----------------------------------------
 
 The following dialects have implementations within SQLAlchemy, but they are not
 part of continuous integration testing nor are they actively developed.
-These dialects may be removed in future major releases.
+These dialects are deprecated and will be removed in future major releases.
 
 .. toctree::
     :maxdepth: 1
@@ -61,6 +61,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | EXASolution                           | sqlalchemy_exasol_    |
 +---------------------------------------+-----------------------+
 | Elasticsearch (readonly)              | elasticsearch-dbapi_  |
++---------------------------------------+-----------------------+
+| Firebird                              | sqlalchemy-firebird_  |
 +---------------------------------------+-----------------------+
 | Google BigQuery                       | pybigquery_           |
 +---------------------------------------+-----------------------+
@@ -101,3 +103,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _elasticsearch-dbapi: https://github.com/preset-io/elasticsearch-dbapi/
 .. _pydruid: https://github.com/druid-io/pydruid
 .. _gsheets: https://github.com/betodealmeida/gsheets-db-api
+.. _sqlalchemy-firebird: https://github.com/pauldex/sqlalchemy-firebird
