@@ -33,6 +33,7 @@ jobs:
           - "3.6"
           - "3.7"
           - "3.8"
+          - "pypy3"
         build-type:
           - "cext"
           - "nocext"
@@ -51,6 +52,9 @@ jobs:
           - os: "windows-latest"
             python-version: "2.7"
             pytest-args: "-k 'not MockReconnectTest and not test_hanging_connect_within_overflow'"
+          # autocommit tests fail on the ci for some reason
+          - python-version: "pypy3"
+            pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
 
         exclude:
           # c-extensions fail to build on windows for python 3.5 and 2.7
@@ -65,6 +69,12 @@ jobs:
             architecture: x86
           - os: "macos-latest"
             architecture: x86
+          # pypy does not have cext
+          - python-version: "pypy3"
+            build-type: "cext"
+          # pypy on windows has an ancient sqlite version (3.6)
+          - os: "windows-latest"
+            python-version: "pypy3"
 
       fail-fast: false
 

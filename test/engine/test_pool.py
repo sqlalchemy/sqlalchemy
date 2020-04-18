@@ -608,6 +608,7 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
+    @testing.requires.predictable_gc
     def test_checkin_event_gc(self):
         p, canary = self._checkin_event_fixture()
 

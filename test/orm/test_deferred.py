@@ -1776,6 +1776,8 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
         c1 = s.query(C).order_by(C.id)
         eq_(c1.all(), [C(c_expr=1), C(c_expr=1)])
 
+        s.expunge_all()
+
         c2 = (
             s.query(C)
             .options(with_expression(C.c_expr, C.x * 2))

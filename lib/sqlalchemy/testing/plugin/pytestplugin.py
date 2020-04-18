@@ -385,7 +385,7 @@ def %(name)s(%(args)s):
             code, {"target": target, "fn": fn}, fn.__name__
         )
         if not add_positional_parameters:
-            decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
+            decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
             decorated.__wrapped__ = fn
             return update_wrapper(decorated, fn)
         else:

@@ -73,6 +73,7 @@ from .compat import py2k  # noqa
 from .compat import py36  # noqa
 from .compat import py37  # noqa
 from .compat import py3k  # noqa
+from .compat import pypy  # noqa
 from .compat import quote_plus  # noqa
 from .compat import raise_  # noqa
 from .compat import raise_from_cause  # noqa

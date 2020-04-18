@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
@@ -479,10 +480,12 @@ class PoolLoggingTest(fixtures.TestBase):
         q = self._stpool_logging_fixture()
         self._test_queuepool(q, False)
 
+    @testing.requires.predictable_gc
     def test_queuepool_echo(self):
         q = self._queuepool_echo_fixture()
         self._test_queuepool(q)
 
+    @testing.requires.predictable_gc
     def test_queuepool_logging(self):
         q = self._queuepool_logging_fixture()
         self._test_queuepool(q)

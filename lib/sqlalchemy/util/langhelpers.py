@@ -165,7 +165,7 @@ def %(name)s(%(args)s):
         env.update({targ_name: target, fn_name: fn})
 
         decorated = _exec_code_in_env(code, env, fn.__name__)
-        decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
+        decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
         decorated.__wrapped__ = fn
         return update_wrapper(decorated, fn)
 
@@ -784,7 +784,7 @@ def monkeypatch_proxied_specials(
             fn = getattr(from_cls, method)
             if not hasattr(fn, "__call__"):
                 continue
-            fn = getattr(fn, "im_func", fn)
+            fn = getattr(fn, "__func__", fn)
         except AttributeError:
             continue
         try:
