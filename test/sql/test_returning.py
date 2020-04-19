@@ -234,7 +234,7 @@ class SequenceReturningTest(fixtures.TestBase):
         table = Table(
             "tables",
             meta,
-            Column("id", Integer, seq, primary_key=True),
+            Column("id", Integer, seq, primary_key=True,),
             Column("data", String(50)),
         )
         with testing.db.connect() as conn:
@@ -248,8 +248,11 @@ class SequenceReturningTest(fixtures.TestBase):
         r = connection.execute(
             table.insert().values(data="hi").returning(table.c.id)
         )
-        assert r.first() == (1,)
-        assert connection.execute(seq) == 2
+        eq_(r.first(), tuple([testing.db.dialect.default_sequence_base]))
+        eq_(
+            connection.execute(seq),
+            testing.db.dialect.default_sequence_base + 1,
+        )
 
 
 class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):

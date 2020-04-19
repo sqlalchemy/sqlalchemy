@@ -51,7 +51,7 @@ class ExecutionTest(_fixtures.FixtureTest):
         seq.create(testing.db)
         try:
             sess = create_session(bind=testing.db)
-            eq_(sess.execute(seq), 1)
+            eq_(sess.execute(seq), testing.db.dialect.default_sequence_base)
         finally:
             seq.drop(testing.db)
 

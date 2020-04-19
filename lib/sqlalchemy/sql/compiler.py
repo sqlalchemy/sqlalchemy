@@ -3743,14 +3743,17 @@ class DDLCompiler(Compiled):
             drop.element, use_table=True
         )
 
-    def visit_create_sequence(self, create, **kw):
+    def visit_create_sequence(self, create, prefix=None, **kw):
         text = "CREATE SEQUENCE %s" % self.preparer.format_sequence(
             create.element
         )
+        if prefix:
+            text += prefix
         if create.element.increment is not None:
             text += " INCREMENT BY %d" % create.element.increment
-        if create.element.start is not None:
-            text += " START WITH %d" % create.element.start
+        if create.element.start is None:
+            create.element.start = self.dialect.default_sequence_base
+        text += " START WITH %d" % create.element.start
         if create.element.minvalue is not None:
             text += " MINVALUE %d" % create.element.minvalue
         if create.element.maxvalue is not None:

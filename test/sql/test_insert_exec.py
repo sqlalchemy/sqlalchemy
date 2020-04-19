@@ -350,7 +350,12 @@ class TableInsertTest(fixtures.TablesTest):
         Table(
             "foo",
             metadata,
-            Column("id", Integer, Sequence("t_id_seq"), primary_key=True),
+            Column(
+                "id",
+                testing.db.dialect.sequence_default_column_type,
+                Sequence("t_id_seq"),
+                primary_key=True,
+            ),
             Column("data", String(50)),
             Column("x", Integer),
         )
@@ -396,7 +401,7 @@ class TableInsertTest(fixtures.TablesTest):
             t.insert().values(
                 id=func.next_value(Sequence("t_id_seq")), data="data", x=5
             ),
-            (1, "data", 5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
         )
 
     def test_uppercase(self):
@@ -431,8 +436,8 @@ class TableInsertTest(fixtures.TablesTest):
         t = self.tables.foo
         self._test(
             t.insert().values(data="data", x=5),
-            (1, "data", 5),
-            inserted_primary_key=[1],
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            inserted_primary_key=[testing.db.dialect.default_sequence_base],
         )
 
     def test_uppercase_direct_params(self):
@@ -452,9 +457,6 @@ class TableInsertTest(fixtures.TablesTest):
             returning=(1, 5),
         )
 
-    @testing.fails_on(
-        "mssql", "lowercase table doesn't support identity insert disable"
-    )
     def test_direct_params(self):
         t = self._fixture()
         self._test(
@@ -463,27 +465,26 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=[],
         )
 
-    @testing.fails_on(
-        "mssql", "lowercase table doesn't support identity insert disable"
-    )
     @testing.requires.returning
     def test_direct_params_returning(self):
         t = self._fixture()
         self._test(
             t.insert().values(id=1, data="data", x=5).returning(t.c.id, t.c.x),
-            (1, "data", 5),
-            returning=(1, 5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
+            returning=(testing.db.dialect.default_sequence_base, 5),
         )
 
+    @testing.requires.emulated_lastrowid_even_with_sequences
     @testing.requires.emulated_lastrowid
     def test_implicit_pk(self):
         t = self._fixture()
         self._test(
             t.insert().values(data="data", x=5),
-            (1, "data", 5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=[],
         )
 
+    @testing.requires.emulated_lastrowid_even_with_sequences
     @testing.requires.emulated_lastrowid
     def test_implicit_pk_multi_rows(self):
         t = self._fixture()
@@ -497,11 +498,12 @@ class TableInsertTest(fixtures.TablesTest):
             [(1, "d1", 5), (2, "d2", 6), (3, "d3", 7)],
         )
 
+    @testing.requires.emulated_lastrowid_even_with_sequences
     @testing.requires.emulated_lastrowid
     def test_implicit_pk_inline(self):
         t = self._fixture()
         self._test(
             t.insert().inline().values(data="data", x=5),
-            (1, "data", 5),
+            (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=[],
         )
