@@ -3093,7 +3093,46 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             [Order(id=3)],
         )
 
-    def test_comparison(self):
+    @testing.combinations(
+        lambda sess, User, Address: (
+            sess.query(Address).filter(
+                Address.user == sess.query(User).scalar_subquery()
+            )
+        ),
+        lambda sess, User, Address: (
+            sess.query(Address).filter_by(
+                user=sess.query(User).scalar_subquery()
+            )
+        ),
+        lambda sess, User, Address: (
+            sess.query(Address).filter(Address.user == sess.query(User))
+        ),
+        lambda sess, User, Address: (
+            sess.query(Address).filter(
+                Address.user == sess.query(User).subquery()
+            )
+        ),
+        lambda sess, User, Address: (
+            sess.query(Address).filter_by(user="foo")
+        ),
+    )
+    def test_object_comparison_needs_object(self, fn):
+        User, Address = (
+            self.classes.User,
+            self.classes.Address,
+        )
+
+        sess = create_session()
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Mapped instance expected for relationship comparison to object.",
+            fn,
+            sess,
+            User,
+            Address,
+        ),
+
+    def test_object_comparison(self):
         """test scalar comparison to an object instance"""
 
         Item, Order, Dingaling, User, Address = (
