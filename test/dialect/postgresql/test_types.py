@@ -1,6 +1,7 @@
 # coding: utf-8
 import datetime
 import decimal
+import re
 import uuid
 
 import sqlalchemy as sa
@@ -44,6 +45,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import NUMRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
+from sqlalchemy.exc import CompileError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
@@ -1717,6 +1719,144 @@ class PGArrayRoundTripTest(
                 )
             ),
             [4, 5, 6],
+        )
+
+
+class _ArrayOfEnum(TypeDecorator):
+    # previous workaround for array of enum
+    impl = postgresql.ARRAY
+
+    def bind_expression(self, bindvalue):
+        return sa.cast(bindvalue, self)
+
+    def result_processor(self, dialect, coltype):
+        super_rp = super(_ArrayOfEnum, self).result_processor(dialect, coltype)
+
+        def handle_raw_string(value):
+            inner = re.match(r"^{(.*)}$", value).group(1)
+            return inner.split(",") if inner else []
+
+        def process(value):
+            if value is None:
+                return None
+            return super_rp(handle_raw_string(value))
+
+        return process
+
+
+class ArrayEnum(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "postgresql"
+    __unsupported_on__ = ("postgresql+pg8000",)
+
+    @testing.combinations(
+        sqltypes.ARRAY, postgresql.ARRAY, argnames="array_cls"
+    )
+    @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
+    @testing.provide_metadata
+    def test_raises_non_native_enums(self, array_cls, enum_cls):
+        Table(
+            "my_table",
+            self.metadata,
+            Column(
+                "my_col",
+                array_cls(
+                    enum_cls(
+                        "foo", "bar", "baz", name="my_enum", native_enum=False
+                    )
+                ),
+            ),
+        )
+
+        testing.assert_raises_message(
+            CompileError,
+            "PostgreSQL dialect cannot produce the CHECK constraint "
+            "for ARRAY of non-native ENUM; please specify "
+            "create_constraint=False on this Enum datatype.",
+            self.metadata.create_all,
+            testing.db,
+        )
+
+    @testing.combinations(
+        sqltypes.ARRAY, postgresql.ARRAY, _ArrayOfEnum, argnames="array_cls"
+    )
+    @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
+    @testing.provide_metadata
+    def test_array_of_enums(self, array_cls, enum_cls, connection):
+        tbl = Table(
+            "enum_table",
+            self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "enum_col",
+                array_cls(enum_cls("foo", "bar", "baz", name="an_enum")),
+            ),
+        )
+
+        if util.py3k:
+            from enum import Enum
+
+            class MyEnum(Enum):
+                a = "aaa"
+                b = "bbb"
+                c = "ccc"
+
+            tbl.append_column(
+                Column("pyenum_col", array_cls(enum_cls(MyEnum)),),
+            )
+
+        self.metadata.create_all(connection)
+
+        connection.execute(
+            tbl.insert(), [{"enum_col": ["foo"]}, {"enum_col": ["foo", "bar"]}]
+        )
+
+        sel = select([tbl.c.enum_col]).order_by(tbl.c.id)
+        eq_(
+            connection.execute(sel).fetchall(), [(["foo"],), (["foo", "bar"],)]
+        )
+
+        if util.py3k:
+            connection.execute(tbl.insert(), {"pyenum_col": [MyEnum.a]})
+            sel = select([tbl.c.pyenum_col]).order_by(tbl.c.id.desc())
+            eq_(connection.scalar(sel), [MyEnum.a])
+
+
+class ArrayJSON(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "postgresql"
+    __unsupported_on__ = ("postgresql+pg8000",)
+
+    @testing.combinations(
+        sqltypes.ARRAY, postgresql.ARRAY, argnames="array_cls"
+    )
+    @testing.combinations(
+        sqltypes.JSON, postgresql.JSON, postgresql.JSONB, argnames="json_cls"
+    )
+    @testing.provide_metadata
+    def test_array_of_json(self, array_cls, json_cls, connection):
+        tbl = Table(
+            "json_table",
+            self.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("json_col", array_cls(json_cls),),
+        )
+
+        self.metadata.create_all(connection)
+
+        connection.execute(
+            tbl.insert(),
+            [
+                {"json_col": ["foo"]},
+                {"json_col": [{"foo": "bar"}, [1]]},
+                {"json_col": [None]},
+            ],
+        )
+
+        sel = select([tbl.c.json_col]).order_by(tbl.c.id)
+        eq_(
+            connection.execute(sel).fetchall(),
+            [(["foo"],), ([{"foo": "bar"}, [1]],), ([None],)],
         )
 
 

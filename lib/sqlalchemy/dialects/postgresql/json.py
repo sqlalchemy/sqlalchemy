@@ -6,8 +6,6 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 from __future__ import absolute_import
 
-from .base import colspecs
-from .base import ischema_names
 from ... import types as sqltypes
 from ... import util
 from ...sql import operators
@@ -94,9 +92,6 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
             return value
 
         return process
-
-
-colspecs[sqltypes.JSON.JSONPathType] = JSONPathType
 
 
 class JSON(sqltypes.JSON):
@@ -236,10 +231,6 @@ class JSON(sqltypes.JSON):
     comparator_factory = Comparator
 
 
-colspecs[sqltypes.JSON] = JSON
-ischema_names["json"] = JSON
-
-
 class JSONB(JSON):
     """Represent the PostgreSQL JSONB type.
 
@@ -324,6 +315,3 @@ class JSONB(JSON):
             )
 
     comparator_factory = Comparator
-
-
-ischema_names["jsonb"] = JSONB

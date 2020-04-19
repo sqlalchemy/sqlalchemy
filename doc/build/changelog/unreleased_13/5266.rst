@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 5266
+
+    Raise an explicit :class:`.exc.CompileError` when adding a table with a
+    column of type :class:`.ARRAY` of :class:`.Enum` configured with
+    :paramref:`.Enum.native_enum` set to ``False`` when
+    :paramref:`.Enum.create_constraint` is not set to ``False``

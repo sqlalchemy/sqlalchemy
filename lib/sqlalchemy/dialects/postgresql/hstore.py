@@ -8,7 +8,6 @@
 import re
 
 from .array import ARRAY
-from .base import ischema_names
 from ... import types as sqltypes
 from ... import util
 from ...sql import functions as sqlfunc
@@ -266,9 +265,6 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
                     return value
 
         return process
-
-
-ischema_names["hstore"] = HSTORE
 
 
 class hstore(sqlfunc.GenericFunction):

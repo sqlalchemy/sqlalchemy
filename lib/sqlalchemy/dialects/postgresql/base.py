@@ -870,9 +870,11 @@ Using ENUM with ARRAY
 ^^^^^^^^^^^^^^^^^^^^^
 
 The combination of ENUM and ARRAY is not directly supported by backend
-DBAPIs at this time.   In order to send and receive an ARRAY of ENUM,
-use the following workaround type, which decorates the
-:class:`_postgresql.ARRAY` datatype.
+DBAPIs at this time.   Prior to SQLAlchemy 1.3.17, a special workaround
+was needed in order to allow this combination to work, described below.
+
+.. versionchanged:: 1.3.17 The combination of ENUM and ARRAY is now directly
+   handled by SQLAlchemy's implementation without any workarounds needed.
 
 .. sourcecode:: python
 
@@ -917,10 +919,15 @@ a new version.
 Using JSON/JSONB with ARRAY
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Similar to using ENUM, for an ARRAY of JSON/JSONB we need to render the
-appropriate CAST, however current psycopg2 drivers seem to handle the result
-for ARRAY of JSON automatically, so the type is simpler::
+Similar to using ENUM, prior to SQLAlchemy 1.3.17, for an ARRAY of JSON/JSONB
+we need to render the appropriate CAST.   Current psycopg2 drivers accomodate
+the result set correctly without any special steps.
 
+.. versionchanged:: 1.3.17 The combination of JSON/JSONB and ARRAY is now
+   directly handled by SQLAlchemy's implementation without any workarounds
+   needed.
+
+.. sourcecode:: python
 
     class CastingArray(ARRAY):
         def bind_expression(self, bindvalue):
@@ -940,6 +947,10 @@ from collections import defaultdict
 import datetime as dt
 import re
 
+from . import array as _array
+from . import hstore as _hstore
+from . import json as _json
+from . import ranges as _ranges
 from ... import exc
 from ... import schema
 from ... import sql
@@ -1523,9 +1534,25 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 
-colspecs = {sqltypes.Interval: INTERVAL, sqltypes.Enum: ENUM}
+colspecs = {
+    sqltypes.ARRAY: _array.ARRAY,
+    sqltypes.Interval: INTERVAL,
+    sqltypes.Enum: ENUM,
+    sqltypes.JSON.JSONPathType: _json.JSONPathType,
+    sqltypes.JSON: _json.JSON,
+}
 
 ischema_names = {
+    "_array": _array.ARRAY,
+    "hstore": _hstore.HSTORE,
+    "json": _json.JSON,
+    "jsonb": _json.JSONB,
+    "int4range": _ranges.INT4RANGE,
+    "int8range": _ranges.INT8RANGE,
+    "numrange": _ranges.NUMRANGE,
+    "daterange": _ranges.DATERANGE,
+    "tsrange": _ranges.TSRANGE,
+    "tstzrange": _ranges.TSTZRANGE,
     "integer": INTEGER,
     "bigint": BIGINT,
     "smallint": SMALLINT,
@@ -1916,6 +1943,22 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec += " NOT NULL"
         return colspec
+
+    def visit_check_constraint(self, constraint):
+        if constraint._type_bound:
+            typ = list(constraint.columns)[0].type
+            if (
+                isinstance(typ, sqltypes.ARRAY)
+                and isinstance(typ.item_type, sqltypes.Enum)
+                and not typ.item_type.native_enum
+            ):
+                raise exc.CompileError(
+                    "PostgreSQL dialect cannot produce the CHECK constraint "
+                    "for ARRAY of non-native ENUM; please specify "
+                    "create_constraint=False on this Enum datatype."
+                )
+
+        return super(PGDDLCompiler, self).visit_check_constraint(constraint)
 
     def visit_drop_table_comment(self, drop):
         return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
