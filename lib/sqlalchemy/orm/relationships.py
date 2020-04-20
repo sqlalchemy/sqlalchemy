@@ -1610,8 +1610,19 @@ class RelationshipProperty(StrategizedProperty):
         alias_secondary=True,
     ):
         if state is not None:
-            state = attributes.instance_state(state)
+            try:
+                state = inspect(state)
+            except sa_exc.NoInspectionAvailable:
+                state = None
 
+            if state is None or not getattr(state, "is_instance", False):
+                raise sa_exc.ArgumentError(
+                    "Mapped instance expected for relationship "
+                    "comparison to object.   Classes, queries and other "
+                    "SQL elements are not accepted in this context; for "
+                    "comparison with a subquery, "
+                    "use %s.has(**criteria)." % self
+                )
         reverse_direction = not value_is_parent
 
         if state is None:
