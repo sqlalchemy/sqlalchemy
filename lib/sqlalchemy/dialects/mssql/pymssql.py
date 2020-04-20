@@ -15,10 +15,11 @@ pymssql is a Python module that provides a Python DBAPI interface around
 `FreeTDS <http://www.freetds.org/>`_.
 
 Modern versions of this driver worked very well with SQL Server and FreeTDS
-from Linux and were highly recommended.   However, pymssql is currently
+from Linux and were highly recommended. However, pymssql is currently
 unmaintained and has fallen behind the progress of the Microsoft ODBC driver in
 its support for newer features of SQL Server. The latest official release of
-pymssql at the time of this docuemnt is August, 2018 and lacks support for:
+pymssql at the time of this document is version 2.1.4 (August, 2018) and it
+lacks support for:
 
 1. table-valued parameters (TVPs),
 2. ``datetimeoffset`` columns using timezone-aware ``datetime`` objects
