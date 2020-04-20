@@ -1611,3 +1611,8 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def computed_columns_reflect_persisted(self):
         return self.computed_columns + skip_if("oracle")
+
+    @property
+    def supports_distinct_on(self):
+        """If a backend supports the DISTINCT ON in a select"""
+        return only_if(["postgresql"])

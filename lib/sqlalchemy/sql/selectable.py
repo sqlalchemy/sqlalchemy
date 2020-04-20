@@ -4138,6 +4138,9 @@ class Select(
          the PostgreSQL dialect will render a ``DISTINCT ON (<expressions>>)``
          construct.
 
+         .. deprecated:: 1.4 Using \*expr in other dialects is deprecated
+            and will raise :class:`_exc.CompileError` in a future version.
+
         """
         if expr:
             self._distinct = True

@@ -412,7 +412,6 @@ class AssertsCompiledSQL(object):
         c = clause.compile(dialect=dialect, **kw)
 
         param_str = repr(getattr(c, "params", {}))
-
         if util.py3k:
             param_str = param_str.encode("utf-8").decode("ascii", "ignore")
             print(

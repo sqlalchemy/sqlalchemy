@@ -2868,7 +2868,16 @@ class SQLCompiler(Compiled):
         before column list.
 
         """
-        return select._distinct and "DISTINCT " or ""
+        if select._distinct_on:
+            util.warn_deprecated(
+                "DISTINCT ON is currently supported only by the PostgreSQL "
+                "dialect.  Use of DISTINCT ON for other backends is currently "
+                "silently ignored, however this usage is deprecated, and will "
+                "raise CompileError in a future release for all backends "
+                "that do not support this syntax.",
+                version="1.4",
+            )
+        return "DISTINCT " if select._distinct else ""
 
     def group_by_clause(self, select, **kw):
         """allow dialects to customize how GROUP BY is rendered."""
