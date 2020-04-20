@@ -130,6 +130,50 @@ class O2MTest(fixtures.MappedTest):
         eq_(result[1].parent_foo.data, "foo #1")
 
 
+class ColExpressionsTest(fixtures.DeclarativeMappedTest):
+    __backend__ = True
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(10))
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "a",
+            }
+
+        class B(A):
+            __tablename__ = "b"
+            id = Column(ForeignKey("a.id"), primary_key=True)
+            data = Column(Integer)
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B = cls.classes("A", "B")
+        s = Session(connection)
+
+        s.add_all([B(data=5), B(data=7)])
+        s.commit()
+
+    def test_group_by(self):
+        B = self.classes.B
+        s = Session()
+
+        rows = (
+            s.query(B.id.expressions[0], B.id.expressions[1], func.sum(B.data))
+            .group_by(*B.id.expressions)
+            .all()
+        )
+        eq_(rows, [(1, 1, 5), (2, 2, 7)])
+
+
 class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
     run_setup_mappers = "once"
     __dialect__ = "default"
