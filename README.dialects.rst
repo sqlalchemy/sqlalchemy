@@ -6,7 +6,7 @@ Developing new Dialects
 
    When studying this file, it's probably a good idea to also
    familiarize with the  README.unittests.rst file, which discusses
-   SQLAlchemy's usage and extension of the py.test test runner.
+   SQLAlchemy's usage and extension of the pytest test runner.
 
 While SQLAlchemy includes many dialects within the core distribution, the
 trend for new dialects should be that they are published as external
@@ -154,7 +154,7 @@ Key aspects of this file layout include:
   test runner so that exclusions specific to the dialect take place::
 
     cd /path/to/sqlalchemy
-    py.test -v \
+    pytest -v \
       --requirements sqlalchemy_access.requirements:Requirements \
       --dburi access+pyodbc://admin@access_test
 

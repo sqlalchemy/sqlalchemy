@@ -35,44 +35,44 @@ Running against backends other than SQLite requires that a database of that
 vendor be available at a specific URL.  See "Setting Up Databases" below
 for details.
 
-The py.test Engine
+The pytest Engine
 ==================
 
-The tox runner is using py.test to invoke the test suite.   Within the realm of
-py.test, SQLAlchemy itself is adding a large series of option and
-customizations to the py.test runner using plugin points, to allow for
+The tox runner is using pytest to invoke the test suite.   Within the realm of
+pytest, SQLAlchemy itself is adding a large series of option and
+customizations to the pytest runner using plugin points, to allow for
 SQLAlchemy's multiple database support, database setup/teardown and
 connectivity, multi process support, as well as lots of skip / database
 selection rules.
 
-Running tests with py.test directly grants more immediate control over
+Running tests with pytest directly grants more immediate control over
 database options and test selection.
 
-A generic py.test run looks like::
+A generic pytest run looks like::
 
-    py.test -n4
+    pytest -n4
 
 Above, the full test suite will run against SQLite, using four processes.
 If the "-n" flag is not used, the pytest-xdist is skipped and the tests will
 run linearly, which will take a pretty long time.
 
-The py.test command line is more handy for running subsets of tests and to
+The pytest command line is more handy for running subsets of tests and to
 quickly allow for custom database connections.  Example::
 
-    py.test --dburi=postgresql+psycopg2://scott:tiger@localhost/test  test/sql/test_query.py
+    pytest --dburi=postgresql+psycopg2://scott:tiger@localhost/test  test/sql/test_query.py
 
 Above will run the tests in the test/sql/test_query.py file (a pretty good
 file for basic "does this database work at all?" to start with) against a
 running PostgreSQL database at the given URL.
 
-The py.test frontend can also run tests against multiple kinds of databases at
+The pytest frontend can also run tests against multiple kinds of databases at
 once - a large subset of tests are marked as "backend" tests, which will be run
 against each available backend, and additionally lots of tests are targeted at
 specific backends only, which only run if a matching backend is made available.
 For example, to run the test suite against both PostgreSQL and MySQL at the
 same time::
 
-    py.test -n4 --db postgresql --db mysql
+    pytest -n4 --db postgresql --db mysql
 
 
 Setting Up Databases
@@ -81,7 +81,7 @@ Setting Up Databases
 The test suite identifies several built-in database tags that run against
 a pre-set URL.  These can be seen using --dbs::
 
-    $ py.test --dbs
+    $ pytest --dbs
     Available --db options (use --dburi to override)
                  default    sqlite:///:memory:
                 firebird    firebird://sysdba:masterkey@localhost//Users/classic/foo.fdb
@@ -114,7 +114,7 @@ creating a new file called ``test.cfg`` and adding your own ``[db]`` section::
 
 Above, we can now run the tests with ``my_postgresql``::
 
-    py.test --db my_postgresql
+    pytest --db my_postgresql
 
 We can also override the existing names in our ``test.cfg`` file, so that we can run
 with the tox runner also::
@@ -145,7 +145,7 @@ configurations using docker.
 
 The test runner will by default create and drop tables within the default
 database that's in the database URL, *unless* the multiprocessing option is in
-use via the py.test "-n" flag, which invokes pytest-xdist.   The
+use via the pytest "-n" flag, which invokes pytest-xdist.   The
 multiprocessing option is **enabled by default** when using the tox runner.
 When multiprocessing is used, the SQLAlchemy testing framework will create a
 new database for each process, and then tear it down after the test run is
@@ -281,7 +281,7 @@ intended for production use!
 
 NOTE: with this configuration the url to use is not the default one configured
 in setup, but ``mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test``.  It can
-be used with py.test by using ``--db docker_mssql``.
+be used with pytest by using ``--db docker_mssql``.
 
 CONFIGURING LOGGING
 -------------------
@@ -289,10 +289,10 @@ SQLAlchemy logs its activity and debugging through Python's logging package.
 Any log target can be directed to the console with command line options, such
 as::
 
-    $ ./py.test test/orm/test_unitofwork.py -s \
+    $ ./pytest test/orm/test_unitofwork.py -s \
       --log-debug=sqlalchemy.pool --log-info=sqlalchemy.engine
 
-Above we add the py.test "-s" flag so that standard out is not suppressed.
+Above we add the pytest "-s" flag so that standard out is not suppressed.
 
 
 DEVELOPING AND TESTING NEW DIALECTS
