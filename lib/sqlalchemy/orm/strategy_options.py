@@ -15,6 +15,7 @@ from .base import _is_aliased_class
 from .base import _is_mapped_class
 from .base import InspectionAttr
 from .interfaces import MapperOption
+from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _WILDCARD_TOKEN
@@ -205,6 +206,7 @@ class Load(Generative, MapperOption):
 
         if isinstance(attr, util.string_types):
             default_token = attr.endswith(_DEFAULT_TOKEN)
+            attr_str_name = attr
             if attr.endswith(_WILDCARD_TOKEN) or default_token:
                 if default_token:
                     self.propagate_to_loaders = False
@@ -242,7 +244,21 @@ class Load(Generative, MapperOption):
                 else:
                     return None
             else:
-                attr = found_property = attr.property
+                try:
+                    attr = found_property = attr.property
+                except AttributeError as ae:
+                    if not isinstance(attr, MapperProperty):
+                        util.raise_(
+                            sa_exc.ArgumentError(
+                                'Expected attribute "%s" on %s to be a '
+                                "mapped attribute; "
+                                "instead got %s object."
+                                % (attr_str_name, ent, type(attr))
+                            ),
+                            replace_context=ae,
+                        )
+                    else:
+                        raise
 
             path = path[attr]
         elif _is_mapped_class(attr):
