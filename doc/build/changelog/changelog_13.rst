@@ -134,7 +134,7 @@
         :tickets: 5052
 
         Add ability to literal compile a :class:`DateTime`, :class:`Date`
-        or :class:"Time" when using the string dialect for debugging purposes.
+        or :class:`Time` when using the string dialect for debugging purposes.
         This change does not impact real dialect implementation that retain
         their current behavior.
 
