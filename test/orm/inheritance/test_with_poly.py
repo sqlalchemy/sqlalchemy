@@ -27,8 +27,11 @@ class WithPolymorphicAPITest(_Polymorphic, _PolymorphicFixtureBase):
             exc.ArgumentError,
             "the 'flat' and 'selectable' arguments cannot be passed "
             "simultaneously to with_polymorphic()",
-            with_polymorphic, Person, [Engineer],
-            selectable=subq, flat=True
+            with_polymorphic,
+            Person,
+            [Engineer],
+            selectable=subq,
+            flat=True,
         )
 
 
