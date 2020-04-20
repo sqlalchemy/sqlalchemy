@@ -337,7 +337,7 @@ class ColumnProperty(StrategizedProperty):
 
         """
 
-        __slots__ = "__clause_element__", "info"
+        __slots__ = "__clause_element__", "info", "expressions"
 
         def _memoized_method___clause_element__(self):
             if self.adapter:
@@ -354,11 +354,39 @@ class ColumnProperty(StrategizedProperty):
                 )
 
         def _memoized_attr_info(self):
+            """The .info dictionary for this attribute."""
+
             ce = self.__clause_element__()
             try:
                 return ce.info
             except AttributeError:
                 return self.prop.info
+
+        def _memoized_attr_expressions(self):
+            """The full sequence of columns referenced by this
+            attribute, adjusted for any aliasing in progress.
+
+            .. versionadded:: 1.3.17
+
+            """
+            if self.adapter:
+                return [
+                    self.adapter(col, self.prop.key)
+                    for col in self.prop.columns
+                ]
+            else:
+                # no adapter, so we aren't aliased
+                # assert self._parententity is self._parentmapper
+                return [
+                    col._annotate(
+                        {
+                            "parententity": self._parententity,
+                            "parentmapper": self._parententity,
+                            "orm_key": self.prop.key,
+                        }
+                    )
+                    for col in self.prop.columns
+                ]
 
         def _fallback_getattr(self, key):
             """proxy attribute access down to the mapped column.
