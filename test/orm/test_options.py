@@ -58,6 +58,13 @@ class QueryTest(_fixtures.FixtureTest):
             },
         )
 
+        class OrderWProp(cls.classes.Order):
+            @property
+            def some_attr(self):
+                return "hi"
+
+        mapper(OrderWProp, None, inherits=cls.classes.Order)
+
 
 class PathTest(object):
     def _make_path(self, path):
@@ -191,6 +198,20 @@ class LoadTest(PathTest, QueryTest):
             Order.items,
             None,
             "relationship",
+        )
+
+    def test_gen_path_attr_str_not_mapped(self):
+        OrderWProp = self.classes.OrderWProp
+
+        sess = Session()
+        q = sess.query(OrderWProp).options(defer("some_attr"))
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r"Expected attribute \"some_attr\" on mapped class "
+            "OrderWProp->orders to be a mapped attribute; instead "
+            "got .*property.* object.",
+            q._compile_state,
         )
 
     def test_gen_path_attr_entity_invalid_noraiseerr(self):
@@ -1141,12 +1162,21 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             'column property "Keyword.keywords"',
         )
 
-    def test_wrong_type_in_option(self):
+    def test_wrong_type_in_option_cls(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Item],
             (joinedload(Keyword),),
+            r"mapper option expects string key or list of attributes",
+        )
+
+    def test_wrong_type_in_option_descriptor(self):
+        OrderWProp = self.classes.OrderWProp
+
+        self._assert_eager_with_entity_exception(
+            [OrderWProp],
+            (joinedload(OrderWProp.some_attr),),
             r"mapper option expects string key or list of attributes",
         )
 
@@ -1214,6 +1244,13 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                 keywords=relationship(Keyword, secondary=item_keywords)
             ),
         )
+
+        class OrderWProp(cls.classes.Order):
+            @property
+            def some_attr(self):
+                return "hi"
+
+        mapper(OrderWProp, None, inherits=cls.classes.Order)
 
     def _assert_option(self, entity_list, option):
         Item = self.classes.Item
