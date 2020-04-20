@@ -5,17 +5,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .base import colspecs
-from .base import ischema_names
+import re
+
 from ... import types as sqltypes
+from ... import util
 from ...sql import expression
 from ...sql import operators
-
-
-try:
-    from uuid import UUID as _python_UUID  # noqa
-except ImportError:
-    _python_UUID = None
 
 
 def Any(other, arrexpr, operator=operators.eq):
@@ -318,6 +313,25 @@ class ARRAY(sqltypes.ARRAY):
                 for x in arr
             )
 
+    @util.memoized_property
+    def _require_cast(self):
+        return self._against_native_enum or isinstance(
+            self.item_type, sqltypes.JSON
+        )
+
+    @util.memoized_property
+    def _against_native_enum(self):
+        return (
+            isinstance(self.item_type, sqltypes.Enum)
+            and self.item_type.native_enum
+        )
+
+    def bind_expression(self, bindvalue):
+        if self._require_cast:
+            return expression.cast(bindvalue, self)
+        else:
+            return bindvalue
+
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(
             dialect
@@ -349,8 +363,23 @@ class ARRAY(sqltypes.ARRAY):
                     tuple if self.as_tuple else list,
                 )
 
+        if self._against_native_enum:
+            super_rp = process
+
+            def handle_raw_string(value):
+                inner = re.match(r"^{(.*)}$", value).group(1)
+                return inner.split(",") if inner else []
+
+            def process(value):
+                if value is None:
+                    return value
+                # isinstance(value, util.string_types) is required to handle
+                # the # case where a TypeDecorator for and Array of Enum is
+                # used like was required in sa < 1.3.17
+                return super_rp(
+                    handle_raw_string(value)
+                    if isinstance(value, util.string_types)
+                    else value
+                )
+
         return process
-
-
-colspecs[sqltypes.ARRAY] = ARRAY
-ischema_names["_array"] = ARRAY
