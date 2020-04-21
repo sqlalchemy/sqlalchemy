@@ -21,6 +21,17 @@ sections, are listed here.
 .. autoclass:: sqlalchemy.orm.properties.ColumnProperty
     :members:
 
+    .. attribute:: Comparator.expressions
+
+         The full sequence of columns referenced by this
+         attribute, adjusted for any aliasing in progress.
+
+         .. versionadded:: 1.3.17
+
+         .. seealso::
+
+            :ref:`maptojoin` - usage example
+
 .. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
     :members:
 
