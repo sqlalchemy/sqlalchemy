@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 5262
+
+    Added an accessor :attr:`.ColumnProperty.Comparator.expressions` which
+    provides access to the group of columns mapped under a multi-column
+    :class:`.ColumnProperty` attribute.
+

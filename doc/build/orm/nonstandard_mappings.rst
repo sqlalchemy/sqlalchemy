@@ -68,6 +68,19 @@ The natural primary key of the above mapping is the composite of
 is represented from an ``AddressUser`` object as
 ``(AddressUser.id, AddressUser.address_id)``.
 
+When referring to the ``AddressUser.id`` column, most SQL expressions will
+make use of only the first column in the list of columns mapped, as the
+two columns are synonymous.  However, for the special use case such as
+a GROUP BY expression where both columns must be referenced at the same
+time while making use of the proper context, that is, accommodating for
+aliases and similar, the accessor :attr:`.ColumnProperty.Comparator.expressions`
+may be used::
+
+    q = session.query(AddressUser).group_by(*AddressUser.id.expressions)
+
+.. versionadded:: 1.3.17 Added the
+   :attr:`.ColumnProperty.Comparator.expressions` accessor.
+
 
 .. note::
 
