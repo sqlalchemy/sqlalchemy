@@ -702,7 +702,7 @@ class SQLCompiler(Compiled):
 
         # relates label names in the final SQL to a tuple of local
         # column/label name, ColumnElement object (if any) and
-        # TypeEngine. ResultProxy uses this for type processing and
+        # TypeEngine. CursorResult uses this for type processing and
         # column targeting
         self._result_columns = []
 
@@ -1056,11 +1056,11 @@ class SQLCompiler(Compiled):
 
         return expanded_state
 
-    @util.preload_module("sqlalchemy.engine.result")
+    @util.preload_module("sqlalchemy.engine.cursor")
     def _create_result_map(self):
         """utility method used for unit tests only."""
-        result = util.preloaded.engine_result
-        return result.CursorResultMetaData._create_description_match_map(
+        cursor = util.preloaded.engine_cursor
+        return cursor.CursorResultMetaData._create_description_match_map(
             self._result_columns
         )
 

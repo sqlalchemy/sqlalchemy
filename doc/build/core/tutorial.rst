@@ -247,11 +247,9 @@ Executing
 =========
 
 The interesting part of an :class:`~sqlalchemy.sql.expression.Insert` is
-executing it. In this tutorial, we will generally focus on the most explicit
-method of executing a SQL construct, and later touch upon some "shortcut" ways
-to do it. The ``engine`` object we created is a repository for database
-connections capable of issuing SQL to the database. To acquire a connection,
-we use the ``connect()`` method::
+executing it.  This is performed using a database connection, which  is
+represented by the :class:`_engine.Connection` object.  To acquire a
+connection, we will use the :meth:`.Engine.connect` method::
 
     >>> conn = engine.connect()
     >>> conn
@@ -285,10 +283,10 @@ parameters. We can view this manually as follows:
 What about the ``result`` variable we got when we called ``execute()`` ? As
 the SQLAlchemy :class:`~sqlalchemy.engine.Connection` object references a
 DBAPI connection, the result, known as a
-:class:`~sqlalchemy.engine.ResultProxy` object, is analogous to the DBAPI
+:class:`~sqlalchemy.engine.CursorResult` object, is analogous to the DBAPI
 cursor object. In the case of an INSERT, we can get important information from
 it, such as the primary key values which were generated from our statement
-using :attr:`_engine.ResultProxy.inserted_primary_key`:
+using :attr:`_engine.CursorResult.inserted_primary_key`:
 
 .. sourcecode:: pycon+sql
 
@@ -303,7 +301,7 @@ at a newly generated primary key value, even though the method of generating
 them is different across different databases; each database's
 :class:`~sqlalchemy.engine.interfaces.Dialect` knows the specific steps needed to
 determine the correct value (or values; note that
-:attr:`_engine.ResultProxy.inserted_primary_key`
+:attr:`_engine.CursorResult.inserted_primary_key`
 returns a list so that it supports composite primary keys).    Methods here
 range from using ``cursor.lastrowid``, to selecting from a database-specific
 function, to using ``INSERT..RETURNING`` syntax; this all occurs transparently.
@@ -329,7 +327,7 @@ and use it in the "normal" way:
     {opensql}INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
     (2, 'wendy', 'Wendy Williams')
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 Above, because we specified all three columns in the ``execute()`` method,
 the compiled :class:`_expression.Insert` included all three
@@ -353,7 +351,7 @@ inserted, as we do here to add some email addresses:
     {opensql}INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
     ((1, 'jack@yahoo.com'), (1, 'jack@msn.com'), (2, 'www@www.org'), (2, 'wendy@aol.com'))
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 Above, we again relied upon SQLite's automatic generation of primary key
 identifiers for each ``addresses`` row.
@@ -392,10 +390,10 @@ Above, we issued a basic :func:`_expression.select` call, placing the ``users`` 
 within the COLUMNS clause of the select, and then executing. SQLAlchemy
 expanded the ``users`` table into the set of each of its columns, and also
 generated a FROM clause for us. The result returned is again a
-:class:`~sqlalchemy.engine.ResultProxy` object, which acts much like a
+:class:`~sqlalchemy.engine.CursorResult` object, which acts much like a
 DBAPI cursor, including methods such as
-:func:`~sqlalchemy.engine.ResultProxy.fetchone` and
-:func:`~sqlalchemy.engine.ResultProxy.fetchall`.    These methods return
+:func:`~sqlalchemy.engine.CursorResult.fetchone` and
+:func:`~sqlalchemy.engine.CursorResult.fetchall`.    These methods return
 row objects, which are provided via the :class:`.Row` class.  The
 result object can be iterated directly in order to provide an iterator
 of :class:`.Row` objects:
@@ -496,19 +494,20 @@ collection:
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
 
-.. sidebar:: Rows are changing
+.. sidebar:: Results and Rows are changing
 
-    The :class:`.Row` class was known as :class:`.RowProxy` for all
+    The :class:`.Row` class was known as ``RowProxy`` and the
+    :class:`_engine.CursorResult` class was known as ``ResultProxy``,  for all
     SQLAlchemy versions through 1.3.  In 1.4, the objects returned by
-    :class:`_engine.ResultProxy` are actually a subclass of :class:`.Row` known as
+    :class:`_engine.CursorResult` are actually a subclass of :class:`.Row` known as
     :class:`.LegacyRow`.   See :ref:`change_4710_core` for background on this
     change.
 
-The :class:`_engine.ResultProxy` object features "auto-close" behavior that closes the
+The :class:`_engine.CursorResult` object features "auto-close" behavior that closes the
 underlying DBAPI ``cursor`` object when all pending result rows have been
-fetched.   If a :class:`_engine.ResultProxy` is to be discarded before such an
+fetched.   If a :class:`_engine.CursorResult` is to be discarded before such an
 autoclose has occurred, it can be explicitly closed using the
-:meth:`_engine.ResultProxy.close` method:
+:meth:`_engine.CursorResult.close` method:
 
 .. sourcecode:: pycon+sql
 
@@ -2120,7 +2119,7 @@ as a value:
     {opensql}UPDATE users SET fullname=(? || users.name)
     ('Fullname: ',)
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 When using :meth:`_expression.TableClause.insert` or :meth:`_expression.TableClause.update`
 in an "execute many" context, we may also want to specify named
@@ -2149,7 +2148,7 @@ as in the example below:
     {opensql}INSERT INTO users (id, name) VALUES (?, (? || ?))
     ((4, 'name1', ' .. name'), (5, 'name2', ' .. name'), (6, 'name3', ' .. name'))
     COMMIT
-    <sqlalchemy.engine.result.ResultProxy object at 0x...>
+    <sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 An UPDATE statement is emitted using the :meth:`_expression.TableClause.update` construct.  This
 works much like an INSERT, except there is an additional WHERE clause
@@ -2165,7 +2164,7 @@ that can be specified:
     {opensql}UPDATE users SET name=? WHERE users.name = ?
     ('ed', 'jack')
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 When using :meth:`_expression.TableClause.update` in an "executemany" context,
 we may wish to also use explicitly named bound parameters in the
@@ -2185,7 +2184,7 @@ used to achieve this:
     {opensql}UPDATE users SET name=? WHERE users.name = ?
     (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 
 Correlated Updates
@@ -2207,7 +2206,7 @@ subquery using :meth:`_expression.Select.scalar_subquery`:
         LIMIT ? OFFSET ?)
     (1, 0)
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 .. _multi_table_updates:
 
@@ -2324,13 +2323,13 @@ Finally, a delete.  This is accomplished easily enough using the
     {opensql}DELETE FROM addresses
     ()
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
     >>> conn.execute(users.delete().where(users.c.name > 'm'))
     {opensql}DELETE FROM users WHERE users.name > ?
     ('m',)
     COMMIT
-    {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
+    {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
 .. _multi_table_deletes:
 
@@ -2370,7 +2369,7 @@ Both of :meth:`_expression.TableClause.update` and
 :meth:`_expression.TableClause.delete` are associated with *matched row counts*.  This is a
 number indicating the number of rows that were matched by the WHERE clause.
 Note that by "matched", this includes rows where no UPDATE actually took place.
-The value is available as :attr:`_engine.ResultProxy.rowcount`:
+The value is available as :attr:`_engine.CursorResult.rowcount`:
 
 .. sourcecode:: pycon+sql
 

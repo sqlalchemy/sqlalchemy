@@ -234,6 +234,29 @@ class NoSuchColumnError(KeyError, InvalidRequestError):
     """A nonexistent column is requested from a ``Row``."""
 
 
+class NoResultFound(InvalidRequestError):
+    """A database result was required but none was found.
+
+
+    .. versionchanged:: 1.4  This exception is now part of the
+       ``sqlalchemy.exc`` module in Core, moved from the ORM.  The symbol
+       remains importable from ``sqlalchemy.orm.exc``.
+
+
+    """
+
+
+class MultipleResultsFound(InvalidRequestError):
+    """A single database result was required but more than one were found.
+
+    .. versionchanged:: 1.4  This exception is now part of the
+       ``sqlalchemy.exc`` module in Core, moved from the ORM.  The symbol
+       remains importable from ``sqlalchemy.orm.exc``.
+
+
+    """
+
+
 class NoReferenceError(InvalidRequestError):
     """Raised by ``ForeignKey`` to indicate a reference cannot be resolved."""
 

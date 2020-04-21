@@ -1642,7 +1642,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
             with patch(
-                "sqlalchemy.engine.result.ResultProxy.rowcount", rowcount
+                "sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount
             ):
                 Parent, Child = self._fixture()
                 sess = Session()
@@ -1672,7 +1672,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
             with patch(
-                "sqlalchemy.engine.result.ResultProxy.rowcount", rowcount
+                "sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount
             ):
                 Parent, Child = self._fixture()
                 sess = Session()
@@ -1702,7 +1702,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
             with patch(
-                "sqlalchemy.engine.result.ResultProxy.rowcount", rowcount
+                "sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount
             ):
                 Parent, Child = self._fixture()
                 sess = Session()

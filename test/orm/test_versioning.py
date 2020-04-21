@@ -451,7 +451,7 @@ class VersioningTest(fixtures.MappedTest):
 
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
-        ), patch("sqlalchemy.engine.result.ResultProxy.rowcount", rowcount):
+        ), patch("sqlalchemy.engine.cursor.CursorResult.rowcount", rowcount):
 
             Foo = self.classes.Foo
             s1 = self._fixture()

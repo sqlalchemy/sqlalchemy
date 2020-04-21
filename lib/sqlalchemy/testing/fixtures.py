@@ -59,7 +59,8 @@ class TestBase(object):
 
     @config.fixture()
     def connection(self):
-        conn = config.db.connect()
+        eng = getattr(self, "bind", config.db)
+        conn = eng.connect()
         trans = conn.begin()
         try:
             yield conn
@@ -87,24 +88,26 @@ class TestBase(object):
 class FutureEngineMixin(object):
     @classmethod
     def setup_class(cls):
-        super_ = super(FutureEngineMixin, cls)
-        if hasattr(super_, "setup_class"):
-            super_.setup_class()
 
         from ..future.engine import Engine
         from sqlalchemy import testing
 
-        config._current.push_engine(Engine._future_facade(config.db), testing)
+        facade = Engine._future_facade(config.db)
+        config._current.push_engine(facade, testing)
+
+        super_ = super(FutureEngineMixin, cls)
+        if hasattr(super_, "setup_class"):
+            super_.setup_class()
 
     @classmethod
     def teardown_class(cls):
-        from sqlalchemy import testing
-
-        config._current.pop(testing)
-
         super_ = super(FutureEngineMixin, cls)
         if hasattr(super_, "teardown_class"):
             super_.teardown_class()
+
+        from sqlalchemy import testing
+
+        config._current.pop(testing)
 
 
 class TablesTest(TestBase):
@@ -195,7 +198,7 @@ class TablesTest(TestBase):
 
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != "each" and self.run_deletes == "each":
-            with self.bind.connect() as conn:
+            with self.bind.begin() as conn:
                 for table in reversed(self.metadata.sorted_tables):
                     try:
                         conn.execute(table.delete())

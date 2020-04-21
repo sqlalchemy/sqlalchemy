@@ -51,7 +51,7 @@ except ImportError:
         __slots__ = ("_parent", "_data", "_keymap")
 
         def __init__(self, parent, processors, keymap, data):
-            """Row objects are constructed by ResultProxy objects."""
+            """Row objects are constructed by CursorResult objects."""
 
             self._parent = parent
 
@@ -69,6 +69,9 @@ except ImportError:
                 (self.__class__, self.__getstate__()),
             )
 
+        def _filter_on_values(self, filters):
+            return Row(self._parent, filters, self._keymap, self._data)
+
         def _values_impl(self):
             return list(self)
 
@@ -80,6 +83,9 @@ except ImportError:
 
         def __hash__(self):
             return hash(self._data)
+
+        def __getitem__(self, key):
+            return self._data[key]
 
         def _subscript_impl(self, key, ismapping):
             try:
@@ -127,7 +133,7 @@ class Row(BaseRow, collections_abc.Sequence):
 
     The :class:`.Row` object represents a row of a database result.  It is
     typically associated in the 1.x series of SQLAlchemy with the
-    :class:`_engine.ResultProxy` object, however is also used by the ORM for
+    :class:`_engine.CursorResult` object, however is also used by the ORM for
     tuple-like results as of SQLAlchemy 1.4.
 
     The :class:`.Row` object seeks to act as much like a Python named
@@ -150,7 +156,7 @@ class Row(BaseRow, collections_abc.Sequence):
         and now acts mostly like a named tuple.  Mapping-like functionality is
         moved to the :attr:`.Row._mapping` attribute, but will remain available
         in SQLAlchemy 1.x series via the :class:`.LegacyRow` class that is used
-        by :class:`_engine.ResultProxy`.
+        by :class:`_engine.LegacyCursorResult`.
         See :ref:`change_4710_core` for background
         on this change.
 
@@ -181,9 +187,6 @@ class Row(BaseRow, collections_abc.Sequence):
 
     def __contains__(self, key):
         return key in self._data
-
-    def __getitem__(self, key):
-        return self._data[key]
 
     def __getstate__(self):
         return {"_parent": self._parent, "_data": self._data}
@@ -243,7 +246,7 @@ class Row(BaseRow, collections_abc.Sequence):
             :attr:`.Row._mapping`
 
         """
-        return [k for k in self._parent.keys if k is not None]
+        return self._parent.keys
 
     @property
     def _fields(self):
@@ -477,6 +480,9 @@ class RowMapping(collections_abc.Mapping):
     def __contains__(self, key):
         return self.row._parent._has_key(key)
 
+    def __repr__(self):
+        return repr(dict(self))
+
     def items(self):
         """Return a view of key/value tuples for the elements in the
         underlying :class:`.Row`.
@@ -489,9 +495,8 @@ class RowMapping(collections_abc.Mapping):
         by the underlying :class:`.Row`.
 
         """
-        return ROMappingView(
-            self, [k for k in self.row._parent.keys if k is not None]
-        )
+
+        return self.row._parent.keys
 
     def values(self):
         """Return a view of values for the values represented in the

@@ -4315,7 +4315,7 @@ class _MapperEntity(_QueryEntity):
             polymorphic_discriminator=self._polymorphic_discriminator,
         )
 
-        return _instance, self._label_name, self.entities
+        return _instance, self._label_name, tuple(self.entities)
 
     def setup_context(self, query, context):
         adapter = self._get_entity_clauses(query, context)

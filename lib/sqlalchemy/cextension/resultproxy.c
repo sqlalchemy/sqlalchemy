@@ -47,6 +47,10 @@ typedef struct {
     PyObject *keymap;
 } BaseRow;
 
+
+static PyObject *sqlalchemy_engine_row = NULL;
+static PyObject *sqlalchemy_engine_result = NULL;
+
 /****************
  * BaseRow *
  ****************/
@@ -103,7 +107,7 @@ BaseRow_init(BaseRow *self, PyObject *args, PyObject *kwds)
         return -1;
 
     num_values = PySequence_Length(values_fastseq);
-    num_processors = PyList_Size(processors);
+    num_processors = PySequence_Size(processors);
     if (num_values != num_processors) {
         PyErr_Format(PyExc_RuntimeError,
             "number of values in row (%d) differ from number of column "
@@ -172,12 +176,14 @@ BaseRow_reduce(PyObject *self)
     if (state == NULL)
         return NULL;
 
-    module = PyImport_ImportModule("sqlalchemy.engine.result");
-    if (module == NULL)
-        return NULL;
+    if (sqlalchemy_engine_row == NULL) {
+        module = PyImport_ImportModule("sqlalchemy.engine.row");
+        if (module == NULL)
+            return NULL;
+        sqlalchemy_engine_row = module;
+    }
 
-    reconstructor = PyObject_GetAttrString(module, "rowproxy_reconstructor");
-    Py_DECREF(module);
+    reconstructor = PyObject_GetAttrString(sqlalchemy_engine_row, "rowproxy_reconstructor");
     if (reconstructor == NULL) {
         Py_DECREF(state);
         return NULL;
@@ -191,6 +197,33 @@ BaseRow_reduce(PyObject *self)
     }
 
     return Py_BuildValue("(N(NN))", reconstructor, cls, state);
+}
+
+static PyObject *
+BaseRow_filter_on_values(BaseRow *self, PyObject *filters)
+{
+    PyObject *module, *row_class, *new_obj;
+
+    if (sqlalchemy_engine_row == NULL) {
+        module = PyImport_ImportModule("sqlalchemy.engine.row");
+        if (module == NULL)
+            return NULL;
+        sqlalchemy_engine_row = module;
+    }
+
+    // TODO: do we want to get self.__class__ instead here?   I'm not sure
+    // how to use METH_VARARGS and then also get the BaseRow struct
+    // at the same time
+    row_class = PyObject_GetAttrString(sqlalchemy_engine_row, "Row");
+
+    new_obj = PyObject_CallFunction(row_class, "OOOO", self->parent, filters, self->keymap, self->row);
+    Py_DECREF(row_class);
+    if (new_obj == NULL) {
+        return NULL;
+    }
+
+    return new_obj;
+
 }
 
 static void
@@ -449,12 +482,14 @@ BaseRow_setparent(BaseRow *self, PyObject *value, void *closure)
         return -1;
     }
 
-    module = PyImport_ImportModule("sqlalchemy.engine.result");
-    if (module == NULL)
-        return -1;
+    if (sqlalchemy_engine_result == NULL) {
+        module = PyImport_ImportModule("sqlalchemy.engine.result");
+        if (module == NULL)
+            return -1;
+        sqlalchemy_engine_result = module;
+    }
 
-    cls = PyObject_GetAttrString(module, "ResultMetaData");
-    Py_DECREF(module);
+    cls = PyObject_GetAttrString(sqlalchemy_engine_result, "ResultMetaData");
     if (cls == NULL)
         return -1;
 
@@ -557,6 +592,9 @@ static PyMethodDef BaseRow_methods[] = {
     "implement mapping-like getitem as well as sequence getitem"},
     {"_get_by_key_impl_mapping", (PyCFunction)BaseRow_subscript_mapping, METH_O,
     "implement mapping-like getitem as well as sequence getitem"},
+    {"_filter_on_values", (PyCFunction)BaseRow_filter_on_values, METH_O,
+    "return a new Row with per-value filters applied to columns"},
+
     {NULL}  /* Sentinel */
 };
 
@@ -681,14 +719,18 @@ tuplegetter_traverse(tuplegetterobject *tg, visitproc visit, void *arg)
 static PyObject *
 tuplegetter_call(tuplegetterobject *tg, PyObject *args, PyObject *kw)
 {
-    PyObject *row, *result;
+    PyObject *row_or_tuple, *result;
     Py_ssize_t i, nitems=tg->nitems;
+    int has_row_method;
 
     assert(PyTuple_CheckExact(args));
 
-    // this is normally a BaseRow subclass but we are not doing
-    // strict checking at the moment
-    row = PyTuple_GET_ITEM(args, 0);
+    // this is a tuple, however if its a BaseRow subclass we want to
+    // call specific methods to bypass the pure python LegacyRow.__getitem__
+    // method for now
+    row_or_tuple = PyTuple_GET_ITEM(args, 0);
+
+    has_row_method = PyObject_HasAttrString(row_or_tuple, "_get_by_key_impl_mapping");
 
     assert(PyTuple_Check(tg->item));
     assert(PyTuple_GET_SIZE(tg->item) == nitems);
@@ -701,11 +743,13 @@ tuplegetter_call(tuplegetterobject *tg, PyObject *args, PyObject *kw)
         PyObject *item, *val;
         item = PyTuple_GET_ITEM(tg->item, i);
 
-        val = PyObject_CallMethod(row, "_get_by_key_impl_mapping", "O", item);
+        if (has_row_method) {
+            val = PyObject_CallMethod(row_or_tuple, "_get_by_key_impl_mapping", "O", item);
+        }
+        else {
+            val = PyObject_GetItem(row_or_tuple, item);
+        }
 
-        // generic itemgetter version; if BaseRow __getitem__ is implemented
-        // in C directly then we can use that
-        //val = PyObject_GetItem(row, item);
         if (val == NULL) {
             Py_DECREF(result);
             return NULL;
@@ -756,7 +800,7 @@ and returns them as a tuple.\n");
 
 static PyTypeObject tuplegetter_type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "sqlalchemy.engine.util..tuplegetter",  /* tp_name */
+    "sqlalchemy.engine.util.tuplegetter",  /* tp_name */
     sizeof(tuplegetterobject),           /* tp_basicsize */
     0,                                  /* tp_itemsize */
     /* methods */

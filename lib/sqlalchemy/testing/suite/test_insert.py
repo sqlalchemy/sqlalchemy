@@ -114,7 +114,13 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r._soft_closed
         assert not r.closed
         assert r.is_insert
-        assert not r.returns_rows
+
+        # new as of I8091919d45421e3f53029b8660427f844fee0228; for the moment
+        # an insert where the PK was taken from a row that the dialect
+        # selected, as is the case for mssql/pyodbc, will still report
+        # returns_rows as true because there's a cursor description.  in that
+        # case, the row had to have been consumed at least.
+        assert not r.returns_rows or r.fetchone() is None
 
     @requirements.returning
     def test_autoclose_on_insert_implicit_returning(self, connection):
@@ -124,7 +130,21 @@ class InsertBehaviorTest(fixtures.TablesTest):
         assert r._soft_closed
         assert not r.closed
         assert r.is_insert
-        assert not r.returns_rows
+
+        # note we are experimenting with having this be True
+        # as of I8091919d45421e3f53029b8660427f844fee0228 .
+        # implicit returning has fetched the row, but it still is a
+        # "returns rows"
+        assert r.returns_rows
+
+        # and we should be able to fetchone() on it, we just get no row
+        eq_(r.fetchone(), None)
+
+        # and the keys, etc.
+        eq_(r.keys(), ["id"])
+
+        # but the dialect took in the row already.   not really sure
+        # what the best behavior is.
 
     @requirements.empty_inserts
     def test_empty_insert(self, connection):

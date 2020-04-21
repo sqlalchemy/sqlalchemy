@@ -8,6 +8,8 @@
 """SQLAlchemy ORM exceptions."""
 from .. import exc as sa_exc
 from .. import util
+from ..exc import MultipleResultsFound  # noqa
+from ..exc import NoResultFound  # noqa
 
 
 NO_STATE = (AttributeError, KeyError)
@@ -144,14 +146,6 @@ class ObjectDeletedError(sa_exc.InvalidRequestError):
 
 class UnmappedColumnError(sa_exc.InvalidRequestError):
     """Mapping operation was requested on an unknown column."""
-
-
-class NoResultFound(sa_exc.InvalidRequestError):
-    """A database result was required but none was found."""
-
-
-class MultipleResultsFound(sa_exc.InvalidRequestError):
-    """A single database result was required but more than one were found."""
 
 
 class LoaderStrategyException(sa_exc.InvalidRequestError):

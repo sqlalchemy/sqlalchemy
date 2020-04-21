@@ -704,9 +704,9 @@ from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
 from ... import util
+from ...engine import cursor as _cursor
 from ...engine import default
 from ...engine import reflection
-from ...engine import result as _result
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
@@ -1525,7 +1525,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         elif (
             self.isinsert or self.isupdate or self.isdelete
         ) and self.compiled.returning:
-            fbcr = _result.FullyBufferedCursorFetchStrategy
+            fbcr = _cursor.FullyBufferedCursorFetchStrategy
             self._result_strategy = fbcr.create_from_buffer(
                 self.cursor, self.cursor.description, self.cursor.fetchall()
             )

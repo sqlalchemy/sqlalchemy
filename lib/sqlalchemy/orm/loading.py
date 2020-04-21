@@ -141,7 +141,7 @@ def merge_result(query, iterator, load=True):
             result = []
             keys = [ent._label_name for ent in query._entities]
             keyed_tuple = result_tuple(
-                keys, [ent.entities for ent in query._entities]
+                keys, [tuple(ent.entities) for ent in query._entities]
             )
             for row in iterator:
                 newrow = list(row)
@@ -528,7 +528,7 @@ def _instance_processor(
 
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
-        tuple_getter = result._tuple_getter(pk_cols, True)
+        tuple_getter = result._tuple_getter(pk_cols)
 
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset

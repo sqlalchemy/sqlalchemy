@@ -1355,6 +1355,71 @@ class CycleTest(_fixtures.FixtureTest):
 
         go()
 
+    def test_result_fetchone(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        s = Session()
+
+        stmt = s.query(User).join(User.addresses).statement
+
+        @assert_cycles()
+        def go():
+            result = s.execute(stmt)
+            while True:
+                row = result.fetchone()
+                if row is None:
+                    break
+
+        go()
+
+    def test_result_fetchall(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        s = Session()
+
+        stmt = s.query(User).join(User.addresses).statement
+
+        @assert_cycles()
+        def go():
+            result = s.execute(stmt)
+            rows = result.fetchall()  # noqa
+
+        go()
+
+    def test_result_fetchmany(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        s = Session()
+
+        stmt = s.query(User).join(User.addresses).statement
+
+        @assert_cycles()
+        def go():
+            result = s.execute(stmt)
+            for partition in result.partitions(3):
+                pass
+
+        go()
+
+    def test_result_fetchmany_unique(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        s = Session()
+
+        stmt = s.query(User).join(User.addresses).statement
+
+        @assert_cycles()
+        def go():
+            result = s.execute(stmt)
+            for partition in result.unique().partitions(3):
+                pass
+
+        go()
+
     def test_core_select(self):
         User, Address = self.classes("User", "Address")
         configure_mappers()
