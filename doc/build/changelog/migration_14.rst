@@ -1034,6 +1034,56 @@ these operations were already operating in an on-demand fashion.
 
 :ticket:`5074`
 
+.. _change_5237_14:
+
+Viewonly relationships don't synchronize backrefs
+-------------------------------------------------
+
+In :ticket:`5149` in 1.3.14, SQLAlchemy began emitting a warning when the
+:paramref:`_orm.relationship.backref` or :paramref:`_orm.relationship.back_populates`
+keywords would be used at the same time as the :paramref:`_orm.relationship.viewonly`
+flag on the target relationship.  This was because a "viewonly" relationship does
+not actually persist changes made to it, which could cause some misleading
+behaviors to occur.  However, in :ticket:`5237`, we sought to refine this
+behavior as there are legitimate use cases to have backrefs set up on
+viewonly relationships, including that back populates attributes are used
+in some cases by the relationship lazy loaders to determine that an additional
+eager load in the other direction is not necessary, as well as that back
+populates can be used for mapper introspection and that :func:`_orm.backref`
+can be a convenient way to set up bi-directional relationships.
+
+The solution then was to make the "mutation" that occurs from a backref
+an optional thing, using the :paramref:`_orm.relationship.sync_backref`
+flag.  In 1.4 the value of :paramref:`_orm.relationship.sync_backref` defaults
+to False for a relationship target that also sets :paramref:`_orm.relationship.viewonly`.
+This indicates that any changes made to a relationship with
+viewonly will not impact the state of the other side or of the :class:`_orm.Session`
+in any way::
+
+
+    class User(Base):
+        # ...
+
+        addresses = relationship(Address, backref=backref("user", viewonly=True))
+
+    class Address(Base):
+        # ...
+
+
+    u1 = session.query(User).filter_by(name="x").first()
+
+    a1 = Address()
+    a1.user = u1
+
+Above, the ``a1`` object will **not** be added to the ``u1.addresses``
+collection, nor will the ``a1`` object be added to the session.  Previously,
+both of these things would be true.   The warning that
+:paramref:`.relationship.sync_backref` should be set to ``False`` when
+:paramref:`.relationship.viewonly` is ``False`` is no longer emitted as this is
+now the default behavior.
+
+:ticket:`5237`
+
 .. _change_1763:
 
 Eager loaders emit during unexpire operations

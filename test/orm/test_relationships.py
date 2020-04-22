@@ -2844,25 +2844,20 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         )
         mapper(B, self.tables.t2)
 
-        with testing.expect_warnings(
-            "Setting backref / back_populates on relationship B.a to refer "
-            "to viewonly relationship A.bs should include sync_backref=False "
-            "set on the B.a relationship."
-        ):
-            configure_mappers()
+        configure_mappers()
 
         a1 = A()
         b1 = B()
         a1.bs.append(b1)
-        assert b1.a is a1
+        assert b1.a is None
         assert not inspect(a1).attrs.bs.history.has_changes()
-        assert inspect(b1).attrs.a.history.has_changes()
+        assert not inspect(b1).attrs.a.history.has_changes()
 
-        sess = self._assert_fk(a1, b1, True)
+        sess = self._assert_fk(a1, b1, False)
 
         a1.bs.remove(b1)
         assert a1 not in sess.dirty
-        assert b1 in sess.dirty
+        assert b1 not in sess.dirty
 
     def test_m2o_viewonly_oneside(self):
         class A(fixtures.ComparableEntity):
@@ -2882,24 +2877,19 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         )
         mapper(B, self.tables.t2)
 
-        with testing.expect_warnings(
-            "Setting backref / back_populates on relationship A.bs to refer "
-            "to viewonly relationship B.a should include sync_backref=False "
-            "set on the A.bs relationship."
-        ):
-            configure_mappers()
+        configure_mappers()
 
         a1 = A()
         b1 = B()
         b1.a = a1
-        assert b1 in a1.bs
-        assert inspect(a1).attrs.bs.history.has_changes()
+        assert b1 not in a1.bs
+        assert not inspect(a1).attrs.bs.history.has_changes()
         assert not inspect(b1).attrs.a.history.has_changes()
 
-        sess = self._assert_fk(a1, b1, True)
+        sess = self._assert_fk(a1, b1, False)
 
-        a1.bs.remove(b1)
-        assert a1 in sess.dirty
+        b1.a = None
+        assert a1 not in sess.dirty
         assert b1 not in sess.dirty
 
     def test_o2m_viewonly_only(self):
@@ -2989,12 +2979,7 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
         )
         mapper(B, t2)
 
-        with testing.expect_warnings(
-            "Setting backref / back_populates on relationship A.bs to refer "
-            "to viewonly relationship B.as_ should include sync_backref=False "
-            "set on the A.bs relationship."
-        ):
-            configure_mappers()
+        configure_mappers()
 
         sess = create_session()
         a1 = A()
@@ -3004,8 +2989,8 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
 
         sess.add(a1)
         sess.flush()
-        eq_(sess.query(A).first(), A(bs=[B(id=b1.id)]))
-        eq_(sess.query(B).first(), B(as_=[A(id=a1.id)]))
+        eq_(sess.query(A).first(), A(bs=[]))
+        eq_(sess.query(B).first(), None)
 
 
 class ViewOnlyOverlappingNames(fixtures.MappedTest):
@@ -3127,14 +3112,12 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             Ba_err=False,
             Abs_err=False,
             map_err=False,
-            ctor_warn=False,
             Ba_evt=False,
             Abs_evt=False,
         ):
             self.B_a_init_error = Ba_err
             self.A_bs_init_error = Abs_err
             self.map_error = map_err
-            self.ctor_warn = ctor_warn
             self.B_a_event = Ba_evt
             self.A_bs_event = Abs_evt
 
@@ -3160,24 +3143,24 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
         (1, 1, 1, 1): Case(Abs_err=1),
         (0, None, 0, 0): Case(Ba_evt=1),
         (0, None, 0, 1): Case(Ba_evt=1, Abs_evt=1),
-        (0, None, 1, 0): Case(ctor_warn="BA", Ba_evt=1),
+        (0, None, 1, 0): Case(),
         (0, None, 1, 1): Case(Abs_err=1),
-        (1, None, 0, 0): Case(Ba_evt=1),
+        (1, None, 0, 0): Case(),
         (1, None, 0, 1): Case(map_err="AB"),
-        (1, None, 1, 0): Case(ctor_warn="BA", Ba_evt=1),
+        (1, None, 1, 0): Case(),
         (1, None, 1, 1): Case(Abs_err=1),
         (0, 0, 0, None): Case(Abs_evt=1),
-        (0, 0, 1, None): Case(Abs_evt=1),
+        (0, 0, 1, None): Case(),
         (0, 1, 0, None): Case(Ba_evt=1, Abs_evt=1),
         (0, 1, 1, None): Case(map_err="BA"),
-        (1, 0, 0, None): Case(ctor_warn="AB", Abs_evt=1),
-        (1, 0, 1, None): Case(ctor_warn="AB", Abs_evt=1),
+        (1, 0, 0, None): Case(),
+        (1, 0, 1, None): Case(),
         (1, 1, 0, None): Case(Ba_err=1),
         (1, 1, 1, None): Case(Ba_err=1),
         (0, None, 0, None): Case(Ba_evt=1, Abs_evt=1),
-        (0, None, 1, None): Case(ctor_warn="BA", Abs_evt=1, Ba_evt=1),
-        (1, None, 0, None): Case(ctor_warn="AB", Abs_evt=1, Ba_evt=1),
-        (1, None, 1, None): Case(ctor_warn="*", Abs_evt=1, Ba_evt=1),
+        (0, None, 1, None): Case(),
+        (1, None, 0, None): Case(),
+        (1, None, 1, None): Case(),
     }
 
     @testing.combinations(True, False, None, argnames="A_bs_sync")
@@ -3244,28 +3227,13 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             )
             return
 
-        if case.ctor_warn:
-            warns = []
-            msg = (
-                "Setting backref / back_populates on relationship %s "
-                "to refer to viewonly relationship %s"
-            )
-            if case.ctor_warn in ("AB", "*"):
-                warns.append(msg % ("A.bs", "B.a"))
-            if case.ctor_warn in ("BA", "*"):
-                warns.append(msg % ("B.a", "A.bs"))
-            with testing.expect_warnings(*warns):
-                configure_mappers()
-        else:
-            configure_mappers()
+        configure_mappers()
 
         a1 = A()
         b1 = B()
         b1.a = a1
         assert (b1 in a1.bs) == case.B_a_event
-        assert inspect(a1).attrs.bs.history.has_changes() == (
-            case.B_a_event and not A_bs_view
-        )
+        assert inspect(a1).attrs.bs.history.has_changes() == case.B_a_event
         assert inspect(b1).attrs.a.history.has_changes() == (not B_a_view)
 
         a2 = A()
@@ -3273,9 +3241,7 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
         a2.bs.append(b2)
         assert (b2.a == a2) == case.A_bs_event
         assert inspect(a2).attrs.bs.history.has_changes() == (not A_bs_view)
-        assert inspect(b2).attrs.a.history.has_changes() == (
-            case.A_bs_event and not B_a_view
-        )
+        assert inspect(b2).attrs.a.history.has_changes() == case.A_bs_event
 
 
 class ViewOnlyUniqueNames(fixtures.MappedTest):
