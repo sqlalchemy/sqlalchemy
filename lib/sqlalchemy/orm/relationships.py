@@ -153,6 +153,7 @@ class RelationshipProperty(StrategizedProperty):
         query_class=None,
         info=None,
         omit_join=None,
+        sync_backref=None,
     ):
         """Provide a relationship between two mapped classes.
 
@@ -903,32 +904,55 @@ class RelationshipProperty(StrategizedProperty):
               :paramref:`_orm.relationship.uselist` flag is needed.
 
         :param viewonly=False:
-          When set to True, the relationship is used only for loading objects,
-          and not for any persistence operation.  A :func:`_orm.relationship`
-          which specifies :paramref:`_orm.relationship.viewonly` can work
+          When set to ``True``, the relationship is used only for loading
+          objects, and not for any persistence operation.  A
+          :func:`_orm.relationship` which specifies
+          :paramref:`_orm.relationship.viewonly` can work
           with a wider range of SQL operations within the
           :paramref:`_orm.relationship.primaryjoin` condition, including
           operations that feature the use of a variety of comparison operators
           as well as SQL functions such as :func:`_expression.cast`.  The
           :paramref:`_orm.relationship.viewonly`
-          flag is also of general use when
-          defining any kind of :func:`_orm.relationship`
-          that doesn't represent
+          flag is also of general use when defining any kind of
+          :func:`_orm.relationship` that doesn't represent
           the full set of related objects, to prevent modifications of the
           collection from resulting in persistence operations.
 
-          .. warning:: The viewonly=True relationship should not be mutated
-             in Python; that means, elements should not be added or removed
-             from collections nor should a many-to-one or one-to-one attribute
-             be altered in Python.  The viewonly=True relationship should only
-             be accessed via read.   Towards this behavior, it is also not
-             appropriate for the viewonly=True relationship to have any kind
-             of persistence cascade settings, nor should it be the target of
-             either :paramref:`_orm.relationship.backref` or
-             :paramref:`_orm.relationship.back_populates`, as backrefs imply
-             in-Python mutation of the attribute.  SQLAlchemy may emit
-             warnings for some or all of these conditions as of the 1.3 and
-             1.4 series of SQLAlchemy and will eventually be disallowed.
+          When using the :paramref:`_orm.relationship.viewonly` flag in
+          conjunction with backrefs, the
+          :paramref:`_orm.relationship.sync_backref` should be set to False;
+          this indicates that the backref should not actually populate this
+          relationship with data when changes occur on the other side; as this
+          is a viewonly relationship, it cannot accommodate changes in state
+          correctly as these will not be persisted.
+
+          .. versionadded:: 1.3.17 - the
+             :paramref:`_orm.relationship.sync_backref`
+             flag set to False is required when using viewonly in conjunction
+             with backrefs. A warning is emitted when this flag is not set.
+
+          .. seealso::
+
+            :paramref:`_orm.relationship.sync_backref`
+
+        :param sync_backref:
+          A boolean that enables the events used to synchronize the in-Python
+          attributes when this relationship is target of either
+          :paramref:`_orm.relationship.backref` or
+          :paramref:`_orm.relationship.back_populates`.
+
+          Defaults to ``None``, which indicates that an automatic value should
+          be selected based on the value of the
+          :paramref:`_orm.relationship.viewonly` flag.  When left at its
+          default, changes in state for writable relationships will be
+          back-populated normally.  For viewonly relationships, a warning is
+          emitted unless the flag is set to ``False``.
+
+          .. versionadded:: 1.3.17
+
+          .. seealso::
+
+            :paramref:`_orm.relationship.viewonly`
 
         :param omit_join:
           Allows manual control over the "selectin" automatic join
@@ -966,6 +990,11 @@ class RelationshipProperty(StrategizedProperty):
                 active_history=active_history,
                 cascade_backrefs=cascade_backrefs,
             )
+        if viewonly and sync_backref:
+            raise sa_exc.ArgumentError(
+                "sync_backref and viewonly cannot both be True"
+            )
+        self.sync_backref = sync_backref
         self.lazy = lazy
         self.single_parent = single_parent
         self._user_defined_foreign_keys = foreign_keys
@@ -1961,16 +1990,37 @@ class RelationshipProperty(StrategizedProperty):
 
             yield c, instance_mapper, instance_state, instance_dict
 
-    def _add_reverse_property(self, key):
-        other = self.mapper.get_property(key, _configure_mappers=False)
-        if other.viewonly:
+    @property
+    def _effective_sync_backref(self):
+        return self.sync_backref is not False
+
+    @staticmethod
+    def _check_sync_backref(rel_a, rel_b):
+        if rel_a.viewonly and rel_b.sync_backref:
+            raise sa_exc.InvalidRequestError(
+                "Relationship %s cannot specify sync_backref=True since %s "
+                "includes viewonly=True." % (rel_b, rel_a)
+            )
+        if rel_a.viewonly and rel_b.sync_backref is not False:
             util.warn_limited(
                 "Setting backref / back_populates on relationship %s to refer "
-                "to viewonly relationship %s will be deprecated in SQLAlchemy "
-                "1.4, and will be disallowed in a future release.  "
-                "viewonly relationships should not be mutated",
-                (self, other),
+                "to viewonly relationship %s should include "
+                "sync_backref=False set on the %s relationship. ",
+                (rel_b, rel_a, rel_b),
             )
+
+    def _add_reverse_property(self, key):
+        other = self.mapper.get_property(key, _configure_mappers=False)
+        # viewonly and sync_backref cases
+        # 1. self.viewonly==True and other.sync_backref==True -> error
+        # 2. self.viewonly==True and other.viewonly==False and
+        #    other.sync_backref==None -> warn sync_backref=False, set to False
+        self._check_sync_backref(self, other)
+        # 3. other.viewonly==True and self.sync_backref==True -> error
+        # 4. other.viewonly==True and self.viewonly==False and
+        #    self.sync_backref==None -> warn sync_backref=False, set to False
+        self._check_sync_backref(other, self)
+
         self._reverse_property.add(other)
         other._reverse_property.add(self)
 
@@ -2312,6 +2362,7 @@ class RelationshipProperty(StrategizedProperty):
             kwargs.setdefault("viewonly", self.viewonly)
             kwargs.setdefault("post_update", self.post_update)
             kwargs.setdefault("passive_updates", self.passive_updates)
+            kwargs.setdefault("sync_backref", self.sync_backref)
             self.back_populates = backref_key
             relationship = RelationshipProperty(
                 parent,
