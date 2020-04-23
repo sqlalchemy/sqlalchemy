@@ -18,13 +18,13 @@ Please provide a [Minimal, Complete, and Verifiable](http://stackoverflow.com/he
 See also [Reporting Bugs](https://www.sqlalchemy.org/participate.html#bugs) on the website, and some [example issues](https://github.com/sqlalchemy/sqlalchemy/issues?q=label%3A%22great+mcve%22)
 
 ```py
-# insert code here
+# Insert code here
 ```
 
 **Error**
 
 ```
-# copy error here
+# Copy error here. Please include the full stack trace.
 ```
 
 **Versions.**
