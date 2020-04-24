@@ -1,0 +1,7 @@
+.. change::
+    :tags: change, firebird
+    :tickets: 5278
+
+    Adjusted dialect loading for ``firebird://`` URIs so the external
+    sqlalchemy-firebird dialect will be used if it has been installed,
+    otherwise fall back to the (now deprecated) internal Firebird dialect.
