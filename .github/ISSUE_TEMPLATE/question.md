@@ -2,7 +2,7 @@
 name: Question
 about: Question regarding SQLAchemy features
 title: ''
-labels: question
+labels: requires triage
 assignees: ''
 
 ---
