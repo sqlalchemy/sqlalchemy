@@ -12,6 +12,7 @@ import re
 import warnings
 
 from . import compat
+from .langhelpers import _hash_limit_string
 from .langhelpers import decorator
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
@@ -20,6 +21,16 @@ from .. import exc
 
 def warn_deprecated(msg, stacklevel=3):
     warnings.warn(msg, exc.SADeprecationWarning, stacklevel=stacklevel)
+
+
+def warn_deprecated_limited(msg, args, stacklevel=3):
+    """Issue a deprecation warning with a parameterized string,
+    limiting the number of registrations.
+
+    """
+    if args:
+        msg = _hash_limit_string(msg, 10, args)
+    warnings.warn(msg, exc.SADeprecationWarning, stacklevel)
 
 
 def warn_pending_deprecation(msg, stacklevel=3):
