@@ -1580,23 +1580,20 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
             def set_cache_key(self, key):
                 self._cache_key = key
 
-            def __iter__(self):
-                super_ = super(CachingQuery, self)
-
-                if hasattr(self, "_cache_key"):
-                    return self.get_value(
-                        createfunc=lambda: list(super_.__iter__())
-                    )
-                else:
-                    return super_.__iter__()
+            # in 1.4 / If1a23824ffb77d8d58cf2338cf35dd6b5963b17f ,
+            # we no longer override ``__iter__`` because we need the
+            # whole result object.  The FrozenResult is added for this
+            # use case.   A new session-level event will be added within
+            # the scope of ORM /execute() integration so that people
+            # don't have to subclass this anymore.
 
             def _execute_and_instances(self, context):
                 super_ = super(CachingQuery, self)
 
-                if context.query is not self and hasattr(self, "_cache_key"):
+                if hasattr(self, "_cache_key"):
                     return self.get_value(
-                        createfunc=lambda: list(
-                            super_._execute_and_instances(context)
+                        createfunc=lambda: super_._execute_and_instances(
+                            context
                         )
                     )
                 else:
@@ -1604,10 +1601,12 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
 
             def get_value(self, createfunc):
                 if self._cache_key in self.cache:
-                    return iter(self.cache[self._cache_key])
+                    return self.cache[self._cache_key]()
                 else:
-                    self.cache[self._cache_key] = retval = createfunc()
-                    return iter(retval)
+                    self.cache[
+                        self._cache_key
+                    ] = retval = createfunc().freeze()
+                    return retval()
 
         return Session(query_cls=CachingQuery)
 
@@ -1638,7 +1637,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
 
         eq_(q.all(), [User(id=7, addresses=[Address(id=1)])])
 
-        eq_(q.cache, {"user7": [User(id=7, addresses=[Address(id=1)])]})
+        eq_(list(q.cache), ["user7"])
 
         eq_(q.all(), [User(id=7, addresses=[Address(id=1)])])
 
@@ -1655,7 +1654,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
 
         eq_(base_bq(sess).all(), [User(id=7, addresses=[Address(id=1)])])
 
-        eq_(q.cache, {"user7": [User(id=7, addresses=[Address(id=1)])]})
+        eq_(list(q.cache), ["user7"])
 
         eq_(base_bq(sess).all(), [User(id=7, addresses=[Address(id=1)])])
 
@@ -1672,7 +1671,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         u = q.first()
         eq_(u.addresses, [Address(id=1)])
 
-        eq_(q.cache, {"user7_addresses": [Address(id=1)]})
+        eq_(list(q.cache), ["user7_addresses"])
 
         sess.close()
 
@@ -1681,4 +1680,5 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
 
         u = q.first()
         eq_(u.addresses, [Address(id=1)])
-        eq_(q.cache, {"user7_addresses": [Address(id=1)]})
+
+        eq_(list(q.cache), ["user7_addresses"])

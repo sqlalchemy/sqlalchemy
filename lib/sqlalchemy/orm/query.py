@@ -728,15 +728,6 @@ class Query(Generative):
         """
         self._enable_eagerloads = value
 
-    def _no_yield_per(self, message):
-        raise sa_exc.InvalidRequestError(
-            "The yield_per Query option is currently not "
-            "compatible with %s eager loading.  Please "
-            "specify lazyload('*') or query.enable_eagerloads(False) in "
-            "order to "
-            "proceed with query.yield_per()." % message
-        )
-
     @_generative
     def with_labels(self):
         """Apply column labels to the return value of Query.statement.
@@ -3238,7 +3229,7 @@ class Query(Generative):
 
                 :ref:`faq_query_deduplicating`
         """
-        return list(self)
+        return self._iter().all()
 
     @_generative
     @_assertions(_no_clauseelement_condition)
@@ -3283,14 +3274,11 @@ class Query(Generative):
             :meth:`_query.Query.one_or_none`
 
         """
+        # replicates limit(1) behavior
         if self._statement is not None:
-            ret = list(self)[0:1]
+            return self._iter().first()
         else:
-            ret = list(self[0:1])
-        if len(ret) > 0:
-            return ret[0]
-        else:
-            return None
+            return self.limit(1)._iter().first()
 
     def one_or_none(self):
         """Return at most one result or raise an exception.
@@ -3316,17 +3304,7 @@ class Query(Generative):
             :meth:`_query.Query.one`
 
         """
-        ret = list(self)
-
-        l = len(ret)
-        if l == 1:
-            return ret[0]
-        elif l == 0:
-            return None
-        else:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one_or_none()"
-            )
+        return self._iter().one_or_none()
 
     def one(self):
         """Return exactly one result or raise an exception.
@@ -3346,19 +3324,7 @@ class Query(Generative):
             :meth:`_query.Query.one_or_none`
 
         """
-        try:
-            ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound as err:
-            util.raise_(
-                orm_exc.MultipleResultsFound(
-                    "Multiple rows were found for one()"
-                ),
-                replace_context=err,
-            )
-        else:
-            if ret is None:
-                raise orm_exc.NoResultFound("No row was found for one()")
-            return ret
+        return self._iter().one()
 
     def scalar(self):
         """Return the first element of the first result or None
@@ -3379,6 +3345,7 @@ class Query(Generative):
         This results in an execution of the underlying query.
 
         """
+        # TODO: not sure why we can't use result.scalar() here
         try:
             ret = self.one()
             if not isinstance(ret, collections_abc.Sequence):
@@ -3388,6 +3355,24 @@ class Query(Generative):
             return None
 
     def __iter__(self):
+        return self._iter().__iter__()
+
+    # TODO: having _iter(), _execute_and_instances, _connection_from_session,
+    # etc., is all too much.
+
+    # new recipes / extensions should be based on an event hook of some kind,
+    # can allow an execution that would return a Result to take in all the
+    # information and return a different Result.  this has to be at
+    # the session / connection .execute() level, and can perhaps be
+    # before_execute() but needs to be focused around rewriting of results.
+
+    # the dialect do_execute() *may* be this but that seems a bit too low
+    # level.    it may need to be ORM session based and be a session event,
+    # becasue it might not invoke the cursor, might invoke for multiple
+    # connections, etc.   OK really has to be a session level event in this
+    # case to support horizontal sharding.
+
+    def _iter(self):
         context = self._compile_context()
         context.statement.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
         if self._autoflush:
@@ -4795,6 +4780,9 @@ class QueryContext(object):
         "post_load_paths",
         "identity_token",
         "single_inh_entities",
+        "is_single_entity",
+        "loaders_require_uniquing",
+        "loaders_require_buffering",
     )
 
     def __init__(self, query):
@@ -4815,6 +4803,8 @@ class QueryContext(object):
             self.whereclause = query._criterion
             self.order_by = query._order_by
 
+        self.is_single_entity = query.is_single_entity
+        self.loaders_require_buffering = self.loaders_require_uniquing = False
         self.multi_row_eager_loaders = False
         self.adapter = None
         self.froms = ()

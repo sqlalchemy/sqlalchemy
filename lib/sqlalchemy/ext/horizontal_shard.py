@@ -15,11 +15,12 @@ the source distribution.
 
 """
 
+import copy
+
 from .. import inspect
 from .. import util
 from ..orm.query import Query
 from ..orm.session import Session
-
 
 __all__ = ["ShardedSession", "ShardedQuery"]
 
@@ -44,11 +45,18 @@ class ShardedQuery(Query):
 
     def _execute_and_instances(self, context):
         def iter_for_shard(shard_id):
-            context.attributes["shard_id"] = context.identity_token = shard_id
-            result = self._connection_from_session(
+            # shallow copy, so that each context may be used by
+            # ORM load events and similar.
+            copied_context = copy.copy(context)
+            copied_context.attributes = context.attributes.copy()
+
+            copied_context.attributes[
+                "shard_id"
+            ] = copied_context.identity_token = shard_id
+            result_ = self._connection_from_session(
                 mapper=self._bind_mapper(), shard_id=shard_id
-            ).execute(context.statement, self._params)
-            return self.instances(result, context)
+            ).execute(copied_context.statement, self._params)
+            return self.instances(result_, copied_context)
 
         if context.identity_token is not None:
             return iter_for_shard(context.identity_token)
@@ -57,11 +65,10 @@ class ShardedQuery(Query):
         else:
             partial = []
             for shard_id in self.query_chooser(self):
-                partial.extend(iter_for_shard(shard_id))
+                result_ = iter_for_shard(shard_id)
+                partial.append(result_)
 
-            # if some kind of in memory 'sorting'
-            # were done, this is where it would happen
-            return iter(partial)
+            return partial[0].merge(*partial[1:])
 
     def _execute_crud(self, stmt, mapper):
         def exec_for_shard(shard_id):

@@ -312,6 +312,15 @@ class ShardTest(object):
         eq_(t.city, tokyo.city)
 
     def test_shard_id_event(self):
+        # this test is kind of important, it's testing that
+        # when the load event is emitted for an ORM result,
+        # the context is set up in the state that is expected.
+        # prior to 1.4, we were changing a single context in place,
+        # as we would join result sets by fully evaluating and concatenating.
+        # in 1.4 onwards we return a Result that has not run for each
+        # individual result yet, so each one has its own context that
+        # is a shallow copy from the original.
+
         canary = []
 
         def load(instance, ctx):

@@ -425,9 +425,12 @@ class Result(object):
         return str(self._as_query())
 
     def __iter__(self):
+        return iter(self._iter())
+
+    def _iter(self):
         bq = self.bq
         if not self.session.enable_baked_queries or bq._spoiled:
-            return iter(self._as_query())
+            return self._as_query()._iter()
 
         baked_context = bq._bakery.get(bq._effective_key(self.session), None)
         if baked_context is None:
@@ -548,7 +551,7 @@ class Result(object):
         Equivalent to :meth:`_query.Query.all`.
 
         """
-        return list(self)
+        return self._iter().all()
 
     def get(self, ident):
         """Retrieve an object based on identity.

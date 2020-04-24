@@ -1070,8 +1070,8 @@ class SubqueryLoader(PostLoader):
 
         if not context.query._enable_eagerloads or context.refresh_state:
             return
-        elif context.query._yield_per:
-            context.query._no_yield_per("subquery")
+
+        context.loaders_require_buffering = True
 
         path = path[self.parent_property]
 
@@ -1536,8 +1536,8 @@ class JoinedLoader(AbstractRelationshipLoader):
 
         if not context.query._enable_eagerloads:
             return
-        elif context.query._yield_per and self.uselist:
-            context.query._no_yield_per("joined collection")
+        elif self.uselist:
+            context.loaders_require_uniquing = True
 
         path = path[self.parent_property]
 

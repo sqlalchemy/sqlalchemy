@@ -45,45 +45,21 @@ class CachingQuery(Query):
         self.cache_regions = regions
         Query.__init__(self, *args, **kw)
 
-    def __iter__(self):
-        """override __iter__ to pull results from dogpile
-           if particular attributes have been configured.
+    # NOTE: as of 1.4 don't override __iter__() anymore, the result object
+    # cannot be cached at that level.
 
-           Note that this approach does *not* detach the loaded objects from
-           the current session. If the cache backend is an in-process cache
-           (like "memory") and lives beyond the scope of the current session's
-           transaction, those objects may be expired. The method here can be
-           modified to first expunge() each loaded item from the current
-           session before returning the list of items, so that the items
-           in the cache are not the same ones in the current Session.
-
+    def _execute_and_instances(self, context):
+        """override _execute_and_instances to pull results from dogpile.
         """
         super_ = super(CachingQuery, self)
 
         if hasattr(self, "_cache_region"):
-            return self.get_value(createfunc=lambda: list(super_.__iter__()))
-        else:
-            return super_.__iter__()
-
-    def _execute_and_instances(self, context):
-        """override _execute_and_instances to pull results from dogpile
-            if the query is invoked directly from an external context.
-
-           This method is necessary in order to maintain compatibility
-           with the "baked query" system now used by default in some
-           relationship loader scenarios.   Note also the
-           RelationshipCache._generate_cache_key method which enables
-           the baked query to be used within lazy loads.
-
-           .. versionadded:: 1.2.7
-        """
-        super_ = super(CachingQuery, self)
-
-        if context.query is not self and hasattr(self, "_cache_region"):
             # special logic called when the Query._execute_and_instances()
             # method is called directly from the baked query
             return self.get_value(
-                createfunc=lambda: list(super_._execute_and_instances(context))
+                createfunc=lambda: super_._execute_and_instances(
+                    context
+                ).freeze()
             )
         else:
             return super_._execute_and_instances(context)
@@ -139,9 +115,14 @@ class CachingQuery(Query):
             )
         if cached_value is NO_VALUE:
             raise KeyError(cache_key)
+
+        # in 1.4 the cached value is a FrozenResult.   merge_result
+        # accommodates this directly and updates the ORM entities inside
+        # the object to be merged.
+        # TODO: should this broken into merge_frozen_result / merge_iterator?
         if merge:
             cached_value = self.merge_result(cached_value, load=False)
-        return cached_value
+        return cached_value()
 
     def set_value(self, value):
         """Set the value in the cache for this query."""

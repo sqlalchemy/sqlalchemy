@@ -4352,8 +4352,8 @@ class YieldTest(_fixtures.FixtureTest):
         q = sess.query(User).options(joinedload("addresses")).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "The yield_per Query option is currently not compatible with "
-            "joined collection eager loading.  Please specify ",
+            "Can't use yield_per with eager loaders that require "
+            "uniquing or row buffering",
             q.all,
         )
 
@@ -4365,8 +4365,8 @@ class YieldTest(_fixtures.FixtureTest):
         q = sess.query(User).options(subqueryload("addresses")).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "The yield_per Query option is currently not compatible with "
-            "subquery eager loading.  Please specify ",
+            "Can't use yield_per with eager loaders that require "
+            "uniquing or row buffering",
             q.all,
         )
 
@@ -4378,8 +4378,8 @@ class YieldTest(_fixtures.FixtureTest):
         q = sess.query(User).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
-            "The yield_per Query option is currently not compatible with "
-            "subquery eager loading.  Please specify ",
+            "Can't use yield_per with eager loaders that require "
+            "uniquing or row buffering",
             q.all,
         )
 
@@ -5706,7 +5706,7 @@ class ImmediateTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.orm.exc.NoResultFound,
-            r"No row was found for one\(\)",
+            r"No row was found when one was required",
             sess.query(User).filter(User.id == 99).one,
         )
 
@@ -5714,7 +5714,7 @@ class ImmediateTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.orm.exc.MultipleResultsFound,
-            r"Multiple rows were found for one\(\)",
+            r"Multiple rows were found when exactly one",
             sess.query(User).one,
         )
 
@@ -5792,7 +5792,7 @@ class ImmediateTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.orm.exc.MultipleResultsFound,
-            r"Multiple rows were found for one_or_none\(\)",
+            r"Multiple rows were found when one or none was required",
             sess.query(User).one_or_none,
         )
 
