@@ -30,7 +30,7 @@ class Connection(_LegacyConnection):
 
     * The result object returned for results is the :class:`_future.Result`
       object.  This object has a slightly different API and behavior than the
-      prior :class:`_engine.ResultProxy` object.
+      prior :class:`_engine.CursorResult` object.
 
     * The object has :meth:`_future.Connection.commit` and
       :meth:`_future.Connection.rollback` methods which commit or roll back

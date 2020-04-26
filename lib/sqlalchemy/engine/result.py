@@ -585,9 +585,15 @@ class Result(InPlaceGenerative):
         """Return a callable object that will produce copies of this
         :class:`.Result` when invoked.
 
+        The callable object returned is an instance of
+        :class:`_engine.FrozenResult`.
+
         This is used for result set caching.  The method must be called
         on the result when it has been unconsumed, and calling the method
-        will consume the result fully.
+        will consume the result fully.   When the :class:`_engine.FrozenResult`
+        is retrieved from a cache, it can be called any number of times where
+        it will produce a new :class:`_engine.Result` object each time
+        against its stored set of rows.
 
         """
         return FrozenResult(self)
@@ -596,7 +602,7 @@ class Result(InPlaceGenerative):
         """Merge this :class:`.Result` with other compatible result
         objects.
 
-        The object returned is an instance of :class:`.MergedResult`,
+        The object returned is an instance of :class:`_engine.MergedResult`,
         which will be composed of iterators from the given result
         objects.
 
@@ -1009,6 +1015,30 @@ class Result(InPlaceGenerative):
 
 
 class FrozenResult(object):
+    """Represents a :class:`.Result` object in a "frozen" state suitable
+    for caching.
+
+    The :class:`_engine.FrozenResult` object is returned from the
+    :meth:`_engine.Result.freeze` method of any :class:`_engine.Result`
+    object.
+
+    A new iterable :class:`.Result` object is generatged from a fixed
+    set of data each time the :class:`.FrozenResult` is invoked as
+    a callable::
+
+
+        result = connection.execute(query)
+
+        frozen = result.freeze()
+
+        r1 = frozen()
+        r2 = frozen()
+        # ... etc
+
+    .. versionadded:: 1.4
+
+    """
+
     def __init__(self, result):
         self.metadata = result._metadata._for_freeze()
         self._post_creational_filter = result._post_creational_filter
@@ -1030,6 +1060,13 @@ class FrozenResult(object):
 
 
 class IteratorResult(Result):
+    """A :class:`.Result` that gets data from a Python iterator of
+    :class:`.Row` objects.
+
+    .. versionadded:: 1.4
+
+    """
+
     def __init__(self, cursor_metadata, iterator):
         self._metadata = cursor_metadata
         self.iterator = iterator
@@ -1061,6 +1098,20 @@ class IteratorResult(Result):
 
 
 class ChunkedIteratorResult(IteratorResult):
+    """An :class:`.IteratorResult` that works from an iterator-producing callable.
+
+    The given ``chunks`` argument is a function that is given a number of rows
+    to return in each chunk, or ``None`` for all rows.  The function should
+    then return an un-consumed iterator of lists, each list of the requested
+    size.
+
+    The function can be called at any time again, in which case it should
+    continue from the same result set but adjust the chunk size as given.
+
+    .. versionadded:: 1.4
+
+    """
+
     def __init__(self, cursor_metadata, chunks):
         self._metadata = cursor_metadata
         self.chunks = chunks
@@ -1074,6 +1125,15 @@ class ChunkedIteratorResult(IteratorResult):
 
 
 class MergedResult(IteratorResult):
+    """A :class:`_engine.Result` that is merged from any number of
+    :class:`_engine.Result` objects.
+
+    Returned by the :meth:`_engine.Result.merge` method.
+
+    .. versionadded:: 1.4
+
+    """
+
     closed = False
 
     def __init__(self, cursor_metadata, results):

@@ -159,7 +159,7 @@ def outparam(key, type_=None):
 
     The ``outparam`` can be used like a regular function parameter.
     The "output" value will be available from the
-    :class:`~sqlalchemy.engine.ResultProxy` object via its ``out_parameters``
+    :class:`~sqlalchemy.engine.CursorResult` object via its ``out_parameters``
     attribute, which returns a dictionary containing the values.
 
     """

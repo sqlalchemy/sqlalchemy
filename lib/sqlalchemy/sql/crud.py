@@ -40,7 +40,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
 
     Also generates the Compiled object's postfetch, prefetch, and
     returning column collections, used for default handling and ultimately
-    populating the ResultProxy's prefetch_cols() and postfetch_cols()
+    populating the CursorResult's prefetch_cols() and postfetch_cols()
     collections.
 
     """

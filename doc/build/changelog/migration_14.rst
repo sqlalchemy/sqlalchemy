@@ -354,15 +354,15 @@ is fully compatible with ``ResultProxy`` and includes many new features,
 that are now applied to both Core and ORM results equally, including methods
 such as:
 
-    :meth:`.Result.one`
+    :meth:`_engine.Result.one`
 
-    :meth:`.Result.one_or_none`
+    :meth:`_engine.Result.one_or_none`
 
-    :meth:`.Result.partitions`
+    :meth:`_engine.Result.partitions`
 
-    :meth:`.Result.columns`
+    :meth:`_engine.Result.columns`
 
-    :meth:`.Result.scalars`
+    :meth:`_engine.Result.scalars`
 
 When using Core, the object returned is an instance of :class:`.CursorResult`,
 which continues to feature the same API features as ``ResultProxy`` regarding

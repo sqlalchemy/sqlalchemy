@@ -424,7 +424,7 @@ on the target connection, a warning is emitted::
 
     >>> session = Session(eng)
     >>> session.execute("select 1")
-    <sqlalchemy.engine.result.ResultProxy object at 0x1017a6c50>
+    <sqlalchemy.engine.result.CursorResult object at 0x1017a6c50>
     >>> session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
     sqlalchemy/orm/session.py:310: SAWarning: Connection is already established
     for the given bind; execution_options ignored

@@ -977,7 +977,7 @@ class Connection(Connectable):
 
     def execute(self, object_, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a
-        :class:`_engine.ResultProxy`.
+        :class:`_engine.CursorResult`.
 
         :param object: The statement to be executed.  May be
          one of:
@@ -1319,7 +1319,7 @@ class Connection(Connectable):
         self, statement, parameters=None, execution_options=None
     ):
         r"""Executes a SQL statement construct and returns a
-        :class:`_engine.ResultProxy`.
+        :class:`_engine.CursorResult`.
 
         :param statement: The statement str to be executed.   Bound parameters
          must use the underlying DBAPI's paramstyle, such as "qmark",
@@ -1380,7 +1380,7 @@ class Connection(Connectable):
         *args
     ):
         """Create an :class:`.ExecutionContext` and execute, returning
-        a :class:`_engine.ResultProxy`."""
+        a :class:`_engine.CursorResult`."""
 
         if execution_options:
             dialect.set_exec_execution_options(self, execution_options)
@@ -1516,12 +1516,12 @@ class Connection(Connectable):
                 assert not self._is_future
                 assert not context._is_future_result
 
-                # ResultProxy already exhausted rows / has no rows.
+                # CursorResult already exhausted rows / has no rows.
                 # close us now
                 if result._soft_closed:
                     self.close()
                 else:
-                    # ResultProxy will close this Connection when no more
+                    # CursorResult will close this Connection when no more
                     # rows to fetch.
                     result._autoclose_connection = True
         except BaseException as e:
@@ -2350,10 +2350,10 @@ class Engine(Connectable, log.Identified):
         that the :class:`_engine.Connection` will be closed when the operation
         is complete.   When set to ``True``, it indicates the
         :class:`_engine.Connection` is in "single use" mode, where the
-        :class:`_engine.ResultProxy` returned by the first call to
+        :class:`_engine.CursorResult` returned by the first call to
         :meth:`_engine.Connection.execute` will close the
         :class:`_engine.Connection` when
-        that :class:`_engine.ResultProxy` has exhausted all result rows.
+        that :class:`_engine.CursorResult` has exhausted all result rows.
 
         .. seealso::
 
@@ -2465,16 +2465,16 @@ class Engine(Connectable, log.Identified):
     )
     def execute(self, statement, *multiparams, **params):
         """Executes the given construct and returns a
-        :class:`_engine.ResultProxy`.
+        :class:`_engine.CursorResult`.
 
         The arguments are the same as those used by
         :meth:`_engine.Connection.execute`.
 
         Here, a :class:`_engine.Connection` is acquired using the
         :meth:`_engine.Engine.connect` method, and the statement executed
-        with that connection. The returned :class:`_engine.ResultProxy`
+        with that connection. The returned :class:`_engine.CursorResult`
         is flagged
-        such that when the :class:`_engine.ResultProxy` is exhausted and its
+        such that when the :class:`_engine.CursorResult` is exhausted and its
         underlying cursor is closed, the :class:`_engine.Connection`
         created here
         will also be closed, which allows its associated DBAPI connection

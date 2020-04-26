@@ -1250,7 +1250,7 @@ class ExecutionContext(object):
         """Return the DBAPI ``cursor.rowcount`` value, or in some
         cases an interpreted value.
 
-        See :attr:`_engine.ResultProxy.rowcount` for details on this.
+        See :attr:`_engine.CursorResult.rowcount` for details on this.
 
         """
 
@@ -1298,7 +1298,7 @@ class Connectable(object):
 
     def execute(self, object_, *multiparams, **params):
         """Executes the given construct and returns a """
-        """:class:`_engine.ResultProxy`."""
+        """:class:`_engine.CursorResult`."""
         raise NotImplementedError()
 
     def scalar(self, object_, *multiparams, **params):

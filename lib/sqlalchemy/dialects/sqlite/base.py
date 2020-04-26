@@ -558,9 +558,9 @@ names are still addressable*::
     1
 
 Therefore, the workaround applied by SQLAlchemy only impacts
-:meth:`_engine.ResultProxy.keys` and :meth:`.Row.keys()` in the public API. In
+:meth:`_engine.CursorResult.keys` and :meth:`.Row.keys()` in the public API. In
 the very specific case where an application is forced to use column names that
-contain dots, and the functionality of :meth:`_engine.ResultProxy.keys` and
+contain dots, and the functionality of :meth:`_engine.CursorResult.keys` and
 :meth:`.Row.keys()` is required to return these dotted names unmodified,
 the ``sqlite_raw_colnames`` execution option may be provided, either on a
 per-:class:`_engine.Connection` basis::

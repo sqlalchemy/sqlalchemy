@@ -2549,7 +2549,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         # columns in order to do the lookup.
         #
         # note this test can't fail when the fix is missing unless
-        # ResultProxy._key_fallback no longer allows a non-matching column
+        # CursorResult._key_fallback no longer allows a non-matching column
         # lookup without warning or raising.
 
         base, sub = self.tables.base, self.tables.sub

@@ -1128,7 +1128,7 @@ class Session(_SessionClassMethods):
         r"""Execute a SQL expression construct or string statement within
         the current transaction.
 
-        Returns a :class:`_engine.ResultProxy` representing
+        Returns a :class:`_engine.CursorResult` representing
         results of the statement execution, in the same manner as that of an
         :class:`_engine.Engine` or
         :class:`_engine.Connection`.
@@ -1196,7 +1196,7 @@ class Session(_SessionClassMethods):
 
         The :meth:`.Session.execute` method does *not* invoke autoflush.
 
-        The :class:`_engine.ResultProxy` returned by the :meth:`.Session.
+        The :class:`_engine.CursorResult` returned by the :meth:`.Session.
         execute`
         method is returned with the "close_with_result" flag set to true;
         the significance of this flag is that if this :class:`.Session` is
@@ -1204,7 +1204,7 @@ class Session(_SessionClassMethods):
         :class:`_engine.Connection` available, a temporary
         :class:`_engine.Connection` is
         established for the statement execution, which is closed (meaning,
-        returned to the connection pool) when the :class:`_engine.ResultProxy`
+        returned to the connection pool) when the :class:`_engine.CursorResult`
         has
         consumed all available data. This applies *only* when the
         :class:`.Session` is configured with autocommit=True and no

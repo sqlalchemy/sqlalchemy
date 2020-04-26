@@ -49,12 +49,12 @@ of hanging transactions is a non-fully consumed result set, i.e.::
     row = result.fetchone()
     return
 
-Where above, the ``ResultProxy`` has not been fully consumed.  The
+Where above, the ``CursorResult`` has not been fully consumed.  The
 connection will be returned to the pool and the transactional state
 rolled back once the Python garbage collector reclaims the objects
 which hold onto the connection, which often occurs asynchronously.
 The above use case can be alleviated by calling ``first()`` on the
-``ResultProxy`` which will fetch the first row and immediately close
+``CursorResult`` which will fetch the first row and immediately close
 all remaining cursor/connection resources.
 
 RETURNING support

@@ -313,7 +313,7 @@ def identity_key(*args, **kwargs):
         (<class '__main__.MyClass'>, (1, 2), None)
 
       :param class: mapped class (must be a positional argument)
-      :param row: :class:`.Row` row returned by a :class:`_engine.ResultProxy`
+      :param row: :class:`.Row` row returned by a :class:`_engine.CursorResult`
        (must be given as a keyword arg)
       :param identity_token: optional identity token
 

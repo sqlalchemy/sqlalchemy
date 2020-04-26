@@ -29,7 +29,7 @@ accept every argument that Kinterbasdb does.
   the usage of "cursor.rowcount" with the
   Kinterbasdb dialect, which SQLAlchemy ordinarily calls upon automatically
   after any UPDATE or DELETE statement.   When disabled, SQLAlchemy's
-  ResultProxy will return -1 for result.rowcount.   The rationale here is
+  CursorResult will return -1 for result.rowcount.   The rationale here is
   that Kinterbasdb requires a second round trip to the database when
   .rowcount is called -  since SQLA's resultproxy automatically closes
   the cursor after a non-result-returning statement, rowcount must be

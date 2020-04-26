@@ -1070,7 +1070,7 @@ class KeyTargetingTest(fixtures.TablesTest):
             in_(stmt.c.keyed2_b, row)
 
 
-class ResultProxyTest(fixtures.TablesTest):
+class CursorResultTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod

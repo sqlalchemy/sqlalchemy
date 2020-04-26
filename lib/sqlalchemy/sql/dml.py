@@ -345,7 +345,7 @@ class UpdateBase(
 
         Upon execution, the values of the columns to be returned are made
         available via the result set and can be iterated using
-        :meth:`_engine.ResultProxy.fetchone` and similar.
+        :meth:`_engine.CursorResult.fetchone` and similar.
         For DBAPIs which do not
         natively support returning values (i.e. cx_oracle), SQLAlchemy will
         approximate this behavior at the result level so that a reasonable
@@ -547,7 +547,7 @@ class ValuesBase(UpdateBase):
               True, indicating that the statement will not attempt to fetch
               the "last inserted primary key" or other defaults.  The
               statement deals with an arbitrary number of rows, so the
-              :attr:`_engine.ResultProxy.inserted_primary_key`
+              :attr:`_engine.CursorResult.inserted_primary_key`
               accessor does not
               apply.
 
@@ -684,7 +684,7 @@ class ValuesBase(UpdateBase):
         added to any existing RETURNING clause, provided that
         :meth:`.UpdateBase.returning` is not used simultaneously.  The column
         values will then be available on the result using the
-        :attr:`_engine.ResultProxy.returned_defaults` accessor as a dictionary
+        :attr:`_engine.CursorResult.returned_defaults` accessor as a dictionary
         ,
         referring to values keyed to the :class:`_schema.Column`
         object as well as
@@ -715,7 +715,7 @@ class ValuesBase(UpdateBase):
         3. It can be called against any backend.  Backends that don't support
            RETURNING will skip the usage of the feature, rather than raising
            an exception.  The return value of
-           :attr:`_engine.ResultProxy.returned_defaults` will be ``None``
+           :attr:`_engine.CursorResult.returned_defaults` will be ``None``
 
         :meth:`.ValuesBase.return_defaults` is used by the ORM to provide
         an efficient implementation for the ``eager_defaults`` feature of
@@ -732,7 +732,7 @@ class ValuesBase(UpdateBase):
 
             :meth:`.UpdateBase.returning`
 
-            :attr:`_engine.ResultProxy.returned_defaults`
+            :attr:`_engine.CursorResult.returned_defaults`
 
         """
         self._return_defaults = cols or True
@@ -922,7 +922,7 @@ class Insert(ValuesBase):
            True, indicating that the statement will not attempt to fetch
            the "last inserted primary key" or other defaults.  The statement
            deals with an arbitrary number of rows, so the
-           :attr:`_engine.ResultProxy.inserted_primary_key`
+           :attr:`_engine.CursorResult.inserted_primary_key`
            accessor does not apply.
 
         """
@@ -1064,7 +1064,7 @@ class Update(DMLWhereBase, ValuesBase):
           the ``default`` keyword will be compiled 'inline' into the statement
           and not pre-executed.  This means that their values will not
           be available in the dictionary returned from
-          :meth:`_engine.ResultProxy.last_updated_params`.
+          :meth:`_engine.CursorResult.last_updated_params`.
 
         :param preserve_parameter_order: if True, the update statement is
           expected to receive parameters **only** via the
@@ -1189,7 +1189,7 @@ class Update(DMLWhereBase, ValuesBase):
         ``default`` keyword will be compiled 'inline' into the statement and
         not pre-executed.  This means that their values will not be available
         in the dictionary returned from
-        :meth:`_engine.ResultProxy.last_updated_params`.
+        :meth:`_engine.CursorResult.last_updated_params`.
 
         .. versionchanged:: 1.4 the :paramref:`_expression.update.inline`
            parameter

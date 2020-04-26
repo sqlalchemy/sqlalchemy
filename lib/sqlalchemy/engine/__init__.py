@@ -40,6 +40,10 @@ from .interfaces import ExceptionContext  # noqa
 from .interfaces import ExecutionContext  # noqa
 from .interfaces import TypeCompiler  # noqa
 from .mock import create_mock_engine
+from .result import ChunkedIteratorResult  # noqa
+from .result import FrozenResult  # noqa
+from .result import IteratorResult  # noqa
+from .result import MergedResult  # noqa
 from .result import Result  # noqa
 from .result import result_tuple  # noqa
 from .row import BaseRow  # noqa

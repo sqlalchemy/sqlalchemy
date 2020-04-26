@@ -175,7 +175,7 @@ ORM query if the wrong :class:`_schema.Column` objects are used in a complex que
 pulling in additional FROM clauses that are unexpected.
 
 On the other hand, a fast call to ``fetchall()`` at the DBAPI level, but then
-slowness when SQLAlchemy's :class:`_engine.ResultProxy` is asked to do a ``fetchall()``,
+slowness when SQLAlchemy's :class:`_engine.CursorResult` is asked to do a ``fetchall()``,
 may indicate slowness in processing of datatypes, such as unicode conversions
 and similar::
 

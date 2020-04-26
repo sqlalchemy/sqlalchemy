@@ -23,7 +23,7 @@ psycopg2-specific keyword arguments which are accepted by
   ``connection.cursor('some name')``, which has the effect that result rows
   are not immediately pre-fetched and buffered after statement execution, but
   are instead left on the server and only retrieved as needed. SQLAlchemy's
-  :class:`~sqlalchemy.engine.ResultProxy` uses special row-buffering
+  :class:`~sqlalchemy.engine.CursorResult` uses special row-buffering
   behavior when this feature is enabled, such that groups of 100 rows at a
   time are fetched over the wire to reduce conversational overhead.
   Note that the :paramref:`.Connection.execution_options.stream_results`
@@ -137,7 +137,7 @@ in addition to those not specific to DBAPIs:
 
 * ``max_row_buffer`` - when using ``stream_results``, an integer value that
   specifies the maximum number of rows to buffer at a time.  This is
-  interpreted by the :class:`.BufferedRowResultProxy`, and if omitted the
+  interpreted by the :class:`.BufferedRowCursorResult`, and if omitted the
   buffer will grow to ultimately store 1000 rows at a time.
 
   .. versionchanged:: 1.4  The ``max_row_buffer`` size can now be greater than

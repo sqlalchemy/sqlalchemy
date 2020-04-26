@@ -103,6 +103,8 @@ autodocmods_convert_modname = {
     "sqlalchemy.sql.base": "sqlalchemy.sql.expression",
     "sqlalchemy.event.base": "sqlalchemy.event",
     "sqlalchemy.engine.base": "sqlalchemy.engine",
+    "sqlalchemy.engine.row": "sqlalchemy.engine",
+    "sqlalchemy.engine.cursor": "sqlalchemy.engine",
     "sqlalchemy.engine.result": "sqlalchemy.engine",
     "sqlalchemy.util._collections": "sqlalchemy.util",
 }
@@ -118,6 +120,8 @@ autodocmods_convert_modname_w_class = {
 zzzeeksphinx_module_prefixes = {
     "_sa": "sqlalchemy",
     "_engine": "sqlalchemy.engine",
+    "_result": "sqlalchemy.engine",
+    "_row": "sqlalchemy.engine",
     "_schema": "sqlalchemy.schema",
     "_types": "sqlalchemy.types",
     "_expression": "sqlalchemy.sql.expression",

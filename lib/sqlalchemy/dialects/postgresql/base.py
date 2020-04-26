@@ -206,7 +206,7 @@ reflection process as follows::
     ...     referring = Table('referring', meta,
     ...                       autoload=True, autoload_with=conn)
     ...
-    <sqlalchemy.engine.result.ResultProxy object at 0x101612ed0>
+    <sqlalchemy.engine.result.CursorResult object at 0x101612ed0>
 
 The above process would deliver to the :attr:`_schema.MetaData.tables`
 collection
@@ -228,7 +228,7 @@ dialect-specific argument to both :class:`_schema.Table` as well as
     ...                       autoload_with=conn,
     ...                       postgresql_ignore_search_path=True)
     ...
-    <sqlalchemy.engine.result.ResultProxy object at 0x1016126d0>
+    <sqlalchemy.engine.result.CursorResult object at 0x1016126d0>
 
 We will now have ``test_schema.referred`` stored as schema-qualified::
 

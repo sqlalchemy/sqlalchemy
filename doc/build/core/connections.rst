@@ -57,11 +57,11 @@ end of the block.  The :class:`_engine.Connection`, is a **proxy** object for an
 actual DBAPI connection. The DBAPI connection is retrieved from the connection
 pool at the point at which :class:`_engine.Connection` is created.
 
-The object returned is known as :class:`_engine.ResultProxy`, which
+The object returned is known as :class:`_engine.CursorResult`, which
 references a DBAPI cursor and provides methods for fetching rows
 similar to that of the DBAPI cursor.   The DBAPI cursor will be closed
-by the :class:`_engine.ResultProxy` when all of its result rows (if any) are
-exhausted.  A :class:`_engine.ResultProxy` that returns no rows, such as that of
+by the :class:`_engine.CursorResult` when all of its result rows (if any) are
+exhausted.  A :class:`_engine.CursorResult` that returns no rows, such as that of
 an UPDATE statement (without any returned rows),
 releases cursor resources immediately upon construction.
 
@@ -74,7 +74,7 @@ pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
 any transactional state or locks are removed, and the connection is ready for
 its next use.
 
-.. deprecated:: 2.0 The :class:`_engine.ResultProxy` object is replaced in SQLAlchemy
+.. deprecated:: 2.0 The :class:`_engine.CursorResult` object is replaced in SQLAlchemy
    2.0 with a newly refined object known as :class:`_future.Result`.
 
 Our example above illustrated the execution of a textual SQL string, which
@@ -346,9 +346,9 @@ Overall, the usage of "bound metadata" has three general effects:
 
 In both "connectionless" examples, the
 :class:`~sqlalchemy.engine.Connection` is created behind the scenes; the
-:class:`~sqlalchemy.engine.ResultProxy` returned by the ``execute()``
+:class:`~sqlalchemy.engine.CursorResult` returned by the ``execute()``
 call references the :class:`~sqlalchemy.engine.Connection` used to issue
-the SQL statement. When the :class:`_engine.ResultProxy` is closed, the underlying
+the SQL statement. When the :class:`_engine.CursorResult` is closed, the underlying
 :class:`_engine.Connection` is closed for us, resulting in the
 DBAPI connection being returned to the pool with transactional resources removed.
 
@@ -645,7 +645,10 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 Connection / Engine API
 =======================
 
-.. autoclass:: BaseResult
+.. autoclass:: BaseCursorResult
+    :members:
+
+.. autoclass:: ChunkedIteratorResult
     :members:
 
 .. autoclass:: Connection
@@ -663,15 +666,34 @@ Connection / Engine API
 .. autoclass:: ExceptionContext
    :members:
 
+.. autoclass:: FrozenResult
+    :members:
+
+.. autoclass:: IteratorResult
+    :members:
+
 .. autoclass:: LegacyRow
+    :members:
+
+.. autoclass:: MergedResult
     :members:
 
 .. autoclass:: NestedTransaction
     :members:
 
-.. autoclass:: ResultProxy
+.. autoclass:: Result
     :members:
     :inherited-members:
+    :exclude-members: memoized_attribute, memoized_instancemethod
+
+
+.. autoclass:: CursorResult
+    :members:
+    :inherited-members:
+    :exclude-members: memoized_attribute, memoized_instancemethod
+
+.. autoclass:: LegacyCursorResult
+    :members:
 
 .. autoclass:: Row
     :members:

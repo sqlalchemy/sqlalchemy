@@ -484,7 +484,7 @@ to a series of statement executions in the same way as that of
 
     session = Session()
 
-    result = session.execution_options(stream_per=100).execute(stmt)
+    result = session.execution_options(stream_results=True).execute(stmt)
 
 The calling signature for the ``.execute()`` method itself will work in
 a "positional only" spirit, since :pep:`570` is only available in
@@ -511,7 +511,7 @@ So that an execution may look like::
 
     result = connection.execute(table.insert(), {"foo": "bar"}, isolation_level='AUTOCOMMIT')
 
-    result = session.execute(stmt, stream_per=100)
+    result = session.execute(stmt, stream_results=True)
 
 .. _change_result_20_core:
 
@@ -534,7 +534,7 @@ upon, where the more refined ORM-like methods ``.all()``, ``.one()`` and
 ``.first()`` will now also be how Core retrieves rows, replacing the
 cursor-like ``.fetchall()``, ``.fetchone()`` methods.   The notion of
 receiving "chunks" of a result at a time will be standardized across both
-systems using new methods ``.partitions`` and ``.chunks()`` which will behave similarly to
+systems using a new method ``.partitions()`` which will behave similarly to
 ``.fetchmany()``, but will work in terms of iterators.
 
 These new methods will be available from the "Result" object that is similar to
@@ -566,10 +566,6 @@ equally::
         result  # iterator
 
         result.partitions(size=1000)  # partition result into iterator of lists of size N
-
-        # same, but do it using a server side cursor if the driver supports
-        # it
-        result = conn.execution_options(stream_per=1000).chunks()
 
 
         # limiting columns

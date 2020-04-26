@@ -469,7 +469,7 @@ This setting is currently hardcoded.
 
 .. seealso::
 
-    :attr:`_engine.ResultProxy.rowcount`
+    :attr:`_engine.CursorResult.rowcount`
 
 
 CAST Support
