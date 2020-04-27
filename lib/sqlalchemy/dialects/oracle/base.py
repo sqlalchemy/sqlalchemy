@@ -975,16 +975,8 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
-    def _TODO_visit_compound_select(self, select):
-        """Need to determine how to get ``LIMIT``/``OFFSET`` into a
-        ``UNION`` for Oracle.
-        """
-        pass
-
-    def visit_select(self, select, **kwargs):
-        """Look for ``LIMIT`` and OFFSET in a select statement, and if
-        so tries to wrap it in a subquery with ``rownum`` criterion.
-        """
+    def translate_select_structure(self, select_stmt, **kwargs):
+        select = select_stmt
 
         if not getattr(select, "_oracle_visit", None):
             if not self.dialect.use_ansi:
@@ -1003,7 +995,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # https://blogs.oracle.com/oraclemagazine/\
                 # on-rownum-and-limiting-results
 
-                kwargs["select_wraps_for"] = orig_select = select
+                orig_select = select
                 select = select._generate()
                 select._oracle_visit = True
 
@@ -1136,7 +1128,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     offsetselect._for_update_arg = for_update
                     select = offsetselect
 
-        return compiler.SQLCompiler.visit_select(self, select, **kwargs)
+        return select
 
     def limit_clause(self, select, **kw):
         return ""

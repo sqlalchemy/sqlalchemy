@@ -191,7 +191,12 @@ class ClauseElement(
 
     __visit_name__ = "clause"
 
-    _annotations = {}
+    _propagate_attrs = util.immutabledict()
+    """like annotations, however these propagate outwards liberally
+    as SQL constructs are built, and are set up at construction time.
+
+    """
+
     supports_execution = False
     _from_objects = []
     bind = None
@@ -214,6 +219,16 @@ class ClauseElement(
     _order_by_label_element = None
 
     _cache_key_traversal = None
+
+    def _set_propagate_attrs(self, values):
+        # usually, self._propagate_attrs is empty here.  one case where it's
+        # not is a subquery against ORM select, that is then pulled as a
+        # property of an aliased class.   should all be good
+
+        # assert not self._propagate_attrs
+
+        self._propagate_attrs = util.immutabledict(values)
+        return self
 
     def _clone(self):
         """Create a shallow copy of this ClauseElement.
@@ -870,6 +885,7 @@ class ColumnElement(
             type_=getattr(self, "type", None),
             _selectable=selectable,
         )
+        co._propagate_attrs = selectable._propagate_attrs
         co._proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
@@ -1495,6 +1511,8 @@ class TextClause(
 
     _render_label_in_columns_clause = False
 
+    _hide_froms = ()
+
     def __and__(self, other):
         # support use in select.where(), query.filter()
         return and_(self, other)
@@ -1508,10 +1526,6 @@ class TextClause(
     key = _label = _resolve_label = None
 
     _allow_label_resolve = False
-
-    @property
-    def _hide_froms(self):
-        return []
 
     def __init__(self, text, bind=None):
         self._bind = bind
@@ -2093,14 +2107,16 @@ class ClauseList(
         )
         if self.group_contents:
             self.clauses = [
-                coercions.expect(text_converter_role, clause).self_group(
-                    against=self.operator
-                )
+                coercions.expect(
+                    text_converter_role, clause, apply_propagate_attrs=self
+                ).self_group(against=self.operator)
                 for clause in clauses
             ]
         else:
             self.clauses = [
-                coercions.expect(text_converter_role, clause)
+                coercions.expect(
+                    text_converter_role, clause, apply_propagate_attrs=self
+                )
                 for clause in clauses
             ]
         self._is_implicitly_boolean = operators.is_boolean(self.operator)
@@ -2641,7 +2657,9 @@ class Case(ColumnElement):
             whenlist = [
                 (
                     coercions.expect(
-                        roles.ExpressionElementRole, c
+                        roles.ExpressionElementRole,
+                        c,
+                        apply_propagate_attrs=self,
                     ).self_group(),
                     coercions.expect(roles.ExpressionElementRole, r),
                 )
@@ -2650,7 +2668,9 @@ class Case(ColumnElement):
         else:
             whenlist = [
                 (
-                    coercions.expect(roles.ColumnArgumentRole, c).self_group(),
+                    coercions.expect(
+                        roles.ColumnArgumentRole, c, apply_propagate_attrs=self
+                    ).self_group(),
                     coercions.expect(roles.ExpressionElementRole, r),
                 )
                 for (c, r) in whens
@@ -2805,7 +2825,10 @@ class Cast(WrapsColumnExpression, ColumnElement):
         """
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
-            roles.ExpressionElementRole, expression, type_=self.type
+            roles.ExpressionElementRole,
+            expression,
+            type_=self.type,
+            apply_propagate_attrs=self,
         )
         self.typeclause = TypeClause(self.type)
 
@@ -2906,7 +2929,10 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
         """
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
-            roles.ExpressionElementRole, expression, type_=self.type
+            roles.ExpressionElementRole,
+            expression,
+            type_=self.type,
+            apply_propagate_attrs=self,
         )
 
     @property
@@ -3031,6 +3057,7 @@ class UnaryExpression(ColumnElement):
     ):
         self.operator = operator
         self.modifier = modifier
+        self._propagate_attrs = element._propagate_attrs
         self.element = element.self_group(
             against=self.operator or self.modifier
         )
@@ -3474,6 +3501,7 @@ class BinaryExpression(ColumnElement):
         if isinstance(operator, util.string_types):
             operator = operators.custom_op(operator)
         self._orig = (left.__hash__(), right.__hash__())
+        self._propagate_attrs = left._propagate_attrs or right._propagate_attrs
         self.left = left.self_group(against=operator)
         self.right = right.self_group(against=operator)
         self.operator = operator
@@ -4159,6 +4187,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
             name=name if name else self.name,
             disallow_is_literal=True,
         )
+        e._propagate_attrs = selectable._propagate_attrs
         e._proxies.append(self)
         if self._type is not None:
             e.type = self._type
@@ -4340,16 +4369,10 @@ class ColumnClause(
             return other.proxy_set.intersection(self.proxy_set)
 
     def get_children(self, column_tables=False, **kw):
-        if column_tables and self.table is not None:
-            # TODO: this is only used by ORM query deep_entity_zero.
-            # this is being removed in a later release so remove
-            # column_tables also at that time.
-            return [self.table]
-        else:
-            # override base get_children() to not return the Table
-            # or selectable that is parent to this column.  Traversals
-            # expect the columns of tables and subqueries to be leaf nodes.
-            return []
+        # override base get_children() to not return the Table
+        # or selectable that is parent to this column.  Traversals
+        # expect the columns of tables and subqueries to be leaf nodes.
+        return []
 
     @HasMemoized.memoized_attribute
     def _from_objects(self):
@@ -4474,6 +4497,7 @@ class ColumnClause(
             _selectable=selectable,
             is_literal=is_literal,
         )
+        c._propagate_attrs = selectable._propagate_attrs
         if name is None:
             c.key = self.key
         c._proxies = [self]

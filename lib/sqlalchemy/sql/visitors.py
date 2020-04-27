@@ -591,6 +591,7 @@ def iterate(obj, opts=util.immutabledict()):
     """
     yield obj
     children = obj.get_children(**opts)
+
     if not children:
         return
 

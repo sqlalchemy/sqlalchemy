@@ -834,7 +834,7 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
     def test_fetch_results(self):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
-        sess = Session()
+        sess = Session(testing.db)
 
         q = sess.query(A).options(
             joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
@@ -842,16 +842,26 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
             defaultload(A.es).joinedload(E.gs),
         )
 
-        context = q._compile_context()
-        compile_state = context.compile_state
-        orig_attributes = dict(compile_state.attributes)
+        compile_state = q._compile_state()
+
+        from sqlalchemy.orm.context import ORMCompileState
 
         @profiling.function_call_count()
         def go():
             for i in range(100):
-                # make sure these get reset each time
-                context.attributes = orig_attributes.copy()
-                obj = q._execute_and_instances(context)
+                exec_opts = {}
+                bind_arguments = {}
+                ORMCompileState.orm_pre_session_exec(
+                    sess, compile_state.query, exec_opts, bind_arguments
+                )
+
+                r = sess.connection().execute(
+                    compile_state.statement,
+                    execution_options=exec_opts,
+                    bind_arguments=bind_arguments,
+                )
+                r.context.compiled.compile_state = compile_state
+                obj = ORMCompileState.orm_setup_cursor_result(sess, {}, r)
                 list(obj)
                 sess.close()
 

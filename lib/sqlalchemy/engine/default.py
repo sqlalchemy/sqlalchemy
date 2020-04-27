@@ -16,6 +16,7 @@ as the base class for their own corresponding classes.
 import codecs
 import random
 import re
+import time
 import weakref
 
 from . import cursor as _cursor
@@ -226,6 +227,7 @@ class DefaultDialect(interfaces.Dialect):
         supports_native_boolean=None,
         max_identifier_length=None,
         label_length=None,
+        query_cache_size=0,
         # int() is because the @deprecated_params decorator cannot accommodate
         # the direct reference to the "NO_LINTING" object
         compiler_linting=int(compiler.NO_LINTING),
@@ -257,6 +259,10 @@ class DefaultDialect(interfaces.Dialect):
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
+        if query_cache_size != 0:
+            self._compiled_cache = util.LRUCache(query_cache_size)
+        else:
+            self._compiled_cache = None
 
         self._user_defined_max_identifier_length = max_identifier_length
         if self._user_defined_max_identifier_length:
@@ -702,10 +708,16 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     result_column_struct = None
     returned_defaults = None
     execution_options = util.immutabledict()
+
+    cache_stats = None
+    invoked_statement = None
+
     _is_implicit_returning = False
     _is_explicit_returning = False
     _is_future_result = False
     _is_server_side = False
+
+    _soft_closed = False
 
     # a hook for SQLite's translation of
     # result column names
@@ -1011,6 +1023,16 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cursor = self.create_cursor()
         return self
 
+    def _get_cache_stats(self):
+        if self.compiled is None:
+            return "raw SQL"
+
+        now = time.time()
+        if self.compiled.cache_key is None:
+            return "gen %.5fs" % (now - self.compiled._gen_time,)
+        else:
+            return "cached %.5fs" % (now - self.compiled._gen_time,)
+
     @util.memoized_property
     def engine(self):
         return self.root_connection.engine
@@ -1233,6 +1255,33 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             and self.compiled.has_out_parameters
         ):
             self._setup_out_parameters(result)
+
+        if not self._is_future_result:
+            conn = self.root_connection
+            assert not conn._is_future
+
+            if not result._soft_closed and conn.should_close_with_result:
+                result._autoclose_connection = True
+
+        self._soft_closed = result._soft_closed
+
+        # result rewrite/ adapt step.  two translations can occur here.
+        # one is if we are invoked against a cached statement, we want
+        # to rewrite the ResultMetaData to reflect the column objects
+        # that are in our current selectable, not the cached one.  the
+        # other is, the CompileState can return an alternative Result
+        # object.   Finally, CompileState might want to tell us to not
+        # actually do the ResultMetaData adapt step if it in fact has
+        # changed the selected columns in any case.
+        compiled = self.compiled
+        if compiled:
+            adapt_metadata = (
+                result._metadata_from_cache
+                and not compiled._rewrites_selected_columns
+            )
+
+            if adapt_metadata:
+                result._metadata = result._metadata._adapt_to_context(self)
 
         return result
 

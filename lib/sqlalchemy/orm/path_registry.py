@@ -228,10 +228,29 @@ class RootRegistry(PathRegistry):
 PathRegistry.root = RootRegistry()
 
 
+class PathToken(HasCacheKey, str):
+    """cacheable string token"""
+
+    _intern = {}
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        return (str(self),)
+
+    @classmethod
+    def intern(cls, strvalue):
+        if strvalue in cls._intern:
+            return cls._intern[strvalue]
+        else:
+            cls._intern[strvalue] = result = PathToken(strvalue)
+            return result
+
+
 class TokenRegistry(PathRegistry):
     __slots__ = ("token", "parent", "path", "natural_path")
 
     def __init__(self, parent, token):
+        token = PathToken.intern(token)
+
         self.token = token
         self.parent = parent
         self.path = parent.path + (token,)

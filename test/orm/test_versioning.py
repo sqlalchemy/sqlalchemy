@@ -740,7 +740,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         # outwit the database transaction isolation and SQLA's
         # expiration at the same time by using different Session on
         # same transaction
-        s2 = Session(bind=s.connection(Node))
+        s2 = Session(bind=s.connection(mapper=Node))
         s2.query(Node).filter(Node.id == n2.id).update({"version_id": 3})
         s2.commit()
 
@@ -762,7 +762,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         ), patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
-            s2 = Session(bind=s.connection(Node))
+            s2 = Session(bind=s.connection(mapper=Node))
             s2.query(Node).filter(Node.id == n2.id).update({"version_id": 3})
             s2.commit()
 
@@ -783,7 +783,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         # outwit the database transaction isolation and SQLA's
         # expiration at the same time by using different Session on
         # same transaction
-        s2 = Session(bind=s.connection(Node))
+        s2 = Session(bind=s.connection(mapper=Node))
         s2.query(Node).filter(Node.id == n1.id).update({"version_id": 3})
         s2.commit()
 

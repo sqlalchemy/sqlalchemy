@@ -366,7 +366,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         u = User(name="u1")
         sess.add(u)
         sess.flush()
-        c1 = sess.connection(User)
+        c1 = sess.connection(bind_arguments={"mapper": User})
         dbapi_conn = c1.connection
         assert dbapi_conn.is_valid
 
@@ -383,7 +383,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert not dbapi_conn.is_valid
 
         eq_(sess.query(User).all(), [])
-        c2 = sess.connection(User)
+        c2 = sess.connection(bind_arguments={"mapper": User})
         assert not c2.invalidated
         assert c2.connection.is_valid
 

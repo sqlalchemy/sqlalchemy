@@ -25,6 +25,7 @@ from . import loading
 from . import sync
 from .base import state_str
 from .. import exc as sa_exc
+from .. import future
 from .. import sql
 from .. import util
 from ..sql import coercions
@@ -1424,8 +1425,10 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
         if toload_now:
             state.key = base_mapper._identity_key_from_state(state)
+            stmt = future.select(mapper).apply_labels()
             loading.load_on_ident(
-                uowtransaction.session.query(mapper),
+                uowtransaction.session,
+                stmt,
                 state.key,
                 refresh_state=state,
                 only_load_props=toload_now,
@@ -1723,7 +1726,7 @@ class BulkUD(object):
             self.context
         ) = compile_state = query._compile_state()
 
-        self.mapper = compile_state._bind_mapper()
+        self.mapper = compile_state._entity_zero()
 
         if isinstance(
             compile_state._entities[0], query_context._RawColumnEntity,

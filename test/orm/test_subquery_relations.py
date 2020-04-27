@@ -2822,7 +2822,7 @@ class SubqueryloadDistinctTest(
         # Director.photos
         expect_distinct = director_strategy_level in (True, None)
 
-        s = create_session()
+        s = create_session(testing.db)
 
         q = s.query(Movie).options(
             subqueryload(Movie.director).subqueryload(Director.photos)
@@ -2847,7 +2847,9 @@ class SubqueryloadDistinctTest(
         )
 
         ctx2 = q2._compile_context()
-        result = s.execute(q2)
+        stmt = q2.statement
+
+        result = s.connection().execute(stmt)
         rows = result.fetchall()
 
         if expect_distinct:
@@ -2876,7 +2878,11 @@ class SubqueryloadDistinctTest(
             "ON director_1.id = director_photo.director_id"
             % (" DISTINCT" if expect_distinct else ""),
         )
-        result = s.execute(q3)
+
+        stmt = q3.statement
+
+        result = s.connection().execute(stmt)
+
         rows = result.fetchall()
         if expect_distinct:
             eq_(
@@ -2911,7 +2917,7 @@ class SubqueryloadDistinctTest(
         Movie = self.classes.Movie
         Credit = self.classes.Credit
 
-        s = create_session()
+        s = create_session(testing.db)
 
         q = s.query(Credit).options(
             subqueryload(Credit.movie).subqueryload(Movie.director)
@@ -2927,7 +2933,9 @@ class SubqueryloadDistinctTest(
             ("subqueryload_data", (inspect(Movie), Movie.director.property))
         ]["query"]
 
-        result = s.execute(q3)
+        stmt = q3.statement
+
+        result = s.connection().execute(stmt)
         eq_(result.fetchall(), [(1, "Woody Allen", 1), (1, "Woody Allen", 1)])
 
 

@@ -79,7 +79,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         stmt = select(User).join(Address, User.orders)
         assert_raises_message(
             exc.InvalidRequestError,
-            "Selectable 'addresses' is not derived from 'orders'",
+            "Join target .*Address.* does not correspond to the right side "
+            "of join condition User.orders",
             stmt.compile,
         )
 
@@ -371,10 +372,7 @@ class ImplicitWithPolymorphicTest(
             .order_by(Engineer.person_id)
         )
 
-        # the ORM has a different column selection than what a purely core
-        # select does, in terms of engineers.person_id vs. people.person_id
-
-        expected = (
+        plain_expected = (  # noqa
             "SELECT engineers.person_id, people.person_id, people.company_id, "
             "people.name, "
             "people.type, engineers.status, "
@@ -383,9 +381,23 @@ class ImplicitWithPolymorphicTest(
             "ON people.person_id = engineers.person_id "
             "WHERE people.name = :name_1 ORDER BY engineers.person_id"
         )
+        # when we have disambiguating labels turned on
+        disambiguate_expected = (  # noqa
+            "SELECT engineers.person_id, people.person_id AS person_id_1, "
+            "people.company_id, "
+            "people.name, "
+            "people.type, engineers.status, "
+            "engineers.engineer_name, engineers.primary_language "
+            "FROM people JOIN engineers "
+            "ON people.person_id = engineers.person_id "
+            "WHERE people.name = :name_1 ORDER BY engineers.person_id"
+        )
 
-        self.assert_compile(stmt, expected)
-        self.assert_compile(q.statement, expected)
+        # these change based on how we decide to apply labels
+        # in context.py
+        self.assert_compile(stmt, disambiguate_expected)
+
+        self.assert_compile(q.statement, disambiguate_expected)
 
     def test_select_where_columns_subclass(self):
 

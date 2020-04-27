@@ -56,6 +56,9 @@ class ResultMetaData(object):
     def keys(self):
         return RMKeyView(self)
 
+    def _has_key(self, key):
+        raise NotImplementedError()
+
     def _for_freeze(self):
         raise NotImplementedError()
 
@@ -170,6 +173,9 @@ class SimpleResultMetaData(ResultMetaData):
         self._keymap = {key: rec for keys, rec in recs_names for key in keys}
 
         self._processors = _processors
+
+    def _has_key(self, key):
+        return key in self._keymap
 
     def _for_freeze(self):
         unique_filters = self._unique_filters
@@ -286,6 +292,8 @@ class Result(InPlaceGenerative):
     _unique_filter_state = None
     _no_scalar_onerow = False
     _yield_per = None
+
+    _attributes = util.immutabledict()
 
     def __init__(self, cursor_metadata):
         self._metadata = cursor_metadata
@@ -548,10 +556,21 @@ class Result(InPlaceGenerative):
         self._generate_rows = True
 
     def _row_getter(self):
-        if self._source_supports_scalars and not self._generate_rows:
-            return None
+        if self._source_supports_scalars:
+            if not self._generate_rows:
+                return None
+            else:
+                _proc = self._process_row
 
-        process_row = self._process_row
+                def process_row(
+                    metadata, processors, keymap, key_style, scalar_obj
+                ):
+                    return _proc(
+                        metadata, processors, keymap, key_style, (scalar_obj,)
+                    )
+
+        else:
+            process_row = self._process_row
         key_style = self._process_row._default_key_style
         metadata = self._metadata
 
@@ -771,16 +790,15 @@ class Result(InPlaceGenerative):
             uniques, strategy = self._unique_strategy
 
             def filterrows(make_row, rows, strategy, uniques):
+                if make_row:
+                    rows = [make_row(row) for row in rows]
+
                 if strategy:
                     made_rows = (
-                        (made_row, strategy(made_row))
-                        for made_row in [make_row(row) for row in rows]
+                        (made_row, strategy(made_row)) for made_row in rows
                     )
                 else:
-                    made_rows = (
-                        (made_row, made_row)
-                        for made_row in [make_row(row) for row in rows]
-                    )
+                    made_rows = ((made_row, made_row) for made_row in rows)
                 return [
                     made_row
                     for made_row, sig_row in made_rows
@@ -831,7 +849,8 @@ class Result(InPlaceGenerative):
                     num = self._yield_per
 
                 rows = self._fetchmany_impl(num)
-                rows = [make_row(row) for row in rows]
+                if make_row:
+                    rows = [make_row(row) for row in rows]
                 if post_creational_filter:
                     rows = [post_creational_filter(row) for row in rows]
                 return rows
@@ -1114,24 +1133,42 @@ class FrozenResult(object):
     def __init__(self, result):
         self.metadata = result._metadata._for_freeze()
         self._post_creational_filter = result._post_creational_filter
-        self._source_supports_scalars = result._source_supports_scalars
         self._generate_rows = result._generate_rows
+        self._source_supports_scalars = result._source_supports_scalars
+        self._attributes = result._attributes
         result._post_creational_filter = None
 
-        self.data = result.fetchall()
+        if self._source_supports_scalars:
+            self.data = list(result._raw_row_iterator())
+        else:
+            self.data = result.fetchall()
 
-    def with_data(self, data):
+    def rewrite_rows(self):
+        if self._source_supports_scalars:
+            return [[elem] for elem in self.data]
+        else:
+            return [list(row) for row in self.data]
+
+    def with_new_rows(self, tuple_data):
         fr = FrozenResult.__new__(FrozenResult)
         fr.metadata = self.metadata
         fr._post_creational_filter = self._post_creational_filter
-        fr.data = data
+        fr._generate_rows = self._generate_rows
+        fr._attributes = self._attributes
+        fr._source_supports_scalars = self._source_supports_scalars
+
+        if self._source_supports_scalars:
+            fr.data = [d[0] for d in tuple_data]
+        else:
+            fr.data = tuple_data
         return fr
 
     def __call__(self):
         result = IteratorResult(self.metadata, iter(self.data))
         result._post_creational_filter = self._post_creational_filter
-        result._source_supports_scalars = self._source_supports_scalars
         result._generate_rows = self._generate_rows
+        result._attributes = self._attributes
+        result._source_supports_scalars = self._source_supports_scalars
         return result
 
 
@@ -1143,9 +1180,10 @@ class IteratorResult(Result):
 
     """
 
-    def __init__(self, cursor_metadata, iterator):
+    def __init__(self, cursor_metadata, iterator, raw=None):
         self._metadata = cursor_metadata
         self.iterator = iterator
+        self.raw = raw
 
     def _soft_close(self, **kw):
         self.iterator = iter([])
@@ -1189,28 +1227,23 @@ class ChunkedIteratorResult(IteratorResult):
 
     """
 
-    def __init__(self, cursor_metadata, chunks, source_supports_scalars=False):
+    def __init__(
+        self, cursor_metadata, chunks, source_supports_scalars=False, raw=None
+    ):
         self._metadata = cursor_metadata
         self.chunks = chunks
         self._source_supports_scalars = source_supports_scalars
-
-        self.iterator = itertools.chain.from_iterable(
-            self.chunks(None, self._generate_rows)
-        )
+        self.raw = raw
+        self.iterator = itertools.chain.from_iterable(self.chunks(None))
 
     def _column_slices(self, indexes):
         result = super(ChunkedIteratorResult, self)._column_slices(indexes)
-        self.iterator = itertools.chain.from_iterable(
-            self.chunks(self._yield_per, self._generate_rows)
-        )
         return result
 
     @_generative
     def yield_per(self, num):
         self._yield_per = num
-        self.iterator = itertools.chain.from_iterable(
-            self.chunks(num, self._generate_rows)
-        )
+        self.iterator = itertools.chain.from_iterable(self.chunks(num))
 
 
 class MergedResult(IteratorResult):
@@ -1238,8 +1271,14 @@ class MergedResult(IteratorResult):
         self._post_creational_filter = results[0]._post_creational_filter
         self._no_scalar_onerow = results[0]._no_scalar_onerow
         self._yield_per = results[0]._yield_per
+
+        # going to try someting w/ this in next rev
         self._source_supports_scalars = results[0]._source_supports_scalars
+
         self._generate_rows = results[0]._generate_rows
+        self._attributes = self._attributes.merge_with(
+            *[r._attributes for r in results]
+        )
 
     def close(self):
         self._soft_close(hard=True)

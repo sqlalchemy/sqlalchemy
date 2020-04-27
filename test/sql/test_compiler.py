@@ -84,6 +84,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.util import u
 
 table1 = table(
@@ -5198,9 +5199,16 @@ class ResultMapTest(fixtures.TestBase):
 
         wrapped_again = select([c for c in wrapped.c])
 
-        compiled = wrapped_again.compile(
-            compile_kwargs={"select_wraps_for": stmt}
-        )
+        dialect = default.DefaultDialect()
+
+        with mock.patch.object(
+            dialect.statement_compiler,
+            "translate_select_structure",
+            lambda self, to_translate, **kw: wrapped_again
+            if to_translate is stmt
+            else to_translate,
+        ):
+            compiled = stmt.compile(dialect=dialect)
 
         proxied = [obj[0] for (k, n, obj, type_) in compiled._result_columns]
         for orig_obj, proxied_obj in zip(orig, proxied):
@@ -5245,9 +5253,17 @@ class ResultMapTest(fixtures.TestBase):
         # so the compiler logic that matches up the "wrapper" to the
         # "select_wraps_for" can't use inner_columns to match because
         # these collections are not the same
-        compiled = wrapped_again.compile(
-            compile_kwargs={"select_wraps_for": stmt}
-        )
+
+        dialect = default.DefaultDialect()
+
+        with mock.patch.object(
+            dialect.statement_compiler,
+            "translate_select_structure",
+            lambda self, to_translate, **kw: wrapped_again
+            if to_translate is stmt
+            else to_translate,
+        ):
+            compiled = stmt.compile(dialect=dialect)
 
         proxied = [obj[0] for (k, n, obj, type_) in compiled._result_columns]
         for orig_obj, proxied_obj in zip(orig, proxied):

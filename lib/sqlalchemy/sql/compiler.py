@@ -28,6 +28,7 @@ import contextlib
 import itertools
 import operator
 import re
+import time
 
 from . import base
 from . import coercions
@@ -380,6 +381,54 @@ class Compiled(object):
     sub-elements of the statement can modify these.
     """
 
+    compile_state = None
+    """Optional :class:`.CompileState` object that maintains additional
+    state used by the compiler.
+
+    Major executable objects such as :class:`_expression.Insert`,
+    :class:`_expression.Update`, :class:`_expression.Delete`,
+    :class:`_expression.Select` will generate this
+    state when compiled in order to calculate additional information about the
+    object.   For the top level object that is to be executed, the state can be
+    stored here where it can also have applicability towards result set
+    processing.
+
+    .. versionadded:: 1.4
+
+    """
+
+    _rewrites_selected_columns = False
+    """if True, indicates the compile_state object rewrites an incoming
+    ReturnsRows (like a Select) so that the columns we compile against in the
+    result set are not what were expressed on the outside.   this is a hint to
+    the execution context to not link the statement.selected_columns to the
+    columns mapped in the result object.
+
+    That is, when this flag is False::
+
+        stmt = some_statement()
+
+        result = conn.execute(stmt)
+        row = result.first()
+
+        # selected_columns are in a 1-1 relationship with the
+        # columns in the result, and are targetable in mapping
+        for col in stmt.selected_columns:
+            assert col in row._mapping
+
+    When True::
+
+        # selected columns are not what are in the rows.  the context
+        # rewrote the statement for some other set of selected_columns.
+        for col in stmt.selected_columns:
+            assert col not in row._mapping
+
+
+    """
+
+    cache_key = None
+    _gen_time = None
+
     def __init__(
         self,
         dialect,
@@ -433,6 +482,7 @@ class Compiled(object):
                 self.string = self.preparer._render_schema_translates(
                     self.string, schema_translate_map
                 )
+        self._gen_time = time.time()
 
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options
@@ -637,28 +687,6 @@ class SQLCompiler(Compiled):
 
     insert_prefetch = update_prefetch = ()
 
-    compile_state = None
-    """Optional :class:`.CompileState` object that maintains additional
-    state used by the compiler.
-
-    Major executable objects such as :class:`_expression.Insert`,
-    :class:`_expression.Update`, :class:`_expression.Delete`,
-    :class:`_expression.Select` will generate this
-    state when compiled in order to calculate additional information about the
-    object.   For the top level object that is to be executed, the state can be
-    stored here where it can also have applicability towards result set
-    processing.
-
-    .. versionadded:: 1.4
-
-    """
-
-    compile_state_factories = util.immutabledict()
-    """Dictionary of alternate :class:`.CompileState` factories for given
-    classes, identified by their visit_name.
-
-    """
-
     def __init__(
         self,
         dialect,
@@ -667,7 +695,6 @@ class SQLCompiler(Compiled):
         column_keys=None,
         inline=False,
         linting=NO_LINTING,
-        compile_state_factories=None,
         **kwargs
     ):
         """Construct a new :class:`.SQLCompiler` object.
@@ -733,9 +760,6 @@ class SQLCompiler(Compiled):
         # a map which tracks "truncated" names based on
         # dialect.label_length or dialect.max_identifier_length
         self.truncated_names = {}
-
-        if compile_state_factories:
-            self.compile_state_factories = compile_state_factories
 
         Compiled.__init__(self, dialect, statement, **kwargs)
 
@@ -1542,7 +1566,7 @@ class SQLCompiler(Compiled):
 
         compile_state = cs._compile_state_factory(cs, self, **kwargs)
 
-        if toplevel:
+        if toplevel and not self.compile_state:
             self.compile_state = compile_state
 
         entry = self._default_stack_entry if toplevel else self.stack[-1]
@@ -2541,6 +2565,13 @@ class SQLCompiler(Compiled):
             )
         return froms
 
+    translate_select_structure = None
+    """if none None, should be a callable which accepts (select_stmt, **kw)
+    and returns a select object.   this is used for structural changes
+    mostly to accommodate for LIMIT/OFFSET schemes
+
+    """
+
     def visit_select(
         self,
         select_stmt,
@@ -2552,7 +2583,17 @@ class SQLCompiler(Compiled):
         from_linter=None,
         **kwargs
     ):
+        assert select_wraps_for is None, (
+            "SQLAlchemy 1.4 requires use of "
+            "the translate_select_structure hook for structural "
+            "translations of SELECT objects"
+        )
 
+        # initial setup of SELECT.  the compile_state_factory may now
+        # be creating a totally different SELECT from the one that was
+        # passed in.  for ORM use this will convert from an ORM-state
+        # SELECT to a regular "Core" SELECT.  other composed operations
+        # such as computation of joins will be performed.
         compile_state = select_stmt._compile_state_factory(
             select_stmt, self, **kwargs
         )
@@ -2560,8 +2601,28 @@ class SQLCompiler(Compiled):
 
         toplevel = not self.stack
 
-        if toplevel:
+        if toplevel and not self.compile_state:
             self.compile_state = compile_state
+
+        # translate step for Oracle, SQL Server which often need to
+        # restructure the SELECT to allow for LIMIT/OFFSET and possibly
+        # other conditions
+        if self.translate_select_structure:
+            new_select_stmt = self.translate_select_structure(
+                select_stmt, asfrom=asfrom, **kwargs
+            )
+
+            # if SELECT was restructured, maintain a link to the originals
+            # and assemble a new compile state
+            if new_select_stmt is not select_stmt:
+                compile_state_wraps_for = compile_state
+                select_wraps_for = select_stmt
+                select_stmt = new_select_stmt
+
+                compile_state = select_stmt._compile_state_factory(
+                    select_stmt, self, **kwargs
+                )
+                select_stmt = compile_state.statement
 
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
@@ -2624,12 +2685,8 @@ class SQLCompiler(Compiled):
         ]
 
         if populate_result_map and select_wraps_for is not None:
-            # if this select is a compiler-generated wrapper,
+            # if this select was generated from translate_select,
             # rewrite the targeted columns in the result map
-
-            compile_state_wraps_for = select_wraps_for._compile_state_factory(
-                select_wraps_for, self, **kwargs
-            )
 
             translate = dict(
                 zip(
@@ -3013,7 +3070,8 @@ class SQLCompiler(Compiled):
 
         if toplevel:
             self.isinsert = True
-            self.compile_state = compile_state
+            if not self.compile_state:
+                self.compile_state = compile_state
 
         self.stack.append(
             {

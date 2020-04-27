@@ -2737,12 +2737,12 @@ class JoinCondition(object):
 
             def replace(element):
                 if "remote" in element._annotations:
-                    v = element._annotations.copy()
+                    v = dict(element._annotations)
                     del v["remote"]
                     v["local"] = True
                     return element._with_annotations(v)
                 elif "local" in element._annotations:
-                    v = element._annotations.copy()
+                    v = dict(element._annotations)
                     del v["local"]
                     v["remote"] = True
                     return element._with_annotations(v)

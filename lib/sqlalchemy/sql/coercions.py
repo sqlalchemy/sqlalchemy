@@ -50,18 +50,25 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
     )
 
 
-def expect(role, element, **kw):
+def expect(role, element, apply_propagate_attrs=None, **kw):
     # major case is that we are given a ClauseElement already, skip more
     # elaborate logic up front if possible
     impl = _impl_lookup[role]
 
     if not isinstance(
         element,
-        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue,),
+        (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
     ):
         resolved = impl._resolve_for_clause_element(element, **kw)
     else:
         resolved = element
+
+    if (
+        apply_propagate_attrs is not None
+        and not apply_propagate_attrs._propagate_attrs
+        and resolved._propagate_attrs
+    ):
+        apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
 
     if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
@@ -106,32 +113,32 @@ class RoleImpl(object):
         self.name = role_class._role_name
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
 
-    def _resolve_for_clause_element(
-        self, element, argname=None, apply_plugins=None, **kw
-    ):
+    def _resolve_for_clause_element(self, element, argname=None, **kw):
         original_element = element
 
         is_clause_element = False
+
         while hasattr(element, "__clause_element__"):
             is_clause_element = True
             if not getattr(element, "is_clause_element", False):
                 element = element.__clause_element__()
             else:
-                break
+                return element
 
-        should_apply_plugins = (
-            apply_plugins is not None
-            and apply_plugins._compile_state_plugin is None
-        )
+        if not is_clause_element:
+            if self._use_inspection:
+                insp = inspection.inspect(element, raiseerr=False)
+                if insp is not None:
+                    insp._post_inspect
+                    try:
+                        element = insp.__clause_element__()
+                    except AttributeError:
+                        self._raise_for_expected(original_element, argname)
+                    else:
+                        return element
 
-        if is_clause_element:
-            if (
-                should_apply_plugins
-                and "compile_state_plugin" in element._annotations
-            ):
-                apply_plugins._compile_state_plugin = element._annotations[
-                    "compile_state_plugin"
-                ]
+            return self._literal_coercion(element, argname=argname, **kw)
+        else:
             return element
 
         if self._use_inspection:
@@ -142,14 +149,6 @@ class RoleImpl(object):
                     element = insp.__clause_element__()
                 except AttributeError:
                     self._raise_for_expected(original_element, argname)
-                else:
-                    if (
-                        should_apply_plugins
-                        and "compile_state_plugin" in element._annotations
-                    ):
-                        plugin = element._annotations["compile_state_plugin"]
-                        apply_plugins._compile_state_plugin = plugin
-                    return element
 
         return self._literal_coercion(element, argname=argname, **kw)
 
@@ -649,8 +648,8 @@ class SelectStatementImpl(_NoTextCoercion, RoleImpl):
             self._raise_for_expected(original_element, argname, resolved)
 
 
-class HasCTEImpl(ReturnsRowsImpl, roles.HasCTERole):
-    pass
+class HasCTEImpl(ReturnsRowsImpl):
+    __slots__ = ()
 
 
 class JoinTargetImpl(RoleImpl):

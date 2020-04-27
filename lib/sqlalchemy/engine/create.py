@@ -435,6 +435,23 @@ def create_engine(url, **kwargs):
 
         .. versionadded:: 1.2.3
 
+    :param query_cache_size: size of the cache used to cache the SQL string
+     form of queries.  Defaults to zero, which disables caching.
+
+     Caching is accomplished on a per-statement basis by generating a
+     cache key that represents the statement's structure, then generating
+     string SQL for the current dialect only if that key is not present
+     in the cache.   All statements support caching, however some features
+     such as an INSERT with a large set of parameters will intentionally
+     bypass the cache.   SQL logging will indicate statistics for each
+     statement whether or not it were pull from the cache.
+
+     .. seealso::
+
+        ``engine_caching`` - TODO: this will be an upcoming section describing
+        the SQL caching system.
+
+     .. versionadded:: 1.4
 
     """  # noqa
 

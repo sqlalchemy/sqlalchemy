@@ -12,6 +12,7 @@ import sys
 import weakref
 
 from . import attributes
+from . import context
 from . import exc
 from . import identity
 from . import loading
@@ -28,13 +29,12 @@ from .base import state_str
 from .unitofwork import UOWTransaction
 from .. import engine
 from .. import exc as sa_exc
-from .. import sql
+from .. import future
 from .. import util
 from ..inspection import inspect
 from ..sql import coercions
 from ..sql import roles
-from ..sql import util as sql_util
-
+from ..sql import visitors
 
 __all__ = ["Session", "SessionTransaction", "sessionmaker"]
 
@@ -96,6 +96,160 @@ PREPARED = util.symbol("PREPARED")
 COMMITTED = util.symbol("COMMITTED")
 DEACTIVE = util.symbol("DEACTIVE")
 CLOSED = util.symbol("CLOSED")
+
+
+class ORMExecuteState(object):
+    """Stateful object used for the :meth:`.SessionEvents.do_orm_execute`
+
+    .. versionadded:: 1.4
+
+    """
+
+    __slots__ = (
+        "session",
+        "statement",
+        "parameters",
+        "execution_options",
+        "bind_arguments",
+    )
+
+    def __init__(
+        self, session, statement, parameters, execution_options, bind_arguments
+    ):
+        self.session = session
+        self.statement = statement
+        self.parameters = parameters
+        self.execution_options = execution_options
+        self.bind_arguments = bind_arguments
+
+    def invoke_statement(
+        self,
+        statement=None,
+        params=None,
+        execution_options=None,
+        bind_arguments=None,
+    ):
+        """Execute the statement represented by this
+        :class:`.ORMExecuteState`, without re-invoking events.
+
+        This method essentially performs a re-entrant execution of the
+        current statement for which the :meth:`.SessionEvents.do_orm_execute`
+        event is being currently invoked.    The use case for this is
+        for event handlers that want to override how the ultimate results
+        object is returned, such as for schemes that retrieve results from
+        an offline cache or which concatenate results from multiple executions.
+
+        :param statement: optional statement to be invoked, in place of the
+         statement currently represented by :attr:`.ORMExecuteState.statement`.
+
+        :param params: optional dictionary of parameters which will be merged
+         into the existing :attr:`.ORMExecuteState.parameters` of this
+         :class:`.ORMExecuteState`.
+
+        :param execution_options: optional dictionary of execution options
+         will be merged into the existing
+         :attr:`.ORMExecuteState.execution_options` of this
+         :class:`.ORMExecuteState`.
+
+        :param bind_arguments: optional dictionary of bind_arguments
+         which will be merged amongst the current
+         :attr:`.ORMExecuteState.bind_arguments`
+         of this :class:`.ORMExecuteState`.
+
+        :return: a :class:`_engine.Result` object with ORM-level results.
+
+        .. seealso::
+
+            :ref:`examples_caching` - includes example use of the
+            :meth:`.SessionEvents.do_orm_execute` hook as well as the
+            :meth:`.ORMExecuteState.invoke_query` method.
+
+
+        """
+
+        if statement is None:
+            statement = self.statement
+
+        _bind_arguments = dict(self.bind_arguments)
+        if bind_arguments:
+            _bind_arguments.update(bind_arguments)
+        _bind_arguments["_sa_skip_events"] = True
+
+        if params:
+            _params = dict(self.parameters)
+            _params.update(params)
+        else:
+            _params = self.parameters
+
+        if execution_options:
+            _execution_options = dict(self.execution_options)
+            _execution_options.update(execution_options)
+        else:
+            _execution_options = self.execution_options
+
+        return self.session.execute(
+            statement, _params, _execution_options, _bind_arguments
+        )
+
+    @property
+    def orm_query(self):
+        """Return the :class:`_orm.Query` object associated with this
+        execution.
+
+        For SQLAlchemy-2.0 style usage, the :class:`_orm.Query` object
+        is not used at all, and this attribute will return None.
+
+        """
+        load_opts = self.load_options
+        if load_opts._orm_query:
+            return load_opts._orm_query
+
+        opts = self._orm_compile_options()
+        if opts is not None:
+            return opts._orm_query
+        else:
+            return None
+
+    def _orm_compile_options(self):
+        opts = self.statement.compile_options
+        if isinstance(opts, context.ORMCompileState.default_compile_options):
+            return opts
+        else:
+            return None
+
+    @property
+    def loader_strategy_path(self):
+        """Return the :class:`.PathRegistry` for the current load path.
+
+        This object represents the "path" in a query along relationships
+        when a particular object or collection is being loaded.
+
+        """
+        opts = self._orm_compile_options()
+        if opts is not None:
+            return opts._current_path
+        else:
+            return None
+
+    @property
+    def load_options(self):
+        """Return the load_options that will be used for this execution."""
+
+        return self.execution_options.get(
+            "_sa_orm_load_options", context.QueryContext.default_load_options
+        )
+
+    @property
+    def user_defined_options(self):
+        """The sequence of :class:`.UserDefinedOptions` that have been
+        associated with the statement being invoked.
+
+        """
+        return [
+            opt
+            for opt in self.statement._with_options
+            if not opt._is_compile_state and not opt._is_legacy_option
+        ]
 
 
 class SessionTransaction(object):
@@ -1032,9 +1186,7 @@ class Session(_SessionClassMethods):
 
     def connection(
         self,
-        mapper=None,
-        clause=None,
-        bind=None,
+        bind_arguments=None,
         close_with_result=False,
         execution_options=None,
         **kw
@@ -1059,23 +1211,18 @@ class Session(_SessionClassMethods):
         resolved through any of the optional keyword arguments.   This
         ultimately makes usage of the :meth:`.get_bind` method for resolution.
 
+        :param bind_arguments: dictionary of bind arguments.  may include
+         "mapper", "bind", "clause", other custom arguments that are passed
+         to :meth:`.Session.get_bind`.
+
         :param bind:
-          Optional :class:`_engine.Engine` to be used as the bind.  If
-          this engine is already involved in an ongoing transaction,
-          that connection will be used.  This argument takes precedence
-          over ``mapper``, ``clause``.
+          deprecated; use bind_arguments
 
         :param mapper:
-          Optional :func:`.mapper` mapped class, used to identify
-          the appropriate bind.  This argument takes precedence over
-          ``clause``.
+          deprecated; use bind_arguments
 
         :param clause:
-            A :class:`_expression.ClauseElement` (i.e.
-            :func:`_expression.select`,
-            :func:`_expression.text`,
-            etc.) which will be used to locate a bind, if a bind
-            cannot otherwise be identified.
+          deprecated; use bind_arguments
 
         :param close_with_result: Passed to :meth:`_engine.Engine.connect`,
           indicating the :class:`_engine.Connection` should be considered
@@ -1097,13 +1244,16 @@ class Session(_SessionClassMethods):
             :ref:`session_transaction_isolation`
 
         :param \**kw:
-          Additional keyword arguments are sent to :meth:`get_bind()`,
-          allowing additional arguments to be passed to custom
-          implementations of :meth:`get_bind`.
+          deprecated; use bind_arguments
 
         """
+
+        if not bind_arguments:
+            bind_arguments = kw
+
+        bind = bind_arguments.pop("bind", None)
         if bind is None:
-            bind = self.get_bind(mapper, clause=clause, **kw)
+            bind = self.get_bind(**bind_arguments)
 
         return self._connection_for_bind(
             bind,
@@ -1124,7 +1274,14 @@ class Session(_SessionClassMethods):
                 conn = conn.execution_options(**execution_options)
             return conn
 
-    def execute(self, clause, params=None, mapper=None, bind=None, **kw):
+    def execute(
+        self,
+        statement,
+        params=None,
+        execution_options=util.immutabledict(),
+        bind_arguments=None,
+        **kw
+    ):
         r"""Execute a SQL expression construct or string statement within
         the current transaction.
 
@@ -1222,22 +1379,19 @@ class Session(_SessionClassMethods):
             "executemany" will be invoked.  The keys in each dictionary
             must correspond to parameter names present in the statement.
 
+        :param bind_arguments: dictionary of additional arguments to determine
+         the bind.  may include "mapper", "bind", or other custom arguments.
+         Contents of this dictionary are passed to the
+         :meth:`.Session.get_bind` method.
+
         :param mapper:
-          Optional :func:`.mapper` or mapped class, used to identify
-          the appropriate bind.  This argument takes precedence over
-          ``clause`` when locating a bind.   See :meth:`.Session.get_bind`
-          for more details.
+          deprecated; use the bind_arguments dictionary
 
         :param bind:
-          Optional :class:`_engine.Engine` to be used as the bind.  If
-          this engine is already involved in an ongoing transaction,
-          that connection will be used.  This argument takes
-          precedence over ``mapper`` and ``clause`` when locating
-          a bind.
+          deprecated; use the bind_arguments dictionary
 
         :param \**kw:
-          Additional keyword arguments are sent to :meth:`.Session.get_bind()`
-          to allow extensibility of "bind" schemes.
+          deprecated; use the bind_arguments dictionary
 
         .. seealso::
 
@@ -1253,20 +1407,63 @@ class Session(_SessionClassMethods):
             in order to execute the statement.
 
         """
-        clause = coercions.expect(roles.CoerceTextStatementRole, clause)
 
-        if bind is None:
-            bind = self.get_bind(mapper, clause=clause, **kw)
+        statement = coercions.expect(roles.CoerceTextStatementRole, statement)
 
-        return self._connection_for_bind(
-            bind, close_with_result=True
-        )._execute_20(clause, params,)
+        if not bind_arguments:
+            bind_arguments = kw
+        elif kw:
+            bind_arguments.update(kw)
 
-    def scalar(self, clause, params=None, mapper=None, bind=None, **kw):
+        compile_state_cls = statement._get_plugin_compile_state_cls("orm")
+        if compile_state_cls:
+            compile_state_cls.orm_pre_session_exec(
+                self, statement, execution_options, bind_arguments
+            )
+        else:
+            bind_arguments.setdefault("clause", statement)
+            if statement._is_future:
+                execution_options = util.immutabledict().merge_with(
+                    execution_options, {"future_result": True}
+                )
+
+        if self.dispatch.do_orm_execute:
+            skip_events = bind_arguments.pop("_sa_skip_events", False)
+
+            if not skip_events:
+                orm_exec_state = ORMExecuteState(
+                    self, statement, params, execution_options, bind_arguments
+                )
+                for fn in self.dispatch.do_orm_execute:
+                    result = fn(orm_exec_state)
+                    if result:
+                        return result
+
+        bind = self.get_bind(**bind_arguments)
+
+        conn = self._connection_for_bind(bind, close_with_result=True)
+        result = conn._execute_20(statement, params or {}, execution_options)
+
+        if compile_state_cls:
+            result = compile_state_cls.orm_setup_cursor_result(
+                self, bind_arguments, result
+            )
+
+        return result
+
+    def scalar(
+        self,
+        statement,
+        params=None,
+        execution_options=None,
+        mapper=None,
+        bind=None,
+        **kw
+    ):
         """Like :meth:`~.Session.execute` but return a scalar result."""
 
         return self.execute(
-            clause, params=params, mapper=mapper, bind=bind, **kw
+            statement, params=params, mapper=mapper, bind=bind, **kw
         ).scalar()
 
     def close(self):
@@ -1422,7 +1619,7 @@ class Session(_SessionClassMethods):
         """
         self._add_bind(table, bind)
 
-    def get_bind(self, mapper=None, clause=None):
+    def get_bind(self, mapper=None, clause=None, bind=None):
         """Return a "bind" to which this :class:`.Session` is bound.
 
         The "bind" is usually an instance of :class:`_engine.Engine`,
@@ -1497,6 +1694,8 @@ class Session(_SessionClassMethods):
              :meth:`.Session.bind_table`
 
         """
+        if bind:
+            return bind
 
         if mapper is clause is None:
             if self.bind:
@@ -1520,6 +1719,8 @@ class Session(_SessionClassMethods):
                     raise
 
         if self.__binds:
+            # matching mappers and selectables to entries in the
+            # binds dictionary; supported use case.
             if mapper:
                 for cls in mapper.class_.__mro__:
                     if cls in self.__binds:
@@ -1528,18 +1729,32 @@ class Session(_SessionClassMethods):
                     clause = mapper.persist_selectable
 
             if clause is not None:
-                for t in sql_util.find_tables(clause, include_crud=True):
-                    if t in self.__binds:
-                        return self.__binds[t]
+                for obj in visitors.iterate(clause):
+                    if obj in self.__binds:
+                        return self.__binds[obj]
 
+        # session has a single bind; supported use case.
         if self.bind:
             return self.bind
 
-        if isinstance(clause, sql.expression.ClauseElement) and clause.bind:
-            return clause.bind
+        # now we are in legacy territory.  looking for "bind" on tables
+        # that are via bound metadata.   this goes away in 2.0.
+        if mapper and clause is None:
+            clause = mapper.persist_selectable
 
-        if mapper and mapper.persist_selectable.bind:
-            return mapper.persist_selectable.bind
+        if clause is not None:
+            if clause.bind:
+                return clause.bind
+        #            for obj in visitors.iterate(clause):
+        #                if obj.bind:
+        #                    return obj.bind
+
+        if mapper:
+            if mapper.persist_selectable.bind:
+                return mapper.persist_selectable.bind
+        #            for obj in visitors.iterate(mapper.persist_selectable):
+        #                if obj.bind:
+        #                    return obj.bind
 
         context = []
         if mapper is not None:
@@ -1722,9 +1937,11 @@ class Session(_SessionClassMethods):
             else:
                 with_for_update = None
 
+        stmt = future.select(object_mapper(instance))
         if (
             loading.load_on_ident(
-                self.query(object_mapper(instance)),
+                self,
+                stmt,
                 state.key,
                 refresh_state=state,
                 with_for_update=with_for_update,

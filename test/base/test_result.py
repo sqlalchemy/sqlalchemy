@@ -115,6 +115,19 @@ class ResultTupleTest(fixtures.TestBase):
         is_true("a" not in keyed_tuple)
         is_true("z" not in keyed_tuple)
 
+    def test_contains_mapping(self):
+        keyed_tuple = self._fixture(["x", "y"], ["a", "b"])._mapping
+
+        is_false("x" in keyed_tuple)
+        is_false("z" in keyed_tuple)
+
+        is_true("z" not in keyed_tuple)
+        is_true("x" not in keyed_tuple)
+
+        # we do keys
+        is_true("a" in keyed_tuple)
+        is_true("b" in keyed_tuple)
+
     def test_none_label(self):
         keyed_tuple = self._fixture([1, 2, 3], ["a", None, "b"])
         eq_(str(keyed_tuple), "(1, 2, 3)")
@@ -841,15 +854,12 @@ class OnlyScalarsTest(fixtures.TestBase):
     def no_tuple_fixture(self):
         data = [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)]
 
-        def chunks(num, as_tuples):
+        def chunks(num):
             while data:
                 rows = data[0:num]
                 data[:] = []
 
-                if as_tuples:
-                    assert False
-                else:
-                    yield [row[0] for row in rows]
+                yield [row[0] for row in rows]
 
         return chunks
 
@@ -857,15 +867,12 @@ class OnlyScalarsTest(fixtures.TestBase):
     def normal_fixture(self):
         data = [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)]
 
-        def chunks(num, as_tuples):
+        def chunks(num):
             while data:
                 rows = data[0:num]
                 data[:] = []
 
-                if as_tuples:
-                    yield rows
-                else:
-                    yield [row[0] for row in rows]
+                yield [row[0] for row in rows]
 
         return chunks
 
@@ -891,6 +898,26 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         eq_(r.all(), [1, 2, 4])
 
+    def test_scalar_mode_scalars_fetchmany(self, normal_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, normal_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars()
+        eq_(list(r.partitions(2)), [[1, 2], [1, 1], [4]])
+
+    def test_scalar_mode_unique_scalars_fetchmany(self, normal_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, normal_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars().unique()
+        eq_(list(r.partitions(2)), [[1, 2], [4]])
+
     def test_scalar_mode_unique_tuples_all(self, normal_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
 
@@ -900,7 +927,7 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         r = r.unique()
 
-        eq_(r.all(), [(1, 1, 1), (2, 1, 2), (1, 3, 2), (4, 1, 2)])
+        eq_(r.all(), [(1,), (2,), (4,)])
 
     def test_scalar_mode_tuples_all(self, normal_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
@@ -909,7 +936,7 @@ class OnlyScalarsTest(fixtures.TestBase):
             metadata, normal_fixture, source_supports_scalars=True
         )
 
-        eq_(r.all(), [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)])
+        eq_(r.all(), [(1,), (2,), (1,), (1,), (4,)])
 
     def test_scalar_mode_scalars_iterate(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
@@ -929,4 +956,4 @@ class OnlyScalarsTest(fixtures.TestBase):
             metadata, normal_fixture, source_supports_scalars=True
         )
 
-        eq_(list(r), [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)])
+        eq_(list(r), [(1,), (2,), (1,), (1,), (4,)])

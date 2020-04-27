@@ -1704,12 +1704,14 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(element.typeclause, **kw),
         )
 
-    def visit_select(self, select, **kwargs):
+    def translate_select_structure(self, select_stmt, **kwargs):
         """Look for ``LIMIT`` and OFFSET in a select statement, and if
         so tries to wrap it in a subquery with ``row_number()`` criterion.
         MSSQL 2012 and above are excluded
 
         """
+        select = select_stmt
+
         if (
             not self.dialect._supports_offset_fetch
             and (
@@ -1741,7 +1743,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
             limit_clause = select._limit_clause
             offset_clause = select._offset_clause
-            kwargs["select_wraps_for"] = select
+
             select = select._generate()
             select._mssql_visit = True
             select = (
@@ -1766,9 +1768,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
                     )
             else:
                 limitselect = limitselect.where(mssql_rn <= (limit_clause))
-            return self.process(limitselect, **kwargs)
+            return limitselect
         else:
-            return compiler.SQLCompiler.visit_select(self, select, **kwargs)
+            return select
 
     @_with_legacy_schema_aliasing
     def visit_table(self, table, mssql_aliased=False, iscrud=False, **kwargs):

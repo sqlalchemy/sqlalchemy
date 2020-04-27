@@ -346,14 +346,20 @@ class ColumnProperty(StrategizedProperty):
                 pe = self._parententity
                 # no adapter, so we aren't aliased
                 # assert self._parententity is self._parentmapper
-                return self.prop.columns[0]._annotate(
-                    {
-                        "entity_namespace": pe,
-                        "parententity": pe,
-                        "parentmapper": pe,
-                        "orm_key": self.prop.key,
-                        "compile_state_plugin": "orm",
-                    }
+                return (
+                    self.prop.columns[0]
+                    ._annotate(
+                        {
+                            "entity_namespace": pe,
+                            "parententity": pe,
+                            "parentmapper": pe,
+                            "orm_key": self.prop.key,
+                            "compile_state_plugin": "orm",
+                        }
+                    )
+                    ._set_propagate_attrs(
+                        {"compile_state_plugin": "orm", "plugin_subject": pe}
+                    )
                 )
 
         def _memoized_attr_info(self):
@@ -387,6 +393,11 @@ class ColumnProperty(StrategizedProperty):
                             "parentmapper": self._parententity,
                             "orm_key": self.prop.key,
                             "compile_state_plugin": "orm",
+                        }
+                    )._set_propagate_attrs(
+                        {
+                            "compile_state_plugin": "orm",
+                            "plugin_subject": self._parententity,
                         }
                     )
                     for col in self.prop.columns

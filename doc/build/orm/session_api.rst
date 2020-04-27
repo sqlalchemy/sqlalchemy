@@ -1,4 +1,4 @@
-.. currentmodule:: sqlalchemy.orm.session
+.. currentmodule:: sqlalchemy.orm
 
 Session API
 ===========
@@ -10,11 +10,45 @@ Session and sessionmaker()
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.session.Session
+.. autoclass:: ORMExecuteState
+   :members:
+
+
+  .. attribute::  session
+
+      The :class:`_orm.Session` in use.
+
+  .. attribute:: statement
+
+      The SQL statement being invoked.  For an ORM selection as would
+      be retrieved from :class:`_orm.Query`, this is an instance of
+      :class:`_future.select` that was generated from the ORM query.
+
+  .. attribute:: parameters
+
+      Dictionary of parameters that was passed to :meth:`_orm.Session.execute`.
+
+  .. attribute:: execution_options
+
+      Dictionary of execution options passed to :meth:`_orm.Session.execute`.
+      Note that this dictionary does not include execution options that may
+      be associated with the statement itself, or with any underlying
+      :class:`_engine.Connection` that may be used to invoke this statement.
+
+  .. attribute:: bind_arguments
+
+      The dictionary passed as the
+      :paramref:`_orm.Session.execute.bind_arguments` dictionary.  This
+      dictionary may be used by extensions to :class:`_orm.Session` to pass
+      arguments that will assist in determining amongst a set of database
+      connections which one should be used to invoke this statement.
+
+
+.. autoclass:: Session
    :members:
    :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.session.SessionTransaction
+.. autoclass:: SessionTransaction
    :members:
 
 Session Utilities

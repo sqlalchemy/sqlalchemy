@@ -142,11 +142,19 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
 
 
 class CoerceTextStatementRole(SQLRole):
-    _role_name = "Executable SQL, text() construct, or string statement"
+    _role_name = "Executable SQL or text() construct"
+
+
+#    _executable_statement = None
 
 
 class StatementRole(CoerceTextStatementRole):
     _role_name = "Executable SQL or text() construct"
+
+    _is_future = False
+
+    def _get_plugin_compile_state_cls(self, name):
+        return None
 
 
 class ReturnsRowsRole(StatementRole):

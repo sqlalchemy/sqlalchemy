@@ -97,17 +97,13 @@ class FacadeDict(ImmutableContainer, dict):
 
     def __new__(cls, *args):
         new = dict.__new__(cls)
-        dict.__init__(new, *args)
         return new
 
-    def __init__(self, *args):
-        pass
-
-    # note that currently, "copy()" is used as a way to get a plain dict
-    # from an immutabledict, while also allowing the method to work if the
-    # dictionary is already a plain dict.
-    # def copy(self):
-    #    return immutabledict.__new__(immutabledict, self)
+    def copy(self):
+        raise NotImplementedError(
+            "an immutabledict shouldn't need to be copied.  use dict(d) "
+            "if you need a mutable dictionary."
+        )
 
     def __reduce__(self):
         return FacadeDict, (dict(self),)

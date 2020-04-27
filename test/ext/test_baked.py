@@ -289,6 +289,7 @@ class LikeQueryTest(BakedTest):
         # with multiple params, the **kwargs will be used
         bq += lambda q: q.filter(User.id == bindparam("anid"))
         eq_(bq(sess).params(uname="fred", anid=9).count(), 1)
+
         eq_(
             # wrong id, so 0 results:
             bq(sess).params(uname="fred", anid=8).count(),
@@ -388,7 +389,12 @@ class ResultPostCriteriaTest(BakedTest):
             def before_execute(
                 conn, clauseelement, multiparams, params, execution_options
             ):
-                assert "yes" in conn._execution_options
+                # execution options are kind of moving around a bit,
+                # test both places
+                assert (
+                    "yes" in clauseelement._execution_options
+                    or "yes" in execution_options
+                )
 
             bq = self.bakery(lambda s: s.query(User.id).order_by(User.id))
 
@@ -804,9 +810,7 @@ class ResultTest(BakedTest):
         Address = self.classes.Address
         Order = self.classes.Order
 
-        # Override the default bakery for one with a smaller size. This used to
-        # trigger a bug when unbaking subqueries.
-        self.bakery = baked.bakery(size=3)
+        self.bakery = baked.bakery()
         base_bq = self.bakery(lambda s: s.query(User))
 
         base_bq += lambda q: q.options(
@@ -840,6 +844,7 @@ class ResultTest(BakedTest):
             for cond1, cond2 in itertools.product(
                 *[(False, True) for j in range(2)]
             ):
+                print("HI----")
                 bq = base_bq._clone()
 
                 sess = Session()
@@ -903,7 +908,7 @@ class ResultTest(BakedTest):
             )
         ]
 
-        self.bakery = baked.bakery(size=3)
+        self.bakery = baked.bakery()
 
         bq = self.bakery(lambda s: s.query(User))
 
@@ -1288,33 +1293,72 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
 
     def _test_baked_lazy_loading_relationship_flag(self, flag):
         User, Address = self._o2m_fixture(bake_queries=flag)
+        from sqlalchemy import inspect
 
-        sess = Session()
-        u1 = sess.query(User).first()
+        address_mapper = inspect(Address)
+        sess = Session(testing.db)
 
-        from sqlalchemy.orm import Query
+        # there's no event in the compile process either at the ORM
+        # or core level and it is not easy to patch.  the option object
+        # is the one thing that will get carried into the lazyload from the
+        # outside and invoked on a per-compile basis
+        mock_opt = mock.Mock(
+            _is_compile_state=True,
+            propagate_to_loaders=True,
+            _gen_cache_key=lambda *args: ("hi",),
+            _generate_path_cache_key=lambda path: ("hi",),
+        )
 
-        canary = mock.Mock()
+        u1 = sess.query(User).options(mock_opt).first()
 
-        # I would think Mock can do this but apparently
-        # it cannot (wrap / autospec don't work together)
-        real_compile_state = Query._compile_state
+        @event.listens_for(sess, "do_orm_execute")
+        def _my_compile_state(context):
+            if (
+                context.statement._raw_columns[0]._annotations["parententity"]
+                is address_mapper
+            ):
+                mock_opt.orm_execute()
 
-        def _my_compile_state(*arg, **kw):
-            if arg[0].column_descriptions[0]["entity"] is Address:
-                canary()
-            return real_compile_state(*arg, **kw)
+        u1.addresses
 
-        with mock.patch.object(Query, "_compile_state", _my_compile_state):
-            u1.addresses
-
-            sess.expire(u1)
-            u1.addresses
+        sess.expire(u1)
+        u1.addresses
 
         if flag:
-            eq_(canary.call_count, 1)
+            eq_(
+                mock_opt.mock_calls,
+                [
+                    mock.call.process_query(mock.ANY),
+                    mock.call.process_compile_state(mock.ANY),  # query.first()
+                    mock.call.process_query_conditionally(mock.ANY),
+                    mock.call.orm_execute(),  # lazyload addresses
+                    mock.call.process_compile_state(mock.ANY),  # emit lazyload
+                    mock.call.process_compile_state(
+                        mock.ANY
+                    ),  # load scalar attributes for user
+                    # lazyload addresses, no call to process_compile_state
+                    mock.call.orm_execute(),
+                ],
+            )
         else:
-            eq_(canary.call_count, 2)
+            eq_(
+                mock_opt.mock_calls,
+                [
+                    mock.call.process_query(mock.ANY),
+                    mock.call.process_compile_state(mock.ANY),  # query.first()
+                    mock.call.process_query_conditionally(mock.ANY),
+                    mock.call.orm_execute(),  # lazyload addresses
+                    mock.call.process_compile_state(mock.ANY),  # emit_lazyload
+                    mock.call.process_compile_state(
+                        mock.ANY
+                    ),  # load_scalar_attributes for user
+                    mock.call.process_query_conditionally(mock.ANY),
+                    mock.call.orm_execute(),  # lazyload addresses
+                    mock.call.process_compile_state(
+                        mock.ANY
+                    ),  # emit_lazyload, here the query was not cached
+                ],
+            )
 
     def test_baked_lazy_loading_option_o2m(self):
         User, Address = self._o2m_fixture()
@@ -1571,58 +1615,57 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         return User, Address
 
     def _query_fixture(self):
-        from sqlalchemy.orm.query import Query, _generative
+        from sqlalchemy.orm.query import Query
 
         class CachingQuery(Query):
             cache = {}
 
-            @_generative
             def set_cache_key(self, key):
-                self._cache_key = key
+                return self.execution_options(_cache_key=key)
 
-            # in 1.4 / If1a23824ffb77d8d58cf2338cf35dd6b5963b17f ,
-            # we no longer override ``__iter__`` because we need the
-            # whole result object.  The FrozenResult is added for this
-            # use case.   A new session-level event will be added within
-            # the scope of ORM /execute() integration so that people
-            # don't have to subclass this anymore.
+            def set_cache_key_for_path(self, path, key):
+                return self.execution_options(**{"_cache_key_%s" % path: key})
 
-            def _execute_and_instances(self, context, **kw):
-                super_ = super(CachingQuery, self)
+        def get_value(cache_key, cache, createfunc):
+            if cache_key in cache:
+                return cache[cache_key]()
+            else:
+                cache[cache_key] = retval = createfunc().freeze()
+                return retval()
 
-                if hasattr(self, "_cache_key"):
-                    return self.get_value(
-                        createfunc=lambda: super_._execute_and_instances(
-                            context, **kw
-                        )
-                    )
-                else:
-                    return super_._execute_and_instances(context, **kw)
+        s1 = Session(query_cls=CachingQuery)
 
-            def get_value(self, createfunc):
-                if self._cache_key in self.cache:
-                    return self.cache[self._cache_key]()
-                else:
-                    self.cache[
-                        self._cache_key
-                    ] = retval = createfunc().freeze()
-                    return retval()
+        @event.listens_for(s1, "do_orm_execute", retval=True)
+        def do_orm_execute(orm_context):
+            ckey = None
+            statement = orm_context.orm_query
+            for opt in orm_context.user_defined_options:
+                ckey = opt.get_cache_key(orm_context)
+                if ckey:
+                    break
+            else:
+                if "_cache_key" in statement._execution_options:
+                    ckey = statement._execution_options["_cache_key"]
 
-        return Session(query_cls=CachingQuery)
+            if ckey is not None:
+                return get_value(
+                    ckey, CachingQuery.cache, orm_context.invoke_statement,
+                )
+
+        return s1
 
     def _option_fixture(self):
-        from sqlalchemy.orm.interfaces import MapperOption
+        from sqlalchemy.orm.interfaces import UserDefinedOption
 
-        class RelationshipCache(MapperOption):
+        class RelationshipCache(UserDefinedOption):
 
             propagate_to_loaders = True
 
-            def process_query_conditionally(self, query):
-                if query._current_path:
-                    query._cache_key = "user7_addresses"
-
-            def _generate_path_cache_key(self, path):
-                return None
+            def get_cache_key(self, orm_context):
+                if orm_context.loader_strategy_path:
+                    return "user7_addresses"
+                else:
+                    return None
 
         return RelationshipCache()
 
@@ -1640,6 +1683,21 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         eq_(list(q.cache), ["user7"])
 
         eq_(q.all(), [User(id=7, addresses=[Address(id=1)])])
+
+    def test_non_baked_tuples(self):
+        User, Address = self._o2m_fixture()
+
+        sess = self._query_fixture()
+        q = sess._query_cls
+        eq_(q.cache, {})
+
+        q = sess.query(User).filter(User.id == 7).set_cache_key("user7")
+
+        eq_(sess.execute(q).all(), [(User(id=7, addresses=[Address(id=1)]),)])
+
+        eq_(list(q.cache), ["user7"])
+
+        eq_(sess.execute(q).all(), [(User(id=7, addresses=[Address(id=1)]),)])
 
     def test_use_w_baked(self):
         User, Address = self._o2m_fixture()

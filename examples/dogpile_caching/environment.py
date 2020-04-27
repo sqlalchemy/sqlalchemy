@@ -23,13 +23,11 @@ if py2k:
 # dogpile cache regions.  A home base for cache configurations.
 regions = {}
 
+# scoped_session.
+Session = scoped_session(sessionmaker())
 
-# scoped_session.  Apply our custom CachingQuery class to it,
-# using a callable that will associate the dictionary
-# of regions with the Query.
-Session = scoped_session(
-    sessionmaker(query_cls=caching_query.query_callable(regions))
-)
+cache = caching_query.ORMCache(regions)
+cache.listen_on_session(Session)
 
 # global declarative base class.
 Base = declarative_base()

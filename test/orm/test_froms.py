@@ -3389,7 +3389,7 @@ class ExternalColumnsTest(QueryTest):
             },
         )
 
-        mapper(Address, addresses, properties={"user": relationship(User)})
+        mapper(Address, addresses, properties={"user": relationship(User,)})
 
         sess = create_session()
 
@@ -3412,6 +3412,11 @@ class ExternalColumnsTest(QueryTest):
             Address(id=4, user=User(id=8, concat=16, count=3)),
             Address(id=5, user=User(id=9, concat=18, count=1)),
         ]
+        # TODO: ISSUE: BUG:  cached metadata is confusing the user.id
+        # column here with the anon_1 for some reason, when we
+        # use compiled cache.  this bug may even be present in
+        # regular master / 1.3.  right now the caching of result
+        # metadata is disabled.
         eq_(sess.query(Address).all(), address_result)
 
         # run the eager version twice to test caching of aliased clauses

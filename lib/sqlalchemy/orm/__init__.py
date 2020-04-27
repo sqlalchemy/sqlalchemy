@@ -30,6 +30,7 @@ from .mapper import reconstructor  # noqa
 from .mapper import validates  # noqa
 from .properties import ColumnProperty  # noqa
 from .query import AliasOption  # noqa
+from .query import FromStatement  # noqa
 from .query import Query  # noqa
 from .relationships import foreign  # noqa
 from .relationships import RelationshipProperty  # noqa
@@ -39,8 +40,10 @@ from .session import close_all_sessions  # noqa
 from .session import make_transient  # noqa
 from .session import make_transient_to_detached  # noqa
 from .session import object_session  # noqa
+from .session import ORMExecuteState  # noqa
 from .session import Session  # noqa
 from .session import sessionmaker  # noqa
+from .session import SessionTransaction  # noqa
 from .strategy_options import Load  # noqa
 from .util import aliased  # noqa
 from .util import Bundle  # noqa

@@ -75,8 +75,8 @@ if __name__ == "__main__":
     # of "person 10"
     q = (
         Session.query(Person)
-        .options(FromCache("local_session"))
         .filter(Person.name == "person 10")
+        .execution_options(cache_options=FromCache("local_session"))
     )
 
     # load from DB

@@ -207,6 +207,10 @@ class QueryableAttribute(
     def __clause_element__(self):
         return self.expression
 
+    @property
+    def _from_objects(self):
+        return self.expression._from_objects
+
     def _bulk_update_tuples(self, value):
         """Return setter tuples for a bulk UPDATE."""
 

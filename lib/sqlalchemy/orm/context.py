@@ -18,19 +18,21 @@ from .util import Bundle
 from .util import join as orm_join
 from .util import ORMAdapter
 from .. import exc as sa_exc
+from .. import future
 from .. import inspect
 from .. import sql
 from .. import util
-from ..future.selectable import Select as FutureSelect
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.base import CacheableOptions
+from ..sql.base import CompileState
 from ..sql.base import Options
+from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
+from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..sql.selectable import Select
 from ..sql.selectable import SelectState
 from ..sql.visitors import ExtendedInternalTraversal
 from ..sql.visitors import InternalTraversal
@@ -44,6 +46,8 @@ class QueryContext(object):
         "orm_query",
         "query",
         "load_options",
+        "bind_arguments",
+        "execution_options",
         "session",
         "autoflush",
         "populate_existing",
@@ -51,7 +55,7 @@ class QueryContext(object):
         "version_check",
         "refresh_state",
         "create_eager_joins",
-        "propagate_options",
+        "propagated_loader_options",
         "attributes",
         "runid",
         "partials",
@@ -70,20 +74,30 @@ class QueryContext(object):
         _yield_per = None
         _refresh_state = None
         _lazy_loaded_from = None
+        _orm_query = None
         _params = util.immutabledict()
 
-    def __init__(self, compile_state, session):
-        query = compile_state.query
+    def __init__(
+        self,
+        compile_state,
+        session,
+        load_options,
+        execution_options=None,
+        bind_arguments=None,
+    ):
 
+        self.load_options = load_options
+        self.execution_options = execution_options or {}
+        self.bind_arguments = bind_arguments or {}
         self.compile_state = compile_state
         self.orm_query = compile_state.orm_query
-        self.query = compile_state.query
+        self.query = query = compile_state.query
         self.session = session
-        self.load_options = load_options = query.load_options
 
-        self.propagate_options = set(
+        self.propagated_loader_options = {
             o for o in query._with_options if o.propagate_to_loaders
-        )
+        }
+
         self.attributes = dict(compile_state.attributes)
 
         self.autoflush = load_options._autoflush
@@ -92,11 +106,7 @@ class QueryContext(object):
         self.version_check = load_options._version_check
         self.refresh_state = load_options._refresh_state
         self.yield_per = load_options._yield_per
-
-        if self.refresh_state is not None:
-            self.identity_token = load_options._refresh_identity_token
-        else:
-            self.identity_token = None
+        self.identity_token = load_options._refresh_identity_token
 
         if self.yield_per and compile_state._no_yield_pers:
             raise sa_exc.InvalidRequestError(
@@ -119,7 +129,274 @@ class QueryContext(object):
         )
 
 
-class QueryCompileState(sql.base.CompileState):
+class ORMCompileState(CompileState):
+    class default_compile_options(CacheableOptions):
+        _cache_key_traversal = [
+            ("_orm_results", InternalTraversal.dp_boolean),
+            ("_bake_ok", InternalTraversal.dp_boolean),
+            (
+                "_with_polymorphic_adapt_map",
+                ExtendedInternalTraversal.dp_has_cache_key_tuples,
+            ),
+            ("_current_path", InternalTraversal.dp_has_cache_key),
+            ("_enable_single_crit", InternalTraversal.dp_boolean),
+            ("_statement", InternalTraversal.dp_clauseelement),
+            ("_enable_eagerloads", InternalTraversal.dp_boolean),
+            ("_orm_only_from_obj_alias", InternalTraversal.dp_boolean),
+            ("_only_load_props", InternalTraversal.dp_plain_obj),
+            ("_set_base_alias", InternalTraversal.dp_boolean),
+            ("_for_refresh_state", InternalTraversal.dp_boolean),
+        ]
+
+        _orm_results = True
+        _bake_ok = True
+        _with_polymorphic_adapt_map = ()
+        _current_path = _path_registry
+        _enable_single_crit = True
+        _enable_eagerloads = True
+        _orm_only_from_obj_alias = True
+        _only_load_props = None
+        _set_base_alias = False
+        _for_refresh_state = False
+
+        # non-cache-key elements mostly for legacy use
+        _statement = None
+        _orm_query = None
+
+        @classmethod
+        def merge(cls, other):
+            return cls + other._state_dict()
+
+    orm_query = None
+    current_path = _path_registry
+
+    def __init__(self, *arg, **kw):
+        raise NotImplementedError()
+
+    @classmethod
+    def create_for_statement(cls, statement_container, compiler, **kw):
+        raise NotImplementedError()
+
+    @classmethod
+    def _create_for_legacy_query(cls, query, for_statement=False):
+        stmt = query._statement_20(orm_results=not for_statement)
+
+        if query.compile_options._statement is not None:
+            compile_state_cls = ORMFromStatementCompileState
+        else:
+            compile_state_cls = ORMSelectCompileState
+
+        # true in all cases except for two tests in test/orm/test_events.py
+        # assert stmt.compile_options._orm_query is query
+        return compile_state_cls._create_for_statement_or_query(
+            stmt, for_statement=for_statement
+        )
+
+    @classmethod
+    def _create_for_statement_or_query(
+        cls, statement_container, for_statement=False,
+    ):
+        raise NotImplementedError()
+
+    @classmethod
+    def orm_pre_session_exec(
+        cls, session, statement, execution_options, bind_arguments
+    ):
+        if execution_options:
+            # TODO: will have to provide public API to set some load
+            # options and also extract them from that API here, likely
+            # execution options
+            load_options = execution_options.get(
+                "_sa_orm_load_options", QueryContext.default_load_options
+            )
+        else:
+            load_options = QueryContext.default_load_options
+
+        bind_arguments["clause"] = statement
+
+        # new in 1.4 - the coercions system is leveraged to allow the
+        # "subject" mapper of a statement be propagated to the top
+        # as the statement is built.   "subject" mapper is the generally
+        # standard object used as an identifier for multi-database schemes.
+
+        if "plugin_subject" in statement._propagate_attrs:
+            bind_arguments["mapper"] = statement._propagate_attrs[
+                "plugin_subject"
+            ].mapper
+
+        if load_options._autoflush:
+            session._autoflush()
+
+    @classmethod
+    def orm_setup_cursor_result(cls, session, bind_arguments, result):
+        execution_context = result.context
+        compile_state = execution_context.compiled.compile_state
+
+        # cover edge case where ORM entities used in legacy select
+        # were passed to session.execute:
+        # session.execute(legacy_select([User.id, User.name]))
+        # see test_query->test_legacy_tuple_old_select
+        if not execution_context.compiled.statement._is_future:
+            return result
+
+        execution_options = execution_context.execution_options
+
+        # we are getting these right above in orm_pre_session_exec(),
+        # then getting them again right here.
+        load_options = execution_options.get(
+            "_sa_orm_load_options", QueryContext.default_load_options
+        )
+        querycontext = QueryContext(
+            compile_state,
+            session,
+            load_options,
+            execution_options,
+            bind_arguments,
+        )
+        return loading.instances(result, querycontext)
+
+    @property
+    def _mapper_entities(self):
+        return (
+            ent for ent in self._entities if isinstance(ent, _MapperEntity)
+        )
+
+    def _create_with_polymorphic_adapter(self, ext_info, selectable):
+        if (
+            not ext_info.is_aliased_class
+            and ext_info.mapper.persist_selectable
+            not in self._polymorphic_adapters
+        ):
+            self._mapper_loads_polymorphically_with(
+                ext_info.mapper,
+                sql_util.ColumnAdapter(
+                    selectable, ext_info.mapper._equivalent_columns
+                ),
+            )
+
+    def _mapper_loads_polymorphically_with(self, mapper, adapter):
+        for m2 in mapper._with_polymorphic_mappers or [mapper]:
+            self._polymorphic_adapters[m2] = adapter
+            for m in m2.iterate_to_root():
+                self._polymorphic_adapters[m.local_table] = adapter
+
+
+@sql.base.CompileState.plugin_for("orm", "grouping")
+class ORMFromStatementCompileState(ORMCompileState):
+    _aliased_generations = util.immutabledict()
+    _from_obj_alias = None
+    _has_mapper_entities = False
+
+    _has_orm_entities = False
+    multi_row_eager_loaders = False
+    compound_eager_adapter = None
+    loaders_require_buffering = False
+    loaders_require_uniquing = False
+
+    @classmethod
+    def create_for_statement(cls, statement_container, compiler, **kw):
+        compiler._rewrites_selected_columns = True
+        return cls._create_for_statement_or_query(statement_container)
+
+    @classmethod
+    def _create_for_statement_or_query(
+        cls, statement_container, for_statement=False,
+    ):
+        # from .query import FromStatement
+
+        # assert isinstance(statement_container, FromStatement)
+
+        self = cls.__new__(cls)
+        self._primary_entity = None
+
+        self.orm_query = statement_container.compile_options._orm_query
+
+        self.statement_container = self.query = statement_container
+        self.requested_statement = statement_container.element
+
+        self._entities = []
+        self._with_polymorphic_adapt_map = {}
+        self._polymorphic_adapters = {}
+        self._no_yield_pers = set()
+
+        _QueryEntity.to_compile_state(self, statement_container._raw_columns)
+
+        self.compile_options = statement_container.compile_options
+
+        self.current_path = statement_container.compile_options._current_path
+
+        if statement_container._with_options:
+            self.attributes = {"_unbound_load_dedupes": set()}
+
+            for opt in statement_container._with_options:
+                if opt._is_compile_state:
+                    opt.process_compile_state(self)
+        else:
+            self.attributes = {}
+
+        if statement_container._with_context_options:
+            for fn, key in statement_container._with_context_options:
+                fn(self)
+
+        self.primary_columns = []
+        self.secondary_columns = []
+        self.eager_joins = {}
+        self.single_inh_entities = {}
+        self.create_eager_joins = []
+        self._fallback_from_clauses = []
+
+        self._setup_for_statement()
+
+        return self
+
+    def _setup_for_statement(self):
+        statement = self.requested_statement
+        if (
+            isinstance(statement, expression.SelectBase)
+            and not statement._is_textual
+            and not statement.use_labels
+        ):
+            self.statement = statement.apply_labels()
+        else:
+            self.statement = statement
+        self.order_by = None
+
+        if isinstance(self.statement, expression.TextClause):
+            # setup for all entities. Currently, this is not useful
+            # for eager loaders, as the eager loaders that work are able
+            # to do their work entirely in row_processor.
+            for entity in self._entities:
+                entity.setup_compile_state(self)
+
+            # we did the setup just to get primary columns.
+            self.statement = expression.TextualSelect(
+                self.statement, self.primary_columns, positional=False
+            )
+        else:
+            # allow TextualSelect with implicit columns as well
+            # as select() with ad-hoc columns, see test_query::TextTest
+            self._from_obj_alias = sql.util.ColumnAdapter(
+                self.statement, adapt_on_names=True
+            )
+            # set up for eager loaders, however if we fix subqueryload
+            # it should not need to do this here.  the model of eager loaders
+            # that can work entirely in row_processor might be interesting
+            # here though subqueryloader has a lot of upfront work to do
+            # see test/orm/test_query.py -> test_related_eagerload_against_text
+            # for where this part makes a difference.  would rather have
+            # subqueryload figure out what it needs more intelligently.
+            #            for entity in self._entities:
+            #                entity.setup_compile_state(self)
+
+    def _adapt_col_list(self, cols, current_adapter):
+        return cols
+
+    def _get_current_adapter(self):
+        return None
+
+
+@sql.base.CompileState.plugin_for("orm", "select")
+class ORMSelectCompileState(ORMCompileState, SelectState):
     _joinpath = _joinpoint = util.immutabledict()
     _from_obj_alias = None
     _has_mapper_entities = False
@@ -136,152 +413,44 @@ class QueryCompileState(sql.base.CompileState):
 
     orm_query = None
 
-    class default_compile_options(CacheableOptions):
-        _cache_key_traversal = [
-            ("_bake_ok", InternalTraversal.dp_boolean),
-            (
-                "_with_polymorphic_adapt_map",
-                ExtendedInternalTraversal.dp_has_cache_key_tuples,
-            ),
-            ("_current_path", InternalTraversal.dp_has_cache_key),
-            ("_enable_single_crit", InternalTraversal.dp_boolean),
-            ("_statement", InternalTraversal.dp_clauseelement),
-            ("_enable_eagerloads", InternalTraversal.dp_boolean),
-            ("_orm_only_from_obj_alias", InternalTraversal.dp_boolean),
-            ("_only_load_props", InternalTraversal.dp_plain_obj),
-            ("_set_base_alias", InternalTraversal.dp_boolean),
-            ("_for_refresh_state", InternalTraversal.dp_boolean),
-        ]
-
-        _bake_ok = True
-        _with_polymorphic_adapt_map = ()
-        _current_path = _path_registry
-        _enable_single_crit = True
-        _statement = None
-        _enable_eagerloads = True
-        _orm_only_from_obj_alias = True
-        _only_load_props = None
-        _set_base_alias = False
-        _for_refresh_state = False
-
-    def __init__(self, *arg, **kw):
-        raise NotImplementedError()
-
     @classmethod
-    def _create_for_select(cls, statement, compiler, **kw):
+    def create_for_statement(cls, statement, compiler, **kw):
         if not statement._is_future:
             return SelectState(statement, compiler, **kw)
 
-        self = cls.__new__(cls)
+        compiler._rewrites_selected_columns = True
 
-        if not isinstance(
-            statement.compile_options, cls.default_compile_options
-        ):
-            statement.compile_options = cls.default_compile_options
-        orm_state = self._create_for_legacy_query_via_either(statement)
-        compile_state = SelectState(orm_state.statement, compiler, **kw)
-        compile_state._orm_state = orm_state
-        return compile_state
-
-    @classmethod
-    def _create_future_select_from_query(cls, query):
-        stmt = FutureSelect.__new__(FutureSelect)
-
-        # the internal state of Query is now a mirror of that of
-        # Select which can be transferred directly.   The Select
-        # supports compilation into its correct form taking all ORM
-        # features into account via the plugin and the compile options.
-        # however it does not export its columns or other attributes
-        # correctly if deprecated ORM features that adapt plain mapped
-        # elements are used; for this reason the Select() returned here
-        # can always support direct execution, but for composition in a larger
-        # select only works if it does not represent legacy ORM adaption
-        # features.
-        stmt.__dict__.update(
-            dict(
-                _raw_columns=query._raw_columns,
-                _compile_state_plugin="orm",  # ;)
-                _where_criteria=query._where_criteria,
-                _from_obj=query._from_obj,
-                _legacy_setup_joins=query._legacy_setup_joins,
-                _order_by_clauses=query._order_by_clauses,
-                _group_by_clauses=query._group_by_clauses,
-                _having_criteria=query._having_criteria,
-                _distinct=query._distinct,
-                _distinct_on=query._distinct_on,
-                _with_options=query._with_options,
-                _with_context_options=query._with_context_options,
-                _hints=query._hints,
-                _statement_hints=query._statement_hints,
-                _correlate=query._correlate,
-                _auto_correlate=query._auto_correlate,
-                _limit_clause=query._limit_clause,
-                _offset_clause=query._offset_clause,
-                _for_update_arg=query._for_update_arg,
-                _prefixes=query._prefixes,
-                _suffixes=query._suffixes,
-                _label_style=query._label_style,
-                compile_options=query.compile_options,
-                # this will be moving but for now make it work like orm.Query
-                load_options=query.load_options,
-            )
+        orm_state = cls._create_for_statement_or_query(
+            statement, for_statement=True
         )
-
-        return stmt
-
-    @classmethod
-    def _create_for_legacy_query(
-        cls, query, for_statement=False, entities_only=False
-    ):
-        # as we are seeking to use Select() with ORM state as the
-        # primary executable element, have all Query objects that are not
-        # from_statement() convert to a Select() first, then run on that.
-
-        if query.compile_options._statement is not None:
-            return cls._create_for_legacy_query_via_either(
-                query,
-                for_statement=for_statement,
-                entities_only=entities_only,
-                orm_query=query,
-            )
-
-        else:
-            assert query.compile_options._statement is None
-
-            stmt = cls._create_future_select_from_query(query)
-
-            return cls._create_for_legacy_query_via_either(
-                stmt,
-                for_statement=for_statement,
-                entities_only=entities_only,
-                orm_query=query,
-            )
+        SelectState.__init__(orm_state, orm_state.statement, compiler, **kw)
+        return orm_state
 
     @classmethod
-    def _create_for_legacy_query_via_either(
-        cls, query, for_statement=False, entities_only=False, orm_query=None
+    def _create_for_statement_or_query(
+        cls, query, for_statement=False, _entities_only=False,
     ):
+        assert isinstance(query, future.Select)
+
+        query.compile_options = cls.default_compile_options.merge(
+            query.compile_options
+        )
 
         self = cls.__new__(cls)
 
         self._primary_entity = None
 
-        self.has_select = isinstance(query, Select)
+        self.orm_query = query.compile_options._orm_query
 
-        if orm_query:
-            self.orm_query = orm_query
-            self.query = query
-            self.has_orm_query = True
-        else:
-            self.query = query
-            if not self.has_select:
-                self.orm_query = query
-                self.has_orm_query = True
-            else:
-                self.orm_query = None
-                self.has_orm_query = False
+        self.query = query
 
         self.select_statement = select_statement = query
+
+        if not hasattr(select_statement.compile_options, "_orm_results"):
+            select_statement.compile_options = cls.default_compile_options
+            select_statement.compile_options += {"_orm_results": for_statement}
+        else:
+            for_statement = not select_statement.compile_options._orm_results
 
         self.query = query
 
@@ -300,18 +469,27 @@ class QueryCompileState(sql.base.CompileState):
 
         _QueryEntity.to_compile_state(self, select_statement._raw_columns)
 
-        if entities_only:
+        if _entities_only:
             return self
 
         self.compile_options = query.compile_options
+
+        # TODO: the name of this flag "for_statement" has to change,
+        # as it is difficult to distinguish from the "query._statement" use
+        # case which is something totally different
         self.for_statement = for_statement
 
-        if self.has_orm_query and not for_statement:
-            self.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
+        # determine label style.   we can make different decisions here.
+        # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
+        # rather than LABEL_STYLE_NONE, and if we can use disambiguate style
+        # for new style ORM selects too.
+        if self.select_statement._label_style is LABEL_STYLE_NONE:
+            if self.orm_query and not for_statement:
+                self.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
+            else:
+                self.label_style = LABEL_STYLE_DISAMBIGUATE_ONLY
         else:
             self.label_style = self.select_statement._label_style
-
-        self.labels = self.label_style is LABEL_STYLE_TABLENAME_PLUS_COL
 
         self.current_path = select_statement.compile_options._current_path
 
@@ -321,7 +499,7 @@ class QueryCompileState(sql.base.CompileState):
             self.attributes = {"_unbound_load_dedupes": set()}
 
             for opt in self.select_statement._with_options:
-                if not opt._is_legacy_option:
+                if opt._is_compile_state:
                     opt.process_compile_state(self)
         else:
             self.attributes = {}
@@ -341,12 +519,49 @@ class QueryCompileState(sql.base.CompileState):
             info.selectable for info in select_statement._from_obj
         ]
 
-        if self.compile_options._statement is not None:
-            self._setup_for_statement()
-        else:
-            self._setup_for_generate()
+        self._setup_for_generate()
 
         return self
+
+    @classmethod
+    def _create_entities_collection(cls, query):
+        """Creates a partial ORMSelectCompileState that includes
+        the full collection of _MapperEntity and other _QueryEntity objects.
+
+        Supports a few remaining use cases that are pre-compilation
+        but still need to gather some of the column  / adaption information.
+
+        """
+        self = cls.__new__(cls)
+
+        self._entities = []
+        self._primary_entity = None
+        self._aliased_generations = {}
+        self._polymorphic_adapters = {}
+
+        # legacy: only for query.with_polymorphic()
+        self._with_polymorphic_adapt_map = wpam = dict(
+            query.compile_options._with_polymorphic_adapt_map
+        )
+        if wpam:
+            self._setup_with_polymorphics()
+
+        _QueryEntity.to_compile_state(self, query._raw_columns)
+        return self
+
+    @classmethod
+    def determine_last_joined_entity(cls, statement):
+        setup_joins = statement._setup_joins
+
+        if not setup_joins:
+            return None
+
+        (target, onclause, from_, flags) = setup_joins[-1]
+
+        if isinstance(target, interfaces.PropComparator):
+            return target.entity
+        else:
+            return target
 
     def _setup_with_polymorphics(self):
         # legacy: only for query.with_polymorphic()
@@ -403,34 +618,6 @@ class QueryCompileState(sql.base.CompileState):
                 return qent.entity_zero
 
         return None
-
-    def _deep_entity_zero(self):
-        """Return a 'deep' entity; this is any entity we can find associated
-        with the first entity / column experssion.   this is used only for
-        session.get_bind().
-
-        it is hoped this concept can be removed in an upcoming change
-        to the ORM execution model.
-
-        """
-        for ent in self.from_clauses:
-            if "parententity" in ent._annotations:
-                return ent._annotations["parententity"].mapper
-        for ent in self._entities:
-            ezero = ent._deep_entity_zero()
-            if ezero is not None:
-                return ezero.mapper
-        else:
-            return None
-
-    @property
-    def _mapper_entities(self):
-        for ent in self._entities:
-            if isinstance(ent, _MapperEntity):
-                yield ent
-
-    def _bind_mapper(self):
-        return self._deep_entity_zero()
 
     def _only_full_mapper_zero(self, methname):
         if self._entities != [self._primary_entity]:
@@ -490,7 +677,7 @@ class QueryCompileState(sql.base.CompileState):
             else query._order_by_clauses
         )
 
-        if query._having_criteria is not None:
+        if query._having_criteria:
             self._having_criteria = tuple(
                 current_adapter(crit, True, True) if current_adapter else crit
                 for crit in query._having_criteria
@@ -527,7 +714,7 @@ class QueryCompileState(sql.base.CompileState):
                     for s in query._correlate
                 )
             )
-        elif self.has_select and not query._auto_correlate:
+        elif not query._auto_correlate:
             self.correlate = (None,)
 
         # PART II
@@ -582,33 +769,6 @@ class QueryCompileState(sql.base.CompileState):
                     {"deepentity": ezero}
                 )
 
-    def _setup_for_statement(self):
-        compile_options = self.compile_options
-
-        if (
-            isinstance(compile_options._statement, expression.SelectBase)
-            and not compile_options._statement._is_textual
-            and not compile_options._statement.use_labels
-        ):
-            self.statement = compile_options._statement.apply_labels()
-        else:
-            self.statement = compile_options._statement
-        self.order_by = None
-
-        if isinstance(self.statement, expression.TextClause):
-            # setup for all entities, including contains_eager entities.
-            for entity in self._entities:
-                entity.setup_compile_state(self)
-            self.statement = expression.TextualSelect(
-                self.statement, self.primary_columns, positional=False
-            )
-        else:
-            # allow TextualSelect with implicit columns as well
-            # as select() with ad-hoc columns, see test_query::TextTest
-            self._from_obj_alias = sql.util.ColumnAdapter(
-                self.statement, adapt_on_names=True
-            )
-
     def _compound_eager_statement(self):
         # for eager joins present and LIMIT/OFFSET/DISTINCT,
         # wrap the query inside a select,
@@ -659,9 +819,10 @@ class QueryCompileState(sql.base.CompileState):
 
         self.compound_eager_adapter = sql_util.ColumnAdapter(inner, equivs)
 
-        statement = sql.select(
-            [inner] + self.secondary_columns, use_labels=self.labels
+        statement = future.select(
+            *([inner] + self.secondary_columns)  # use_labels=self.labels
         )
+        statement._label_style = self.label_style
 
         # Oracle however does not allow FOR UPDATE on the subquery,
         # and the Oracle dialect ignores it, plus for PostgreSQL, MySQL
@@ -752,6 +913,7 @@ class QueryCompileState(sql.base.CompileState):
         group_by,
     ):
 
+        Select = future.Select
         statement = Select.__new__(Select)
         statement._raw_columns = raw_columns
         statement._from_obj = from_obj
@@ -793,25 +955,6 @@ class QueryCompileState(sql.base.CompileState):
             statement.correlate.non_generative(statement, *correlate)
 
         return statement
-
-    def _create_with_polymorphic_adapter(self, ext_info, selectable):
-        if (
-            not ext_info.is_aliased_class
-            and ext_info.mapper.persist_selectable
-            not in self._polymorphic_adapters
-        ):
-            self._mapper_loads_polymorphically_with(
-                ext_info.mapper,
-                sql_util.ColumnAdapter(
-                    selectable, ext_info.mapper._equivalent_columns
-                ),
-            )
-
-    def _mapper_loads_polymorphically_with(self, mapper, adapter):
-        for m2 in mapper._with_polymorphic_mappers or [mapper]:
-            self._polymorphic_adapters[m2] = adapter
-            for m in m2.iterate_to_root():
-                self._polymorphic_adapters[m.local_table] = adapter
 
     def _adapt_polymorphic_element(self, element):
         if "parententity" in element._annotations:
@@ -924,6 +1067,8 @@ class QueryCompileState(sql.base.CompileState):
                 #
                 onclause = right
                 right = None
+            elif "parententity" in right._annotations:
+                right = right._annotations["parententity"].entity
 
             if onclause is None:
                 r_info = inspect(right)
@@ -932,7 +1077,6 @@ class QueryCompileState(sql.base.CompileState):
                         "Expected mapped entity or "
                         "selectable/table as join target"
                     )
-
             if isinstance(onclause, interfaces.PropComparator):
                 of_type = getattr(onclause, "_of_type", None)
             else:
@@ -1584,7 +1728,7 @@ class QueryCompileState(sql.base.CompileState):
                 "aliased_generation": aliased_generation,
             }
 
-        return right, inspect(right), onclause
+        return inspect(right), right, onclause
 
     def _update_joinpoint(self, jp):
         self._joinpoint = jp
@@ -1668,14 +1812,8 @@ class QueryCompileState(sql.base.CompileState):
 
 
 def _column_descriptions(query_or_select_stmt):
-    # TODO: this is a hack for now, as it is a little bit non-performant
-    # to build up QueryEntity for every entity right now.
-    ctx = QueryCompileState._create_for_legacy_query_via_either(
-        query_or_select_stmt,
-        entities_only=True,
-        orm_query=query_or_select_stmt
-        if not isinstance(query_or_select_stmt, Select)
-        else None,
+    ctx = ORMSelectCompileState._create_entities_collection(
+        query_or_select_stmt
     )
     return [
         {
@@ -1729,23 +1867,6 @@ def _entity_from_pre_ent_zero(query_or_augmented_select):
         return ent._annotations["bundle"]
     else:
         return ent
-
-
-@sql.base.CompileState.plugin_for(
-    "orm", "select", "determine_last_joined_entity"
-)
-def _determine_last_joined_entity(statement):
-    setup_joins = statement._setup_joins
-
-    if not setup_joins:
-        return None
-
-    (target, onclause, from_, flags) = setup_joins[-1]
-
-    if isinstance(target, interfaces.PropComparator):
-        return target.entity
-    else:
-        return target
 
 
 def _legacy_determine_last_joined_entity(setup_joins, entity_zero):
@@ -1929,9 +2050,6 @@ class _MapperEntity(_QueryEntity):
     def entity_zero_or_selectable(self):
         return self.entity_zero
 
-    def _deep_entity_zero(self):
-        return self.entity_zero
-
     def corresponds_to(self, entity):
         return _entity_corresponds_to(self.entity_zero, entity)
 
@@ -2093,14 +2211,6 @@ class _BundleEntity(_QueryEntity):
         else:
             return None
 
-    def _deep_entity_zero(self):
-        for ent in self._entities:
-            ezero = ent._deep_entity_zero()
-            if ezero is not None:
-                return ezero
-        else:
-            return None
-
     def setup_compile_state(self, compile_state):
         for ent in self._entities:
             ent.setup_compile_state(compile_state)
@@ -2174,17 +2284,6 @@ class _RawColumnEntity(_ColumnEntity):
             self.column._from_objects[0] if self.column._from_objects else None
         )
         self._extra_entities = (self.expr, self.column)
-
-    def _deep_entity_zero(self):
-        for obj in visitors.iterate(
-            self.column, {"column_tables": True, "column_collections": False},
-        ):
-            if "parententity" in obj._annotations:
-                return obj._annotations["parententity"]
-            elif "deepentity" in obj._annotations:
-                return obj._annotations["deepentity"]
-        else:
-            return None
 
     def corresponds_to(self, entity):
         return False
@@ -2276,9 +2375,6 @@ class _ORMColumnEntity(_ColumnEntity):
                 ezero, ezero.selectable
             )
 
-    def _deep_entity_zero(self):
-        return self.mapper
-
     def corresponds_to(self, entity):
         if _is_aliased_class(entity):
             # TODO: polymorphic subclasses ?
@@ -2342,8 +2438,3 @@ class _ORMColumnEntity(_ColumnEntity):
         compile_state.primary_columns.append(column)
 
         compile_state.attributes[("fetch_column", self)] = column
-
-
-sql.base.CompileState.plugin_for("orm", "select")(
-    QueryCompileState._create_for_select
-)

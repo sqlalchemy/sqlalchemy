@@ -179,7 +179,7 @@ class HasCacheKey(object):
         if NO_CACHE in _anon_map:
             return None
         else:
-            return CacheKey(key, bindparams)
+            return CacheKey(key, bindparams, self)
 
     @classmethod
     def _generate_cache_key_for_object(cls, obj):
@@ -190,7 +190,7 @@ class HasCacheKey(object):
         if NO_CACHE in _anon_map:
             return None
         else:
-            return CacheKey(key, bindparams)
+            return CacheKey(key, bindparams, obj)
 
 
 class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
@@ -199,9 +199,42 @@ class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
         return HasCacheKey._generate_cache_key(self)
 
 
-class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
+class CacheKey(namedtuple("CacheKey", ["key", "bindparams", "statement"])):
     def __hash__(self):
-        return hash(self.key)
+        """CacheKey itself is not hashable - hash the .key portion"""
+
+        return None
+
+    def to_offline_string(self, statement_cache, parameters):
+        """generate an "offline string" form of this :class:`.CacheKey`
+
+        The "offline string" is basically the string SQL for the
+        statement plus a repr of the bound parameter values in series.
+        Whereas the :class:`.CacheKey` object is dependent on in-memory
+        identities in order to work as a cache key, the "offline" version
+        is suitable for a cache that will work for other processes as well.
+
+        The given "statement_cache" is a dictionary-like object where the
+        string form of the statement itself will be cached.  this dictionary
+        should be in a longer lived scope in order to reduce the time spent
+        stringifying statements.
+
+
+        """
+        if self.key not in statement_cache:
+            statement_cache[self.key] = sql_str = str(self.statement)
+        else:
+            sql_str = statement_cache[self.key]
+
+        return repr(
+            (
+                sql_str,
+                tuple(
+                    parameters.get(bindparam.key, bindparam.value)
+                    for bindparam in self.bindparams
+                ),
+            )
+        )
 
     def __eq__(self, other):
         return self.key == other.key
@@ -411,7 +444,6 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_setup_join_tuple(
         self, attrname, obj, parent, anon_map, bindparams
     ):
-        # TODO: look at attrname for "legacy_join" and use different structure
         return tuple(
             (
                 target._gen_cache_key(anon_map, bindparams),
@@ -596,7 +628,6 @@ class _CopyInternals(InternalTraversal):
     def visit_setup_join_tuple(
         self, attrname, parent, element, clone=_clone, **kw
     ):
-        # TODO: look at attrname for "legacy_join" and use different structure
         return tuple(
             (
                 clone(target, **kw) if target is not None else None,
@@ -668,6 +699,15 @@ class _CopyInternals(InternalTraversal):
 _copy_internals = _CopyInternals()
 
 
+def _flatten_clauseelement(element):
+    while hasattr(element, "__clause_element__") and not getattr(
+        element, "is_clause_element", False
+    ):
+        element = element.__clause_element__()
+
+    return element
+
+
 class _GetChildren(InternalTraversal):
     """Generate a _children_traversal internal traversal dispatch for classes
     with a _traverse_internals collection."""
@@ -695,6 +735,17 @@ class _GetChildren(InternalTraversal):
 
     def visit_clauseelement_unordered_set(self, element, **kw):
         return element
+
+    def visit_setup_join_tuple(self, element, **kw):
+        for (target, onclause, from_, flags) in element:
+            if from_ is not None:
+                yield from_
+
+            if not isinstance(target, str):
+                yield _flatten_clauseelement(target)
+
+    #            if onclause is not None and not isinstance(onclause, str):
+    #                yield _flatten_clauseelement(onclause)
 
     def visit_dml_ordered_values(self, element, **kw):
         for k, v in element:

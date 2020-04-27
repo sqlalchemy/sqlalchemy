@@ -33,6 +33,7 @@ from .util import _none_set
 from .util import aliased
 from .. import event
 from .. import exc as sa_exc
+from .. import future
 from .. import inspect
 from .. import log
 from .. import sql
@@ -440,10 +441,13 @@ class DeferredColumnLoader(LoaderStrategy):
         if self.raiseload:
             self._invoke_raise_load(state, passive, "raise")
 
-        query = session.query(localparent)
         if (
             loading.load_on_ident(
-                query, state.key, only_load_props=group, refresh_state=state
+                session,
+                future.select(localparent).apply_labels(),
+                state.key,
+                only_load_props=group,
+                refresh_state=state,
             )
             is None
         ):
@@ -897,7 +901,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 q(session)
                 .with_post_criteria(lambda q: q._set_lazyload_from(state))
                 ._load_on_pk_identity(
-                    session.query(self.mapper), primary_key_identity
+                    session, session.query(self.mapper), primary_key_identity
                 )
             )
 
@@ -1090,7 +1094,6 @@ class SubqueryLoader(PostLoader):
         parentmapper=None,
         **kwargs
     ):
-
         if (
             not compile_state.compile_options._enable_eagerloads
             or compile_state.compile_options._for_refresh_state
@@ -1146,6 +1149,7 @@ class SubqueryLoader(PostLoader):
         # generate a new Query from the original, then
         # produce a subquery from it.
         left_alias = self._generate_from_original_query(
+            compile_state,
             orig_query,
             leftmost_mapper,
             leftmost_attr,
@@ -1164,7 +1168,9 @@ class SubqueryLoader(PostLoader):
         def set_state_options(compile_state):
             compile_state.attributes.update(
                 {
-                    ("orig_query", SubqueryLoader): orig_query,
+                    ("orig_query", SubqueryLoader): orig_query.with_session(
+                        None
+                    ),
                     ("subquery_path", None): subq_path,
                 }
             )
@@ -1188,6 +1194,7 @@ class SubqueryLoader(PostLoader):
         # by create_row_processor
         # NOTE: be sure to consult baked.py for some hardcoded logic
         # about this structure as well
+        assert q.session is None
         path.set(
             compile_state.attributes, "subqueryload_data", {"query": q},
         )
@@ -1218,6 +1225,7 @@ class SubqueryLoader(PostLoader):
 
     def _generate_from_original_query(
         self,
+        orig_compile_state,
         orig_query,
         leftmost_mapper,
         leftmost_attr,
@@ -1243,11 +1251,18 @@ class SubqueryLoader(PostLoader):
                 }
             )
 
-        cs = q._clone()
+        # NOTE: keystone has a test which is counting before_compile
+        # events.   That test is in one case dependent on an extra
+        # call that was occurring here within the subqueryloader setup
+        # process, probably when the subquery() method was called.
+        # Ultimately that call will not be occurring here.
+        # the event has already been called on the original query when
+        # we are here in any case, so keystone will need to adjust that
+        # test.
 
-        # using the _compile_state method so that the before_compile()
-        # event is hit here.  keystone is testing for this.
-        compile_state = cs._compile_state(entities_only=True)
+        # for column information, look to the compile state that is
+        # already being passed through
+        compile_state = orig_compile_state
 
         # select from the identity columns of the outer (specifically, these
         # are the 'local_cols' of the property).  This will remove
@@ -1260,7 +1275,6 @@ class SubqueryLoader(PostLoader):
             ],
             compile_state._get_current_adapter(),
         )
-        #        q.add_columns.non_generative(q, target_cols)
         q._set_entities(target_cols)
 
         distinct_target_key = leftmost_relationship.distinct_target_key
@@ -1428,10 +1442,20 @@ class SubqueryLoader(PostLoader):
 
         """
 
-        __slots__ = ("subq_info", "subq", "_data")
+        __slots__ = (
+            "session",
+            "execution_options",
+            "load_options",
+            "subq",
+            "_data",
+        )
 
-        def __init__(self, subq_info):
-            self.subq_info = subq_info
+        def __init__(self, context, subq_info):
+            # avoid creating a cycle by storing context
+            # even though that's preferable
+            self.session = context.session
+            self.execution_options = context.execution_options
+            self.load_options = context.load_options
             self.subq = subq_info["query"]
             self._data = None
 
@@ -1443,7 +1467,17 @@ class SubqueryLoader(PostLoader):
         def _load(self):
             self._data = collections.defaultdict(list)
 
-            rows = list(self.subq)
+            q = self.subq
+            assert q.session is None
+            if "compiled_cache" in self.execution_options:
+                q = q.execution_options(
+                    compiled_cache=self.execution_options["compiled_cache"]
+                )
+            q = q.with_session(self.session)
+
+            # to work with baked query, the parameters may have been
+            # updated since this query was created, so take these into account
+            rows = list(q.params(self.load_options._params))
             for k, v in itertools.groupby(rows, lambda x: x[1:]):
                 self._data[k].extend(vv[0] for vv in v)
 
@@ -1474,14 +1508,7 @@ class SubqueryLoader(PostLoader):
 
         subq = subq_info["query"]
 
-        if subq.session is None:
-            subq.session = context.session
-        assert subq.session is context.session, (
-            "Subquery session doesn't refer to that of "
-            "our context.  Are there broken context caching "
-            "schemes being used?"
-        )
-
+        assert subq.session is None
         local_cols = self.parent_property.local_columns
 
         # cache the loaded collections in the context
@@ -1489,7 +1516,7 @@ class SubqueryLoader(PostLoader):
         # call upon create_row_processor again
         collections = path.get(context.attributes, "collections")
         if collections is None:
-            collections = self._SubqCollections(subq_info)
+            collections = self._SubqCollections(context, subq_info)
             path.set(context.attributes, "collections", collections)
 
         if adapter:

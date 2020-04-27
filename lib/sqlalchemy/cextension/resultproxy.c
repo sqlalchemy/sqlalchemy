@@ -651,6 +651,7 @@ static int
 BaseRow_setkeystyle(BaseRow *self, PyObject *value, void *closure)
 {
     if (value == NULL) {
+
         PyErr_SetString(
             PyExc_TypeError,
             "Cannot delete the 'key_style' attribute");

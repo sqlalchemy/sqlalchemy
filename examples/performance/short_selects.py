@@ -82,6 +82,29 @@ def test_orm_query_cols_only(n):
         ).one()
 
 
+cache = {}
+
+
+@Profiler.profile
+def test_cached_orm_query(n):
+    """test new style cached queries of the full entity."""
+    s = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        stmt = s.query(Customer).filter(Customer.id == id_)
+        s.execute(stmt, execution_options={"compiled_cache": cache}).one()
+
+
+@Profiler.profile
+def test_cached_orm_query_cols_only(n):
+    """test new style cached queries of the full entity."""
+    s = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        stmt = s.query(
+            Customer.id, Customer.name, Customer.description
+        ).filter(Customer.id == id_)
+        s.execute(stmt, execution_options={"compiled_cache": cache}).one()
+
+
 @Profiler.profile
 def test_baked_query(n):
     """test a baked query of the full entity."""

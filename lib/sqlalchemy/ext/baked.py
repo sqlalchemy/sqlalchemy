@@ -19,7 +19,6 @@ from .. import exc as sa_exc
 from .. import util
 from ..orm import exc as orm_exc
 from ..orm import strategy_options
-from ..orm.context import QueryContext
 from ..orm.query import Query
 from ..orm.session import Session
 from ..sql import func
@@ -201,11 +200,12 @@ class BakedQuery(object):
             self.spoil(full=True)
         else:
             for opt in options:
-                cache_key = opt._generate_path_cache_key(cache_path)
-                if cache_key is False:
-                    self.spoil(full=True)
-                elif cache_key is not None:
-                    key += cache_key
+                if opt._is_legacy_option or opt._is_compile_state:
+                    cache_key = opt._generate_path_cache_key(cache_path)
+                    if cache_key is False:
+                        self.spoil(full=True)
+                    elif cache_key is not None:
+                        key += cache_key
 
         self.add_criteria(
             lambda q: q._with_current_path(effective_path).options(*options),
@@ -224,41 +224,32 @@ class BakedQuery(object):
 
     def _bake(self, session):
         query = self._as_query(session)
+        query.session = None
 
-        compile_state = query._compile_state()
+        # in 1.4, this is where before_compile() event is
+        # invoked
+        statement = query._statement_20(orm_results=True)
 
-        self._bake_subquery_loaders(session, compile_state)
-
-        # TODO: compile_state clearly needs to be simplified here.
-        # if the session remains, fails memusage test
-        compile_state.orm_query = (
-            query
-        ) = (
-            compile_state.select_statement
-        ) = compile_state.query = compile_state.orm_query.with_session(None)
-        query._execution_options = query._execution_options.union(
-            {"compiled_cache": self._bakery}
-        )
-
-        # we'll be holding onto the query for some of its state,
-        # so delete some compilation-use-only attributes that can take up
-        # space
-        for attr in (
-            "_correlate",
-            "_from_obj",
-            "_mapper_adapter_map",
-            "_joinpath",
-            "_joinpoint",
-        ):
-            query.__dict__.pop(attr, None)
+        # the before_compile() event can create a new Query object
+        # before it makes the statement.
+        query = statement.compile_options._orm_query
 
         # if the query is not safe to cache, we still do everything as though
         # we did cache it, since the receiver of _bake() assumes subqueryload
         # context was set up, etc.
-        if compile_state.compile_options._bake_ok:
-            self._bakery[self._effective_key(session)] = compile_state
+        #
+        # note also we want to cache the statement itself because this
+        # allows the statement itself to hold onto its cache key that is
+        # used by the Connection, which in itself is more expensive to
+        # generate than what BakedQuery was able to provide in 1.3 and prior
 
-        return compile_state
+        if query.compile_options._bake_ok:
+            self._bakery[self._effective_key(session)] = (
+                query,
+                statement,
+            )
+
+        return query, statement
 
     def to_query(self, query_or_session):
         """Return the :class:`_query.Query` object for use as a subquery.
@@ -321,50 +312,6 @@ class BakedQuery(object):
 
         return query
 
-    def _bake_subquery_loaders(self, session, compile_state):
-        """convert subquery eager loaders in the cache into baked queries.
-
-        For subquery eager loading to work, all we need here is that the
-        Query point to the correct session when it is run.  However, since
-        we are "baking" anyway, we may as well also turn the query into
-        a "baked" query so that we save on performance too.
-
-        """
-        compile_state.attributes["baked_queries"] = baked_queries = []
-        for k, v in list(compile_state.attributes.items()):
-            if isinstance(v, dict) and "query" in v:
-                if "subqueryload_data" in k:
-                    query = v["query"]
-                    bk = BakedQuery(self._bakery, lambda *args: query)
-                    bk._cache_key = self._cache_key + k
-                    bk._bake(session)
-                    baked_queries.append((k, bk._cache_key, v))
-                del compile_state.attributes[k]
-
-    def _unbake_subquery_loaders(
-        self, session, compile_state, context, params, post_criteria
-    ):
-        """Retrieve subquery eager loaders stored by _bake_subquery_loaders
-        and turn them back into Result objects that will iterate just
-        like a Query object.
-
-        """
-        if "baked_queries" not in compile_state.attributes:
-            return
-
-        for k, cache_key, v in compile_state.attributes["baked_queries"]:
-            query = v["query"]
-            bk = BakedQuery(
-                self._bakery, lambda sess, q=query: q.with_session(sess)
-            )
-            bk._cache_key = cache_key
-            q = bk.for_session(session)
-            for fn in post_criteria:
-                q = q.with_post_criteria(fn)
-            v = dict(v)
-            v["query"] = q.params(**params)
-            context.attributes[k] = v
-
 
 class Result(object):
     """Invokes a :class:`.BakedQuery` against a :class:`.Session`.
@@ -406,17 +353,19 @@ class Result(object):
 
         This adds a function that will be run against the
         :class:`_query.Query` object after it is retrieved from the
-        cache.    Functions here can be used to alter the query in ways
-        that **do not affect the SQL output**, such as execution options
-        and shard identifiers (when using a shard-enabled query object)
+        cache.    This currently includes **only** the
+        :meth:`_query.Query.params` and :meth:`_query.Query.execution_options`
+        methods.
 
         .. warning::  :meth:`_baked.Result.with_post_criteria`
            functions are applied
            to the :class:`_query.Query`
            object **after** the query's SQL statement
-           object has been retrieved from the cache.   Any operations here
-           which intend to modify the SQL should ensure that
-           :meth:`.BakedQuery.spoil` was called first.
+           object has been retrieved from the cache.   Only
+           :meth:`_query.Query.params` and
+           :meth:`_query.Query.execution_options`
+           methods should be used.
+
 
         .. versionadded:: 1.2
 
@@ -438,40 +387,41 @@ class Result(object):
 
     def _iter(self):
         bq = self.bq
+
         if not self.session.enable_baked_queries or bq._spoiled:
             return self._as_query()._iter()
 
-        baked_compile_state = bq._bakery.get(
-            bq._effective_key(self.session), None
+        query, statement = bq._bakery.get(
+            bq._effective_key(self.session), (None, None)
         )
-        if baked_compile_state is None:
-            baked_compile_state = bq._bake(self.session)
+        if query is None:
+            query, statement = bq._bake(self.session)
 
-        context = QueryContext(baked_compile_state, self.session)
-        context.session = self.session
-
-        bq._unbake_subquery_loaders(
-            self.session,
-            baked_compile_state,
-            context,
-            self._params,
-            self._post_criteria,
-        )
-
-        # asserts true
-        # if isinstance(baked_compile_state.statement, expression.Select):
-        #    assert baked_compile_state.statement._label_style == \
-        #        LABEL_STYLE_TABLENAME_PLUS_COL
-
-        if context.autoflush and not context.populate_existing:
-            self.session._autoflush()
-        q = context.orm_query.params(self._params).with_session(self.session)
+        q = query.params(self._params)
         for fn in self._post_criteria:
             q = fn(q)
 
         params = q.load_options._params
+        q.load_options += {"_orm_query": q}
+        execution_options = dict(q._execution_options)
+        execution_options.update(
+            {
+                "_sa_orm_load_options": q.load_options,
+                "compiled_cache": bq._bakery,
+            }
+        )
 
-        return q._execute_and_instances(context, params=params)
+        result = self.session.execute(
+            statement, params, execution_options=execution_options
+        )
+
+        if result._attributes.get("is_single_entity", False):
+            result = result.scalars()
+
+        if result._attributes.get("filtered", False):
+            result = result.unique()
+
+        return result
 
     def count(self):
         """return the 'count'.
@@ -583,10 +533,10 @@ class Result(object):
         query = self.bq.steps[0](self.session)
         return query._get_impl(ident, self._load_on_pk_identity)
 
-    def _load_on_pk_identity(self, query, primary_key_identity):
+    def _load_on_pk_identity(self, session, query, primary_key_identity, **kw):
         """Load the given primary key identity from the database."""
 
-        mapper = query._only_full_mapper_zero("load_on_pk_identity")
+        mapper = query._raw_columns[0]._annotations["parententity"]
 
         _get_clause, _get_params = mapper._get_clause
 

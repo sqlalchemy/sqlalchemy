@@ -1120,10 +1120,10 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
-            "with only matching names",
-            "Using non-integer/slice indices on Row is "
-            "deprecated and will be removed in version 2.0",
+            #           "Retreiving row values using Column objects "
+            #           "with only matching names",
+            #           "Using non-integer/slice indices on Row is "
+            #           "deprecated and will be removed in version 2.0",
         ):
             # this will create column() objects inside
             # the select(), these need to match on name anyway
@@ -1137,14 +1137,14 @@ class CursorResultTest(fixtures.TablesTest):
 
         r._keymap.pop(users.c.user_id)  # reset lookup
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
-            "with only matching names"
+            #           "Retreiving row values using Column objects "
+            #           "with only matching names"
         ):
             eq_(r._mapping[users.c.user_id], 2)
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
-            "with only matching names"
+            #           "Retreiving row values using Column objects "
+            #           "with only matching names"
         ):
             eq_(r._mapping[users.c.user_name], "jack")
 

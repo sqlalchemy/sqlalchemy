@@ -1342,7 +1342,9 @@ class AliasedReturnsRows(NoInit, FromClause):
         raise NotImplementedError()
 
     def _init(self, selectable, name=None):
-        self.element = selectable
+        self.element = coercions.expect(
+            roles.ReturnsRowsRole, selectable, apply_propagate_attrs=self
+        )
         self.supports_execution = selectable.supports_execution
         if self.supports_execution:
             self._execution_options = selectable._execution_options
@@ -3026,6 +3028,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             )
 
 
+@CompileState.plugin_for("default", "compound_select")
 class CompoundSelectState(CompileState):
     @util.memoized_property
     def _label_resolve_dict(self):
@@ -3058,7 +3061,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
     """
 
     __visit_name__ = "compound_select"
-    _compile_state_factory = CompoundSelectState._create
 
     _traverse_internals = [
         ("selects", InternalTraversal.dp_clauseelement_list),
@@ -3425,6 +3427,7 @@ class DeprecatedSelectGenerations(object):
         self.select_from.non_generative(self, fromclause)
 
 
+@CompileState.plugin_for("default", "select")
 class SelectState(CompileState):
     class default_select_compile_options(CacheableOptions):
         _cache_key_traversal = []
@@ -3462,7 +3465,7 @@ class SelectState(CompileState):
                 )
             if not seen.intersection(item._cloned_set):
                 froms.append(item)
-            seen.update(item._cloned_set)
+                seen.update(item._cloned_set)
 
         return froms
 
@@ -3714,12 +3717,29 @@ class SelectState(CompileState):
         return replace_from_obj_index
 
 
+class _SelectFromElements(object):
+    def _iterate_from_elements(self):
+        # note this does not include elements
+        # in _setup_joins or _legacy_setup_joins
+
+        return itertools.chain(
+            itertools.chain.from_iterable(
+                [element._from_objects for element in self._raw_columns]
+            ),
+            itertools.chain.from_iterable(
+                [element._from_objects for element in self._where_criteria]
+            ),
+            self._from_obj,
+        )
+
+
 class Select(
     HasPrefixes,
     HasSuffixes,
     HasHints,
     HasCompileState,
     DeprecatedSelectGenerations,
+    _SelectFromElements,
     GenerativeSelect,
 ):
     """Represents a ``SELECT`` statement.
@@ -3728,7 +3748,6 @@ class Select(
 
     __visit_name__ = "select"
 
-    _compile_state_factory = SelectState._create
     _is_future = False
     _setup_joins = ()
     _legacy_setup_joins = ()
@@ -4047,7 +4066,7 @@ class Select(
         if cols_present:
             self._raw_columns = [
                 coercions.expect(
-                    roles.ColumnsClauseRole, c, apply_plugins=self
+                    roles.ColumnsClauseRole, c, apply_propagate_attrs=self
                 )
                 for c in columns
             ]
@@ -4072,17 +4091,6 @@ class Select(
         elem = self._raw_columns[0]
         cols = list(elem._select_iterable)
         return cols[0].type
-
-    def _iterate_from_elements(self):
-        return itertools.chain(
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._raw_columns]
-            ),
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._where_criteria]
-            ),
-            self._from_obj,
-        )
 
     @property
     def froms(self):
@@ -4192,14 +4200,16 @@ class Select(
 
         self._raw_columns = self._raw_columns + [
             coercions.expect(
-                roles.ColumnsClauseRole, column, apply_plugins=self
+                roles.ColumnsClauseRole, column, apply_propagate_attrs=self
             )
             for column in columns
         ]
 
     def _set_entities(self, entities):
         self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, ent, apply_plugins=self)
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
             for ent in util.to_list(entities)
         ]
 
@@ -4342,13 +4352,23 @@ class Select(
         self._raw_columns = rc
 
     @property
-    def _whereclause(self):
-        """Legacy, return the WHERE clause as a """
-        """:class:`_expression.BooleanClauseList`"""
+    def whereclause(self):
+        """Return the completed WHERE clause for this :class:`.Select`
+        statement.
+
+        This assembles the current collection of WHERE criteria
+        into a single :class:`_expression.BooleanClauseList` construct.
+
+
+        .. versionadded:: 1.4
+
+        """
 
         return BooleanClauseList._construct_for_whereclause(
             self._where_criteria
         )
+
+    _whereclause = whereclause
 
     @_generative
     def where(self, whereclause):
@@ -4430,7 +4450,7 @@ class Select(
 
         self._from_obj += tuple(
             coercions.expect(
-                roles.FromClauseRole, fromclause, apply_plugins=self
+                roles.FromClauseRole, fromclause, apply_propagate_attrs=self
             )
             for fromclause in froms
         )

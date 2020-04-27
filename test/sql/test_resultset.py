@@ -1856,7 +1856,34 @@ class KeyTargetingTest(fixtures.TablesTest):
             is_(
                 existing_metadata._keymap[k], adapted_metadata._keymap[other_k]
             )
-        return stmt1, existing_metadata, stmt2, adapted_metadata
+
+    @testing.combinations(
+        _adapt_result_columns_fixture_one,
+        _adapt_result_columns_fixture_two,
+        _adapt_result_columns_fixture_three,
+        _adapt_result_columns_fixture_four,
+        argnames="stmt_fn",
+    )
+    def test_adapt_result_columns_from_cache(self, connection, stmt_fn):
+        stmt1 = stmt_fn(self)
+        stmt2 = stmt_fn(self)
+
+        cache = {}
+        result = connection._execute_20(
+            stmt1,
+            execution_options={"compiled_cache": cache, "future_result": True},
+        )
+        result.close()
+        assert cache
+
+        result = connection._execute_20(
+            stmt2,
+            execution_options={"compiled_cache": cache, "future_result": True},
+        )
+
+        row = result.first()
+        for col in stmt2.selected_columns:
+            assert col in row._mapping
 
 
 class PositionalTextTest(fixtures.TablesTest):

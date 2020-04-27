@@ -18,6 +18,7 @@ ORM session, whereas the ``Select`` construct interacts directly with the
 database to return iterable result sets.
 
 """
+import itertools
 
 from . import attributes
 from . import exc as orm_exc
@@ -28,7 +29,8 @@ from .base import _assertions
 from .context import _column_descriptions
 from .context import _legacy_determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
-from .context import QueryCompileState
+from .context import ORMCompileState
+from .context import ORMFromStatementCompileState
 from .context import QueryContext
 from .interfaces import ORMColumnsClauseRole
 from .util import aliased
@@ -42,18 +44,22 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
+from ..future.selectable import Select as FutureSelect
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
+from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _generative
 from ..sql.base import Executable
+from ..sql.selectable import _SelectFromElements
 from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import HasHints
 from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import SelectStatementGrouping
 from ..sql.util import _entity_namespace_key
 from ..util import collections_abc
 
@@ -62,7 +68,15 @@ __all__ = ["Query", "QueryContext", "aliased"]
 
 @inspection._self_inspects
 @log.class_logger
-class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
+class Query(
+    _SelectFromElements,
+    SupportsCloneAnnotations,
+    HasPrefixes,
+    HasSuffixes,
+    HasHints,
+    Executable,
+):
+
     """ORM-level SQL construction object.
 
     :class:`_query.Query`
@@ -105,7 +119,7 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
     _legacy_setup_joins = ()
     _label_style = LABEL_STYLE_NONE
 
-    compile_options = QueryCompileState.default_compile_options
+    compile_options = ORMCompileState.default_compile_options
 
     load_options = QueryContext.default_load_options
 
@@ -114,6 +128,11 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
     _aliased_generation = None
     _enable_assertions = True
     _last_joined_entity = None
+
+    # mirrors that of ClauseElement, used to propagate the "orm"
+    # plugin as well as the "subject" of the plugin, e.g. the mapper
+    # we are querying against.
+    _propagate_attrs = util.immutabledict()
 
     def __init__(self, entities, session=None):
         """Construct a :class:`_query.Query` directly.
@@ -148,7 +167,9 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
 
     def _set_entities(self, entities):
         self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, ent)
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
             for ent in util.to_list(entities)
         ]
 
@@ -183,7 +204,10 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
     def _set_select_from(self, obj, set_base_alias):
         fa = [
             coercions.expect(
-                roles.StrictFromClauseRole, elem, allow_select=True
+                roles.StrictFromClauseRole,
+                elem,
+                allow_select=True,
+                apply_propagate_attrs=self,
             )
             for elem in obj
         ]
@@ -332,15 +356,13 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
         if (
             not self.compile_options._set_base_alias
             and not self.compile_options._with_polymorphic_adapt_map
-            and self.compile_options._statement is None
+            # and self.compile_options._statement is None
         ):
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
             stmt = self._statement_20()
         else:
-            stmt = QueryCompileState._create_for_legacy_query(
-                self, for_statement=True
-            ).statement
+            stmt = self._compile_state(for_statement=True).statement
 
         if self.load_options._params:
             # this is the search and replace thing.  this is kind of nuts
@@ -349,8 +371,67 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
 
         return stmt
 
-    def _statement_20(self):
-        return QueryCompileState._create_future_select_from_query(self)
+    def _statement_20(self, orm_results=False):
+        # TODO: this event needs to be deprecated, as it currently applies
+        # only to ORM query and occurs at this spot that is now more
+        # or less an artificial spot
+        if self.dispatch.before_compile:
+            for fn in self.dispatch.before_compile:
+                new_query = fn(self)
+                if new_query is not None and new_query is not self:
+                    self = new_query
+                    if not fn._bake_ok:
+                        self.compile_options += {"_bake_ok": False}
+
+        if self.compile_options._statement is not None:
+            stmt = FromStatement(
+                self._raw_columns, self.compile_options._statement
+            )
+            # TODO: once SubqueryLoader uses select(), we can remove
+            # "_orm_query" from this structure
+            stmt.__dict__.update(
+                _with_options=self._with_options,
+                _with_context_options=self._with_context_options,
+                compile_options=self.compile_options
+                + {"_orm_query": self.with_session(None)},
+                _execution_options=self._execution_options,
+            )
+            stmt._propagate_attrs = self._propagate_attrs
+        else:
+            stmt = FutureSelect.__new__(FutureSelect)
+
+            stmt.__dict__.update(
+                _raw_columns=self._raw_columns,
+                _where_criteria=self._where_criteria,
+                _from_obj=self._from_obj,
+                _legacy_setup_joins=self._legacy_setup_joins,
+                _order_by_clauses=self._order_by_clauses,
+                _group_by_clauses=self._group_by_clauses,
+                _having_criteria=self._having_criteria,
+                _distinct=self._distinct,
+                _distinct_on=self._distinct_on,
+                _with_options=self._with_options,
+                _with_context_options=self._with_context_options,
+                _hints=self._hints,
+                _statement_hints=self._statement_hints,
+                _correlate=self._correlate,
+                _auto_correlate=self._auto_correlate,
+                _limit_clause=self._limit_clause,
+                _offset_clause=self._offset_clause,
+                _for_update_arg=self._for_update_arg,
+                _prefixes=self._prefixes,
+                _suffixes=self._suffixes,
+                _label_style=self._label_style,
+                compile_options=self.compile_options
+                + {"_orm_query": self.with_session(None)},
+                _execution_options=self._execution_options,
+            )
+
+        if not orm_results:
+            stmt.compile_options += {"_orm_results": False}
+
+        stmt._propagate_attrs = self._propagate_attrs
+        return stmt
 
     def subquery(self, name=None, with_labels=False, reduce_columns=False):
         """return the full SELECT statement represented by
@@ -879,7 +960,17 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
             elif instance is attributes.PASSIVE_CLASS_MISMATCH:
                 return None
 
-        return db_load_fn(self, primary_key_identity)
+        # apply_labels() not strictly necessary, however this will ensure that
+        # tablename_colname style is used which at the moment is asserted
+        # in a lot of unit tests :)
+
+        statement = self._statement_20(orm_results=True).apply_labels()
+        return db_load_fn(
+            self.session,
+            statement,
+            primary_key_identity,
+            load_options=self.load_options,
+        )
 
     @property
     def lazy_loaded_from(self):
@@ -1059,7 +1150,9 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
         self._raw_columns = list(self._raw_columns)
 
         self._raw_columns.append(
-            coercions.expect(roles.ColumnsClauseRole, entity)
+            coercions.expect(
+                roles.ColumnsClauseRole, entity, apply_propagate_attrs=self
+            )
         )
 
     @_generative
@@ -1397,7 +1490,10 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
         self._raw_columns = list(self._raw_columns)
 
         self._raw_columns.extend(
-            coercions.expect(roles.ColumnsClauseRole, c) for c in column
+            coercions.expect(
+                roles.ColumnsClauseRole, c, apply_propagate_attrs=self
+            )
+            for c in column
         )
 
     @util.deprecated(
@@ -1584,7 +1680,9 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
 
         """
         for criterion in list(criterion):
-            criterion = coercions.expect(roles.WhereHavingRole, criterion)
+            criterion = coercions.expect(
+                roles.WhereHavingRole, criterion, apply_propagate_attrs=self
+            )
 
             # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
             if self._aliased_generation:
@@ -1742,7 +1840,9 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
         """
 
         self._having_criteria += (
-            coercions.expect(roles.WhereHavingRole, criterion),
+            coercions.expect(
+                roles.WhereHavingRole, criterion, apply_propagate_attrs=self
+            ),
         )
 
     def _set_op(self, expr_fn, *q):
@@ -2177,7 +2277,12 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
 
         self._legacy_setup_joins += tuple(
             (
-                coercions.expect(roles.JoinTargetRole, prop[0], legacy=True),
+                coercions.expect(
+                    roles.JoinTargetRole,
+                    prop[0],
+                    legacy=True,
+                    apply_propagate_attrs=self,
+                ),
                 prop[1] if len(prop) == 2 else None,
                 None,
                 {
@@ -2605,7 +2710,9 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
             ORM tutorial
 
         """
-        statement = coercions.expect(roles.SelectStatementRole, statement)
+        statement = coercions.expect(
+            roles.SelectStatementRole, statement, apply_propagate_attrs=self
+        )
         self.compile_options += {"_statement": statement}
 
     def first(self):
@@ -2711,76 +2818,50 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
     def __iter__(self):
         return self._iter().__iter__()
 
-    # TODO: having _iter(), _execute_and_instances, _connection_from_session,
-    # etc., is all too much.
-
-    # new recipes / extensions should be based on an event hook of some kind,
-    # can allow an execution that would return a Result to take in all the
-    # information and return a different Result.  this has to be at
-    # the session / connection .execute() level, and can perhaps be
-    # before_execute() but needs to be focused around rewriting of results.
-
-    # the dialect do_execute() *may* be this but that seems a bit too low
-    # level.    it may need to be ORM session based and be a session event,
-    # becasue it might not invoke the cursor, might invoke for multiple
-    # connections, etc.   OK really has to be a session level event in this
-    # case to support horizontal sharding.
-
     def _iter(self):
-        context = self._compile_context()
+        # new style execution.
+        params = self.load_options._params
+        statement = self._statement_20(orm_results=True)
+        result = self.session.execute(
+            statement,
+            params,
+            execution_options={"_sa_orm_load_options": self.load_options},
+        )
 
-        if self.load_options._autoflush:
-            self.session._autoflush()
-        return self._execute_and_instances(context)
+        # legacy: automatically set scalars, unique
+        if result._attributes.get("is_single_entity", False):
+            result = result.scalars()
+
+        if result._attributes.get("filtered", False):
+            result = result.unique()
+
+        return result
+
+    def _execute_crud(self, stmt, mapper):
+        conn = self.session.connection(
+            mapper=mapper, clause=stmt, close_with_result=True
+        )
+
+        return conn._execute_20(
+            stmt, self.load_options._params, self._execution_options
+        )
 
     def __str__(self):
-        compile_state = self._compile_state()
+        statement = self._statement_20(orm_results=True)
+
         try:
             bind = (
-                self._get_bind_args(compile_state, self.session.get_bind)
+                self._get_bind_args(statement, self.session.get_bind)
                 if self.session
                 else None
             )
         except sa_exc.UnboundExecutionError:
             bind = None
-        return str(compile_state.statement.compile(bind))
 
-    def _connection_from_session(self, **kw):
-        conn = self.session.connection(**kw)
-        if self._execution_options:
-            conn = conn.execution_options(**self._execution_options)
-        return conn
+        return str(statement.compile(bind))
 
-    def _execute_and_instances(self, querycontext, params=None):
-        conn = self._get_bind_args(
-            querycontext.compile_state,
-            self._connection_from_session,
-            close_with_result=True,
-        )
-
-        if params is None:
-            params = querycontext.load_options._params
-
-        result = conn._execute_20(
-            querycontext.compile_state.statement,
-            params,
-            #            execution_options=self.session._orm_execution_options(),
-        )
-        return loading.instances(querycontext.query, result, querycontext)
-
-    def _execute_crud(self, stmt, mapper):
-        conn = self._connection_from_session(
-            mapper=mapper, clause=stmt, close_with_result=True
-        )
-
-        return conn.execute(stmt, self.load_options._params)
-
-    def _get_bind_args(self, compile_state, fn, **kw):
-        return fn(
-            mapper=compile_state._bind_mapper(),
-            clause=compile_state.statement,
-            **kw
-        )
+    def _get_bind_args(self, statement, fn, **kw):
+        return fn(clause=statement, **kw)
 
     @property
     def column_descriptions(self):
@@ -2837,10 +2918,21 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
                 "for linking ORM results to arbitrary select constructs.",
                 version="1.4",
             )
-            compile_state = QueryCompileState._create_for_legacy_query(self)
-            context = QueryContext(compile_state, self.session)
+            compile_state = ORMCompileState._create_for_legacy_query(self)
+            context = QueryContext(
+                compile_state, self.session, self.load_options
+            )
 
-        return loading.instances(self, result_proxy, context)
+        result = loading.instances(result_proxy, context)
+
+        # legacy: automatically set scalars, unique
+        if result._attributes.get("is_single_entity", False):
+            result = result.scalars()
+
+        if result._attributes.get("filtered", False):
+            result = result.unique()
+
+        return result
 
     def merge_result(self, iterator, load=True):
         """Merge a result into this :class:`_query.Query` object's Session.
@@ -3239,34 +3331,60 @@ class Query(HasPrefixes, HasSuffixes, HasHints, Executable):
         return update_op.rowcount
 
     def _compile_state(self, for_statement=False, **kw):
-        # TODO: this needs to become a general event for all
-        # Executable objects as well (all ClauseElement?)
-        # but then how do we clarify that this event is only for
-        # *top level* compile, not as an embedded element is visted?
-        # how does that even work because right now a Query that does things
-        # like from_self() will in fact invoke before_compile for each
-        # inner element.
-        # OK perhaps with 2.0 style folks will continue using before_execute()
-        # as they can now, as a select() with ORM elements will be delivered
-        # there, OK.   sort of fixes the "bake_ok" problem too.
-        if self.dispatch.before_compile:
-            for fn in self.dispatch.before_compile:
-                new_query = fn(self)
-                if new_query is not None and new_query is not self:
-                    self = new_query
-                    if not fn._bake_ok:
-                        self.compile_options += {"_bake_ok": False}
-
-        compile_state = QueryCompileState._create_for_legacy_query(
+        return ORMCompileState._create_for_legacy_query(
             self, for_statement=for_statement, **kw
         )
-        return compile_state
 
     def _compile_context(self, for_statement=False):
         compile_state = self._compile_state(for_statement=for_statement)
-        context = QueryContext(compile_state, self.session)
+        context = QueryContext(compile_state, self.session, self.load_options)
 
         return context
+
+
+class FromStatement(SelectStatementGrouping, Executable):
+    """Core construct that represents a load of ORM objects from a finished
+    select or text construct.
+
+    """
+
+    compile_options = ORMFromStatementCompileState.default_compile_options
+
+    _compile_state_factory = ORMFromStatementCompileState.create_for_statement
+
+    _is_future = True
+
+    _for_update_arg = None
+
+    def __init__(self, entities, element):
+        self._raw_columns = [
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
+            for ent in util.to_list(entities)
+        ]
+        super(FromStatement, self).__init__(element)
+
+    def _compiler_dispatch(self, compiler, **kw):
+        compile_state = self._compile_state_factory(self, self, **kw)
+
+        toplevel = not compiler.stack
+
+        if toplevel:
+            compiler.compile_state = compile_state
+
+        return compiler.process(compile_state.statement, **kw)
+
+    def _ensure_disambiguated_names(self):
+        return self
+
+    def get_children(self, **kw):
+        for elem in itertools.chain.from_iterable(
+            element._from_objects for element in self._raw_columns
+        ):
+            yield elem
+        for elem in super(FromStatement, self).get_children(**kw):
+            yield elem
 
 
 class AliasOption(interfaces.LoaderOption):

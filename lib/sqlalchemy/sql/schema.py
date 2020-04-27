@@ -1632,6 +1632,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
 
         c.table = selectable
+        c._propagate_attrs = selectable._propagate_attrs
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
         if self.primary_key:

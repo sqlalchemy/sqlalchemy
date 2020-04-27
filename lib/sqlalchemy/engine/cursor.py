@@ -57,6 +57,9 @@ class CursorResultMetaData(ResultMetaData):
 
     returns_rows = True
 
+    def _has_key(self, key):
+        return key in self._keymap
+
     def _for_freeze(self):
         return SimpleResultMetaData(
             self._keys,
@@ -1203,6 +1206,7 @@ class BaseCursorResult(object):
 
     out_parameters = None
     _metadata = None
+    _metadata_from_cache = False
     _soft_closed = False
     closed = False
 
@@ -1213,7 +1217,6 @@ class BaseCursorResult(object):
             obj = CursorResult(context)
         else:
             obj = LegacyCursorResult(context)
-
         return obj
 
     def __init__(self, context):
@@ -1247,8 +1250,9 @@ class BaseCursorResult(object):
     def _init_metadata(self, context, cursor_description):
         if context.compiled:
             if context.compiled._cached_metadata:
-                cached_md = context.compiled._cached_metadata
-                self._metadata = cached_md._adapt_to_context(context)
+                cached_md = self.context.compiled._cached_metadata
+                self._metadata = cached_md
+                self._metadata_from_cache = True
 
             else:
                 self._metadata = (

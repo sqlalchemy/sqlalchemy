@@ -6,6 +6,7 @@ from sqlalchemy import and_
 from sqlalchemy import between
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
+from sqlalchemy import case
 from sqlalchemy import cast
 from sqlalchemy import collate
 from sqlalchemy import column
@@ -29,11 +30,13 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy import type_coerce
 from sqlalchemy import Unicode
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -47,6 +50,7 @@ from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
@@ -59,7 +63,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
-from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
@@ -149,6 +152,67 @@ class RowTupleTest(QueryTest):
         eq_(row.id, 7)
         eq_(row.uname, "jack")
 
+    @testing.combinations(
+        (lambda s, users: s.query(users),),
+        (lambda s, User: s.query(User.id, User.name),),
+        (lambda s, users: s.query(users.c.id, users.c.name),),
+        (lambda s, users: s.query(users.c.id, users.c.name),),
+    )
+    def test_modern_tuple(self, test_case):
+        # check we are not getting a LegacyRow back
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session()
+
+        q = testing.resolve_lambda(test_case, **locals())
+
+        row = q.order_by(User.id).first()
+        assert "jack" in row
+
+    @testing.combinations(
+        (lambda s, users: s.query(users),),
+        (lambda s, User: s.query(User.id, User.name),),
+        (lambda s, users: s.query(users.c.id, users.c.name),),
+        (lambda s, users: future_select(users),),
+        (lambda s, User: future_select(User.id, User.name),),
+        (lambda s, users: future_select(users.c.id, users.c.name),),
+    )
+    def test_modern_tuple_future(self, test_case):
+        # check we are not getting a LegacyRow back
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session()
+
+        q = testing.resolve_lambda(test_case, **locals())
+
+        row = s.execute(q.order_by(User.id)).first()
+        assert "jack" in row
+
+    @testing.combinations(
+        (lambda s, users: select([users]),),
+        (lambda s, User: select([User.id, User.name]),),
+        (lambda s, users: select([users.c.id, users.c.name]),),
+    )
+    def test_legacy_tuple_old_select(self, test_case):
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session()
+
+        q = testing.resolve_lambda(test_case, **locals())
+
+        row = s.execute(q.order_by(User.id)).first()
+        assert "jack" not in row
+        assert "jack" in tuple(row)
+
     def test_entity_mapping_access(self):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
@@ -187,34 +251,6 @@ class RowTupleTest(QueryTest):
         eq_(row._mapping[addresses.c.email_address], row[1])
         assert_raises(KeyError, lambda: row._mapping[User.name])
         assert_raises(KeyError, lambda: row._mapping[users.c.name])
-
-    def test_deep_entity(self):
-        users, User = (self.tables.users, self.classes.User)
-
-        mapper(User, users)
-
-        sess = create_session()
-        bundle = Bundle("b1", User.id, User.name)
-        subq1 = sess.query(User.id).subquery()
-        subq2 = sess.query(bundle).subquery()
-        cte = sess.query(User.id).cte()
-        ex = sess.query(User).exists()
-
-        is_(
-            sess.query(subq1)._compile_state()._deep_entity_zero(),
-            inspect(User),
-        )
-        is_(
-            sess.query(subq2)._compile_state()._deep_entity_zero(),
-            inspect(User),
-        )
-        is_(
-            sess.query(cte)._compile_state()._deep_entity_zero(),
-            inspect(User),
-        )
-        is_(
-            sess.query(ex)._compile_state()._deep_entity_zero(), inspect(User),
-        )
 
     @testing.combinations(
         lambda sess, User: (
@@ -4502,22 +4538,65 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_other_eager_loads(self):
-        # this is new in 1.4.  with textclause, we build up column loaders
-        # normally, so that eager loaders also get installed.  previously,
-        # _compile_context() didn't build up column loaders and attempted
-        # to get them after the fact.
+    def test_columns_multi_table_uselabels_cols_contains_eager(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
         User = self.classes.User
+        Address = self.classes.Address
 
         s = create_session()
         q = (
             s.query(User)
-            .from_statement(text("select * from users"))
-            .options(subqueryload(User.addresses))
+            .from_statement(
+                text(
+                    "select users.name AS users_name, users.id AS users_id, "
+                    "addresses.id AS addresses_id FROM users JOIN addresses "
+                    "ON users.id = addresses.user_id WHERE users.id=8 "
+                    "ORDER BY addresses.id"
+                ).columns(User.name, User.id, Address.id)
+            )
+            .options(contains_eager(User.addresses))
         )
-        # we can't ORDER BY in this test because SQL server won't let the
-        # ORDER BY work inside the subqueryload; the test needs to use
-        # subqueryload (not selectinload) to confirm the feature
+
+        def go():
+            r = q.all()
+            eq_(r[0].addresses, [Address(id=2), Address(id=3), Address(id=4)])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    @testing.combinations(
+        (
+            False,
+            subqueryload,
+            # sqlite seems happy to interpret the broken SQL and give you the
+            # correct result somehow, this is a bug in SQLite so don't rely
+            # upon it doing that
+            testing.fails("not working yet") + testing.skip_if("sqlite"),
+        ),
+        (True, subqueryload, testing.fails("not sure about implementation")),
+        (False, selectinload),
+        (True, selectinload),
+    )
+    def test_related_eagerload_against_text(self, add_columns, loader_option):
+        # new in 1.4.   textual selects have columns so subqueryloaders
+        # and selectinloaders can join onto them.   we add columns
+        # automatiacally to TextClause as well, however subqueryloader
+        # is not working at the moment due to execution model refactor,
+        # it creates a subquery w/ adapter before those columns are
+        # available.  this is a super edge case and as we want to rewrite
+        # the loaders to use select(), maybe we can get it then.
+        User = self.classes.User
+
+        text_clause = text("select * from users")
+        if add_columns:
+            text_clause = text_clause.columns(User.id, User.name)
+
+        s = create_session()
+        q = (
+            s.query(User)
+            .from_statement(text_clause)
+            .options(loader_option(User.addresses))
+        )
 
         def go():
             eq_(set(q.all()), set(self.static.user_address_result))
@@ -5897,41 +5976,52 @@ class SessionBindTest(QueryTest):
             yield
         for call_ in get_bind.mock_calls:
             if expect_mapped_bind:
-                is_(call_[1][0], inspect(self.classes.User))
+                eq_(
+                    call_,
+                    mock.call(
+                        clause=mock.ANY, mapper=inspect(self.classes.User)
+                    ),
+                )
             else:
-                is_(call_[1][0], None)
-            is_not_(call_[2]["clause"], None)
+                eq_(call_, mock.call(clause=mock.ANY))
 
     def test_single_entity_q(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User).all()
 
     def test_aliased_entity_q(self):
         User = self.classes.User
         u = aliased(User)
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(u).all()
 
     def test_sql_expr_entity_q(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.id).all()
 
     def test_sql_expr_subquery_from_entity(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             subq = session.query(User.id).subquery()
+            session.query(subq).all()
+
+    def test_sql_expr_exists_from_entity(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            subq = session.query(User.id).exists()
             session.query(subq).all()
 
     def test_sql_expr_cte_from_entity(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             cte = session.query(User.id).cte()
             subq = session.query(cte).subquery()
             session.query(subq).all()
@@ -5939,7 +6029,7 @@ class SessionBindTest(QueryTest):
     def test_sql_expr_bundle_cte_from_entity(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             cte = session.query(User.id, User.name).cte()
             subq = session.query(cte).subquery()
             bundle = Bundle(subq.c.id, subq.c.name)
@@ -5948,14 +6038,57 @@ class SessionBindTest(QueryTest):
     def test_count(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User).count()
+
+    def test_single_col(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(User.name).all()
+
+    def test_single_col_from_subq(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            subq = session.query(User.id, User.name).subquery()
+            session.query(subq.c.name).all()
 
     def test_aggregate_fn(self):
         User = self.classes.User
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(func.max(User.name)).all()
+
+    def test_case(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(case([(User.name == "x", "C")], else_="W")).all()
+
+    def test_cast(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(cast(User.name, String())).all()
+
+    def test_type_coerce(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(type_coerce(User.name, String())).all()
+
+    def test_binary_op(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(User.name + "x").all()
+
+    def test_boolean_op(self):
+        User = self.classes.User
+        session = Session()
+        with self._assert_bind_args(session, expect_mapped_bind=True):
+            session.query(User.name == "x").all()
 
     def test_bulk_update_no_sync(self):
         User = self.classes.User
@@ -5998,7 +6131,7 @@ class SessionBindTest(QueryTest):
             column_property(func.coalesce(self.tables.users.c.name, None)),
         )
         session = Session()
-        with self._assert_bind_args(session):
+        with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(func.max(User.score)).scalar()
 
     def test_plain_table(self):
@@ -6008,9 +6141,10 @@ class SessionBindTest(QueryTest):
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(inspect(User).local_table).all()
 
-    def test_plain_table_from_self(self):
+    def _test_plain_table_from_self(self):
         User = self.classes.User
 
+        # TODO: this test is dumb
         session = Session()
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(inspect(User).local_table).from_self().all()

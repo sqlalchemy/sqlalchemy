@@ -2,16 +2,18 @@
 which allow the usage of Dogpile caching with SQLAlchemy.
 Introduces a query option called FromCache.
 
+.. versionchanged:: 1.4  the caching approach has been altered to work
+   based on a session event.
+
+
 The three new concepts introduced here are:
 
- * CachingQuery - a Query subclass that caches and
+ * ORMCache - an extension for an ORM :class:`.Session`
    retrieves results in/from dogpile.cache.
  * FromCache - a query option that establishes caching
    parameters on a Query
  * RelationshipCache - a variant of FromCache which is specific
    to a query invoked during a lazy load.
- * _params_from_query - extracts value parameters from
-   a Query.
 
 The rest of what's here are standard SQLAlchemy and
 dogpile.cache constructs.
@@ -19,165 +21,97 @@ dogpile.cache constructs.
 """
 from dogpile.cache.api import NO_VALUE
 
-from sqlalchemy.orm.interfaces import MapperOption
-from sqlalchemy.orm.query import Query
+from sqlalchemy import event
+from sqlalchemy.orm import loading
+from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
-class CachingQuery(Query):
-    """A Query subclass which optionally loads full results from a dogpile
-    cache region.
+class ORMCache(object):
 
-    The CachingQuery optionally stores additional state that allows it to
-    consult a dogpile.cache cache before accessing the database, in the form of
-    a FromCache or RelationshipCache object.   Each of these objects refer to
-    the name of a :class:`dogpile.cache.Region` that's been configured and
-    stored in a lookup dictionary.  When such an object has associated itself
-    with the CachingQuery, the corresponding :class:`dogpile.cache.Region` is
-    used to locate a cached result.  If none is present, then the Query is
-    invoked normally, the results being cached.
+    """An add-on for an ORM :class:`.Session` optionally loads full results
+    from a dogpile cache region.
 
-    The FromCache and RelationshipCache mapper options below represent
-    the "public" method of configuring this state upon the CachingQuery.
 
     """
 
-    def __init__(self, regions, *args, **kw):
+    def __init__(self, regions):
         self.cache_regions = regions
-        Query.__init__(self, *args, **kw)
+        self._statement_cache = {}
 
-    # NOTE: as of 1.4 don't override __iter__() anymore, the result object
-    # cannot be cached at that level.
+    def listen_on_session(self, session_factory):
+        event.listen(session_factory, "do_orm_execute", self._do_orm_execute)
 
-    def _execute_and_instances(self, context, **kw):
-        """override _execute_and_instances to pull results from dogpile
-            if the query is invoked directly from an external context.
+    def _do_orm_execute(self, orm_context):
 
-           This method is necessary in order to maintain compatibility
-           with the "baked query" system now used by default in some
-           relationship loader scenarios.   Note also the
-           RelationshipCache._generate_cache_key method which enables
-           the baked query to be used within lazy loads.
+        for opt in orm_context.user_defined_options:
+            if isinstance(opt, RelationshipCache):
+                opt = opt._process_orm_context(orm_context)
+                if opt is None:
+                    continue
 
-           .. versionadded:: 1.2.7
+            if isinstance(opt, FromCache):
+                dogpile_region = self.cache_regions[opt.region]
 
-           .. versionchanged:: 1.4  Added ``**kw`` arguments to the signature.
+                our_cache_key = opt._generate_cache_key(
+                    orm_context.statement, orm_context.parameters, self
+                )
 
-        """
-        super_ = super(CachingQuery, self)
+                if opt.ignore_expiration:
+                    cached_value = dogpile_region.get(
+                        our_cache_key,
+                        expiration_time=opt.expiration_time,
+                        ignore_expiration=opt.ignore_expiration,
+                    )
+                else:
 
-        if hasattr(self, "_cache_region"):
-            # special logic called when the Query._execute_and_instances()
-            # method is called directly from the baked query
-            return self.get_value(
-                createfunc=lambda: super_._execute_and_instances(
-                    context, **kw
-                ).freeze()
-            )
+                    def createfunc():
+                        return orm_context.invoke_statement().freeze()
+
+                    cached_value = dogpile_region.get_or_create(
+                        our_cache_key,
+                        createfunc,
+                        expiration_time=opt.expiration_time,
+                    )
+
+                if cached_value is NO_VALUE:
+                    # keyerror?   this is bigger than a keyerror...
+                    raise KeyError()
+
+                orm_result = loading.merge_frozen_result(
+                    orm_context.session,
+                    orm_context.statement,
+                    cached_value,
+                    load=False,
+                )
+                return orm_result()
+
         else:
-            return super_._execute_and_instances(context, **kw)
+            return None
 
-    def _get_cache_plus_key(self):
-        """Return a cache region plus key."""
+    def invalidate(self, statement, parameters, opt):
+        """Invalidate the cache value represented by a statement."""
 
-        dogpile_region = self.cache_regions[self._cache_region.region]
-        if self._cache_region.cache_key:
-            key = self._cache_region.cache_key
-        else:
-            key = _key_from_query(self)
-        return dogpile_region, key
+        statement = statement.__clause_element__()
 
-    def invalidate(self):
-        """Invalidate the cache value represented by this Query."""
+        dogpile_region = self.cache_regions[opt.region]
 
-        dogpile_region, cache_key = self._get_cache_plus_key()
+        cache_key = opt._generate_cache_key(statement, parameters, self)
+
         dogpile_region.delete(cache_key)
 
-    def get_value(
-        self,
-        merge=True,
-        createfunc=None,
-        expiration_time=None,
-        ignore_expiration=False,
-    ):
-        """Return the value from the cache for this query.
 
-        Raise KeyError if no value present and no
-        createfunc specified.
-
-        """
-        dogpile_region, cache_key = self._get_cache_plus_key()
-
-        # ignore_expiration means, if the value is in the cache
-        # but is expired, return it anyway.   This doesn't make sense
-        # with createfunc, which says, if the value is expired, generate
-        # a new value.
-        assert (
-            not ignore_expiration or not createfunc
-        ), "Can't ignore expiration and also provide createfunc"
-
-        if ignore_expiration or not createfunc:
-            cached_value = dogpile_region.get(
-                cache_key,
-                expiration_time=expiration_time,
-                ignore_expiration=ignore_expiration,
-            )
-        else:
-            cached_value = dogpile_region.get_or_create(
-                cache_key, createfunc, expiration_time=expiration_time
-            )
-        if cached_value is NO_VALUE:
-            raise KeyError(cache_key)
-
-        # in 1.4 the cached value is a FrozenResult.   merge_result
-        # accommodates this directly and updates the ORM entities inside
-        # the object to be merged.
-        # TODO: should this broken into merge_frozen_result / merge_iterator?
-        if merge:
-            cached_value = self.merge_result(cached_value, load=False)
-        return cached_value()
-
-    def set_value(self, value):
-        """Set the value in the cache for this query."""
-
-        dogpile_region, cache_key = self._get_cache_plus_key()
-        dogpile_region.set(cache_key, value)
-
-
-def query_callable(regions, query_cls=CachingQuery):
-    def query(*arg, **kw):
-        return query_cls(regions, *arg, **kw)
-
-    return query
-
-
-def _key_from_query(query, qualifier=None):
-    """Given a Query, create a cache key.
-
-    There are many approaches to this; here we use the simplest,
-    which is to create an md5 hash of the text of the SQL statement,
-    combined with stringified versions of all the bound parameters
-    within it.     There's a bit of a performance hit with
-    compiling out "query.statement" here; other approaches include
-    setting up an explicit cache key with a particular Query,
-    then combining that with the bound parameter values.
-
-    """
-
-    stmt = query.with_labels().statement
-    compiled = stmt.compile()
-    params = compiled.params
-
-    # here we return the key as a long string.  our "key mangler"
-    # set up with the region will boil it down to an md5.
-    return " ".join([str(compiled)] + [str(params[k]) for k in sorted(params)])
-
-
-class FromCache(MapperOption):
+class FromCache(UserDefinedOption):
     """Specifies that a Query should load results from a cache."""
 
     propagate_to_loaders = False
 
-    def __init__(self, region="default", cache_key=None):
+    def __init__(
+        self,
+        region="default",
+        cache_key=None,
+        expiration_time=None,
+        ignore_expiration=False,
+    ):
         """Construct a new FromCache.
 
         :param region: the cache region.  Should be a
@@ -193,19 +127,34 @@ class FromCache(MapperOption):
         """
         self.region = region
         self.cache_key = cache_key
+        self.expiration_time = expiration_time
+        self.ignore_expiration = ignore_expiration
 
-    def process_query(self, query):
-        """Process a Query during normal loading operation."""
-        query._cache_region = self
+    def _generate_cache_key(self, statement, parameters, orm_cache):
+        statement_cache_key = statement._generate_cache_key()
+
+        key = statement_cache_key.to_offline_string(
+            orm_cache._statement_cache, parameters
+        ) + repr(self.cache_key)
+
+        # print("here's our key...%s" % key)
+        return key
 
 
-class RelationshipCache(MapperOption):
+class RelationshipCache(FromCache):
     """Specifies that a Query as called within a "lazy load"
        should load results from a cache."""
 
     propagate_to_loaders = True
 
-    def __init__(self, attribute, region="default", cache_key=None):
+    def __init__(
+        self,
+        attribute,
+        region="default",
+        cache_key=None,
+        expiration_time=None,
+        ignore_expiration=False,
+    ):
         """Construct a new RelationshipCache.
 
         :param attribute: A Class.attribute which
@@ -221,19 +170,17 @@ class RelationshipCache(MapperOption):
         """
         self.region = region
         self.cache_key = cache_key
+        self.expiration_time = expiration_time
+        self.ignore_expiration = ignore_expiration
         self._relationship_options = {
             (attribute.property.parent.class_, attribute.property.key): self
         }
 
-    def process_query_conditionally(self, query):
-        """Process a Query that is used within a lazy loader.
+    def _process_orm_context(self, orm_context):
+        current_path = orm_context.loader_strategy_path
 
-        (the process_query_conditionally() method is a SQLAlchemy
-        hook invoked only within lazyload.)
-
-        """
-        if query._current_path:
-            mapper, prop = query._current_path[-2:]
+        if current_path:
+            mapper, prop = current_path[-2:]
             key = prop.key
 
             for cls in mapper.class_.__mro__:
@@ -241,8 +188,7 @@ class RelationshipCache(MapperOption):
                     relationship_option = self._relationship_options[
                         (cls, key)
                     ]
-                    query._cache_region = relationship_option
-                    break
+                    return relationship_option
 
     def and_(self, option):
         """Chain another RelationshipCache option to this one.
@@ -254,16 +200,3 @@ class RelationshipCache(MapperOption):
         """
         self._relationship_options.update(option._relationship_options)
         return self
-
-    def _generate_cache_key(self, path):
-        """Indicate to the lazy-loader strategy that a "baked" query
-        may be used by returning ``None``.
-
-        If this method is omitted, the default implementation of
-        :class:`.MapperOption._generate_cache_key` takes place, which
-        returns ``False`` to disable the "baked" query from being used.
-
-        .. versionadded:: 1.2.7
-
-        """
-        return None

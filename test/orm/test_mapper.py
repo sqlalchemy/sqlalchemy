@@ -256,7 +256,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         m = mapper(User, users)
         session = create_session()
-        session.connection(m)
+        session.connection(mapper=m)
 
     def test_incomplete_columns(self):
         """Loading from a select which does not contain all columns"""

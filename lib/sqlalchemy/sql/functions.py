@@ -107,6 +107,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
                 roles.ExpressionElementRole,
                 c,
                 name=getattr(self, "name", None),
+                apply_propagate_attrs=self,
             )
             for c in clauses
         ]
@@ -749,7 +750,10 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         if parsed_args is None:
             parsed_args = [
                 coercions.expect(
-                    roles.ExpressionElementRole, c, name=self.name
+                    roles.ExpressionElementRole,
+                    c,
+                    name=self.name,
+                    apply_propagate_attrs=self,
                 )
                 for c in args
             ]
@@ -813,7 +817,12 @@ class ReturnTypeFromArgs(GenericFunction):
 
     def __init__(self, *args, **kwargs):
         args = [
-            coercions.expect(roles.ExpressionElementRole, c, name=self.name)
+            coercions.expect(
+                roles.ExpressionElementRole,
+                c,
+                name=self.name,
+                apply_propagate_attrs=self,
+            )
             for c in args
         ]
         kwargs.setdefault("type_", _type_from_args(args))
@@ -944,7 +953,12 @@ class array_agg(GenericFunction):
     type = sqltypes.ARRAY
 
     def __init__(self, *args, **kwargs):
-        args = [coercions.expect(roles.ExpressionElementRole, c) for c in args]
+        args = [
+            coercions.expect(
+                roles.ExpressionElementRole, c, apply_propagate_attrs=self
+            )
+            for c in args
+        ]
 
         default_array_type = kwargs.pop("_default_array_type", sqltypes.ARRAY)
         if "type_" not in kwargs:

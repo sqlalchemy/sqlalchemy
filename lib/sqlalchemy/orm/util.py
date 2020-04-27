@@ -41,6 +41,7 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import ColumnCollection
 
 
@@ -694,6 +695,8 @@ class AliasedInsp(
                 "entity_namespace": self,
                 "compile_state_plugin": "orm",
             }
+        )._set_propagate_attrs(
+            {"compile_state_plugin": "orm", "plugin_subject": self}
         )
 
     @property
@@ -748,10 +751,20 @@ class AliasedInsp(
         )
 
     def _adapt_element(self, elem, key=None):
-        d = {"parententity": self, "parentmapper": self.mapper}
+        d = {
+            "parententity": self,
+            "parentmapper": self.mapper,
+            "compile_state_plugin": "orm",
+        }
         if key:
             d["orm_key"] = key
-        return self._adapter.traverse(elem)._annotate(d)
+        return (
+            self._adapter.traverse(elem)
+            ._annotate(d)
+            ._set_propagate_attrs(
+                {"compile_state_plugin": "orm", "plugin_subject": self}
+            )
+        )
 
     def _entity_for_mapper(self, mapper):
         self_poly = self.with_polymorphic_mappers
@@ -1037,7 +1050,7 @@ def with_polymorphic(
 
 
 @inspection._self_inspects
-class Bundle(ORMColumnsClauseRole, InspectionAttr):
+class Bundle(ORMColumnsClauseRole, SupportsCloneAnnotations, InspectionAttr):
     """A grouping of SQL expressions that are returned by a :class:`.Query`
     under one namespace.
 
@@ -1070,6 +1083,8 @@ class Bundle(ORMColumnsClauseRole, InspectionAttr):
 
     is_bundle = True
 
+    _propagate_attrs = util.immutabledict()
+
     def __init__(self, name, *exprs, **kw):
         r"""Construct a new :class:`.Bundle`.
 
@@ -1090,7 +1105,10 @@ class Bundle(ORMColumnsClauseRole, InspectionAttr):
         """
         self.name = self._label = name
         self.exprs = exprs = [
-            coercions.expect(roles.ColumnsClauseRole, expr) for expr in exprs
+            coercions.expect(
+                roles.ColumnsClauseRole, expr, apply_propagate_attrs=self
+            )
+            for expr in exprs
         ]
 
         self.c = self.columns = ColumnCollection(
@@ -1145,11 +1163,14 @@ class Bundle(ORMColumnsClauseRole, InspectionAttr):
         return cloned
 
     def __clause_element__(self):
+        annotations = self._annotations.union(
+            {"bundle": self, "entity_namespace": self}
+        )
         return expression.ClauseList(
             _literal_as_text_role=roles.ColumnsClauseRole,
             group=False,
             *[e._annotations.get("bundle", e) for e in self.exprs]
-        )._annotate({"bundle": self, "entity_namespace": self})
+        )._annotate(annotations)
 
     @property
     def clauses(self):

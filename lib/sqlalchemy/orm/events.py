@@ -1397,6 +1397,43 @@ class SessionEvents(event.Events):
 
         event_key.base_listen(**kw)
 
+    def do_orm_execute(self, orm_execute_state):
+        """Intercept statement executions that occur in terms of a :class:`.Session`.
+
+        This event is invoked for all top-level SQL statements invoked
+        from the :meth:`_orm.Session.execute` method.   As of SQLAlchemy 1.4,
+        all ORM queries emitted on behalf of a :class:`_orm.Session` will
+        flow through this method, so this event hook provides the single
+        point at which ORM queries of all types may be intercepted before
+        they are invoked, and additionally to replace their execution with
+        a different process.
+
+        This event is a ``do_`` event, meaning it has the capability to replace
+        the operation that the :meth:`_orm.Session.execute` method normally
+        performs.  The intended use for this includes sharding and
+        result-caching schemes which may seek to invoke the same statement
+        across  multiple database connections, returning a result that is
+        merged from each of them, or which don't invoke the statement at all,
+        instead returning data from a cache.
+
+        The hook intends to replace the use of the
+        ``Query._execute_and_instances`` method that could be subclassed prior
+        to SQLAlchemy 1.4.
+
+        :param orm_execute_state: an instance of :class:`.ORMExecuteState`
+         which contains all information about the current execution, as well
+         as helper functions used to derive other commonly required
+         information.   See that object for details.
+
+        .. seealso::
+
+            :class:`.ORMExecuteState`
+
+
+        .. versionadded:: 1.4
+
+        """
+
     def after_transaction_create(self, session, transaction):
         """Execute when a new :class:`.SessionTransaction` is created.
 

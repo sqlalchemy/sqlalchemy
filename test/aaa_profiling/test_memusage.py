@@ -129,7 +129,9 @@ def profile_memory(
                             )
 
                             raise
+
                         gc_collect()
+
                         samples.append(
                             get_num_objects()
                             if get_num_objects is not None
@@ -1299,7 +1301,7 @@ class CycleTest(_fixtures.FixtureTest):
         # others as of cache key.  The options themselves are now part of
         # QueryCompileState which is not eagerly disposed yet, so this
         # adds some more.
-        @assert_cycles(36)
+        @assert_cycles(37)
         def go():
             generate()
 
@@ -1370,7 +1372,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles(4)
         def go():
-            result = s.execute(stmt)
+            result = s.connection(mapper=User).execute(stmt)
             while True:
                 row = result.fetchone()
                 if row is None:

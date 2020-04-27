@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
@@ -209,9 +210,65 @@ class _PolymorphicTestBase(object):
             ],
         )
 
+    def test_multi_join_future(self):
+        sess = create_session()
+        e = aliased(Person)
+        c = aliased(Company)
+
+        q = (
+            future_select(Company, Person, c, e)
+            .join(Person, Company.employees)
+            .join(e, c.employees)
+            .filter(Person.person_id != e.person_id)
+            .filter(Person.name == "dilbert")
+            .filter(e.name == "wally")
+        )
+
+        eq_(
+            sess.execute(
+                future_select(func.count()).select_from(q.subquery())
+            ).scalar(),
+            1,
+        )
+
+        eq_(
+            sess.execute(q).all(),
+            [
+                (
+                    Company(company_id=1, name="MegaCorp, Inc."),
+                    Engineer(
+                        status="regular engineer",
+                        engineer_name="dilbert",
+                        name="dilbert",
+                        company_id=1,
+                        primary_language="java",
+                        person_id=1,
+                        type="engineer",
+                    ),
+                    Company(company_id=1, name="MegaCorp, Inc."),
+                    Engineer(
+                        status="regular engineer",
+                        engineer_name="wally",
+                        name="wally",
+                        company_id=1,
+                        primary_language="c++",
+                        person_id=2,
+                        type="engineer",
+                    ),
+                )
+            ],
+        )
+
     def test_filter_on_subclass_one(self):
         sess = create_session()
         eq_(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
+
+    def test_filter_on_subclass_one_future(self):
+        sess = create_session()
+        eq_(
+            sess.execute(future_select(Engineer)).scalar(),
+            Engineer(name="dilbert"),
+        )
 
     def test_filter_on_subclass_two(self):
         sess = create_session()
@@ -261,6 +318,20 @@ class _PolymorphicTestBase(object):
             [b1, m1],
         )
 
+    def test_join_from_polymorphic_nonaliased_one_future(self):
+        sess = create_session()
+        eq_(
+            sess.execute(
+                future_select(Person)
+                .join(Person.paperwork)
+                .filter(Paperwork.description.like("%review%"))
+            )
+            .unique()
+            .scalars()
+            .all(),
+            [b1, m1],
+        )
+
     def test_join_from_polymorphic_nonaliased_two(self):
         sess = create_session()
         eq_(
@@ -302,6 +373,23 @@ class _PolymorphicTestBase(object):
             .order_by(Person.person_id)
             .join("paperwork", aliased=True)
             .filter(Paperwork.description.like("%review%"))
+            .all(),
+            [b1, m1],
+        )
+
+    def test_join_from_polymorphic_flag_aliased_one_future(self):
+        sess = create_session()
+
+        pa = aliased(Paperwork)
+        eq_(
+            sess.execute(
+                future_select(Person)
+                .order_by(Person.person_id)
+                .join(Person.paperwork.of_type(pa))
+                .filter(pa.description.like("%review%"))
+            )
+            .unique()
+            .scalars()
             .all(),
             [b1, m1],
         )
@@ -385,6 +473,23 @@ class _PolymorphicTestBase(object):
             .order_by(Person.person_id)
             .join("paperwork")
             .filter(Paperwork.description.like("%review%"))
+            .all(),
+            [b1, m1],
+        )
+
+    def test_join_from_with_polymorphic_nonaliased_one_future(self):
+        sess = create_session()
+
+        pm = with_polymorphic(Person, [Manager])
+        eq_(
+            sess.execute(
+                future_select(pm)
+                .order_by(pm.person_id)
+                .join(pm.paperwork)
+                .filter(Paperwork.description.like("%review%"))
+            )
+            .unique()
+            .scalars()
             .all(),
             [b1, m1],
         )
@@ -1429,6 +1534,7 @@ class _PolymorphicTestBase(object):
             .filter(Engineer.primary_language == "java")
             .statement.scalar_subquery()
         )
+
         eq_(sess.query(Person).filter(Person.person_id.in_(subq)).one(), e1)
 
     def test_mixed_entities_one(self):

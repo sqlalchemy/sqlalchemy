@@ -681,7 +681,7 @@ class CacheKeyFixture(object):
                     continue
 
                 eq_(a_key.key, b_key.key)
-                eq_(hash(a_key), hash(b_key))
+                eq_(hash(a_key.key), hash(b_key.key))
 
                 for a_param, b_param in zip(
                     a_key.bindparams, b_key.bindparams

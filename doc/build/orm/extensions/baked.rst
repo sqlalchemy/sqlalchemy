@@ -20,6 +20,11 @@ cache the **return results** from the database.  A technique that demonstrates
 the caching of the SQL calls and result sets themselves is available in
 :ref:`examples_caching`.
 
+.. deprecated:: 1.4  SQLAlchemy 1.4 and 2.0 feature an all-new direct query
+   caching system that removes the need for the :class:`.BakedQuery` system.
+   Caching is now built in to all Core and ORM queries using the
+   :paramref:`.create_engine.query_cache_size` parameter.
+
 
 .. versionadded:: 1.0.0
 

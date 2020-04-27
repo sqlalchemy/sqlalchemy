@@ -68,7 +68,7 @@ if os.path.exists("orm2010.db"):
     os.remove("orm2010.db")
 # use a file based database so that cursor.execute() has some
 # palpable overhead.
-engine = create_engine("sqlite:///orm2010.db")
+engine = create_engine("sqlite:///orm2010.db", query_cache_size=100)
 
 Base.metadata.create_all(engine)
 
@@ -178,7 +178,7 @@ def run_with_profile(runsnake=False, dump=False):
 
     if dump:
         #        stats.sort_stats("nfl")
-        stats.sort_stats("file", "name")
+        stats.sort_stats("cumtime", "calls")
         stats.print_stats()
     #        stats.print_callers()
 
@@ -186,7 +186,7 @@ def run_with_profile(runsnake=False, dump=False):
         os.system("runsnake %s" % filename)
 
 
-def run_with_time():
+def run_with_time(factor):
     import time
 
     now = time.time()
@@ -222,7 +222,13 @@ if __name__ == "__main__":
         action="store_true",
         help="invoke runsnakerun (implies --profile)",
     )
-
+    parser.add_argument(
+        "--factor",
+        type=int,
+        default=10,
+        help="scale factor, a multiple of how many records to work with.  "
+        "defaults to 10",
+    )
     args = parser.parse_args()
 
     args.profile = args.profile or args.dump or args.runsnake
@@ -230,4 +236,4 @@ if __name__ == "__main__":
     if args.profile:
         run_with_profile(runsnake=args.runsnake, dump=args.dump)
     else:
-        run_with_time()
+        run_with_time(args.factor)

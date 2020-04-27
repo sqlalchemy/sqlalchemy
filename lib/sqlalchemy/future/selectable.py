@@ -56,7 +56,9 @@ class Select(_LegacySelect):
 
         self = cls.__new__(cls)
         self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, ent, apply_plugins=self)
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
             for ent in entities
         ]
 
@@ -71,9 +73,9 @@ class Select(_LegacySelect):
 
     def _filter_by_zero(self):
         if self._setup_joins:
-            meth = SelectState.get_plugin_classmethod(
-                self, "determine_last_joined_entity"
-            )
+            meth = SelectState.get_plugin_class(
+                self
+            ).determine_last_joined_entity
             _last_joined_entity = meth(self)
             if _last_joined_entity is not None:
                 return _last_joined_entity
@@ -106,7 +108,7 @@ class Select(_LegacySelect):
 
         """
         target = coercions.expect(
-            roles.JoinTargetRole, target, apply_plugins=self
+            roles.JoinTargetRole, target, apply_propagate_attrs=self
         )
         self._setup_joins += (
             (target, onclause, None, {"isouter": isouter, "full": full}),
@@ -123,12 +125,15 @@ class Select(_LegacySelect):
 
 
         """
+        # note the order of parsing from vs. target is important here, as we
+        # are also deriving the source of the plugin (i.e. the subject mapper
+        # in an ORM query) which should favor the "from_" over the "target"
 
-        target = coercions.expect(
-            roles.JoinTargetRole, target, apply_plugins=self
-        )
         from_ = coercions.expect(
-            roles.FromClauseRole, from_, apply_plugins=self
+            roles.FromClauseRole, from_, apply_propagate_attrs=self
+        )
+        target = coercions.expect(
+            roles.JoinTargetRole, target, apply_propagate_attrs=self
         )
 
         self._setup_joins += (

@@ -2237,6 +2237,8 @@ class Mapper(
                 "parentmapper": self,
                 "compile_state_plugin": "orm",
             }
+        )._set_propagate_attrs(
+            {"compile_state_plugin": "orm", "plugin_subject": self}
         )
 
     @property

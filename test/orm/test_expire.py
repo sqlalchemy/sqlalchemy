@@ -319,13 +319,6 @@ class ExpireTest(_fixtures.FixtureTest):
             ["addresses"],
         )
 
-        # in contrast to a regular query with no columns
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            "no columns with which to SELECT",
-            s.query().all,
-        )
-
     def test_refresh_cancels_expire(self):
         users, User = self.tables.users, self.classes.User
 

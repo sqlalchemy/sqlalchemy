@@ -17,8 +17,12 @@ from .traversals import anon_map
 from .visitors import InternalTraversal
 from .. import util
 
+EMPTY_ANNOTATIONS = util.immutabledict()
+
 
 class SupportsAnnotations(object):
+    _annotations = EMPTY_ANNOTATIONS
+
     @util.memoized_property
     def _annotations_cache_key(self):
         anon_map_ = anon_map()
@@ -40,7 +44,6 @@ class SupportsAnnotations(object):
 
 
 class SupportsCloneAnnotations(SupportsAnnotations):
-    _annotations = util.immutabledict()
 
     _clone_annotations_traverse_internals = [
         ("_annotations", InternalTraversal.dp_annotations_key)
@@ -113,12 +116,9 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
 
         """
         if clone:
-            # clone is used when we are also copying
-            # the expression for a deep deannotation
-            return self._clone()
+            s = self._clone()
+            return s
         else:
-            # if no clone, since we have no annotations we return
-            # self
             return self
 
 
@@ -163,12 +163,11 @@ class Annotated(object):
         self.__dict__.pop("_annotations_cache_key", None)
         self.__dict__.pop("_generate_cache_key", None)
         self.__element = element
-        self._annotations = values
+        self._annotations = util.immutabledict(values)
         self._hash = hash(element)
 
     def _annotate(self, values):
-        _values = self._annotations.copy()
-        _values.update(values)
+        _values = self._annotations.union(values)
         return self._with_annotations(_values)
 
     def _with_annotations(self, values):
@@ -183,10 +182,15 @@ class Annotated(object):
         if values is None:
             return self.__element
         else:
-            _values = self._annotations.copy()
-            for v in values:
-                _values.pop(v, None)
-            return self._with_annotations(_values)
+            return self._with_annotations(
+                util.immutabledict(
+                    {
+                        key: value
+                        for key, value in self._annotations.items()
+                        if key not in values
+                    }
+                )
+            )
 
     def _compiler_dispatch(self, visitor, **kw):
         return self.__element.__class__._compiler_dispatch(self, visitor, **kw)

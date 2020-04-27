@@ -225,14 +225,10 @@ class Connection(Connectable):
           A dictionary where :class:`.Compiled` objects
           will be cached when the :class:`_engine.Connection`
           compiles a clause
-          expression into a :class:`.Compiled` object.
-          It is the user's responsibility to
-          manage the size of this dictionary, which will have keys
-          corresponding to the dialect, clause element, the column
-          names within the VALUES or SET clause of an INSERT or UPDATE,
-          as well as the "batch" mode for an INSERT or UPDATE statement.
-          The format of this dictionary is not guaranteed to stay the
-          same in future releases.
+          expression into a :class:`.Compiled` object.  This dictionary will
+          supersede the statement cache that may be configured on the
+          :class:`_engine.Engine` itself.   If set to None, caching
+          is disabled, even if the engine has a configured cache size.
 
           Note that the ORM makes use of its own "compiled" caches for
           some operations, including flush operations.  The caching
@@ -1159,13 +1155,17 @@ class Connection(Connectable):
 
         schema_translate_map = exec_opts.get("schema_translate_map", None)
 
-        if "compiled_cache" in exec_opts:
+        compiled_cache = exec_opts.get(
+            "compiled_cache", self.dialect._compiled_cache
+        )
+
+        if compiled_cache is not None:
             elem_cache_key = elem._generate_cache_key()
         else:
             elem_cache_key = None
 
         if elem_cache_key:
-            cache_key, extracted_params = elem_cache_key
+            cache_key, extracted_params, _ = elem_cache_key
             key = (
                 dialect,
                 cache_key,
@@ -1173,8 +1173,7 @@ class Connection(Connectable):
                 bool(schema_translate_map),
                 len(distilled_params) > 1,
             )
-            cache = exec_opts["compiled_cache"]
-            compiled_sql = cache.get(key)
+            compiled_sql = compiled_cache.get(key)
 
             if compiled_sql is None:
                 compiled_sql = elem.compile(
@@ -1185,12 +1184,8 @@ class Connection(Connectable):
                     schema_translate_map=schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
-                    compile_state_factories=exec_opts.get(
-                        "compile_state_factories", None
-                    ),
                 )
-                cache[key] = compiled_sql
-
+                compiled_cache[key] = compiled_sql
         else:
             extracted_params = None
             compiled_sql = elem.compile(
@@ -1199,9 +1194,6 @@ class Connection(Connectable):
                 inline=len(distilled_params) > 1,
                 schema_translate_map=schema_translate_map,
                 linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
-                compile_state_factories=exec_opts.get(
-                    "compile_state_factories", None
-                ),
             )
 
         ret = self._execute_context(
@@ -1430,18 +1422,35 @@ class Connection(Connectable):
                 )
 
         if self._echo:
+
             self.engine.logger.info(statement)
+
+            # stats = context._get_cache_stats()
+
             if not self.engine.hide_parameters:
+                # TODO: I love the stats but a ton of tests that are hardcoded.
+                # to certain log output are failing.
                 self.engine.logger.info(
                     "%r",
                     sql_util._repr_params(
                         parameters, batches=10, ismulti=context.executemany
                     ),
                 )
+                # self.engine.logger.info(
+                #    "[%s] %r",
+                #    stats,
+                #    sql_util._repr_params(
+                #        parameters, batches=10, ismulti=context.executemany
+                #    ),
+                # )
             else:
                 self.engine.logger.info(
                     "[SQL parameters hidden due to hide_parameters=True]"
                 )
+                # self.engine.logger.info(
+                #    "[%s] [SQL parameters hidden due to hide_parameters=True]"
+                #    % (stats,)
+                # )
 
         evt_handled = False
         try:
@@ -1502,19 +1511,14 @@ class Connection(Connectable):
 
             # for "connectionless" execution, we have to close this
             # Connection after the statement is complete.
-            if branched.should_close_with_result:
+            # legacy stuff.
+            if branched.should_close_with_result and context._soft_closed:
                 assert not self._is_future
                 assert not context._is_future_result
 
                 # CursorResult already exhausted rows / has no rows.
-                # close us now.  note this is where we call .close()
-                # on the "branched" connection if we're doing that.
-                if result._soft_closed:
-                    branched.close()
-                else:
-                    # CursorResult will close this Connection when no more
-                    # rows to fetch.
-                    result._autoclose_connection = True
+                # close us now
+                branched.close()
         except BaseException as e:
             self._handle_dbapi_exception(
                 e, statement, parameters, cursor, context
