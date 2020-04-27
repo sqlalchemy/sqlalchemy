@@ -30,7 +30,7 @@ See also [Reporting Bugs](https://www.sqlalchemy.org/participate.html#bugs) on t
 **Versions.**
  - OS: 
  - Python:
- - SQLAchemy:
+ - SQLAlchemy:
  - Database:
  - DBAPI:
 

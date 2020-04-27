@@ -1666,7 +1666,7 @@ New parameters to affect IDENTITY start and increment, use of Sequence deprecate
 ---------------------------------------------------------------------------------
 
 SQL Server as of SQL Server 2012 now supports sequences with real
-``CREATE SEQUENCE`` syntax.  In :ticket:`4235`, SQLAchemy will add support for
+``CREATE SEQUENCE`` syntax.  In :ticket:`4235`, SQLAlchemy will add support for
 these using :class:`.Sequence` in the same way as for any other dialect.
 However, the current situation is that :class:`.Sequence` has been repurposed
 on SQL Server specifically in order to affect the "start" and "increment"

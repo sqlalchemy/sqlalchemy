@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Question regarding SQLAchemy features
+about: Question regarding SQLAlchemy features
 title: ''
 labels: requires triage
 assignees: ''

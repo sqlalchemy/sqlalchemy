@@ -45,8 +45,8 @@ they'll work there too.
 Module Imports
 ==============
 
-In 0.3, "``from sqlachemy import *``" would import all of
-sqlachemy's sub-modules into your namespace. Version 0.4 no
+In 0.3, "``from sqlalchemy import *``" would import all of
+sqlalchemy's sub-modules into your namespace. Version 0.4 no
 longer imports sub-modules into the namespace. This may mean
 you need to add extra imports into your code.
 
