@@ -2849,7 +2849,6 @@ class Query(object):
             elif prop:
                 # joining to selectable with a mapper property given
                 # as the ON clause
-
                 if not right_selectable.is_derived_from(
                     right_mapper.persist_selectable
                 ):

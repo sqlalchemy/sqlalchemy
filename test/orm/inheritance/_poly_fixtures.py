@@ -151,6 +151,16 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     @classmethod
+    def setup_classes(cls):
+        cls.classes["Engineer"] = Engineer
+        cls.classes["Person"] = Person
+        cls.classes["Manager"] = Manager
+        cls.classes["Machine"] = Machine
+        cls.classes["Boss"] = Boss
+        cls.classes["Company"] = Company
+        cls.classes["Paperwork"] = Paperwork
+
+    @classmethod
     def insert_data(cls, connection):
 
         cls.e1 = e1 = Engineer(

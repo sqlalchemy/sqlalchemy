@@ -1349,6 +1349,55 @@ class _PolymorphicTestBase(object):
             expected,
         )
 
+    def _join_to_poly_wp_one(self, sess):
+        wp = with_polymorphic(self.classes.Person, "*")
+        return (
+            sess.query(wp.name, self.classes.Company.name)
+            .join(self.classes.Company.employees.of_type(wp))
+            .order_by(wp.person_id)
+        )
+
+    def _join_to_poly_wp_two(self, sess):
+        wp = with_polymorphic(self.classes.Person, "*", aliased=True)
+        return (
+            sess.query(wp.name, self.classes.Company.name)
+            .join(self.classes.Company.employees.of_type(wp))
+            .order_by(wp.person_id)
+        )
+
+    def _join_to_poly_wp_three(self, sess):
+        wp = with_polymorphic(
+            self.classes.Person, "*", aliased=True, flat=True
+        )
+        return (
+            sess.query(wp.name, self.classes.Company.name)
+            .join(self.classes.Company.employees.of_type(wp))
+            .order_by(wp.person_id)
+        )
+
+    @testing.combinations(
+        lambda self, sess: (
+            sess.query(self.classes.Person.name, self.classes.Company.name)
+            .join(self.classes.Company.employees)
+            .order_by(self.classes.Person.person_id)
+        ),
+        _join_to_poly_wp_one,
+        _join_to_poly_wp_two,
+        _join_to_poly_wp_three,
+    )
+    def test_mixed_entities_join_to_poly(self, q):
+        sess = create_session()
+        expected = [
+            ("dilbert", "MegaCorp, Inc."),
+            ("wally", "MegaCorp, Inc."),
+            ("pointy haired boss", "MegaCorp, Inc."),
+            ("dogbert", "MegaCorp, Inc."),
+            ("vlad", "Elbonia, Inc."),
+        ]
+        eq_(
+            q(self, sess).all(), expected,
+        )
+
     def test_mixed_entities_two(self):
         sess = create_session()
         expected = [
