@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5288
+
+    Fixed bug where using :func:`.with_polymorphic` as the target of a join via
+    :meth:`.RelationshipComparator.of_type` on a mapper that already has a
+    subquery-based with_polymorphic setting that's equivalent to the one
+    requested would not correctly alias the ON clause in the join.
