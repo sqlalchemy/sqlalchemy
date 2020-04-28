@@ -214,7 +214,7 @@ class RelationshipProperty(StrategizedProperty):
           :ref:`orm_tutorial_relationship` - ORM tutorial introduction.
 
         :param argument:
-          a mapped class, or actual :class:`_orm.Mapper` instance,
+          A mapped class, or actual :class:`_orm.Mapper` instance,
           representing
           the target of the relationship.
 
@@ -241,7 +241,7 @@ class RelationshipProperty(StrategizedProperty):
             on relationship configuration when using Declarative.
 
         :param secondary:
-          for a many-to-many relationship, specifies the intermediary
+          For a many-to-many relationship, specifies the intermediary
           table, and is typically an instance of :class:`_schema.Table`.
           In less common circumstances, the argument may also be specified
           as an :class:`_expression.Alias` construct, or even a
@@ -313,7 +313,7 @@ class RelationshipProperty(StrategizedProperty):
           the "previous" value of the attribute.
 
         :param backref:
-          indicates the string name of a property to be placed on the related
+          Indicates the string name of a property to be placed on the related
           mapper's class that will handle this relationship in the other
           direction. The other property will be created automatically
           when the mappers are configured.  Can also be passed as a
@@ -378,7 +378,7 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`baked_toplevel`
 
         :param cascade:
-          a comma-separated list of cascade rules which determines how
+          A comma-separated list of cascade rules which determines how
           Session operations should be "cascaded" from parent to child.
           This defaults to ``False``, which means the default cascade
           should be used - this default cascade is ``"save-update, merge"``.
@@ -400,7 +400,7 @@ class RelationshipProperty(StrategizedProperty):
             a delete cascade.
 
         :param cascade_backrefs=True:
-          a boolean value indicating if the ``save-update`` cascade should
+          A boolean value indicating if the ``save-update`` cascade should
           operate along an assignment event intercepted by a backref.
           When set to ``False``, the attribute managed by this relationship
           will not cascade an incoming transient object into the session of a
@@ -412,7 +412,7 @@ class RelationshipProperty(StrategizedProperty):
             the :paramref:`_orm.relationship.cascade_backrefs` option is used.
 
         :param collection_class:
-          a class or callable that returns a new list-holding object. will
+          A class or callable that returns a new list-holding object. will
           be used in place of a plain list for storing elements.
 
           .. seealso::
@@ -421,7 +421,7 @@ class RelationshipProperty(StrategizedProperty):
             examples.
 
         :param comparator_factory:
-          a class which extends :class:`.RelationshipProperty.Comparator`
+          A class which extends :class:`.RelationshipProperty.Comparator`
           which provides custom SQL clause generation for comparison
           operations.
 
@@ -457,11 +457,11 @@ class RelationshipProperty(StrategizedProperty):
             eager loading.
 
         :param doc:
-          docstring which will be applied to the resulting descriptor.
+          Docstring which will be applied to the resulting descriptor.
 
         :param foreign_keys:
 
-          a list of columns which are to be used as "foreign key"
+          A list of columns which are to be used as "foreign key"
           columns, or columns which refer to the value in a remote
           column, within the context of this :func:`_orm.relationship`
           object's :paramref:`_orm.relationship.primaryjoin` condition.
@@ -536,7 +536,7 @@ class RelationshipProperty(StrategizedProperty):
             :attr:`.MapperProperty.info` attribute of this object.
 
         :param innerjoin=False:
-          when ``True``, joined eager loads will use an inner join to join
+          When ``True``, joined eager loads will use an inner join to join
           against related tables instead of an outer join.  The purpose
           of this option is generally one of performance, as inner joins
           generally perform better than outer joins.
@@ -560,7 +560,7 @@ class RelationshipProperty(StrategizedProperty):
 
 
         :param join_depth:
-          when non-``None``, an integer value indicating how many levels
+          When non-``None``, an integer value indicating how many levels
           deep "eager" loaders should join on a self-referring or cyclical
           relationship.  The number counts how many times the same Mapper
           shall be present in the loading condition along a particular join
@@ -575,7 +575,7 @@ class RelationshipProperty(StrategizedProperty):
             and examples.
 
         :param lazy='select': specifies
-          how the related items should be loaded.  Default value is
+          How the related items should be loaded.  Default value is
           ``select``.  Values include:
 
           * ``select`` - items should be loaded lazily when the property is
@@ -673,7 +673,7 @@ class RelationshipProperty(StrategizedProperty):
               detached.
 
         :param order_by:
-          indicates the ordering that should be applied when loading these
+          Indicates the ordering that should be applied when loading these
           items.  :paramref:`_orm.relationship.order_by`
           is expected to refer to
           one of the :class:`_schema.Column`
@@ -751,7 +751,7 @@ class RelationshipProperty(StrategizedProperty):
               takes effect for joined-table inheritance mappings.
 
         :param post_update:
-          this indicates that the relationship should be handled by a
+          This indicates that the relationship should be handled by a
           second UPDATE statement after an INSERT or before a
           DELETE. Currently, it also will issue an UPDATE after the
           instance was UPDATEd as well, although this technically should
@@ -773,7 +773,7 @@ class RelationshipProperty(StrategizedProperty):
               :ref:`post_update` - Introductory documentation and examples.
 
         :param primaryjoin:
-          a SQL expression that will be used as the primary
+          A SQL expression that will be used as the primary
           join of the child object against the parent object, or in a
           many-to-many relationship the join of the parent object to the
           association table. By default, this value is computed based on the
@@ -796,7 +796,7 @@ class RelationshipProperty(StrategizedProperty):
               :ref:`relationship_primaryjoin`
 
         :param remote_side:
-          used for self-referential relationships, indicates the column or
+          Used for self-referential relationships, indicates the column or
           list of columns that form the "remote side" of the relationship.
 
           :paramref:`_orm.relationship.remote_side` may also be passed as a
@@ -823,7 +823,7 @@ class RelationshipProperty(StrategizedProperty):
             is used.
 
         :param query_class:
-          a :class:`_query.Query`
+          A :class:`_query.Query`
           subclass that will be used as the base of the
           "appender query" returned by a "dynamic" relationship, that
           is, a relationship that specifies ``lazy="dynamic"`` or was
@@ -836,7 +836,7 @@ class RelationshipProperty(StrategizedProperty):
             relationship loaders.
 
         :param secondaryjoin:
-          a SQL expression that will be used as the join of
+          A SQL expression that will be used as the join of
           an association table to the child object. By default, this value is
           computed based on the foreign key relationships of the association
           and child tables.
@@ -857,7 +857,7 @@ class RelationshipProperty(StrategizedProperty):
               :ref:`relationship_primaryjoin`
 
         :param single_parent:
-          when True, installs a validator which will prevent objects
+          When True, installs a validator which will prevent objects
           from being associated with more than one parent at a time.
           This is used for many-to-one or many-to-many relationships that
           should be treated either as one-to-one or one-to-many.  Its usage
@@ -874,7 +874,7 @@ class RelationshipProperty(StrategizedProperty):
             flag may be appropriate.
 
         :param uselist:
-          a boolean that indicates if this property should be loaded as a
+          A boolean that indicates if this property should be loaded as a
           list or a scalar. In most cases, this value is determined
           automatically by :func:`_orm.relationship` at mapper configuration
           time, based on the type and direction
@@ -903,7 +903,7 @@ class RelationshipProperty(StrategizedProperty):
               :paramref:`_orm.relationship.uselist` flag is needed.
 
         :param viewonly=False:
-          when set to True, the relationship is used only for loading objects,
+          When set to True, the relationship is used only for loading objects,
           and not for any persistence operation.  A :func:`_orm.relationship`
           which specifies :paramref:`_orm.relationship.viewonly` can work
           with a wider range of SQL operations within the
