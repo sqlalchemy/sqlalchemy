@@ -945,6 +945,13 @@ def with_polymorphic(
        only be specified if querying for one specific subtype only
     """
     primary_mapper = _class_to_mapper(base)
+
+    if selectable not in (None, False) and flat:
+        raise sa_exc.ArgumentError(
+            "the 'flat' and 'selectable' arguments cannot be passed "
+            "simultaneously to with_polymorphic()"
+        )
+
     if _existing_alias:
         assert _existing_alias.mapper is primary_mapper
         classes = util.to_set(classes)

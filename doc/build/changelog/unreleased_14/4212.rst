@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, easy, inheritance, orm
+    :tickets: 4212
+
+    An :class:`.ArgumentError` is now raised if both the selectable and flat
+    parameters are set to True in :func:`.orm.with_polymorphic`.
+    The selectable name is already aliased and applying flat=True
+    overrides the selectable name with an anonymous name that would've
+    previously caused the code to break. Pull request courtesy Ramon Williams.
