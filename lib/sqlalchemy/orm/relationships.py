@@ -2377,7 +2377,10 @@ class RelationshipProperty(StrategizedProperty):
             if self._is_self_referential and source_selectable is None:
                 dest_selectable = dest_selectable._anonymous_fromclause()
                 aliased = True
-        elif dest_selectable is not self.mapper._with_polymorphic_selectable:
+        elif (
+            dest_selectable is not self.mapper._with_polymorphic_selectable
+            or self.mapper.with_polymorphic
+        ):
             aliased = True
 
         dest_mapper = of_type_mapper or self.mapper
