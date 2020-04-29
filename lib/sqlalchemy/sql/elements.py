@@ -878,6 +878,7 @@ class ColumnElement(
             key = self._proxy_key
         else:
             key = name
+
         co = ColumnClause(
             coercions.expect(roles.TruncatedLabelRole, name)
             if name_is_truncatable
@@ -885,6 +886,7 @@ class ColumnElement(
             type_=getattr(self, "type", None),
             _selectable=selectable,
         )
+
         co._propagate_attrs = selectable._propagate_attrs
         co._proxies = [self]
         if selectable._is_clone_of is not None:
@@ -1284,6 +1286,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
 
         """
+
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:
@@ -1302,6 +1305,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
                     id(self),
                     re.sub(r"[%\(\) \$]+", "_", key).strip("_")
                     if key is not None
+                    and not isinstance(key, _anonymous_label)
                     else "param",
                 )
             )
@@ -4182,16 +4186,27 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self.element._from_objects
 
     def _make_proxy(self, selectable, name=None, **kw):
+        name = self.name if not name else name
+
         key, e = self.element._make_proxy(
             selectable,
-            name=name if name else self.name,
+            name=name,
             disallow_is_literal=True,
+            name_is_truncatable=isinstance(name, _truncated_label),
         )
+        # TODO: want to remove this assertion at some point.  all
+        # _make_proxy() implementations will give us back the key that
+        # is our "name" in the first place.  based on this we can
+        # safely return our "self.key" as the key here, to support a new
+        # case where the key and name are separate.
+        assert key == self.name
+
         e._propagate_attrs = selectable._propagate_attrs
         e._proxies.append(self)
         if self._type is not None:
             e.type = self._type
-        return key, e
+
+        return self.key, e
 
 
 class ColumnClause(
@@ -4240,7 +4255,7 @@ class ColumnClause(
     __visit_name__ = "column"
 
     _traverse_internals = [
-        ("name", InternalTraversal.dp_string),
+        ("name", InternalTraversal.dp_anon_name),
         ("type", InternalTraversal.dp_type),
         ("table", InternalTraversal.dp_clauseelement),
         ("is_literal", InternalTraversal.dp_boolean),
@@ -4410,10 +4425,8 @@ class ColumnClause(
 
     def _gen_label(self, name, dedupe_on_key=True):
         t = self.table
-
         if self.is_literal:
             return None
-
         elif t is not None and t.named_with_column:
             if getattr(t, "schema", None):
                 label = t.schema.replace(".", "_") + "_" + t.name + "_" + name

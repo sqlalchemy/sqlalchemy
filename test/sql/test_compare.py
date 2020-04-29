@@ -661,6 +661,56 @@ class CoreFixtures(object):
 
     fixtures.append(_statements_w_context_options_fixtures)
 
+    def _statements_w_anonymous_col_names():
+        def one():
+            c = column("q")
+
+            l = c.label(None)
+
+            # new case as of Id810f485c5f7ed971529489b84694e02a3356d6d
+            subq = select([l]).subquery()
+
+            # this creates a ColumnClause as a proxy to the Label() that has
+            # an anoymous name, so the column has one too.
+            anon_col = subq.c[0]
+
+            # then when BindParameter is created, it checks the label
+            # and doesn't double up on the anonymous name which is uncachable
+            return anon_col > 5
+
+        def two():
+            c = column("p")
+
+            l = c.label(None)
+
+            # new case as of Id810f485c5f7ed971529489b84694e02a3356d6d
+            subq = select([l]).subquery()
+
+            # this creates a ColumnClause as a proxy to the Label() that has
+            # an anoymous name, so the column has one too.
+            anon_col = subq.c[0]
+
+            # then when BindParameter is created, it checks the label
+            # and doesn't double up on the anonymous name which is uncachable
+            return anon_col > 5
+
+        def three():
+
+            l1, l2 = table_a.c.a.label(None), table_a.c.b.label(None)
+
+            stmt = select([table_a.c.a, table_a.c.b, l1, l2])
+
+            subq = stmt.subquery()
+            return select([subq]).where(subq.c[2] == 10)
+
+        return (
+            one(),
+            two(),
+            three(),
+        )
+
+    fixtures.append(_statements_w_anonymous_col_names)
+
 
 class CacheKeyFixture(object):
     def _run_cache_key_fixture(self, fixture, compare_values):

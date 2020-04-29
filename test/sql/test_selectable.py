@@ -147,6 +147,66 @@ class SelectableTest(
         assert s1.corresponding_column(scalar_select) is s1.c.foo
         assert s2.corresponding_column(scalar_select) is s2.c.foo
 
+    def test_labels_name_w_separate_key(self):
+        label = select([table1.c.col1]).label("foo")
+        label.key = "bar"
+
+        s1 = select([label])
+        assert s1.corresponding_column(label) is s1.selected_columns.bar
+
+        # renders as foo
+        self.assert_compile(
+            s1, "SELECT (SELECT table1.col1 FROM table1) AS foo"
+        )
+
+    def test_labels_anon_w_separate_key(self):
+        label = select([table1.c.col1]).label(None)
+        label.key = "bar"
+
+        s1 = select([label])
+
+        # .bar is there
+        assert s1.corresponding_column(label) is s1.selected_columns.bar
+
+        # renders as anon_1
+        self.assert_compile(
+            s1, "SELECT (SELECT table1.col1 FROM table1) AS anon_1"
+        )
+
+    def test_labels_anon_w_separate_key_subquery(self):
+        label = select([table1.c.col1]).label(None)
+        label.key = label._key_label = "bar"
+
+        s1 = select([label])
+
+        subq = s1.subquery()
+
+        s2 = select([subq]).where(subq.c.bar > 5)
+        self.assert_compile(
+            s2,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT table1.col1 "
+            "FROM table1) AS anon_1) AS anon_2 "
+            "WHERE anon_2.anon_1 > :param_1",
+            checkparams={"param_1": 5},
+        )
+
+    def test_labels_anon_generate_binds_subquery(self):
+        label = select([table1.c.col1]).label(None)
+        label.key = label._key_label = "bar"
+
+        s1 = select([label])
+
+        subq = s1.subquery()
+
+        s2 = select([subq]).where(subq.c[0] > 5)
+        self.assert_compile(
+            s2,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT table1.col1 "
+            "FROM table1) AS anon_1) AS anon_2 "
+            "WHERE anon_2.anon_1 > :param_1",
+            checkparams={"param_1": 5},
+        )
+
     def test_select_label_grouped_still_corresponds(self):
         label = select([table1.c.col1]).label("foo")
         label2 = label.self_group()

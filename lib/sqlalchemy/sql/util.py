@@ -822,9 +822,14 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 # is another join or selectable that contains a table which our
                 # selectable derives from, that we want to process
                 return None
+
         elif not isinstance(col, ColumnElement):
             return None
-        elif self.include_fn and not self.include_fn(col):
+
+        if "adapt_column" in col._annotations:
+            col = col._annotations["adapt_column"]
+
+        if self.include_fn and not self.include_fn(col):
             return None
         elif self.exclude_fn and self.exclude_fn(col):
             return None

@@ -466,7 +466,7 @@ class AliasedClass(object):
 
     def __init__(
         self,
-        cls,
+        mapped_class_or_ac,
         alias=None,
         name=None,
         flat=False,
@@ -478,7 +478,9 @@ class AliasedClass(object):
         use_mapper_path=False,
         represents_outer_join=False,
     ):
-        mapper = _class_to_mapper(cls)
+        insp = inspection.inspect(mapped_class_or_ac)
+        mapper = insp.mapper
+
         if alias is None:
             alias = mapper._with_polymorphic_selectable._anonymous_fromclause(
                 name=name, flat=flat
@@ -486,7 +488,7 @@ class AliasedClass(object):
 
         self._aliased_insp = AliasedInsp(
             self,
-            mapper,
+            insp,
             alias,
             name,
             with_polymorphic_mappers
@@ -617,7 +619,7 @@ class AliasedInsp(
     def __init__(
         self,
         entity,
-        mapper,
+        inspected,
         selectable,
         name,
         with_polymorphic_mappers,
@@ -627,6 +629,10 @@ class AliasedInsp(
         adapt_on_names,
         represents_outer_join,
     ):
+
+        mapped_class_or_ac = inspected.entity
+        mapper = inspected.mapper
+
         self._weak_entity = weakref.ref(entity)
         self.mapper = mapper
         self.selectable = (
@@ -665,9 +671,12 @@ class AliasedInsp(
             adapt_on_names=adapt_on_names,
             anonymize_labels=True,
         )
+        if inspected.is_aliased_class:
+            self._adapter = inspected._adapter.wrap(self._adapter)
 
         self._adapt_on_names = adapt_on_names
-        self._target = mapper.class_
+        self._target = mapped_class_or_ac
+        # self._target = mapper.class_  # mapped_class_or_ac
 
     @property
     def entity(self):
@@ -794,6 +803,21 @@ class AliasedInsp(
     @util.memoized_property
     def _memoized_values(self):
         return {}
+
+    @util.memoized_property
+    def columns(self):
+        if self._is_with_polymorphic:
+            cols_plus_keys = self.mapper._columns_plus_keys(
+                [ent.mapper for ent in self._with_polymorphic_entities]
+            )
+        else:
+            cols_plus_keys = self.mapper._columns_plus_keys()
+
+        cols_plus_keys = [
+            (key, self._adapt_element(col)) for key, col in cols_plus_keys
+        ]
+
+        return ColumnCollection(cols_plus_keys)
 
     def _memo(self, key, callable_, *args, **kw):
         if key in self._memoized_values:
@@ -1290,8 +1314,7 @@ class _ORMJoin(expression.Join):
                 source_selectable=adapt_from,
                 dest_selectable=adapt_to,
                 source_polymorphic=True,
-                dest_polymorphic=True,
-                of_type_mapper=right_info.mapper,
+                of_type_entity=right_info,
                 alias_secondary=True,
             )
 

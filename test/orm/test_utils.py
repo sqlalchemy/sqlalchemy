@@ -220,7 +220,6 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
                 "orm_key": "x_alone",
-                "compile_state_plugin": "orm",
             },
         )
         eq_(
@@ -230,7 +229,6 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
                 "orm_key": "x",
-                "compile_state_plugin": "orm",
             },
         )
 

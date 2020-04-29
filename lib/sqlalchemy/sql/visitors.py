@@ -50,6 +50,13 @@ def _generate_compiler_dispatch(cls):
     """
     visit_name = cls.__visit_name__
 
+    if "_compiler_dispatch" in cls.__dict__:
+        # class has a fixed _compiler_dispatch() method.
+        # copy it to "original" so that we can get it back if
+        # sqlalchemy.ext.compiles overrides it.
+        cls._original_compiler_dispatch = cls._compiler_dispatch
+        return
+
     if not isinstance(visit_name, util.compat.string_types):
         raise exc.InvalidRequestError(
             "__visit_name__ on class %s must be a string at the class level"
@@ -76,7 +83,9 @@ def _generate_compiler_dispatch(cls):
         + self.__visit_name__ on the visitor, and call it with the same
         kw params.
         """
-    cls._compiler_dispatch = _compiler_dispatch
+    cls._compiler_dispatch = (
+        cls._original_compiler_dispatch
+    ) = _compiler_dispatch
 
 
 class TraversibleType(type):

@@ -1143,7 +1143,7 @@ class SubqueryLoader(PostLoader):
         ) = self._get_leftmost(subq_path)
 
         orig_query = compile_state.attributes.get(
-            ("orig_query", SubqueryLoader), compile_state.query
+            ("orig_query", SubqueryLoader), compile_state.select_statement
         )
 
         # generate a new Query from the original, then

@@ -117,8 +117,6 @@ class CursorResultMetaData(ResultMetaData):
         compiled_statement = context.compiled.statement
         invoked_statement = context.invoked_statement
 
-        # same statement was invoked as the one we cached against,
-        # return self
         if compiled_statement is invoked_statement:
             return self
 

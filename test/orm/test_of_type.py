@@ -54,7 +54,7 @@ class _PolymorphicTestBase(object):
 
     def test_any_four(self):
         sess = Session()
-        any_ = Company.employees.of_type(Boss).any(
+        any_ = Company.employees.of_type(Manager).any(
             Manager.manager_name == "pointy"
         )
         eq_(sess.query(Company).filter(any_).one(), self.c1)

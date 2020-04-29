@@ -360,7 +360,7 @@ class Query(
         ):
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
-            stmt = self._statement_20()
+            stmt = self._statement_20(for_statement=True)
         else:
             stmt = self._compile_state(for_statement=True).statement
 
@@ -371,7 +371,24 @@ class Query(
 
         return stmt
 
-    def _statement_20(self, orm_results=False):
+    def _final_statement(self, legacy_query_style=True):
+        """Return the 'final' SELECT statement for this :class:`.Query`.
+
+        This is the Core-only select() that will be rendered by a complete
+        compilation of this query, and is what .statement used to return
+        in 1.3.
+
+        This method creates a complete compile state so is fairly expensive.
+
+        """
+
+        q = self._clone()
+
+        return q._compile_state(
+            use_legacy_query_style=legacy_query_style
+        ).statement
+
+    def _statement_20(self, for_statement=False, use_legacy_query_style=True):
         # TODO: this event needs to be deprecated, as it currently applies
         # only to ORM query and occurs at this spot that is now more
         # or less an artificial spot
@@ -384,7 +401,10 @@ class Query(
                         self.compile_options += {"_bake_ok": False}
 
         compile_options = self.compile_options
-        compile_options += {"_use_legacy_query_style": True}
+        compile_options += {
+            "_for_statement": for_statement,
+            "_use_legacy_query_style": use_legacy_query_style,
+        }
 
         if self._statement is not None:
             stmt = FromStatement(self._raw_columns, self._statement)
@@ -404,13 +424,16 @@ class Query(
                 compile_options=compile_options,
             )
 
-        if not orm_results:
-            stmt.compile_options += {"_orm_results": False}
-
         stmt._propagate_attrs = self._propagate_attrs
         return stmt
 
-    def subquery(self, name=None, with_labels=False, reduce_columns=False):
+    def subquery(
+        self,
+        name=None,
+        with_labels=False,
+        reduce_columns=False,
+        _legacy_core_statement=False,
+    ):
         """return the full SELECT statement represented by
         this :class:`_query.Query`, embedded within an
         :class:`_expression.Alias`.
@@ -436,7 +459,11 @@ class Query(
         q = self.enable_eagerloads(False)
         if with_labels:
             q = q.with_labels()
-        q = q.statement
+
+        if _legacy_core_statement:
+            q = q._compile_state(for_statement=True).statement
+        else:
+            q = q.statement
 
         if reduce_columns:
             q = q.reduce_columns()
@@ -943,7 +970,7 @@ class Query(
         # tablename_colname style is used which at the moment is asserted
         # in a lot of unit tests :)
 
-        statement = self._statement_20(orm_results=True).apply_labels()
+        statement = self._statement_20().apply_labels()
         return db_load_fn(
             self.session,
             statement,
@@ -1328,13 +1355,13 @@ class Query(
             self.with_labels()
             .enable_eagerloads(False)
             .correlate(None)
-            .subquery()
+            .subquery(_legacy_core_statement=True)
             ._anonymous_fromclause()
         )
 
         parententity = self._raw_columns[0]._annotations.get("parententity")
         if parententity:
-            ac = aliased(parententity, alias=fromclause)
+            ac = aliased(parententity.mapper, alias=fromclause)
             q = self._from_selectable(ac)
         else:
             q = self._from_selectable(fromclause)
@@ -2782,7 +2809,7 @@ class Query(
     def _iter(self):
         # new style execution.
         params = self.load_options._params
-        statement = self._statement_20(orm_results=True)
+        statement = self._statement_20()
         result = self.session.execute(
             statement,
             params,
@@ -2808,7 +2835,7 @@ class Query(
         )
 
     def __str__(self):
-        statement = self._statement_20(orm_results=True)
+        statement = self._statement_20()
 
         try:
             bind = (
@@ -2879,9 +2906,8 @@ class Query(
                 "for linking ORM results to arbitrary select constructs.",
                 version="1.4",
             )
-            compile_state = ORMCompileState._create_for_legacy_query(
-                self, toplevel=True
-            )
+            compile_state = self._compile_state(for_statement=False)
+
             context = QueryContext(
                 compile_state, self.session, self.load_options
             )
@@ -3294,9 +3320,34 @@ class Query(
         return update_op.rowcount
 
     def _compile_state(self, for_statement=False, **kw):
-        return ORMCompileState._create_for_legacy_query(
-            self, toplevel=True, for_statement=for_statement, **kw
+        """Create an out-of-compiler ORMCompileState object.
+
+        The ORMCompileState object is normally created directly as a result
+        of the SQLCompiler.process() method being handed a Select()
+        or FromStatement() object that uses the "orm" plugin.   This method
+        provides a means of creating this ORMCompileState object directly
+        without using the compiler.
+
+        This method is used only for deprecated cases, which include
+        the .from_self() method for a Query that has multiple levels
+        of .from_self() in use, as well as the instances() method.  It is
+        also used within the test suite to generate ORMCompileState objects
+        for test purposes.
+
+        """
+
+        stmt = self._statement_20(for_statement=for_statement, **kw)
+        assert for_statement == stmt.compile_options._for_statement
+
+        # this chooses between ORMFromStatementCompileState and
+        # ORMSelectCompileState.  We could also base this on
+        # query._statement is not None as we have the ORM Query here
+        # however this is the more general path.
+        compile_state_cls = ORMCompileState._get_plugin_class_for_plugin(
+            stmt, "orm"
         )
+
+        return compile_state_cls.create_for_statement(stmt, None)
 
     def _compile_context(self, for_statement=False):
         compile_state = self._compile_state(for_statement=for_statement)
@@ -3310,6 +3361,8 @@ class FromStatement(SelectStatementGrouping, Executable):
     select or text construct.
 
     """
+
+    __visit_name__ = "orm_from_statement"
 
     compile_options = ORMFromStatementCompileState.default_compile_options
 
@@ -3329,6 +3382,14 @@ class FromStatement(SelectStatementGrouping, Executable):
         super(FromStatement, self).__init__(element)
 
     def _compiler_dispatch(self, compiler, **kw):
+
+        """provide a fixed _compiler_dispatch method.
+
+        This is roughly similar to using the sqlalchemy.ext.compiler
+        ``@compiles`` extension.
+
+        """
+
         compile_state = self._compile_state_factory(self, compiler, **kw)
 
         toplevel = not compiler.stack

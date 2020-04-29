@@ -6,6 +6,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
@@ -756,6 +757,48 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             .statement,
             "SELECT child2.id AS child2_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls FROM secondary AS secondary_1, "
+            "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
+            "secondary_2 ON parent.id = secondary_2.left_id JOIN "
+            "(parent AS parent_1 JOIN child1 AS child1_1 "
+            "ON parent_1.id = child1_1.id) "
+            "ON parent_1.id = secondary_2.right_id WHERE "
+            "parent_1.id = secondary_1.right_id AND :param_1 = "
+            "secondary_1.left_id",
+        )
+
+    def test_query_crit_core_workaround(self):
+        # do a test in the style of orm/test_core_compilation.py
+
+        Child1, Child2 = self.classes.Child1, self.classes.Child2
+        secondary = self.tables.secondary
+
+        configure_mappers()
+
+        from sqlalchemy.sql import join
+
+        C1 = aliased(Child1, flat=True)
+
+        # figure out all the things we need to do in Core to make
+        # the identical query that the ORM renders.
+
+        salias = secondary.alias()
+        stmt = (
+            select([Child2])
+            .select_from(
+                join(
+                    Child2,
+                    salias,
+                    Child2.id.expressions[1] == salias.c.left_id,
+                ).join(C1, salias.c.right_id == C1.id.expressions[1])
+            )
+            .where(C1.left_child2 == Child2(id=1))
+        )
+
+        self.assert_compile(
+            stmt.apply_labels(),
+            "SELECT parent.id AS parent_id, "
+            "parent.cls AS parent_cls, child2.id AS child2_id "
+            "FROM secondary AS secondary_1, "
             "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
             "secondary_2 ON parent.id = secondary_2.left_id JOIN "
             "(parent AS parent_1 JOIN child1 AS child1_1 "

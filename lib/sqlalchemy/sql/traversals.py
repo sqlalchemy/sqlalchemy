@@ -18,6 +18,7 @@ NO_CACHE = util.symbol("no_cache")
 CACHE_IN_PLACE = util.symbol("cache_in_place")
 CALL_GEN_CACHE_KEY = util.symbol("call_gen_cache_key")
 STATIC_CACHE_KEY = util.symbol("static_cache_key")
+ANON_NAME = util.symbol("anon_name")
 
 
 def compare(obj1, obj2, **kw):
@@ -33,6 +34,7 @@ class HasCacheKey(object):
     _cache_key_traversal = NO_CACHE
     __slots__ = ()
 
+    @util.preload_module("sqlalchemy.sql.elements")
     def _gen_cache_key(self, anon_map, bindparams):
         """return an optional cache key.
 
@@ -53,6 +55,8 @@ class HasCacheKey(object):
 
 
         """
+
+        elements = util.preloaded.sql_elements
 
         idself = id(self)
 
@@ -102,6 +106,10 @@ class HasCacheKey(object):
                         result += (attrname, obj)
                 elif meth is STATIC_CACHE_KEY:
                     result += (attrname, obj._static_cache_key)
+                elif meth is ANON_NAME:
+                    if elements._anonymous_label in obj.__class__.__mro__:
+                        obj = obj.apply_map(anon_map)
+                    result += (attrname, obj)
                 elif meth is CALL_GEN_CACHE_KEY:
                     result += (
                         attrname,
@@ -321,6 +329,7 @@ class _CacheKey(ExtendedInternalTraversal):
     ) = visit_operator = visit_plain_obj = CACHE_IN_PLACE
     visit_statement_hint_list = CACHE_IN_PLACE
     visit_type = STATIC_CACHE_KEY
+    visit_anon_name = ANON_NAME
 
     def visit_inspectable(self, attrname, obj, parent, anon_map, bindparams):
         return (attrname, inspect(obj)._gen_cache_key(anon_map, bindparams))
@@ -386,15 +395,6 @@ class _CacheKey(ExtendedInternalTraversal):
         return self.visit_has_cache_key_tuples(
             attrname, obj, parent, anon_map, bindparams
         )
-
-    def visit_anon_name(self, attrname, obj, parent, anon_map, bindparams):
-        from . import elements
-
-        name = obj
-        if isinstance(name, elements._anonymous_label):
-            name = name.apply_map(anon_map)
-
-        return (attrname, name)
 
     def visit_fromclause_ordered_set(
         self, attrname, obj, parent, anon_map, bindparams

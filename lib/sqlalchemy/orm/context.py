@@ -5,7 +5,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-
 from . import attributes
 from . import interfaces
 from . import loading
@@ -27,6 +26,7 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
 from ..sql.base import Options
@@ -90,7 +90,7 @@ class QueryContext(object):
         self.execution_options = execution_options or _EMPTY_DICT
         self.bind_arguments = bind_arguments or _EMPTY_DICT
         self.compile_state = compile_state
-        self.query = query = compile_state.query
+        self.query = query = compile_state.select_statement
         self.session = session
 
         self.propagated_loader_options = {
@@ -119,10 +119,14 @@ class QueryContext(object):
 
 
 class ORMCompileState(CompileState):
+    # note this is a dictionary, but the
+    # default_compile_options._with_polymorphic_adapt_map is a tuple
+    _with_polymorphic_adapt_map = _EMPTY_DICT
+
     class default_compile_options(CacheableOptions):
         _cache_key_traversal = [
             ("_use_legacy_query_style", InternalTraversal.dp_boolean),
-            ("_orm_results", InternalTraversal.dp_boolean),
+            ("_for_statement", InternalTraversal.dp_boolean),
             ("_bake_ok", InternalTraversal.dp_boolean),
             (
                 "_with_polymorphic_adapt_map",
@@ -137,8 +141,18 @@ class ORMCompileState(CompileState):
             ("_for_refresh_state", InternalTraversal.dp_boolean),
         ]
 
+        # set to True by default from Query._statement_20(), to indicate
+        # the rendered query should look like a legacy ORM query.  right
+        # now this basically indicates we should use tablename_columnname
+        # style labels.    Generally indicates the statement originated
+        # from a Query object.
         _use_legacy_query_style = False
-        _orm_results = True
+
+        # set *only* when we are coming from the Query.statement
+        # accessor, or a Query-level equivalent such as
+        # query.subquery().  this supersedes "toplevel".
+        _for_statement = False
+
         _bake_ok = True
         _with_polymorphic_adapt_map = ()
         _current_path = _path_registry
@@ -149,42 +163,24 @@ class ORMCompileState(CompileState):
         _set_base_alias = False
         _for_refresh_state = False
 
-        @classmethod
-        def merge(cls, other):
-            return cls + other._state_dict()
-
     current_path = _path_registry
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
 
-    def dispose(self):
-        self.attributes.clear()
-
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
-        raise NotImplementedError()
+        """Create a context for a statement given a :class:`.Compiler`.
 
-    @classmethod
-    def _create_for_legacy_query(cls, query, toplevel, for_statement=False):
-        stmt = query._statement_20(orm_results=not for_statement)
+        This method is always invoked in the context of SQLCompiler.process().
 
-        # this chooses between ORMFromStatementCompileState and
-        # ORMSelectCompileState.  We could also base this on
-        # query._statement is not None as we have the ORM Query here
-        # however this is the more general path.
-        compile_state_cls = CompileState._get_plugin_class_for_plugin(
-            stmt, "orm"
-        )
+        For a Select object, this would be invoked from
+        SQLCompiler.visit_select(). For the special FromStatement object used
+        by Query to indicate "Query.from_statement()", this is called by
+        FromStatement._compiler_dispatch() that would be called by
+        SQLCompiler.process().
 
-        return compile_state_cls._create_for_statement_or_query(
-            stmt, toplevel, for_statement=for_statement
-        )
-
-    @classmethod
-    def _create_for_statement_or_query(
-        cls, statement_container, for_statement=False,
-    ):
+        """
         raise NotImplementedError()
 
     @classmethod
@@ -266,21 +262,20 @@ class ORMCompileState(CompileState):
             and ext_info.mapper.persist_selectable
             not in self._polymorphic_adapters
         ):
-            self._mapper_loads_polymorphically_with(
-                ext_info.mapper,
-                sql_util.ColumnAdapter(
-                    selectable, ext_info.mapper._equivalent_columns
-                ),
-            )
+            for mp in ext_info.mapper.iterate_to_root():
+                self._mapper_loads_polymorphically_with(
+                    mp,
+                    sql_util.ColumnAdapter(selectable, mp._equivalent_columns),
+                )
 
     def _mapper_loads_polymorphically_with(self, mapper, adapter):
         for m2 in mapper._with_polymorphic_mappers or [mapper]:
             self._polymorphic_adapters[m2] = adapter
-            for m in m2.iterate_to_root():
+            for m in m2.iterate_to_root():  # TODO: redundant ?
                 self._polymorphic_adapters[m.local_table] = adapter
 
 
-@sql.base.CompileState.plugin_for("orm", "grouping")
+@sql.base.CompileState.plugin_for("orm", "orm_from_statement")
 class ORMFromStatementCompileState(ORMCompileState):
     _aliased_generations = util.immutabledict()
     _from_obj_alias = None
@@ -294,31 +289,23 @@ class ORMFromStatementCompileState(ORMCompileState):
 
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
-        compiler._rewrites_selected_columns = True
-        toplevel = not compiler.stack
-        return cls._create_for_statement_or_query(
-            statement_container, toplevel
-        )
 
-    @classmethod
-    def _create_for_statement_or_query(
-        cls, statement_container, toplevel, for_statement=False,
-    ):
-        # from .query import FromStatement
-
-        # assert isinstance(statement_container, FromStatement)
+        if compiler is not None:
+            compiler._rewrites_selected_columns = True
+            toplevel = not compiler.stack
+        else:
+            toplevel = True
 
         self = cls.__new__(cls)
         self._primary_entity = None
 
-        self.use_orm_style = (
+        self.use_legacy_query_style = (
             statement_container.compile_options._use_legacy_query_style
         )
-        self.statement_container = self.query = statement_container
-        self.requested_statement = statement_container.element
+        self.statement_container = self.select_statement = statement_container
+        self.requested_statement = statement = statement_container.element
 
         self._entities = []
-        self._with_polymorphic_adapt_map = {}
         self._polymorphic_adapters = {}
         self._no_yield_pers = set()
 
@@ -349,12 +336,6 @@ class ORMFromStatementCompileState(ORMCompileState):
         self.create_eager_joins = []
         self._fallback_from_clauses = []
 
-        self._setup_for_statement()
-
-        return self
-
-    def _setup_for_statement(self):
-        statement = self.requested_statement
         if (
             isinstance(statement, expression.SelectBase)
             and not statement._is_textual
@@ -392,6 +373,8 @@ class ORMFromStatementCompileState(ORMCompileState):
             #            for entity in self._entities:
             #                entity.setup_compile_state(self)
 
+        return self
+
     def _adapt_col_list(self, cols, current_adapter):
         return cols
 
@@ -401,7 +384,8 @@ class ORMFromStatementCompileState(ORMCompileState):
 
 @sql.base.CompileState.plugin_for("orm", "select")
 class ORMSelectCompileState(ORMCompileState, SelectState):
-    _joinpath = _joinpoint = util.immutabledict()
+    _joinpath = _joinpoint = _EMPTY_DICT
+
     _from_obj_alias = None
     _has_mapper_entities = False
 
@@ -417,77 +401,71 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
+        """compiler hook, we arrive here from compiler.visit_select() only."""
+
         if not statement._is_future:
             return SelectState(statement, compiler, **kw)
 
-        toplevel = not compiler.stack
+        if compiler is not None:
+            toplevel = not compiler.stack
+            compiler._rewrites_selected_columns = True
+        else:
+            toplevel = True
 
-        compiler._rewrites_selected_columns = True
+        select_statement = statement
 
-        orm_state = cls._create_for_statement_or_query(
-            statement, for_statement=True, toplevel=toplevel
-        )
-        SelectState.__init__(orm_state, orm_state.statement, compiler, **kw)
-        return orm_state
-
-    @classmethod
-    def _create_for_statement_or_query(
-        cls, query, toplevel, for_statement=False, _entities_only=False
-    ):
-        assert isinstance(query, future.Select)
-
-        query.compile_options = cls.default_compile_options.merge(
-            query.compile_options
+        # if we are a select() that was never a legacy Query, we won't
+        # have ORM level compile options.
+        statement.compile_options = cls.default_compile_options.safe_merge(
+            statement.compile_options
         )
 
         self = cls.__new__(cls)
 
-        self._primary_entity = None
+        self.select_statement = select_statement
 
-        self.query = query
-        self.use_orm_style = query.compile_options._use_legacy_query_style
+        # indicates this select() came from Query.statement
+        self.for_statement = (
+            for_statement
+        ) = select_statement.compile_options._for_statement
 
-        self.select_statement = select_statement = query
+        if not for_statement and not toplevel:
+            # for subqueries, turn off eagerloads.
+            # if "for_statement" mode is set, Query.subquery()
+            # would have set this flag to False already if that's what's
+            # desired
+            select_statement.compile_options += {
+                "_enable_eagerloads": False,
+            }
 
-        if not hasattr(select_statement.compile_options, "_orm_results"):
-            select_statement.compile_options = cls.default_compile_options
-            select_statement.compile_options += {"_orm_results": for_statement}
-        else:
-            for_statement = not select_statement.compile_options._orm_results
-
-        self.query = query
+        # generally if we are from Query or directly from a select()
+        self.use_legacy_query_style = (
+            select_statement.compile_options._use_legacy_query_style
+        )
 
         self._entities = []
-
+        self._primary_entity = None
         self._aliased_generations = {}
         self._polymorphic_adapters = {}
         self._no_yield_pers = set()
 
         # legacy: only for query.with_polymorphic()
-        self._with_polymorphic_adapt_map = wpam = dict(
-            select_statement.compile_options._with_polymorphic_adapt_map
-        )
-        if wpam:
+        if select_statement.compile_options._with_polymorphic_adapt_map:
+            self._with_polymorphic_adapt_map = dict(
+                select_statement.compile_options._with_polymorphic_adapt_map
+            )
             self._setup_with_polymorphics()
 
         _QueryEntity.to_compile_state(self, select_statement._raw_columns)
 
-        if _entities_only:
-            return self
-
-        self.compile_options = query.compile_options
-
-        # TODO: the name of this flag "for_statement" has to change,
-        # as it is difficult to distinguish from the "query._statement" use
-        # case which is something totally different
-        self.for_statement = for_statement
+        self.compile_options = select_statement.compile_options
 
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
         # rather than LABEL_STYLE_NONE, and if we can use disambiguate style
         # for new style ORM selects too.
         if self.select_statement._label_style is LABEL_STYLE_NONE:
-            if self.use_orm_style and not for_statement:
+            if self.use_legacy_query_style and not self.for_statement:
                 self.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
             else:
                 self.label_style = LABEL_STYLE_DISAMBIGUATE_ONLY
@@ -522,128 +500,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             info.selectable for info in select_statement._from_obj
         ]
 
+        # this is a fairly arbitrary break into a second method,
+        # so it might be nicer to break up create_for_statement()
+        # and _setup_for_generate into three or four logical sections
         self._setup_for_generate()
 
+        if compiler is not None:
+            SelectState.__init__(self, self.statement, compiler, **kw)
+
         return self
-
-    @classmethod
-    def _create_entities_collection(cls, query):
-        """Creates a partial ORMSelectCompileState that includes
-        the full collection of _MapperEntity and other _QueryEntity objects.
-
-        Supports a few remaining use cases that are pre-compilation
-        but still need to gather some of the column  / adaption information.
-
-        """
-        self = cls.__new__(cls)
-
-        self._entities = []
-        self._primary_entity = None
-        self._aliased_generations = {}
-        self._polymorphic_adapters = {}
-
-        # legacy: only for query.with_polymorphic()
-        self._with_polymorphic_adapt_map = wpam = dict(
-            query.compile_options._with_polymorphic_adapt_map
-        )
-        if wpam:
-            self._setup_with_polymorphics()
-
-        _QueryEntity.to_compile_state(self, query._raw_columns)
-        return self
-
-    @classmethod
-    def determine_last_joined_entity(cls, statement):
-        setup_joins = statement._setup_joins
-
-        if not setup_joins:
-            return None
-
-        (target, onclause, from_, flags) = setup_joins[-1]
-
-        if isinstance(target, interfaces.PropComparator):
-            return target.entity
-        else:
-            return target
-
-    def _setup_with_polymorphics(self):
-        # legacy: only for query.with_polymorphic()
-        for ext_info, wp in self._with_polymorphic_adapt_map.items():
-            self._mapper_loads_polymorphically_with(ext_info, wp._adapter)
-
-    def _set_select_from_alias(self):
-
-        query = self.select_statement  # query
-
-        assert self.compile_options._set_base_alias
-        assert len(query._from_obj) == 1
-
-        adapter = self._get_select_from_alias_from_obj(query._from_obj[0])
-        if adapter:
-            self.compile_options += {"_enable_single_crit": False}
-            self._from_obj_alias = adapter
-
-    def _get_select_from_alias_from_obj(self, from_obj):
-        info = from_obj
-
-        if "parententity" in info._annotations:
-            info = info._annotations["parententity"]
-
-        if hasattr(info, "mapper"):
-            if not info.is_aliased_class:
-                raise sa_exc.ArgumentError(
-                    "A selectable (FromClause) instance is "
-                    "expected when the base alias is being set."
-                )
-            else:
-                return info._adapter
-
-        elif isinstance(info.selectable, sql.selectable.AliasedReturnsRows):
-            equivs = self._all_equivs()
-            return sql_util.ColumnAdapter(info, equivs)
-        else:
-            return None
-
-    def _mapper_zero(self):
-        """return the Mapper associated with the first QueryEntity."""
-        return self._entities[0].mapper
-
-    def _entity_zero(self):
-        """Return the 'entity' (mapper or AliasedClass) associated
-        with the first QueryEntity, or alternatively the 'select from'
-        entity if specified."""
-
-        for ent in self.from_clauses:
-            if "parententity" in ent._annotations:
-                return ent._annotations["parententity"]
-        for qent in self._entities:
-            if qent.entity_zero:
-                return qent.entity_zero
-
-        return None
-
-    def _only_full_mapper_zero(self, methname):
-        if self._entities != [self._primary_entity]:
-            raise sa_exc.InvalidRequestError(
-                "%s() can only be used against "
-                "a single mapped class." % methname
-            )
-        return self._primary_entity.entity_zero
-
-    def _only_entity_zero(self, rationale=None):
-        if len(self._entities) > 1:
-            raise sa_exc.InvalidRequestError(
-                rationale
-                or "This operation requires a Query "
-                "against a single mapper."
-            )
-        return self._entity_zero()
-
-    def _all_equivs(self):
-        equivs = {}
-        for ent in self._mapper_entities:
-            equivs.update(ent.mapper._equivalent_columns)
-        return equivs
 
     def _setup_for_generate(self):
         query = self.select_statement
@@ -771,6 +636,140 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 self.statement = self.statement._annotate(
                     {"deepentity": ezero}
                 )
+
+    @classmethod
+    def _create_entities_collection(cls, query):
+        """Creates a partial ORMSelectCompileState that includes
+        the full collection of _MapperEntity and other _QueryEntity objects.
+
+        Supports a few remaining use cases that are pre-compilation
+        but still need to gather some of the column  / adaption information.
+
+        """
+        self = cls.__new__(cls)
+
+        self._entities = []
+        self._primary_entity = None
+        self._aliased_generations = {}
+        self._polymorphic_adapters = {}
+
+        # legacy: only for query.with_polymorphic()
+        if query.compile_options._with_polymorphic_adapt_map:
+            self._with_polymorphic_adapt_map = dict(
+                query.compile_options._with_polymorphic_adapt_map
+            )
+            self._setup_with_polymorphics()
+
+        _QueryEntity.to_compile_state(self, query._raw_columns)
+        return self
+
+    @classmethod
+    def determine_last_joined_entity(cls, statement):
+        setup_joins = statement._setup_joins
+
+        if not setup_joins:
+            return None
+
+        (target, onclause, from_, flags) = setup_joins[-1]
+
+        if isinstance(target, interfaces.PropComparator):
+            return target.entity
+        else:
+            return target
+
+    @classmethod
+    def exported_columns_iterator(cls, statement):
+        for element in statement._raw_columns:
+            if (
+                element.is_selectable
+                and "entity_namespace" in element._annotations
+            ):
+                for elem in _select_iterables(
+                    element._annotations["entity_namespace"].columns
+                ):
+                    yield elem
+            else:
+                for elem in _select_iterables([element]):
+                    yield elem
+
+    def _setup_with_polymorphics(self):
+        # legacy: only for query.with_polymorphic()
+        for ext_info, wp in self._with_polymorphic_adapt_map.items():
+            self._mapper_loads_polymorphically_with(ext_info, wp._adapter)
+
+    def _set_select_from_alias(self):
+
+        query = self.select_statement  # query
+
+        assert self.compile_options._set_base_alias
+        assert len(query._from_obj) == 1
+
+        adapter = self._get_select_from_alias_from_obj(query._from_obj[0])
+        if adapter:
+            self.compile_options += {"_enable_single_crit": False}
+            self._from_obj_alias = adapter
+
+    def _get_select_from_alias_from_obj(self, from_obj):
+        info = from_obj
+
+        if "parententity" in info._annotations:
+            info = info._annotations["parententity"]
+
+        if hasattr(info, "mapper"):
+            if not info.is_aliased_class:
+                raise sa_exc.ArgumentError(
+                    "A selectable (FromClause) instance is "
+                    "expected when the base alias is being set."
+                )
+            else:
+                return info._adapter
+
+        elif isinstance(info.selectable, sql.selectable.AliasedReturnsRows):
+            equivs = self._all_equivs()
+            return sql_util.ColumnAdapter(info, equivs)
+        else:
+            return None
+
+    def _mapper_zero(self):
+        """return the Mapper associated with the first QueryEntity."""
+        return self._entities[0].mapper
+
+    def _entity_zero(self):
+        """Return the 'entity' (mapper or AliasedClass) associated
+        with the first QueryEntity, or alternatively the 'select from'
+        entity if specified."""
+
+        for ent in self.from_clauses:
+            if "parententity" in ent._annotations:
+                return ent._annotations["parententity"]
+        for qent in self._entities:
+            if qent.entity_zero:
+                return qent.entity_zero
+
+        return None
+
+    def _only_full_mapper_zero(self, methname):
+        if self._entities != [self._primary_entity]:
+            raise sa_exc.InvalidRequestError(
+                "%s() can only be used against "
+                "a single mapped class." % methname
+            )
+        return self._primary_entity.entity_zero
+
+    def _only_entity_zero(self, rationale=None):
+        if len(self._entities) > 1:
+            raise sa_exc.InvalidRequestError(
+                rationale
+                or "This operation requires a Query "
+                "against a single mapper."
+            )
+        return self._entity_zero()
+
+    def _all_equivs(self):
+        equivs = {}
+        for ent in self._mapper_entities:
+            equivs.update(ent.mapper._equivalent_columns)
+        return equivs
 
     def _compound_eager_statement(self):
         # for eager joins present and LIMIT/OFFSET/DISTINCT,
@@ -920,6 +919,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         statement = Select.__new__(Select)
         statement._raw_columns = raw_columns
         statement._from_obj = from_obj
+
         statement._label_style = label_style
 
         if where_criteria:
@@ -1653,31 +1653,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     "target."
                 )
 
-        aliased_entity = (
-            right_mapper
-            and not right_is_aliased
-            and (
-                # TODO: there is a reliance here on aliasing occurring
-                # when we join to a polymorphic mapper that doesn't actually
-                # need aliasing.  When this condition is present, we should
-                # be able to say mapper_loads_polymorphically_with()
-                # and render the straight polymorphic selectable.  this
-                # does not appear to be possible at the moment as the
-                # adapter no longer takes place on the rest of the query
-                # and it's not clear where that's failing to happen.
-                (
-                    right_mapper.with_polymorphic
-                    and isinstance(
-                        right_mapper._with_polymorphic_selectable,
-                        expression.AliasedReturnsRows,
-                    )
-                )
-                or overlap
-                # test for overlap:
-                # orm/inheritance/relationships.py
-                # SelfReferentialM2MTest
-            )
-        )
+        # test for overlap:
+        # orm/inheritance/relationships.py
+        # SelfReferentialM2MTest
+        aliased_entity = right_mapper and not right_is_aliased and overlap
 
         if not need_adapter and (create_aliases or aliased_entity):
             # there are a few places in the ORM that automatic aliasing
@@ -1707,7 +1686,30 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 self._aliased_generations[aliased_generation] = (
                     adapter,
                 ) + self._aliased_generations.get(aliased_generation, ())
-
+        elif (
+            not r_info.is_clause_element
+            and not right_is_aliased
+            and right_mapper.with_polymorphic
+            and isinstance(
+                right_mapper._with_polymorphic_selectable,
+                expression.AliasedReturnsRows,
+            )
+        ):
+            # for the case where the target mapper has a with_polymorphic
+            # set up, ensure an adapter is set up for criteria that works
+            # against this mapper.  Previously, this logic used to
+            # use the "create_aliases or aliased_entity" case to generate
+            # an aliased() object, but this creates an alias that isn't
+            # strictly necessary.
+            # see test/orm/test_core_compilation.py
+            # ::RelNaturalAliasedJoinsTest::test_straight
+            # and similar
+            self._mapper_loads_polymorphically_with(
+                right_mapper,
+                sql_util.ColumnAdapter(
+                    right_mapper.selectable, right_mapper._equivalent_columns,
+                ),
+            )
         # if the onclause is a ClauseElement, adapt it with any
         # adapters that are in place right now
         if isinstance(onclause, expression.ClauseElement):
@@ -1755,8 +1757,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             "offset_clause": self.select_statement._offset_clause,
             "distinct": self.distinct,
             "distinct_on": self.distinct_on,
-            "prefixes": self.query._prefixes,
-            "suffixes": self.query._suffixes,
+            "prefixes": self.select_statement._prefixes,
+            "suffixes": self.select_statement._suffixes,
             "group_by": self.group_by or None,
         }
 
@@ -2036,7 +2038,14 @@ class _MapperEntity(_QueryEntity):
             self._with_polymorphic_mappers = ext_info.with_polymorphic_mappers
             self._polymorphic_discriminator = ext_info.polymorphic_on
 
-            if mapper.with_polymorphic or mapper._requires_row_aliasing:
+            if (
+                mapper.with_polymorphic
+                # controversy - only if inheriting mapper is also
+                # polymorphic?
+                # or (mapper.inherits and mapper.inherits.with_polymorphic)
+                or mapper.inherits
+                or mapper._requires_row_aliasing
+            ):
                 compile_state._create_with_polymorphic_adapter(
                     ext_info, self.selectable
                 )
@@ -2361,7 +2370,7 @@ class _ORMColumnEntity(_ColumnEntity):
 
         _entity._post_inspect
         self.entity_zero = self.entity_zero_or_selectable = ezero = _entity
-        self.mapper = _entity.mapper
+        self.mapper = mapper = _entity.mapper
 
         if parent_bundle:
             parent_bundle._entities.append(self)
@@ -2373,7 +2382,11 @@ class _ORMColumnEntity(_ColumnEntity):
 
         self._extra_entities = (self.expr, self.column)
 
-        if self.mapper.with_polymorphic:
+        if (
+            mapper.with_polymorphic
+            or mapper.inherits
+            or mapper._requires_row_aliasing
+        ):
             compile_state._create_with_polymorphic_adapter(
                 ezero, ezero.selectable
             )
@@ -2414,6 +2427,7 @@ class _ORMColumnEntity(_ColumnEntity):
             column = current_adapter(self.column, False)
         else:
             column = self.column
+
         ezero = self.entity_zero
 
         single_table_crit = self.mapper._single_table_criterion

@@ -6,6 +6,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
@@ -53,6 +54,8 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
     run_inserts = "once"
     run_setup_mappers = "once"
     run_deletes = None
+
+    label_style = LABEL_STYLE_TABLENAME_PLUS_COL
 
     @classmethod
     def define_tables(cls, metadata):
@@ -427,14 +430,16 @@ class _PolymorphicAliasedJoins(_PolymorphicFixtureBase):
         person_join = (
             people.outerjoin(engineers)
             .outerjoin(managers)
-            .select(use_labels=True)
-            .alias("pjoin")
+            .select()
+            ._set_label_style(cls.label_style)
+            .subquery("pjoin")
         )
         manager_join = (
             people.join(managers)
             .outerjoin(boss)
-            .select(use_labels=True)
-            .alias("mjoin")
+            .select()
+            ._set_label_style(cls.label_style)
+            .subquery("mjoin")
         )
         person_with_polymorphic = ([Person, Manager, Engineer], person_join)
         manager_with_polymorphic = ("*", manager_join)

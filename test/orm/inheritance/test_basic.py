@@ -1357,6 +1357,7 @@ class EagerTargetingTest(fixtures.MappedTest):
         bid = b1.id
 
         sess.expunge_all()
+
         node = sess.query(B).filter(B.id == bid).all()[0]
         eq_(node, B(id=1, name="b1", b_data="i"))
         eq_(node.children[0], B(id=2, name="b2", b_data="l"))
