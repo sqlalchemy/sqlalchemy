@@ -808,6 +808,7 @@ from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
 from ...sql import roles
+from ...sql import util as sql_util
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -1494,9 +1495,28 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def for_update_clause(self, select, **kw):
         if select._for_update_arg.read:
-            return " LOCK IN SHARE MODE"
+            tmp = " LOCK IN SHARE MODE"
         else:
-            return " FOR UPDATE"
+            tmp = " FOR UPDATE"
+
+        if select._for_update_arg.of and self.dialect.supports_for_update_of:
+
+            tables = util.OrderedSet()
+            for c in select._for_update_arg.of:
+                tables.update(sql_util.surface_selectables_only(c))
+
+            tmp += " OF " + ", ".join(
+                self.process(table, ashint=True, use_schema=False, **kw)
+                for table in tables
+            )
+
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
+
+        if select._for_update_arg.skip_locked and self.dialect._is_mysql:
+            tmp += " SKIP LOCKED"
+
+        return tmp
 
     def limit_clause(self, select, **kw):
         # MySQL supports:
@@ -2211,6 +2231,9 @@ class MySQLDialect(default.DefaultDialect):
 
     sequences_optional = True
 
+    supports_for_update_of = False  # default for MySQL ...
+    # ... may be updated to True for MySQL 8+ in initialize()
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True
@@ -2524,6 +2547,10 @@ class MySQLDialect(default.DefaultDialect):
 
         self.supports_sequences = (
             self._is_mariadb and self.server_version_info >= (10, 3)
+        )
+
+        self.supports_for_update_of = (
+            self._is_mysql and self.server_version_info >= (8,)
         )
 
         self._needs_correct_for_88718_96365 = (

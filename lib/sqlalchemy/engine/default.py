@@ -128,6 +128,9 @@ class DefaultDialect(interfaces.Dialect):
 
     supports_server_side_cursors = False
 
+    # extra record-level locking features (#4860)
+    supports_for_update_of = False
+
     server_version_info = None
 
     default_schema_name = None

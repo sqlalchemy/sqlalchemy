@@ -1616,3 +1616,7 @@ class DefaultRequirements(SuiteRequirements):
     def supports_distinct_on(self):
         """If a backend supports the DISTINCT ON in a select"""
         return only_if(["postgresql"])
+
+    @property
+    def supports_for_update_of(self):
+        return only_if(lambda config: config.db.dialect.supports_for_update_of)
