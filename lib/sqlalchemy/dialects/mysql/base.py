@@ -808,6 +808,7 @@ from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
 from ...sql import roles
+from ...sql import util as sql_util
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -1494,9 +1495,27 @@ class MySQLCompiler(compiler.SQLCompiler):
 
     def for_update_clause(self, select, **kw):
         if select._for_update_arg.read:
-            return " LOCK IN SHARE MODE"
+            tmp = " LOCK IN SHARE MODE"
         else:
-            return " FOR UPDATE"
+            tmp = " FOR UPDATE"
+
+        if select._for_update_arg.of:
+
+            tables = util.OrderedSet()
+            for c in select._for_update_arg.of:
+                tables.update(sql_util.surface_selectables_only(c))
+
+            tmp += " OF " + ", ".join(
+                self.process(table, ashint=True, use_schema=False, **kw)
+                for table in tables
+            )
+
+        if select._for_update_arg.nowait:
+            tmp += " NOWAIT"
+        if select._for_update_arg.skip_locked:
+            tmp += " SKIP LOCKED"
+
+        return tmp
 
     def limit_clause(self, select, **kw):
         # MySQL supports:
