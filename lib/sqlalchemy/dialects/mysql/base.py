@@ -1499,7 +1499,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         else:
             tmp = " FOR UPDATE"
 
-        if select._for_update_arg.of:
+        if select._for_update_arg.of and self.dialect._is_mysql:
 
             tables = util.OrderedSet()
             for c in select._for_update_arg.of:
@@ -1512,7 +1512,8 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         if select._for_update_arg.nowait:
             tmp += " NOWAIT"
-        if select._for_update_arg.skip_locked:
+
+        if select._for_update_arg.skip_locked and self.dialect._is_mysql:
             tmp += " SKIP LOCKED"
 
         return tmp

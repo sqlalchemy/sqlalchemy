@@ -353,6 +353,32 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = literal("x", type_=String) + literal("y", type_=String)
         self.assert_compile(expr, "concat('x', 'y')", literal_binds=True)
 
+    def test_mariadb_for_update(self):
+        dialect = mysql.dialect()
+        dialect.server_version_info = (10, 1, 1, "MariaDB")
+
+        table1 = table(
+            "mytable", column("myid"), column("name"), column("description")
+        )
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR UPDATE",
+            dialect=dialect,
+        )
+
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(
+                skip_locked=True
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR UPDATE",
+            dialect=dialect,
+        )
+
     def test_for_update(self):
         table1 = table(
             "mytable", column("myid"), column("name"), column("description")
