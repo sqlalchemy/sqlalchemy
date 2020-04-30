@@ -26,6 +26,7 @@ from .. import pool
 from .. import processors
 from .. import types as sqltypes
 from .. import util
+from .. import future
 from ..sql import compiler
 from ..sql import expression
 from ..sql.elements import quoted_name
@@ -377,7 +378,7 @@ class DefaultDialect(interfaces.Dialect):
 
         def check_unicode(test):
             statement = cast_to(
-                expression.select([test]).compile(dialect=self)
+                future.select(test).compile(dialect=self)
             )
             try:
                 cursor = connection.connection.cursor()
