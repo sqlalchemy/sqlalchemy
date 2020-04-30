@@ -829,12 +829,13 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
         )
 
         context = q._compile_context()
+        attributes = dict(context.attributes)
 
         @profiling.function_call_count()
         def go():
             for i in range(100):
                 # make sure these get reset each time
-                context.attributes = q._attributes.copy()
+                context.attributes = attributes.copy()
                 obj = q._execute_and_instances(context)
                 list(obj)
                 sess.close()
