@@ -8,8 +8,8 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Unicode
-from sqlalchemy.engine.result import LegacyRow
-from sqlalchemy.engine.result import Row
+from sqlalchemy.engine.row import LegacyRow
+from sqlalchemy.engine.row import Row
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures

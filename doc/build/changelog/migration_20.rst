@@ -513,6 +513,7 @@ So that an execution may look like::
 
     result = session.execute(stmt, stream_per=100)
 
+.. _change_result_20_core:
 
 ResultProxy replaced with Result which has more refined methods and behaviors
 =============================================================================

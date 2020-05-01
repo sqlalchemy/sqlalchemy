@@ -343,6 +343,40 @@ details.
 
 :ticket:`4645`
 
+.. _change_result_14_core:
+
+New Result object
+-----------------
+
+The ``ResultProxy`` object has been replaced with the 2.0 -style
+:class:`.Result` object discussed at :ref:`change_result_20_core`.  This result object
+is fully compatible with ``ResultProxy`` and includes many new features,
+that are now applied to both Core and ORM results equally, including methods
+such as:
+
+    :meth:`.Result.one`
+
+    :meth:`.Result.one_or_none`
+
+    :meth:`.Result.partitions`
+
+    :meth:`.Result.columns`
+
+    :meth:`.Result.scalars`
+
+When using Core, the object returned is an instance of :class:`.CursorResult`,
+which continues to feature the same API features as ``ResultProxy`` regarding
+inserted primary keys, defaults, rowcounts, etc.   For ORM, a :class:`.Result`
+subclass will be returned that performs translation of Core rows into
+ORM rows, and then allows all the same operations to take place.
+
+:ticket:`5087`
+
+:ticket:`4395`
+
+:ticket:`4959`
+
+
 .. _change_4710_core:
 
 RowProxy is no longer a "proxy"; is now called Row and behaves like an enhanced named tuple

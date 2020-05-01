@@ -11,7 +11,6 @@
 from .engine import Connection  # noqa
 from .engine import create_engine  # noqa
 from .engine import Engine  # noqa
-from .result import Result  # noqa
 from ..sql.selectable import Select
 from ..util.langhelpers import public_factory
 

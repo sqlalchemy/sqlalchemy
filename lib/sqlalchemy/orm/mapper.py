@@ -2647,8 +2647,9 @@ class Mapper(sql_base.HasCacheKey, InspectionAttr):
         pk_cols = self.primary_key
         if adapter:
             pk_cols = [adapter.columns[c] for c in pk_cols]
+        rk = result.keys()
         for col in pk_cols:
-            if not result._has_key(col):
+            if col not in rk:
                 return False
         else:
             return True

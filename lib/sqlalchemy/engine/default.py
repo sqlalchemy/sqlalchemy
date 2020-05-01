@@ -18,8 +18,8 @@ import random
 import re
 import weakref
 
+from . import cursor as _cursor
 from . import interfaces
-from . import result as _result
 from .. import event
 from .. import exc
 from .. import pool
@@ -1217,9 +1217,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def get_result_cursor_strategy(self, result):
         if self._is_server_side:
-            strat_cls = _result.BufferedRowCursorFetchStrategy
+            strat_cls = _cursor.BufferedRowCursorFetchStrategy
         else:
-            strat_cls = _result.DefaultCursorFetchStrategy
+            strat_cls = _cursor.CursorFetchStrategy
 
         return strat_cls.create(result)
 
@@ -1237,7 +1237,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.is_crud or self.is_text:
             result = self._setup_crud_result_proxy()
         else:
-            result = _result.ResultProxy._create_for_context(self)
+            result = _cursor.CursorResult._create_for_context(self)
 
         if (
             self.compiled
@@ -1289,25 +1289,39 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             elif not self._is_implicit_returning:
                 self._setup_ins_pk_from_empty()
 
-        result = _result.ResultProxy._create_for_context(self)
+        result = _cursor.CursorResult._create_for_context(self)
 
         if self.isinsert:
             if self._is_implicit_returning:
-                row = result._onerow()
+                row = result.fetchone()
                 self.returned_defaults = row
                 self._setup_ins_pk_from_implicit_returning(row)
+
+                # test that it has a cursor metadata that is accurate.
+                # the first row will have been fetched and current assumptions
+                # are that the result has only one row, until executemany()
+                # support is added here.
+                assert result.returns_rows
                 result._soft_close()
-                result._metadata = None
             elif not self._is_explicit_returning:
                 result._soft_close()
-                result._metadata = None
+
+                # we assume here the result does not return any rows.
+                # *usually*, this will be true.  However, some dialects
+                # such as that of MSSQL/pyodbc need to SELECT a post fetch
+                # function so this is not necessarily true.
+                # assert not result.returns_rows
+
         elif self.isupdate and self._is_implicit_returning:
-            row = result._onerow()
+            row = result.fetchone()
             self.returned_defaults = row
             result._soft_close()
-            result._metadata = None
 
-        elif result._metadata is None:
+            # test that it has a cursor metadata that is accurate.
+            # the rows have all been fetched however.
+            assert result.returns_rows
+
+        elif not result.returns_rows:
             # no results, get rowcount
             # (which requires open cursor on some drivers
             # such as kintersbasdb, mxodbc)

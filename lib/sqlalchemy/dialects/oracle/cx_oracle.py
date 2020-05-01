@@ -299,7 +299,6 @@ SQLAlchemy type (or a subclass of such).
 
 from __future__ import absolute_import
 
-import collections
 import decimal
 import random
 import re
@@ -312,7 +311,7 @@ from ... import exc
 from ... import processors
 from ... import types as sqltypes
 from ... import util
-from ...engine import result as _result
+from ...engine import cursor as _cursor
 from ...util import compat
 
 
@@ -680,32 +679,18 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                 for i in range(len(self.out_parameters))
             ]
 
-            return ReturningResultStrategy(
-                result, result.cursor, returning_params
+            return _cursor.FullyBufferedCursorFetchStrategy(
+                result.cursor,
+                [
+                    (getattr(col, "name", col.anon_label), None)
+                    for col in result.context.compiled.returning
+                ],
+                initial_buffer=[tuple(returning_params)],
             )
         else:
             return super(
                 OracleExecutionContext_cx_oracle, self
             ).get_result_cursor_strategy(result)
-
-
-class ReturningResultStrategy(_result.FullyBufferedCursorFetchStrategy):
-    __slots__ = ("_returning_params",)
-
-    def __init__(self, result, dbapi_cursor, returning_params):
-        self._returning_params = returning_params
-
-        returning = result.context.compiled.returning
-        cursor_description = [
-            (getattr(col, "name", col.anon_label), None) for col in returning
-        ]
-
-        super(ReturningResultStrategy, self).__init__(
-            dbapi_cursor, cursor_description
-        )
-
-    def _buffer_rows(self):
-        return collections.deque([tuple(self._returning_params)])
 
 
 class OracleDialect_cx_oracle(OracleDialect):

@@ -5020,7 +5020,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_nested_api(self):
-        from sqlalchemy.engine.result import CursorResultMetaData
+        from sqlalchemy.engine.cursor import CursorResultMetaData
 
         stmt2 = select([table2]).subquery()
 
