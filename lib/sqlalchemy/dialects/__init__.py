@@ -42,7 +42,14 @@ def _auto_fn(name):
         )
         dialect = translated
     try:
-        module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
+        if dialect == "firebird":
+            try:
+                module = __import__("sqlalchemy_firebird")
+                dialect = "dialect"
+            except:
+                module = __import__("sqlalchemy.dialects.firebird").dialects
+        else:
+            module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
     except ImportError:
         return None
 
