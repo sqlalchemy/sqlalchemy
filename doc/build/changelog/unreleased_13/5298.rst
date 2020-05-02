@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 5298
+
+    Fixed issue where an :class:`.Index` that is deferred in being associated
+    with a table, such as as when it contains a :class:`.Column` that is not
+    associated with any :class:`.Table` yet,  would fail to attach correctly if
+    it also contained a non table-oriented expession.
+
