@@ -9,6 +9,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import ColumnDefault
+from sqlalchemy import desc
 from sqlalchemy import Enum
 from sqlalchemy import event
 from sqlalchemy import exc
@@ -2632,6 +2633,23 @@ class ConstraintTest(fixtures.TestBase):
             t.append_constraint,
             idx,
         )
+
+    def test_non_attached_col_plus_string_expr(self):
+        # another one that declarative can lead towards
+        metadata = MetaData()
+
+        t1 = Table("a", metadata, Column("id", Integer))
+
+        c2 = Column("x", Integer)
+
+        # if we do it here, no problem
+        # t1.append_column(c2)
+
+        idx = Index("foo", c2, desc("foo"))
+
+        t1.append_column(c2)
+
+        self._assert_index_col_x(t1, idx, columns=True)
 
     def test_column_associated_w_lowercase_table(self):
         from sqlalchemy import table
