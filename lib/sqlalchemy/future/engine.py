@@ -28,7 +28,7 @@ class Connection(_LegacyConnection):
     class.   The API and behavior of this object is largely the same, with the
     following differences in behavior:
 
-    * The result object returned for results is the :class:`_future.Result`
+    * The result object returned for results is the :class:`_engine.Result`
       object.  This object has a slightly different API and behavior than the
       prior :class:`_engine.CursorResult` object.
 
@@ -271,7 +271,7 @@ class Connection(_LegacyConnection):
 
     def execute(self, statement, parameters=None, execution_options=None):
         r"""Executes a SQL statement construct and returns a
-        :class:`_future.Result`.
+        :class:`_engine.Result`.
 
         :param object: The statement to be executed.  This is always
          an object that is in both the :class:`_expression.ClauseElement` and
@@ -298,7 +298,7 @@ class Connection(_LegacyConnection):
          dictionary can provide a subset of the options that are accepted
          by :meth:`_future.Connection.execution_options`.
 
-        :return: a :class:`_future.Result` object.
+        :return: a :class:`_engine.Result` object.
 
         """
         return self._execute_20(
@@ -309,7 +309,7 @@ class Connection(_LegacyConnection):
         r"""Executes a SQL statement construct and returns a scalar object.
 
         This method is shorthand for invoking the
-        :meth:`_future.Result.scalar` method after invoking the
+        :meth:`_engine.Result.scalar` method after invoking the
         :meth:`_future.Connection.execute` method.  Parameters are equivalent.
 
         :return: a scalar Python value representing the first column of the
