@@ -1112,7 +1112,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 ad.dingalings
         l2 = len(lru)
         eq_(l1, 0)
-        eq_(l2, 1)
+        eq_(l2, 0)
 
     def test_unsafe_bound_option_cancels_bake(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
@@ -1143,7 +1143,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 ad.dingalings
         l2 = len(lru)
         eq_(l1, 0)
-        eq_(l2, 1)
+        eq_(l2, 0)
 
     def test_safe_unbound_option_allows_bake(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")

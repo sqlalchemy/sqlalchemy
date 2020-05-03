@@ -2840,40 +2840,40 @@ class SelfRefInheritanceAliasedTest(
     def test_twolevel_selectin_w_polymorphic(self):
         Foo, Bar = self.classes("Foo", "Bar")
 
-        r = with_polymorphic(Foo, "*", aliased=True)
-        attr1 = Foo.foo.of_type(r)
-        attr2 = r.foo
+        for count in range(3):
+            r = with_polymorphic(Foo, "*", aliased=True)
+            attr1 = Foo.foo.of_type(r)
+            attr2 = r.foo
 
-        s = Session()
-        q = (
-            s.query(Foo)
-            .filter(Foo.id == 2)
-            .options(selectinload(attr1).selectinload(attr2))
-        )
-        results = self.assert_sql_execution(
-            testing.db,
-            q.all,
-            CompiledSQL(
-                "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
-                "foo.foo_id AS foo_foo_id FROM foo WHERE foo.id = :id_1",
-                [{"id_1": 2}],
-            ),
-            CompiledSQL(
-                "SELECT foo_1.id AS foo_1_id, "
-                "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
-                "FROM foo AS foo_1 "
-                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
-                {"primary_keys": [3]},
-            ),
-            CompiledSQL(
-                "SELECT foo_1.id AS foo_1_id, "
-                "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
-                "FROM foo AS foo_1 "
-                "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
-                {"primary_keys": [1]},
-            ),
-        )
-        eq_(results, [Bar(id=2, foo=Foo(id=3, foo=Bar(id=1)))])
+            s = Session()
+            q = (
+                s.query(Foo)
+                .filter(Foo.id == 2)
+                .options(selectinload(attr1).selectinload(attr2))
+            )
+            results = self.assert_sql_execution(
+                testing.db,
+                q.all,
+                CompiledSQL(
+                    "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
+                    "foo.foo_id AS foo_foo_id FROM foo WHERE foo.id = :id_1",
+                    [{"id_1": 2}],
+                ),
+                CompiledSQL(
+                    "SELECT foo_1.id AS foo_1_id, "
+                    "foo_1.type AS foo_1_type, foo_1.foo_id AS foo_1_foo_id "
+                    "FROM foo AS foo_1 "
+                    "WHERE foo_1.id IN ([EXPANDING_primary_keys])",
+                    {"primary_keys": [3]},
+                ),
+                CompiledSQL(
+                    "SELECT foo.id AS foo_id_1, foo.type AS foo_type, "
+                    "foo.foo_id AS foo_foo_id FROM foo "
+                    "WHERE foo.id IN ([EXPANDING_primary_keys])",
+                    {"primary_keys": [1]},
+                ),
+            )
+            eq_(results, [Bar(id=2, foo=Foo(id=3, foo=Bar(id=1)))])
 
 
 class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
@@ -3411,3 +3411,78 @@ class SameNamePolymorphicTest(fixtures.DeclarativeMappedTest):
                 ),
             ),
         )
+
+
+class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
+    # test issue #5303
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "users"
+
+            id = Column(Integer, primary_key=True)
+
+        class Foo(Base):
+            __tablename__ = "foos"
+            __mapper_args__ = {"polymorphic_on": "type"}
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+
+        class SubFoo(Foo):
+            __tablename__ = "foos_sub"
+            __mapper_args__ = {"polymorphic_identity": "USER"}
+
+            id = Column(Integer, ForeignKey("foos.id"), primary_key=True)
+            user_id = Column(Integer, ForeignKey("users.id"))
+            user = relationship("User")
+
+        class Bar(Base):
+            __tablename__ = "bars"
+
+            id = Column(Integer, primary_key=True)
+            foo_id = Column(Integer, ForeignKey("foos.id"))
+            foo = relationship("Foo", cascade="all", uselist=False)
+
+    @classmethod
+    def insert_data(cls, connection):
+        User, Bar, SubFoo = cls.classes("User", "Bar", "SubFoo")
+
+        session = Session(connection)
+
+        user = User()
+        sub_foo = SubFoo(user=user)
+        sub_sub_bar = Bar(foo=sub_foo)
+        session.add_all([user, sub_foo, sub_sub_bar])
+        session.commit()
+
+    def test_option_accepted_each_time(self):
+        Foo, User, Bar, SubFoo = self.classes("Foo", "User", "Bar", "SubFoo")
+
+        def go():
+            # in this test, the loader options cancel caching because
+            # the with_polymorphic() can't be cached, and this actually
+            # fails because it won't match up to the with_polymorphic
+            # used in the query if the query is in fact cached.  however
+            # the cache spoil did not use full=True which kept the lead
+            # entities around.
+
+            sess = Session()
+            foo_polymorphic = with_polymorphic(Foo, [SubFoo], aliased=True)
+
+            credit_adjustment_load = selectinload(
+                Bar.foo.of_type(foo_polymorphic)
+            )
+            user_load = credit_adjustment_load.joinedload(
+                foo_polymorphic.SubFoo.user
+            )
+            query = sess.query(Bar).options(user_load)
+            ledger_entry = query.first()
+            ledger_entry.foo.user
+
+        self.assert_sql_count(testing.db, go, 2)
+        self.assert_sql_count(testing.db, go, 2)
+        self.assert_sql_count(testing.db, go, 2)

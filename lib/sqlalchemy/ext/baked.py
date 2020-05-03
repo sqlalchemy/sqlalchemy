@@ -195,12 +195,12 @@ class BakedQuery(object):
         if cache_path.path[0].is_aliased_class:
             # paths that are against an AliasedClass are unsafe to cache
             # with since the AliasedClass is an ad-hoc object.
-            self.spoil()
+            self.spoil(full=True)
         else:
             for opt in options:
                 cache_key = opt._generate_cache_key(cache_path)
                 if cache_key is False:
-                    self.spoil()
+                    self.spoil(full=True)
                 elif cache_key is not None:
                     key += cache_key
 

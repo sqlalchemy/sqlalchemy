@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5303
+
+    Fixed issue in the area of where loader options such as selectinload()
+    interact with the baked query system, such that the caching of a query is
+    not supposed to occur if the loader options themselves have elements such
+    as with_polymorphic() objects in them that currently are not
+    cache-compatible.  The baked loader could sometimes not fully invalidate
+    itself in these some of these scenarios leading to missed eager loads.
+
