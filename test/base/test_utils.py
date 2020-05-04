@@ -1058,6 +1058,13 @@ class HashOverride(object):
         return hash(self.value)
 
 
+class NoHash(object):
+    def __init__(self, value=None):
+        self.value = value
+
+    __hash__ = None
+
+
 class EqOverride(object):
     def __init__(self, value=None):
         self.value = value
@@ -1098,6 +1105,8 @@ class HashEqOverride(object):
 
 
 class IdentitySetTest(fixtures.TestBase):
+    obj_type = object
+
     def assert_eq(self, identityset, expected_iterable):
         expected = sorted([id(o) for o in expected_iterable])
         found = sorted([id(o) for o in identityset])
@@ -1127,7 +1136,7 @@ class IdentitySetTest(fixtures.TestBase):
                 ids.add(data[i])
             self.assert_eq(ids, data)
 
-        for type_ in (EqOverride, HashOverride, HashEqOverride):
+        for type_ in (NoHash, EqOverride, HashOverride, HashEqOverride):
             data = [type_(1), type_(1), type_(2)]
             ids = util.IdentitySet()
             for i in list(range(3)) + list(range(3)):
@@ -1136,7 +1145,7 @@ class IdentitySetTest(fixtures.TestBase):
 
     def test_dunder_sub2(self):
         IdentitySet = util.IdentitySet
-        o1, o2, o3 = object(), object(), object()
+        o1, o2, o3 = self.obj_type(), self.obj_type(), self.obj_type()
         ids1 = IdentitySet([o1])
         ids2 = IdentitySet([o1, o2, o3])
         eq_(ids2 - ids1, IdentitySet([o2, o3]))
@@ -1549,7 +1558,13 @@ class IdentitySetTest(fixtures.TestBase):
         pass  # TODO
 
     def _create_sets(self):
-        o1, o2, o3, o4, o5 = object(), object(), object(), object(), object()
+        o1, o2, o3, o4, o5 = (
+            self.obj_type(),
+            self.obj_type(),
+            self.obj_type(),
+            self.obj_type(),
+            self.obj_type(),
+        )
         super_ = util.IdentitySet([o1, o2, o3])
         sub_ = util.IdentitySet([o2])
         twin1 = util.IdentitySet([o3])
@@ -1573,7 +1588,7 @@ class IdentitySetTest(fixtures.TestBase):
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
 
-        o1, o2, o3 = object(), object(), object()
+        o1, o2, o3 = self.obj_type(), self.obj_type(), self.obj_type()
         ids = IdentitySet([o1])
         ids.discard(o1)
         ids.discard(o1)
@@ -1636,6 +1651,10 @@ class IdentitySetTest(fixtures.TestBase):
 
         assert_raises(TypeError, util.cmp, ids)
         assert_raises(TypeError, hash, ids)
+
+
+class NoHashIdentitySetTest(IdentitySetTest):
+    obj_type = NoHash
 
 
 class OrderedIdentitySetTest(fixtures.TestBase):
