@@ -1394,7 +1394,6 @@ works better when one of the following forms are used::
     query.join(Address, User.id==Address.user_id)    # explicit condition
     query.join(User.addresses)                       # specify relationship from left to right
     query.join(Address, User.addresses)              # same, with explicit target
-    query.join('addresses')                          # same, using a string
 
 As you would expect, the same idea is used for "outer" joins, using the
 :meth:`_query.Query.outerjoin` function::
@@ -1423,10 +1422,13 @@ Using Aliases
 When querying across multiple tables, if the same table needs to be referenced
 more than once, SQL typically requires that the table be *aliased* with
 another name, so that it can be distinguished against other occurrences of
-that table. The :class:`~sqlalchemy.orm.query.Query` supports this most
-explicitly using the :attr:`~sqlalchemy.orm.aliased` construct. Below we join to the ``Address``
-entity twice, to locate a user who has two distinct email addresses at the
-same time:
+that table.   This is supported using the
+:func:`_orm.aliased` construct.   When joining to relationships using
+using :func:`_orm.aliased`, the special attribute method
+:meth:`_orm.PropComparator.of_type` may be used to alter the target of
+a relationship join to refer to a given :func:`_orm.aliased` object.
+Below we join to the ``Address`` entity twice, to locate a user who has two
+distinct email addresses at the same time:
 
 .. sourcecode:: python+sql
 
@@ -1435,8 +1437,8 @@ same time:
     >>> adalias2 = aliased(Address)
     {sql}>>> for username, email1, email2 in \
     ...     session.query(User.name, adalias1.email_address, adalias2.email_address).\
-    ...     join(adalias1, User.addresses).\
-    ...     join(adalias2, User.addresses).\
+    ...     join(User.addresses.of_type(adalias1)).\
+    ...     join(User.addresses.of_type(adalias2)).\
     ...     filter(adalias1.email_address=='jack@google.com').\
     ...     filter(adalias2.email_address=='j25@yahoo.com'):
     ...     print(username, email1, email2)
@@ -1451,6 +1453,13 @@ same time:
             AND addresses_2.email_address = ?
     ('jack@google.com', 'j25@yahoo.com')
     {stop}jack jack@google.com j25@yahoo.com
+
+In addition to using the :meth:`_orm.PropComparator.of_type` method, it is
+common to see the :meth:`_orm.Query.join` method joining to a specific
+target by indicating it separately::
+
+    # equivalent to query.join(User.addresses.of_type(adalias1))
+    q = query.join(adalias1, User.addresses)
 
 Using Subqueries
 ----------------
