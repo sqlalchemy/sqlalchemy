@@ -1985,31 +1985,19 @@ class Query(Generative):
 
             q = session.query(User).join(User.addresses)
 
-        Where above, the call to :meth:`_query.Query.join` along ``User.
-        addresses``
-        will result in SQL equivalent to::
+        Where above, the call to :meth:`_query.Query.join` along
+        ``User.addresses`` will result in SQL approximately equivalent to::
 
-            SELECT user.* FROM user JOIN address ON user.id = address.user_id
+            SELECT user.id, User.name
+            FROM user JOIN address ON user.id = address.user_id
 
         In the above example we refer to ``User.addresses`` as passed to
-        :meth:`_query.Query.join` as the *on clause*, that is, it indicates
-        how the "ON" portion of the JOIN should be constructed.  For a
-        single-entity query such as the one above (i.e. we start by selecting
-        only from ``User`` and nothing else), the relationship can also be
-        specified by its string name::
+        :meth:`_query.Query.join` as the "on clause", that is, it indicates
+        how the "ON" portion of the JOIN should be constructed.
 
-            q = session.query(User).join("addresses")
-
-        :meth:`_query.Query.join` can also accommodate multiple
-        "on clause" arguments to produce a chain of joins, such as below
-        where a join across four related entities is constructed::
-
-            q = session.query(User).join("orders", "items", "keywords")
-
-        The above would be shorthand for three separate calls to
-        :meth:`_query.Query.join`,
-        each using an explicit attribute to indicate
-        the source entity::
+        To construct a chain of joins, multiple :meth:`_query.Query.join`
+        calls may be used.  The relationship-bound attribute implies both
+        the left and right side of the join at once::
 
             q = session.query(User).\
                     join(User.orders).\
@@ -2018,114 +2006,99 @@ class Query(Generative):
 
         **Joins to a Target Entity or Selectable**
 
-        A second form of :meth:`_query.Query.join` allows any mapped entity
-        or core selectable construct as a target.   In this usage,
-        :meth:`_query.Query.join` will attempt
-        to create a JOIN along the natural foreign key relationship between
-        two entities::
+        A second form of :meth:`_query.Query.join` allows any mapped entity or
+        core selectable construct as a target.   In this usage,
+        :meth:`_query.Query.join` will attempt to create a JOIN along the
+        natural foreign key relationship between two entities::
 
             q = session.query(User).join(Address)
 
-        The above calling form of :meth:`_query.Query.join`
-        will raise an error if
-        either there are no foreign keys between the two entities, or if
-        there are multiple foreign key linkages between them.   In the
-        above calling form, :meth:`_query.Query.join` is called upon to
-        create the "on clause" automatically for us.  The target can
-        be any mapped entity or selectable, such as a :class:`_schema.Table`::
-
-            q = session.query(User).join(addresses_table)
+        In the above calling form, :meth:`_query.Query.join` is called upon to
+        create the "on clause" automatically for us.  This calling form will
+        ultimately raise an error if either there are no foreign keys between
+        the two entities, or if there are multiple foreign key linkages between
+        the target entity and the entity or entities already present on the
+        left side such that creating a join requires more information.  Note
+        that when indicating a join to a target without any ON clause, ORM
+        configured relationships are not taken into account.
 
         **Joins to a Target with an ON Clause**
 
         The third calling form allows both the target entity as well
-        as the ON clause to be passed explicitly.   Suppose for
-        example we wanted to join to ``Address`` twice, using
-        an alias the second time.  We use :func:`~sqlalchemy.orm.aliased`
-        to create a distinct alias of ``Address``, and join
-        to it using the ``target, onclause`` form, so that the
-        alias can be specified explicitly as the target along with
-        the relationship to instruct how the ON clause should proceed::
-
-            a_alias = aliased(Address)
-
-            q = session.query(User).\
-                    join(User.addresses).\
-                    join(a_alias, User.addresses).\
-                    filter(Address.email_address=='ed@foo.com').\
-                    filter(a_alias.email_address=='ed@bar.com')
-
-        Where above, the generated SQL would be similar to::
-
-            SELECT user.* FROM user
-                JOIN address ON user.id = address.user_id
-                JOIN address AS address_1 ON user.id=address_1.user_id
-                WHERE address.email_address = :email_address_1
-                AND address_1.email_address = :email_address_2
-
-        The two-argument calling form of :meth:`_query.Query.join`
-        also allows us to construct arbitrary joins with SQL-oriented
-        "on clause" expressions, not relying upon configured relationships
-        at all.  Any SQL expression can be passed as the ON clause
-        when using the two-argument form, which should refer to the target
-        entity in some way as well as an applicable source entity::
+        as the ON clause to be passed explicitly.    A example that includes
+        a SQL expression as the ON clause is as follows::
 
             q = session.query(User).join(Address, User.id==Address.user_id)
 
-        **Advanced Join Targeting and Adaption**
+        The above form may also use a relationship-bound attribute as the
+        ON clause as well::
 
-        There is a lot of flexibility in what the "target" can be when using
-        :meth:`_query.Query.join`.   As noted previously, it also accepts
-        :class:`_schema.Table` constructs and other selectables such as
-        :func:`.alias`
-        and :func:`_expression.select` constructs, with either the one or
-        two-argument forms::
+            q = session.query(User).join(Address, User.addresses)
 
-            addresses_q = select([Address.user_id]).\
-                        where(Address.email_address.endswith("@bar.com")).\
-                        alias()
+        The above syntax can be useful for the case where we wish
+        to join to an alias of a particular target entity.  If we wanted
+        to join to ``Address`` twice, it could be achieved using two
+        aliases set up using the :func:`~sqlalchemy.orm.aliased` function::
 
-            q = session.query(User).\
-                        join(addresses_q, addresses_q.c.user_id==User.id)
-
-        :meth:`_query.Query.join` also features the ability to *adapt* a
-        :meth:`~sqlalchemy.orm.relationship` -driven ON clause to the target
-        selectable. Below we construct a JOIN from ``User`` to a subquery
-        against ``Address``, allowing the relationship denoted by
-        ``User.addresses`` to *adapt* itself to the altered target::
-
-            address_subq = session.query(Address).\
-                            filter(Address.email_address == 'ed@foo.com').\
-                            subquery()
-
-            q = session.query(User).join(address_subq, User.addresses)
-
-        Producing SQL similar to::
-
-            SELECT user.* FROM user
-                JOIN (
-                    SELECT address.id AS id,
-                            address.user_id AS user_id,
-                            address.email_address AS email_address
-                    FROM address
-                    WHERE address.email_address = :email_address_1
-                ) AS anon_1 ON user.id = anon_1.user_id
-
-        The above form allows one to fall back onto an explicit ON
-        clause at any time::
+            a1 = aliased(Address)
+            a2 = aliased(Address)
 
             q = session.query(User).\
-                    join(address_subq, User.id==address_subq.c.user_id)
+                    join(a1, User.addresses).\
+                    join(a2, User.addresses).\
+                    filter(a1.email_address=='ed@foo.com').\
+                    filter(a2.email_address=='ed@bar.com')
+
+        The relationship-bound calling form can also specify a target entity
+        using the :meth:`_orm.PropComparator.of_type` method; a query
+        equivalent to the one above would be::
+
+            a1 = aliased(Address)
+            a2 = aliased(Address)
+
+            q = session.query(User).\
+                    join(User.addresses.of_type(a1)).\
+                    join(User.addresses.of_type(a2)).\
+                    filter(a1.email_address == 'ed@foo.com').\
+                    filter(a2.email_address == 'ed@bar.com')
+
+        **Joining to Tables and Subqueries**
+
+
+        The target of a join may also be any table or SELECT statement,
+        which may be related to a target entity or not.   Use the
+        appropriate ``.subquery()`` method in order to make a subquery
+        out of a query::
+
+            subq = session.query(Address).\
+                filter(Address.email_address == 'ed@foo.com').\
+                subquery()
+
+
+            q = session.query(User).join(
+                subq, User.id == subq.c.user_id
+            )
+
+        Joining to a subquery in terms of a specific relationship and/or
+        target entity may be achieved by linking the subquery to the
+        entity using :func:`_orm.aliased`::
+
+            subq = session.query(Address).\
+                filter(Address.email_address == 'ed@foo.com').\
+                subquery()
+
+            address_subq = aliased(Address, subq)
+
+            q = session.query(User).join(
+                User.addresses.of_type(address_subq)
+            )
+
 
         **Controlling what to Join From**
 
-        While :meth:`_query.Query.join` exclusively deals with the "right"
-        side of the JOIN, we can also control the "left" side, in those
-        cases where it's needed, using :meth:`_query.Query.select_from`.
-        Below we construct a query against ``Address`` but can still
-        make usage of ``User.addresses`` as our ON clause by instructing
-        the :class:`_query.Query` to select first from the ``User``
-        entity::
+        In cases where the left side of the current state of
+        :class:`_query.Query` is not in line with what we want to join from,
+        the :meth:`_query.Query.select_from` method may be used::
 
             q = session.query(Address).select_from(User).\
                             join(User.addresses).\
@@ -2137,67 +2110,94 @@ class Query(Generative):
                 JOIN address ON user.id=address.user_id
                 WHERE user.name = :name_1
 
-        **Constructing Aliases Anonymously**
+        **Legacy Features of Query.join()**
 
-        :meth:`_query.Query.join` can construct anonymous aliases
-        using the ``aliased=True`` flag.  This feature is useful
-        when a query is being joined algorithmically, such as
-        when querying self-referentially to an arbitrary depth::
+        The :meth:`_query.Query.join` method currently supports several
+        usage patterns and arguments that are considered to be legacy
+        as of SQLAlchemy 1.3.   A deprecation path will follow
+        in the 1.4 series for the following features:
 
-            q = session.query(Node).\
-                    join("children", "children", aliased=True)
 
-        When ``aliased=True`` is used, the actual "alias" construct
-        is not explicitly available.  To work with it, methods such as
-        :meth:`_query.Query.filter` will adapt the incoming entity to
-        the last join point::
+        * Joining on relationship names rather than attributes::
 
-            q = session.query(Node).\
-                    join("children", "children", aliased=True).\
-                    filter(Node.name == 'grandchild 1')
+            session.query(User).join("addresses")
 
-        When using automatic aliasing, the ``from_joinpoint=True``
-        argument can allow a multi-node join to be broken into
-        multiple calls to :meth:`_query.Query.join`, so that
-        each path along the way can be further filtered::
+          **Why it's legacy**: the string name does not provide enough context
+          for :meth:`_query.Query.join` to always know what is desired,
+          notably in that there is no indication of what the left side
+          of the join should be.  This gives rise to flags like
+          ``from_joinpoint`` as well as the ability to place several
+          join clauses in a single :meth:`_query.Query.join` call
+          which don't solve the problem fully while also
+          adding new calling styles that are unnecessary and expensive to
+          accommodate internally.
 
-            q = session.query(Node).\
-                    join("children", aliased=True).\
-                    filter(Node.name='child 1').\
-                    join("children", aliased=True, from_joinpoint=True).\
-                    filter(Node.name == 'grandchild 1')
+          **Modern calling pattern**:  Use the actual relationship,
+          e.g. ``User.addresses`` in the above case::
 
-        The filtering aliases above can then be reset back to the
-        original ``Node`` entity using :meth:`_query.Query.reset_joinpoint`::
+              session.query(User).join(User.addresses)
 
-            q = session.query(Node).\
-                    join("children", "children", aliased=True).\
-                    filter(Node.name == 'grandchild 1').\
-                    reset_joinpoint().\
-                    filter(Node.name == 'parent 1)
+        * Automatic aliasing with the ``aliased=True`` flag::
 
-        For an example of ``aliased=True``, see the distribution
-        example :ref:`examples_xmlpersistence` which illustrates
-        an XPath-like query system using algorithmic joins.
+            session.query(Node).join(Node.children, aliased=True).\
+                filter(Node.name == 'some name')
 
-        :param \*props: A collection of one or more join conditions,
-         each consisting of a relationship-bound attribute or string
-         relationship name representing an "on clause", or a single
-         target entity, or a tuple in the form of ``(target, onclause)``.
-         A special two-argument calling form of the form ``target, onclause``
-         is also accepted.
-        :param aliased=False: If True, indicate that the JOIN target should be
-         anonymously aliased.  Subsequent calls to :meth:`_query.Query.filter`
-         and similar will adapt the incoming criterion to the target
-         alias, until :meth:`_query.Query.reset_joinpoint` is called.
+          **Why it's legacy**:  the automatic aliasing feature of
+          :class:`_query.Query` is intensely complicated, both in its internal
+          implementation as well as in its observed behavior, and is almost
+          never used.  It is difficult to know upon inspection where and when
+          its aliasing of a target entity, ``Node`` in the above case, will be
+          applied and when it won't, and additionally the feature has to use
+          very elaborate heuristics to achieve this implicit behavior.
+
+          **Modern calling pattern**: Use the :func:`_orm.aliased` construct
+          explicitly::
+
+            from sqlalchemy.orm import aliased
+
+            n1 = aliased(Node)
+
+            session.query(Node).join(Node.children.of_type(n1)).\
+                filter(n1.name == 'some name')
+
+        * Multiple joins in one call::
+
+            session.query(User).join("orders", "items")
+
+            session.query(User).join(User.orders, Order.items)
+
+            session.query(User).join(
+                (Order, User.orders),
+                (Item, Item.order_id == Order.id)
+            )
+
+            # ... and several more forms actually
+
+          **Why it's legacy**: being able to chain multiple ON clauses in one
+          call to :meth:`_query.Query.join` is yet another attempt to solve
+          the problem of being able to specify what entity to join from,
+          and is the source of a large variety of potential calling patterns
+          that are internally expensive and complicated to parse and
+          accommodate.
+
+          **Modern calling pattern**:  Use relationship-bound attributes
+          or SQL-oriented ON clauses within separate calls, so that
+          each call to :meth:`_query.Query.join` knows what the left
+          side should be::
+
+            session.query(User).join(User.orders).join(
+                Item, Item.order_id == Order.id)
+
+
+        :param \*props: Incoming arguments for :meth:`_query.Query.join`,
+         the props collection in modern use should be considered to be a  one
+         or two argument form, either as a single "target" entity or ORM
+         attribute-bound relationship, or as a target entity plus an "on
+         clause" which  may be a SQL expression or ORM attribute-bound
+         relationship.
+
         :param isouter=False: If True, the join used will be a left outer join,
          just as if the :meth:`_query.Query.outerjoin` method were called.
-         This
-         flag is here to maintain consistency with the same flag as accepted
-         by :meth:`_expression.FromClause.join` and other Core constructs.
-
-
-         .. versionadded:: 1.0.0
 
         :param full=False: render FULL OUTER JOIN; implies ``isouter``.
 
@@ -2207,6 +2207,15 @@ class Query(Generative):
          of True here will cause the join to be from the most recent
          joined target, rather than starting back from the original
          FROM clauses of the query.
+
+         .. note:: This flag is considered legacy.
+
+        :param aliased=False: If True, indicate that the JOIN target should be
+         anonymously aliased.  Subsequent calls to :meth:`_query.Query.filter`
+         and similar will adapt the incoming criterion to the target
+         alias, until :meth:`_query.Query.reset_joinpoint` is called.
+
+         .. note:: This flag is considered legacy.
 
         .. seealso::
 

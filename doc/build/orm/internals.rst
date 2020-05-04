@@ -18,7 +18,7 @@ sections, are listed here.
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.properties.ColumnProperty
+.. autoclass:: sqlalchemy.orm.ColumnProperty
     :members:
 
     .. attribute:: Comparator.expressions
@@ -32,7 +32,7 @@ sections, are listed here.
 
             :ref:`maptojoin` - usage example
 
-.. autoclass:: sqlalchemy.orm.descriptor_props.CompositeProperty
+.. autoclass:: sqlalchemy.orm.CompositeProperty
     :members:
 
 
@@ -88,15 +88,15 @@ sections, are listed here.
 
 .. autodata:: sqlalchemy.orm.interfaces.ONETOMANY
 
-.. autoclass:: sqlalchemy.orm.interfaces.PropComparator
+.. autoclass:: sqlalchemy.orm.PropComparator
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.relationships.RelationshipProperty
+.. autoclass:: sqlalchemy.orm.RelationshipProperty
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.descriptor_props.SynonymProperty
+.. autoclass:: sqlalchemy.orm.SynonymProperty
     :members:
     :inherited-members:
 

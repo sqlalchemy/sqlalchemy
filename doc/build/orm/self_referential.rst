@@ -138,7 +138,7 @@ looks like:
 
     nodealias = aliased(Node)
     {sql}session.query(Node).filter(Node.data=='subchild1').\
-                    join(nodealias, Node.parent).\
+                    join(Node.parent.of_type(nodealias)).\
                     filter(nodealias.data=="child2").\
                     all()
     SELECT node.id AS node_id,
@@ -150,66 +150,8 @@ looks like:
         AND node_1.data = ?
     ['subchild1', 'child2']
 
-:meth:`_query.Query.join` also includes a feature known as
-:paramref:`.Query.join.aliased` that can shorten the verbosity self-
-referential joins, at the expense of query flexibility.  This feature
-performs a similar "aliasing" step to that above, without the need for
-an explicit entity.   Calls to :meth:`_query.Query.filter` and similar
-subsequent to the aliased join will **adapt** the ``Node`` entity to
-be that of the alias:
-
-.. sourcecode:: python+sql
-
-    {sql}session.query(Node).filter(Node.data=='subchild1').\
-            join(Node.parent, aliased=True).\
-            filter(Node.data=='child2').\
-            all()
-    SELECT node.id AS node_id,
-            node.parent_id AS node_parent_id,
-            node.data AS node_data
-    FROM node
-        JOIN node AS node_1 ON node_1.id = node.parent_id
-    WHERE node.data = ? AND node_1.data = ?
-    ['subchild1', 'child2']
-
-To add criterion to multiple points along a longer join, add
-:paramref:`.Query.join.from_joinpoint` to the additional
-:meth:`_query.Query.join` calls:
-
-.. sourcecode:: python+sql
-
-    # get all nodes named 'subchild1' with a
-    # parent named 'child2' and a grandparent 'root'
-    {sql}session.query(Node).\
-            filter(Node.data=='subchild1').\
-            join(Node.parent, aliased=True).\
-            filter(Node.data=='child2').\
-            join(Node.parent, aliased=True, from_joinpoint=True).\
-            filter(Node.data=='root').\
-            all()
-    SELECT node.id AS node_id,
-            node.parent_id AS node_parent_id,
-            node.data AS node_data
-    FROM node
-        JOIN node AS node_1 ON node_1.id = node.parent_id
-        JOIN node AS node_2 ON node_2.id = node_1.parent_id
-    WHERE node.data = ?
-        AND node_1.data = ?
-        AND node_2.data = ?
-    ['subchild1', 'child2', 'root']
-
-:meth:`_query.Query.reset_joinpoint` will also remove the "aliasing" from filtering
-calls::
-
-    session.query(Node).\
-            join(Node.children, aliased=True).\
-            filter(Node.data == 'foo').\
-            reset_joinpoint().\
-            filter(Node.data == 'bar')
-
-For an example of using :paramref:`.Query.join.aliased` to
-arbitrarily join along a chain of self-referential nodes, see
-:ref:`examples_xmlpersistence`.
+For an example of using :func:`_orm.aliased` to join across an arbitrarily long
+chain of self-referential nodes, see :ref:`examples_xmlpersistence`.
 
 .. _self_referential_eager_loading:
 

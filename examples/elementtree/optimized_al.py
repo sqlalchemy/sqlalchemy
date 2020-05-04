@@ -24,6 +24,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import Unicode
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -223,14 +224,21 @@ ElementTree.dump(document.element)
 
 # manually search for a document which contains "/somefile/header/field1:hi"
 print("\nManual search for /somefile/header/field1=='hi':", line)
+
+root = aliased(_Node)
+child_node = aliased(_Node)
+grandchild_node = aliased(_Node)
+
 d = (
     session.query(Document)
-    .join("_nodes", aliased=True)
-    .filter(and_(_Node.parent_id == None, _Node.tag == "somefile"))
-    .join("children", aliased=True, from_joinpoint=True)
-    .filter(_Node.tag == "header")
-    .join("children", aliased=True, from_joinpoint=True)
-    .filter(and_(_Node.tag == "field1", _Node.text == "hi"))
+    .join(Document._nodes.of_type(root))
+    .filter(and_(root.parent_id.is_(None), root.tag == "somefile"))
+    .join(root.children.of_type(child_node))
+    .filter(child_node.tag == "header")
+    .join(child_node.children.of_type(grandchild_node))
+    .filter(
+        and_(grandchild_node.tag == "field1", grandchild_node.text == "hi")
+    )
     .one()
 )
 ElementTree.dump(d.element)
@@ -240,32 +248,44 @@ ElementTree.dump(d.element)
 
 def find_document(path, compareto):
     query = session.query(Document)
-    first = True
+
     for i, match in enumerate(
         re.finditer(r"/([\w_]+)(?:\[@([\w_]+)(?:=(.*))?\])?", path)
     ):
         (token, attrname, attrvalue) = match.group(1, 2, 3)
-        if first:
-            query = query.join("_nodes", aliased=True).filter(
-                _Node.parent_id == None
+
+        if not i:
+            parent = Document
+            target_node = aliased(_Node)
+
+            query = query.join(parent._nodes.of_type(target_node)).filter(
+                target_node.parent_id.is_(None)
             )
-            first = False
         else:
-            query = query.join("children", aliased=True, from_joinpoint=True)
-        query = query.filter(_Node.tag == token)
+            parent = target_node
+            target_node = aliased(_Node)
+
+            query = query.join(parent.children.of_type(target_node))
+
+        query = query.filter(target_node.tag == token)
         if attrname:
-            query = query.join("attributes", aliased=True, from_joinpoint=True)
+            attribute_entity = aliased(_Attribute)
+            query = query.join(
+                target_node.attributes.of_type(attribute_entity)
+            )
             if attrvalue:
                 query = query.filter(
                     and_(
-                        _Attribute.name == attrname,
-                        _Attribute.value == attrvalue,
+                        attribute_entity.name == attrname,
+                        attribute_entity.value == attrvalue,
                     )
                 )
             else:
-                query = query.filter(_Attribute.name == attrname)
+                query = query.filter(attribute_entity.name == attrname)
     return (
-        query.options(lazyload("_nodes")).filter(_Node.text == compareto).all()
+        query.options(lazyload(Document._nodes))
+        .filter(target_node.text == compareto)
+        .all()
     )
 
 

@@ -796,12 +796,13 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
      but for convenience can also be a :class:`_expression.FromClause` element
      .
 
-    :param alias: Optional selectable unit to map the element to.  This should
-     normally be a :class:`_expression.Alias` object corresponding to the
-     :class:`_schema.Table`
-     to which the class is mapped, or to a :func:`_expression.select`
-     construct that is compatible with the mapping.   By default, a simple
-     anonymous alias of the mapped table is generated.
+    :param alias: Optional selectable unit to map the element to.  This is
+     usually used to link the object to a subquery, and should be an aliased
+     select construct as one would produce from the
+     :meth:`_query.Query.subquery` method or
+     the :meth:`_expression.Select.subquery` or
+     :meth:`_expression.Select.alias` methods of the :func:`_expression.select`
+     construct.
 
     :param name: optional string name to use for the alias, if not specified
      by the ``alias`` parameter.  The name, among other things, forms the
@@ -815,8 +816,6 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
      queries in many circumstances.  A JOIN against a nested JOIN will be
      rewritten as a JOIN against an aliased SELECT subquery on backends that
      don't support this syntax.
-
-     .. versionadded:: 0.9.0
 
      .. seealso:: :meth:`_expression.Join.alias`
 
