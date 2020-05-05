@@ -40,6 +40,13 @@ table2 = table(
     "myothertable", column("otherid", Integer), column("othername", String)
 )
 
+table3 = table(
+    "yetagain",
+    column("anotherid", Integer),
+    column("anothername", String),
+    schema="here"
+)
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -187,6 +194,28 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
             "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
+        )
+
+    def test_select_composition_nine(self):
+        # test that "schema" works correctly when passed to table
+        t1 = table("foo", schema="bar")
+        self.assert_compile(
+                select([
+                    literal_column("column1 as foobar"),
+                    literal_column("column2 as hoho"),
+                ],
+                from_obj=t1,
+            ),
+            "SELECT column1 as foobar, column2 as hoho FROM bar.foo"
+        )
+
+    def test_select_composition_ten(self):
+        # test that "schema" doesn't interfier with non schema tables
+        # or aliases.
+        t1 = table("foo", schema="bar")
+        self.assert_compile(
+            select(["*"]).select_from(t1.alias("t")),
+           "SELECT * FROM bar.foo AS t"
         )
 
     def test_select_bundle_columns(self):
@@ -508,6 +537,32 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(t.selected_columns.b.type._type_affinity, Integer)
         eq_(t.selected_columns.c.type._type_affinity, String)
 
+    def test_schema_subquery(self):
+        # schema plays well with subqueries
+        t = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .subquery()
+        )
+        stmt = select([table3.c.anotherid]).select_from(
+            table3.join(t, table3.c.anotherid == t.c.id)
+        )
+        compiled = stmt.compile()
+        eq_(
+            compiled._create_result_map(), {
+                "anotherid": (
+                    "anotherid",
+                    (
+                        table3.c.anotherid,
+                        "anotherid",
+                        "anotherid",
+                        "here_yetagain_anotherid"
+                    ),
+                    table3.c.anotherid.type
+                )
+            }
+        )
+
     def _xy_table_fixture(self):
         m = MetaData()
         t = Table("t", m, Column("x", Integer), Column("y", Integer))
@@ -672,6 +727,15 @@ class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_from(self):
         self._test(select([table1.c.myid]).select_from, "mytable", "mytable")
+
+    def test_table_kw(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Unsupported argument\(s\): not_a_schema",
+            table,
+            "foo",
+            not_a_schema="bar"
+        )
 
 
 class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
