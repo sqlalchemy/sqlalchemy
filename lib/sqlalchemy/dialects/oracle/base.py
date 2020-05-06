@@ -12,21 +12,6 @@ r"""
     Oracle version 8 through current (11g at the time of this writing) are
     supported.
 
-Connect Arguments
------------------
-
-The dialect supports several :func:`~sqlalchemy.create_engine()` arguments
-which affect the behavior of the dialect regardless of driver in use.
-
-* ``use_ansi`` - Use ANSI JOIN constructs (see the section on Oracle 8).
-  Defaults to ``True``.  If ``False``, Oracle-8 compatible constructs are used
-  for joins.
-
-* ``optimize_limits`` - defaults to ``False``. see the section on
-  LIMIT/OFFSET.
-
-* ``use_binds_for_limits`` - deprecated.  see the section on
-  LIMIT/OFFSET.
 
 Auto Increment Behavior
 -----------------------
