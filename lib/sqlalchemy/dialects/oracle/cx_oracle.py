@@ -11,16 +11,23 @@ r"""
     :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
     :url: https://oracle.github.io/python-cx_Oracle/
 
-Additional Connect Arguments
-----------------------------
+DSN vs. Hostname connections
+-----------------------------
 
-When connecting with the ``dbname`` URL token present, the ``hostname``,
-``port``, and ``dbname`` tokens are converted to a TNS name using the
-``cx_Oracle.makedsn()`` function. The URL below::
+The dialect will connect to a DSN if no database name portion is presented,
+such as::
 
-    e = create_engine("oracle+cx_oracle://user:pass@hostname/dbname")
+    engine = create_engine("oracle+cx_oracle://scott:tiger@oracle1120/?encoding=UTF-8&nencoding=UTF-8")
 
-Will be used to create the DSN as follows::
+Above, ``oracle1120`` is passed to cx_Oracle as an Oracle datasource name.
+
+Alternatively, if a database name is present, the ``cx_Oracle.makedsn()``
+function is used to create an ad-hoc "datasource" name assuming host
+and port::
+
+    engine = create_engine("oracle+cx_oracle://scott:tiger@hostname:1521/dbname?encoding=UTF-8&nencoding=UTF-8")
+
+Above, the DSN would be created as follows::
 
     >>> import cx_Oracle
     >>> cx_Oracle.makedsn("hostname", 1521, sid="dbname")
@@ -29,28 +36,16 @@ Will be used to create the DSN as follows::
 The ``service_name`` parameter, also consumed by ``cx_Oracle.makedsn()``, may
 be specified in the URL query string, e.g. ``?service_name=my_service``.
 
-If ``dbname`` is not present, then the value of ``hostname`` in the
-URL is used directly as the DSN passed to ``cx_Oracle.connect()``.
 
-Additional connection arguments may be sent to the ``cx_Oracle.connect()``
-function using the :paramref:`_sa.create_engine.connect_args` dictionary.
-Any cx_Oracle parameter value and/or constant may be passed, such as::
+Passing cx_Oracle connect arguments
+-----------------------------------
 
-    import cx_Oracle
-    e = create_engine(
-        "oracle+cx_oracle://user:pass@dsn",
-        connect_args={
-            "mode": cx_Oracle.SYSDBA,
-            "events": True
-        }
-    )
-
-Alternatively, most cx_Oracle DBAPI arguments can also be encoded as strings
-within the URL, which includes parameters such as ``mode``, ``purity``,
-``events``, ``threaded``, and others::
+Additional connection arguments can usually be passed via the URL
+query string; particular symbols like ``cx_Oracle.SYSDBA`` are intercepted
+and converted to the correct symbol::
 
     e = create_engine(
-        "oracle+cx_oracle://user:pass@dsn?mode=SYSDBA&events=true")
+        "oracle+cx_oracle://user:pass@dsn?encoding=UTF-8&nencoding=UTF-8&mode=SYSDBA&events=true")
 
 .. versionchanged:: 1.3 the cx_oracle dialect now accepts all argument names
    within the URL string itself, to be passed to the cx_Oracle DBAPI.   As
@@ -58,10 +53,27 @@ within the URL, which includes parameters such as ``mode``, ``purity``,
    :paramref:`_sa.create_engine.connect_args` parameter also accepts all
    cx_Oracle DBAPI connect arguments.
 
+To pass arguments directly to ``.connect()`` wihtout using the query
+string, use the :paramref:`_sa.create_engine.connect_args` dictionary.
+Any cx_Oracle parameter value and/or constant may be passed, such as::
+
+    import cx_Oracle
+    e = create_engine(
+        "oracle+cx_oracle://user:pass@dsn",
+        connect_args={
+            "encoding": "UTF-8",
+            "nencoding": "UTF-8",
+            "mode": cx_Oracle.SYSDBA,
+            "events": True
+        }
+    )
+
+Options consumed by the SQLAlchemy cx_Oracle dialect outside of the driver
+--------------------------------------------------------------------------
+
 There are also options that are consumed by the SQLAlchemy cx_oracle dialect
 itself.  These options are always passed directly to :func:`_sa.create_engine`
-,
-such as::
+, such as::
 
     e = create_engine(
         "oracle+cx_oracle://user:pass@dsn", coerce_to_unicode=False)
@@ -86,19 +98,50 @@ The parameters accepted by the cx_oracle dialect are as follows:
 Unicode
 -------
 
-The cx_Oracle DBAPI as of version 5 fully supports Unicode, and has the
-ability to return string results as Python Unicode objects natively.
+As is the case for all DBAPIs under Python 3, all strings are inherently
+Unicode strings.     Under Python 2, cx_Oracle also supports Python Unicode
+objects directly.    In all cases however, the driver requires an explcit
+encoding configuration.
 
-Explicit Unicode support is available by using the :class:`.Unicode` datatype
-with SQLAlchemy Core expression language, as well as the :class:`.UnicodeText`
-datatype.  These types correspond to the  VARCHAR2 and CLOB Oracle datatypes by
+Ensuring the Correct Client Encoding
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The long accepted standard for establishing client encoding for nearly all
+Oracle related software is via the `NLS_LANG <https://www.oracle.com/database/technologies/faq-nls-lang.html>`_
+environment variable.   cx_Oracle like most other Oracle drivers will use
+this environment variable as the source of its encoding configuration.  The
+format of this variable is idiosyncratic; a typical value would be
+``AMERICAN_AMERICA.AL32UTF8``.
+
+The cx_Oracle driver also supports a programmatic alternative which is to
+pass the ``encoding`` and ``nencoding`` parameters directly to its
+``.connect()`` function.  These can be present in the URL as follows::
+
+    engine = create_engine("oracle+cx_oracle://scott:tiger@oracle1120/?encoding=UTF-8&nencoding=UTF-8")
+
+For the meaning of the ``encoding`` and ``nencoding`` parameters, please
+consult
+`Characters Sets and National Language Support (NLS) <https://cx-oracle.readthedocs.io/en/latest/user_guide/globalization.html#globalization>`_.
+
+.. seealso::
+
+    `Characters Sets and National Language Support (NLS) <https://cx-oracle.readthedocs.io/en/latest/user_guide/globalization.html#globalization>`_
+    - in the cx_Oracle documentation.
+
+
+Unicode-specific Column datatypes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The Core expression language handles unicode data by use of the :class:`.Unicode`
+and :class:`.UnicodeText`
+datatypes.  These types correspond to the  VARCHAR2 and CLOB Oracle datatypes by
 default.   When using these datatypes with Unicode data, it is expected that
 the Oracle database is configured with a Unicode-aware character set, as well
 as that the ``NLS_LANG`` environment variable is set appropriately, so that
 the VARCHAR2 and CLOB datatypes can accommodate the data.
 
 In the case that the Oracle database is not configured with a Unicode character
-set, the two options are to use the :class:`_oracle.NCHAR` and
+set, the two options are to use the :class:`_types.NCHAR` and
 :class:`_oracle.NCLOB` datatypes explicitly, or to pass the flag
 ``use_nchar_for_unicode=True`` to :func:`_sa.create_engine`,
 which will cause the
@@ -109,6 +152,9 @@ SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
    datatypes now correspond to the ``VARCHAR2`` and ``CLOB`` Oracle datatypes
    unless the ``use_nchar_for_unicode=True`` is passed to the dialect
    when :func:`_sa.create_engine` is called.
+
+Unicode Coercion of result rows under Python 2
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When result sets are fetched that include strings, under Python 3 the cx_Oracle
 DBAPI returns all strings as Python Unicode objects, since Python 3 only has a
@@ -126,7 +172,6 @@ VARCHAR2, CHAR, and CLOB, the flag ``coerce_to_unicode=False`` can be passed to
    by default under python 2.  The ``coerce_to_unicode`` now defaults to True
    and can be set to False to disable the Unicode coercion of strings that are
    delivered as VARCHAR2/CHAR/CLOB data.
-
 
 .. _cx_oracle_unicode_encoding_errors:
 
