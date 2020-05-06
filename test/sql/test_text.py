@@ -189,6 +189,29 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
         )
 
+    def test_select_composition_nine(self):
+        # test that "schema" works correctly when passed to table
+        t1 = table("foo", schema="bar")
+        self.assert_compile(
+            select(
+                [
+                    literal_column("column1 as foobar"),
+                    literal_column("column2 as hoho"),
+                ],
+                from_obj=t1
+            ),
+            "SELECT column1 as foobar, column2 as hoho FROM bar.foo"
+        )
+
+    def test_select_composition_ten(self):
+        # test that "schema" doesn't interfier with non schema tables
+        # or aliases.
+        t1 = table("foo", schema="bar")
+        self.assert_compile(
+            select(["*"]).select_from(t1.alias("t")),
+            "SELECT * FROM bar.foo AS t"
+        )
+
     def test_select_bundle_columns(self):
         self.assert_compile(
             select(
