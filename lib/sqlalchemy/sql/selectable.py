@@ -1895,9 +1895,9 @@ class FromGrouping(FromClause):
 class TableClause(Immutable, FromClause):
     """Represents a minimal "table" construct.
 
-    This is a lightweight table object that has only a name and a
+    This is a lightweight table object that has only a name, a
     collection of columns, which are typically produced
-    by the :func:`_expression.column` function::
+    by the :func:`_expression.column` function, and a schema::
 
         from sqlalchemy import table, column
 
@@ -1934,7 +1934,7 @@ class TableClause(Immutable, FromClause):
     _autoincrement_column = None
     """No PK or default support so no autoincrement column."""
 
-    def __init__(self, name, *columns):
+    def __init__(self, name, *columns, **kw):
         """Produce a new :class:`_expression.TableClause`.
 
         The object returned is an instance of :class:`_expression.TableClause`
@@ -1947,10 +1947,15 @@ class TableClause(Immutable, FromClause):
            be imported from the plain ``sqlalchemy`` namespace like any
            other SQL element.
 
+
         :param name: Name of the table.
 
         :param columns: A collection of :func:`_expression.column` constructs.
 
+        :param schema: The schema name for this table.
+
+            .. versionadded:: 1.3.17 :func:`_expression.table` can now
+               accept a ``schema`` argument.
         """
 
         super(TableClause, self).__init__()
@@ -1960,6 +1965,12 @@ class TableClause(Immutable, FromClause):
         self.foreign_keys = set()
         for c in columns:
             self.append_column(c)
+
+        schema = kw.pop("schema", None)
+        if schema is not None:
+            self.schema = schema
+        if kw:
+            raise exc.ArgumentError("Unsupported argument(s): %s" % list(kw))
 
     def _init_collections(self):
         pass

@@ -3922,6 +3922,75 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             "(:rem_id, :datatype_id, :value)",
         )
 
+    def test_schema_lowercase_select(self):
+        # test that "schema" works correctly when passed to table
+        t1 = table("foo", column("a"), column("b"), schema="bar")
+        self.assert_compile(
+            select([t1]).select_from(t1),
+            "SELECT bar.foo.a, bar.foo.b FROM bar.foo",
+        )
+
+    def test_schema_lowercase_select_alias(self):
+        # test alias behavior
+        t1 = table("foo", schema="bar")
+        self.assert_compile(
+            select(["*"]).select_from(t1.alias("t")),
+            "SELECT * FROM bar.foo AS t",
+        )
+
+    def test_schema_lowercase_select_labels(self):
+        # test "schema" with extended_labels
+        t1 = table(
+            "baz",
+            column("id", Integer),
+            column("name", String),
+            column("meta", String),
+            schema="here",
+        )
+
+        self.assert_compile(
+            select([t1]).select_from(t1).apply_labels(),
+            "SELECT here.baz.id AS here_baz_id, here.baz.name AS "
+            "here_baz_name, here.baz.meta AS here_baz_meta FROM here.baz",
+        )
+
+    def test_schema_lowercase_select_subquery(self):
+        # test schema plays well with subqueries
+        t1 = table(
+            "yetagain",
+            column("anotherid", Integer),
+            column("anothername", String),
+            schema="here",
+        )
+        s = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .alias()
+        )
+        stmt = select([t1.c.anotherid]).select_from(
+            t1.join(s, t1.c.anotherid == s.c.id)
+        )
+        compiled = stmt.compile()
+        eq_(
+            compiled._create_result_map(),
+            {
+                "anotherid": (
+                    "anotherid",
+                    (t1.c.anotherid, "anotherid", "anotherid",),
+                    t1.c.anotherid.type,
+                )
+            },
+        )
+
+    def test_schema_lowercase_invalid(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"Unsupported argument\(s\): \['not_a_schema'\]",
+            table,
+            "foo",
+            not_a_schema="bar",
+        )
+
 
 class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"

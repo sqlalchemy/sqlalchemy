@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 5309
+
+    Added a ".schema" parameter to the :func:`_expression.table` construct,
+    allowing ad-hoc table expressions to also include a schema name.
+    Pull request courtesy Dylan Modesitt.

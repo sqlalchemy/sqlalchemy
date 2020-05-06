@@ -475,7 +475,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         x = [1]
 
         @event.listens_for(sess, "after_commit")  # noqa
-        def add_another_user(session):
+        def add_another_user(session):  # noqa
             x[0] += 1
 
         sess.add(to_flush.pop())
