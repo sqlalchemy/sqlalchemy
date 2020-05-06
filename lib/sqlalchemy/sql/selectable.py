@@ -1945,7 +1945,8 @@ class TableClause(Immutable, FromClause):
 
         :param columns: A collection of :func:`_expression.column` constructs.
 
-        :param **kw: Additional keyword arguments where ``schema`` can be passed.
+        :param **kw: Additional keyword arguments where ``schema`` can be
+         passed.
 
         """
 
@@ -1962,7 +1963,7 @@ class TableClause(Immutable, FromClause):
             self.schema = schema
         if kw:
             raise exc.ArgumentError(
-                "Unsupported argument(s): %s" % ",".join(kw)
+                "Unsupported argument(s): %s" % list(kw)
             )
 
     def _refresh_for_new_column(self, column):

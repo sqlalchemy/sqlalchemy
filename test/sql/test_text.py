@@ -200,11 +200,11 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # test that "schema" works correctly when passed to table
         t1 = table("foo", schema="bar")
         self.assert_compile(
-                select([
+            select([
                     literal_column("column1 as foobar"),
                     literal_column("column2 as hoho"),
                 ],
-                from_obj=t1,
+                from_obj=t1
             ),
             "SELECT column1 as foobar, column2 as hoho FROM bar.foo"
         )
@@ -215,7 +215,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("foo", schema="bar")
         self.assert_compile(
             select(["*"]).select_from(t1.alias("t")),
-           "SELECT * FROM bar.foo AS t"
+            "SELECT * FROM bar.foo AS t"
         )
 
     def test_select_bundle_columns(self):
@@ -731,7 +731,7 @@ class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_table_kw(self):
         assert_raises_message(
             exc.ArgumentError,
-            r"Unsupported argument\(s\): not_a_schema",
+            r"Unsupported argument\(s\): \['not_a_schema'\]",
             table,
             "foo",
             not_a_schema="bar"
