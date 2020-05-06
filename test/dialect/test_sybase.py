@@ -28,11 +28,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 'SELECT DATEPART("%s", t.col1) AS anon_1 FROM t' % subst,
             )
 
+    def test_limit_offset(self):
+        stmt = select([1]).limit(5).offset(6)
+        assert stmt.compile().params == {"param_1": 5, "param_2": 6}
+        self.assert_compile(
+            stmt, "SELECT 1 ROWS OFFSET :param_1 LIMIT :param_2 "
+        )
+
     def test_offset_not_supported(self):
         stmt = select([1]).offset(10)
         assert_raises_message(
             NotImplementedError,
-            "Sybase ASE does not support OFFSET",
+            "Sybase ASE does not support OFFSET without LIMIT",
             stmt.compile,
             dialect=self.__dialect__,
         )

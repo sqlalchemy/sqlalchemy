@@ -516,13 +516,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def get_select_precolumns(self, select, **kw):
         s = select._distinct and "DISTINCT " or ""
-
-        if select._simple_int_limit and not select._offset:
+        if select._limit_clause is not None and select._offset_clause is None:
             kw["literal_execute"] = True
             s += "TOP %s " % self.process(select._limit_clause, **kw)
-
-        if select._offset:
-            raise NotImplementedError("Sybase ASE does not support OFFSET")
         return s
 
     def get_from_hint_text(self, table, text):
@@ -530,7 +526,20 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
 
     def limit_clause(self, select, **kw):
         # Limit in sybase is after the select keyword
-        return ""
+        text = ""
+        if (
+            select._limit_clause is not None
+            and select._offset_clause is not None
+        ):
+            text = " ROWS OFFSET %s LIMIT %s " % (
+                self.process(select._offset_clause, **kw),
+                self.process(select._limit_clause, **kw),
+            )
+        elif select._offset_clause is not None:
+            raise NotImplementedError(
+                "Sybase ASE does not support OFFSET without LIMIT"
+            )
+        return text
 
     def visit_extract(self, extract, **kw):
         field = self.extract_map.get(extract.field, extract.field)
