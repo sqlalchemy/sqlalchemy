@@ -1962,9 +1962,7 @@ class TableClause(Immutable, FromClause):
         if schema is not None:
             self.schema = schema
         if kw:
-            raise exc.ArgumentError(
-                "Unsupported argument(s): %s" % list(kw)
-            )
+            raise exc.ArgumentError("Unsupported argument(s): %s" % list(kw))
 
     def _refresh_for_new_column(self, column):
         pass
