@@ -200,7 +200,8 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
         # test that "schema" works correctly when passed to table
         t1 = table("foo", schema="bar")
         self.assert_compile(
-            select([
+            select(
+                [
                     literal_column("column1 as foobar"),
                     literal_column("column2 as hoho"),
                 ],
