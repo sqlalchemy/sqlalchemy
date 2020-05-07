@@ -135,6 +135,67 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = "string"
 
+    RETURNS_UNICODE = util.symbol(
+        "RETURNS_UNICODE",
+        """Indicates that the DBAPI returns Python Unicode for VARCHAR,
+        NVARCHAR, and other character-based datatypes in all cases.
+
+        This is the default value for
+        :attr:`.DefaultDialect.returns_unicode_strings` under Python 3.
+
+        .. versionadded:: 1.4
+
+        """,
+    )
+
+    RETURNS_BYTES = util.symbol(
+        "RETURNS_BYTES",
+        """Indicates that the DBAPI returns byte objects under Python 3
+        or non-Unicode string objects under Python 2 for VARCHAR, NVARCHAR,
+        and other character-based datatypes in all cases.
+
+        This may be applied to the
+        :attr:`.DefaultDialect.returns_unicode_strings` attribute.
+
+        .. versionadded:: 1.4
+
+        """,
+    )
+
+    RETURNS_CONDITIONAL = util.symbol(
+        "RETURNS_CONDITIONAL",
+        """Indicates that the DBAPI may return Unicode or bytestrings for
+        VARCHAR, NVARCHAR, and other character-based datatypes, and that
+        SQLAlchemy's default String datatype will need to test on a per-row
+        basis for Unicode or bytes.
+
+        This may be applied to the
+        :attr:`.DefaultDialect.returns_unicode_strings` attribute.
+
+        .. versionadded:: 1.4
+
+        """,
+    )
+
+    RETURNS_UNKNOWN = util.symbol(
+        "RETURNS_UNKNOWN",
+        """Indicates that the dialect should test on first connect what the
+        string-returning behavior of character-based datatypes is.
+
+        This is the default value for DefaultDialect.unicode_returns under
+        Python 2.
+
+        This may be applied to the
+        :attr:`.DefaultDialect.returns_unicode_strings` attribute under
+        Python 2 only.   The value is disallowed under Python 3.
+
+        .. versionadded:: 1.4
+
+        .. deprecated:: 1.4  This value will be removed in SQLAlchemy 2.0.
+
+        """,
+    )
+
     @util.deprecated_params(
         convert_unicode=(
             "1.3",
@@ -293,12 +354,13 @@ class String(Concatenable, TypeEngine):
     def result_processor(self, dialect, coltype):
         wants_unicode = self._expect_unicode or dialect.convert_unicode
         needs_convert = wants_unicode and (
-            dialect.returns_unicode_strings is not True
+            dialect.returns_unicode_strings is not String.RETURNS_UNICODE
             or self._expect_unicode in ("force", "force_nocheck")
         )
         needs_isinstance = (
             needs_convert
             and dialect.returns_unicode_strings
+            in (String.RETURNS_CONDITIONAL, String.RETURNS_UNICODE,)
             and self._expect_unicode != "force_nocheck"
         )
         if needs_convert:

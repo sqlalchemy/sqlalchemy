@@ -648,6 +648,32 @@ class ExecuteTest(fixtures.TablesTest):
         eng2 = eng.execution_options(foo="bar")
         assert eng2._has_events
 
+    def test_works_after_dispose(self):
+        eng = create_engine(testing.db.url)
+        for i in range(3):
+            eq_(eng.scalar(select([1])), 1)
+            eng.dispose()
+
+    def test_works_after_dispose_testing_engine(self):
+        eng = engines.testing_engine()
+        for i in range(3):
+            eq_(eng.scalar(select([1])), 1)
+            eng.dispose()
+
+
+class UnicodeReturnsTest(fixtures.TestBase):
+    @testing.requires.python3
+    def test_unicode_test_not_in_python3(self):
+        eng = engines.testing_engine()
+        eng.dialect.returns_unicode_strings = String.RETURNS_UNKNOWN
+
+        assert_raises_message(
+            tsa.exc.InvalidRequestError,
+            "RETURNS_UNKNOWN is unsupported in Python 3",
+            eng.connect,
+        )
+
+    @testing.requires.python2
     def test_unicode_test_fails_warning(self):
         class MockCursor(engines.DBAPIProxyCursor):
             def execute(self, stmt, params=None, **kw):
@@ -663,20 +689,8 @@ class ExecuteTest(fixtures.TablesTest):
             eng.connect()
 
         # because plain varchar passed, we don't know the correct answer
-        eq_(eng.dialect.returns_unicode_strings, "conditional")
+        eq_(eng.dialect.returns_unicode_strings, String.RETURNS_CONDITIONAL)
         eng.dispose()
-
-    def test_works_after_dispose(self):
-        eng = create_engine(testing.db.url)
-        for i in range(3):
-            eq_(eng.scalar(select([1])), 1)
-            eng.dispose()
-
-    def test_works_after_dispose_testing_engine(self):
-        eng = engines.testing_engine()
-        for i in range(3):
-            eq_(eng.scalar(select([1])), 1)
-            eng.dispose()
 
 
 class ConvenienceExecuteTest(fixtures.TablesTest):

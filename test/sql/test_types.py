@@ -86,6 +86,7 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
 from sqlalchemy.util import OrderedDict
+from sqlalchemy.util import u
 
 
 def _all_dialect_modules():
@@ -761,6 +762,50 @@ class UserDefinedTest(
         a = t.dialect_impl(testing.db.dialect)
         eq_(a.foo, "foo")
         eq_(a.dialect_specific_args["bar"], "bar")
+
+
+class StringConvertUnicodeTest(fixtures.TestBase):
+    @testing.combinations((Unicode,), (String,), argnames="datatype")
+    @testing.combinations((True,), (False,), argnames="convert_unicode")
+    @testing.combinations(
+        (String.RETURNS_CONDITIONAL,),
+        (String.RETURNS_BYTES,),
+        (String.RETURNS_UNICODE),
+        argnames="returns_unicode_strings",
+    )
+    def test_convert_unicode(
+        self, datatype, convert_unicode, returns_unicode_strings
+    ):
+        s1 = datatype()
+        dialect = mock.Mock(
+            returns_unicode_strings=returns_unicode_strings,
+            encoding="utf-8",
+            convert_unicode=convert_unicode,
+        )
+
+        proc = s1.result_processor(dialect, None)
+
+        string = u("méil")
+        bytestring = string.encode("utf-8")
+
+        if (
+            datatype is Unicode or convert_unicode
+        ) and returns_unicode_strings in (
+            String.RETURNS_CONDITIONAL,
+            String.RETURNS_BYTES,
+        ):
+            eq_(proc(bytestring), string)
+
+            if returns_unicode_strings is String.RETURNS_CONDITIONAL:
+                eq_(proc(string), string)
+            else:
+                if util.py3k:
+                    # trying to decode a unicode
+                    assert_raises(TypeError, proc, string)
+                else:
+                    assert_raises(UnicodeEncodeError, proc, string)
+        else:
+            is_(proc, None)
 
 
 class TypeCoerceCastTest(fixtures.TablesTest):

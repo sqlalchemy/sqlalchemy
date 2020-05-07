@@ -950,6 +950,16 @@ class CursorErrTest(fixtures.TestBase):
             url, options=dict(module=dbapi, _initialize=initialize)
         )
         eng.pool.logger = Mock()
+
+        def get_default_schema_name(connection):
+            try:
+                cursor = connection.connection.cursor()
+                connection._cursor_execute(cursor, "statement", {})
+                cursor.close()
+            except exc.DBAPIError:
+                util.warn("Exception attempting to detect")
+
+        eng.dialect._get_default_schema_name = get_default_schema_name
         return eng
 
     def test_cursor_explode(self):

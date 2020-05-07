@@ -209,7 +209,6 @@ the actual ``CREATE TABLE`` statement:
 .. sourcecode:: python+sql
 
     >>> Base.metadata.create_all(engine)
-    SELECT ...
     PRAGMA main.table_info("users")
     ()
     PRAGMA temp.table_info("users")

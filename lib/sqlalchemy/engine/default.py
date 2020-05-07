@@ -94,12 +94,12 @@ class DefaultDialect(interfaces.Dialect):
     if util.py3k:
         supports_unicode_statements = True
         supports_unicode_binds = True
-        returns_unicode_strings = True
+        returns_unicode_strings = sqltypes.String.RETURNS_UNICODE
         description_encoding = None
     else:
         supports_unicode_statements = False
         supports_unicode_binds = False
-        returns_unicode_strings = False
+        returns_unicode_strings = sqltypes.String.RETURNS_UNKNOWN
         description_encoding = "use_encoding"
 
     name = "default"
@@ -325,7 +325,14 @@ class DefaultDialect(interfaces.Dialect):
         except NotImplementedError:
             self.default_isolation_level = None
 
-        self.returns_unicode_strings = self._check_unicode_returns(connection)
+        if self.returns_unicode_strings is sqltypes.String.RETURNS_UNKNOWN:
+            if util.py3k:
+                raise exc.InvalidRequestError(
+                    "RETURNS_UNKNOWN is unsupported in Python 3"
+                )
+            self.returns_unicode_strings = self._check_unicode_returns(
+                connection
+            )
 
         if (
             self.description_encoding is not None
@@ -415,9 +422,13 @@ class DefaultDialect(interfaces.Dialect):
         results = {check_unicode(test) for test in tests}
 
         if results.issuperset([True, False]):
-            return "conditional"
+            return sqltypes.String.RETURNS_CONDITIONAL
         else:
-            return results == {True}
+            return (
+                sqltypes.String.RETURNS_UNICODE
+                if results == {True}
+                else sqltypes.String.RETURNS_BYTES
+            )
 
     def _check_unicode_description(self, connection):
         # all DBAPIs on Py2K return cursor.description as encoded

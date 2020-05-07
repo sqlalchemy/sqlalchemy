@@ -150,7 +150,7 @@ each table first before creating, so it's safe to call multiple times:
 .. sourcecode:: pycon+sql
 
     {sql}>>> metadata.create_all(engine)
-    SE...
+    PRAGMA...
     CREATE TABLE users (
         id INTEGER NOT NULL,
         name VARCHAR,
