@@ -1003,17 +1003,16 @@ class OracleDialect_cx_oracle(OracleDialect):
                         dialect.encoding, errors=dialect.encoding_errors
                     )
                     return cursor.var(
-                        default_type,
+                        cx_Oracle.LONG_STRING,
                         size,
                         cursor.arraysize,
-                        outconverter=lambda value: outconverter(value.read()),
+                        outconverter=outconverter,
                     )
                 else:
                     return cursor.var(
-                        default_type,
+                        cx_Oracle.LONG_STRING,
                         size,
                         cursor.arraysize,
-                        outconverter=lambda value: value.read(),
                         **dialect._cursor_var_unicode_kwargs
                     )
 
@@ -1021,10 +1020,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.BLOB,
             ):
                 return cursor.var(
-                    default_type,
-                    size,
-                    cursor.arraysize,
-                    outconverter=lambda value: value.read(),
+                    cx_Oracle.LONG_BINARY, size, cursor.arraysize,
                 )
 
         return output_type_handler

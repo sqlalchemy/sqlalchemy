@@ -103,23 +103,18 @@ class EncodingErrorsTest(fixtures.TestBase):
         )
 
     _oracle_char_combinations = testing.combinations(
-        ("STRING", cx_Oracle_STRING, False),
-        ("FIXED_CHAR", cx_Oracle_FIXED_CHAR, False),
-        ("CLOB", cx_Oracle_CLOB, True),
-        ("NCLOB", cx_Oracle_NCLOB, True),
-        argnames="cx_oracle_type,use_read",
-        id_="iaa",
+        ("STRING", cx_Oracle_STRING,),
+        ("FIXED_CHAR", cx_Oracle_FIXED_CHAR,),
+        ("CLOB", cx_Oracle_CLOB,),
+        ("NCLOB", cx_Oracle_NCLOB,),
+        argnames="cx_oracle_type",
+        id_="ia",
     )
 
-    def _assert_errorhandler(self, outconverter, use_read, has_errorhandler):
+    def _assert_errorhandler(self, outconverter, has_errorhandler):
         data = ue("\uee2c\u9a66")  # this is u"\uee2c\u9a66"
 
         utf8_w_errors = data.encode("utf-16")
-
-        if use_read:
-            utf8_w_errors = mock.Mock(
-                read=mock.Mock(return_value=utf8_w_errors)
-            )
 
         if has_errorhandler:
 
@@ -132,9 +127,7 @@ class EncodingErrorsTest(fixtures.TestBase):
 
     @_oracle_char_combinations
     @testing.requires.python3
-    def test_older_cx_oracle_warning(
-        self, cx_Oracle, cx_oracle_type, use_read
-    ):
+    def test_older_cx_oracle_warning(self, cx_Oracle, cx_oracle_type):
         cx_Oracle.version = "6.3"
 
         ignore_dialect = cx_oracle.dialect(
@@ -156,7 +149,7 @@ class EncodingErrorsTest(fixtures.TestBase):
     @_oracle_char_combinations
     @testing.requires.python2
     def test_encoding_errors_sqla_py2k(
-        self, cx_Oracle, cx_oracle_type, use_read
+        self, cx_Oracle, cx_oracle_type,
     ):
         ignore_dialect = cx_oracle.dialect(
             dbapi=cx_Oracle, encoding_errors="ignore"
@@ -169,12 +162,12 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
         outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, use_read, True)
+        self._assert_errorhandler(outconverter, True)
 
     @_oracle_char_combinations
     @testing.requires.python2
     def test_no_encoding_errors_sqla_py2k(
-        self, cx_Oracle, cx_oracle_type, use_read
+        self, cx_Oracle, cx_oracle_type,
     ):
         plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
 
@@ -185,12 +178,12 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
         outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, use_read, False)
+        self._assert_errorhandler(outconverter, False)
 
     @_oracle_char_combinations
     @testing.requires.python3
     def test_encoding_errors_cx_oracle_py3k(
-        self, cx_Oracle, cx_oracle_type, use_read
+        self, cx_Oracle, cx_oracle_type,
     ):
         ignore_dialect = cx_oracle.dialect(
             dbapi=cx_Oracle, encoding_errors="ignore"
@@ -203,36 +196,19 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
 
-        if use_read:
-            eq_(
-                cursor.mock_calls,
-                [
-                    mock.call.var(
-                        mock.ANY,
-                        None,
-                        cursor.arraysize,
-                        encodingErrors="ignore",
-                        outconverter=mock.ANY,
-                    )
-                ],
-            )
-        else:
-            eq_(
-                cursor.mock_calls,
-                [
-                    mock.call.var(
-                        mock.ANY,
-                        None,
-                        cursor.arraysize,
-                        encodingErrors="ignore",
-                    )
-                ],
-            )
+        eq_(
+            cursor.mock_calls,
+            [
+                mock.call.var(
+                    mock.ANY, None, cursor.arraysize, encodingErrors="ignore",
+                )
+            ],
+        )
 
     @_oracle_char_combinations
     @testing.requires.python3
     def test_no_encoding_errors_cx_oracle_py3k(
-        self, cx_Oracle, cx_oracle_type, use_read
+        self, cx_Oracle, cx_oracle_type,
     ):
         plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
 
@@ -243,20 +219,10 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
 
-        if use_read:
-            eq_(
-                cursor.mock_calls,
-                [
-                    mock.call.var(
-                        mock.ANY, None, cursor.arraysize, outconverter=mock.ANY
-                    )
-                ],
-            )
-        else:
-            eq_(
-                cursor.mock_calls,
-                [mock.call.var(mock.ANY, None, cursor.arraysize)],
-            )
+        eq_(
+            cursor.mock_calls,
+            [mock.call.var(mock.ANY, None, cursor.arraysize)],
+        )
 
 
 class ComputedReturningTest(fixtures.TablesTest):
