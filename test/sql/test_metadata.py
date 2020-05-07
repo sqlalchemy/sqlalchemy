@@ -611,6 +611,93 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         a.add_is_dependent_on(b)
         eq_(meta.sorted_tables, [b, c, d, a, e])
 
+    def test_fks_deterministic_order(self):
+        meta = MetaData()
+        a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        b = Table("b", meta, Column("foo", Integer))
+        c = Table("c", meta, Column("foo", Integer))
+        d = Table("d", meta, Column("foo", Integer))
+        e = Table("e", meta, Column("foo", Integer, ForeignKey("c.foo")))
+
+        eq_(meta.sorted_tables, [b, c, d, a, e])
+
+    def test_cycles_fks_warning_one(self):
+        meta = MetaData()
+        a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        b = Table("b", meta, Column("foo", Integer, ForeignKey("d.foo")))
+        c = Table("c", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        d = Table("d", meta, Column("foo", Integer, ForeignKey("c.foo")))
+        e = Table("e", meta, Column("foo", Integer))
+
+        with testing.expect_warnings(
+            "Cannot correctly sort tables; there are unresolvable cycles "
+            'between tables "b, c, d", which is usually caused by mutually '
+            "dependent foreign key constraints.  "
+            "Foreign key constraints involving these tables will not be "
+            "considered"
+        ):
+            eq_(meta.sorted_tables, [b, c, d, e, a])
+
+    def test_cycles_fks_warning_two(self):
+        meta = MetaData()
+        a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        b = Table("b", meta, Column("foo", Integer, ForeignKey("a.foo")))
+        c = Table("c", meta, Column("foo", Integer, ForeignKey("e.foo")))
+        d = Table("d", meta, Column("foo", Integer))
+        e = Table("e", meta, Column("foo", Integer, ForeignKey("d.foo")))
+
+        with testing.expect_warnings(
+            "Cannot correctly sort tables; there are unresolvable cycles "
+            'between tables "a, b", which is usually caused by mutually '
+            "dependent foreign key constraints.  "
+            "Foreign key constraints involving these tables will not be "
+            "considered"
+        ):
+            eq_(meta.sorted_tables, [a, b, d, e, c])
+
+    def test_cycles_fks_fks_delivered_separately(self):
+        meta = MetaData()
+        a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        b = Table("b", meta, Column("foo", Integer, ForeignKey("a.foo")))
+        c = Table("c", meta, Column("foo", Integer, ForeignKey("e.foo")))
+        d = Table("d", meta, Column("foo", Integer))
+        e = Table("e", meta, Column("foo", Integer, ForeignKey("d.foo")))
+
+        results = schema.sort_tables_and_constraints(
+            sorted(meta.tables.values(), key=lambda t: t.key)
+        )
+        results[-1] = (None, set(results[-1][-1]))
+        eq_(
+            results,
+            [
+                (a, set()),
+                (b, set()),
+                (d, {fk.constraint for fk in d.foreign_keys}),
+                (e, {fk.constraint for fk in e.foreign_keys}),
+                (c, {fk.constraint for fk in c.foreign_keys}),
+                (
+                    None,
+                    {fk.constraint for fk in a.foreign_keys}.union(
+                        fk.constraint for fk in b.foreign_keys
+                    ),
+                ),
+            ],
+        )
+
+    def test_cycles_fks_usealter(self):
+        meta = MetaData()
+        a = Table("a", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        b = Table(
+            "b",
+            meta,
+            Column("foo", Integer, ForeignKey("d.foo", use_alter=True)),
+        )
+        c = Table("c", meta, Column("foo", Integer, ForeignKey("b.foo")))
+        d = Table("d", meta, Column("foo", Integer, ForeignKey("c.foo")))
+        e = Table("e", meta, Column("foo", Integer))
+
+        eq_(meta.sorted_tables, [b, e, a, c, d])
+
     def test_nonexistent(self):
         assert_raises(
             tsa.exc.NoSuchTableError,
