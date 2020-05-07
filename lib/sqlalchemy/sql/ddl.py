@@ -1037,7 +1037,9 @@ class SchemaDropper(DDLBase):
         self.connection.execute(DropSequence(sequence))
 
 
-def sort_tables(tables, skip_fn=None, extra_dependencies=None):
+def sort_tables(
+    tables, skip_fn=None, extra_dependencies=None,
+):
     """sort a collection of :class:`_schema.Table` objects based on dependency
     .
 
@@ -1051,16 +1053,29 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
 
     .. warning::
 
-        The :func:`.sort_tables` function cannot by itself accommodate
-        automatic resolution of dependency cycles between tables, which
-        are usually caused by mutually dependent foreign key constraints.
-        To resolve these cycles, either the
-        :paramref:`_schema.ForeignKeyConstraint.use_alter`
-        parameter may be applied
-        to those constraints, or use the
-        :func:`_expression.sort_tables_and_constraints`
-        function which will break
-        out foreign key constraints involved in cycles separately.
+        The :func:`._schema.sort_tables` function cannot by itself
+        accommodate automatic resolution of dependency cycles between
+        tables, which are usually caused by mutually dependent foreign key
+        constraints. When these cycles are detected, the foreign keys
+        of these tables are omitted from consideration in the sort.
+        A warning is emitted when this condition occurs, which will be an
+        exception raise in a future release.   Tables which are not part
+        of the cycle will still be returned in dependency order.
+
+        To resolve these cycles, the
+        :paramref:`_schema.ForeignKeyConstraint.use_alter` parameter may be
+        applied to those constraints which create a cycle.  Alternatively,
+        the :func:`_schema.sort_tables_and_constraints` function will
+        automatically return foreign key constraints in a separate
+        collection when cycles are detected so that they may be applied
+        to a schema separately.
+
+        .. versionchanged:: 1.3.17 - a warning is emitted when
+           :func:`_schema.sort_tables` cannot perform a proper sort due to
+           cyclical dependencies.  This will be an exception in a future
+           release.  Additionally, the sort will continue to return
+           other tables not involved in the cycle in dependency order
+           which was not the case previously.
 
     :param tables: a sequence of :class:`_schema.Table` objects.
 
@@ -1078,7 +1093,7 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
 
         :func:`.sort_tables_and_constraints`
 
-        :meth:`_schema.MetaData.sorted_tables` - uses this function to sort
+        :attr:`_schema.MetaData.sorted_tables` - uses this function to sort
 
 
     """
@@ -1098,14 +1113,17 @@ def sort_tables(tables, skip_fn=None, extra_dependencies=None):
     return [
         t
         for (t, fkcs) in sort_tables_and_constraints(
-            tables, filter_fn=_skip_fn, extra_dependencies=extra_dependencies
+            tables,
+            filter_fn=_skip_fn,
+            extra_dependencies=extra_dependencies,
+            _warn_for_cycles=True,
         )
         if t is not None
     ]
 
 
 def sort_tables_and_constraints(
-    tables, filter_fn=None, extra_dependencies=None
+    tables, filter_fn=None, extra_dependencies=None, _warn_for_cycles=False
 ):
     """sort a collection of :class:`_schema.Table`  /
     :class:`_schema.ForeignKeyConstraint`
@@ -1189,9 +1207,20 @@ def sort_tables_and_constraints(
             )
         )
     except exc.CircularDependencyError as err:
+        if _warn_for_cycles:
+            util.warn(
+                "Cannot correctly sort tables; there are unresolvable cycles "
+                'between tables "%s", which is usually caused by mutually '
+                "dependent foreign key constraints.  Foreign key constraints "
+                "involving these tables will not be considered; this warning "
+                "may raise an error in a future release."
+                % (", ".join(sorted(t.fullname for t in err.cycles)),)
+            )
         for edge in err.edges:
             if edge in mutable_dependencies:
                 table = edge[1]
+                if table not in err.cycles:
+                    continue
                 can_remove = [
                     fkc
                     for fkc in table.foreign_key_constraints

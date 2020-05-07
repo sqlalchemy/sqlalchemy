@@ -4215,15 +4215,29 @@ class MetaData(SchemaItem):
 
         .. warning::
 
-            The :attr:`.sorted_tables` accessor cannot by itself accommodate
-            automatic resolution of dependency cycles between tables, which
-            are usually caused by mutually dependent foreign key constraints.
-            To resolve these cycles, either the
-            :paramref:`_schema.ForeignKeyConstraint.use_alter`
-            parameter may be
-            applied to those constraints, or use the
-            :func:`_schema.sort_tables_and_constraints` function which will
-            break out foreign key constraints involved in cycles separately.
+            The :attr:`.MetaData.sorted_tables` attribute cannot by itself
+            accommodate automatic resolution of dependency cycles between
+            tables, which are usually caused by mutually dependent foreign key
+            constraints. When these cycles are detected, the foreign keys
+            of these tables are omitted from consideration in the sort.
+            A warning is emitted when this condition occurs, which will be an
+            exception raise in a future release.   Tables which are not part
+            of the cycle will still be returned in dependency order.
+
+            To resolve these cycles, the
+            :paramref:`_schema.ForeignKeyConstraint.use_alter` parameter may be
+            applied to those constraints which create a cycle.  Alternatively,
+            the :func:`_schema.sort_tables_and_constraints` function will
+            automatically return foreign key constraints in a separate
+            collection when cycles are detected so that they may be applied
+            to a schema separately.
+
+            .. versionchanged:: 1.3.17 - a warning is emitted when
+               :attr:`.MetaData.sorted_tables` cannot perform a proper sort
+               due to cyclical dependencies.  This will be an exception in a
+               future release.  Additionally, the sort will continue to return
+               other tables not involved in the cycle in dependency order which
+               was not the case previously.
 
         .. seealso::
 
