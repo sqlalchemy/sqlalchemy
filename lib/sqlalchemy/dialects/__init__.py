@@ -45,15 +45,21 @@ def _auto_fn(name):
         if dialect == "firebird":
             try:
                 module = __import__("sqlalchemy_firebird")
-                dialect = "dialect"
-            except:
+            except ImportError:
                 module = __import__("sqlalchemy.dialects.firebird").dialects
+                module = getattr(module, dialect)
+        elif dialect == "sybase":
+            try:
+                module = __import__("sqlalchemy_sybase")
+            except ImportError:
+                module = __import__("sqlalchemy.dialects.sybase").dialects
+                module = getattr(module, dialect)
         else:
             module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
+            module = getattr(module, dialect)
     except ImportError:
         return None
 
-    module = getattr(module, dialect)
     if hasattr(module, driver):
         module = getattr(module, driver)
         return lambda: module.dialect
