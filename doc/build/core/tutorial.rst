@@ -797,12 +797,12 @@ not have a name:
     ...           )
     ...        )
     >>> conn.execute(s).fetchall()
-    SELECT users.fullname || ? || addresses.email_address AS title
+    {opensql}SELECT users.fullname || ? || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
     (', ', 'm', 'z', '%@aol.com', '%@msn.com')
-    [(u'Wendy Williams, wendy@aol.com',)]
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 Once again, SQLAlchemy figured out the FROM clause for our statement. In fact
 it will determine the FROM clause based on all of its other bits; the columns
@@ -826,12 +826,12 @@ A shortcut to using :func:`.and_` is to chain together multiple
     ...               )
     ...        )
     >>> conn.execute(s).fetchall()
-    SELECT users.fullname || ? || addresses.email_address AS title
+    {opensql}SELECT users.fullname || ? || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
     (', ', 'm', 'z', '%@aol.com', '%@msn.com')
-    [(u'Wendy Williams, wendy@aol.com',)]
+    {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 The way that we can build up a :func:`_expression.select` construct through successive
 method calls is called :term:`method chaining`.
@@ -860,8 +860,8 @@ unchanged.  Below, we create a :func:`_expression.text` object and execute it:
     ...         "AND users.name BETWEEN :x AND :y "
     ...         "AND (addresses.email_address LIKE :e1 "
     ...             "OR addresses.email_address LIKE :e2)")
-    {sql}>>> conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall()
-    SELECT users.fullname || ', ' || addresses.email_address AS title
+    >>> conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall()
+    {opensql}SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
@@ -940,8 +940,8 @@ result column names in the textual SQL:
     ...        users.c.name,
     ...        addresses.c.email_address
     ...     )
-    {sql}>>> result = conn.execute(stmt)
-    SELECT users.id, addresses.id, users.id, users.name,
+    >>> result = conn.execute(stmt)
+    {opensql}SELECT users.id, addresses.id, users.id, users.name,
         addresses.email_address AS email
     FROM users JOIN addresses ON users.id=addresses.user_id WHERE users.id = 1
     ()
@@ -1015,8 +1015,8 @@ need to refer to any pre-established :class:`_schema.Table` metadata:
     ...                     "OR addresses.email_address LIKE :y)")
     ...             )
     ...         ).select_from(text('users, addresses'))
-    {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
-    SELECT users.fullname || ', ' || addresses.email_address AS title
+    >>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
+    {opensql}SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN 'm' AND 'z'
     AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
@@ -1068,8 +1068,8 @@ be quoted:
     ...        )
     ...    ).select_from(table('users')).select_from(table('addresses'))
 
-    {sql}>>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
-    SELECT users.fullname || ? || addresses.email_address AS anon_1
+    >>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
+    {opensql}SELECT users.fullname || ? || addresses.email_address AS anon_1
     FROM users, addresses
     WHERE users.id = addresses.user_id
     AND users.name BETWEEN 'm' AND 'z'
@@ -1186,8 +1186,8 @@ once for each address.   We create two :class:`_expression.Alias` constructs aga
     ...            a1.c.email_address == 'jack@msn.com',
     ...            a2.c.email_address == 'jack@yahoo.com'
     ...        ))
-    {sql}>>> conn.execute(s).fetchall()
-    SELECT users.id, users.name, users.fullname
+    >>> conn.execute(s).fetchall()
+    {opensql}SELECT users.id, users.name, users.fullname
     FROM users, addresses AS addresses_1, addresses AS addresses_2
     WHERE users.id = addresses_1.user_id
         AND users.id = addresses_2.user_id
@@ -1226,8 +1226,8 @@ by making :class:`.Subquery` of the entire statement:
 
     >>> address_subq = s.subquery()
     >>> s = select([users.c.name]).where(users.c.id == address_subq.c.id)
-    {sql}>>> conn.execute(s).fetchall()
-    SELECT users.name
+    >>> conn.execute(s).fetchall()
+    {opensql}SELECT users.name
     FROM users,
         (SELECT users.id AS id, users.name AS name, users.fullname AS fullname
             FROM users, addresses AS addresses_1, addresses AS addresses_2
@@ -1327,6 +1327,70 @@ Oracle DBAs don't want their black magic being found out ;).
     :func:`_expression.outerjoin`
 
     :class:`_expression.Join`
+
+Common Table Expressions (CTE)
+==============================
+
+Common table expressions are now supported by every major database, including
+modern MySQL, MariaDB, SQLite, PostgreSQL, Oracle and MS SQL Server.   SQLAlchemy
+supports this construct via the :class:`_expression.CTE` object, which one
+typically acquires using the :meth:`_expression.Select.cte` method on a
+:class:`_expression.Select` construct:
+
+
+.. sourcecode:: pycon+sql
+
+    >>> users_cte = select([users.c.id, users.c.name]).where(users.c.name == 'wendy').cte()
+    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id)
+    >>> conn.execute(stmt).fetchall()
+    {opensql}WITH anon_1 AS
+    (SELECT users.id AS id, users.name AS name
+    FROM users
+    WHERE users.name = ?)
+     SELECT addresses.id, addresses.user_id, addresses.email_address
+    FROM addresses, anon_1
+    WHERE addresses.user_id = anon_1.id
+    ('wendy',)
+    {stop}[(3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
+
+The CTE construct is a great way to provide a source of rows that is
+semantically similar to using a subquery, but with a much simpler format
+where the source of rows is neatly tucked away at the top of the query
+where it can be referenced anywhere in the main statement like a regular
+table.
+
+When we construct a :class:`_expression.CTE` object, we make use of it like
+any other table in the statement.  However instead of being added to the
+FROM clause as a subquery, it comes out on top, which has the additional
+benefit of not causing surprise cartesian products.
+
+The RECURSIVE format of CTE is available when one uses the
+:paramref:`_expression.Select.cte.recursive` parameter.   A recursive
+CTE typically requires that we are linking to ourselves as an alias.
+The general form of this kind of operation involves a UNION of the
+original CTE against itself.   Noting that our example tables are not
+well suited to producing an actually useful query with this feature,
+this form looks like:
+
+
+.. sourcecode:: pycon+sql
+
+    >>> users_cte = select([users.c.id, users.c.name]).cte(recursive=True)
+    >>> users_recursive = users_cte.alias()
+    >>> users_cte = users_cte.union(select([users.c.id, users.c.name]).where(users.c.id > users_recursive.c.id))
+    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id)
+    >>> conn.execute(stmt).fetchall()
+    {opensql}WITH RECURSIVE anon_1(id, name) AS
+    (SELECT users.id AS id, users.name AS name
+    FROM users UNION SELECT users.id AS id, users.name AS name
+    FROM users, anon_1 AS anon_2
+    WHERE users.id > anon_2.id)
+     SELECT addresses.id, addresses.user_id, addresses.email_address
+    FROM addresses, anon_1
+    WHERE addresses.user_id = anon_1.id
+    ()
+    {stop}[(1, 1, 'jack@yahoo.com'), (2, 1, 'jack@msn.com'), (3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
+
 
 Everything Else
 ===============
