@@ -75,7 +75,7 @@ def _register_attribute(
     # after the singleparentvalidator, mapper validator
     if useobject:
         backref = prop.back_populates
-        if backref:
+        if backref and prop._effective_sync_backref:
             listen_hooks.append(
                 lambda desc, prop: attributes.backref_listeners(
                     desc, backref, uselist
