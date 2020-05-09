@@ -1,7 +1,7 @@
 ========================
 Developing new Dialects
 ========================
-
+[![Run on Repl.it](https://repl.it/badge/github/sqlalchemy/sqlalchemy)](https://repl.it/github/sqlalchemy/sqlalchemy)
 .. note::
 
    When studying this file, it's probably a good idea to also
