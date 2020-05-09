@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 5316
+
+    A warning is emitted when making use of the :attr:`.MetaData.sorted_tables`
+    attribute as well as the :func:`_schema.sort_tables` function, and the
+    given tables cannot be correctly sorted due to a cyclic dependency between
+    foreign key constraints. In this case, the functions will no longer sort
+    the involved tables by foreign key, and a warning will be emitted. Other
+    tables that are not part of the cycle will still be returned in dependency
+    order. Previously, the sorted_table routines would return a collection that
+    would unconditionally omit all foreign keys when a cycle was detected, and
+    no warning was emitted.
+
