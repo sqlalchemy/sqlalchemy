@@ -585,18 +585,24 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def ctes(self):
         """Target database supports CTEs"""
-
         return only_on(
             [
                 lambda config: against(config, "mysql")
                 and (
-                    config.db.dialect._is_mariadb
-                    and config.db.dialect._mariadb_normalized_version_info
-                    >= (10, 2)
+                    (
+                        config.db.dialect._is_mariadb
+                        and config.db.dialect._mariadb_normalized_version_info
+                        >= (10, 2)
+                    )
+                    or (
+                        not config.db.dialect._is_mariadb
+                        and config.db.dialect.server_version_info >= (8,)
+                    )
                 ),
                 "postgresql",
                 "mssql",
                 "oracle",
+                "sqlite>=3.8.3",
             ]
         )
 
