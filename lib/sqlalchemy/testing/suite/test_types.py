@@ -136,6 +136,15 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         for row in rows:
             assert isinstance(row[0], util.text_type)
 
+    def _test_null_strings(self, connection):
+        unicode_table = self.tables.unicode_table
+
+        connection.execute(unicode_table.insert(), {"unicode_data": None})
+        row = connection.execute(
+            select([unicode_table.c.unicode_data])
+        ).first()
+        eq_(row, (None,))
+
     def _test_empty_strings(self, connection):
         unicode_table = self.tables.unicode_table
 
@@ -164,6 +173,9 @@ class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     def test_empty_strings_varchar(self, connection):
         self._test_empty_strings(connection)
 
+    def test_null_strings_varchar(self, connection):
+        self._test_null_strings(connection)
+
 
 class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     __requires__ = "unicode_data", "text_type"
@@ -174,6 +186,9 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     @requirements.empty_strings_text
     def test_empty_strings_text(self, connection):
         self._test_empty_strings(connection)
+
+    def test_null_strings_text(self, connection):
+        self._test_null_strings(connection)
 
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
@@ -202,12 +217,20 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         row = connection.execute(select([text_table.c.text_data])).first()
         eq_(row, ("some text",))
 
+    @testing.requires.empty_strings_text
     def test_text_empty_strings(self, connection):
         text_table = self.tables.text_table
 
         connection.execute(text_table.insert(), {"text_data": ""})
         row = connection.execute(select([text_table.c.text_data])).first()
         eq_(row, ("",))
+
+    def test_text_null_strings(self, connection):
+        text_table = self.tables.text_table
+
+        connection.execute(text_table.insert(), {"text_data": None})
+        row = connection.execute(select([text_table.c.text_data])).first()
+        eq_(row, (None,))
 
     def test_literal(self):
         self._literal_round_trip(Text, ["some text"], ["some text"])

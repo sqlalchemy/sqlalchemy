@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, oracle, performance
+    :tickets: 5314
+
+    Changed the implementation of fetching CLOB and BLOB objects to use
+    cx_Oracle's native implementation which fetches CLOB/BLOB objects inline
+    with other result columns, rather than performing a separate fetch. As
+    always, this can be disabled by setting auto_convert_lobs to False.
+
+    As part of this change, the behavior of a CLOB that was given a blank
+    string on INSERT now returns None on SELECT, which is now consistent with
+    that of VARCHAR on Oracle.
+

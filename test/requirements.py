@@ -792,7 +792,9 @@ class DefaultRequirements(SuiteRequirements):
         """target database can persist/return an empty string with an
         unbounded text."""
 
-        return exclusions.open()
+        return fails_if(
+            ["oracle"], "oracle converts empty strings to a blank space"
+        )
 
     @property
     def expressions_against_unbounded_text(self):
