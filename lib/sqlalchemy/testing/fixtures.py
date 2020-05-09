@@ -20,6 +20,7 @@ from .. import event
 from .. import util
 from ..ext.declarative import declarative_base
 from ..ext.declarative import DeclarativeMeta
+from ..schema import sort_tables_and_constraints
 
 
 # whether or not we use unittest changes things dramatically,
@@ -199,7 +200,15 @@ class TablesTest(TestBase):
         # no need to run deletes if tables are recreated on setup
         if self.run_define_tables != "each" and self.run_deletes == "each":
             with self.bind.begin() as conn:
-                for table in reversed(self.metadata.sorted_tables):
+                for table in reversed(
+                    [
+                        t
+                        for (t, fks) in sort_tables_and_constraints(
+                            self.metadata.tables.values()
+                        )
+                        if t is not None
+                    ]
+                ):
                     try:
                         conn.execute(table.delete())
                     except sa.exc.DBAPIError as ex:
@@ -272,7 +281,11 @@ class TablesTest(TestBase):
                 table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
-        for table in cls.metadata.sorted_tables:
+        for table, fks in sort_tables_and_constraints(
+            cls.metadata.tables.values()
+        ):
+            if table is None:
+                continue
             if table not in headers:
                 continue
             cls.bind.execute(
