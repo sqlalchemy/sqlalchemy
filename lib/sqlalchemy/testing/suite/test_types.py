@@ -134,11 +134,22 @@ class _UnicodeFixture(_LiteralRoundTripFixture):
         for row in rows:
             assert isinstance(row[0], util.text_type)
 
-    def _test_empty_strings(self):
+    def _test_null_strings(self, connection):
         unicode_table = self.tables.unicode_table
 
-        config.db.execute(unicode_table.insert(), {"unicode_data": u("")})
-        row = config.db.execute(select([unicode_table.c.unicode_data])).first()
+        connection.execute(unicode_table.insert(), {"unicode_data": None})
+        row = connection.execute(
+            select([unicode_table.c.unicode_data])
+        ).first()
+        eq_(row, (None,))
+
+    def _test_empty_strings(self, connection):
+        unicode_table = self.tables.unicode_table
+
+        connection.execute(unicode_table.insert(), {"unicode_data": u("")})
+        row = connection.execute(
+            select([unicode_table.c.unicode_data])
+        ).first()
         eq_(row, (u(""),))
 
     def test_literal(self):
@@ -157,8 +168,11 @@ class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
     datatype = Unicode(255)
 
     @requirements.empty_strings_varchar
-    def test_empty_strings_varchar(self):
-        self._test_empty_strings()
+    def test_empty_strings_varchar(self, connection):
+        self._test_empty_strings(connection)
+
+    def test_null_strings_varchar(self, connection):
+        self._test_null_strings(connection)
 
 
 class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
@@ -168,8 +182,11 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
     datatype = UnicodeText()
 
     @requirements.empty_strings_text
-    def test_empty_strings_text(self):
-        self._test_empty_strings()
+    def test_empty_strings_text(self, connection):
+        self._test_empty_strings(connection)
+
+    def test_null_strings_text(self, connection):
+        self._test_null_strings(connection)
 
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
@@ -198,12 +215,20 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         row = config.db.execute(select([text_table.c.text_data])).first()
         eq_(row, ("some text",))
 
-    def test_text_empty_strings(self):
+    @testing.requires.empty_strings_text
+    def test_text_empty_strings(self, connection):
         text_table = self.tables.text_table
 
-        config.db.execute(text_table.insert(), {"text_data": ""})
-        row = config.db.execute(select([text_table.c.text_data])).first()
+        connection.execute(text_table.insert(), {"text_data": ""})
+        row = connection.execute(select([text_table.c.text_data])).first()
         eq_(row, ("",))
+
+    def test_text_null_strings(self, connection):
+        text_table = self.tables.text_table
+
+        connection.execute(text_table.insert(), {"text_data": None})
+        row = connection.execute(select([text_table.c.text_data])).first()
+        eq_(row, (None,))
 
     def test_literal(self):
         self._literal_round_trip(Text, ["some text"], ["some text"])
