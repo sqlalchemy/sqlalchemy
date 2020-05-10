@@ -1271,7 +1271,7 @@ typically acquires using the :meth:`_expression.Select.cte` method on a
 .. sourcecode:: pycon+sql
 
     >>> users_cte = select([users.c.id, users.c.name]).where(users.c.name == 'wendy').cte()
-    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id)
+    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id).order_by(addresses.c.id)
     >>> conn.execute(stmt).fetchall()
     {opensql}WITH anon_1 AS
     (SELECT users.id AS id, users.name AS name
@@ -1279,7 +1279,7 @@ typically acquires using the :meth:`_expression.Select.cte` method on a
     WHERE users.name = ?)
      SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses, anon_1
-    WHERE addresses.user_id = anon_1.id
+    WHERE addresses.user_id = anon_1.id ORDER BY addresses.id
     ('wendy',)
     {stop}[(3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
 
@@ -1308,7 +1308,7 @@ this form looks like:
     >>> users_cte = select([users.c.id, users.c.name]).cte(recursive=True)
     >>> users_recursive = users_cte.alias()
     >>> users_cte = users_cte.union(select([users.c.id, users.c.name]).where(users.c.id > users_recursive.c.id))
-    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id)
+    >>> stmt = select([addresses]).where(addresses.c.user_id == users_cte.c.id).order_by(addresses.c.id)
     >>> conn.execute(stmt).fetchall()
     {opensql}WITH RECURSIVE anon_1(id, name) AS
     (SELECT users.id AS id, users.name AS name
@@ -1317,7 +1317,7 @@ this form looks like:
     WHERE users.id > anon_2.id)
      SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses, anon_1
-    WHERE addresses.user_id = anon_1.id
+    WHERE addresses.user_id = anon_1.id ORDER BY addresses.id
     ()
     {stop}[(1, 1, 'jack@yahoo.com'), (2, 1, 'jack@msn.com'), (3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
 
