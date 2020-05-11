@@ -514,9 +514,6 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         {"doy": "dayofyear", "dow": "weekday", "milliseconds": "millisecond"},
     )
 
-    def get_select_precolumns(self, select, **kw):
-        return select._distinct and "DISTINCT " or ""
-
     def get_from_hint_text(self, table, text):
         return text
 
