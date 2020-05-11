@@ -2,7 +2,6 @@ from sqlalchemy import extract
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy.dialects import sybase
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 
@@ -32,17 +31,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = select([1]).limit(5).offset(6)
         assert stmt.compile().params == {"param_1": 5, "param_2": 6}
         self.assert_compile(
-            stmt, "SELECT 1 ROWS OFFSET :param_1 LIMIT :param_2 "
+            stmt, "SELECT 1 ROWS LIMIT :param_1 OFFSET :param_2"
         )
 
-    def test_offset_not_supported(self):
+    def test_offset(self):
         stmt = select([1]).offset(10)
-        assert_raises_message(
-            NotImplementedError,
-            "Sybase ASE does not support OFFSET without LIMIT",
-            stmt.compile,
-            dialect=self.__dialect__,
-        )
+        assert stmt.compile().params == {"param_1": 10}
+        self.assert_compile(stmt, "SELECT 1 ROWS OFFSET :param_1")
+
+    def test_limit(self):
+        stmt = select([1]).limit(5)
+        assert stmt.compile().params == {"param_1": 5}
+        self.assert_compile(stmt, "SELECT 1 ROWS LIMIT :param_1")
 
     def test_delete_extra_froms(self):
         t1 = sql.table("t1", sql.column("c1"))
