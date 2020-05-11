@@ -14,7 +14,8 @@ from .. import util
 class PyODBCConnector(Connector):
     driver = "pyodbc"
 
-    supports_sane_rowcount_returning = False
+    # this is no longer False for pyodbc in general
+    supports_sane_rowcount_returning = True
     supports_sane_multi_rowcount = False
 
     supports_unicode_statements = True
