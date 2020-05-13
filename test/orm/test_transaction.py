@@ -562,6 +562,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             sess.rollback,
         )
 
+    @testing.requires.independent_connections
     @testing.emits_warning(".*previous exception")
     def test_failed_rollback_deactivates_transaction(self):
         # test #4050
@@ -624,6 +625,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         # outermost is active
         eq_(session.transaction._state, _session.ACTIVE)
 
+    @testing.requires.independent_connections
     @testing.emits_warning(".*previous exception")
     def test_failed_rollback_deactivates_transaction_ctx_integration(self):
         # test #4050 in the same context as that of oslo.db
