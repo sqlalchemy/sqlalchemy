@@ -880,7 +880,15 @@ class _ConnectionFairy(object):
                     ", via agent" if self._reset_agent else "",
                 )
             if self._reset_agent:
-                self._reset_agent.rollback()
+                if not self._reset_agent.is_active:
+                    util.warn(
+                        "Reset agent is not active.  "
+                        "This should not occur unless there was already "
+                        "a connectivity error in progress."
+                    )
+                    pool._dialect.do_rollback(self)
+                else:
+                    self._reset_agent.rollback()
             else:
                 pool._dialect.do_rollback(self)
         elif pool._reset_on_return is reset_commit:
@@ -891,7 +899,15 @@ class _ConnectionFairy(object):
                     ", via agent" if self._reset_agent else "",
                 )
             if self._reset_agent:
-                self._reset_agent.commit()
+                if not self._reset_agent.is_active:
+                    util.warn(
+                        "Reset agent is not active.  "
+                        "This should not occur unless there was already "
+                        "a connectivity error in progress."
+                    )
+                    pool._dialect.do_commit(self)
+                else:
+                    self._reset_agent.commit()
             else:
                 pool._dialect.do_commit(self)
 
