@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5326
+
+    Fixed fairly critical issue where the DBAPI connection could be returned to
+    the connection pool while still in an un-rolled-back state. The reset agent
+    responsible for rolling back the connection could be corrupted in the case
+    that the transaction was "closed" without being rolled back or committed,
+    which can occur in some scenarios when using ORM sessions and emitting
+    .close() in a certain pattern involving savepoints.   The fix ensures that
+    the reset agent is always active.
+

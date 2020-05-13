@@ -689,6 +689,7 @@ class Connection(Connectable):
                 self._autobegin()
             else:
                 self._transaction = RootTransaction(self)
+                self.connection._reset_agent = self._transaction
                 return self._transaction
 
         trans = NestedTransaction(self, self._transaction)
@@ -819,9 +820,26 @@ class Connection(Connectable):
             if trans._is_root:
                 assert trans._parent is trans
                 self._transaction = None
+
+                # test suite w/ SingletonThreadPool will have cases
+                # where _reset_agent is on a different Connection
+                # entirely so we can't assert this here.
+                # if (
+                #    not self._is_future
+                #    and self._still_open_and_connection_is_valid
+                # ):
+                #    assert self.__connection._reset_agent is None
             else:
                 assert trans._parent is not trans
                 self._transaction = trans._parent
+
+                # not doing this assertion for now, however this is how
+                # it would look:
+                # if self._still_open_and_connection_is_valid:
+                #    trans = self._transaction
+                #    while not trans._is_root:
+                #        trans = trans._parent
+                #    assert self.__connection._reset_agent is trans
 
     def _rollback_to_savepoint_impl(
         self, name, context, deactivate_only=False
@@ -1965,10 +1983,10 @@ class Transaction(object):
         an enclosing transaction.
 
         """
-        if not self._parent.is_active:
-            return
-        if self._parent is self:
+
+        if self._parent.is_active and self._parent is self:
             self.rollback()
+        self.connection._discard_transaction(self)
 
     def rollback(self):
         """Roll back this :class:`.Transaction`.

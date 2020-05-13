@@ -635,6 +635,63 @@ class ResetAgentTest(fixtures.TestBase):
             trans.commit()
             assert connection.connection._reset_agent is None
 
+    def test_trans_close(self):
+        with testing.db.connect() as connection:
+            trans = connection.begin()
+            assert connection.connection._reset_agent is trans
+            trans.close()
+            assert connection.connection._reset_agent is None
+
+    def test_trans_reset_agent_broken_ensure(self):
+        eng = testing_engine()
+        conn = eng.connect()
+        trans = conn.begin()
+        assert conn.connection._reset_agent is trans
+        trans.is_active = False
+
+        with expect_warnings("Reset agent is not active"):
+            conn.close()
+
+    def test_trans_commit_reset_agent_broken_ensure(self):
+        eng = testing_engine(options={"pool_reset_on_return": "commit"})
+        conn = eng.connect()
+        trans = conn.begin()
+        assert conn.connection._reset_agent is trans
+        trans.is_active = False
+
+        with expect_warnings("Reset agent is not active"):
+            conn.close()
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_close(self):
+        with testing.db.connect() as connection:
+            t1 = connection.begin()
+            assert connection.connection._reset_agent is t1
+            t2 = connection.begin_nested()
+            assert connection.connection._reset_agent is t1
+            assert connection._transaction is t2
+            t2.close()
+            assert connection._transaction is t1
+            assert connection.connection._reset_agent is t1
+            t1.close()
+            assert connection.connection._reset_agent is None
+        assert not t1.is_active
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_rollback(self):
+        with testing.db.connect() as connection:
+            t1 = connection.begin()
+            assert connection.connection._reset_agent is t1
+            t2 = connection.begin_nested()
+            assert connection.connection._reset_agent is t1
+            assert connection._transaction is t2
+            t2.close()
+            assert connection._transaction is t1
+            assert connection.connection._reset_agent is t1
+            t1.rollback()
+            assert connection.connection._reset_agent is None
+        assert not t1.is_active
+
     @testing.requires.savepoints
     def test_begin_nested_close(self):
         with testing.db.connect() as connection:
