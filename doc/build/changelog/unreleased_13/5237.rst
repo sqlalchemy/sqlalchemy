@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, usecase
-    :tickets: 5237
-
-    Introduce :paramref:`_orm.relationship.sync_backref` flag in a relationship
-    to control if the synchronization events that mutate the in-Python
-    attributes are added. This supersedes the previous change :ticket:`5149`,
-    which warned that ``viewonly=True`` relationship target of a
-    back_populates or backref configuration would be disallowed.

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 5246
-
-    Some modifications to how the cx_oracle dialect sets up per-column
-    outputtype handlers for LOB and numeric datatypes to adjust for potential
-    changes coming in cx_Oracle 8.
-

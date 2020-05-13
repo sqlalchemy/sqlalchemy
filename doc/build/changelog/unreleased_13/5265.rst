@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 5265
-
-    Added support for columns or type :class:`.ARRAY` of :class:`.Enum`,
-    :class:`.JSON` or :class:`_postgresql.JSONB` in PostgreSQL.
-    Previously a workaround was required in these use cases.
-
