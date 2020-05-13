@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mssql, reflection
-    :tickets: 5255
-
-    Fix a regression introduced by the reflection of computed column in
-    MSSQL when using the legacy TDS version 4.2. The dialect will try
-    to detect the protocol version of first connect and run in compatibility
-    mode if it cannot detect it.

@@ -12,7 +12,179 @@
 
 .. changelog::
     :version: 1.3.17
-    :include_notes_from: unreleased_13
+    :released: May 13, 2020
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5246
+
+        Some modifications to how the cx_oracle dialect sets up per-column
+        outputtype handlers for LOB and numeric datatypes to adjust for potential
+        changes coming in cx_Oracle 8.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5288
+
+        Fixed bug where using :func:`.with_polymorphic` as the target of a join via
+        :meth:`.RelationshipComparator.of_type` on a mapper that already has a
+        subquery-based with_polymorphic setting that's equivalent to the one
+        requested would not correctly alias the ON clause in the join.
+
+    .. change::
+        :tags: bug, oracle, performance
+        :tickets: 5314
+
+        Changed the implementation of fetching CLOB and BLOB objects to use
+        cx_Oracle's native implementation which fetches CLOB/BLOB objects inline
+        with other result columns, rather than performing a separate fetch. As
+        always, this can be disabled by setting auto_convert_lobs to False.
+
+        As part of this change, the behavior of a CLOB that was given a blank
+        string on INSERT now returns None on SELECT, which is now consistent with
+        that of VARCHAR on Oracle.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 5265
+
+        Added support for columns or type :class:`.ARRAY` of :class:`.Enum`,
+        :class:`.JSON` or :class:`_postgresql.JSONB` in PostgreSQL.
+        Previously a workaround was required in these use cases.
+
+
+    .. change::
+        :tags: schema
+        :tickets: 4138
+
+        Add ``comment`` attribute to :class:`_schema.Column` ``__repr__`` method.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5303
+
+        Fixed issue in the area of where loader options such as selectinload()
+        interact with the baked query system, such that the caching of a query is
+        not supposed to occur if the loader options themselves have elements such
+        as with_polymorphic() objects in them that currently are not
+        cache-compatible.  The baked loader could sometimes not fully invalidate
+        itself in these some of these scenarios leading to missed eager loads.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5326
+
+        Fixed fairly critical issue where the DBAPI connection could be returned to
+        the connection pool while still in an un-rolled-back state. The reset agent
+        responsible for rolling back the connection could be corrupted in the case
+        that the transaction was "closed" without being rolled back or committed,
+        which can occur in some scenarios when using ORM sessions and emitting
+        .close() in a certain pattern involving savepoints.   The fix ensures that
+        the reset agent is always active.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5304
+
+        Modified the internal "identity set" implementation, which is a set that
+        hashes objects on their id() rather than their hash values, to not actually
+        call the ``__hash__()`` method of the objects, which are typically
+        user-mapped objects.  Some methods were calling this method as a side
+        effect of the implementation.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 5266
+
+        Raise an explicit :class:`.exc.CompileError` when adding a table with a
+        column of type :class:`.ARRAY` of :class:`.Enum` configured with
+        :paramref:`.Enum.native_enum` set to ``False`` when
+        :paramref:`.Enum.create_constraint` is not set to ``False``
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 5298
+
+        Fixed issue where an :class:`.Index` that is deferred in being associated
+        with a table, such as as when it contains a :class:`.Column` that is not
+        associated with any :class:`.Table` yet,  would fail to attach correctly if
+        it also contained a non table-oriented expession.
+
+
+    .. change::
+        :tags: change, firebird
+        :tickets: 5278
+
+        Adjusted dialect loading for ``firebird://`` URIs so the external
+        sqlalchemy-firebird dialect will be used if it has been installed,
+        otherwise fall back to the (now deprecated) internal Firebird dialect.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 5255
+
+        Fix a regression introduced by the reflection of computed column in
+        MSSQL when using the legacy TDS version 4.2. The dialect will try
+        to detect the protocol version of first connect and run in compatibility
+        mode if it cannot detect it.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 5271
+
+        Fix a regression introduced by the reflection of computed column in
+        MSSQL when using SQL server versions before 2012, which does not support
+        the ``concat`` function.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5269
+
+        An informative error message is raised when an ORM many-to-one comparison
+        is attempted against an object that is not an actual mapped instance.
+        Comparisons such as those to scalar subqueries aren't supported;
+        generalized comparison with subqueries is better achieved using
+        :meth:`~.RelationshipProperty.Comparator.has`.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 5262
+
+        Added an accessor :attr:`.ColumnProperty.Comparator.expressions` which
+        provides access to the group of columns mapped under a multi-column
+        :class:`.ColumnProperty` attribute.
+
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 5316
+
+        A warning is emitted when making use of the :attr:`.MetaData.sorted_tables`
+        attribute as well as the :func:`_schema.sort_tables` function, and the
+        given tables cannot be correctly sorted due to a cyclic dependency between
+        foreign key constraints. In this case, the functions will no longer sort
+        the involved tables by foreign key, and a warning will be emitted. Other
+        tables that are not part of the cycle will still be returned in dependency
+        order. Previously, the sorted_table routines would return a collection that
+        would unconditionally omit all foreign keys when a cycle was detected, and
+        no warning was emitted.
+
+
+    .. change::
+        :tags: orm, usecase
+        :tickets: 5237
+
+        Introduce :paramref:`_orm.relationship.sync_backref` flag in a relationship
+        to control if the synchronization events that mutate the in-Python
+        attributes are added. This supersedes the previous change :ticket:`5149`,
+        which warned that ``viewonly=True`` relationship target of a
+        back_populates or backref configuration would be disallowed.
 
 .. changelog::
     :version: 1.3.16
