@@ -821,25 +821,13 @@ class Connection(Connectable):
                 assert trans._parent is trans
                 self._transaction = None
 
-                # test suite w/ SingletonThreadPool will have cases
-                # where _reset_agent is on a different Connection
-                # entirely so we can't assert this here.
-                # if (
-                #    not self._is_future
-                #    and self._still_open_and_connection_is_valid
-                # ):
-                #    assert self.__connection._reset_agent is None
             else:
                 assert trans._parent is not trans
                 self._transaction = trans._parent
 
-                # not doing this assertion for now, however this is how
-                # it would look:
-                # if self._still_open_and_connection_is_valid:
-                #    trans = self._transaction
-                #    while not trans._is_root:
-                #        trans = trans._parent
-                #    assert self.__connection._reset_agent is trans
+        if not self._is_future and self._still_open_and_connection_is_valid:
+            if self.__connection._reset_agent is trans:
+                self.__connection._reset_agent = None
 
     def _rollback_to_savepoint_impl(
         self, name, context, deactivate_only=False

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5326
+
+    Further refinements to the fixes to the "reset" agent fixed in
+    :ticket:`5326`, which now emits a warning when it is not being correctly
+    invoked and corrects for the behavior.  Additional scenarios have been
+    identified and fixed where this warning was being emitted.
+

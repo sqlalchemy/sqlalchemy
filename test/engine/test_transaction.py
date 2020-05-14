@@ -663,7 +663,7 @@ class ResetAgentTest(fixtures.TestBase):
             conn.close()
 
     @testing.requires.savepoints
-    def test_begin_nested_trans_close(self):
+    def test_begin_nested_trans_close_one(self):
         with testing.db.connect() as connection:
             t1 = connection.begin()
             assert connection.connection._reset_agent is t1
@@ -672,6 +672,20 @@ class ResetAgentTest(fixtures.TestBase):
             assert connection._transaction is t2
             t2.close()
             assert connection._transaction is t1
+            assert connection.connection._reset_agent is t1
+            t1.close()
+            assert connection.connection._reset_agent is None
+        assert not t1.is_active
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_close_two(self):
+        with testing.db.connect() as connection:
+            t1 = connection.begin()
+            assert connection.connection._reset_agent is t1
+            t2 = connection.begin_nested()
+            assert connection.connection._reset_agent is t1
+            assert connection._transaction is t2
+
             assert connection.connection._reset_agent is t1
             t1.close()
             assert connection.connection._reset_agent is None
