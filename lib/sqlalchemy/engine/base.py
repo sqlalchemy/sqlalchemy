@@ -799,18 +799,12 @@ class Connection(Connectable):
         if trans is self.__transaction:
             if trans._parent is trans:
                 self.__transaction = None
-                if self._still_open_and_connection_is_valid:
-                    assert self.__connection._reset_agent is None
             else:
                 self.__transaction = trans._parent
 
-                # not doing this assertion for now, however this is how
-                # it would look:
-                # if self._still_open_and_connection_is_valid:
-                #    trans = self._transaction
-                #    while not trans._is_root:
-                #        trans = trans._parent
-                #    assert self.__connection._reset_agent is trans
+        if self._still_open_and_connection_is_valid:
+            if self.__connection._reset_agent is trans:
+                self.__connection._reset_agent = None
 
     def _rollback_to_savepoint_impl(self, name, context):
         assert not self.__branch_from
