@@ -650,3 +650,6 @@ Default Objects API
 
 .. autoclass:: Sequence
     :members:
+
+
+.. autoclass:: IdentityOptions

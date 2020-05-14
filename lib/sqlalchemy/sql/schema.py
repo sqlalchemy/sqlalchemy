@@ -2315,7 +2315,60 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%r)" % (self.arg,)
 
 
-class Sequence(roles.StatementRole, DefaultGenerator):
+class IdentityOptions(object):
+    """Defines options for a named database sequence or an identity column.
+
+    .. versionadded:: 1.3.18
+
+    .. seealso::
+
+        :class:`.Sequence`
+
+    """
+
+    def __init__(
+        self,
+        start=None,
+        increment=None,
+        minvalue=None,
+        maxvalue=None,
+        nominvalue=None,
+        nomaxvalue=None,
+        cycle=None,
+        cache=None,
+        order=None,
+    ):
+        """Construct a :class:`.IdentityOptions` object.
+
+        See the :class:`.Sequence` documentation for a complete description
+        of the parameters
+
+        :param start: the starting index of the sequence.
+        :param increment: the increment value of the sequence.
+        :param minvalue: the minimum value of the sequence.
+        :param maxvalue: the maximum value of the sequence.
+        :param nominvalue: no minimum value of the sequence.
+        :param nomaxvalue: no maximum value of the sequence.
+        :param cycle: allows the sequence to wrap around when the maxvalue
+         or minvalue has been reached.
+        :param cache: optional integer value; number of future values in the
+         sequence which are calculated in advance.
+        :param order: optional boolean value; if true, renders the
+         ORDER keyword.
+         name.
+        """
+        self.start = start
+        self.increment = increment
+        self.minvalue = minvalue
+        self.maxvalue = maxvalue
+        self.nominvalue = nominvalue
+        self.nomaxvalue = nomaxvalue
+        self.cycle = cycle
+        self.cache = cache
+        self.order = order
+
+
+class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
     """Represents a named database sequence.
 
     The :class:`.Sequence` object represents the name and configurational
@@ -2373,7 +2426,7 @@ class Sequence(roles.StatementRole, DefaultGenerator):
     ):
         """Construct a :class:`.Sequence` object.
 
-        :param name: The name of the sequence.
+        :param name: the name of the sequence.
         :param start: the starting index of the sequence.  This value is
          used when the CREATE SEQUENCE command is emitted to the database
          as the value of the "START WITH" clause.   If ``None``, the
@@ -2431,7 +2484,7 @@ class Sequence(roles.StatementRole, DefaultGenerator):
 
          .. versionadded:: 1.0.7
 
-        :param schema: Optional schema name for the sequence, if located
+        :param schema: optional schema name for the sequence, if located
          in a schema other than the default.  The rules for selecting the
          schema name when a :class:`_schema.MetaData`
          is also present are the same
@@ -2457,10 +2510,10 @@ class Sequence(roles.StatementRole, DefaultGenerator):
          this sequence on the PostgreSQL backend, where the SERIAL keyword
          creates a sequence for us automatically".
         :param quote: boolean value, when ``True`` or ``False``, explicitly
-         forces quoting of the schema name on or off.  When left at its
-         default of ``None``, normal quoting rules based on casing and
-         reserved words take place.
-        :param quote_schema: set the quoting preferences for the ``schema``
+         forces quoting of the :paramref:`_schema.Sequence.name` on or off.
+         When left at its default of ``None``, normal quoting rules based
+         on casing and reserved words take place.
+        :param quote_schema: Set the quoting preferences for the ``schema``
          name.
 
         :param metadata: optional :class:`_schema.MetaData` object which this
@@ -2502,17 +2555,20 @@ class Sequence(roles.StatementRole, DefaultGenerator):
          no value is otherwise present for that column in the statement.
 
         """
-        super(Sequence, self).__init__(for_update=for_update)
+        DefaultGenerator.__init__(self, for_update=for_update)
+        IdentityOptions.__init__(
+            self,
+            start=start,
+            increment=increment,
+            minvalue=minvalue,
+            maxvalue=maxvalue,
+            nominvalue=nominvalue,
+            nomaxvalue=nomaxvalue,
+            cycle=cycle,
+            cache=cache,
+            order=order,
+        )
         self.name = quoted_name(name, quote)
-        self.start = start
-        self.increment = increment
-        self.minvalue = minvalue
-        self.maxvalue = maxvalue
-        self.nominvalue = nominvalue
-        self.nomaxvalue = nomaxvalue
-        self.cycle = cycle
-        self.cache = cache
-        self.order = order
         self.optional = optional
         if schema is BLANK_SCHEMA:
             self.schema = schema = None
