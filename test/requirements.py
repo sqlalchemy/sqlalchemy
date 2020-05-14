@@ -720,7 +720,7 @@ class DefaultRequirements(SuiteRequirements):
 
         def pg_prepared_transaction(config):
             if not against(config, "postgresql"):
-                return False
+                return True
 
             with config.db.connect() as conn:
                 try:
@@ -743,19 +743,19 @@ class DefaultRequirements(SuiteRequirements):
                     "oracle", "two-phase xact not implemented in SQLA/oracle"
                 ),
                 no_support(
-                    "drizzle", "two-phase xact not supported by database"
-                ),
-                no_support(
                     "sqlite", "two-phase xact not supported by database"
                 ),
                 no_support(
                     "sybase", "two-phase xact not supported by drivers/SQLA"
                 ),
-                no_support(
-                    "mysql",
-                    "recent MySQL communiity editions have too many issues "
-                    "(late 2016), disabling for now",
-                ),
+                # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
+                # we are evaluating which modern MySQL / MariaDB versions
+                # can handle two-phase testing without too many problems
+                # no_support(
+                #     "mysql",
+                #    "recent MySQL communiity editions have too many issues "
+                #    "(late 2016), disabling for now",
+                # ),
                 NotPredicate(
                     LambdaPredicate(
                         pg_prepared_transaction,
@@ -768,7 +768,9 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def two_phase_recovery(self):
         return self.two_phase_transactions + (
-            skip_if("mysql", "crashes on most mariadb and mysql versions")
+            skip_if(
+                "mysql", "still can't get recover to work w/ MariaDB / MySQL"
+            )
         )
 
     @property

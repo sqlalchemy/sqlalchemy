@@ -640,18 +640,20 @@ class ConnectionEvents(event.Events):
 
         :param conn: :class:`_engine.Connection` object
         :param name: specified name used for the savepoint.
-        :param context: :class:`.ExecutionContext` in use.  May be ``None``.
+        :param context: not used
 
         """
+        # TODO: deprecate "context"
 
     def release_savepoint(self, conn, name, context):
         """Intercept release_savepoint() events.
 
         :param conn: :class:`_engine.Connection` object
         :param name: specified name used for the savepoint.
-        :param context: :class:`.ExecutionContext` in use.  May be ``None``.
+        :param context: not used
 
         """
+        # TODO: deprecate "context"
 
     def begin_twophase(self, conn, xid):
         """Intercept begin_twophase() events.

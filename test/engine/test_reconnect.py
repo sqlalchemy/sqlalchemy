@@ -103,8 +103,21 @@ def mock_connection():
         else:
             return
 
+    def commit():
+        if conn.explode == "commit":
+            raise MockDisconnect("Lost the DB connection on commit")
+        elif conn.explode == "commit_no_disconnect":
+            raise MockError(
+                "something broke on commit but we didn't lose the "
+                "connection"
+            )
+        else:
+            return
+
     conn = Mock(
-        rollback=Mock(side_effect=rollback), cursor=Mock(side_effect=cursor())
+        rollback=Mock(side_effect=rollback),
+        commit=Mock(side_effect=commit),
+        cursor=Mock(side_effect=cursor()),
     )
     return conn
 
@@ -420,7 +433,7 @@ class MockReconnectTest(fixtures.TestBase):
             [[call()], [call()], []],
         )
 
-    def test_invalidate_trans(self):
+    def test_invalidate_on_execute_trans(self):
         conn = self.db.connect()
         trans = conn.begin()
         self.dbapi.shutdown()
@@ -432,7 +445,7 @@ class MockReconnectTest(fixtures.TestBase):
         assert conn.invalidated
         assert trans.is_active
         assert_raises_message(
-            tsa.exc.StatementError,
+            tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
             select([1]),
@@ -440,12 +453,30 @@ class MockReconnectTest(fixtures.TestBase):
         assert trans.is_active
 
         assert_raises_message(
-            tsa.exc.InvalidRequestError,
+            tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             trans.commit,
         )
 
-        assert trans.is_active
+        # now it's inactive...
+        assert not trans.is_active
+
+        # but still associated with the connection
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute,
+            select([1]),
+        )
+        assert not trans.is_active
+
+        # still can't commit... error stays the same
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            trans.commit,
+        )
+
         trans.rollback()
         assert not trans.is_active
         conn.execute(select([1]))
@@ -454,6 +485,104 @@ class MockReconnectTest(fixtures.TestBase):
             [c.close.mock_calls for c in self.dbapi.connections],
             [[call()], []],
         )
+
+    def test_invalidate_on_commit_trans(self):
+        conn = self.db.connect()
+        trans = conn.begin()
+        self.dbapi.shutdown("commit")
+
+        assert_raises(tsa.exc.DBAPIError, trans.commit)
+
+        assert not conn.closed
+        assert conn.invalidated
+        assert not trans.is_active
+
+        # error stays consistent
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute,
+            select([1]),
+        )
+        assert not trans.is_active
+
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            trans.commit,
+        )
+
+        assert not trans.is_active
+
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute,
+            select([1]),
+        )
+        assert not trans.is_active
+
+        trans.rollback()
+        assert not trans.is_active
+        conn.execute(select([1]))
+        assert not conn.invalidated
+
+    def test_commit_fails_contextmanager(self):
+        # this test is also performed in test/engine/test_transaction.py
+        # using real connections
+        conn = self.db.connect()
+
+        def go():
+            with conn.begin():
+                self.dbapi.shutdown("commit_no_disconnect")
+
+        assert_raises(tsa.exc.DBAPIError, go)
+
+        assert not conn.in_transaction()
+
+    def test_commit_fails_trans(self):
+        # this test is also performed in test/engine/test_transaction.py
+        # using real connections
+
+        conn = self.db.connect()
+        trans = conn.begin()
+        self.dbapi.shutdown("commit_no_disconnect")
+
+        assert_raises(tsa.exc.DBAPIError, trans.commit)
+
+        assert not conn.closed
+        assert not conn.invalidated
+        assert not trans.is_active
+
+        # error stays consistent
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "This connection is on an inactive transaction.  Please rollback",
+            conn.execute,
+            select([1]),
+        )
+        assert not trans.is_active
+
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "This connection is on an inactive transaction.  Please rollback",
+            trans.commit,
+        )
+
+        assert not trans.is_active
+
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "This connection is on an inactive transaction.  Please rollback",
+            conn.execute,
+            select([1]),
+        )
+        assert not trans.is_active
+
+        trans.rollback()
+        assert not trans.is_active
+        conn.execute(select([1]))
+        assert not conn.invalidated
 
     def test_invalidate_dont_call_finalizer(self):
         conn = self.db.connect()
@@ -497,9 +626,9 @@ class MockReconnectTest(fixtures.TestBase):
 
         conn.close()
         assert conn.closed
-        assert conn.invalidated
+        assert not conn.invalidated
         assert_raises_message(
-            tsa.exc.StatementError,
+            tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
             select([1]),
@@ -544,7 +673,7 @@ class MockReconnectTest(fixtures.TestBase):
         assert not conn.invalidated
 
         assert_raises_message(
-            tsa.exc.StatementError,
+            tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
             select([1]),
@@ -594,10 +723,10 @@ class MockReconnectTest(fixtures.TestBase):
             )
 
         assert conn.closed
-        assert conn.invalidated
+        assert not conn.invalidated
 
         assert_raises_message(
-            tsa.exc.StatementError,
+            tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
             select([1]),
@@ -955,7 +1084,7 @@ class RealReconnectTest(fixtures.TestBase):
 
         _assert_invalidated(c1_branch.execute, select([1]))
         assert not c1_branch.closed
-        assert not c1_branch._connection_is_valid
+        assert not c1_branch._still_open_and_dbapi_connection_is_valid
 
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
@@ -1062,6 +1191,7 @@ class RealReconnectTest(fixtures.TestBase):
     def test_with_transaction(self):
         conn = self.engine.connect()
         trans = conn.begin()
+        assert trans.is_valid
         eq_(conn.execute(select([1])).scalar(), 1)
         assert not conn.closed
         self.engine.test_shutdown()
@@ -1069,21 +1199,56 @@ class RealReconnectTest(fixtures.TestBase):
         assert not conn.closed
         assert conn.invalidated
         assert trans.is_active
+        assert not trans.is_valid
+
         assert_raises_message(
-            tsa.exc.StatementError,
+            tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
             select([1]),
         )
         assert trans.is_active
+        assert not trans.is_valid
+
         assert_raises_message(
-            tsa.exc.InvalidRequestError,
+            tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             trans.commit,
         )
-        assert trans.is_active
+
+        # becomes inactive
+        assert not trans.is_active
+        assert not trans.is_valid
+
+        # still asks us to rollback
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute,
+            select([1]),
+        )
+
+        # still asks us..
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            trans.commit,
+        )
+
+        # still...it's being consistent in what it is asking.
+        assert_raises_message(
+            tsa.exc.PendingRollbackError,
+            "Can't reconnect until invalid transaction is rolled back",
+            conn.execute,
+            select([1]),
+        )
+
+        #  OK!
         trans.rollback()
         assert not trans.is_active
+        assert not trans.is_valid
+
+        # conn still invalid but we can reconnect
         assert conn.invalidated
         eq_(conn.execute(select([1])).scalar(), 1)
         assert not conn.invalidated

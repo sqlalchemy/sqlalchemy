@@ -367,13 +367,25 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.add(u)
         sess.flush()
         c1 = sess.connection(User)
+        dbapi_conn = c1.connection
+        assert dbapi_conn.is_valid
 
         sess.invalidate()
-        assert c1.invalidated
+
+        # Connection object is closed
+        assert c1.closed
+
+        # "invalidated" is not part of "closed" state
+        assert not c1.invalidated
+
+        # but the DBAPI conn (really ConnectionFairy)
+        # is invalidated
+        assert not dbapi_conn.is_valid
 
         eq_(sess.query(User).all(), [])
         c2 = sess.connection(User)
         assert not c2.invalidated
+        assert c2.connection.is_valid
 
     def test_subtransaction_on_noautocommit(self):
         User, users = self.classes.User, self.tables.users
@@ -859,7 +871,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         except Exception:
             trans2.rollback(_capture_exception=True)
         assert_raises_message(
-            sa_exc.InvalidRequestError,
+            sa_exc.PendingRollbackError,
             r"This Session's transaction has been rolled back due to a "
             r"previous exception during flush. To begin a new transaction "
             r"with this Session, first issue Session.rollback\(\). "
@@ -1001,7 +1013,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         for i in range(5):
             assert_raises_message(
-                sa_exc.InvalidRequestError,
+                sa_exc.PendingRollbackError,
                 "^This Session's transaction has been "
                 r"rolled back due to a previous exception "
                 "during flush. To "
@@ -1037,7 +1049,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         with expect_warnings(".*during handling of a previous exception.*"):
             session.begin_nested()
-            savepoint = session.connection()._transaction._savepoint
+            savepoint = session.connection()._nested_transaction._savepoint
 
             # force the savepoint to disappear
             session.connection().dialect.do_release_savepoint(
@@ -1708,7 +1720,12 @@ class SavepointTest(_LocalFixture):
         nested_trans._do_commit()
 
         is_(s.transaction, trans)
-        assert_raises(sa_exc.DBAPIError, s.rollback)
+
+        with expect_warnings("nested transaction already deassociated"):
+            # this previously would raise
+            # "savepoint "sa_savepoint_1" does not exist", however as of
+            # #5327 the savepoint already knows it's inactive
+            s.rollback()
 
         assert u1 not in s.new
 

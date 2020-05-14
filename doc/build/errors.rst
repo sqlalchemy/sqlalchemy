@@ -225,47 +225,69 @@ sooner.
  :ref:`connections_toplevel`
 
 
+.. _error_8s2b:
+
+Can't reconnect until invalid transaction is rolled back
+----------------------------------------------------------
+
+This error condition refers to the case where a :class:`_engine.Connection` was
+invalidated, either due to a database disconnect detection or due to an
+explicit call to :meth:`_engine.Connection.invalidate`, but there is still a
+transaction present that was initiated by the :meth:`_engine.Connection.begin`
+method.  When a connection is invalidated, any :class:`_engine.Transaction`
+that was in progress is now in an invalid state, and must be explicitly rolled
+back in order to remove it from the :class:`_engine.Connection`.
+
 .. _error_8s2a:
 
 This connection is on an inactive transaction.  Please rollback() fully before proceeding
 ------------------------------------------------------------------------------------------
 
 This error condition was added to SQLAlchemy as of version 1.4.    The error
-refers to the state where a :class:`_engine.Connection` is placed into a transaction
-using a method like :meth:`_engine.Connection.begin`, and then a further "sub" transaction
-is created within that scope; the "sub" transaction is then rolled back using
-:meth:`.Transaction.rollback`, however the outer transaction is not rolled back.
+refers to the state where a :class:`_engine.Connection` is placed into a
+transaction using a method like :meth:`_engine.Connection.begin`, and then a
+further "marker" transaction is created within that scope; the "marker"
+transaction is then rolled back using :meth:`.Transaction.rollback` or closed
+using :meth:`.Transaction.close`, however the outer transaction is still
+present in an "inactive" state and must be rolled back.
 
 The pattern looks like::
 
     engine = create_engine(...)
 
     connection = engine.connect()
-    transaction = connection.begin()
+    transaction1 = connection.begin()
 
+    # this is a "sub" or "marker" transaction, a logical nesting
+    # structure based on "real" transaction transaction1
     transaction2 = connection.begin()
     transaction2.rollback()
 
-    connection.execute(text("select 1"))  # we are rolled back; will now raise
+    # transaction1 is still present and needs explicit rollback,
+    # so this will raise
+    connection.execute(text("select 1"))
 
-    transaction.rollback()
+Above, ``transaction2`` is a "marker" transaction, which indicates a logical
+nesting of transactions within an outer one; while the inner transaction
+can roll back the whole transaction via its rollback() method, its commit()
+method has no effect except to close the scope of the "marker" transaction
+itself.   The call to ``transaction2.rollback()`` has the effect of
+**deactivating** transaction1 which means it is essentially rolled back
+at the database level, however is still present in order to accommodate
+a consistent nesting pattern of transactions.
 
+The correct resolution is to ensure the outer transaction is also
+rolled back::
 
-Above, ``transaction2`` is a "sub" transaction, which indicates a logical
-nesting of transactions within an outer one.   SQLAlchemy makes great use of
-this pattern more commonly in the ORM :class:`.Session`, where the FAQ entry
-:ref:`faq_session_rollback` describes the rationale within the ORM.
+    transaction1.rollback()
 
-The "subtransaction" pattern in Core comes into play often when using the ORM
-pattern described at :ref:`session_external_transaction`.   As this pattern
-involves a behavior called "connection branching", where a :class:`_engine.Connection`
-serves a "branched" :class:`_engine.Connection` object to the :class:`.Session` via
-its :meth:`_engine.Connection.connect` method, the same transaction behavior comes
-into play; if the :class:`.Session` rolls back the transaction, and savepoints
-have not been used to prevent a rollback of the entire transaction, the
-outermost transaction started on the :class:`_engine.Connection` is now in an inactive
-state.
+This pattern is not commonly used in Core.  Within the ORM, a similar issue can
+occur which is the product of the ORM's "logical" transaction structure; this
+is described in the FAQ entry at :ref:`faq_session_rollback`.
 
+The "subtransaction" pattern is to be removed in SQLAlchemy 2.0 so that this
+particular programming pattern will no longer be available and this
+error message will no longer occur in Core.
 
 .. _error_dbapi:
 
