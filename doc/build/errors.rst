@@ -734,6 +734,11 @@ Mitigation of this error is via two general techniques:
   special directives like the :func:`.raiseload` option can ensure that
   systems don't call upon lazy loading when its not expected.
 
+Please note: the default setting of :paramref:`_sa.orm.session.Session.expire_on_commit`
+is `True`, which means SQLAlchemy will expire the instance and all loaded
+attributes when a `commit` occurs. When this happens, SQLAlchemy will need to
+query the database to refresh the instance and attributes.
+  
   .. seealso::
 
     :ref:`loading_toplevel` - detailed documentation on eager loading and other
