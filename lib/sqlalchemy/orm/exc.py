@@ -196,9 +196,7 @@ def _safe_cls_name(cls):
 def _default_unmapped(base, cls):
     try:
         mappers = base.manager_of_class(cls).mappers
-    except NO_STATE:
-        mappers = {}
-    except TypeError:
+    except (TypeError,) + NO_STATE:
         mappers = {}
     name = _safe_cls_name(cls)
 

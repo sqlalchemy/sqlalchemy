@@ -313,11 +313,7 @@ def object_state(instance):
 def _inspect_mapped_object(instance):
     try:
         return instance_state(instance)
-        # TODO: whats the py-2/3 syntax to catch two
-        # different kinds of exceptions at once ?
-    except exc.UnmappedClassError:
-        return None
-    except exc.NO_STATE:
+    except (exc.UnmappedClassError,) + exc.NO_STATE:
         return None
 
 
