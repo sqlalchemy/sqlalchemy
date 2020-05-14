@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 5326
+
+    Improve error message when using :meth:`_query.Query.filter_by` in
+    a query where the first entity is not a mapped class.

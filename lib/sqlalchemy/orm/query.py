@@ -1784,8 +1784,17 @@ class Query(Generative):
 
         """
 
+        zero = self._joinpoint_zero()
+        if zero is None:
+            raise sa_exc.InvalidRequestError(
+                "Can't use filter_by when the first entity '%s' of a query "
+                "is not a mapped class. Please use the filter method instead, "
+                "or change the order of the entities in the query"
+                % self._query_entity_zero()
+            )
+
         clauses = [
-            _entity_descriptor(self._joinpoint_zero(), key) == value
+            _entity_descriptor(zero, key) == value
             for key, value in kwargs.items()
         ]
         return self.filter(*clauses)
