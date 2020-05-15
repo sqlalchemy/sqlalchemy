@@ -12,9 +12,11 @@ r"""
 
 .. note::
 
-    The Firebird dialect within SQLAlchemy **is not currently supported**. The
-    dialect is not tested within continuous integration and is likely to have
-    many issues and caveats not currently handled.
+    The Firebird dialect within SQLAlchemy **is not currently supported**.
+    It is not tested within continuous integration and is likely to have
+    many issues and caveats not currently handled. Consider using the
+    `external dialect <https://github.com/pauldex/sqlalchemy-firebird>`_
+    instead.
 
 Firebird Dialects
 -----------------
@@ -73,7 +75,6 @@ the SQLAlchemy ``returning()`` method, such as::
 
 
 .. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
-
 """
 
 import datetime

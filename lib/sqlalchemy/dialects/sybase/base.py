@@ -16,9 +16,11 @@
 
 .. note::
 
-    The Sybase dialect within SQLAlchemy **is not currently supported**.   The
-    dialect is not tested within continuous integration and is likely to have
-    many issues and caveats not currently handled.
+    The Sybase dialect within SQLAlchemy **is not currently supported**.
+    It is not tested within continuous integration and is likely to have
+    many issues and caveats not currently handled. Consider using the
+    `external dialect <https://github.com/gordthompson/sqlalchemy-sybase>`_
+    instead.
 
 """
 
