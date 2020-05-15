@@ -16,12 +16,14 @@
 
 .. note::
 
-    The Sybase dialect within SQLAlchemy **is not currently supported**.   The
-    dialect is not tested within continuous integration and is likely to have
-    many issues and caveats not currently handled.
+    The Sybase dialect within SQLAlchemy **is not currently supported**.
+    It is not tested within continuous integration and is likely to have
+    many issues and caveats not currently handled. Consider using the
+    `external dialect <https://github.com/gordthompson/sqlalchemy-sybase>`_
+    instead.
 
-.. deprecated:: 1.4 The Sybase dialect is deprecated and will be removed
-   in a future version.
+.. deprecated:: 1.4 The internal Sybase dialect is deprecated and will be
+   removed in a future version. Use the external dialect.
 
 """
 
@@ -654,7 +656,8 @@ class SybaseDialect(default.DefaultDialect):
     def __init__(self, *args, **kwargs):
         util.warn_deprecated(
             "The Sybase dialect is deprecated and will be removed "
-            "in a future version.",
+            "in a future version. This dialect is superseded by the external "
+            "dialect https://github.com/gordthompson/sqlalchemy-sybase.",
             version="1.4",
         )
         super(SybaseDialect, self).__init__(*args, **kwargs)
