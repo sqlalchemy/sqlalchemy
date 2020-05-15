@@ -314,6 +314,9 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
 
+    # mssql still has problems with this on Linux
+    supports_sane_rowcount_returning = False
+
     execution_ctx_cls = MSExecutionContext_pyodbc
 
     colspecs = util.update_copy(
