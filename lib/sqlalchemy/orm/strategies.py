@@ -2564,7 +2564,8 @@ def single_parent_validator(desc, prop):
                     "Instance %s is already associated with an instance "
                     "of %s via its %s attribute, and is only allowed a "
                     "single parent."
-                    % (orm_util.instance_str(value), state.class_, prop)
+                    % (orm_util.instance_str(value), state.class_, prop),
+                    code="bbf1",
                 )
         return value
 

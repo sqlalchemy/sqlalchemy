@@ -290,13 +290,20 @@ so that removal of the item from the parent collection results
 in its deletion.
 
 ``delete-orphan`` cascade implies that each child object can only
-have one parent at a time, so is configured in the vast majority of cases
-on a one-to-many relationship.   Setting it on a many-to-one or
-many-to-many relationship is more awkward; for this use case,
-SQLAlchemy requires that the :func:`~sqlalchemy.orm.relationship`
-be configured with the :paramref:`_orm.relationship.single_parent` argument,
-establishes Python-side validation that ensures the object
-is associated with only one parent at a time.
+have one parent at a time, and in the **vast majority of cases is configured
+only on a one-to-many relationship.**   For the much less common
+case of setting it on a many-to-one or
+many-to-many relationship, the "many" side can be forced to allow only
+a single object at a time by configuring the :paramref:`_orm.relationship.single_parent` argument,
+which establishes Python-side validation that ensures the object
+is associated with only one parent at a time, however this greatly limits
+the functionality of the "many" relationship and is usually not what's
+desired.
+
+.. seealso::
+
+  :ref:`error_bbf0` - background on a common error scenario involving delete-orphan
+  cascade.
 
 .. _cascade_merge:
 
