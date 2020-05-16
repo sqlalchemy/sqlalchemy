@@ -2233,7 +2233,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         mapper(B, b)
         assert_raises_message(
             sa_exc.ArgumentError,
-            "On A.bs, delete-orphan cascade is not supported",
+            "For many-to-many relationship A.bs, delete-orphan cascade",
             configure_mappers,
         )
 

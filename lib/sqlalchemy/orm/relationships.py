@@ -2235,11 +2235,30 @@ class RelationshipProperty(StrategizedProperty):
             and (self.direction is MANYTOMANY or self.direction is MANYTOONE)
         ):
             raise sa_exc.ArgumentError(
-                "On %s, delete-orphan cascade is not supported "
-                "on a many-to-many or many-to-one relationship "
-                "when single_parent is not set.   Set "
-                "single_parent=True on the relationship()." % self
+                "For %(direction)s relationship %(rel)s, delete-orphan "
+                "cascade is normally "
+                'configured only on the "one" side of a one-to-many '
+                "relationship, "
+                'and not on the "many" side of a many-to-one or many-to-many '
+                "relationship.  "
+                "To force this relationship to allow a particular "
+                '"%(relatedcls)s" object to be referred towards by only '
+                'a single "%(clsname)s" object at a time via the '
+                "%(rel)s relationship, which "
+                "would allow "
+                "delete-orphan cascade to take place in this direction, set "
+                "the single_parent=True flag."
+                % {
+                    "rel": self,
+                    "direction": "many-to-one"
+                    if self.direction is MANYTOONE
+                    else "many-to-many",
+                    "clsname": self.parent.class_.__name__,
+                    "relatedcls": self.mapper.class_.__name__,
+                },
+                code="bbf0",
             )
+
         if self.direction is MANYTOONE and self.passive_deletes:
             util.warn(
                 "On %s, 'passive_deletes' is normally configured "
