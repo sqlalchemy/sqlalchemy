@@ -96,8 +96,15 @@ class CursorResultMetaData(ResultMetaData):
                 }
             )
 
+        # TODO: need unit test for:
+        # result = connection.execute("raw sql, no columns").scalars()
+        # without the "or ()" it's failing because MD_OBJECTS is None
         new_metadata._keymap.update(
-            {e: new_rec for new_rec in new_recs for e in new_rec[MD_OBJECTS]}
+            {
+                e: new_rec
+                for new_rec in new_recs
+                for e in new_rec[MD_OBJECTS] or ()
+            }
         )
 
         return new_metadata

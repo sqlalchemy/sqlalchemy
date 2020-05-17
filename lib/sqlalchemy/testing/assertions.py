@@ -285,13 +285,11 @@ def _assert_proper_exception_context(exception):
 
 
 def assert_raises(except_cls, callable_, *args, **kw):
-    _assert_raises(except_cls, callable_, args, kw, check_context=True)
+    return _assert_raises(except_cls, callable_, args, kw, check_context=True)
 
 
 def assert_raises_context_ok(except_cls, callable_, *args, **kw):
-    _assert_raises(
-        except_cls, callable_, args, kw,
-    )
+    return _assert_raises(except_cls, callable_, args, kw,)
 
 
 def assert_raises_return(except_cls, callable_, *args, **kw):
@@ -299,7 +297,7 @@ def assert_raises_return(except_cls, callable_, *args, **kw):
 
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
-    _assert_raises(
+    return _assert_raises(
         except_cls, callable_, args, kwargs, msg=msg, check_context=True
     )
 
@@ -307,7 +305,7 @@ def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
 def assert_raises_message_context_ok(
     except_cls, msg, callable_, *args, **kwargs
 ):
-    _assert_raises(except_cls, callable_, args, kwargs, msg=msg)
+    return _assert_raises(except_cls, callable_, args, kwargs, msg=msg)
 
 
 def _assert_raises(

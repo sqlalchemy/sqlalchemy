@@ -249,25 +249,7 @@ class Connection(_LegacyConnection):
         if any transaction is in place.
 
         """
-
-        try:
-            conn = self.__connection
-        except AttributeError:
-            pass
-        else:
-            # TODO: can we do away with "_reset_agent" stuff now?
-            if self._transaction:
-                self._transaction.rollback()
-
-            conn.close()
-
-            # the close() process can end up invalidating us,
-            # as the pool will call our transaction as the "reset_agent"
-            # for rollback(), which can then cause an invalidation
-            if not self.__invalid:
-                del self.__connection
-        self.__can_reconnect = False
-        self._transaction = None
+        super(Connection, self).close()
 
     def execute(self, statement, parameters=None, execution_options=None):
         r"""Executes a SQL statement construct and returns a

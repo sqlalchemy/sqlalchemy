@@ -225,6 +225,15 @@ class NoInspectionAvailable(InvalidRequestError):
     no context for inspection."""
 
 
+class PendingRollbackError(InvalidRequestError):
+    """A transaction has failed and needs to be rolled back before
+    continuing.
+
+    .. versionadded:: 1.4
+
+    """
+
+
 class ResourceClosedError(InvalidRequestError):
     """An operation was requested from a connection, cursor, or other
     object that's in a closed state."""

@@ -291,7 +291,7 @@ class SessionTransaction(object):
         elif self._state is DEACTIVE:
             if not deactive_ok and not rollback_ok:
                 if self._rollback_exception:
-                    raise sa_exc.InvalidRequestError(
+                    raise sa_exc.PendingRollbackError(
                         "This Session's transaction has been rolled back "
                         "due to a previous exception during flush."
                         " To begin a new transaction with this Session, "
