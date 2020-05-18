@@ -1,5 +1,6 @@
 from collections import deque
 from collections import namedtuple
+import itertools
 import operator
 
 from . import operators
@@ -589,28 +590,22 @@ class _GetChildren(InternalTraversal):
         return (element,)
 
     def visit_clauseelement_list(self, element, **kw):
-        return tuple(element)
+        return element
 
     def visit_clauseelement_tuples(self, element, **kw):
-        tup = ()
-        for elem in element:
-            tup += elem
-        return tup
+        return itertools.chain.from_iterable(element)
 
     def visit_fromclause_canonical_column_collection(self, element, **kw):
-        if kw.get("column_collections", False):
-            return tuple(element)
-        else:
-            return ()
+        return ()
 
     def visit_string_clauseelement_dict(self, element, **kw):
-        return tuple(element.values())
+        return element.values()
 
     def visit_fromclause_ordered_set(self, element, **kw):
-        return tuple(element)
+        return element
 
     def visit_clauseelement_unordered_set(self, element, **kw):
-        return tuple(element)
+        return element
 
     def visit_dml_ordered_values(self, element, **kw):
         for k, v in element:

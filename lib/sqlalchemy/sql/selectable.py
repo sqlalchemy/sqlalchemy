@@ -3454,8 +3454,8 @@ class Select(
 
     _traverse_internals = (
         [
-            ("_from_obj", InternalTraversal.dp_clauseelement_list),
             ("_raw_columns", InternalTraversal.dp_clauseelement_list),
+            ("_from_obj", InternalTraversal.dp_clauseelement_list),
             ("_where_criteria", InternalTraversal.dp_clauseelement_list),
             ("_having_criteria", InternalTraversal.dp_clauseelement_list),
             ("_order_by_clauses", InternalTraversal.dp_clauseelement_list,),
@@ -3944,10 +3944,11 @@ class Select(
         self._assert_no_memoizations()
 
     def get_children(self, **kwargs):
-        return list(set(self._iterate_from_elements())) + super(
-            Select, self
-        ).get_children(
-            omit_attrs=["_from_obj", "_correlate", "_correlate_except"]
+        return itertools.chain(
+            super(Select, self).get_children(
+                omit_attrs=["_from_obj", "_correlate", "_correlate_except"]
+            ),
+            self._iterate_from_elements(),
         )
 
     @_generative

@@ -117,10 +117,6 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
                 else:
                     spwd(self)
 
-    def get_children(self, **kwargs):
-        """used to allow SchemaVisitor access"""
-        return []
-
     def __repr__(self):
         return util.generic_repr(self, omit_kwarg=["info"])
 
@@ -819,21 +815,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def _set_parent(self, metadata):
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
-
-    def get_children(
-        self, column_collections=True, schema_visitor=False, **kw
-    ):
-        # TODO: consider that we probably don't need column_collections=True
-        # at all, it does not seem to impact anything
-        if not schema_visitor:
-            return TableClause.get_children(
-                self, column_collections=column_collections, **kw
-            )
-        else:
-            if column_collections:
-                return list(self.columns)
-            else:
-                return []
 
     @util.deprecated(
         "1.4",
@@ -1655,16 +1636,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         if fk:
             selectable.foreign_keys.update(fk)
         return c.key, c
-
-    def get_children(self, schema_visitor=False, **kwargs):
-        if schema_visitor:
-            return (
-                [x for x in (self.default, self.onupdate) if x is not None]
-                + list(self.foreign_keys)
-                + list(self.constraints)
-            )
-        else:
-            return ColumnClause.get_children(self, **kwargs)
 
 
 class ForeignKey(DialectKWArgs, SchemaItem):

@@ -4660,10 +4660,7 @@ class _ColumnEntity(_QueryEntity):
             return self.mapper
 
         else:
-            for obj in visitors.iterate(
-                self.column,
-                {"column_tables": True, "column_collections": False},
-            ):
+            for obj in visitors.iterate(self.column, {"column_tables": True},):
                 if "parententity" in obj._annotations:
                     return obj._annotations["parententity"]
                 elif "deepentity" in obj._annotations:

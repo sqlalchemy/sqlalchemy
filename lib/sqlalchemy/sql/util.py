@@ -267,7 +267,7 @@ def find_tables(
 
     _visitors["table"] = tables.append
 
-    visitors.traverse(clause, {"column_collections": False}, _visitors)
+    visitors.traverse(clause, {}, _visitors)
     return tables
 
 

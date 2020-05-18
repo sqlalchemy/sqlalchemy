@@ -674,22 +674,16 @@ class CacheKeyFixture(object):
             ):
                 assert_a_params = []
                 assert_b_params = []
-                visitors.traverse_depthfirst(
+                visitors.traverse(
                     case_a[a], {}, {"bindparam": assert_a_params.append}
                 )
-                visitors.traverse_depthfirst(
+                visitors.traverse(
                     case_b[b], {}, {"bindparam": assert_b_params.append}
                 )
 
                 # note we're asserting the order of the params as well as
                 # if there are dupes or not.  ordering has to be
                 # deterministic and matches what a traversal would provide.
-                # regular traverse_depthfirst does produce dupes in cases
-                # like
-                # select([some_alias]).
-                #    select_from(join(some_alias, other_table))
-                # where a bound parameter is inside of some_alias.  the
-                # cache key case is more minimalistic
                 eq_(
                     sorted(a_key.bindparams, key=lambda b: b.key),
                     sorted(

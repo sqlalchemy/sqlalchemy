@@ -388,19 +388,18 @@ class ClauseElement(
         clause-level).
 
         """
-        result = []
         try:
             traverse_internals = self._traverse_internals
         except AttributeError:
-            return result
+            return []
 
-        for attrname, obj, meth in _get_children.run_generated_dispatch(
-            self, traverse_internals, "_generated_get_children_traversal"
-        ):
-            if obj is None or attrname in omit_attrs:
-                continue
-            result.extend(meth(obj, **kw))
-        return result
+        return itertools.chain.from_iterable(
+            meth(obj, **kw)
+            for attrname, obj, meth in _get_children.run_generated_dispatch(
+                self, traverse_internals, "_generated_get_children_traversal"
+            )
+            if attrname not in omit_attrs and obj is not None
+        )
 
     def self_group(self, against=None):
         # type: (Optional[Any]) -> ClauseElement
@@ -4302,8 +4301,14 @@ class ColumnClause(
 
     def get_children(self, column_tables=False, **kw):
         if column_tables and self.table is not None:
+            # TODO: this is only used by ORM query deep_entity_zero.
+            # this is being removed in a later release so remove
+            # column_tables also at that time.
             return [self.table]
         else:
+            # override base get_children() to not return the Table
+            # or selectable that is parent to this column.  Traversals
+            # expect the columns of tables and subqueries to be leaf nodes.
             return []
 
     @HasMemoized.memoized_attribute

@@ -29,7 +29,7 @@ class MiscTest(fixtures.TestBase):
 
         subset_select = select([common.c.id, common.c.data]).alias()
 
-        eq_(sql_util.find_tables(subset_select), [common])
+        eq_(set(sql_util.find_tables(subset_select)), {common})
 
     def test_find_tables_aliases(self):
         metadata = MetaData()

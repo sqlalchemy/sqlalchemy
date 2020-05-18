@@ -32,10 +32,8 @@ from ..util import symbol
 
 __all__ = [
     "iterate",
-    "iterate_depthfirst",
     "traverse_using",
     "traverse",
-    "traverse_depthfirst",
     "cloned_traverse",
     "replacement_traverse",
     "Traversible",
@@ -568,23 +566,20 @@ CloningVisitor = CloningExternalTraversal
 ReplacingCloningVisitor = ReplacingExternalTraversal
 
 
-def iterate(obj, opts):
+def iterate(obj, opts=util.immutabledict()):
     r"""traverse the given expression structure, returning an iterator.
 
     traversal is configured to be breadth-first.
 
-    The central API feature used by the :func:`.visitors.iterate` and
-    :func:`.visitors.iterate_depthfirst` functions is the
+    The central API feature used by the :func:`.visitors.iterate`
+    function is the
     :meth:`_expression.ClauseElement.get_children` method of
-    :class:`_expression.ClauseElement`
-    objects.  This method should return all the
-    :class:`_expression.ClauseElement` objects
-    which are associated with a particular :class:`_expression.ClauseElement`
-    object.
-    For example, a :class:`.Case` structure will refer to a series of
-    :class:`_expression.ColumnElement`
-    objects within its "whens" and "else\_" member
-    variables.
+    :class:`_expression.ClauseElement` objects.  This method should return all
+    the :class:`_expression.ClauseElement` objects which are associated with a
+    particular :class:`_expression.ClauseElement` object. For example, a
+    :class:`.Case` structure will refer to a series of
+    :class:`_expression.ColumnElement` objects within its "whens" and "else\_"
+    member variables.
 
     :param obj: :class:`_expression.ClauseElement` structure to be traversed
 
@@ -592,49 +587,17 @@ def iterate(obj, opts):
      empty in modern usage.
 
     """
-    # fasttrack for atomic elements like columns
+    yield obj
     children = obj.get_children(**opts)
     if not children:
-        return [obj]
+        return
 
-    traversal = deque()
-    stack = deque([obj])
+    stack = deque([children])
     while stack:
-        t = stack.popleft()
-        traversal.append(t)
-        for c in t.get_children(**opts):
-            stack.append(c)
-    return iter(traversal)
-
-
-def iterate_depthfirst(obj, opts):
-    """traverse the given expression structure, returning an iterator.
-
-    traversal is configured to be depth-first.
-
-    :param obj: :class:`_expression.ClauseElement` structure to be traversed
-
-    :param opts: dictionary of iteration options.   This dictionary is usually
-     empty in modern usage.
-
-    .. seealso::
-
-        :func:`.visitors.iterate` - includes a general overview of iteration.
-
-    """
-    # fasttrack for atomic elements like columns
-    children = obj.get_children(**opts)
-    if not children:
-        return [obj]
-
-    stack = deque([obj])
-    traversal = deque()
-    while stack:
-        t = stack.pop()
-        traversal.appendleft(t)
-        for c in t.get_children(**opts):
-            stack.append(c)
-    return iter(traversal)
+        t_iterator = stack.popleft()
+        for t in t_iterator:
+            yield t
+            stack.append(t.get_children(**opts))
 
 
 def traverse_using(iterator, obj, visitors):
@@ -642,18 +605,16 @@ def traverse_using(iterator, obj, visitors):
     objects.
 
     :func:`.visitors.traverse_using` is usually called internally as the result
-    of the :func:`.visitors.traverse` or :func:`.visitors.traverse_depthfirst`
-    functions.
+    of the :func:`.visitors.traverse` function.
 
     :param iterator: an iterable or sequence which will yield
      :class:`_expression.ClauseElement`
      structures; the iterator is assumed to be the
-     product of the :func:`.visitors.iterate` or
-     :func:`.visitors.iterate_depthfirst` functions.
+     product of the :func:`.visitors.iterate` function.
 
     :param obj: the :class:`_expression.ClauseElement`
      that was used as the target of the
-     :func:`.iterate` or :func:`.iterate_depthfirst` function.
+     :func:`.iterate` function.
 
     :param visitors: dictionary of visit functions.  See :func:`.traverse`
      for details on this dictionary.
@@ -662,7 +623,6 @@ def traverse_using(iterator, obj, visitors):
 
         :func:`.traverse`
 
-        :func:`.traverse_depthfirst`
 
     """
     for target in iterator:
@@ -703,20 +663,6 @@ def traverse(obj, opts, visitors):
 
     """
     return traverse_using(iterate(obj, opts), obj, visitors)
-
-
-def traverse_depthfirst(obj, opts, visitors):
-    """traverse and visit the given expression structure using the
-    depth-first iterator.
-
-    The iteration of objects uses the :func:`.visitors.iterate_depthfirst`
-    function, which does a depth-first traversal using a stack.
-
-    Usage is the same as that of :func:`.visitors.traverse` function.
-
-
-    """
-    return traverse_using(iterate_depthfirst(obj, opts), obj, visitors)
 
 
 def cloned_traverse(obj, opts, visitors):
