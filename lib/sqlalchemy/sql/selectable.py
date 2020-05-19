@@ -1945,7 +1945,7 @@ class TableClause(Immutable, FromClause):
 
         :param schema: The schema name for this table.
 
-            .. versionadded:: 1.3.17 :func:`_expression.table` can now
+            .. versionadded:: 1.3.18 :func:`_expression.table` can now
                accept a ``schema`` argument.
         """
 
