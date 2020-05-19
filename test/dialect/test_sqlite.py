@@ -600,11 +600,15 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         """test non-quoted integer value on older sqlite pragma"""
 
         dialect = sqlite.dialect()
-        info = dialect._get_column_info("foo", "INTEGER", False, 3, False)
+        info = dialect._get_column_info(
+            "foo", "INTEGER", False, 3, False, False, False, None
+        )
         eq_(info["default"], "3")
 
 
-class DialectTest(fixtures.TestBase, AssertsExecutionResults):
+class DialectTest(
+    fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
+):
 
     __only_on__ = "sqlite"
 
@@ -779,13 +783,13 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(d.create_connect_args(url), expected)
 
     @testing.combinations(
-        ("no_persisted", "ignore"),
-        ("persisted_none", None),
-        ("persisted_true", True),
-        ("persisted_false", False),
-        id_="ia",
+        ("no_persisted", "", "ignore"),
+        ("persisted_none", "", None),
+        ("persisted_true", " STORED", True),
+        ("persisted_false", " VIRTUAL", False),
+        id_="iaa",
     )
-    def test_column_computed(self, persisted):
+    def test_column_computed(self, text, persisted):
         m = MetaData()
         kwargs = {"persisted": persisted} if persisted != "ignore" else {}
         t = Table(
@@ -794,11 +798,10 @@ class DialectTest(fixtures.TestBase, AssertsExecutionResults):
             Column("x", Integer),
             Column("y", Integer, Computed("x + 2", **kwargs)),
         )
-        assert_raises_message(
-            exc.CompileError,
-            "SQLite does not support computed columns",
-            schema.CreateTable(t).compile,
-            dialect=sqlite.dialect(),
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (x INTEGER,"
+            " y INTEGER GENERATED ALWAYS AS (x + 2)%s)" % text,
         )
 
 
