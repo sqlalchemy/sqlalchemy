@@ -748,7 +748,7 @@ Mitigation of this error is via two general techniques:
     :ref:`loading_toplevel` - detailed documentation on eager loading and other
     relationship-oriented loading techniques
     :ref:`session_committing` - background on session commit
-    :ref:`session_expire` - background on attrifbute expiry
+    :ref:`session_expire` - background on attribute expiry
 
 
 .. _error_7s2a:
