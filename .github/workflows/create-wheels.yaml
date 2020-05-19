@@ -52,12 +52,26 @@ jobs:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
 
+      - name: Remove tag_build from setup.cfg
+        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
+        # otherwise it gets tagged with `dev0`
+        shell: pwsh
+        # This is equivalent to the sed commands:
+        # `sed -i '/tag_build=dev/d' setup.cfg`
+        # `sed -i '/tag_build = dev/d' setup.cfg`
+
+        # `-replace` uses a regexp match
+        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
+        run: |
+          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
+
       - name: Create wheel
         # create the wheel using --no-use-pep517 since locally we have pyproject
         # this flag should be removed once sqlalchemy supports pep517
         # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
         run: |
           python -m pip install --upgrade pip
+          pip --version
           pip install setuptools wheel
           pip wheel -w dist --no-use-pep517 -v --no-deps .
 
@@ -125,16 +139,20 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "2.7"
-          - "3.5"
-          - "3.6"
-          - "3.7"
-          - "3.8"
+          # the versions are <python tag>-<abi tag> as specified in PEP 425.
+          - cp27-cp27m
+          - cp27-cp27mu
+          - cp35-cp35m
+          - cp36-cp36m
+          - cp37-cp37m
+          - cp38-cp38
         architecture:
           - x64
 
         include:
-          - python-version: "2.7"
+          - python-version: "cp27-cp27m"
+            extra-requires: "mock"
+          - python-version: "cp27-cp27mu"
             extra-requires: "mock"
 
       fail-fast: false
@@ -142,28 +160,36 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
+      
+      - name: Get python version
+        id: linux-py-version
+        env:
+          py_tag: ${{ matrix.python-version }}
+        # the command `echo "::set-output ...` is used to create an step output that can be used in following steps
+        # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
+        run: |
+          version="${py_tag: 2:1}.${py_tag: 3:1}"
+          echo $version
+          echo "::set-output name=python-version::$version"
 
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{  steps.linux-py-version.outputs.python-version }}
           architecture: ${{ matrix.architecture }}
 
-      - name: Create python PEP 425 tag for manylinux build
-        id: linux-py-version
-        env:
-          pyversion: ${{ matrix.python-version }}
-        # this steps creates the proper <python tag>-<abi tag> as specified in PEP 425.
-        # NOTE: python 38+ removed the `m` at the end, so this script is used to generate the proper abi tag
+      - name: Remove tag_build from setup.cfg
+        # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
+        # otherwise it gets tagged with `dev0`
+        shell: pwsh
+        # This is equivalent to the sed commands:
+        # `sed -i '/tag_build=dev/d' setup.cfg`
+        # `sed -i '/tag_build = dev/d' setup.cfg`
 
-        # the command `echo "::set-output ...` is used to create an step output that can be used in following steps
-        # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
+        # `-replace` uses a regexp match
+        # alternative form: `(get-content setup.cfg) | foreach-object{$_ -replace "tag_build.=.dev",""} | set-content setup.cfg`
         run: |
-          pv="${pyversion/./}"
-          [ "$pv" -lt "38" ] && end=m || end=''
-          pytag="cp${pv}-cp${pv}$end"
-          echo $pytag
-          echo "::set-output name=python-version::$pytag"
+          (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel for manylinux
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
@@ -174,26 +200,32 @@ jobs:
         # this action generates 3 wheels in wheelhouse/. linux, manylinux1 and manylinux2010
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
-          python-versions: ${{ steps.linux-py-version.outputs.python-version }}
+          python-versions: ${{ matrix.python-version }}
           build-requirements: "setuptools wheel"
           # Create the wheel using --no-use-pep517 since locally we have pyproject
           # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
           pip-wheel-args: "--no-use-pep517 -v --no-deps"
 
-      - name: Install wheel
-        # install the created wheel without using the pypi index
+      - name: Check created wheel
+        # check that the wheel is compatible with the current installation.
+        # If it is then does:
+        # - install the created wheel without using the pypi index
+        # - check the c extension
+        # - runs the tests
         run: |
-          pip install -f wheelhouse --no-index sqlalchemy
-
-      - name: Check c extensions
-        run: |
-          python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
-
-      - name: Test created wheel
-        run: |
-          pip install pytest pytest-xdist ${{ matrix.extra-requires }}
-          pytest -n2 -q test -k 'not MockReconnectTest' --nomemory
+          pip install -q wheel
+          version=`python -W ignore -c 'from wheel.pep425tags import get_abbr_impl, get_impl_ver, get_abi_tag; print("{0}{1}-{2}".format(get_abbr_impl(), get_impl_ver(), get_abi_tag()))'`
+          echo Wheel tag ${{ matrix.python-version }}. Installed version $version.
+          if [[ "${{ matrix.python-version }}" = "$version" ]]
+          then
+            pip install -f wheelhouse --no-index sqlalchemy
+            python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
+            pip install pytest pytest-xdist ${{ matrix.extra-requires }}
+            pytest -n2 -q test -k 'not MockReconnectTest' --nomemory
+          else
+            echo Not compatible. Skipping install.
+          fi
 
       - name: Get wheel names
         id: wheel-name
