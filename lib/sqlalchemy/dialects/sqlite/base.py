@@ -1077,8 +1077,6 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
-        if column.computed is not None:
-            raise exc.CompileError("SQLite does not support computed columns")
 
         coltype = self.dialect.type_compiler.process(
             column.type, type_expression=column
@@ -1124,6 +1122,9 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
                     colspec += " ON CONFLICT " + on_conflict_clause
 
                 colspec += " AUTOINCREMENT"
+
+        if column.computed is not None:
+            colspec += " " + self.process(column.computed)
 
         return colspec
 
@@ -1682,34 +1683,75 @@ class SQLiteDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_columns(self, connection, table_name, schema=None, **kw):
+        pragma = "table_info"
+        # computed columns are threaded as hidden, they require table_xinfo
+        if self.server_version_info >= (3, 31):
+            pragma = "table_xinfo"
         info = self._get_table_pragma(
-            connection, "table_info", table_name, schema=schema
+            connection, pragma, table_name, schema=schema
         )
-
         columns = []
+        tablesql = None
         for row in info:
-            (name, type_, nullable, default, primary_key) = (
-                row[1],
-                row[2].upper(),
-                not row[3],
-                row[4],
-                row[5],
-            )
+            name = row[1]
+            type_ = row[2].upper()
+            nullable = not row[3]
+            default = row[4]
+            primary_key = row[5]
+            hidden = row[6] if pragma == "table_xinfo" else 0
+
+            # hidden has value 0 for normal columns, 1 for hidden columns,
+            # 2 for computed virtual columns and 3 for computed stored columns
+            # https://www.sqlite.org/src/info/069351b85f9a706f60d3e98fbc8aaf40c374356b967c0464aede30ead3d9d18b
+            if hidden == 1:
+                continue
+
+            generated = bool(hidden)
+            persisted = hidden == 3
+
+            if tablesql is None and generated:
+                tablesql = self._get_table_sql(
+                    connection, table_name, schema, **kw
+                )
 
             columns.append(
                 self._get_column_info(
-                    name, type_, nullable, default, primary_key
+                    name,
+                    type_,
+                    nullable,
+                    default,
+                    primary_key,
+                    generated,
+                    persisted,
+                    tablesql,
                 )
             )
         return columns
 
-    def _get_column_info(self, name, type_, nullable, default, primary_key):
+    def _get_column_info(
+        self,
+        name,
+        type_,
+        nullable,
+        default,
+        primary_key,
+        generated,
+        persisted,
+        tablesql,
+    ):
+
+        if generated:
+            # the type of a column "cc INTEGER GENERATED ALWAYS AS (1 + 42)"
+            # somehow is "INTEGER GENERATED ALWAYS"
+            type_ = re.sub("generated", "", type_, flags=re.IGNORECASE)
+            type_ = re.sub("always", "", type_, flags=re.IGNORECASE).strip()
+
         coltype = self._resolve_type_affinity(type_)
 
         if default is not None:
             default = util.text_type(default)
 
-        return {
+        colspec = {
             "name": name,
             "type": coltype,
             "nullable": nullable,
@@ -1717,6 +1759,17 @@ class SQLiteDialect(default.DefaultDialect):
             "autoincrement": "auto",
             "primary_key": primary_key,
         }
+        if generated:
+            sqltext = ""
+            if tablesql:
+                pattern = r"[^,]*\s+AS\s+\(([^,]*)\)\s*(?:virtual|stored)?"
+                match = re.search(
+                    re.escape(name) + pattern, tablesql, re.IGNORECASE
+                )
+                if match:
+                    sqltext = match.group(1)
+            colspec["computed"] = {"sqltext": sqltext, "persisted": persisted}
+        return colspec
 
     def _resolve_type_affinity(self, type_):
         """Return a data type from a reflected column, using affinity tules.

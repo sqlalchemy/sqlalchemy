@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 5297
+
+    SQLite 3.31 added support for computed column. This change
+    enables their support in SQLAlchemy when targeting SQLite.
