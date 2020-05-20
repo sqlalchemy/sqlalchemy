@@ -9,7 +9,7 @@ env:
   # set this so the sqlalchemy test uses the installed version and not the local one
   PYTHONNOUSERSITE: 1
   # comment TWINE_REPOSITORY_URL to use the real pypi. NOTE: change also the secret used in TWINE_PASSWORD
-  TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
+  # TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
 
 jobs:
   # two jobs are defined make-wheel-win-osx and make-wheel-linux.
@@ -126,7 +126,8 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           # replace TWINE_PASSWORD with token for real pypi
-          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+          # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+          TWINE_PASSWORD: ${{ secrets.pypi_token }}
         run: |
           pip install -U twine
           twine upload --skip-existing dist/*
@@ -278,7 +279,8 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           # replace TWINE_PASSWORD with token for real pypi
-          TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+          # TWINE_PASSWORD: ${{ secrets.test_pypi_token }}
+          TWINE_PASSWORD: ${{ secrets.pypi_token }}
         run: |
           pip install -U twine
           twine upload --skip-existing wheelhouse/*manylinux*
