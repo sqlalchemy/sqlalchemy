@@ -244,6 +244,7 @@ class Profiler(object):
         self.callers = options.callers
         self.num = options.num
         self.echo = options.echo
+        self.sort = options.sort
         self.stats = []
 
     @classmethod
@@ -292,7 +293,7 @@ class Profiler(object):
             self._run_test(test)
             self.stats[-1].report()
 
-    def _run_with_profile(self, fn):
+    def _run_with_profile(self, fn, sort):
         pr = cProfile.Profile()
         pr.enable()
         try:
@@ -300,9 +301,9 @@ class Profiler(object):
         finally:
             pr.disable()
 
-        stats = pstats.Stats(pr).sort_stats("cumulative")
+        stats = pstats.Stats(pr)
 
-        self.stats.append(TestResult(self, fn, stats=stats))
+        self.stats.append(TestResult(self, fn, stats=stats, sort=sort))
         return result
 
     def _run_with_time(self, fn):
@@ -317,7 +318,7 @@ class Profiler(object):
         if self._setup:
             self._setup(self.dburl, self.echo, self.num)
         if self.profile or self.runsnake or self.dump:
-            self._run_with_profile(fn)
+            self._run_with_profile(fn, self.sort)
         else:
             self._run_with_time(fn)
 
@@ -359,6 +360,12 @@ class Profiler(object):
             help="run profiling and dump call counts",
         )
         parser.add_argument(
+            "--sort",
+            type=str,
+            default="cumulative",
+            help="profiling sort, defaults to cumulative",
+        )
+        parser.add_argument(
             "--dump",
             action="store_true",
             help="dump full call profile (implies --profile)",
@@ -397,11 +404,14 @@ class Profiler(object):
 
 
 class TestResult(object):
-    def __init__(self, profile, test, stats=None, total_time=None):
+    def __init__(
+        self, profile, test, stats=None, total_time=None, sort="cumulative"
+    ):
         self.profile = profile
         self.test = test
         self.stats = stats
         self.total_time = total_time
+        self.sort = sort
 
     def report(self):
         print(self._summary())
@@ -424,10 +434,10 @@ class TestResult(object):
         if self.profile.runsnake:
             self._runsnake()
         elif self.profile.dump:
-            self._dump()
+            self._dump(self.sort)
 
-    def _dump(self):
-        self.stats.sort_stats("time", "calls")
+    def _dump(self, sort):
+        self.stats.sort_stats(*re.split(r"[ ,]", self.sort))
         self.stats.print_stats()
         if self.profile.callers:
             self.stats.print_callers()

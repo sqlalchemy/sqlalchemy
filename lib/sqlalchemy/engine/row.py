@@ -14,7 +14,6 @@ from .. import util
 from ..sql import util as sql_util
 from ..util.compat import collections_abc
 
-
 MD_INDEX = 0  # integer index in cursor.description
 
 # This reconstructor is necessary so that pickles with the C extension or
@@ -40,6 +39,11 @@ except ImportError:
         return obj
 
 
+KEY_INTEGER_ONLY = 0
+KEY_OBJECTS_ONLY = 1
+KEY_OBJECTS_BUT_WARN = 2
+KEY_OBJECTS_NO_WARN = 3
+
 try:
     from sqlalchemy.cresultproxy import BaseRow
 
@@ -48,20 +52,26 @@ except ImportError:
     _baserow_usecext = False
 
     class BaseRow(object):
-        __slots__ = ("_parent", "_data", "_keymap")
+        __slots__ = ("_parent", "_data", "_keymap", "_key_style")
 
-        def __init__(self, parent, processors, keymap, data):
+        def __init__(self, parent, processors, keymap, key_style, data):
             """Row objects are constructed by CursorResult objects."""
 
             self._parent = parent
 
-            self._data = tuple(
-                [
-                    proc(value) if proc else value
-                    for proc, value in zip(processors, data)
-                ]
-            )
+            if processors:
+                self._data = tuple(
+                    [
+                        proc(value) if proc else value
+                        for proc, value in zip(processors, data)
+                    ]
+                )
+            else:
+                self._data = tuple(data)
+
             self._keymap = keymap
+
+            self._key_style = key_style
 
         def __reduce__(self):
             return (
@@ -70,7 +80,13 @@ except ImportError:
             )
 
         def _filter_on_values(self, filters):
-            return Row(self._parent, filters, self._keymap, self._data)
+            return Row(
+                self._parent,
+                filters,
+                self._keymap,
+                self._key_style,
+                self._data,
+            )
 
         def _values_impl(self):
             return list(self)
@@ -105,10 +121,14 @@ except ImportError:
             mdindex = rec[MD_INDEX]
             if mdindex is None:
                 self._parent._raise_for_ambiguous_column_name(rec)
-            elif not ismapping and mdindex != key and not isinstance(key, int):
-                self._parent._warn_for_nonint(key)
 
-            # TODO: warn for non-int here, RemovedIn20Warning when available
+            elif (
+                self._key_style == KEY_OBJECTS_BUT_WARN
+                and not ismapping
+                and mdindex != key
+                and not isinstance(key, int)
+            ):
+                self._parent._warn_for_nonint(key)
 
             return self._data[mdindex]
 
@@ -164,6 +184,8 @@ class Row(BaseRow, collections_abc.Sequence):
 
     __slots__ = ()
 
+    _default_key_style = KEY_INTEGER_ONLY
+
     @property
     def _mapping(self):
         """Return a :class:`.RowMapping` for this :class:`.Row`.
@@ -182,19 +204,29 @@ class Row(BaseRow, collections_abc.Sequence):
         .. versionadded:: 1.4
 
         """
-
-        return RowMapping(self)
+        return RowMapping(
+            self._parent,
+            None,
+            self._keymap,
+            RowMapping._default_key_style,
+            self._data,
+        )
 
     def __contains__(self, key):
         return key in self._data
 
     def __getstate__(self):
-        return {"_parent": self._parent, "_data": self._data}
+        return {
+            "_parent": self._parent,
+            "_data": self._data,
+            "_key_style": self._key_style,
+        }
 
     def __setstate__(self, state):
         self._parent = parent = state["_parent"]
         self._data = state["_data"]
         self._keymap = parent._keymap
+        self._key_style = state["_key_style"]
 
     def _op(self, other, op):
         return (
@@ -305,11 +337,20 @@ class LegacyRow(Row):
 
     """
 
+    __slots__ = ()
+
+    if util.SQLALCHEMY_WARN_20:
+        _default_key_style = KEY_OBJECTS_BUT_WARN
+    else:
+        _default_key_style = KEY_OBJECTS_NO_WARN
+
     def __contains__(self, key):
         return self._parent._contains(key, self)
 
-    def __getitem__(self, key):
-        return self._get_by_key_impl(key)
+    if not _baserow_usecext:
+
+        def __getitem__(self, key):
+            return self._get_by_key_impl(key)
 
     @util.deprecated(
         "1.4",
@@ -441,7 +482,7 @@ class ROMappingView(
         return list(other) != list(self)
 
 
-class RowMapping(collections_abc.Mapping):
+class RowMapping(BaseRow, collections_abc.Mapping):
     """A ``Mapping`` that maps column names and objects to :class:`.Row` values.
 
     The :class:`.RowMapping` is available from a :class:`.Row` via the
@@ -463,22 +504,26 @@ class RowMapping(collections_abc.Mapping):
 
     """
 
-    __slots__ = ("row",)
+    __slots__ = ()
 
-    def __init__(self, row):
-        self.row = row
+    _default_key_style = KEY_OBJECTS_ONLY
 
-    def __getitem__(self, key):
-        return self.row._get_by_key_impl_mapping(key)
+    if not _baserow_usecext:
+
+        def __getitem__(self, key):
+            return self._get_by_key_impl(key)
+
+        def _values_impl(self):
+            return list(self._data)
 
     def __iter__(self):
-        return (k for k in self.row._parent.keys if k is not None)
+        return (k for k in self._parent.keys if k is not None)
 
     def __len__(self):
-        return len(self.row)
+        return len(self._data)
 
     def __contains__(self, key):
-        return self.row._parent._has_key(key)
+        return self._parent._has_key(key)
 
     def __repr__(self):
         return repr(dict(self))
@@ -496,11 +541,11 @@ class RowMapping(collections_abc.Mapping):
 
         """
 
-        return self.row._parent.keys
+        return self._parent.keys
 
     def values(self):
         """Return a view of values for the values represented in the
         underlying :class:`.Row`.
 
         """
-        return ROMappingView(self, self.row._values_impl())
+        return ROMappingView(self, self._values_impl())

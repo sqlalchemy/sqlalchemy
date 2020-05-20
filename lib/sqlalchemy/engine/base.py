@@ -1482,8 +1482,10 @@ class Connection(Connectable):
 
             if (
                 not self._is_future
-                and context.should_autocommit
+                # usually we're in a transaction so avoid relatively
+                # expensive / legacy should_autocommit call
                 and self._transaction is None
+                and context.should_autocommit
             ):
                 self._commit_impl(autocommit=True)
 

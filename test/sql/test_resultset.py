@@ -1246,6 +1246,7 @@ class CursorResultTest(fixtures.TablesTest):
             object(),
             [None],
             {"key": (0, None, "key"), 0: (0, None, "key")},
+            Row._default_key_style,
             MyList(["value"]),
         )
         eq_(list(proxy), ["value"])
@@ -1296,7 +1297,11 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_is_sequence(self):
 
         row = Row(
-            object(), [None], {"key": (None, 0), 0: (None, 0)}, ["value"]
+            object(),
+            [None],
+            {"key": (None, 0), 0: (None, 0)},
+            Row._default_key_style,
+            ["value"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
 
@@ -1306,6 +1311,7 @@ class CursorResultTest(fixtures.TablesTest):
             object(),
             [None, None, None],
             {"key": (None, 0), 0: (None, 0)},
+            Row._default_key_style,
             (1, "value", "foo"),
         )
         eq_(hash(row), hash((1, "value", "foo")))
@@ -2100,12 +2106,10 @@ class AlternateCursorResultTest(fixtures.TablesTest):
             def get_result_cursor_strategy(self, result):
                 return cls.create(result)
 
-            def get_result_proxy(self):
-                raise NotImplementedError()
-
         self.patcher = patch.object(
             self.engine.dialect, "execution_ctx_cls", ExcCtx
         )
+
         with self.patcher:
             yield
 

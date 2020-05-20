@@ -45,11 +45,18 @@ typedef struct {
     PyObject *parent;
     PyObject *row;
     PyObject *keymap;
+    long key_style;
 } BaseRow;
 
 
 static PyObject *sqlalchemy_engine_row = NULL;
 static PyObject *sqlalchemy_engine_result = NULL;
+
+
+//static int KEY_INTEGER_ONLY = 0;
+//static int KEY_OBJECTS_ONLY = 1;
+static int KEY_OBJECTS_BUT_WARN = 2;
+//static int KEY_OBJECTS_NO_WARN = 3;
 
 /****************
  * BaseRow *
@@ -90,13 +97,13 @@ safe_rowproxy_reconstructor(PyObject *self, PyObject *args)
 static int
 BaseRow_init(BaseRow *self, PyObject *args, PyObject *kwds)
 {
-    PyObject *parent, *keymap, *row, *processors;
+    PyObject *parent, *keymap, *row, *processors, *key_style;
     Py_ssize_t num_values, num_processors;
     PyObject **valueptr, **funcptr, **resultptr;
     PyObject *func, *result, *processed_value, *values_fastseq;
 
-    if (!PyArg_UnpackTuple(args, "BaseRow", 4, 4,
-                           &parent, &processors, &keymap, &row))
+    if (!PyArg_UnpackTuple(args, "BaseRow", 5, 5,
+                           &parent, &processors, &keymap, &key_style, &row))
         return -1;
 
     Py_INCREF(parent);
@@ -107,44 +114,61 @@ BaseRow_init(BaseRow *self, PyObject *args, PyObject *kwds)
         return -1;
 
     num_values = PySequence_Length(values_fastseq);
-    num_processors = PySequence_Size(processors);
-    if (num_values != num_processors) {
-        PyErr_Format(PyExc_RuntimeError,
-            "number of values in row (%d) differ from number of column "
-            "processors (%d)",
-            (int)num_values, (int)num_processors);
-        return -1;
+
+
+    if (processors != Py_None) {
+        num_processors = PySequence_Size(processors);
+        if (num_values != num_processors) {
+            PyErr_Format(PyExc_RuntimeError,
+                "number of values in row (%d) differ from number of column "
+                "processors (%d)",
+                (int)num_values, (int)num_processors);
+            return -1;
+        }
+
+    } else {
+        num_processors = -1;
     }
 
     result = PyTuple_New(num_values);
     if (result == NULL)
         return -1;
 
-    valueptr = PySequence_Fast_ITEMS(values_fastseq);
-    funcptr = PySequence_Fast_ITEMS(processors);
-    resultptr = PySequence_Fast_ITEMS(result);
-    while (--num_values >= 0) {
-        func = *funcptr;
-        if (func != Py_None) {
-            processed_value = PyObject_CallFunctionObjArgs(
-                func, *valueptr, NULL);
-            if (processed_value == NULL) {
-                Py_DECREF(values_fastseq);
-                Py_DECREF(result);
-                return -1;
+    if (num_processors != -1) {
+        valueptr = PySequence_Fast_ITEMS(values_fastseq);
+        funcptr = PySequence_Fast_ITEMS(processors);
+        resultptr = PySequence_Fast_ITEMS(result);
+        while (--num_values >= 0) {
+            func = *funcptr;
+            if (func != Py_None) {
+                processed_value = PyObject_CallFunctionObjArgs(
+                    func, *valueptr, NULL);
+                if (processed_value == NULL) {
+                    Py_DECREF(values_fastseq);
+                    Py_DECREF(result);
+                    return -1;
+                }
+                *resultptr = processed_value;
+            } else {
+                Py_INCREF(*valueptr);
+                *resultptr = *valueptr;
             }
-            *resultptr = processed_value;
-        } else {
+            valueptr++;
+            funcptr++;
+            resultptr++;
+        }
+    } else {
+        valueptr = PySequence_Fast_ITEMS(values_fastseq);
+        resultptr = PySequence_Fast_ITEMS(result);
+        while (--num_values >= 0) {
             Py_INCREF(*valueptr);
             *resultptr = *valueptr;
+            valueptr++;
+            resultptr++;
         }
-        valueptr++;
-        funcptr++;
-        resultptr++;
     }
 
     Py_DECREF(values_fastseq);
-
     self->row = result;
 
     if (!PyDict_CheckExact(keymap)) {
@@ -153,7 +177,7 @@ BaseRow_init(BaseRow *self, PyObject *args, PyObject *kwds)
     }
     Py_INCREF(keymap);
     self->keymap = keymap;
-
+    self->key_style = PyLong_AsLong(key_style);
     return 0;
 }
 
@@ -202,7 +226,7 @@ BaseRow_reduce(PyObject *self)
 static PyObject *
 BaseRow_filter_on_values(BaseRow *self, PyObject *filters)
 {
-    PyObject *module, *row_class, *new_obj;
+    PyObject *module, *row_class, *new_obj, *key_style;
 
     if (sqlalchemy_engine_row == NULL) {
         module = PyImport_ImportModule("sqlalchemy.engine.row");
@@ -216,7 +240,12 @@ BaseRow_filter_on_values(BaseRow *self, PyObject *filters)
     // at the same time
     row_class = PyObject_GetAttrString(sqlalchemy_engine_row, "Row");
 
-    new_obj = PyObject_CallFunction(row_class, "OOOO", self->parent, filters, self->keymap, self->row);
+    key_style = PyLong_FromLong(self->key_style);
+    Py_INCREF(key_style);
+
+    new_obj = PyObject_CallFunction(
+        row_class, "OOOOO", self->parent, filters, self->keymap,
+        key_style, self->row);
     Py_DECREF(row_class);
     if (new_obj == NULL) {
         return NULL;
@@ -356,7 +385,7 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
         /* -1 can be either the actual value, or an error flag. */
         return NULL;
 
-    if (!asmapping) {
+    if (!asmapping && self->key_style == KEY_OBJECTS_BUT_WARN) {
         PyObject *tmp;
 
         tmp = PyObject_CallMethod(self->parent, "_warn_for_nonint", "O", key);
@@ -416,7 +445,12 @@ BaseRow_subscript(BaseRow *self, PyObject *key)
 static PyObject *
 BaseRow_subscript_mapping(BaseRow *self, PyObject *key)
 {
-    return BaseRow_subscript_impl(self, key, 1);
+    if (self->key_style == KEY_OBJECTS_BUT_WARN) {
+        return BaseRow_subscript_impl(self, key, 0);
+    }
+    else {
+        return BaseRow_subscript_impl(self, key, 1);
+    }
 }
 
 
@@ -567,6 +601,39 @@ BaseRow_setkeymap(BaseRow *self, PyObject *value, void *closure)
     return 0;
 }
 
+static PyObject *
+BaseRow_getkeystyle(BaseRow *self, void *closure)
+{
+    PyObject *result;
+
+    result = PyLong_FromLong(self->key_style);
+    Py_INCREF(result);
+    return result;
+}
+
+
+static int
+BaseRow_setkeystyle(BaseRow *self, PyObject *value, void *closure)
+{
+    if (value == NULL) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "Cannot delete the 'key_style' attribute");
+        return -1;
+    }
+
+    if (!PyLong_CheckExact(value)) {
+        PyErr_SetString(
+            PyExc_TypeError,
+            "The 'key_style' attribute value must be an integer");
+        return -1;
+    }
+
+    self->key_style = PyLong_AsLong(value);
+
+    return 0;
+}
+
 static PyGetSetDef BaseRow_getseters[] = {
     {"_parent",
      (getter)BaseRow_getparent, (setter)BaseRow_setparent,
@@ -579,6 +646,10 @@ static PyGetSetDef BaseRow_getseters[] = {
     {"_keymap",
      (getter)BaseRow_getkeymap, (setter)BaseRow_setkeymap,
      "Key to (obj, index) dict",
+     NULL},
+    {"_key_style",
+     (getter)BaseRow_getkeystyle, (setter)BaseRow_setkeystyle,
+     "Return the key style",
      NULL},
     {NULL}
 };

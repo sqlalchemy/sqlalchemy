@@ -52,6 +52,14 @@ class immutabledict(ImmutableContainer, dict):
         dict.update(new, d)
         return new
 
+    def merge_with(self, *dicts):
+        new = dict.__new__(self.__class__)
+        dict.__init__(new, self)
+        for d in dicts:
+            if d:
+                dict.update(new, d)
+        return new
+
     def __repr__(self):
         return "immutabledict(%s)" % dict.__repr__(self)
 

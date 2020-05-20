@@ -840,16 +840,17 @@ class SQLCompiler(Compiled):
                     ),
                     replace_context=err,
                 )
-            resolved_extracted = dict(
-                zip([b.key for b in orig_extracted], extracted_parameters)
-            )
+
+            resolved_extracted = {
+                b.key: extracted
+                for b, extracted in zip(orig_extracted, extracted_parameters)
+            }
         else:
             resolved_extracted = None
 
         if params:
             pd = {}
-            for bindparam in self.bind_names:
-                name = self.bind_names[bindparam]
+            for bindparam, name in self.bind_names.items():
                 if bindparam.key in params:
                     pd[name] = params[bindparam.key]
                 elif name in params:
@@ -884,7 +885,7 @@ class SQLCompiler(Compiled):
             return pd
         else:
             pd = {}
-            for bindparam in self.bind_names:
+            for bindparam, name in self.bind_names.items():
                 if _check and bindparam.required:
                     if _group_number:
                         raise exc.InvalidRequestError(
@@ -908,11 +909,9 @@ class SQLCompiler(Compiled):
                     value_param = bindparam
 
                 if bindparam.callable:
-                    pd[
-                        self.bind_names[bindparam]
-                    ] = value_param.effective_value
+                    pd[name] = value_param.effective_value
                 else:
-                    pd[self.bind_names[bindparam]] = value_param.value
+                    pd[name] = value_param.value
             return pd
 
     @property

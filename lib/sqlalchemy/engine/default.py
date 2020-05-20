@@ -372,6 +372,8 @@ class DefaultDialect(interfaces.Dialect):
         return None
 
     def _check_unicode_returns(self, connection, additional_tests=None):
+        # this now runs in py2k only and will be removed in 2.0; disabled for
+        # Python 3 in all cases under #5315
         if util.py2k and not self.supports_unicode_statements:
             cast_to = util.binary_type
         else:
@@ -752,15 +754,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.compiled = compiled = compiled_ddl
         self.isddl = True
 
-        self.execution_options = compiled.execution_options
-        if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                connection._execution_options
-            )
-        if execution_options:
-            self.execution_options = self.execution_options.union(
-                execution_options
-            )
+        self.execution_options = compiled.execution_options.merge_with(
+            connection._execution_options, execution_options
+        )
 
         self._is_future_result = (
             connection._is_future
@@ -815,15 +811,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # we get here
         assert compiled.can_execute
 
-        self.execution_options = compiled.execution_options
-        if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                connection._execution_options
-            )
-        if execution_options:
-            self.execution_options = self.execution_options.union(
-                execution_options
-            )
+        self.execution_options = compiled.execution_options.merge_with(
+            connection._execution_options, execution_options
+        )
 
         self._is_future_result = (
             connection._is_future
@@ -921,42 +911,32 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
-        parameters = []
         if compiled.positional:
-            for compiled_params in self.compiled_parameters:
-                param = [
-                    processors[key](compiled_params[key])
-                    if key in processors
-                    else compiled_params[key]
-                    for key in positiontup
-                ]
-                parameters.append(dialect.execute_sequence_format(param))
+            parameters = [
+                dialect.execute_sequence_format(
+                    [
+                        processors[key](compiled_params[key])
+                        if key in processors
+                        else compiled_params[key]
+                        for key in positiontup
+                    ]
+                )
+                for compiled_params in self.compiled_parameters
+            ]
         else:
             encode = not dialect.supports_unicode_statements
-            for compiled_params in self.compiled_parameters:
 
-                if encode:
-                    param = dict(
-                        (
-                            dialect._encoder(key)[0],
-                            processors[key](compiled_params[key])
-                            if key in processors
-                            else compiled_params[key],
-                        )
-                        for key in compiled_params
-                    )
-                else:
-                    param = dict(
-                        (
-                            key,
-                            processors[key](compiled_params[key])
-                            if key in processors
-                            else compiled_params[key],
-                        )
-                        for key in compiled_params
-                    )
-
-                parameters.append(param)
+            parameters = [
+                {
+                    dialect._encoder(key)[0]
+                    if encode
+                    else key: processors[key](value)
+                    if key in processors
+                    else value
+                    for key, value in compiled_params.items()
+                }
+                for compiled_params in self.compiled_parameters
+            ]
 
         self.parameters = dialect.execute_sequence_format(parameters)
 
@@ -980,14 +960,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.dialect = connection.dialect
         self.is_text = True
 
-        if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                connection._execution_options
-            )
-        if execution_options:
-            self.execution_options = self.execution_options.union(
-                execution_options
-            )
+        self.execution_options = self.execution_options.merge_with(
+            connection._execution_options, execution_options
+        )
 
         self._is_future_result = (
             connection._is_future
@@ -1038,14 +1013,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
 
-        if connection._execution_options:
-            self.execution_options = self.execution_options.union(
-                connection._execution_options
-            )
-        if execution_options:
-            self.execution_options = self.execution_options.union(
-                execution_options
-            )
+        self.execution_options = self.execution_options.merge_with(
+            connection._execution_options, execution_options
+        )
 
         self._is_future_result = (
             connection._is_future
@@ -1173,7 +1143,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return use_server_side
 
     def create_cursor(self):
-        if self._use_server_side_cursor():
+        if (
+            # inlining initial preference checks for SS cursors
+            self.dialect.supports_server_side_cursors
+            and (
+                self.execution_options.get("stream_results", False)
+                or (
+                    self.dialect.server_side_cursors
+                    and self._use_server_side_cursor()
+                )
+            )
+        ):
             self._is_server_side = True
             return self.create_server_side_cursor()
         else:
@@ -1227,6 +1207,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         pass
 
     def get_result_cursor_strategy(self, result):
+        """Dialect-overriable hook to return the internal strategy that
+        fetches results.
+
+
+        Some dialects will in some cases return special objects here that
+        have pre-buffered rows from some source or another, such as turning
+        Oracle OUT parameters into rows to accommodate for "returning",
+        SQL Server fetching "returning" before it resets "identity insert",
+        etc.
+
+        """
         if self._is_server_side:
             strat_cls = _cursor.BufferedRowCursorFetchStrategy
         else:
@@ -1312,7 +1303,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 # the first row will have been fetched and current assumptions
                 # are that the result has only one row, until executemany()
                 # support is added here.
-                assert result.returns_rows
+                assert result._metadata.returns_rows
                 result._soft_close()
             elif not self._is_explicit_returning:
                 result._soft_close()
@@ -1330,9 +1321,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
             # test that it has a cursor metadata that is accurate.
             # the rows have all been fetched however.
-            assert result.returns_rows
+            assert result._metadata.returns_rows
 
-        elif not result.returns_rows:
+        elif not result._metadata.returns_rows:
             # no results, get rowcount
             # (which requires open cursor on some drivers
             # such as kintersbasdb, mxodbc)

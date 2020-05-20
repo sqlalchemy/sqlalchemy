@@ -86,7 +86,7 @@ class ResultMetaData(object):
         index = self._index_for_key(key, raiseerr)
 
         if index is not None:
-            return operator.methodcaller("_get_by_key_impl_mapping", index)
+            return operator.itemgetter(index)
         else:
             return None
 
@@ -169,10 +169,7 @@ class SimpleResultMetaData(ResultMetaData):
 
         self._keymap = {key: rec for keys, rec in recs_names for key in keys}
 
-        if _processors is None:
-            self._processors = [None] * len_keys
-        else:
-            self._processors = _processors
+        self._processors = _processors
 
     def _for_freeze(self):
         unique_filters = self._unique_filters
@@ -256,7 +253,9 @@ class SimpleResultMetaData(ResultMetaData):
 
 def result_tuple(fields, extra=None):
     parent = SimpleResultMetaData(fields, extra)
-    return functools.partial(Row, parent, parent._processors, parent._keymap)
+    return functools.partial(
+        Row, parent, parent._processors, parent._keymap, Row._default_key_style
+    )
 
 
 # a symbol that indicates to internal Result methods that
@@ -280,6 +279,8 @@ class Result(InPlaceGenerative):
 
     _row_logging_fn = None
 
+    _source_supports_scalars = False
+    _generate_rows = True
     _column_slice_filter = None
     _post_creational_filter = None
     _unique_filter_state = None
@@ -388,11 +389,14 @@ class Result(InPlaceGenerative):
         uniques, strategy = self._unique_filter_state
 
         if not strategy and self._metadata._unique_filters:
-            filters = self._metadata._unique_filters
-            if self._metadata._tuplefilter:
-                filters = self._metadata._tuplefilter(filters)
+            if self._source_supports_scalars:
+                strategy = self._metadata._unique_filters[0]
+            else:
+                filters = self._metadata._unique_filters
+                if self._metadata._tuplefilter:
+                    filters = self._metadata._tuplefilter(filters)
 
-            strategy = operator.methodcaller("_filter_on_values", filters)
+                strategy = operator.methodcaller("_filter_on_values", filters)
         return uniques, strategy
 
     def columns(self, *col_expressions):
@@ -489,7 +493,8 @@ class Result(InPlaceGenerative):
 
         """
         result = self._column_slices([index])
-        result._post_creational_filter = operator.itemgetter(0)
+        if self._generate_rows:
+            result._post_creational_filter = operator.itemgetter(0)
         result._no_scalar_onerow = True
         return result
 
@@ -497,11 +502,20 @@ class Result(InPlaceGenerative):
     def _column_slices(self, indexes):
         self._metadata = self._metadata._reduce(indexes)
 
+        if self._source_supports_scalars and len(indexes) == 1:
+            self._generate_rows = False
+        else:
+            self._generate_rows = True
+
     def _getter(self, key, raiseerr=True):
         """return a callable that will retrieve the given key from a
         :class:`.Row`.
 
         """
+        if self._source_supports_scalars:
+            raise NotImplementedError(
+                "can't use this function in 'only scalars' mode"
+            )
         return self._metadata._getter(key, raiseerr)
 
     def _tuple_getter(self, keys):
@@ -509,6 +523,10 @@ class Result(InPlaceGenerative):
         :class:`.Row`.
 
         """
+        if self._source_supports_scalars:
+            raise NotImplementedError(
+                "can't use this function in 'only scalars' mode"
+            )
         return self._metadata._row_as_tuple_getter(keys)
 
     @_generative
@@ -527,9 +545,14 @@ class Result(InPlaceGenerative):
         """
         self._post_creational_filter = operator.attrgetter("_mapping")
         self._no_scalar_onerow = False
+        self._generate_rows = True
 
     def _row_getter(self):
+        if self._source_supports_scalars and not self._generate_rows:
+            return None
+
         process_row = self._process_row
+        key_style = self._process_row._default_key_style
         metadata = self._metadata
 
         keymap = metadata._keymap
@@ -537,10 +560,11 @@ class Result(InPlaceGenerative):
         tf = metadata._tuplefilter
 
         if tf:
-            processors = tf(processors)
+            if processors:
+                processors = tf(processors)
 
             _make_row_orig = functools.partial(
-                process_row, metadata, processors, keymap
+                process_row, metadata, processors, keymap, key_style
             )
 
             def make_row(row):
@@ -548,7 +572,7 @@ class Result(InPlaceGenerative):
 
         else:
             make_row = functools.partial(
-                process_row, metadata, processors, keymap
+                process_row, metadata, processors, keymap, key_style
             )
 
         fns = ()
@@ -626,7 +650,7 @@ class Result(InPlaceGenerative):
 
             def iterrows(self):
                 for row in self._fetchiter_impl():
-                    obj = make_row(row)
+                    obj = make_row(row) if make_row else row
                     hashed = strategy(obj) if strategy else obj
                     if hashed in uniques:
                         continue
@@ -639,7 +663,7 @@ class Result(InPlaceGenerative):
 
             def iterrows(self):
                 for row in self._fetchiter_impl():
-                    row = make_row(row)
+                    row = make_row(row) if make_row else row
                     if post_creational_filter:
                         row = post_creational_filter(row)
                     yield row
@@ -658,6 +682,10 @@ class Result(InPlaceGenerative):
 
             def allrows(self):
                 rows = self._fetchall_impl()
+                if make_row:
+                    made_rows = [make_row(row) for row in rows]
+                else:
+                    made_rows = rows
                 rows = [
                     made_row
                     for made_row, sig_row in [
@@ -665,7 +693,7 @@ class Result(InPlaceGenerative):
                             made_row,
                             strategy(made_row) if strategy else made_row,
                         )
-                        for made_row in [make_row(row) for row in rows]
+                        for made_row in made_rows
                     ]
                     if sig_row not in uniques and not uniques.add(sig_row)
                 ]
@@ -678,11 +706,16 @@ class Result(InPlaceGenerative):
 
             def allrows(self):
                 rows = self._fetchall_impl()
+
                 if post_creational_filter:
-                    rows = [
-                        post_creational_filter(make_row(row)) for row in rows
-                    ]
-                else:
+                    if make_row:
+                        rows = [
+                            post_creational_filter(make_row(row))
+                            for row in rows
+                        ]
+                    else:
+                        rows = [post_creational_filter(row) for row in rows]
+                elif make_row:
                     rows = [make_row(row) for row in rows]
                 return rows
 
@@ -708,7 +741,7 @@ class Result(InPlaceGenerative):
                     if row is None:
                         return _NO_ROW
                     else:
-                        obj = make_row(row)
+                        obj = make_row(row) if make_row else row
                         hashed = strategy(obj) if strategy else obj
                         if hashed in uniques:
                             continue
@@ -725,7 +758,7 @@ class Result(InPlaceGenerative):
                 if row is None:
                     return _NO_ROW
                 else:
-                    row = make_row(row)
+                    row = make_row(row) if make_row else row
                     if post_creational_filter:
                         row = post_creational_filter(row)
                     return row
@@ -1042,6 +1075,8 @@ class FrozenResult(object):
     def __init__(self, result):
         self.metadata = result._metadata._for_freeze()
         self._post_creational_filter = result._post_creational_filter
+        self._source_supports_scalars = result._source_supports_scalars
+        self._generate_rows = result._generate_rows
         result._post_creational_filter = None
 
         self.data = result.fetchall()
@@ -1056,6 +1091,8 @@ class FrozenResult(object):
     def __call__(self):
         result = IteratorResult(self.metadata, iter(self.data))
         result._post_creational_filter = self._post_creational_filter
+        result._source_supports_scalars = self._source_supports_scalars
+        result._generate_rows = self._generate_rows
         return result
 
 
@@ -1112,16 +1149,28 @@ class ChunkedIteratorResult(IteratorResult):
 
     """
 
-    def __init__(self, cursor_metadata, chunks):
+    def __init__(self, cursor_metadata, chunks, source_supports_scalars=False):
         self._metadata = cursor_metadata
         self.chunks = chunks
+        self._source_supports_scalars = source_supports_scalars
 
-        self.iterator = itertools.chain.from_iterable(self.chunks(None))
+        self.iterator = itertools.chain.from_iterable(
+            self.chunks(None, self._generate_rows)
+        )
+
+    def _column_slices(self, indexes):
+        result = super(ChunkedIteratorResult, self)._column_slices(indexes)
+        self.iterator = itertools.chain.from_iterable(
+            self.chunks(self._yield_per, self._generate_rows)
+        )
+        return result
 
     @_generative
     def yield_per(self, num):
         self._yield_per = num
-        self.iterator = itertools.chain.from_iterable(self.chunks(num))
+        self.iterator = itertools.chain.from_iterable(
+            self.chunks(num, self._generate_rows)
+        )
 
 
 class MergedResult(IteratorResult):
@@ -1149,6 +1198,8 @@ class MergedResult(IteratorResult):
         self._post_creational_filter = results[0]._post_creational_filter
         self._no_scalar_onerow = results[0]._no_scalar_onerow
         self._yield_per = results[0]._yield_per
+        self._source_supports_scalars = results[0]._source_supports_scalars
+        self._generate_rows = results[0]._generate_rows
 
     def close(self):
         self._soft_close(hard=True)
