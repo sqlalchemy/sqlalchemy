@@ -96,7 +96,7 @@ class URL(object):
             keys = list(self.query)
             keys.sort()
             s += "?" + "&".join(
-                "%s=%s" % (k, element)
+                "%s=%s" % (util.quote_plus(k), util.quote_plus(element))
                 for k in keys
                 for element in util.to_list(self.query[k])
             )
