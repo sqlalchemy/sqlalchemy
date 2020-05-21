@@ -108,29 +108,27 @@ class RoleImpl(object):
 
     def _resolve_for_clause_element(self, element, argname=None, **kw):
         original_element = element
-        is_clause_element = hasattr(element, "__clause_element__")
+
+        is_clause_element = False
+        while hasattr(element, "__clause_element__"):
+            is_clause_element = True
+            if not getattr(element, "is_clause_element", False):
+                element = element.__clause_element__()
+            else:
+                return element
 
         if is_clause_element:
-            while not isinstance(
-                element, (elements.ClauseElement, schema.SchemaItem)
-            ):
-                try:
-                    element = element.__clause_element__()
-                except AttributeError:
-                    break
-
-        if not is_clause_element:
-            if self._use_inspection:
-                insp = inspection.inspect(element, raiseerr=False)
-                if insp is not None:
-                    try:
-                        return insp.__clause_element__()
-                    except AttributeError:
-                        self._raise_for_expected(original_element, argname)
-
-            return self._literal_coercion(element, argname=argname, **kw)
-        else:
             return element
+
+        if self._use_inspection:
+            insp = inspection.inspect(element, raiseerr=False)
+            if insp is not None:
+                try:
+                    return insp.__clause_element__()
+                except AttributeError:
+                    self._raise_for_expected(original_element, argname)
+
+        return self._literal_coercion(element, argname=argname, **kw)
 
     def _implicit_coercions(self, element, resolved, argname=None, **kw):
         self._raise_for_expected(element, argname, resolved)
@@ -160,6 +158,8 @@ class RoleImpl(object):
 
 
 class _Deannotate(object):
+    __slots__ = ()
+
     def _post_coercion(self, resolved, **kw):
         from .util import _deep_deannotate
 
@@ -167,11 +167,15 @@ class _Deannotate(object):
 
 
 class _StringOnly(object):
+    __slots__ = ()
+
     def _resolve_for_clause_element(self, element, argname=None, **kw):
         return self._literal_coercion(element, **kw)
 
 
 class _ReturnsStringKey(object):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -185,6 +189,8 @@ class _ReturnsStringKey(object):
 
 
 class _ColumnCoercions(object):
+    __slots__ = ()
+
     def _warn_for_scalar_subquery_coercion(self):
         util.warn_deprecated(
             "coercing SELECT object to scalar subquery in a "
@@ -230,6 +236,8 @@ def _no_text_coercion(
 
 
 class _NoTextCoercion(object):
+    __slots__ = ()
+
     def _literal_coercion(self, element, argname=None, **kw):
         if isinstance(element, util.string_types) and issubclass(
             elements.TextClause, self._role_class
@@ -240,6 +248,7 @@ class _NoTextCoercion(object):
 
 
 class _CoerceLiterals(object):
+    __slots__ = ()
     _coerce_consts = False
     _coerce_star = False
     _coerce_numerics = False
@@ -269,6 +278,8 @@ class _CoerceLiterals(object):
 
 
 class _SelectIsNotFrom(object):
+    __slots__ = ()
+
     def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
         if isinstance(element, roles.SelectStatementRole) or isinstance(
             resolved, roles.SelectStatementRole
@@ -292,9 +303,9 @@ class _SelectIsNotFrom(object):
         )
 
 
-class ExpressionElementImpl(
-    _ColumnCoercions, RoleImpl, roles.ExpressionElementRole
-):
+class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
+    __slots__ = ()
+
     def _literal_coercion(
         self, element, name=None, type_=None, argname=None, is_crud=False, **kw
     ):
@@ -309,9 +320,10 @@ class ExpressionElementImpl(
                 self._raise_for_expected(element, err=err)
 
 
-class BinaryElementImpl(
-    ExpressionElementImpl, RoleImpl, roles.BinaryElementRole
-):
+class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
+
+    __slots__ = ()
+
     def _literal_coercion(
         self, element, expr, operator, bindparam_type=None, argname=None, **kw
     ):
@@ -326,7 +338,9 @@ class BinaryElementImpl(
         return resolved
 
 
-class InElementImpl(RoleImpl, roles.InElementRole):
+class InElementImpl(RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -390,9 +404,8 @@ class InElementImpl(RoleImpl, roles.InElementRole):
             return element
 
 
-class WhereHavingImpl(
-    _CoerceLiterals, _ColumnCoercions, RoleImpl, roles.WhereHavingRole
-):
+class WhereHavingImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
+    __slots__ = ()
 
     _coerce_consts = True
 
@@ -400,9 +413,8 @@ class WhereHavingImpl(
         return _no_text_coercion(element, argname)
 
 
-class StatementOptionImpl(
-    _CoerceLiterals, RoleImpl, roles.StatementOptionRole
-):
+class StatementOptionImpl(_CoerceLiterals, RoleImpl):
+    __slots__ = ()
 
     _coerce_consts = True
 
@@ -410,17 +422,17 @@ class StatementOptionImpl(
         return elements.TextClause(element)
 
 
-class ColumnArgumentImpl(_NoTextCoercion, RoleImpl, roles.ColumnArgumentRole):
-    pass
+class ColumnArgumentImpl(_NoTextCoercion, RoleImpl):
+    __slots__ = ()
 
 
-class ColumnArgumentOrKeyImpl(
-    _ReturnsStringKey, RoleImpl, roles.ColumnArgumentOrKeyRole
-):
-    pass
+class ColumnArgumentOrKeyImpl(_ReturnsStringKey, RoleImpl):
+    __slots__ = ()
 
 
 class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):
+
+    __slots__ = ()
 
     _coerce_consts = True
 
@@ -428,7 +440,9 @@ class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):
         return elements._textual_label_reference(element)
 
 
-class OrderByImpl(ByOfImpl, RoleImpl, roles.OrderByRole):
+class OrderByImpl(ByOfImpl, RoleImpl):
+    __slots__ = ()
+
     def _post_coercion(self, resolved):
         if (
             isinstance(resolved, self._role_class)
@@ -439,7 +453,9 @@ class OrderByImpl(ByOfImpl, RoleImpl, roles.OrderByRole):
             return resolved
 
 
-class DMLColumnImpl(_ReturnsStringKey, RoleImpl, roles.DMLColumnRole):
+class DMLColumnImpl(_ReturnsStringKey, RoleImpl):
+    __slots__ = ()
+
     def _post_coercion(self, element, as_key=False):
         if as_key:
             return element.key
@@ -447,7 +463,9 @@ class DMLColumnImpl(_ReturnsStringKey, RoleImpl, roles.DMLColumnRole):
             return element
 
 
-class ConstExprImpl(RoleImpl, roles.ConstExprRole):
+class ConstExprImpl(RoleImpl):
+    __slots__ = ()
+
     def _literal_coercion(self, element, argname=None, **kw):
         if element is None:
             return elements.Null()
@@ -459,7 +477,9 @@ class ConstExprImpl(RoleImpl, roles.ConstExprRole):
             self._raise_for_expected(element, argname)
 
 
-class TruncatedLabelImpl(_StringOnly, RoleImpl, roles.TruncatedLabelRole):
+class TruncatedLabelImpl(_StringOnly, RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -482,9 +502,9 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl, roles.TruncatedLabelRole):
             return elements._truncated_label(element)
 
 
-class DDLExpressionImpl(
-    _Deannotate, _CoerceLiterals, RoleImpl, roles.DDLExpressionRole
-):
+class DDLExpressionImpl(_Deannotate, _CoerceLiterals, RoleImpl):
+
+    __slots__ = ()
 
     _coerce_consts = True
 
@@ -492,17 +512,17 @@ class DDLExpressionImpl(
         return elements.TextClause(element)
 
 
-class DDLConstraintColumnImpl(
-    _Deannotate, _ReturnsStringKey, RoleImpl, roles.DDLConstraintColumnRole
-):
-    pass
+class DDLConstraintColumnImpl(_Deannotate, _ReturnsStringKey, RoleImpl):
+    __slots__ = ()
 
 
 class DDLReferredColumnImpl(DDLConstraintColumnImpl):
-    pass
+    __slots__ = ()
 
 
-class LimitOffsetImpl(RoleImpl, roles.LimitOffsetRole):
+class LimitOffsetImpl(RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(self, element, resolved, argname=None, **kw):
         if resolved is None:
             return None
@@ -519,9 +539,9 @@ class LimitOffsetImpl(RoleImpl, roles.LimitOffsetRole):
             )
 
 
-class LabeledColumnExprImpl(
-    ExpressionElementImpl, roles.LabeledColumnExprRole
-):
+class LabeledColumnExprImpl(ExpressionElementImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -537,9 +557,8 @@ class LabeledColumnExprImpl(
                 self._raise_for_expected(original_element, argname, resolved)
 
 
-class ColumnsClauseImpl(
-    _SelectIsNotFrom, _CoerceLiterals, RoleImpl, roles.ColumnsClauseRole
-):
+class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
+    __slots__ = ()
 
     _coerce_consts = True
     _coerce_numerics = True
@@ -566,22 +585,26 @@ class ColumnsClauseImpl(
         )
 
 
-class ReturnsRowsImpl(RoleImpl, roles.ReturnsRowsRole):
-    pass
+class ReturnsRowsImpl(RoleImpl):
+    __slots__ = ()
 
 
-class StatementImpl(_NoTextCoercion, RoleImpl, roles.StatementRole):
-    pass
+class StatementImpl(_NoTextCoercion, RoleImpl):
+    __slots__ = ()
 
 
-class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl, roles.StatementRole):
+class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
+    __slots__ = ()
+
     def _text_coercion(self, element, argname=None):
+        # TODO: this should emit deprecation warning,
+        # see deprecation warning in engine/base.py execute()
         return elements.TextClause(element)
 
 
-class SelectStatementImpl(
-    _NoTextCoercion, RoleImpl, roles.SelectStatementRole
-):
+class SelectStatementImpl(_NoTextCoercion, RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -595,9 +618,9 @@ class HasCTEImpl(ReturnsRowsImpl, roles.HasCTERole):
     pass
 
 
-class FromClauseImpl(
-    _SelectIsNotFrom, _NoTextCoercion, RoleImpl, roles.FromClauseRole
-):
+class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self,
         original_element,
@@ -625,7 +648,9 @@ class FromClauseImpl(
             self._raise_for_expected(original_element, argname, resolved)
 
 
-class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
+class StrictFromClauseImpl(FromClauseImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self,
         original_element,
@@ -647,14 +672,16 @@ class StrictFromClauseImpl(FromClauseImpl, roles.StrictFromClauseRole):
             self._raise_for_expected(original_element, argname, resolved)
 
 
-class AnonymizedFromClauseImpl(
-    StrictFromClauseImpl, roles.AnonymizedFromClauseRole
-):
+class AnonymizedFromClauseImpl(StrictFromClauseImpl):
+    __slots__ = ()
+
     def _post_coercion(self, element, flat=False, name=None, **kw):
         return element.alias(name=name, flat=flat)
 
 
-class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):
+class DMLSelectImpl(_NoTextCoercion, RoleImpl):
+    __slots__ = ()
+
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -670,9 +697,9 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl, roles.DMLSelectRole):
             self._raise_for_expected(original_element, argname, resolved)
 
 
-class CompoundElementImpl(
-    _NoTextCoercion, RoleImpl, roles.CompoundElementRole
-):
+class CompoundElementImpl(_NoTextCoercion, RoleImpl):
+    __slots__ = ()
+
     def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
         if isinstance(element, roles.FromClauseRole):
             if element._is_subquery:
