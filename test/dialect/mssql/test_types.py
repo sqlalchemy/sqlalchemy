@@ -56,6 +56,52 @@ from sqlalchemy.testing import pickleable
 from sqlalchemy.util import b
 
 
+class TimeParameterTest(fixtures.TablesTest):
+    __only_on__ = "mssql"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "time_t",
+            metadata,
+            Column("id", Integer, primary_key=True, autoincrement=False),
+            Column("time_col", Time),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        time_t = cls.tables.time_t
+        connection.execute(
+            time_t.insert(),
+            [
+                {"id": 1, "time_col": datetime.time(1, 23, 45, 67)},
+                {"id": 2, "time_col": datetime.time(12, 0, 0)},
+                {"id": 3, "time_col": datetime.time(16, 19, 59, 999999)},
+                {"id": 4, "time_col": None},
+            ],
+        )
+
+    @testing.combinations(
+        ("not_null", datetime.time(1, 23, 45, 68), 2),
+        ("null", None, 1),
+        id_="iaa",
+        argnames="time_value, expected_row_count",
+    )
+    def test_time_as_parameter_to_where(
+        self, time_value, expected_row_count, connection
+    ):
+        # issue #5339
+        t = self.tables.time_t
+
+        if time_value is None:
+            qry = t.select().where(t.c.time_col.is_(time_value))
+        else:
+            qry = t.select().where(t.c.time_col >= time_value)
+        result = connection.execute(qry).fetchall()
+        eq_(len(result), expected_row_count)
+
+
 class TimeTypeTest(fixtures.TestBase):
     def test_result_processor_no_microseconds(self):
         expected = datetime.time(12, 34, 56)
