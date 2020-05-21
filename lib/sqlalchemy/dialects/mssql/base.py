@@ -990,7 +990,11 @@ class TIME(sqltypes.TIME):
                     self.__zero_date, value.time()
                 )
             elif isinstance(value, datetime.time):
-                value = datetime.datetime.combine(self.__zero_date, value)
+                """ issue #5339
+                per: https://github.com/mkleehammer/pyodbc/wiki/Tips-and-Tricks-by-Database-Platform#time-columns
+                pass TIME value as string
+                """  # noqa
+                value = str(value)
             return value
 
         return process
