@@ -671,6 +671,8 @@ class CursorResultMetaData(ResultMetaData):
 
 
 class LegacyCursorResultMetaData(CursorResultMetaData):
+    __slots__ = ()
+
     def _contains(self, value, row):
         key = value
         if key in self._keymap:
@@ -813,17 +815,15 @@ class NoCursorFetchStrategy(ResultFetchStrategy):
 
     """
 
-    __slots__ = ("closed",)
+    __slots__ = ()
 
-    def __init__(self, closed):
-        self.closed = closed
-        self.cursor_description = None
+    cursor_description = None
 
     def soft_close(self, result):
         pass
 
     def hard_close(self, result):
-        self.closed = True
+        pass
 
     def fetchone(self, result):
         return self._non_result(result, None)
@@ -849,14 +849,19 @@ class NoCursorDQLFetchStrategy(NoCursorFetchStrategy):
 
     """
 
+    __slots__ = ()
+
     def _non_result(self, result, default, err=None):
-        if self.closed:
+        if result.closed:
             util.raise_(
                 exc.ResourceClosedError("This result object is closed."),
                 replace_context=err,
             )
         else:
             return default
+
+
+_NO_CURSOR_DQL = NoCursorDQLFetchStrategy()
 
 
 class NoCursorDMLFetchStrategy(NoCursorFetchStrategy):
@@ -867,10 +872,15 @@ class NoCursorDMLFetchStrategy(NoCursorFetchStrategy):
 
     """
 
+    __slots__ = ()
+
     def _non_result(self, result, default, err=None):
         # we only expect to have a _NoResultMetaData() here right now.
         assert not result._metadata.returns_rows
         result._metadata._we_dont_return_rows(err)
+
+
+_NO_CURSOR_DML = NoCursorDMLFetchStrategy()
 
 
 class CursorFetchStrategy(ResultFetchStrategy):
@@ -893,15 +903,15 @@ class CursorFetchStrategy(ResultFetchStrategy):
         description = dbapi_cursor.description
 
         if description is None:
-            return NoCursorDMLFetchStrategy(False)
+            return _NO_CURSOR_DML
         else:
             return cls(dbapi_cursor, description)
 
     def soft_close(self, result):
-        result.cursor_strategy = NoCursorDQLFetchStrategy(False)
+        result.cursor_strategy = _NO_CURSOR_DQL
 
     def hard_close(self, result):
-        result.cursor_strategy = NoCursorDQLFetchStrategy(True)
+        result.cursor_strategy = _NO_CURSOR_DQL
 
     def handle_exception(self, result, err):
         result.connection._handle_dbapi_exception(
@@ -1016,7 +1026,7 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
         description = dbapi_cursor.description
 
         if description is None:
-            return NoCursorDMLFetchStrategy(False)
+            return _NO_CURSOR_DML
         else:
             max_row_buffer = result.context.execution_options.get(
                 "max_row_buffer", 1000
@@ -1184,7 +1194,7 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
 
-_no_result_metadata = _NoResultMetaData()
+_NO_RESULT_METADATA = _NoResultMetaData()
 
 
 class BaseCursorResult(object):
@@ -1199,11 +1209,12 @@ class BaseCursorResult(object):
 
     @classmethod
     def _create_for_context(cls, context):
+
         if context._is_future_result:
-            obj = object.__new__(CursorResult)
+            obj = CursorResult(context)
         else:
-            obj = object.__new__(LegacyCursorResult)
-        obj.__init__(context)
+            obj = LegacyCursorResult(context)
+
         return obj
 
     def __init__(self, context):
@@ -1214,35 +1225,33 @@ class BaseCursorResult(object):
         self._echo = (
             self.connection._echo and context.engine._should_log_debug()
         )
-        self._init_metadata()
 
-    def _init_metadata(self):
-        self.cursor_strategy = strat = self.context.get_result_cursor_strategy(
-            self
-        )
+        # this is a hook used by dialects to change the strategy,
+        # so for the moment we have to keep calling this every time
+        # :(
+        self.cursor_strategy = strat = context.get_result_cursor_strategy(self)
 
         if strat.cursor_description is not None:
-            if self.context.compiled:
-                if self.context.compiled._cached_metadata:
-                    cached_md = self.context.compiled._cached_metadata
-                    self._metadata = cached_md._adapt_to_context(self.context)
-
-                else:
-                    self._metadata = (
-                        self.context.compiled._cached_metadata
-                    ) = self._cursor_metadata(self, strat.cursor_description)
-            else:
-                self._metadata = self._cursor_metadata(
-                    self, strat.cursor_description
-                )
-            if self._echo:
-                self.context.engine.logger.debug(
-                    "Col %r", tuple(x[0] for x in strat.cursor_description)
-                )
+            self._init_metadata(context, strat.cursor_description)
         else:
-            self._metadata = _no_result_metadata
-        # leave cursor open so that execution context can continue
-        # setting up things like rowcount
+            self._metadata = _NO_RESULT_METADATA
+
+    def _init_metadata(self, context, cursor_description):
+        if context.compiled:
+            if context.compiled._cached_metadata:
+                cached_md = context.compiled._cached_metadata
+                self._metadata = cached_md._adapt_to_context(context)
+
+            else:
+                self._metadata = (
+                    context.compiled._cached_metadata
+                ) = self._cursor_metadata(self, cursor_description)
+        else:
+            self._metadata = self._cursor_metadata(self, cursor_description)
+        if self._echo:
+            context.engine.logger.debug(
+                "Col %r", tuple(x[0] for x in cursor_description)
+            )
 
     def _soft_close(self, hard=False):
         """Soft close this :class:`_engine.CursorResult`.
@@ -1637,9 +1646,6 @@ class CursorResult(BaseCursorResult, Result):
 
     def _fetchmany_impl(self, size=None):
         return self.cursor_strategy.fetchmany(self, size)
-
-    def _soft_close(self, **kw):
-        BaseCursorResult._soft_close(self, **kw)
 
     def _raw_row_iterator(self):
         return self._fetchiter_impl()

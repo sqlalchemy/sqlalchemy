@@ -78,7 +78,7 @@ def instances(query, cursor, context):
         ],
     )
 
-    def chunks(size):
+    def chunks(size, as_tuples):
         while True:
             yield_per = size
 
@@ -91,7 +91,13 @@ def instances(query, cursor, context):
             else:
                 fetch = cursor.fetchall()
 
-            rows = [tuple([proc(row) for proc in process]) for row in fetch]
+            if not as_tuples:
+                proc = process[0]
+                rows = [proc(row) for row in fetch]
+            else:
+                rows = [
+                    tuple([proc(row) for proc in process]) for row in fetch
+                ]
 
             for path, post_load in context.post_load_paths.items():
                 post_load.invoke(context, path)
@@ -101,14 +107,15 @@ def instances(query, cursor, context):
             if not yield_per:
                 break
 
-    result = ChunkedIteratorResult(row_metadata, chunks)
+    result = ChunkedIteratorResult(
+        row_metadata, chunks, source_supports_scalars=single_entity
+    )
     if query._yield_per:
         result.yield_per(query._yield_per)
 
     if single_entity:
         result = result.scalars()
 
-    # filtered = context.loaders_require_uniquing
     filtered = query._has_mapper_entities
 
     if filtered:
@@ -796,6 +803,7 @@ def _populate_full(
             for key, set_callable in populators["expire"]:
                 if set_callable:
                     state.expired_attributes.add(key)
+
         for key, populator in populators["new"]:
             populator(state, dict_, row)
         for key, populator in populators["delayed"]:

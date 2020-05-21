@@ -1119,20 +1119,20 @@ class CursorResultTest(fixtures.TablesTest):
     def test_column_accessor_textual_select(self, connection):
         users = self.tables.users
 
-        # this will create column() objects inside
-        # the select(), these need to match on name anyway
-        r = connection.execute(
-            select([column("user_id"), column("user_name")])
-            .select_from(table("users"))
-            .where(text("user_id=2"))
-        ).first()
-
         with testing.expect_deprecated(
             "Retreiving row values using Column objects "
             "with only matching names",
             "Using non-integer/slice indices on Row is "
             "deprecated and will be removed in version 2.0",
         ):
+            # this will create column() objects inside
+            # the select(), these need to match on name anyway
+            r = connection.execute(
+                select([column("user_id"), column("user_name")])
+                .select_from(table("users"))
+                .where(text("user_id=2"))
+            ).first()
+
             eq_(r[users.c.user_id], 2)
 
         r._keymap.pop(users.c.user_id)  # reset lookup
@@ -1151,16 +1151,16 @@ class CursorResultTest(fixtures.TablesTest):
     def test_column_accessor_basic_text(self, connection):
         users = self.tables.users
 
-        r = connection.execute(
-            text("select * from users where user_id=2")
-        ).first()
-
         with testing.expect_deprecated(
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0",
             "Retreiving row values using Column objects "
             "with only matching names",
         ):
+            r = connection.execute(
+                text("select * from users where user_id=2")
+            ).first()
+
             eq_(r[users.c.user_id], 2)
 
         r._keymap.pop(users.c.user_id)
@@ -1344,24 +1344,24 @@ class CursorResultTest(fixtures.TablesTest):
 
     def test_row_getitem_string(self, connection):
         col = literal_column("1").label("foo")
-        row = connection.execute(select([col])).first()
 
         with testing.expect_deprecated(
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0;"
         ):
+            row = connection.execute(select([col])).first()
             eq_(row["foo"], 1)
 
         eq_(row._mapping["foo"], 1)
 
     def test_row_getitem_column(self, connection):
         col = literal_column("1").label("foo")
-        row = connection.execute(select([col])).first()
 
         with testing.expect_deprecated(
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0;"
         ):
+            row = connection.execute(select([col])).first()
             eq_(row[col], 1)
 
         eq_(row._mapping[col], 1)

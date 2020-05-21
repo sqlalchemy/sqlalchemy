@@ -3411,7 +3411,7 @@ class Query(Generative):
             querycontext, self._connection_from_session, close_with_result=True
         )
 
-        result = conn.execute(querycontext.statement, self._params)
+        result = conn._execute_20(querycontext.statement, self._params)
         return loading.instances(querycontext.query, result, querycontext)
 
     def _execute_crud(self, stmt, mapper):

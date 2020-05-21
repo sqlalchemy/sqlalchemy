@@ -3527,12 +3527,14 @@ class Select(
     @classmethod
     def _create_select_from_fromclause(cls, target, entities, *arg, **kw):
         if arg or kw:
-            util.warn_deprecated_20(
-                "Passing arguments to %s.select() is deprecated and "
-                "will be removed in SQLAlchemy 2.0.  Please use generative "
-                "methods such as select().where(), etc."
-                % (target.__class__.__name__,)
-            )
+            if util.SQLALCHEMY_WARN_20:
+                util.warn_deprecated_20(
+                    "Passing arguments to %s.select() is deprecated and "
+                    "will be removed in SQLAlchemy 2.0.  "
+                    "Please use generative "
+                    "methods such as select().where(), etc."
+                    % (target.__class__.__name__,)
+                )
             return Select(entities, *arg, **kw)
         else:
             return Select._create_select(*entities)
@@ -3744,13 +3746,14 @@ class Select(
             :meth:`_expression.Select.apply_labels`
 
         """
-        util.warn_deprecated_20(
-            "The select() function in SQLAlchemy 2.0 will accept a "
-            "series of columns / tables and other entities only, "
-            "passed positionally. For forwards compatibility, use the "
-            "sqlalchemy.future.select() construct.",
-            stacklevel=4,
-        )
+        if util.SQLALCHEMY_WARN_20:
+            util.warn_deprecated_20(
+                "The select() function in SQLAlchemy 2.0 will accept a "
+                "series of columns / tables and other entities only, "
+                "passed positionally. For forwards compatibility, use the "
+                "sqlalchemy.future.select() construct.",
+                stacklevel=4,
+            )
 
         self._auto_correlate = correlate
 

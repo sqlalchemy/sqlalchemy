@@ -108,6 +108,18 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         with testing.db.connect() as conn:
             [tuple(row) for row in conn.exec_driver_sql(stmt).fetchall()]
 
+    @profiling.function_call_count()
+    def test_fetch_by_key_legacy(self):
+        with testing.db.connect() as conn:
+            for row in conn.execute(t.select()).fetchall():
+                [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
+
+    @profiling.function_call_count()
+    def test_fetch_by_key_mappings(self):
+        with testing.db.connect() as conn:
+            for row in conn.execute(t.select()).mappings().fetchall():
+                [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
+
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
         c1 = Column("some column", Integer) + Column(
@@ -175,7 +187,9 @@ class RowTest(fixtures.TestBase):
             for key in keyobjs:
                 keymap[key] = (index, key)
             keymap[index] = (index, key)
-        return row_cls(metadata, processors, keymap, row)
+        return row_cls(
+            metadata, processors, keymap, row_cls._default_key_style, row
+        )
 
     def _test_getitem_value_refcounts_legacy(self, seq_factory):
         col1, col2 = object(), object()

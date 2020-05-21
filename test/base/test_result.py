@@ -788,3 +788,104 @@ class MergeResultTest(fixtures.TestBase):
 
         # unique takes place
         eq_(result.all(), [2, 1, 3])
+
+
+class OnlyScalarsTest(fixtures.TestBase):
+    """the chunkediterator supports "non tuple mode", where we bypass
+    the expense of generating rows when we have only scalar values.
+
+    """
+
+    @testing.fixture
+    def no_tuple_fixture(self):
+        data = [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)]
+
+        def chunks(num, as_tuples):
+            while data:
+                rows = data[0:num]
+                data[:] = []
+
+                if as_tuples:
+                    assert False
+                else:
+                    yield [row[0] for row in rows]
+
+        return chunks
+
+    @testing.fixture
+    def normal_fixture(self):
+        data = [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)]
+
+        def chunks(num, as_tuples):
+            while data:
+                rows = data[0:num]
+                data[:] = []
+
+                if as_tuples:
+                    yield rows
+                else:
+                    yield [row[0] for row in rows]
+
+        return chunks
+
+    def test_scalar_mode_scalars_all(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars()
+
+        eq_(r.all(), [1, 2, 1, 1, 4])
+
+    def test_scalar_mode_unique_scalars_all(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.unique().scalars()
+
+        eq_(r.all(), [1, 2, 4])
+
+    def test_scalar_mode_unique_tuples_all(self, normal_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, normal_fixture, source_supports_scalars=True
+        )
+
+        r = r.unique()
+
+        eq_(r.all(), [(1, 1, 1), (2, 1, 2), (1, 3, 2), (4, 1, 2)])
+
+    def test_scalar_mode_tuples_all(self, normal_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, normal_fixture, source_supports_scalars=True
+        )
+
+        eq_(r.all(), [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)])
+
+    def test_scalar_mode_scalars_iterate(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars()
+
+        eq_(list(r), [1, 2, 1, 1, 4])
+
+    def test_scalar_mode_tuples_iterate(self, normal_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, normal_fixture, source_supports_scalars=True
+        )
+
+        eq_(list(r), [(1, 1, 1), (2, 1, 2), (1, 1, 1), (1, 3, 2), (4, 1, 2)])

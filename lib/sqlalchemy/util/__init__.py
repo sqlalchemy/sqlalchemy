@@ -148,5 +148,4 @@ from .langhelpers import warn_limited  # noqa
 from .langhelpers import wrap_callable  # noqa
 
 
-# things that used to be not always available,
-# but are now as of current support Python versions
+SQLALCHEMY_WARN_20 = False
