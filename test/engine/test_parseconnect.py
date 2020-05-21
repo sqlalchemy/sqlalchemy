@@ -147,6 +147,11 @@ class URLTest(fixtures.TestBase):
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
         )
 
+        test_url = "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
+        u = url.make_url(test_url)
+        eq_(u.query, {"arg1=": "param1", "arg2": "param 2"})
+        eq_(str(u), test_url)
+
     def test_comparison(self):
         components = (
             "drivername",
