@@ -103,16 +103,19 @@ except ImportError:
         def __getitem__(self, key):
             return self._data[key]
 
-        def _subscript_impl(self, key, ismapping):
+        def _get_by_key_impl(self, key):
+            if self._key_style == KEY_INTEGER_ONLY:
+                return self._data[key]
+
+            # the following is all LegacyRow support.   none of this
+            # should be called if not LegacyRow
+            # assert isinstance(self, LegacyRow)
+
             try:
                 rec = self._keymap[key]
             except KeyError as ke:
                 rec = self._parent._key_fallback(key, ke)
             except TypeError:
-                # the non-C version detects a slice using TypeError.
-                # this is pretty inefficient for the slice use case
-                # but is more efficient for the integer use case since we
-                # don't have to check it up front.
                 if isinstance(key, slice):
                     return tuple(self._data[key])
                 else:
@@ -124,7 +127,6 @@ except ImportError:
 
             elif (
                 self._key_style == KEY_OBJECTS_BUT_WARN
-                and not ismapping
                 and mdindex != key
                 and not isinstance(key, int)
             ):
@@ -132,14 +134,22 @@ except ImportError:
 
             return self._data[mdindex]
 
-        def _get_by_key_impl(self, key):
-            return self._subscript_impl(key, False)
-
         def _get_by_key_impl_mapping(self, key):
-            # the C code has two different methods so that we can distinguish
-            # between tuple-like keys (integers, slices) and mapping-like keys
-            # (strings, objects)
-            return self._subscript_impl(key, True)
+            try:
+                rec = self._keymap[key]
+            except KeyError as ke:
+                rec = self._parent._key_fallback(key, ke)
+
+            mdindex = rec[MD_INDEX]
+            if mdindex is None:
+                self._parent._raise_for_ambiguous_column_name(rec)
+            elif (
+                self._key_style == KEY_OBJECTS_ONLY
+                and int in key.__class__.__mro__
+            ):
+                raise KeyError(key)
+
+            return self._data[mdindex]
 
         def __getattr__(self, name):
             try:
@@ -348,9 +358,7 @@ class LegacyRow(Row):
         return self._parent._contains(key, self)
 
     if not _baserow_usecext:
-
-        def __getitem__(self, key):
-            return self._get_by_key_impl(key)
+        __getitem__ = BaseRow._get_by_key_impl
 
     @util.deprecated(
         "1.4",
@@ -510,8 +518,7 @@ class RowMapping(BaseRow, collections_abc.Mapping):
 
     if not _baserow_usecext:
 
-        def __getitem__(self, key):
-            return self._get_by_key_impl(key)
+        __getitem__ = BaseRow._get_by_key_impl_mapping
 
         def _values_impl(self):
             return list(self._data)

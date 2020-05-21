@@ -40,7 +40,7 @@ else:
             operator.methodcaller("_get_by_key_impl_mapping", index)
             for index in indexes
         ]
-        return lambda rec: tuple(getter(rec) for getter in getters)
+        return lambda rec: tuple([getter(rec) for getter in getters])
 
 
 class ResultMetaData(object):
@@ -775,15 +775,19 @@ class Result(InPlaceGenerative):
             uniques, strategy = self._unique_strategy
 
             def filterrows(make_row, rows, strategy, uniques):
+                if strategy:
+                    made_rows = (
+                        (made_row, strategy(made_row))
+                        for made_row in [make_row(row) for row in rows]
+                    )
+                else:
+                    made_rows = (
+                        (made_row, made_row)
+                        for made_row in [make_row(row) for row in rows]
+                    )
                 return [
                     made_row
-                    for made_row, sig_row in [
-                        (
-                            made_row,
-                            strategy(made_row) if strategy else made_row,
-                        )
-                        for made_row in [make_row(row) for row in rows]
-                    ]
+                    for made_row, sig_row in made_rows
                     if sig_row not in uniques and not uniques.add(sig_row)
                 ]
 

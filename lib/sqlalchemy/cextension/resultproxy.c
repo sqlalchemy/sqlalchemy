@@ -54,7 +54,7 @@ static PyObject *sqlalchemy_engine_result = NULL;
 
 
 //static int KEY_INTEGER_ONLY = 0;
-//static int KEY_OBJECTS_ONLY = 1;
+static int KEY_OBJECTS_ONLY = 1;
 static int KEY_OBJECTS_BUT_WARN = 2;
 //static int KEY_OBJECTS_NO_WARN = 3;
 
@@ -345,14 +345,24 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
     long index;
     int key_fallback = 0;
 
-    // if record is non null, it's a borrowed reference
+    // we want to raise TypeError for slice access on a mapping.
+    // Py3 will do this with PyDict_GetItemWithError, Py2 will do it
+    // with PyObject_GetItem.  However in the Python2 case the object
+    // protocol gets in the way for reasons not entirely clear, so
+    // detect slice we have a key error and raise directly.
+
     record = PyDict_GetItem((PyObject *)self->keymap, key);
 
     if (record == NULL) {
+        if (PySlice_Check(key)) {
+            PyErr_Format(PyExc_TypeError, "can't use slices for mapping access");
+            return NULL;
+        }
         record = PyObject_CallMethod(self->parent, "_key_fallback",
                                      "OO", key, Py_None);
         if (record == NULL)
             return NULL;
+
         key_fallback = 1;  // boolean to indicate record is a new reference
     }
 
@@ -408,22 +418,47 @@ BaseRow_subscript_impl(BaseRow *self, PyObject *key, int asmapping)
 
 #if PY_MAJOR_VERSION < 3
     if (PyInt_CheckExact(key)) {
+        if (self->key_style == KEY_OBJECTS_ONLY) {
+            // TODO: being very lazy with error catching here
+            PyErr_Format(PyExc_KeyError, "%s", PyString_AsString(PyObject_Repr(key)));
+            return NULL;
+        }
         index = PyInt_AS_LONG(key);
+
+        // support negative indexes.   We can also call PySequence_GetItem,
+        // but here we can stay with the simpler tuple protocol
+        // rather than the seqeunce protocol which has to check for
+        // __getitem__ methods etc.
         if (index < 0)
-            index += BaseRow_length(self);
+            index += (long)BaseRow_length(self);
         return BaseRow_getitem(self, index);
     } else
 #endif
 
     if (PyLong_CheckExact(key)) {
+        if (self->key_style == KEY_OBJECTS_ONLY) {
+#if PY_MAJOR_VERSION < 3
+            // TODO: being very lazy with error catching here
+            PyErr_Format(PyExc_KeyError, "%s", PyString_AsString(PyObject_Repr(key)));
+#else
+            PyErr_Format(PyExc_KeyError, "%R", key);
+#endif
+            return NULL;
+        }
         index = PyLong_AsLong(key);
-        if ((index == -1) && PyErr_Occurred())
+        if ((index == -1) && PyErr_Occurred() != NULL)
             /* -1 can be either the actual value, or an error flag. */
             return NULL;
+
+        // support negative indexes.   We can also call PySequence_GetItem,
+        // but here we can stay with the simpler tuple protocol
+        // rather than the seqeunce protocol which has to check for
+        // __getitem__ methods etc.
         if (index < 0)
             index += (long)BaseRow_length(self);
         return BaseRow_getitem(self, index);
-    } else if (PySlice_Check(key)) {
+
+    } else if (PySlice_Check(key) && self->key_style != KEY_OBJECTS_ONLY) {
         values = PyObject_GetItem(self->row, key);
         if (values == NULL)
             return NULL;
@@ -669,6 +704,12 @@ static PyMethodDef BaseRow_methods[] = {
     {NULL}  /* Sentinel */
 };
 
+// currently, the sq_item hook is not used by Python except for slices,
+// because we also implement subscript_mapping which seems to intercept
+// integers.  Ideally, when there
+// is a complete separation of "row" from "mapping", we can make
+// two separate types here so that one has only sq_item and the other
+// has only mp_subscript.
 static PySequenceMethods BaseRow_as_sequence = {
     (lenfunc)BaseRow_length,   /* sq_length */
     0,                              /* sq_concat */

@@ -62,6 +62,16 @@ class ResultTupleTest(fixtures.TestBase):
         keyed_tuple = self._fixture([1, 2], ["a", "b"])
         eq_(keyed_tuple[0:2], (1, 2))
 
+    def test_slices_arent_in_mappings(self):
+        keyed_tuple = self._fixture([1, 2], ["a", "b"])
+
+        assert_raises(TypeError, lambda: keyed_tuple._mapping[0:2])
+
+    def test_integers_arent_in_mappings(self):
+        keyed_tuple = self._fixture([1, 2], ["a", "b"])
+
+        assert_raises(KeyError, lambda: keyed_tuple._mapping[1])
+
     def test_getter(self):
         keyed_tuple = self._fixture([1, 2, 3], ["a", "b", "c"])
 

@@ -2860,7 +2860,7 @@ class MSDialect(default.DefaultDialect):
         constraint_name = None
         for row in c.mappings():
             if "PRIMARY" in row[TC.c.constraint_type.name]:
-                pkeys.append(row[0])
+                pkeys.append(row["COLUMN_NAME"])
                 if constraint_name is None:
                     constraint_name = row[C.c.constraint_name.name]
         return {"constrained_columns": pkeys, "name": constraint_name}
