@@ -2645,7 +2645,7 @@ class TypeCoerce(ColumnElement):
 
             SELECT date_string AS anon_1 FROM log
 
-        When result rows are fetched, the ``StringDateTime`` type
+        When result rows are fetched, the ``StringDateTime`` type processor
         will be applied to result rows on behalf of the ``date_string`` column.
         The rationale for the "anon_1" label is so that the type-coerced
         column remains separate in the list of result columns vs. other
@@ -2713,6 +2713,13 @@ class TypeCoerce(ColumnElement):
             return bp
         else:
             return self.clause
+
+    def self_group(self, against=None):
+        grouped = self.clause.self_group(against=against)
+        if grouped is not self.clause:
+            return TypeCoerce(grouped, self.type)
+        else:
+            return self
 
 
 class Extract(ColumnElement):

@@ -351,6 +351,13 @@ class SelectableTest(
         assert isinstance(stmt.c.foo.type, MyType)
         assert isinstance(stmt2.c.foo.type, MyType)
 
+    def test_type_coerce_selfgroup(self):
+        no_group = column("a") / type_coerce(column("x"), Integer)
+        group = column("b") / type_coerce(column("y") * column("w"), Integer)
+
+        self.assert_compile(no_group, "a / x")
+        self.assert_compile(group, "b / (y * w)")
+
     def test_select_on_table(self):
         sel = select([table1, table2], use_labels=True)
 
