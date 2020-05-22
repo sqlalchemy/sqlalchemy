@@ -1262,6 +1262,10 @@ class DialectEvents(event.Events):
 
         .. versionadded:: 1.0.3
 
+        .. seealso::
+
+            :ref:`custom_dbapi_args`
+
         """
 
     def do_executemany(self, cursor, statement, parameters, context):

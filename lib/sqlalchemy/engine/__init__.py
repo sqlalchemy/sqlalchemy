@@ -162,6 +162,18 @@ def create_engine(*args, **kwargs):
         connections. Usage of this function causes connection
         parameters specified in the URL argument to be bypassed.
 
+        This hook is not as flexible as the newer
+        :class:`_events.DialectEvents.do_connect` hook which allows complete
+        control over how a connection is made to the database, given the full
+        set of URL arguments and state beforehand.
+
+        .. seealso::
+
+            :class:`_events.DialectEvents.do_connect` - event hook that allows
+            full control over DBAPI connection mechanics.
+
+            :ref:`custom_dbapi_args`
+
     :param echo=False: if True, the Engine will log all statements
         as well as a ``repr()`` of their parameter lists to the default log
         handler, which defaults to ``sys.stdout`` for output.   If set to the
