@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5341
+
+    Fixed issue in :class:`.URL` object where stringifying the object
+    would not URL encode special characters, preventing the URL from being
+    re-consumable as a real URL.  Pull request courtesy Miguel Grinberg.
