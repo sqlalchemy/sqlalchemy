@@ -66,6 +66,13 @@ class ParseConnectTest(fixtures.TestBase):
             connection,
         )
 
+    def test_pyodbc_empty_url_no_warning(self):
+        dialect = pyodbc.dialect()
+        u = url.make_url("mssql+pyodbc://")
+
+        # no warning is emitted
+        dialect.create_connect_args(u)
+
     def test_pyodbc_host_no_driver(self):
         dialect = pyodbc.dialect()
         u = url.make_url("mssql://username:password@hostspec/database")

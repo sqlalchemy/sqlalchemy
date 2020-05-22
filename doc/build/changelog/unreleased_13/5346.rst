@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mssql, pyodbc
+    :tickets: 5346
+
+    Fixed an issue in the pyodbc connector such that a warning about pyodbc
+    "drivername" would be emitted when using a totally empty URL.  Empty URLs
+    are normal when producing a non-connected dialect object or when using the
+    "creator" argument to create_engine(). The warning now only emits if the
+    driver name is missing but other parameters are still present.
