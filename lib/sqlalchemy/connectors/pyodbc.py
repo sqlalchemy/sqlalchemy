@@ -75,7 +75,8 @@ class PyODBCConnector(Connector):
 
                 connectors = []
                 driver = keys.pop("driver", self.pyodbc_driver_name)
-                if driver is None:
+                if driver is None and keys:
+                    # note if keys is empty, this is a totally blank URL
                     util.warn(
                         "No driver name specified; "
                         "this is expected by PyODBC when using "
