@@ -244,8 +244,9 @@ may convert its type from string to its proper type.
 
     db = create_engine('postgresql://scott:tiger@localhost/test', connect_args = {'argument1':17, 'argument2':'bar'})
 
-The most customizable connection method of all is to pass a ``creator``
-argument, which specifies a callable that returns a DBAPI connection:
+The two methods that are the most customizable include using the
+:paramref:`_sa.create_engine.creator` parameter, which specifies a callable that returns a
+DBAPI connection:
 
 .. sourcecode:: python+sql
 
@@ -254,6 +255,22 @@ argument, which specifies a callable that returns a DBAPI connection:
 
     db = create_engine('postgresql://', creator=connect)
 
+Alternatively, the :meth:`_events.DialectEvents.do_connect` hook may be
+used on an existing engine which allows full replacement of the connection
+approach, given connection arguments::
+
+
+    from sqlalchemy import event
+
+    db = create_engine('postgresql://scott:tiger@localhost/test')
+
+    @event.listens_for(db, "do_connect")
+    def receive_do_connect(dialect, conn_rec, cargs, cparams):
+        # cargs and cparams can be modified in place...
+        cparams['password'] = 'new password'
+
+        # alternatively, return the new DBAPI connection
+        return psycopg2.connect(*cargs, **cparams)
 
 
 .. _dbengine_logging:
