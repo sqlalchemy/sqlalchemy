@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5344
+
+    Correctly apply self_group in type_coerce element.
+
+    The type coerce element did not correctly apply grouping rules when using
+    in an expression
