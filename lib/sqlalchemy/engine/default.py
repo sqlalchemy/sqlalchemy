@@ -499,33 +499,9 @@ class DefaultDialect(interfaces.Dialect):
                 if not branch:
                     self._set_connection_isolation(connection, isolation_level)
 
-        if "schema_translate_map" in opts:
-            engine._schema_translate_map = map_ = opts["schema_translate_map"]
-
-            @event.listens_for(engine, "engine_connect")
-            def set_schema_translate_map(connection, branch):
-                connection._schema_translate_map = map_
-
     def set_connection_execution_options(self, connection, opts):
         if "isolation_level" in opts:
             self._set_connection_isolation(connection, opts["isolation_level"])
-
-        if "schema_translate_map" in opts:
-            connection._schema_translate_map = opts["schema_translate_map"]
-
-    def set_exec_execution_options(self, connection, opts):
-        if "isolation_level" in opts:
-            raise exc.InvalidRequestError(
-                "The 'isolation_level' execution "
-                "option is not supported at the per-statement level"
-            )
-            self._set_connection_isolation(connection, opts["isolation_level"])
-
-        if "schema_translate_map" in opts:
-            raise exc.InvalidRequestError(
-                "The 'schema_translate_map' execution "
-                "option is not supported at the per-statement level"
-            )
 
     def _set_connection_isolation(self, connection, level):
         if connection.in_transaction():
@@ -765,9 +741,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.unicode_statement = util.text_type(compiled)
         if compiled.schema_translate_map:
+            schema_translate_map = self.execution_options.get(
+                "schema_translate_map", {}
+            )
+
             rst = compiled.preparer._render_schema_translates
             self.unicode_statement = rst(
-                self.unicode_statement, connection._schema_translate_map
+                self.unicode_statement, schema_translate_map
             )
 
         if not dialect.supports_unicode_statements:
@@ -894,9 +874,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             positiontup = self.compiled.positiontup
 
         if compiled.schema_translate_map:
+            schema_translate_map = self.execution_options.get(
+                "schema_translate_map", {}
+            )
             rst = compiled.preparer._render_schema_translates
             self.unicode_statement = rst(
-                self.unicode_statement, connection._schema_translate_map
+                self.unicode_statement, schema_translate_map
             )
 
         # final self.unicode_statement is now assigned, encode if needed

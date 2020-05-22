@@ -1091,6 +1091,101 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         is_false(insp.has_table("t3", schema=None))
 
     @testing.provide_metadata
+    def test_option_on_execute(self):
+        self._fixture()
+
+        map_ = {
+            None: config.test_schema,
+            "foo": config.test_schema,
+            "bar": None,
+        }
+
+        metadata = MetaData()
+        t1 = Table("t1", metadata, Column("x", Integer))
+        t2 = Table("t2", metadata, Column("x", Integer), schema="foo")
+        t3 = Table("t3", metadata, Column("x", Integer), schema="bar")
+
+        with self.sql_execution_asserter(config.db) as asserter:
+            with config.db.connect() as conn:
+
+                execution_options = {"schema_translate_map": map_}
+                conn._execute_20(
+                    t1.insert(), {"x": 1}, execution_options=execution_options
+                )
+                conn._execute_20(
+                    t2.insert(), {"x": 1}, execution_options=execution_options
+                )
+                conn._execute_20(
+                    t3.insert(), {"x": 1}, execution_options=execution_options
+                )
+
+                conn._execute_20(
+                    t1.update().values(x=1).where(t1.c.x == 1),
+                    execution_options=execution_options,
+                )
+                conn._execute_20(
+                    t2.update().values(x=2).where(t2.c.x == 1),
+                    execution_options=execution_options,
+                )
+                conn._execute_20(
+                    t3.update().values(x=3).where(t3.c.x == 1),
+                    execution_options=execution_options,
+                )
+
+                eq_(
+                    conn._execute_20(
+                        select([t1.c.x]), execution_options=execution_options
+                    ).scalar(),
+                    1,
+                )
+                eq_(
+                    conn._execute_20(
+                        select([t2.c.x]), execution_options=execution_options
+                    ).scalar(),
+                    2,
+                )
+                eq_(
+                    conn._execute_20(
+                        select([t3.c.x]), execution_options=execution_options
+                    ).scalar(),
+                    3,
+                )
+
+                conn._execute_20(
+                    t1.delete(), execution_options=execution_options
+                )
+                conn._execute_20(
+                    t2.delete(), execution_options=execution_options
+                )
+                conn._execute_20(
+                    t3.delete(), execution_options=execution_options
+                )
+
+        asserter.assert_(
+            CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO [SCHEMA_foo].t2 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO [SCHEMA_bar].t3 (x) VALUES (:x)"),
+            CompiledSQL(
+                "UPDATE [SCHEMA__none].t1 SET x=:x WHERE "
+                "[SCHEMA__none].t1.x = :x_1"
+            ),
+            CompiledSQL(
+                "UPDATE [SCHEMA_foo].t2 SET x=:x WHERE "
+                "[SCHEMA_foo].t2.x = :x_1"
+            ),
+            CompiledSQL(
+                "UPDATE [SCHEMA_bar].t3 SET x=:x WHERE "
+                "[SCHEMA_bar].t3.x = :x_1"
+            ),
+            CompiledSQL("SELECT [SCHEMA__none].t1.x FROM [SCHEMA__none].t1"),
+            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2"),
+            CompiledSQL("SELECT [SCHEMA_bar].t3.x FROM [SCHEMA_bar].t3"),
+            CompiledSQL("DELETE FROM [SCHEMA__none].t1"),
+            CompiledSQL("DELETE FROM [SCHEMA_foo].t2"),
+            CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
+        )
+
+    @testing.provide_metadata
     def test_crud(self):
         self._fixture()
 
@@ -2965,25 +3060,6 @@ class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             connection.execute(select([1]))
 
         eq_(opts, [expected])
-
-    def test_execution_opts_invoke_illegal(self, connection):
-        assert_raises_message(
-            tsa.exc.InvalidRequestError,
-            "The 'isolation_level' execution option is not supported "
-            "at the per-statement level",
-            connection.execute,
-            select([1]),
-            execution_options={"isolation_level": "AUTOCOMMIT"},
-        )
-
-        assert_raises_message(
-            tsa.exc.InvalidRequestError,
-            "The 'schema_translate_map' execution option is not supported "
-            "at the per-statement level",
-            connection.execute,
-            select([1]),
-            execution_options={"schema_translate_map": {}},
-        )
 
     def test_no_branching(self, connection):
         assert_raises_message(

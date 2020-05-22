@@ -52,7 +52,6 @@ class Connection(Connectable):
 
     """
 
-    _schema_translate_map = None
     _is_future = False
     _sqla_logger_namespace = "sqlalchemy.engine.Connection"
 
@@ -82,7 +81,6 @@ class Connection(Connectable):
             self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
-            self._schema_translate_map = _branch_from._schema_translate_map
         else:
             self._dbapi_connection = (
                 connection
@@ -112,6 +110,10 @@ class Connection(Connectable):
         if self._has_events or self.engine._has_events:
             self.dispatch.engine_connect(self, _branch_from is not None)
 
+    @property
+    def _schema_translate_map(self):
+        return self._execution_options.get("schema_translate_map", None)
+
     def schema_for_object(self, obj):
         """return the schema name for the given schema item taking into
         account current schema translate map.
@@ -119,7 +121,9 @@ class Connection(Connectable):
         """
 
         name = obj.schema
-        schema_translate_map = self._schema_translate_map
+        schema_translate_map = self._execution_options.get(
+            "schema_translate_map", None
+        )
 
         if (
             schema_translate_map
@@ -1107,10 +1111,13 @@ class Connection(Connectable):
                     self, ddl, multiparams, params, execution_options
                 )
 
+        exec_opts = self._execution_options.merge_with(execution_options)
+        schema_translate_map = exec_opts.get("schema_translate_map", None)
+
         dialect = self.dialect
 
         compiled = ddl.compile(
-            dialect=dialect, schema_translate_map=self._schema_translate_map
+            dialect=dialect, schema_translate_map=schema_translate_map
         )
         ret = self._execute_context(
             dialect,
@@ -1147,9 +1154,9 @@ class Connection(Connectable):
 
         dialect = self.dialect
 
-        exec_opts = self._execution_options
-        if execution_options:
-            exec_opts = exec_opts.union(execution_options)
+        exec_opts = self._execution_options.merge_with(execution_options)
+
+        schema_translate_map = exec_opts.get("schema_translate_map", None)
 
         if "compiled_cache" in exec_opts:
             elem_cache_key = elem._generate_cache_key()
@@ -1162,7 +1169,7 @@ class Connection(Connectable):
                 dialect,
                 cache_key,
                 tuple(sorted(keys)),
-                bool(self._schema_translate_map),
+                bool(schema_translate_map),
                 len(distilled_params) > 1,
             )
             cache = exec_opts["compiled_cache"]
@@ -1174,7 +1181,7 @@ class Connection(Connectable):
                     cache_key=elem_cache_key,
                     column_keys=keys,
                     inline=len(distilled_params) > 1,
-                    schema_translate_map=self._schema_translate_map,
+                    schema_translate_map=schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
                 )
@@ -1186,7 +1193,7 @@ class Connection(Connectable):
                 dialect=dialect,
                 column_keys=keys,
                 inline=len(distilled_params) > 1,
-                schema_translate_map=self._schema_translate_map,
+                schema_translate_map=schema_translate_map,
                 linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
             )
 
@@ -1363,9 +1370,6 @@ class Connection(Connectable):
             # of the "root" connection, *except* for .close(), which is
             # the only feature that branching provides
             self = self.__branch_from
-
-        if execution_options:
-            dialect.set_exec_execution_options(self, execution_options)
 
         try:
             conn = self._dbapi_connection
