@@ -23,6 +23,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import collections_abc
 
 
 class UpdateDeleteTest(fixtures.MappedTest):
@@ -681,7 +682,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             q.filter(User.id == 15).update({"name": "foob", "id": 123})
             # Confirm that parameters are a dict instead of tuple or list
             params = exec_.mock_calls[0][1][0]._values
-            assert isinstance(params, dict)
+            assert isinstance(params, collections_abc.Mapping)
 
     def test_update_preserve_parameter_order(self):
         User = self.classes.User

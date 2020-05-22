@@ -16,6 +16,7 @@ from ._collections import collections_abc  # noqa
 from ._collections import column_dict  # noqa
 from ._collections import column_set  # noqa
 from ._collections import EMPTY_SET  # noqa
+from ._collections import FacadeDict  # noqa
 from ._collections import flatten_iterator  # noqa
 from ._collections import has_dupes  # noqa
 from ._collections import has_intersection  # noqa

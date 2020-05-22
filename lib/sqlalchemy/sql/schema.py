@@ -3972,7 +3972,7 @@ class MetaData(SchemaItem):
                 examples.
 
         """
-        self.tables = util.immutabledict()
+        self.tables = util.FacadeDict()
         self.schema = quoted_name(schema, quote_schema)
         self.naming_convention = (
             naming_convention
@@ -4015,7 +4015,7 @@ class MetaData(SchemaItem):
 
     def _add_table(self, name, schema, table):
         key = _get_table_key(name, schema)
-        dict.__setitem__(self.tables, key, table)
+        self.tables._insert_item(key, table)
         if schema:
             self._schemas.add(schema)
 

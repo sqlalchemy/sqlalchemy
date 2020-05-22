@@ -1551,7 +1551,7 @@ class Query(Generative):
     def _options(self, conditional, *args):
         # most MapperOptions write to the '_attributes' dictionary,
         # so copy that as well
-        self._attributes = self._attributes.copy()
+        self._attributes = dict(self._attributes)
         if "_unbound_load_dedupes" not in self._attributes:
             self._attributes["_unbound_load_dedupes"] = set()
         opts = tuple(util.flatten_iterator(args))
@@ -1720,7 +1720,7 @@ class Query(Generative):
                 "params() takes zero or one positional argument, "
                 "which is a dictionary."
             )
-        self._params = self._params.copy()
+        self._params = dict(self._params)
         self._params.update(kwargs)
 
     @_generative
@@ -2277,7 +2277,7 @@ class Query(Generative):
         # dict, so that no existing dict in the path is mutated
         while "prev" in jp:
             f, prev = jp["prev"]
-            prev = prev.copy()
+            prev = dict(prev)
             prev[f] = jp.copy()
             jp["prev"] = (f, prev)
             jp = prev
@@ -4831,7 +4831,7 @@ class QueryContext(object):
         self.propagate_options = set(
             o for o in query._with_options if o.propagate_to_loaders
         )
-        self.attributes = query._attributes.copy()
+        self.attributes = dict(query._attributes)
         if self.refresh_state is not None:
             self.identity_token = query._refresh_identity_token
         else:

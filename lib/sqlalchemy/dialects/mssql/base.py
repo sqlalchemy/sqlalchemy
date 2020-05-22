@@ -2361,7 +2361,7 @@ class MSDialect(default.DefaultDialect):
     }
 
     engine_config_types = default.DefaultDialect.engine_config_types.union(
-        [("legacy_schema_aliasing", util.asbool)]
+        {"legacy_schema_aliasing": util.asbool}
     )
 
     ischema_names = ischema_names

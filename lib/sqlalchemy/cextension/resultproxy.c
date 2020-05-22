@@ -241,7 +241,6 @@ BaseRow_filter_on_values(BaseRow *self, PyObject *filters)
     row_class = PyObject_GetAttrString(sqlalchemy_engine_row, "Row");
 
     key_style = PyLong_FromLong(self->key_style);
-    Py_INCREF(key_style);
 
     new_obj = PyObject_CallFunction(
         row_class, "OOOOO", self->parent, filters, self->keymap,

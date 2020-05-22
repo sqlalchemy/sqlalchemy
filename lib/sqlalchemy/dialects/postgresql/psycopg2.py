@@ -658,7 +658,7 @@ class PGDialect_psycopg2(PGDialect):
     _has_native_jsonb = False
 
     engine_config_types = PGDialect.engine_config_types.union(
-        [("use_native_unicode", util.asbool)]
+        {"use_native_unicode": util.asbool}
     )
 
     colspecs = util.update_copy(

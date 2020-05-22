@@ -77,7 +77,7 @@ class PathTest(object):
         return orm_util.PathRegistry.coerce(self._make_path(path))
 
     def _assert_path_result(self, opt, q, paths):
-        q._attributes = q._attributes.copy()
+        q._attributes = dict(q._attributes)
         attr = {}
 
         if isinstance(opt, strategy_options._UnboundLoad):
@@ -1569,7 +1569,7 @@ class SubOptionsTest(PathTest, QueryTest):
 
     def _assert_opts(self, q, sub_opt, non_sub_opts):
         existing_attributes = q._attributes
-        q._attributes = q._attributes.copy()
+        q._attributes = dict(q._attributes)
         attr_a = {}
 
         for val in sub_opt._to_bind:
@@ -1580,7 +1580,7 @@ class SubOptionsTest(PathTest, QueryTest):
                 False,
             )
 
-        q._attributes = existing_attributes.copy()
+        q._attributes = dict(existing_attributes)
 
         attr_b = {}
 
