@@ -2823,14 +2823,11 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
         renders SQL that labels the expression, but otherwise does not
         modify its value on the SQL side::
 
-            SELECT date_string AS anon_1 FROM log
+            SELECT date_string AS date_string FROM log
 
-        When result rows are fetched, the ``StringDateTime`` type
+        When result rows are fetched, the ``StringDateTime`` type processor
         will be applied to result rows on behalf of the ``date_string`` column.
-        The rationale for the "anon_1" label is so that the type-coerced
-        column remains separate in the list of result columns vs. other
-        type-coerced or direct values of the target column.  In order to
-        provide a named label for the expression, use
+        In order to provide a named label for the expression, use
         :meth:`_expression.ColumnElement.label`::
 
             stmt = select([
@@ -2892,6 +2889,13 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
     @property
     def wrapped_column_expression(self):
         return self.clause
+
+    def self_group(self, against=None):
+        grouped = self.clause.self_group(against=against)
+        if grouped is not self.clause:
+            return TypeCoerce(grouped, self.type)
+        else:
+            return self
 
 
 class Extract(ColumnElement):
