@@ -1676,7 +1676,7 @@ However, the current situation is that :class:`.Sequence` has been repurposed
 on SQL Server specifically in order to affect the "start" and "increment"
 parameters for the ``IDENTITY`` specification on a primary key column.  In order
 to make the transition towards normal sequences being available as well,
-using :class:.`.Sequence` will emit a deprecation warning throughout the
+using :class:`.Sequence` will emit a deprecation warning throughout the
 1.3 series.  In order to affect "start" and "increment", use the
 new ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
 on :class:`_schema.Column`::
