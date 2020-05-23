@@ -1599,7 +1599,7 @@ class Query(Generative):
 
             :meth:`_query.Query.with_statement_hint`
 
-            :meth:.`.Query.prefix_with` - generic SELECT prefixing which also
+            :meth:`.Query.prefix_with` - generic SELECT prefixing which also
             can suit some database-specific HINT syntaxes such as MySQL
             optimizer hints
 

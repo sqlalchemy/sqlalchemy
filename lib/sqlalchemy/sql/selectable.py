@@ -3838,7 +3838,7 @@ class Select(
 
             :meth:`_expression.Select.with_hint`
 
-            :meth:.`.Select.prefix_with` - generic SELECT prefixing which also
+            :meth:`.Select.prefix_with` - generic SELECT prefixing which also
             can suit some database-specific HINT syntaxes such as MySQL
             optimizer hints
 
