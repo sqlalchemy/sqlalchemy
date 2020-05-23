@@ -31,7 +31,67 @@ class ImmutableContainer(object):
     __delitem__ = __setitem__ = __setattr__ = _immutable
 
 
-class immutabledict(ImmutableContainer, dict):
+def _immutabledict_py_fallback():
+    class immutabledict(ImmutableContainer, dict):
+
+        clear = (
+            pop
+        ) = popitem = setdefault = update = ImmutableContainer._immutable
+
+        def __new__(cls, *args):
+            new = dict.__new__(cls)
+            dict.__init__(new, *args)
+            return new
+
+        def __init__(self, *args):
+            pass
+
+        def __reduce__(self):
+            return _immutabledict_reconstructor, (dict(self),)
+
+        def union(self, d):
+            if not d:
+                return self
+
+            new = dict.__new__(self.__class__)
+            dict.__init__(new, self)
+            dict.update(new, d)
+            return new
+
+        def merge_with(self, *dicts):
+            new = None
+            for d in dicts:
+                if d:
+                    if new is None:
+                        new = dict.__new__(self.__class__)
+                        dict.__init__(new, self)
+                    dict.update(new, d)
+            if new is None:
+                return self
+
+            return new
+
+        def __repr__(self):
+            return "immutabledict(%s)" % dict.__repr__(self)
+
+    return immutabledict
+
+
+try:
+    from sqlalchemy.cimmutabledict import immutabledict
+
+    collections_abc.Mapping.register(immutabledict)
+
+except ImportError:
+    immutabledict = _immutabledict_py_fallback()
+
+    def _immutabledict_reconstructor(*arg):
+        """do the pickle dance"""
+        return immutabledict(*arg)
+
+
+class FacadeDict(ImmutableContainer, dict):
+    """A dictionary that is not publicly mutable."""
 
     clear = pop = popitem = setdefault = update = ImmutableContainer._immutable
 
@@ -44,24 +104,17 @@ class immutabledict(ImmutableContainer, dict):
         pass
 
     def __reduce__(self):
-        return immutabledict, (dict(self),)
+        return FacadeDict, (dict(self),)
 
-    def union(self, d):
-        new = dict.__new__(self.__class__)
-        dict.__init__(new, self)
-        dict.update(new, d)
-        return new
+    def _insert_item(self, key, value):
+        """insert an item into the dictionary directly.
 
-    def merge_with(self, *dicts):
-        new = dict.__new__(self.__class__)
-        dict.__init__(new, self)
-        for d in dicts:
-            if d:
-                dict.update(new, d)
-        return new
+
+        """
+        dict.__setitem__(self, key, value)
 
     def __repr__(self):
-        return "immutabledict(%s)" % dict.__repr__(self)
+        return "FacadeDict(%s)" % dict.__repr__(self)
 
 
 class Properties(object):

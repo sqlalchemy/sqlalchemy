@@ -46,7 +46,7 @@ distill_params(PyObject *self, PyObject *args)
 	}
 
 	if (multiparam_size == 0) {
-		if (params != Py_None && PyDict_Size(params) != 0) {
+		if (params != Py_None && PyMapping_Size(params) != 0) {
 			// TODO: this is keyword parameters, emit parameter format
 			// deprecation warning
 			enclosing_list = PyList_New(1);

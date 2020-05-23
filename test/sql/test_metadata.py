@@ -178,6 +178,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(len(metadata.tables), 0)
 
     def test_metadata_tables_immutable(self):
+        # this use case was added due to #1917.
         metadata = MetaData()
 
         Table("t1", metadata, Column("x", Integer))

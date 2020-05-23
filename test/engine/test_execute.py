@@ -49,6 +49,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
+from sqlalchemy.util import collections_abc
 
 
 class SomeException(Exception):
@@ -1509,13 +1510,13 @@ class EngineEventsTest(fixtures.TestBase):
             conn, clauseelement, multiparams, params, execution_options
         ):
             assert isinstance(multiparams, (list, tuple))
-            assert isinstance(params, dict)
+            assert isinstance(params, collections_abc.Mapping)
 
         def after_execute(
             conn, clauseelement, multiparams, params, result, execution_options
         ):
             assert isinstance(multiparams, (list, tuple))
-            assert isinstance(params, dict)
+            assert isinstance(params, collections_abc.Mapping)
 
         e1 = testing_engine(config.db_url)
         event.listen(e1, "before_execute", before_execute)

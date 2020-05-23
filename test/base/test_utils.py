@@ -141,11 +141,100 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(o.union(iter([3, 4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
 
 
-class FrozenDictTest(fixtures.TestBase):
+class ImmutableDictTest(fixtures.TestBase):
+    def test_union_no_change(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.union({})
+
+        is_(d2, d)
+
+    def test_merge_with_no_change(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.merge_with({}, None)
+
+        eq_(d2, {1: 2, 3: 4})
+        is_(d2, d)
+
+    def test_merge_with_dicts(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.merge_with({3: 5, 7: 12}, {9: 18, 15: 25})
+
+        eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
+        assert isinstance(d2, util.immutabledict)
+
+        d3 = d.merge_with({17: 42})
+
+        eq_(d3, {1: 2, 3: 4, 17: 42})
+
+    def test_merge_with_tuples(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.merge_with([(3, 5), (7, 12)], [(9, 18), (15, 25)])
+
+        eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 5, 7: 12, 9: 18, 15: 25})
+
+    def test_union_dictionary(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.union({3: 5, 7: 12})
+        assert isinstance(d2, util.immutabledict)
+
+        eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 5, 7: 12})
+
+    def test_union_tuples(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        d2 = d.union([(3, 5), (7, 12)])
+
+        eq_(d, {1: 2, 3: 4})
+        eq_(d2, {1: 2, 3: 5, 7: 12})
+
+    def test_keys(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        eq_(set(d.keys()), {1, 3})
+
+    def test_values(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        eq_(set(d.values()), {2, 4})
+
+    def test_items(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        eq_(set(d.items()), {(1, 2), (3, 4)})
+
+    def test_contains(self):
+        d = util.immutabledict({1: 2, 3: 4})
+
+        assert 1 in d
+        assert "foo" not in d
+
+    def test_rich_compare(self):
+        d = util.immutabledict({1: 2, 3: 4})
+        d2 = util.immutabledict({1: 2, 3: 4})
+        d3 = util.immutabledict({5: 12})
+        d4 = {5: 12}
+
+        eq_(d, d2)
+        ne_(d, d3)
+        ne_(d, d4)
+        eq_(d3, d4)
+
     def test_serialize(self):
         d = util.immutabledict({1: 2, 3: 4})
         for loads, dumps in picklers():
-            print(loads(dumps(d)))
+            d2 = loads(dumps(d))
+
+            eq_(d2, {1: 2, 3: 4})
+
+            assert isinstance(d2, util.immutabledict)
 
 
 class MemoizedAttrTest(fixtures.TestBase):
