@@ -14,6 +14,11 @@
 pymssql is a Python module that provides a Python DBAPI interface around
 `FreeTDS <http://www.freetds.org/>`_.
 
+.. note::
+
+    pymssql is currently not included in SQLAlchemy's continuous integration
+    (CI) testing.
+
 Modern versions of this driver worked very well with SQL Server and FreeTDS
 from Linux and were highly recommended. However, pymssql is currently
 unmaintained and has fallen behind the progress of the Microsoft ODBC driver in
