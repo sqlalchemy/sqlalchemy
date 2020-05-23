@@ -3345,6 +3345,18 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "AS users_name FROM users WHERE name='ed'",
         )
 
+    def test_filter_by_non_entity(self):
+        s = create_session()
+        e = sa.func.count(123)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't use filter_by when the first entity 'count\(:count_1\)' of"
+            " a query is not a mapped class. Please use the filter method "
+            "instead, or change the order of the entities in the query",
+            s.query(e).filter_by,
+            col=42,
+        )
+
 
 class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     __dialect__ = "default"
