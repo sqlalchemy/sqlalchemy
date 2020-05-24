@@ -23,7 +23,6 @@ from ..sql import expression
 from ..sql import sqltypes
 from ..sql import util as sql_util
 from ..sql.base import _generative
-from ..sql.base import HasMemoized
 from ..sql.compiler import RM_NAME
 from ..sql.compiler import RM_OBJECTS
 from ..sql.compiler import RM_RENDERED_NAME
@@ -793,7 +792,7 @@ class ResultFetchStrategy(object):
     def yield_per(self, result, num):
         return
 
-    def fetchone(self, result):
+    def fetchone(self, result, hard_close=False):
         raise NotImplementedError()
 
     def fetchmany(self, result, size=None):
@@ -825,7 +824,7 @@ class NoCursorFetchStrategy(ResultFetchStrategy):
     def hard_close(self, result):
         pass
 
-    def fetchone(self, result):
+    def fetchone(self, result, hard_close=False):
         return self._non_result(result, None)
 
     def fetchmany(self, result, size=None):
@@ -927,11 +926,11 @@ class CursorFetchStrategy(ResultFetchStrategy):
             growth_factor=0,
         )
 
-    def fetchone(self, result):
+    def fetchone(self, result, hard_close=False):
         try:
             row = self.dbapi_cursor.fetchone()
             if row is None:
-                result._soft_close()
+                result._soft_close(hard=hard_close)
             return row
         except BaseException as e:
             self.handle_exception(result, e)
@@ -1065,12 +1064,12 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
         self._rowbuffer.clear()
         super(BufferedRowCursorFetchStrategy, self).hard_close(result)
 
-    def fetchone(self, result):
+    def fetchone(self, result, hard_close=False):
         if not self._rowbuffer:
             self._buffer_rows(result)
             if not self._rowbuffer:
                 try:
-                    result._soft_close()
+                    result._soft_close(hard=hard_close)
                 except BaseException as e:
                     self.handle_exception(result, e)
                 return None
@@ -1137,11 +1136,11 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
         self._rowbuffer.clear()
         super(FullyBufferedCursorFetchStrategy, self).hard_close(result)
 
-    def fetchone(self, result):
+    def fetchone(self, result, hard_close=False):
         if self._rowbuffer:
             return self._rowbuffer.popleft()
         else:
-            result._soft_close()
+            result._soft_close(hard=hard_close)
             return None
 
     def fetchmany(self, result, size=None):
@@ -1222,9 +1221,18 @@ class BaseCursorResult(object):
         self.dialect = context.dialect
         self.cursor = context.cursor
         self.connection = context.root_connection
-        self._echo = (
+        self._echo = echo = (
             self.connection._echo and context.engine._should_log_debug()
         )
+
+        if echo:
+            log = self.context.engine.logger.debug
+
+            def log_row(row):
+                log("Row %r", sql_util._repr_row(row))
+                return row
+
+            self._row_logging_fn = log_row
 
         # this is a hook used by dialects to change the strategy,
         # so for the moment we have to keep calling this every time
@@ -1616,19 +1624,6 @@ class CursorResult(BaseCursorResult, Result):
     _cursor_metadata = CursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
 
-    @HasMemoized.memoized_attribute
-    def _row_logging_fn(self):
-        if self._echo:
-            log = self.context.engine.logger.debug
-
-            def log_row(row):
-                log("Row %r", sql_util._repr_row(row))
-                return row
-
-            return log_row
-        else:
-            return None
-
     def _fetchiter_impl(self):
         fetchone = self.cursor_strategy.fetchone
 
@@ -1638,8 +1633,8 @@ class CursorResult(BaseCursorResult, Result):
                 break
             yield row
 
-    def _fetchone_impl(self):
-        return self.cursor_strategy.fetchone(self)
+    def _fetchone_impl(self, hard_close=False):
+        return self.cursor_strategy.fetchone(self, hard_close)
 
     def _fetchall_impl(self):
         return self.cursor_strategy.fetchall(self)

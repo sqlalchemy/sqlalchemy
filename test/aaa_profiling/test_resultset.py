@@ -120,6 +120,35 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
             for row in conn.execute(t.select()).mappings().fetchall():
                 [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
 
+    @testing.combinations(
+        (False, 0), (True, 1), (False, 1), (False, 2),
+    )
+    def test_one_or_none(self, one_or_first, rows_present):
+        # TODO: this is not testing the ORM level "scalar_mapping"
+        # mode which has a different performance profile
+        with testing.db.connect() as conn:
+            stmt = t.select()
+            if rows_present == 0:
+                stmt = stmt.where(1 == 0)
+            elif rows_present == 1:
+                stmt = stmt.limit(1)
+
+            result = conn.execute(stmt)
+
+            @profiling.function_call_count()
+            def go():
+                if one_or_first:
+                    result.one()
+                else:
+                    result.first()
+
+            try:
+                go()
+            finally:
+                # hmmmm, connection close context manager does not
+                # seem to be handling this for a profile that skips
+                result.close()
+
     def test_contains_doesnt_compile(self):
         row = t.select().execute().first()
         c1 = Column("some column", Integer) + Column(
