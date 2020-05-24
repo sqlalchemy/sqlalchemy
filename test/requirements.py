@@ -1549,3 +1549,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def computed_columns_reflect_persisted(self):
         return self.computed_columns + skip_if("oracle")
+
+    @property
+    def supports_for_update_of(self):
+        return only_if(lambda config: config.db.dialect.supports_for_update_of)
