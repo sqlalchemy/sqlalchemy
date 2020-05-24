@@ -399,6 +399,37 @@ class ResultTest(fixtures.TestBase):
 
         eq_(result.all(), [])
 
+    def test_one_unique(self):
+        # assert that one() counts rows after uniquness has been applied.
+        # this would raise if we didnt have unique
+        result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
+
+        row = result.unique().one()
+        eq_(row, (1, 1, 1))
+
+    def test_one_unique_tricky_one(self):
+        # one() needs to keep consuming rows in order to find a non-unique
+        # one.  unique() really slows things down
+        result = self._fixture(
+            data=[(1, 1, 1), (1, 1, 1), (1, 1, 1), (2, 1, 1)]
+        )
+
+        assert_raises(exc.MultipleResultsFound, result.unique().one)
+
+    def test_one_unique_mapping(self):
+        # assert that one() counts rows after uniquness has been applied.
+        # this would raise if we didnt have unique
+        result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
+
+        row = result.mappings().unique().one()
+        eq_(row, {"a": 1, "b": 1, "c": 1})
+
+    def test_one_mapping(self):
+        result = self._fixture(num_rows=1)
+
+        row = result.mappings().one()
+        eq_(row, {"a": 1, "b": 1, "c": 1})
+
     def test_one(self):
         result = self._fixture(num_rows=1)
 

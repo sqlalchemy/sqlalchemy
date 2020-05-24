@@ -725,10 +725,6 @@ class Result(InPlaceGenerative):
     def _onerow_getter(self):
         make_row = self._row_getter()
 
-        # TODO: this is a lot for results that are only one row.
-        # all of this could be in _only_one_row except for fetchone()
-        # and maybe __next__
-
         post_creational_filter = self._post_creational_filter
 
         if self._unique_filter_state:
@@ -845,7 +841,7 @@ class Result(InPlaceGenerative):
     def _fetchiter_impl(self):
         raise NotImplementedError()
 
-    def _fetchone_impl(self):
+    def _fetchone_impl(self, hard_close=False):
         raise NotImplementedError()
 
     def _fetchall_impl(self):
@@ -943,30 +939,69 @@ class Result(InPlaceGenerative):
         return self._allrow_getter(self)
 
     def _only_one_row(self, raise_for_second_row, raise_for_none):
-        row = self._onerow_getter(self)
-        if row is _NO_ROW:
+        onerow = self._fetchone_impl
+
+        row = onerow(hard_close=True)
+        if row is None:
             if raise_for_none:
-                self._soft_close(hard=True)
                 raise exc.NoResultFound(
                     "No row was found when one was required"
                 )
             else:
                 return None
-        else:
-            if raise_for_second_row:
-                next_row = self._onerow_getter(self)
+
+        make_row = self._row_getter()
+
+        row = make_row(row) if make_row else row
+
+        if raise_for_second_row:
+            if self._unique_filter_state:
+                # for no second row but uniqueness, need to essentially
+                # consume the entire result :(
+                uniques, strategy = self._unique_strategy
+
+                existing_row_hash = strategy(row) if strategy else row
+
+                while True:
+                    next_row = onerow(hard_close=True)
+                    if next_row is None:
+                        next_row = _NO_ROW
+                        break
+
+                    next_row = make_row(next_row) if make_row else next_row
+
+                    if strategy:
+                        if existing_row_hash == strategy(next_row):
+                            continue
+                    elif row == next_row:
+                        continue
+                    # here, we have a row and it's different
+                    break
             else:
-                next_row = _NO_ROW
-            self._soft_close(hard=True)
+                next_row = onerow(hard_close=True)
+                if next_row is None:
+                    next_row = _NO_ROW
+
             if next_row is not _NO_ROW:
+                self._soft_close(hard=True)
                 raise exc.MultipleResultsFound(
                     "Multiple rows were found when exactly one was required"
                     if raise_for_none
                     else "Multiple rows were found when one or none "
                     "was required"
                 )
-            else:
-                return row
+        else:
+            next_row = _NO_ROW
+
+        if not raise_for_second_row:
+            # if we checked for second row then that would have
+            # closed us :)
+            self._soft_close(hard=True)
+        post_creational_filter = self._post_creational_filter
+        if post_creational_filter:
+            row = post_creational_filter(row)
+
+        return row
 
     def first(self):
         """Fetch the first row or None if no row is present.
@@ -1121,12 +1156,13 @@ class IteratorResult(Result):
     def _fetchiter_impl(self):
         return self.iterator
 
-    def _fetchone_impl(self):
-        try:
-            return next(self.iterator)
-        except StopIteration:
-            self._soft_close()
+    def _fetchone_impl(self, hard_close=False):
+        row = next(self.iterator, _NO_ROW)
+        if row is _NO_ROW:
+            self._soft_close(hard=hard_close)
             return None
+        else:
+            return row
 
     def _fetchall_impl(self):
         try:

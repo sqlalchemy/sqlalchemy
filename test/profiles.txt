@@ -533,6 +533,30 @@ test.aaa_profiling.test_resultset.ResultSetTest.test_fetch_by_key_mappings 3.8_p
 test.aaa_profiling.test_resultset.ResultSetTest.test_fetch_by_key_mappings 3.8_sqlite_pysqlite_dbapiunicode_cextensions 2469
 test.aaa_profiling.test_resultset.ResultSetTest.test_fetch_by_key_mappings 3.8_sqlite_pysqlite_dbapiunicode_nocextensions 15476
 
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-0]
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-0] 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 14
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-0] 3.8_sqlite_pysqlite_dbapiunicode_cextensions 15
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-0] 3.8_sqlite_pysqlite_dbapiunicode_nocextensions 15
+
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-1]
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-1] 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 17
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-1] 3.8_sqlite_pysqlite_dbapiunicode_cextensions 16
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-1] 3.8_sqlite_pysqlite_dbapiunicode_nocextensions 18
+
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-2]
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-2] 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 17
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-2] 3.8_sqlite_pysqlite_dbapiunicode_cextensions 16
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[False-2] 3.8_sqlite_pysqlite_dbapiunicode_nocextensions 18
+
+# TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[True-1]
+
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[True-1] 2.7_sqlite_pysqlite_dbapiunicode_nocextensions 20
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[True-1] 3.8_sqlite_pysqlite_dbapiunicode_cextensions 19
+test.aaa_profiling.test_resultset.ResultSetTest.test_one_or_none[True-1] 3.8_sqlite_pysqlite_dbapiunicode_nocextensions 21
+
 # TEST: test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string
 
 test.aaa_profiling.test_resultset.ResultSetTest.test_raw_string 2.7_mssql_pyodbc_dbapiunicode_cextensions 276
