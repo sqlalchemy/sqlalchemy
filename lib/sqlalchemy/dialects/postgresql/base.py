@@ -566,7 +566,7 @@ PostgreSQL to ensure that you are generating queries with SQLAlchemy that
 take full advantage of any indexes you may have created for full text search.
 
 FROM ONLY ...
-------------------------
+-------------
 
 The dialect supports PostgreSQL's ONLY keyword for targeting only a particular
 table in an inheritance hierarchy. This can be used to produce the
@@ -812,6 +812,50 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 
     `PostgreSQL CREATE TABLE options
     <http://www.postgresql.org/docs/current/static/sql-createtable.html>`_
+
+Table values, Row and Tuple objects
+-----------------------------------
+
+Row Types
+^^^^^^^^^
+
+Built-in support for rendering a ``ROW`` is not available yet, however the
+:func:`_expression.tuple_` may be used in its place. Another alternative is
+to use the :attr:`_sa.func` generator with ``func.ROW`` ::
+
+    table.select().where(
+        tuple_(table.c.id, table.c.fk) > (1,2)
+    ).where(func.ROW(table.c.id, table.c.fk) < func.ROW(3, 7))
+
+Will generate the row-wise comparison::
+
+    SELECT *
+    FROM table
+    WHERE (id, fk) > (1, 2)
+    AND ROW(id, fk) < ROW(3, 7)
+
+.. seealso::
+
+    `PostgreSQL Row Constructors
+    <https://www.postgresql.org/docs/current/sql-expressions.html#SQL-SYNTAX-ROW-CONSTRUCTORS>`_
+
+    `PostgreSQL Row Constructor Comparison
+    <https://www.postgresql.org/docs/current/functions-comparisons.html#ROW-WISE-COMPARISON>`_
+
+Table Types
+^^^^^^^^^^^
+
+PostgreSQL also supports passing a table as an argument to a function. This
+is not available yet in sqlalchemy, however the
+:func:`_expression.literal_column` function with the name of the table may be
+used in its place::
+
+    select(['*']).select_from(func.my_function(literal_column('my_table')))
+
+Will generate the SQL::
+
+    SELECT *
+    FROM my_function(my_table)
 
 ARRAY Types
 -----------
