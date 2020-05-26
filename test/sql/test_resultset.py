@@ -579,7 +579,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda r: r._getter("user"),
             lambda r: r.keys(),
             lambda r: r.columns("user"),
-            lambda r: r.cursor_strategy.fetchone(r),
+            lambda r: r.cursor_strategy.fetchone(r, r.cursor),
         ]:
             trans = conn.begin()
             result = conn.execute(users.insert(), user_id=1)
@@ -2130,8 +2130,21 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         self.table = self.tables.test
 
         class ExcCtx(default.DefaultExecutionContext):
-            def get_result_cursor_strategy(self, result):
-                return cls.create(result)
+            def post_exec(self):
+                if cls is _cursor.CursorFetchStrategy:
+                    pass
+                elif cls is _cursor.BufferedRowCursorFetchStrategy:
+                    self.cursor_fetch_strategy = cls(
+                        self.cursor, self.execution_options
+                    )
+                elif cls is _cursor.FullyBufferedCursorFetchStrategy:
+                    self.cursor_fetch_strategy = cls(
+                        self.cursor,
+                        self.cursor.description,
+                        self.cursor.fetchall(),
+                    )
+                else:
+                    assert False
 
         self.patcher = patch.object(
             self.engine.dialect, "execution_ctx_cls", ExcCtx

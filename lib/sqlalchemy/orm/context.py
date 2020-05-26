@@ -39,11 +39,12 @@ from ..sql.visitors import InternalTraversal
 
 _path_registry = PathRegistry.root
 
+_EMPTY_DICT = util.immutabledict()
+
 
 class QueryContext(object):
     __slots__ = (
         "compile_state",
-        "orm_query",
         "query",
         "load_options",
         "bind_arguments",
@@ -74,8 +75,7 @@ class QueryContext(object):
         _yield_per = None
         _refresh_state = None
         _lazy_loaded_from = None
-        _orm_query = None
-        _params = util.immutabledict()
+        _params = _EMPTY_DICT
 
     def __init__(
         self,
@@ -87,10 +87,9 @@ class QueryContext(object):
     ):
 
         self.load_options = load_options
-        self.execution_options = execution_options or {}
-        self.bind_arguments = bind_arguments or {}
+        self.execution_options = execution_options or _EMPTY_DICT
+        self.bind_arguments = bind_arguments or _EMPTY_DICT
         self.compile_state = compile_state
-        self.orm_query = compile_state.orm_query
         self.query = query = compile_state.query
         self.session = session
 
@@ -118,20 +117,16 @@ class QueryContext(object):
                 % ", ".join(compile_state._no_yield_pers)
             )
 
-    @property
-    def is_single_entity(self):
-        # used for the check if we return a list of entities or tuples.
-        # this is gone in 2.0 when we no longer make this decision.
-        return (
-            not self.load_options._only_return_tuples
-            and len(self.compile_state._entities) == 1
-            and self.compile_state._entities[0].supports_single_entity
-        )
+    def dispose(self):
+        self.attributes.clear()
+        self.load_options._refresh_state = None
+        self.load_options._lazy_loaded_from = None
 
 
 class ORMCompileState(CompileState):
     class default_compile_options(CacheableOptions):
         _cache_key_traversal = [
+            ("_use_legacy_query_style", InternalTraversal.dp_boolean),
             ("_orm_results", InternalTraversal.dp_boolean),
             ("_bake_ok", InternalTraversal.dp_boolean),
             (
@@ -140,7 +135,6 @@ class ORMCompileState(CompileState):
             ),
             ("_current_path", InternalTraversal.dp_has_cache_key),
             ("_enable_single_crit", InternalTraversal.dp_boolean),
-            ("_statement", InternalTraversal.dp_clauseelement),
             ("_enable_eagerloads", InternalTraversal.dp_boolean),
             ("_orm_only_from_obj_alias", InternalTraversal.dp_boolean),
             ("_only_load_props", InternalTraversal.dp_plain_obj),
@@ -148,6 +142,7 @@ class ORMCompileState(CompileState):
             ("_for_refresh_state", InternalTraversal.dp_boolean),
         ]
 
+        _use_legacy_query_style = False
         _orm_results = True
         _bake_ok = True
         _with_polymorphic_adapt_map = ()
@@ -159,37 +154,36 @@ class ORMCompileState(CompileState):
         _set_base_alias = False
         _for_refresh_state = False
 
-        # non-cache-key elements mostly for legacy use
-        _statement = None
-        _orm_query = None
-
         @classmethod
         def merge(cls, other):
             return cls + other._state_dict()
 
-    orm_query = None
     current_path = _path_registry
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
+
+    def dispose(self):
+        self.attributes.clear()
 
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
         raise NotImplementedError()
 
     @classmethod
-    def _create_for_legacy_query(cls, query, for_statement=False):
+    def _create_for_legacy_query(cls, query, toplevel, for_statement=False):
         stmt = query._statement_20(orm_results=not for_statement)
 
-        if query.compile_options._statement is not None:
-            compile_state_cls = ORMFromStatementCompileState
-        else:
-            compile_state_cls = ORMSelectCompileState
+        # this chooses between ORMFromStatementCompileState and
+        # ORMSelectCompileState.  We could also base this on
+        # query._statement is not None as we have the ORM Query here
+        # however this is the more general path.
+        compile_state_cls = CompileState._get_plugin_class_for_plugin(
+            stmt, "orm"
+        )
 
-        # true in all cases except for two tests in test/orm/test_events.py
-        # assert stmt.compile_options._orm_query is query
         return compile_state_cls._create_for_statement_or_query(
-            stmt, for_statement=for_statement
+            stmt, toplevel, for_statement=for_statement
         )
 
     @classmethod
@@ -197,6 +191,10 @@ class ORMCompileState(CompileState):
         cls, statement_container, for_statement=False,
     ):
         raise NotImplementedError()
+
+    @classmethod
+    def get_column_descriptions(self, statement):
+        return _column_descriptions(statement)
 
     @classmethod
     def orm_pre_session_exec(
@@ -219,10 +217,16 @@ class ORMCompileState(CompileState):
         # as the statement is built.   "subject" mapper is the generally
         # standard object used as an identifier for multi-database schemes.
 
-        if "plugin_subject" in statement._propagate_attrs:
-            bind_arguments["mapper"] = statement._propagate_attrs[
-                "plugin_subject"
-            ].mapper
+        # we are here based on the fact that _propagate_attrs contains
+        # "compile_state_plugin": "orm".   The "plugin_subject"
+        # needs to be present as well.
+
+        try:
+            plugin_subject = statement._propagate_attrs["plugin_subject"]
+        except KeyError:
+            assert False, "statement had 'orm' plugin but no plugin_subject"
+        else:
+            bind_arguments["mapper"] = plugin_subject.mapper
 
         if load_options._autoflush:
             session._autoflush()
@@ -296,11 +300,14 @@ class ORMFromStatementCompileState(ORMCompileState):
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
         compiler._rewrites_selected_columns = True
-        return cls._create_for_statement_or_query(statement_container)
+        toplevel = not compiler.stack
+        return cls._create_for_statement_or_query(
+            statement_container, toplevel
+        )
 
     @classmethod
     def _create_for_statement_or_query(
-        cls, statement_container, for_statement=False,
+        cls, statement_container, toplevel, for_statement=False,
     ):
         # from .query import FromStatement
 
@@ -309,8 +316,9 @@ class ORMFromStatementCompileState(ORMCompileState):
         self = cls.__new__(cls)
         self._primary_entity = None
 
-        self.orm_query = statement_container.compile_options._orm_query
-
+        self.use_orm_style = (
+            statement_container.compile_options._use_legacy_query_style
+        )
         self.statement_container = self.query = statement_container
         self.requested_statement = statement_container.element
 
@@ -325,12 +333,13 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.current_path = statement_container.compile_options._current_path
 
-        if statement_container._with_options:
+        if toplevel and statement_container._with_options:
             self.attributes = {"_unbound_load_dedupes": set()}
 
             for opt in statement_container._with_options:
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
+
         else:
             self.attributes = {}
 
@@ -411,24 +420,24 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     _where_criteria = ()
     _having_criteria = ()
 
-    orm_query = None
-
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         if not statement._is_future:
             return SelectState(statement, compiler, **kw)
 
+        toplevel = not compiler.stack
+
         compiler._rewrites_selected_columns = True
 
         orm_state = cls._create_for_statement_or_query(
-            statement, for_statement=True
+            statement, for_statement=True, toplevel=toplevel
         )
         SelectState.__init__(orm_state, orm_state.statement, compiler, **kw)
         return orm_state
 
     @classmethod
     def _create_for_statement_or_query(
-        cls, query, for_statement=False, _entities_only=False,
+        cls, query, toplevel, for_statement=False, _entities_only=False
     ):
         assert isinstance(query, future.Select)
 
@@ -440,9 +449,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self._primary_entity = None
 
-        self.orm_query = query.compile_options._orm_query
-
         self.query = query
+        self.use_orm_style = query.compile_options._use_legacy_query_style
 
         self.select_statement = select_statement = query
 
@@ -484,7 +492,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # rather than LABEL_STYLE_NONE, and if we can use disambiguate style
         # for new style ORM selects too.
         if self.select_statement._label_style is LABEL_STYLE_NONE:
-            if self.orm_query and not for_statement:
+            if self.use_orm_style and not for_statement:
                 self.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
             else:
                 self.label_style = LABEL_STYLE_DISAMBIGUATE_ONLY
@@ -495,7 +503,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self.eager_order_by = ()
 
-        if select_statement._with_options:
+        if toplevel and select_statement._with_options:
             self.attributes = {"_unbound_load_dedupes": set()}
 
             for opt in self.select_statement._with_options:

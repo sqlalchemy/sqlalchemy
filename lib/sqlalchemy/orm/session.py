@@ -35,6 +35,7 @@ from ..inspection import inspect
 from ..sql import coercions
 from ..sql import roles
 from ..sql import visitors
+from ..sql.base import CompileState
 
 __all__ = ["Session", "SessionTransaction", "sessionmaker"]
 
@@ -98,7 +99,7 @@ DEACTIVE = util.symbol("DEACTIVE")
 CLOSED = util.symbol("CLOSED")
 
 
-class ORMExecuteState(object):
+class ORMExecuteState(util.MemoizedSlots):
     """Stateful object used for the :meth:`.SessionEvents.do_orm_execute`
 
     .. versionadded:: 1.4
@@ -109,7 +110,8 @@ class ORMExecuteState(object):
         "session",
         "statement",
         "parameters",
-        "execution_options",
+        "_execution_options",
+        "_merged_execution_options",
         "bind_arguments",
     )
 
@@ -119,7 +121,7 @@ class ORMExecuteState(object):
         self.session = session
         self.statement = statement
         self.parameters = parameters
-        self.execution_options = execution_options
+        self._execution_options = execution_options
         self.bind_arguments = bind_arguments
 
     def invoke_statement(
@@ -182,33 +184,51 @@ class ORMExecuteState(object):
             _params = self.parameters
 
         if execution_options:
-            _execution_options = dict(self.execution_options)
+            _execution_options = dict(self._execution_options)
             _execution_options.update(execution_options)
         else:
-            _execution_options = self.execution_options
+            _execution_options = self._execution_options
 
         return self.session.execute(
             statement, _params, _execution_options, _bind_arguments
         )
 
     @property
-    def orm_query(self):
-        """Return the :class:`_orm.Query` object associated with this
-        execution.
+    def execution_options(self):
+        """Placeholder for execution options.
 
-        For SQLAlchemy-2.0 style usage, the :class:`_orm.Query` object
-        is not used at all, and this attribute will return None.
+        Raises an informative message, as there are local options
+        vs. merged options that can be viewed, via the
+        :attr:`.ORMExecuteState.local_execution_options` and
+        :attr:`.ORMExecuteState.merged_execution_options` methods.
+
 
         """
-        load_opts = self.load_options
-        if load_opts._orm_query:
-            return load_opts._orm_query
+        raise AttributeError(
+            "Please use .local_execution_options or "
+            ".merged_execution_options"
+        )
 
-        opts = self._orm_compile_options()
-        if opts is not None:
-            return opts._orm_query
-        else:
-            return None
+    @property
+    def local_execution_options(self):
+        """Dictionary view of the execution options passed to the
+        :meth:`.Session.execute` method.  This does not include options
+        that may be associated with the statement being invoked.
+
+        """
+        return util.immutabledict(self._execution_options)
+
+    @property
+    def merged_execution_options(self):
+        """Dictionary view of all execution options merged together;
+        this includes those of the statement as well as those passed to
+        :meth:`.Session.execute`, with the local options taking precedence.
+
+        """
+        return self._merged_execution_options
+
+    def _memoized_attr__merged_execution_options(self):
+        return self.statement._execution_options.union(self._execution_options)
 
     def _orm_compile_options(self):
         opts = self.statement.compile_options
@@ -216,6 +236,21 @@ class ORMExecuteState(object):
             return opts
         else:
             return None
+
+    @property
+    def lazy_loaded_from(self):
+        """An :class:`.InstanceState` that is using this statement execution
+        for a lazy load operation.
+
+        The primary rationale for this attribute is to support the horizontal
+        sharding extension, where it is available within specific query
+        execution time hooks created by this extension.   To that end, the
+        attribute is only intended to be meaningful at **query execution
+        time**, and importantly not any time prior to that, including query
+        compilation time.
+
+        """
+        return self.load_options._lazy_loaded_from
 
     @property
     def loader_strategy_path(self):
@@ -235,7 +270,7 @@ class ORMExecuteState(object):
     def load_options(self):
         """Return the load_options that will be used for this execution."""
 
-        return self.execution_options.get(
+        return self._execution_options.get(
             "_sa_orm_load_options", context.QueryContext.default_load_options
         )
 
@@ -1407,7 +1442,6 @@ class Session(_SessionClassMethods):
             in order to execute the statement.
 
         """
-
         statement = coercions.expect(roles.CoerceTextStatementRole, statement)
 
         if not bind_arguments:
@@ -1415,12 +1449,19 @@ class Session(_SessionClassMethods):
         elif kw:
             bind_arguments.update(kw)
 
-        compile_state_cls = statement._get_plugin_compile_state_cls("orm")
-        if compile_state_cls:
+        if (
+            statement._propagate_attrs.get("compile_state_plugin", None)
+            == "orm"
+        ):
+            compile_state_cls = CompileState._get_plugin_class_for_plugin(
+                statement, "orm"
+            )
+
             compile_state_cls.orm_pre_session_exec(
                 self, statement, execution_options, bind_arguments
             )
         else:
+            compile_state_cls = None
             bind_arguments.setdefault("clause", statement)
             if statement._is_future:
                 execution_options = util.immutabledict().merge_with(
@@ -1694,9 +1735,19 @@ class Session(_SessionClassMethods):
              :meth:`.Session.bind_table`
 
         """
+
+        # this function is documented as a subclassing hook, so we have
+        # to call this method even if the return is simple
         if bind:
             return bind
+        elif not self.__binds and self.bind:
+            # simplest and most common case, we have a bind and no
+            # per-mapper/table binds, we're done
+            return self.bind
 
+        # we don't have self.bind and either have self.__binds
+        # or we don't have self.__binds (which is legacy).  Look at the
+        # mapper and the clause
         if mapper is clause is None:
             if self.bind:
                 return self.bind
@@ -1707,6 +1758,7 @@ class Session(_SessionClassMethods):
                     "a binding."
                 )
 
+        # look more closely at the mapper.
         if mapper is not None:
             try:
                 mapper = inspect(mapper)
@@ -1718,6 +1770,7 @@ class Session(_SessionClassMethods):
                 else:
                     raise
 
+        # match up the mapper or clause in the __binds
         if self.__binds:
             # matching mappers and selectables to entries in the
             # binds dictionary; supported use case.
@@ -1733,7 +1786,8 @@ class Session(_SessionClassMethods):
                     if obj in self.__binds:
                         return self.__binds[obj]
 
-        # session has a single bind; supported use case.
+        # none of the __binds matched, but we have a fallback bind.
+        # return that
         if self.bind:
             return self.bind
 
@@ -1745,16 +1799,10 @@ class Session(_SessionClassMethods):
         if clause is not None:
             if clause.bind:
                 return clause.bind
-        #            for obj in visitors.iterate(clause):
-        #                if obj.bind:
-        #                    return obj.bind
 
         if mapper:
             if mapper.persist_selectable.bind:
                 return mapper.persist_selectable.bind
-        #            for obj in visitors.iterate(mapper.persist_selectable):
-        #                if obj.bind:
-        #                    return obj.bind
 
         context = []
         if mapper is not None:

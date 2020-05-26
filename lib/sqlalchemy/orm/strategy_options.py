@@ -861,7 +861,14 @@ class _UnboundLoad(Load):
         # we just located, then go through the rest of our path
         # tokens and populate into the Load().
         loader = Load(path_element)
+
         if context is not None:
+            # TODO: this creates a cycle with context.attributes.
+            # the current approach to mitigating this is the context /
+            # compile_state attributes are cleared out when a result
+            # is fetched.  However, it would be nice if these attributes
+            # could be passed to all methods so that all the state
+            # gets set up without ever creating any assignments.
             loader.context = context
         else:
             context = loader.context

@@ -98,6 +98,15 @@ class Select(_LegacySelect):
         ]
         return self.filter(*clauses)
 
+    @property
+    def column_descriptions(self):
+        """Return a 'column descriptions' structure which may be
+        plugin-specific.
+
+        """
+        meth = SelectState.get_plugin_class(self).get_column_descriptions
+        return meth(self)
+
     @_generative
     def join(self, target, onclause=None, isouter=False, full=False):
         r"""Create a SQL JOIN against this :class:`_expresson.Select`

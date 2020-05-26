@@ -942,6 +942,10 @@ class HasMemoized(object):
         for elem in self._memoized_keys:
             assert elem not in self.__dict__
 
+    def _set_memoized_attribute(self, key, value):
+        self.__dict__[key] = value
+        self._memoized_keys |= {key}
+
     class memoized_attribute(object):
         """A read-only @property that is only evaluated once."""
 
@@ -1260,14 +1264,19 @@ class classproperty(property):
 class hybridproperty(object):
     def __init__(self, func):
         self.func = func
+        self.clslevel = func
 
     def __get__(self, instance, owner):
         if instance is None:
-            clsval = self.func(owner)
+            clsval = self.clslevel(owner)
             clsval.__doc__ = self.func.__doc__
             return clsval
         else:
             return self.func(instance)
+
+    def classlevel(self, func):
+        self.clslevel = func
+        return self
 
 
 class hybridmethod(object):

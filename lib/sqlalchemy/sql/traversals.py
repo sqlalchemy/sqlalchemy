@@ -179,7 +179,7 @@ class HasCacheKey(object):
         if NO_CACHE in _anon_map:
             return None
         else:
-            return CacheKey(key, bindparams, self)
+            return CacheKey(key, bindparams)
 
     @classmethod
     def _generate_cache_key_for_object(cls, obj):
@@ -190,7 +190,7 @@ class HasCacheKey(object):
         if NO_CACHE in _anon_map:
             return None
         else:
-            return CacheKey(key, bindparams, obj)
+            return CacheKey(key, bindparams)
 
 
 class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
@@ -199,13 +199,13 @@ class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
         return HasCacheKey._generate_cache_key(self)
 
 
-class CacheKey(namedtuple("CacheKey", ["key", "bindparams", "statement"])):
+class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
     def __hash__(self):
         """CacheKey itself is not hashable - hash the .key portion"""
 
         return None
 
-    def to_offline_string(self, statement_cache, parameters):
+    def to_offline_string(self, statement_cache, statement, parameters):
         """generate an "offline string" form of this :class:`.CacheKey`
 
         The "offline string" is basically the string SQL for the
@@ -222,7 +222,7 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams", "statement"])):
 
         """
         if self.key not in statement_cache:
-            statement_cache[self.key] = sql_str = str(self.statement)
+            statement_cache[self.key] = sql_str = str(statement)
         else:
             sql_str = statement_cache[self.key]
 

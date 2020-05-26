@@ -230,10 +230,6 @@ class BakedQuery(object):
         # invoked
         statement = query._statement_20(orm_results=True)
 
-        # the before_compile() event can create a new Query object
-        # before it makes the statement.
-        query = statement.compile_options._orm_query
-
         # if the query is not safe to cache, we still do everything as though
         # we did cache it, since the receiver of _bake() assumes subqueryload
         # context was set up, etc.
@@ -243,7 +239,7 @@ class BakedQuery(object):
         # used by the Connection, which in itself is more expensive to
         # generate than what BakedQuery was able to provide in 1.3 and prior
 
-        if query.compile_options._bake_ok:
+        if statement.compile_options._bake_ok:
             self._bakery[self._effective_key(session)] = (
                 query,
                 statement,
@@ -383,7 +379,7 @@ class Result(object):
         return str(self._as_query())
 
     def __iter__(self):
-        return iter(self._iter())
+        return self._iter().__iter__()
 
     def _iter(self):
         bq = self.bq
@@ -397,12 +393,14 @@ class Result(object):
         if query is None:
             query, statement = bq._bake(self.session)
 
-        q = query.params(self._params)
+        if self._params:
+            q = query.params(self._params)
+        else:
+            q = query
         for fn in self._post_criteria:
             q = fn(q)
 
         params = q.load_options._params
-        q.load_options += {"_orm_query": q}
         execution_options = dict(q._execution_options)
         execution_options.update(
             {
@@ -463,16 +461,15 @@ class Result(object):
         Equivalent to :meth:`_query.Query.first`.
 
         """
+
         bq = self.bq.with_criteria(lambda q: q.slice(0, 1))
-        ret = list(
+        return (
             bq.for_session(self.session)
             .params(self._params)
             ._using_post_criteria(self._post_criteria)
+            ._iter()
+            .first()
         )
-        if len(ret) > 0:
-            return ret[0]
-        else:
-            return None
 
     def one(self):
         """Return exactly one result or raise an exception.
@@ -480,19 +477,7 @@ class Result(object):
         Equivalent to :meth:`_query.Query.one`.
 
         """
-        try:
-            ret = self.one_or_none()
-        except orm_exc.MultipleResultsFound as err:
-            util.raise_(
-                orm_exc.MultipleResultsFound(
-                    "Multiple rows were found for one()"
-                ),
-                replace_context=err,
-            )
-        else:
-            if ret is None:
-                raise orm_exc.NoResultFound("No row was found for one()")
-            return ret
+        return self._iter().one()
 
     def one_or_none(self):
         """Return one or zero results, or raise an exception for multiple
@@ -503,17 +488,7 @@ class Result(object):
         .. versionadded:: 1.0.9
 
         """
-        ret = list(self)
-
-        l = len(ret)
-        if l == 1:
-            return ret[0]
-        elif l == 0:
-            return None
-        else:
-            raise orm_exc.MultipleResultsFound(
-                "Multiple rows were found for one_or_none()"
-            )
+        return self._iter().one_or_none()
 
     def all(self):
         """Return all rows.

@@ -592,12 +592,8 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
         ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
         return self._dbapi_connection.cursor(ident)
 
-    def get_result_cursor_strategy(self, result):
+    def post_exec(self):
         self._log_notices(self.cursor)
-
-        return super(PGExecutionContext, self).get_result_cursor_strategy(
-            result
-        )
 
     def _log_notices(self, cursor):
         # check also that notices is an iterable, after it's already

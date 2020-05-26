@@ -1528,7 +1528,7 @@ class EngineEventsTest(fixtures.TestBase):
             conn.execute(select([1]).compile(dialect=e1.dialect))
 
             conn._execute_compiled(
-                select([1]).compile(dialect=e1.dialect), (), {}
+                select([1]).compile(dialect=e1.dialect), (), {}, {}
             )
 
     def test_execute_events(self):
@@ -3061,6 +3061,55 @@ class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             connection.execute(select([1]))
 
         eq_(opts, [expected])
+
+    @testing.combinations(
+        ({}, {}, {}, {}),
+        ({}, {"a": "b"}, {}, {"a": "b"}),
+        ({}, {"a": "b", "d": "e"}, {"a": "c"}, {"a": "c", "d": "e"}),
+        (
+            {"q": "z", "p": "r"},
+            {"a": "b", "p": "x", "d": "e"},
+            {"a": "c"},
+            {"q": "z", "p": "x", "a": "c", "d": "e"},
+        ),
+        argnames="stmt_opts, conn_opts, exec_opts, expected",
+    )
+    def test_execution_opts_per_invoke_execute_events(
+        self, connection, stmt_opts, conn_opts, exec_opts, expected
+    ):
+        opts = []
+
+        @event.listens_for(connection, "before_execute")
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            opts.append(("before", execution_options))
+
+        @event.listens_for(connection, "after_execute")
+        def after_execute(
+            conn,
+            clauseelement,
+            multiparams,
+            params,
+            execution_options,
+            result,
+        ):
+            opts.append(("after", execution_options))
+
+        stmt = select([1])
+
+        if stmt_opts:
+            stmt = stmt.execution_options(**stmt_opts)
+
+        if conn_opts:
+            connection = connection.execution_options(**conn_opts)
+
+        if exec_opts:
+            connection.execute(stmt, execution_options=exec_opts)
+        else:
+            connection.execute(stmt)
+
+        eq_(opts, [("before", expected), ("after", expected)])
 
     def test_no_branching(self, connection):
         assert_raises_message(

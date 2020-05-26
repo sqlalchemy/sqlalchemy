@@ -103,8 +103,10 @@ except ImportError:
         def __getitem__(self, key):
             return self._data[key]
 
+        _get_by_int_impl = __getitem__
+
         def _get_by_key_impl(self, key):
-            if self._key_style == KEY_INTEGER_ONLY:
+            if int in key.__class__.__mro__:
                 return self._data[key]
 
             # the following is all LegacyRow support.   none of this
@@ -125,11 +127,7 @@ except ImportError:
             if mdindex is None:
                 self._parent._raise_for_ambiguous_column_name(rec)
 
-            elif (
-                self._key_style == KEY_OBJECTS_BUT_WARN
-                and mdindex != key
-                and not isinstance(key, int)
-            ):
+            elif self._key_style == KEY_OBJECTS_BUT_WARN and mdindex != key:
                 self._parent._warn_for_nonint(key)
 
             return self._data[mdindex]

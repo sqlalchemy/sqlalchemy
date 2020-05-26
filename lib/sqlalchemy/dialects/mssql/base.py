@@ -1529,8 +1529,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         elif (
             self.isinsert or self.isupdate or self.isdelete
         ) and self.compiled.returning:
-            fbcr = _cursor.FullyBufferedCursorFetchStrategy
-            self._result_strategy = fbcr.create_from_buffer(
+            self.cursor_fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(  # noqa
                 self.cursor, self.cursor.description, self.cursor.fetchall()
             )
 
@@ -1570,14 +1569,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
             except Exception:
                 pass
-
-    def get_result_cursor_strategy(self, result):
-        if self._result_strategy:
-            return self._result_strategy
-        else:
-            return super(MSExecutionContext, self).get_result_cursor_strategy(
-                result
-            )
 
 
 class MSSQLCompiler(compiler.SQLCompiler):

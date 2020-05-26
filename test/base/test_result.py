@@ -87,7 +87,13 @@ class ResultTupleTest(fixtures.TestBase):
         getter = keyed_tuple._parent._row_as_tuple_getter(["b", "c"])
         eq_(getter(keyed_tuple), (2, 3))
 
-        getter = keyed_tuple._parent._row_as_tuple_getter([2, 0, 1])
+        # row as tuple getter doesn't accept ints.  for ints, just
+        # use plain python
+        import operator
+
+        getter = operator.itemgetter(2, 0, 1)
+
+        # getter = keyed_tuple._parent._row_as_tuple_getter([2, 0, 1])
         eq_(getter(keyed_tuple), (3, 1, 2))
 
     def test_attribute_access(self):
@@ -389,6 +395,14 @@ class ResultTest(fixtures.TestBase):
         result = self._fixture()
 
         eq_(list(result.scalars(2)), [1, 2, 2, 2])
+
+    def test_scalars_mappings(self):
+        result = self._fixture()
+
+        eq_(
+            list(result.scalars().mappings()),
+            [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 4}],
+        )
 
     def test_scalars_no_fetchone(self):
         result = self._fixture()
@@ -875,6 +889,18 @@ class OnlyScalarsTest(fixtures.TestBase):
                 yield [row[0] for row in rows]
 
         return chunks
+
+    def test_scalar_mode_scalars_mapping(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        r = r.scalars().mappings()
+        eq_(
+            list(r), [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
+        )
 
     def test_scalar_mode_scalars_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])

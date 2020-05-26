@@ -12,12 +12,12 @@ from __future__ import absolute_import
 import collections
 import itertools
 
-from sqlalchemy.orm import query
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
 from . import properties
+from . import query
 from . import relationships
 from . import unitofwork
 from . import util as orm_util
@@ -1143,7 +1143,7 @@ class SubqueryLoader(PostLoader):
         ) = self._get_leftmost(subq_path)
 
         orig_query = compile_state.attributes.get(
-            ("orig_query", SubqueryLoader), compile_state.orm_query
+            ("orig_query", SubqueryLoader), compile_state.query
         )
 
         # generate a new Query from the original, then
@@ -1168,9 +1168,7 @@ class SubqueryLoader(PostLoader):
         def set_state_options(compile_state):
             compile_state.attributes.update(
                 {
-                    ("orig_query", SubqueryLoader): orig_query.with_session(
-                        None
-                    ),
+                    ("orig_query", SubqueryLoader): orig_query,
                     ("subquery_path", None): subq_path,
                 }
             )
@@ -1236,6 +1234,19 @@ class SubqueryLoader(PostLoader):
         # to look only for significant columns
         q = orig_query._clone().correlate(None)
 
+        # LEGACY: make a Query back from the select() !!
+        # This suits at least two legacy cases:
+        # 1. applications which expect before_compile() to be called
+        #    below when we run .subquery() on this query (Keystone)
+        # 2. applications which are doing subqueryload with complex
+        #    from_self() queries, as query.subquery() / .statement
+        #    has to do the full compile context for multiply-nested
+        #    from_self() (Neutron) - see test_subqload_from_self
+        #    for demo.
+        q2 = query.Query.__new__(query.Query)
+        q2.__dict__.update(q.__dict__)
+        q = q2
+
         # set the query's "FROM" list explicitly to what the
         # FROM list would be in any case, as we will be limiting
         # the columns in the SELECT list which may no longer include
@@ -1250,15 +1261,6 @@ class SubqueryLoader(PostLoader):
                     if ent["entity"] is not None
                 }
             )
-
-        # NOTE: keystone has a test which is counting before_compile
-        # events.   That test is in one case dependent on an extra
-        # call that was occurring here within the subqueryloader setup
-        # process, probably when the subquery() method was called.
-        # Ultimately that call will not be occurring here.
-        # the event has already been called on the original query when
-        # we are here in any case, so keystone will need to adjust that
-        # test.
 
         # for column information, look to the compile state that is
         # already being passed through
@@ -1304,7 +1306,8 @@ class SubqueryLoader(PostLoader):
 
         # the original query now becomes a subquery
         # which we'll join onto.
-
+        # LEGACY: as "q" is a Query, the before_compile() event is invoked
+        # here.
         embed_q = q.apply_labels().subquery()
         left_alias = orm_util.AliasedClass(
             leftmost_mapper, embed_q, use_mapper_path=True
@@ -1416,8 +1419,6 @@ class SubqueryLoader(PostLoader):
         # these will fire relative to subq_path.
         q = q._with_current_path(subq_path)
         q = q.options(*orig_query._with_options)
-        if orig_query.load_options._populate_existing:
-            q.load_options += {"_populate_existing": True}
 
         return q
 
@@ -1475,8 +1476,11 @@ class SubqueryLoader(PostLoader):
                 )
             q = q.with_session(self.session)
 
+            if self.load_options._populate_existing:
+                q = q.populate_existing()
             # to work with baked query, the parameters may have been
             # updated since this query was created, so take these into account
+
             rows = list(q.params(self.load_options._params))
             for k, v in itertools.groupby(rows, lambda x: x[1:]):
                 self._data[k].extend(vv[0] for vv in v)

@@ -128,6 +128,7 @@ class Query(
     _aliased_generation = None
     _enable_assertions = True
     _last_joined_entity = None
+    _statement = None
 
     # mirrors that of ClauseElement, used to propagate the "orm"
     # plugin as well as the "subject" of the plugin, e.g. the mapper
@@ -232,7 +233,7 @@ class Query(
             return
         if (
             self._where_criteria
-            or self.compile_options._statement is not None
+            or self._statement is not None
             or self._from_obj
             or self._legacy_setup_joins
             or self._limit_clause is not None
@@ -250,7 +251,7 @@ class Query(
         self._no_criterion_assertion(meth, order_by, distinct)
 
         self._from_obj = self._legacy_setup_joins = ()
-        if self.compile_options._statement is not None:
+        if self._statement is not None:
             self.compile_options += {"_statement": None}
         self._where_criteria = ()
         self._distinct = False
@@ -270,7 +271,7 @@ class Query(
     def _no_statement_condition(self, meth):
         if not self._enable_assertions:
             return
-        if self.compile_options._statement is not None:
+        if self._statement is not None:
             raise sa_exc.InvalidRequestError(
                 (
                     "Query.%s() being called on a Query with an existing full "
@@ -356,7 +357,6 @@ class Query(
         if (
             not self.compile_options._set_base_alias
             and not self.compile_options._with_polymorphic_adapt_map
-            # and self.compile_options._statement is None
         ):
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
@@ -383,48 +383,25 @@ class Query(
                     if not fn._bake_ok:
                         self.compile_options += {"_bake_ok": False}
 
-        if self.compile_options._statement is not None:
-            stmt = FromStatement(
-                self._raw_columns, self.compile_options._statement
-            )
-            # TODO: once SubqueryLoader uses select(), we can remove
-            # "_orm_query" from this structure
+        compile_options = self.compile_options
+        compile_options += {"_use_legacy_query_style": True}
+
+        if self._statement is not None:
+            stmt = FromStatement(self._raw_columns, self._statement)
             stmt.__dict__.update(
                 _with_options=self._with_options,
                 _with_context_options=self._with_context_options,
-                compile_options=self.compile_options
-                + {"_orm_query": self.with_session(None)},
+                compile_options=compile_options,
                 _execution_options=self._execution_options,
             )
             stmt._propagate_attrs = self._propagate_attrs
         else:
+            # Query / select() internal attributes are 99% cross-compatible
             stmt = FutureSelect.__new__(FutureSelect)
-
+            stmt.__dict__.update(self.__dict__)
             stmt.__dict__.update(
-                _raw_columns=self._raw_columns,
-                _where_criteria=self._where_criteria,
-                _from_obj=self._from_obj,
-                _legacy_setup_joins=self._legacy_setup_joins,
-                _order_by_clauses=self._order_by_clauses,
-                _group_by_clauses=self._group_by_clauses,
-                _having_criteria=self._having_criteria,
-                _distinct=self._distinct,
-                _distinct_on=self._distinct_on,
-                _with_options=self._with_options,
-                _with_context_options=self._with_context_options,
-                _hints=self._hints,
-                _statement_hints=self._statement_hints,
-                _correlate=self._correlate,
-                _auto_correlate=self._auto_correlate,
-                _limit_clause=self._limit_clause,
-                _offset_clause=self._offset_clause,
-                _for_update_arg=self._for_update_arg,
-                _prefixes=self._prefixes,
-                _suffixes=self._suffixes,
                 _label_style=self._label_style,
-                compile_options=self.compile_options
-                + {"_orm_query": self.with_session(None)},
-                _execution_options=self._execution_options,
+                compile_options=compile_options,
             )
 
         if not orm_results:
@@ -897,9 +874,11 @@ class Query(
         :return: The object instance, or ``None``.
 
         """
+        self._no_criterion_assertion("get", order_by=False, distinct=False)
         return self._get_impl(ident, loading.load_on_pk_identity)
 
     def _get_impl(self, primary_key_identity, db_load_fn, identity_token=None):
+
         # convert composite types to individual args
         if hasattr(primary_key_identity, "__composite_values__"):
             primary_key_identity = primary_key_identity.__composite_values__()
@@ -977,33 +956,14 @@ class Query(
         """An :class:`.InstanceState` that is using this :class:`_query.Query`
         for a lazy load operation.
 
-        The primary rationale for this attribute is to support the horizontal
-        sharding extension, where it is available within specific query
-        execution time hooks created by this extension.   To that end, the
-        attribute is only intended to be meaningful at **query execution
-        time**, and importantly not any time prior to that, including query
-        compilation time.
+        .. deprecated:: 1.4  This attribute should be viewed via the
+           :attr:`.ORMExecuteState.lazy_loaded_from` attribute, within
+           the context of the :meth:`.SessionEvents.do_orm_execute`
+           event.
 
-        .. note::
+        .. seealso::
 
-            Within the realm of regular :class:`_query.Query` usage, this
-            attribute is set by the lazy loader strategy before the query is
-            invoked.  However there is no established hook that is available to
-            reliably intercept this value programmatically.  It is set by the
-            lazy loading strategy after any  mapper option objects would have
-            been applied, and now that the lazy  loading strategy in the ORM
-            makes use of "baked" queries to cache SQL  compilation, the
-            :meth:`.QueryEvents.before_compile` hook is also not reliable.
-
-            Currently, setting the :paramref:`_orm.relationship.bake_queries`
-            to ``False`` on the target :func:`_orm.relationship`, and then
-            making use of the :meth:`.QueryEvents.before_compile` event hook,
-            is the only available programmatic path to intercepting this
-            attribute. In future releases, there will be new hooks available
-            that allow interception of the :class:`_query.Query` before it is
-            executed, rather than before it is compiled.
-
-        .. versionadded:: 1.2.9
+            :attr:`.ORMExecuteState.lazy_loaded_from`
 
         """
         return self.load_options._lazy_loaded_from
@@ -2713,6 +2673,7 @@ class Query(
         statement = coercions.expect(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
         )
+        self._statement = statement
         self.compile_options += {"_statement": statement}
 
     def first(self):
@@ -2736,7 +2697,7 @@ class Query(
 
         """
         # replicates limit(1) behavior
-        if self.compile_options._statement is not None:
+        if self._statement is not None:
             return self._iter().first()
         else:
             return self.limit(1)._iter().first()
@@ -2918,7 +2879,9 @@ class Query(
                 "for linking ORM results to arbitrary select constructs.",
                 version="1.4",
             )
-            compile_state = ORMCompileState._create_for_legacy_query(self)
+            compile_state = ORMCompileState._create_for_legacy_query(
+                self, toplevel=True
+            )
             context = QueryContext(
                 compile_state, self.session, self.load_options
             )
@@ -3332,7 +3295,7 @@ class Query(
 
     def _compile_state(self, for_statement=False, **kw):
         return ORMCompileState._create_for_legacy_query(
-            self, for_statement=for_statement, **kw
+            self, toplevel=True, for_statement=for_statement, **kw
         )
 
     def _compile_context(self, for_statement=False):
@@ -3366,7 +3329,7 @@ class FromStatement(SelectStatementGrouping, Executable):
         super(FromStatement, self).__init__(element)
 
     def _compiler_dispatch(self, compiler, **kw):
-        compile_state = self._compile_state_factory(self, self, **kw)
+        compile_state = self._compile_state_factory(self, compiler, **kw)
 
         toplevel = not compiler.stack
 
