@@ -14,6 +14,8 @@ as well as some of the attribute loading strategies.
 """
 from __future__ import absolute_import
 
+import collections
+
 from . import attributes
 from . import exc as orm_exc
 from . import path_registry
@@ -586,86 +588,48 @@ def _instance_processor(
 
     identity_class = mapper._identity_class
 
-    compile_state = context.compile_state
-
-    populators = {}
+    populators = collections.defaultdict(list)
 
     props = mapper._prop_set
     if only_load_props is not None:
         props = props.intersection(mapper._props[k] for k in only_load_props)
 
-    getters = path.get(compile_state.attributes, "getters", None)
-    if getters is None:
-        # directives given to us by the ColumnLoader.setup_query()
-        # methods.   Turn these directives into getters against the
-        # actual result set.
-        quick_populators = path.get(
-            context.attributes, "memoized_setups", _none_set
-        )
-        cached_populators = {
-            "new": [],
-            "expire": [],
-            "quick": [],
-            "todo": [],
-            "delayed": [],
-            "existing": [],
-            "eager": [],
-        }
+    quick_populators = path.get(
+        context.attributes, "memoized_setups", _none_set
+    )
 
-        pk_cols = mapper.primary_key
-
-        if adapter:
-            pk_cols = [adapter.columns[c] for c in pk_cols]
-        getters = {
-            "populators": cached_populators,
-            "primary_key_getter": result._tuple_getter(pk_cols),
-        }
-
-        for prop in props:
-            if prop in quick_populators:
-                # this is an inlined path just for column-based attributes.
-                col = quick_populators[prop]
-                if col is _DEFER_FOR_STATE:
-                    cached_populators["new"].append(
-                        (prop.key, prop._deferred_column_loader)
-                    )
-                elif col is _SET_DEFERRED_EXPIRED:
-                    # note that in this path, we are no longer
-                    # searching in the result to see if the column might
-                    # be present in some unexpected way.
-                    cached_populators["expire"].append((prop.key, False))
-                elif col is _RAISE_FOR_STATE:
-                    cached_populators["new"].append(
-                        (prop.key, prop._raise_column_loader)
-                    )
-                else:
-                    getter = None
-                    if not getter:
-                        getter = result._getter(col, False)
-                    if getter:
-                        cached_populators["quick"].append((prop.key, getter))
-                    else:
-                        # fall back to the ColumnProperty itself, which
-                        # will iterate through all of its columns
-                        # to see if one fits
-                        prop.create_row_processor(
-                            context,
-                            path,
-                            mapper,
-                            result,
-                            adapter,
-                            cached_populators,
-                        )
+    for prop in props:
+        if prop in quick_populators:
+            # this is an inlined path just for column-based attributes.
+            col = quick_populators[prop]
+            if col is _DEFER_FOR_STATE:
+                populators["new"].append(
+                    (prop.key, prop._deferred_column_loader)
+                )
+            elif col is _SET_DEFERRED_EXPIRED:
+                # note that in this path, we are no longer
+                # searching in the result to see if the column might
+                # be present in some unexpected way.
+                populators["expire"].append((prop.key, False))
+            elif col is _RAISE_FOR_STATE:
+                populators["new"].append((prop.key, prop._raise_column_loader))
             else:
-                cached_populators["todo"].append(prop)
-        path.set(compile_state.attributes, "getters", getters)
-
-    cached_populators = getters["populators"]
-    populators = {k: list(v) for k, v in cached_populators.items()}
-    for prop in cached_populators["todo"]:
-        prop.create_row_processor(
-            context, path, mapper, result, adapter, populators
-        )
+                getter = None
+                if not getter:
+                    getter = result._getter(col, False)
+                if getter:
+                    populators["quick"].append((prop.key, getter))
+                else:
+                    # fall back to the ColumnProperty itself, which
+                    # will iterate through all of its columns
+                    # to see if one fits
+                    prop.create_row_processor(
+                        context, path, mapper, result, adapter, populators
+                    )
+        else:
+            prop.create_row_processor(
+                context, path, mapper, result, adapter, populators
+            )
 
     propagated_loader_options = context.propagated_loader_options
     load_path = (
@@ -743,7 +707,11 @@ def _instance_processor(
     else:
         refresh_identity_key = None
 
-        primary_key_getter = getters["primary_key_getter"]
+        pk_cols = mapper.primary_key
+
+        if adapter:
+            pk_cols = [adapter.columns[c] for c in pk_cols]
+        tuple_getter = result._tuple_getter(pk_cols)
 
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
@@ -764,11 +732,7 @@ def _instance_processor(
         else:
             # look at the row, see if that identity is in the
             # session, or we have to create a new one
-            identitykey = (
-                identity_class,
-                primary_key_getter(row),
-                identity_token,
-            )
+            identitykey = (identity_class, tuple_getter(row), identity_token)
 
             instance = session_identity_map.get(identitykey)
 
@@ -911,7 +875,7 @@ def _instance_processor(
         def ensure_no_pk(row):
             identitykey = (
                 identity_class,
-                primary_key_getter(row),
+                tuple_getter(row),
                 identity_token,
             )
             if not is_not_primary_key(identitykey[1]):

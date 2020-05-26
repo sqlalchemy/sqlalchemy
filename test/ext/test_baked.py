@@ -180,7 +180,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.MultipleResultsFound,
-            "Multiple rows were found when one or none was required",
+            "Multiple rows were found for one_or_none()",
             bq(Session()).one_or_none,
         )
 
@@ -192,7 +192,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.NoResultFound,
-            "No row was found when one was required",
+            "No row was found for one()",
             bq(Session()).one,
         )
 
@@ -213,7 +213,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.MultipleResultsFound,
-            "Multiple rows were found when exactly one was required",
+            "Multiple rows were found for one()",
             bq(Session()).one,
         )
 
