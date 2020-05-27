@@ -3886,6 +3886,41 @@ class StringifySpecialTest(fixtures.TestBase):
             "'%s'" % value,
         )
 
+    def test_with_hint_table(self):
+        stmt = (
+            select([table1])
+            .select_from(
+                table1.join(table2, table1.c.myid == table2.c.otherid)
+            )
+            .with_hint(table1, "use some_hint")
+        )
+
+        # note that some dialects instead use the "with_select_hint"
+        # hook to put the 'hint' up front
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable [use some_hint] "
+            "JOIN myothertable ON mytable.myid = myothertable.otherid",
+        )
+
+    def test_with_hint_statement(self):
+        stmt = (
+            select([table1])
+            .select_from(
+                table1.join(table2, table1.c.myid == table2.c.otherid)
+            )
+            .with_statement_hint("use some_hint")
+        )
+
+        eq_ignore_whitespace(
+            str(stmt),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable "
+            "JOIN myothertable ON mytable.myid = myothertable.otherid "
+            "use some_hint",
+        )
+
 
 class KwargPropagationTest(fixtures.TestBase):
     @classmethod

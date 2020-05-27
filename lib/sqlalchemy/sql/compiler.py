@@ -3491,6 +3491,9 @@ class StrSQLCompiler(SQLCompiler):
     def visit_empty_set_expr(self, type_):
         return "SELECT 1 WHERE 1!=1"
 
+    def get_from_hint_text(self, table, text):
+        return "[%s]" % text
+
 
 class DDLCompiler(Compiled):
     @util.memoized_property
