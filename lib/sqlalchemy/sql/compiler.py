@@ -2828,6 +2828,9 @@ class StrSQLCompiler(SQLCompiler):
             for t in extra_froms
         )
 
+    def get_from_hint_text(self, table, text):
+        return "[%s]" % text
+
 
 class DDLCompiler(Compiled):
     @util.memoized_property
