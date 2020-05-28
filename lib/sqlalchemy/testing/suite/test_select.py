@@ -845,6 +845,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
         self._assert_result(stmt, [(1,), (2,), (3,), (4,)], params={"q": []})
 
+    @testing.requires.tuple_in
     def test_null_in_empty_set_is_false(self, connection):
         stmt = select(
             [
