@@ -117,6 +117,12 @@ def setup_options(make_option):
         help="Type of sort for profiling standard output",
     )
     make_option(
+        "--profile-dump",
+        type="string",
+        dest="profiledump",
+        help="Filename where a single profile run will be dumped",
+    )
+    make_option(
         "--postgresql-templatedb",
         type="string",
         help="name of template database to use for PostgreSQL "
@@ -495,6 +501,7 @@ def _setup_profiling(options, file_config):
     profiling._profile_stats = profiling.ProfileStatsFile(
         file_config.get("sqla_testing", "profile_file"),
         sort=options.profilesort,
+        dump=options.profiledump,
     )
 
 
