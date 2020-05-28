@@ -14,6 +14,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
@@ -1129,6 +1130,30 @@ class CycleTest(_fixtures.FixtureTest):
 
         go()
 
+    def test_session_execute_orm(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        s = Session()
+
+        @assert_cycles()
+        def go():
+            stmt = future_select(User)
+            s.execute(stmt)
+
+        go()
+
+    def test_cache_key(self):
+        User, Address = self.classes("User", "Address")
+        configure_mappers()
+
+        @assert_cycles()
+        def go():
+            stmt = future_select(User)
+            stmt._generate_cache_key()
+
+        go()
+
     def test_raise_from(self):
         @assert_cycles()
         def go():
@@ -1298,10 +1323,10 @@ class CycleTest(_fixtures.FixtureTest):
             s.query(User).options(joinedload(User.addresses)).all()
 
         # cycles here are due to ClauseElement._cloned_set and Load.context,
-        # others as of cache key.  The options themselves are now part of
-        # QueryCompileState which is not eagerly disposed yet, so this
-        # adds some more.
-        @assert_cycles(37)
+        # others as of cache key.  The orm.instances() function now calls
+        # dispose() on both the context and the compiled state to try
+        # to reduce these cycles.
+        @assert_cycles(18)
         def go():
             generate()
 

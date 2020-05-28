@@ -180,7 +180,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.MultipleResultsFound,
-            "Multiple rows were found for one_or_none()",
+            "Multiple rows were found when one or none was required",
             bq(Session()).one_or_none,
         )
 
@@ -192,7 +192,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.NoResultFound,
-            "No row was found for one()",
+            "No row was found when one was required",
             bq(Session()).one,
         )
 
@@ -213,7 +213,7 @@ class LikeQueryTest(BakedTest):
 
         assert_raises_message(
             orm_exc.MultipleResultsFound,
-            "Multiple rows were found for one()",
+            "Multiple rows were found when exactly one was required",
             bq(Session()).one,
         )
 
@@ -1638,14 +1638,13 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         @event.listens_for(s1, "do_orm_execute", retval=True)
         def do_orm_execute(orm_context):
             ckey = None
-            statement = orm_context.orm_query
             for opt in orm_context.user_defined_options:
                 ckey = opt.get_cache_key(orm_context)
                 if ckey:
                     break
             else:
-                if "_cache_key" in statement._execution_options:
-                    ckey = statement._execution_options["_cache_key"]
+                if "_cache_key" in orm_context.merged_execution_options:
+                    ckey = orm_context.merged_execution_options["_cache_key"]
 
             if ckey is not None:
                 return get_value(

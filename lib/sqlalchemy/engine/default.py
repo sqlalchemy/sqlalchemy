@@ -709,6 +709,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     returned_defaults = None
     execution_options = util.immutabledict()
 
+    cursor_fetch_strategy = _cursor._DEFAULT_FETCH
+
     cache_stats = None
     invoked_statement = None
 
@@ -745,9 +747,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.compiled = compiled = compiled_ddl
         self.isddl = True
 
-        self.execution_options = compiled.execution_options.merge_with(
-            connection._execution_options, execution_options
-        )
+        self.execution_options = execution_options
 
         self._is_future_result = (
             connection._is_future
@@ -802,13 +802,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.invoked_statement = invoked_statement
         self.compiled = compiled
 
-        # this should be caught in the engine before
-        # we get here
-        assert compiled.can_execute
-
-        self.execution_options = compiled.execution_options.merge_with(
-            connection._execution_options, execution_options
-        )
+        self.execution_options = execution_options
 
         self._is_future_result = (
             connection._is_future
@@ -829,7 +823,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.isinsert or self.isupdate or self.isdelete:
             self.is_crud = True
             self._is_explicit_returning = bool(compiled.statement._returning)
-            self._is_implicit_returning = bool(
+            self._is_implicit_returning = (
                 compiled.returning and not compiled.statement._returning
             )
 
@@ -853,7 +847,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         # this must occur before create_cursor() since the statement
         # has to be regexed in some cases for server side cursor
-        self.unicode_statement = util.text_type(compiled)
+        if util.py2k:
+            self.unicode_statement = util.text_type(compiled.string)
+        else:
+            self.unicode_statement = compiled.string
 
         self.cursor = self.create_cursor()
 
@@ -909,32 +906,38 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
+        parameters = []
         if compiled.positional:
-            parameters = [
-                dialect.execute_sequence_format(
-                    [
-                        processors[key](compiled_params[key])
-                        if key in processors
-                        else compiled_params[key]
-                        for key in positiontup
-                    ]
-                )
-                for compiled_params in self.compiled_parameters
-            ]
+            for compiled_params in self.compiled_parameters:
+                param = [
+                    processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in positiontup
+                ]
+                parameters.append(dialect.execute_sequence_format(param))
         else:
             encode = not dialect.supports_unicode_statements
+            if encode:
+                encoder = dialect._encoder
+            for compiled_params in self.compiled_parameters:
 
-            parameters = [
-                {
-                    dialect._encoder(key)[0]
-                    if encode
-                    else key: processors[key](value)
-                    if key in processors
-                    else value
-                    for key, value in compiled_params.items()
-                }
-                for compiled_params in self.compiled_parameters
-            ]
+                if encode:
+                    param = {
+                        encoder(key)[0]: processors[key](compiled_params[key])
+                        if key in processors
+                        else compiled_params[key]
+                        for key in compiled_params
+                    }
+                else:
+                    param = {
+                        key: processors[key](compiled_params[key])
+                        if key in processors
+                        else compiled_params[key]
+                        for key in compiled_params
+                    }
+
+                parameters.append(param)
 
         self.parameters = dialect.execute_sequence_format(parameters)
 
@@ -958,9 +961,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.dialect = connection.dialect
         self.is_text = True
 
-        self.execution_options = self.execution_options.merge_with(
-            connection._execution_options, execution_options
-        )
+        self.execution_options = execution_options
 
         self._is_future_result = (
             connection._is_future
@@ -1011,9 +1012,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self._dbapi_connection = dbapi_connection
         self.dialect = connection.dialect
 
-        self.execution_options = self.execution_options.merge_with(
-            connection._execution_options, execution_options
-        )
+        self.execution_options = execution_options
 
         self._is_future_result = (
             connection._is_future
@@ -1214,25 +1213,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def handle_dbapi_exception(self, e):
         pass
 
-    def get_result_cursor_strategy(self, result):
-        """Dialect-overriable hook to return the internal strategy that
-        fetches results.
-
-
-        Some dialects will in some cases return special objects here that
-        have pre-buffered rows from some source or another, such as turning
-        Oracle OUT parameters into rows to accommodate for "returning",
-        SQL Server fetching "returning" before it resets "identity insert",
-        etc.
-
-        """
-        if self._is_server_side:
-            strat_cls = _cursor.BufferedRowCursorFetchStrategy
-        else:
-            strat_cls = _cursor.CursorFetchStrategy
-
-        return strat_cls.create(result)
-
     @property
     def rowcount(self):
         return self.cursor.rowcount
@@ -1245,9 +1225,28 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _setup_result_proxy(self):
         if self.is_crud or self.is_text:
-            result = self._setup_crud_result_proxy()
+            result = self._setup_dml_or_text_result()
         else:
-            result = _cursor.CursorResult._create_for_context(self)
+            strategy = self.cursor_fetch_strategy
+            if self._is_server_side and strategy is _cursor._DEFAULT_FETCH:
+                strategy = _cursor.BufferedRowCursorFetchStrategy(
+                    self.cursor, self.execution_options
+                )
+            cursor_description = (
+                strategy.alternate_cursor_description
+                or self.cursor.description
+            )
+            if cursor_description is None:
+                strategy = _cursor._NO_CURSOR_DQL
+
+            if self._is_future_result:
+                result = _cursor.CursorResult(
+                    self, strategy, cursor_description
+                )
+            else:
+                result = _cursor.LegacyCursorResult(
+                    self, strategy, cursor_description
+                )
 
         if (
             self.compiled
@@ -1256,32 +1255,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         ):
             self._setup_out_parameters(result)
 
-        if not self._is_future_result:
-            conn = self.root_connection
-            assert not conn._is_future
-
-            if not result._soft_closed and conn.should_close_with_result:
-                result._autoclose_connection = True
-
         self._soft_closed = result._soft_closed
-
-        # result rewrite/ adapt step.  two translations can occur here.
-        # one is if we are invoked against a cached statement, we want
-        # to rewrite the ResultMetaData to reflect the column objects
-        # that are in our current selectable, not the cached one.  the
-        # other is, the CompileState can return an alternative Result
-        # object.   Finally, CompileState might want to tell us to not
-        # actually do the ResultMetaData adapt step if it in fact has
-        # changed the selected columns in any case.
-        compiled = self.compiled
-        if compiled:
-            adapt_metadata = (
-                result._metadata_from_cache
-                and not compiled._rewrites_selected_columns
-            )
-
-            if adapt_metadata:
-                result._metadata = result._metadata._adapt_to_context(self)
 
         return result
 
@@ -1313,7 +1287,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         result.out_parameters = out_parameters
 
-    def _setup_crud_result_proxy(self):
+    def _setup_dml_or_text_result(self):
         if self.isinsert and not self.executemany:
             if (
                 not self._is_implicit_returning
@@ -1326,7 +1300,23 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             elif not self._is_implicit_returning:
                 self._setup_ins_pk_from_empty()
 
-        result = _cursor.CursorResult._create_for_context(self)
+        strategy = self.cursor_fetch_strategy
+        if self._is_server_side and strategy is _cursor._DEFAULT_FETCH:
+            strategy = _cursor.BufferedRowCursorFetchStrategy(
+                self.cursor, self.execution_options
+            )
+        cursor_description = (
+            strategy.alternate_cursor_description or self.cursor.description
+        )
+        if cursor_description is None:
+            strategy = _cursor._NO_CURSOR_DML
+
+        if self._is_future_result:
+            result = _cursor.CursorResult(self, strategy, cursor_description)
+        else:
+            result = _cursor.LegacyCursorResult(
+                self, strategy, cursor_description
+            )
 
         if self.isinsert:
             if self._is_implicit_returning:

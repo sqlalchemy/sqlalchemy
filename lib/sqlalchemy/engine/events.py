@@ -184,15 +184,11 @@ class ConnectionEvents(event.Events):
          :meth:`_engine.Connection.execute`.
         :param multiparams: Multiple parameter sets, a list of dictionaries.
         :param params: Single parameter set, a single dictionary.
-        :param execution_options: dictionary of per-execution execution
-         options passed along with the statement, if any.  This only applies to
-         the the SQLAlchemy 2.0 version of  :meth:`_engine.Connection.execute`
-         .   To
-         view all execution options associated with the connection, access the
-         :meth:`_engine.Connection.get_execution_options`
-         method to view the fixed
-         execution options dictionary, then consider elements within this local
-         dictionary to be unioned into that dictionary.
+        :param execution_options: dictionary of execution
+         options passed along with the statement, if any.  This is a merge
+         of all options that will be used, including those of the statement,
+         the connection, and those passed in to the method itself for
+         the 2.0 style of execution.
 
          .. versionadded: 1.4
 
@@ -231,15 +227,11 @@ class ConnectionEvents(event.Events):
          :meth:`_engine.Connection.execute`.
         :param multiparams: Multiple parameter sets, a list of dictionaries.
         :param params: Single parameter set, a single dictionary.
-        :param execution_options: dictionary of per-execution execution
-         options passed along with the statement, if any.  This only applies to
-         the the SQLAlchemy 2.0 version of  :meth:`_engine.Connection.execute`
-         .   To
-         view all execution options associated with the connection, access the
-         :meth:`_engine.Connection.get_execution_options`
-         method to view the fixed
-         execution options dictionary, then consider elements within this local
-         dictionary to be unioned into that dictionary.
+        :param execution_options: dictionary of execution
+         options passed along with the statement, if any.  This is a merge
+         of all options that will be used, including those of the statement,
+         the connection, and those passed in to the method itself for
+         the 2.0 style of execution.
 
          .. versionadded: 1.4
 

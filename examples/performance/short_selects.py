@@ -69,6 +69,9 @@ def test_orm_query(n):
     """test a straight ORM query of the full entity."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
+        # new style
+        # stmt = future_select(Customer).where(Customer.id == id_)
+        # session.execute(stmt).scalars().unique().one()
         session.query(Customer).filter(Customer.id == id_).one()
 
 
@@ -77,6 +80,11 @@ def test_orm_query_cols_only(n):
     """test an ORM query of only the entity columns."""
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
+        # new style
+        # stmt = future_select(
+        #    Customer.id, Customer.name, Customer.description
+        # ).filter(Customer.id == id_)
+        # session.execute(stmt).scalars().unique().one()
         session.query(Customer.id, Customer.name, Customer.description).filter(
             Customer.id == id_
         ).one()
@@ -90,7 +98,9 @@ def test_cached_orm_query(n):
     """test new style cached queries of the full entity."""
     s = Session(bind=engine)
     for id_ in random.sample(ids, n):
-        stmt = s.query(Customer).filter(Customer.id == id_)
+        # this runs significantly faster
+        stmt = future_select(Customer).where(Customer.id == id_)
+        # stmt = s.query(Customer).filter(Customer.id == id_)
         s.execute(stmt, execution_options={"compiled_cache": cache}).one()
 
 
@@ -99,9 +109,12 @@ def test_cached_orm_query_cols_only(n):
     """test new style cached queries of the full entity."""
     s = Session(bind=engine)
     for id_ in random.sample(ids, n):
-        stmt = s.query(
+        stmt = future_select(
             Customer.id, Customer.name, Customer.description
         ).filter(Customer.id == id_)
+        # stmt = s.query(
+        #     Customer.id, Customer.name, Customer.description
+        # ).filter(Customer.id == id_)
         s.execute(stmt, execution_options={"compiled_cache": cache}).one()
 
 

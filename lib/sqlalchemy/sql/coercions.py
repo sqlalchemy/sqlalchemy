@@ -50,16 +50,50 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
     )
 
 
-def expect(role, element, apply_propagate_attrs=None, **kw):
+def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
     # major case is that we are given a ClauseElement already, skip more
     # elaborate logic up front if possible
     impl = _impl_lookup[role]
+
+    original_element = element
 
     if not isinstance(
         element,
         (elements.ClauseElement, schema.SchemaItem, schema.FetchedValue),
     ):
-        resolved = impl._resolve_for_clause_element(element, **kw)
+        resolved = None
+
+        if impl._resolve_string_only:
+            resolved = impl._literal_coercion(element, **kw)
+        else:
+
+            original_element = element
+
+            is_clause_element = False
+
+            while hasattr(element, "__clause_element__"):
+                is_clause_element = True
+                if not getattr(element, "is_clause_element", False):
+                    element = element.__clause_element__()
+                else:
+                    break
+
+            if not is_clause_element:
+                if impl._use_inspection:
+                    insp = inspection.inspect(element, raiseerr=False)
+                    if insp is not None:
+                        insp._post_inspect
+                        try:
+                            resolved = insp.__clause_element__()
+                        except AttributeError:
+                            impl._raise_for_expected(original_element, argname)
+
+                if resolved is None:
+                    resolved = impl._literal_coercion(
+                        element, argname=argname, **kw
+                    )
+            else:
+                resolved = element
     else:
         resolved = element
 
@@ -72,10 +106,12 @@ def expect(role, element, apply_propagate_attrs=None, **kw):
 
     if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
-            resolved = impl._post_coercion(resolved, **kw)
+            resolved = impl._post_coercion(resolved, argname=argname, **kw)
         return resolved
     else:
-        return impl._implicit_coercions(element, resolved, **kw)
+        return impl._implicit_coercions(
+            original_element, resolved, argname=argname, **kw
+        )
 
 
 def expect_as_key(role, element, **kw):
@@ -107,50 +143,12 @@ class RoleImpl(object):
         raise NotImplementedError()
 
     _post_coercion = None
+    _resolve_string_only = False
 
     def __init__(self, role_class):
         self._role_class = role_class
         self.name = role_class._role_name
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
-
-    def _resolve_for_clause_element(self, element, argname=None, **kw):
-        original_element = element
-
-        is_clause_element = False
-
-        while hasattr(element, "__clause_element__"):
-            is_clause_element = True
-            if not getattr(element, "is_clause_element", False):
-                element = element.__clause_element__()
-            else:
-                return element
-
-        if not is_clause_element:
-            if self._use_inspection:
-                insp = inspection.inspect(element, raiseerr=False)
-                if insp is not None:
-                    insp._post_inspect
-                    try:
-                        element = insp.__clause_element__()
-                    except AttributeError:
-                        self._raise_for_expected(original_element, argname)
-                    else:
-                        return element
-
-            return self._literal_coercion(element, argname=argname, **kw)
-        else:
-            return element
-
-        if self._use_inspection:
-            insp = inspection.inspect(element, raiseerr=False)
-            if insp is not None:
-                insp._post_inspect
-                try:
-                    element = insp.__clause_element__()
-                except AttributeError:
-                    self._raise_for_expected(original_element, argname)
-
-        return self._literal_coercion(element, argname=argname, **kw)
 
     def _implicit_coercions(self, element, resolved, argname=None, **kw):
         self._raise_for_expected(element, argname, resolved)
@@ -191,8 +189,7 @@ class _Deannotate(object):
 class _StringOnly(object):
     __slots__ = ()
 
-    def _resolve_for_clause_element(self, element, argname=None, **kw):
-        return self._literal_coercion(element, **kw)
+    _resolve_string_only = True
 
 
 class _ReturnsStringKey(object):
@@ -465,7 +462,7 @@ class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):
 class OrderByImpl(ByOfImpl, RoleImpl):
     __slots__ = ()
 
-    def _post_coercion(self, resolved):
+    def _post_coercion(self, resolved, **kw):
         if (
             isinstance(resolved, self._role_class)
             and resolved._order_by_label_element is not None
@@ -490,7 +487,7 @@ class GroupByImpl(ByOfImpl, RoleImpl):
 class DMLColumnImpl(_ReturnsStringKey, RoleImpl):
     __slots__ = ()
 
-    def _post_coercion(self, element, as_key=False):
+    def _post_coercion(self, element, as_key=False, **kw):
         if as_key:
             return element.key
         else:

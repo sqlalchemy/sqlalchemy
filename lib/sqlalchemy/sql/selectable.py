@@ -3428,7 +3428,14 @@ class DeprecatedSelectGenerations(object):
 
 
 @CompileState.plugin_for("default", "select")
-class SelectState(CompileState):
+class SelectState(util.MemoizedSlots, CompileState):
+    __slots__ = (
+        "from_clauses",
+        "froms",
+        "columns_plus_names",
+        "_label_resolve_dict",
+    )
+
     class default_select_compile_options(CacheableOptions):
         _cache_key_traversal = []
 
@@ -3547,8 +3554,7 @@ class SelectState(CompileState):
 
         return froms
 
-    @util.memoized_property
-    def _label_resolve_dict(self):
+    def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
             for c in _select_iterables(self.statement._raw_columns)

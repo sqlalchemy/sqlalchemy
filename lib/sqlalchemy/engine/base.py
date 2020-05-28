@@ -25,6 +25,8 @@ from ..sql import util as sql_util
 
 """
 
+_EMPTY_EXECUTION_OPTS = util.immutabledict()
+
 
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
@@ -1038,7 +1040,11 @@ class Connection(Connectable):
             distilled_parameters = _distill_params(multiparams, params)
 
             return self._exec_driver_sql(
-                object_, multiparams, params, distilled_parameters
+                object_,
+                multiparams,
+                params,
+                distilled_parameters,
+                _EMPTY_EXECUTION_OPTS,
             )
         try:
             meth = object_._execute_on_connection
@@ -1047,23 +1053,28 @@ class Connection(Connectable):
                 exc.ObjectNotExecutableError(object_), replace_context=err
             )
         else:
-            return meth(self, multiparams, params, util.immutabledict())
+            return meth(self, multiparams, params, _EMPTY_EXECUTION_OPTS)
 
-    def _execute_function(
-        self, func, multiparams, params, execution_options=util.immutabledict()
-    ):
+    def _execute_function(self, func, multiparams, params, execution_options):
         """Execute a sql.FunctionElement object."""
 
-        return self._execute_clauseelement(func.select(), multiparams, params)
+        return self._execute_clauseelement(
+            func.select(), multiparams, params, execution_options
+        )
 
     def _execute_default(
         self,
         default,
         multiparams,
         params,
-        execution_options=util.immutabledict(),
+        # migrate is calling this directly :(
+        execution_options=_EMPTY_EXECUTION_OPTS,
     ):
         """Execute a schema.ColumnDefault object."""
+
+        execution_options = self._execution_options.merge_with(
+            execution_options
+        )
 
         if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
@@ -1096,10 +1107,12 @@ class Connection(Connectable):
 
         return ret
 
-    def _execute_ddl(
-        self, ddl, multiparams, params, execution_options=util.immutabledict()
-    ):
+    def _execute_ddl(self, ddl, multiparams, params, execution_options):
         """Execute a schema.DDL object."""
+
+        execution_options = ddl._execution_options.merge_with(
+            self._execution_options, execution_options
+        )
 
         if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
@@ -1130,11 +1143,16 @@ class Connection(Connectable):
         return ret
 
     def _execute_clauseelement(
-        self, elem, multiparams, params, execution_options=util.immutabledict()
+        self, elem, multiparams, params, execution_options
     ):
         """Execute a sql.ClauseElement object."""
 
-        if self._has_events or self.engine._has_events:
+        execution_options = elem._execution_options.merge_with(
+            self._execution_options, execution_options
+        )
+
+        has_events = self._has_events or self.engine._has_events
+        if has_events:
             for fn in self.dispatch.before_execute:
                 elem, multiparams, params = fn(
                     self, elem, multiparams, params, execution_options
@@ -1144,18 +1162,19 @@ class Connection(Connectable):
         if distilled_params:
             # ensure we don't retain a link to the view object for keys()
             # which links to the values, which we don't want to cache
-            keys = list(distilled_params[0].keys())
-
+            keys = sorted(distilled_params[0])
+            inline = len(distilled_params) > 1
         else:
             keys = []
+            inline = False
 
         dialect = self.dialect
 
-        exec_opts = self._execution_options.merge_with(execution_options)
+        schema_translate_map = execution_options.get(
+            "schema_translate_map", None
+        )
 
-        schema_translate_map = exec_opts.get("schema_translate_map", None)
-
-        compiled_cache = exec_opts.get(
+        compiled_cache = execution_options.get(
             "compiled_cache", self.dialect._compiled_cache
         )
 
@@ -1165,13 +1184,13 @@ class Connection(Connectable):
             elem_cache_key = None
 
         if elem_cache_key:
-            cache_key, extracted_params, _ = elem_cache_key
+            cache_key, extracted_params = elem_cache_key
             key = (
                 dialect,
                 cache_key,
-                tuple(sorted(keys)),
+                tuple(keys),
                 bool(schema_translate_map),
-                len(distilled_params) > 1,
+                inline,
             )
             compiled_sql = compiled_cache.get(key)
 
@@ -1180,7 +1199,7 @@ class Connection(Connectable):
                     dialect=dialect,
                     cache_key=elem_cache_key,
                     column_keys=keys,
-                    inline=len(distilled_params) > 1,
+                    inline=inline,
                     schema_translate_map=schema_translate_map,
                     linting=self.dialect.compiler_linting
                     | compiler.WARN_LINTING,
@@ -1191,7 +1210,7 @@ class Connection(Connectable):
             compiled_sql = elem.compile(
                 dialect=dialect,
                 column_keys=keys,
-                inline=len(distilled_params) > 1,
+                inline=inline,
                 schema_translate_map=schema_translate_map,
                 linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
             )
@@ -1207,7 +1226,7 @@ class Connection(Connectable):
             elem,
             extracted_params,
         )
-        if self._has_events or self.engine._has_events:
+        if has_events:
             self.dispatch.after_execute(
                 self, elem, multiparams, params, execution_options, ret
             )
@@ -1218,9 +1237,17 @@ class Connection(Connectable):
         compiled,
         multiparams,
         params,
-        execution_options=util.immutabledict(),
+        execution_options=_EMPTY_EXECUTION_OPTS,
     ):
-        """Execute a sql.Compiled object."""
+        """Execute a sql.Compiled object.
+
+        TODO: why do we have this?   likely deprecate or remove
+
+        """
+
+        execution_options = compiled.execution_options.merge_with(
+            self._execution_options, execution_options
+        )
 
         if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
@@ -1253,8 +1280,12 @@ class Connection(Connectable):
         multiparams,
         params,
         distilled_parameters,
-        execution_options=util.immutabledict(),
+        execution_options,
     ):
+
+        execution_options = self._execution_options.merge_with(
+            execution_options
+        )
 
         if self._has_events or self.engine._has_events:
             for fn in self.dispatch.before_execute:
@@ -1282,7 +1313,7 @@ class Connection(Connectable):
         self,
         statement,
         parameters=None,
-        execution_options=util.immutabledict(),
+        execution_options=_EMPTY_EXECUTION_OPTS,
     ):
         multiparams, params, distilled_parameters = _distill_params_20(
             parameters
@@ -1398,8 +1429,7 @@ class Connection(Connectable):
         if self._is_future and self._transaction is None:
             self.begin()
 
-        if context.compiled:
-            context.pre_exec()
+        context.pre_exec()
 
         cursor, statement, parameters = (
             context.cursor,
@@ -1495,30 +1525,35 @@ class Connection(Connectable):
                     context.executemany,
                 )
 
-            if context.compiled:
-                context.post_exec()
+            context.post_exec()
 
             result = context._setup_result_proxy()
 
-            if (
-                not self._is_future
-                # usually we're in a transaction so avoid relatively
-                # expensive / legacy should_autocommit call
-                and self._transaction is None
-                and context.should_autocommit
-            ):
-                self._commit_impl(autocommit=True)
+            if not self._is_future:
+                should_close_with_result = branched.should_close_with_result
 
-            # for "connectionless" execution, we have to close this
-            # Connection after the statement is complete.
-            # legacy stuff.
-            if branched.should_close_with_result and context._soft_closed:
-                assert not self._is_future
-                assert not context._is_future_result
+                if not result._soft_closed and should_close_with_result:
+                    result._autoclose_connection = True
 
-                # CursorResult already exhausted rows / has no rows.
-                # close us now
-                branched.close()
+                if (
+                    # usually we're in a transaction so avoid relatively
+                    # expensive / legacy should_autocommit call
+                    self._transaction is None
+                    and context.should_autocommit
+                ):
+                    self._commit_impl(autocommit=True)
+
+                # for "connectionless" execution, we have to close this
+                # Connection after the statement is complete.
+                # legacy stuff.
+                if should_close_with_result and context._soft_closed:
+                    assert not self._is_future
+                    assert not context._is_future_result
+
+                    # CursorResult already exhausted rows / has no rows.
+                    # close us now
+                    branched.close()
+
         except BaseException as e:
             self._handle_dbapi_exception(
                 e, statement, parameters, cursor, context
@@ -2319,7 +2354,7 @@ class Engine(Connectable, log.Identified):
 
     """
 
-    _execution_options = util.immutabledict()
+    _execution_options = _EMPTY_EXECUTION_OPTS
     _has_events = False
     _connection_cls = Connection
     _sqla_logger_namespace = "sqlalchemy.engine.Engine"
@@ -2709,13 +2744,29 @@ class Engine(Connectable, log.Identified):
         """
         return self.execute(statement, *multiparams, **params).scalar()
 
-    def _execute_clauseelement(self, elem, multiparams=None, params=None):
+    def _execute_clauseelement(
+        self,
+        elem,
+        multiparams=None,
+        params=None,
+        execution_options=_EMPTY_EXECUTION_OPTS,
+    ):
         connection = self.connect(close_with_result=True)
-        return connection._execute_clauseelement(elem, multiparams, params)
+        return connection._execute_clauseelement(
+            elem, multiparams, params, execution_options
+        )
 
-    def _execute_compiled(self, compiled, multiparams, params):
+    def _execute_compiled(
+        self,
+        compiled,
+        multiparams,
+        params,
+        execution_options=_EMPTY_EXECUTION_OPTS,
+    ):
         connection = self.connect(close_with_result=True)
-        return connection._execute_compiled(compiled, multiparams, params)
+        return connection._execute_compiled(
+            compiled, multiparams, params, execution_options
+        )
 
     def connect(self, close_with_result=False):
         """Return a new :class:`_engine.Connection` object.

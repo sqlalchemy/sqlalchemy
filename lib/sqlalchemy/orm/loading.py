@@ -14,8 +14,6 @@ as well as some of the attribute loading strategies.
 """
 from __future__ import absolute_import
 
-import collections
-
 from . import attributes
 from . import exc as orm_exc
 from . import path_registry
@@ -57,7 +55,11 @@ def instances(cursor, context):
 
     compile_state = context.compile_state
     filtered = compile_state._has_mapper_entities
-    single_entity = context.is_single_entity
+    single_entity = (
+        not context.load_options._only_return_tuples
+        and len(compile_state._entities) == 1
+        and compile_state._entities[0].supports_single_entity
+    )
 
     try:
         (process, labels, extra) = list(
@@ -105,7 +107,7 @@ def instances(cursor, context):
                 if not fetch:
                     break
             else:
-                fetch = cursor.fetchall()
+                fetch = cursor._raw_all_rows()
 
             if single_entity:
                 proc = process[0]
@@ -122,6 +124,10 @@ def instances(cursor, context):
 
             if not yield_per:
                 break
+
+        context.dispose()
+        if not cursor.context.compiled.cache_key:
+            compile_state.attributes.clear()
 
     result = ChunkedIteratorResult(
         row_metadata, chunks, source_supports_scalars=single_entity, raw=cursor
@@ -347,12 +353,6 @@ def load_on_pk_identity(
         q.compile_options
     )
 
-    # checking that query doesnt have criteria on it
-    # just delete it here w/ optional assertion? since we are setting a
-    # where clause also
-    if refresh_state is None:
-        _no_criterion_assertion(q, "get", order_by=False, distinct=False)
-
     if primary_key_identity is not None:
         # mapper = query._only_full_mapper_zero("load_on_pk_identity")
 
@@ -444,24 +444,6 @@ def load_on_pk_identity(
         return result.one()
     except orm_exc.NoResultFound:
         return None
-
-
-def _no_criterion_assertion(stmt, meth, order_by=True, distinct=True):
-    if (
-        stmt._where_criteria
-        or stmt.compile_options._statement is not None
-        or stmt._from_obj
-        or stmt._legacy_setup_joins
-        or stmt._limit_clause is not None
-        or stmt._offset_clause is not None
-        or stmt._group_by_clauses
-        or (order_by and stmt._order_by_clauses)
-        or (distinct and stmt._distinct)
-    ):
-        raise sa_exc.InvalidRequestError(
-            "Query.%s() being called on a "
-            "Query with existing criterion. " % meth
-        )
 
 
 def _set_get_options(
@@ -587,49 +569,110 @@ def _instance_processor(
     # performance-critical section in the whole ORM.
 
     identity_class = mapper._identity_class
+    compile_state = context.compile_state
 
-    populators = collections.defaultdict(list)
+    # look for "row getter" functions that have been assigned along
+    # with the compile state that were cached from a previous load.
+    # these are operator.itemgetter() objects that each will extract a
+    # particular column from each row.
 
-    props = mapper._prop_set
-    if only_load_props is not None:
-        props = props.intersection(mapper._props[k] for k in only_load_props)
+    getter_key = ("getters", mapper)
+    getters = path.get(compile_state.attributes, getter_key, None)
 
-    quick_populators = path.get(
-        context.attributes, "memoized_setups", _none_set
-    )
-
-    for prop in props:
-        if prop in quick_populators:
-            # this is an inlined path just for column-based attributes.
-            col = quick_populators[prop]
-            if col is _DEFER_FOR_STATE:
-                populators["new"].append(
-                    (prop.key, prop._deferred_column_loader)
-                )
-            elif col is _SET_DEFERRED_EXPIRED:
-                # note that in this path, we are no longer
-                # searching in the result to see if the column might
-                # be present in some unexpected way.
-                populators["expire"].append((prop.key, False))
-            elif col is _RAISE_FOR_STATE:
-                populators["new"].append((prop.key, prop._raise_column_loader))
-            else:
-                getter = None
-                if not getter:
-                    getter = result._getter(col, False)
-                if getter:
-                    populators["quick"].append((prop.key, getter))
-                else:
-                    # fall back to the ColumnProperty itself, which
-                    # will iterate through all of its columns
-                    # to see if one fits
-                    prop.create_row_processor(
-                        context, path, mapper, result, adapter, populators
-                    )
-        else:
-            prop.create_row_processor(
-                context, path, mapper, result, adapter, populators
+    if getters is None:
+        # no getters, so go through a list of attributes we are loading for,
+        # and the ones that are column based will have already put information
+        # for us in another collection "memoized_setups", which represents the
+        # output of the LoaderStrategy.setup_query() method.  We can just as
+        # easily call LoaderStrategy.create_row_processor for each, but by
+        # getting it all at once from setup_query we save another method call
+        # per attribute.
+        props = mapper._prop_set
+        if only_load_props is not None:
+            props = props.intersection(
+                mapper._props[k] for k in only_load_props
             )
+
+        quick_populators = path.get(
+            context.attributes, "memoized_setups", _none_set
+        )
+
+        todo = []
+        cached_populators = {
+            "new": [],
+            "quick": [],
+            "deferred": [],
+            "expire": [],
+            "delayed": [],
+            "existing": [],
+            "eager": [],
+        }
+
+        if refresh_state is None:
+            # we can also get the "primary key" tuple getter function
+            pk_cols = mapper.primary_key
+
+            if adapter:
+                pk_cols = [adapter.columns[c] for c in pk_cols]
+            primary_key_getter = result._tuple_getter(pk_cols)
+        else:
+            primary_key_getter = None
+
+        getters = {
+            "cached_populators": cached_populators,
+            "todo": todo,
+            "primary_key_getter": primary_key_getter,
+        }
+        for prop in props:
+            if prop in quick_populators:
+                # this is an inlined path just for column-based attributes.
+                col = quick_populators[prop]
+                if col is _DEFER_FOR_STATE:
+                    cached_populators["new"].append(
+                        (prop.key, prop._deferred_column_loader)
+                    )
+                elif col is _SET_DEFERRED_EXPIRED:
+                    # note that in this path, we are no longer
+                    # searching in the result to see if the column might
+                    # be present in some unexpected way.
+                    cached_populators["expire"].append((prop.key, False))
+                elif col is _RAISE_FOR_STATE:
+                    cached_populators["new"].append(
+                        (prop.key, prop._raise_column_loader)
+                    )
+                else:
+                    getter = None
+                    if not getter:
+                        getter = result._getter(col, False)
+                    if getter:
+                        cached_populators["quick"].append((prop.key, getter))
+                    else:
+                        # fall back to the ColumnProperty itself, which
+                        # will iterate through all of its columns
+                        # to see if one fits
+                        prop.create_row_processor(
+                            context,
+                            path,
+                            mapper,
+                            result,
+                            adapter,
+                            cached_populators,
+                        )
+            else:
+                # loader strategries like subqueryload, selectinload,
+                # joinedload, basically relationships, these need to interact
+                # with the context each time to work correctly.
+                todo.append(prop)
+
+        path.set(compile_state.attributes, getter_key, getters)
+
+    cached_populators = getters["cached_populators"]
+
+    populators = {key: list(value) for key, value in cached_populators.items()}
+    for prop in getters["todo"]:
+        prop.create_row_processor(
+            context, path, mapper, result, adapter, populators
+        )
 
     propagated_loader_options = context.propagated_loader_options
     load_path = (
@@ -707,11 +750,7 @@ def _instance_processor(
     else:
         refresh_identity_key = None
 
-        pk_cols = mapper.primary_key
-
-        if adapter:
-            pk_cols = [adapter.columns[c] for c in pk_cols]
-        tuple_getter = result._tuple_getter(pk_cols)
+        primary_key_getter = getters["primary_key_getter"]
 
     if mapper.allow_partial_pks:
         is_not_primary_key = _none_set.issuperset
@@ -732,7 +771,11 @@ def _instance_processor(
         else:
             # look at the row, see if that identity is in the
             # session, or we have to create a new one
-            identitykey = (identity_class, tuple_getter(row), identity_token)
+            identitykey = (
+                identity_class,
+                primary_key_getter(row),
+                identity_token,
+            )
 
             instance = session_identity_map.get(identitykey)
 
@@ -875,7 +918,7 @@ def _instance_processor(
         def ensure_no_pk(row):
             identitykey = (
                 identity_class,
-                tuple_getter(row),
+                primary_key_getter(row),
                 identity_token,
             )
             if not is_not_primary_key(identitykey[1]):

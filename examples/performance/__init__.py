@@ -19,7 +19,7 @@ individual suites to be run::
     $ python -m examples.performance --help
     usage: python -m examples.performance [-h] [--test TEST] [--dburl DBURL]
                                           [--num NUM] [--profile] [--dump]
-                                          [--runsnake] [--echo]
+                                          [--echo]
 
                                           {bulk_inserts,large_resultsets,single_inserts}
 
@@ -35,7 +35,6 @@ individual suites to be run::
                             default is module-specific
       --profile             run profiling and dump call counts
       --dump                dump full call profile (implies --profile)
-      --runsnake            invoke runsnakerun (implies --profile)
       --echo                Echo SQL output
 
 An example run looks like::
@@ -208,6 +207,7 @@ We can run our new script directly::
 """  # noqa
 import argparse
 import cProfile
+import gc
 import os
 import pstats
 import re
@@ -233,6 +233,7 @@ class Profiler(object):
         self.num = options.num
         self.echo = options.echo
         self.sort = options.sort
+        self.gc = options.gc
         self.stats = []
 
     @classmethod
@@ -305,10 +306,15 @@ class Profiler(object):
     def _run_test(self, fn):
         if self._setup:
             self._setup(self.dburl, self.echo, self.num)
+        if self.gc:
+            # gc.set_debug(gc.DEBUG_COLLECTABLE)
+            gc.set_debug(gc.DEBUG_STATS)
         if self.profile or self.dump:
             self._run_with_profile(fn, self.sort)
         else:
             self._run_with_time(fn)
+        if self.gc:
+            gc.set_debug(0)
 
     @classmethod
     def main(cls):
@@ -367,6 +373,9 @@ class Profiler(object):
             "--callers",
             action="store_true",
             help="print callers as well (implies --dump)",
+        )
+        parser.add_argument(
+            "--gc", action="store_true", help="turn on GC debug stats"
         )
         parser.add_argument(
             "--echo", action="store_true", help="Echo SQL output"
@@ -432,11 +441,3 @@ class TestResult(object):
 
     def _dump_raw(self):
         self.stats.dump_stats(self.profile.raw)
-
-    def _runsnake(self):
-        filename = "%s.profile" % self.test.__name__
-        try:
-            self.stats.dump_stats(filename)
-            os.system("runsnake %s" % filename)
-        finally:
-            os.remove(filename)

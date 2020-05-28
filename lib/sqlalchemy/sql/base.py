@@ -470,12 +470,7 @@ class CompileState(object):
             return None
 
     @classmethod
-    def _get_plugin_compile_state_cls(cls, statement, plugin_name):
-        statement_plugin_name = statement._propagate_attrs.get(
-            "compile_state_plugin", "default"
-        )
-        if statement_plugin_name != plugin_name:
-            return None
+    def _get_plugin_class_for_plugin(cls, statement, plugin_name):
         try:
             return cls.plugins[(plugin_name, statement.__visit_name__)]
         except KeyError:
@@ -607,9 +602,6 @@ class Executable(Generative):
     def _disable_caching(self):
         self._cache_enable = HasCacheKey()
 
-    def _get_plugin_compile_state_cls(self, plugin_name):
-        return CompileState._get_plugin_compile_state_cls(self, plugin_name)
-
     @_generative
     def options(self, *options):
         """Apply options to this statement.
@@ -735,7 +727,9 @@ class Executable(Generative):
                 "to execute this construct." % label
             )
             raise exc.UnboundExecutionError(msg)
-        return e._execute_clauseelement(self, multiparams, params)
+        return e._execute_clauseelement(
+            self, multiparams, params, util.immutabledict()
+        )
 
     @util.deprecated_20(
         ":meth:`.Executable.scalar`",

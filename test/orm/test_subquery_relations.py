@@ -3185,3 +3185,83 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
         a1 = q.all()[0]
         is_true("c1_m2o" in a1.b.__dict__)
         is_true("c2_m2o" in a1.b.__dict__)
+
+
+class FromSelfTest(fixtures.DeclarativeMappedTest):
+    """because subqueryloader relies upon the .subquery() method, this means
+    if the original Query has a from_self() present, it needs to create
+    .subquery() in terms of the Query class as a from_self() selectable
+    doesn't work correctly with the future select.   So it has
+    to create a Query object now that it gets only a future_select.
+    neutron is currently dependent on this use case which means others
+    are too.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base, ComparableEntity):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            cs = relationship("C", order_by="C.id")
+
+        class B(Base, ComparableEntity):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            a = relationship("A")
+
+        class C(Base, ComparableEntity):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, C = cls.classes("A", "B", "C")
+
+        s = Session(connection)
+
+        as_ = [A(id=i, cs=[C(), C()]) for i in range(1, 5)]
+
+        s.add_all([B(a=as_[0]), B(a=as_[1]), B(a=as_[2]), B(a=as_[3])])
+
+        s.commit()
+
+    def test_subqload_w_from_self(self):
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session()
+
+        q = (
+            s.query(B)
+            .join(B.a)
+            .filter(B.id < 4)
+            .filter(A.id > 1)
+            .from_self()
+            .options(subqueryload(B.a).subqueryload(A.cs))
+            .from_self()
+        )
+
+        def go():
+            results = q.all()
+            eq_(
+                results,
+                [
+                    B(
+                        a=A(cs=[C(a_id=2, id=3), C(a_id=2, id=4)], id=2),
+                        a_id=2,
+                        id=2,
+                    ),
+                    B(
+                        a=A(cs=[C(a_id=3, id=5), C(a_id=3, id=6)], id=3),
+                        a_id=3,
+                        id=3,
+                    ),
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 3)

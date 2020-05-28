@@ -104,8 +104,10 @@ class ShardTest(object):
         def id_chooser(query, ident):
             return ["north_america", "asia", "europe", "south_america"]
 
-        def query_chooser(query):
+        def execute_chooser(orm_context):
             ids = []
+
+            query = orm_context.statement
 
             class FindContinent(sql.ClauseVisitor):
                 def visit_binary(self, binary):
@@ -137,7 +139,7 @@ class ShardTest(object):
             },
             shard_chooser=shard_chooser,
             id_chooser=id_chooser,
-            query_chooser=query_chooser,
+            execute_chooser=execute_chooser,
         )
 
     @classmethod
@@ -603,7 +605,7 @@ class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
             shards={"test": testing.db},
             shard_chooser=lambda *args: "test",
             id_chooser=lambda *args: None,
-            query_chooser=lambda *args: ["test"],
+            execute_chooser=lambda *args: ["test"],
         )
 
         Book, Page = self.classes("Book", "Page")
@@ -644,7 +646,7 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
             shards={"main": testing.db},
             shard_chooser=lambda *args: "main",
             id_chooser=lambda *args: ["fake", "main"],
-            query_chooser=lambda *args: ["fake", "main"],
+            execute_chooser=lambda *args: ["fake", "main"],
             **kw
         )
 
@@ -737,19 +739,22 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
 
             return [query.lazy_loaded_from.identity_token]
 
-        def no_query_chooser(query):
-            if query.column_descriptions[0]["type"] is Book and lazy_load_book:
-                assert isinstance(query.lazy_loaded_from.obj(), Page)
+        def no_query_chooser(orm_context):
+            if (
+                orm_context.statement.column_descriptions[0]["type"] is Book
+                and lazy_load_book
+            ):
+                assert isinstance(orm_context.lazy_loaded_from.obj(), Page)
             elif (
-                query.column_descriptions[0]["type"] is Page
+                orm_context.statement.column_descriptions[0]["type"] is Page
                 and lazy_load_pages
             ):
-                assert isinstance(query.lazy_loaded_from.obj(), Book)
+                assert isinstance(orm_context.lazy_loaded_from.obj(), Book)
 
-            if query.lazy_loaded_from is None:
+            if orm_context.lazy_loaded_from is None:
                 return ["test", "test2"]
             else:
-                return [query.lazy_loaded_from.identity_token]
+                return [orm_context.lazy_loaded_from.identity_token]
 
         def shard_chooser(mapper, instance, **kw):
             if isinstance(instance, Page):
@@ -762,7 +767,7 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
             shards={"test": db1, "test2": db2},
             shard_chooser=shard_chooser,
             id_chooser=id_chooser,
-            query_chooser=no_query_chooser,
+            execute_chooser=no_query_chooser,
         )
 
         return session

@@ -696,6 +696,27 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
         self._generate_cursor_outputtype_handler()
 
+    def post_exec(self):
+        if self.compiled and self.out_parameters and self.compiled.returning:
+            # create a fake cursor result from the out parameters. unlike
+            # get_out_parameter_values(), the result-row handlers here will be
+            # applied at the Result level
+            returning_params = [
+                self.dialect._returningval(self.out_parameters["ret_%d" % i])
+                for i in range(len(self.out_parameters))
+            ]
+
+            fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
+                self.cursor,
+                [
+                    (getattr(col, "name", col.anon_label), None)
+                    for col in self.compiled.returning
+                ],
+                initial_buffer=[tuple(returning_params)],
+            )
+
+            self.cursor_fetch_strategy = fetch_strategy
+
     def create_cursor(self):
         c = self._dbapi_connection.cursor()
         if self.dialect.arraysize:
@@ -713,29 +734,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             self.dialect._paramval(self.out_parameters[name])
             for name in out_param_names
         ]
-
-    def get_result_cursor_strategy(self, result):
-        if self.compiled and self.out_parameters and self.compiled.returning:
-            # create a fake cursor result from the out parameters. unlike
-            # get_out_parameter_values(), the result-row handlers here will be
-            # applied at the Result level
-            returning_params = [
-                self.dialect._returningval(self.out_parameters["ret_%d" % i])
-                for i in range(len(self.out_parameters))
-            ]
-
-            return _cursor.FullyBufferedCursorFetchStrategy(
-                result.cursor,
-                [
-                    (getattr(col, "name", col.anon_label), None)
-                    for col in result.context.compiled.returning
-                ],
-                initial_buffer=[tuple(returning_params)],
-            )
-        else:
-            return super(
-                OracleExecutionContext_cx_oracle, self
-            ).get_result_cursor_strategy(result)
 
 
 class OracleDialect_cx_oracle(OracleDialect):

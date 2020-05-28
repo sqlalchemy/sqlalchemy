@@ -36,8 +36,11 @@ else:
             return lambda row: (it(row),)
 
     def _row_as_tuple(*indexes):
+        # circumvent LegacyRow.__getitem__ pointing to
+        # _get_by_key_impl_mapping for now.  otherwise we could
+        # use itemgetter
         getters = [
-            operator.methodcaller("_get_by_key_impl_mapping", index)
+            operator.methodcaller("_get_by_int_impl", index)
             for index in indexes
         ]
         return lambda rec: tuple([getter(rec) for getter in getters])
@@ -64,10 +67,7 @@ class ResultMetaData(object):
 
     def _key_fallback(self, key, err, raiseerr=True):
         assert raiseerr
-        if isinstance(key, int):
-            util.raise_(IndexError(key), replace_context=err)
-        else:
-            util.raise_(KeyError(key), replace_context=err)
+        util.raise_(KeyError(key), replace_context=err)
 
     def _warn_for_nonint(self, key):
         raise TypeError(
@@ -94,7 +94,7 @@ class ResultMetaData(object):
             return None
 
     def _row_as_tuple_getter(self, keys):
-        indexes = list(self._indexes_for_keys(keys))
+        indexes = self._indexes_for_keys(keys)
         return _row_as_tuple(*indexes)
 
 
@@ -154,19 +154,15 @@ class SimpleResultMetaData(ResultMetaData):
         self._tuplefilter = _tuplefilter
         self._translated_indexes = _translated_indexes
         self._unique_filters = _unique_filters
-        len_keys = len(self._keys)
 
         if extra:
             recs_names = [
-                (
-                    (index, name, index - len_keys) + extras,
-                    (index, name, extras),
-                )
+                ((name,) + extras, (index, name, extras),)
                 for index, (name, extras) in enumerate(zip(self._keys, extra))
             ]
         else:
             recs_names = [
-                ((index, name, index - len_keys), (index, name, ()))
+                ((name,), (index, name, ()))
                 for index, name in enumerate(self._keys)
             ]
 
@@ -212,6 +208,8 @@ class SimpleResultMetaData(ResultMetaData):
         return value in row._data
 
     def _index_for_key(self, key, raiseerr=True):
+        if int in key.__class__.__mro__:
+            key = self._keys[key]
         try:
             rec = self._keymap[key]
         except KeyError as ke:
@@ -220,11 +218,13 @@ class SimpleResultMetaData(ResultMetaData):
         return rec[0]
 
     def _indexes_for_keys(self, keys):
-        for rec in self._metadata_for_keys(keys):
-            yield rec[0]
+        return [self._keymap[key][0] for key in keys]
 
     def _metadata_for_keys(self, keys):
         for key in keys:
+            if int in key.__class__.__mro__:
+                key = self._keys[key]
+
             try:
                 rec = self._keymap[key]
             except KeyError as ke:
@@ -234,7 +234,12 @@ class SimpleResultMetaData(ResultMetaData):
 
     def _reduce(self, keys):
         try:
-            metadata_for_keys = [self._keymap[key] for key in keys]
+            metadata_for_keys = [
+                self._keymap[
+                    self._keys[key] if int in key.__class__.__mro__ else key
+                ]
+                for key in keys
+            ]
         except KeyError as ke:
             self._key_fallback(ke.args[0], ke, True)
 
@@ -508,12 +513,11 @@ class Result(InPlaceGenerative):
 
     @_generative
     def _column_slices(self, indexes):
-        self._metadata = self._metadata._reduce(indexes)
-
         if self._source_supports_scalars and len(indexes) == 1:
             self._generate_rows = False
         else:
             self._generate_rows = True
+            self._metadata = self._metadata._reduce(indexes)
 
     def _getter(self, key, raiseerr=True):
         """return a callable that will retrieve the given key from a
@@ -551,10 +555,15 @@ class Result(InPlaceGenerative):
 
         :return: this :class:`._engine.Result` object with modifications.
         """
+
+        if self._source_supports_scalars:
+            self._metadata = self._metadata._reduce([0])
+
         self._post_creational_filter = operator.attrgetter("_mapping")
         self._no_scalar_onerow = False
         self._generate_rows = True
 
+    @HasMemoized.memoized_attribute
     def _row_getter(self):
         if self._source_supports_scalars:
             if not self._generate_rows:
@@ -571,6 +580,7 @@ class Result(InPlaceGenerative):
 
         else:
             process_row = self._process_row
+
         key_style = self._process_row._default_key_style
         metadata = self._metadata
 
@@ -578,7 +588,7 @@ class Result(InPlaceGenerative):
         processors = metadata._processors
         tf = metadata._tuplefilter
 
-        if tf:
+        if tf and not self._source_supports_scalars:
             if processors:
                 processors = tf(processors)
 
@@ -660,7 +670,7 @@ class Result(InPlaceGenerative):
     @HasMemoized.memoized_attribute
     def _iterator_getter(self):
 
-        make_row = self._row_getter()
+        make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
 
@@ -689,60 +699,44 @@ class Result(InPlaceGenerative):
 
         return iterrows
 
-    @HasMemoized.memoized_attribute
-    def _allrow_getter(self):
+    def _raw_all_rows(self):
+        make_row = self._row_getter
+        rows = self._fetchall_impl()
+        return [make_row(row) for row in rows]
 
-        make_row = self._row_getter()
+    def _allrows(self):
+
+        make_row = self._row_getter
+
+        rows = self._fetchall_impl()
+        if make_row:
+            made_rows = [make_row(row) for row in rows]
+        else:
+            made_rows = rows
 
         post_creational_filter = self._post_creational_filter
 
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
 
-            def allrows(self):
-                rows = self._fetchall_impl()
-                if make_row:
-                    made_rows = [make_row(row) for row in rows]
-                else:
-                    made_rows = rows
-                rows = [
-                    made_row
-                    for made_row, sig_row in [
-                        (
-                            made_row,
-                            strategy(made_row) if strategy else made_row,
-                        )
-                        for made_row in made_rows
-                    ]
-                    if sig_row not in uniques and not uniques.add(sig_row)
+            rows = [
+                made_row
+                for made_row, sig_row in [
+                    (made_row, strategy(made_row) if strategy else made_row,)
+                    for made_row in made_rows
                 ]
-
-                if post_creational_filter:
-                    rows = [post_creational_filter(row) for row in rows]
-                return rows
-
+                if sig_row not in uniques and not uniques.add(sig_row)
+            ]
         else:
+            rows = made_rows
 
-            def allrows(self):
-                rows = self._fetchall_impl()
-
-                if post_creational_filter:
-                    if make_row:
-                        rows = [
-                            post_creational_filter(make_row(row))
-                            for row in rows
-                        ]
-                    else:
-                        rows = [post_creational_filter(row) for row in rows]
-                elif make_row:
-                    rows = [make_row(row) for row in rows]
-                return rows
-
-        return allrows
+        if post_creational_filter:
+            rows = [post_creational_filter(row) for row in rows]
+        return rows
 
     @HasMemoized.memoized_attribute
     def _onerow_getter(self):
-        make_row = self._row_getter()
+        make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
 
@@ -782,7 +776,7 @@ class Result(InPlaceGenerative):
 
     @HasMemoized.memoized_attribute
     def _manyrow_getter(self):
-        make_row = self._row_getter()
+        make_row = self._row_getter
 
         post_creational_filter = self._post_creational_filter
 
@@ -884,7 +878,7 @@ class Result(InPlaceGenerative):
     def fetchall(self):
         """A synonym for the :meth:`_engine.Result.all` method."""
 
-        return self._allrow_getter(self)
+        return self._allrows()
 
     def fetchone(self):
         """Fetch one row.
@@ -955,7 +949,7 @@ class Result(InPlaceGenerative):
          may be returned.
 
         """
-        return self._allrow_getter(self)
+        return self._allrows()
 
     def _only_one_row(self, raise_for_second_row, raise_for_none):
         onerow = self._fetchone_impl
@@ -969,7 +963,7 @@ class Result(InPlaceGenerative):
             else:
                 return None
 
-        make_row = self._row_getter()
+        make_row = self._row_getter
 
         row = make_row(row) if make_row else row
 
@@ -1236,13 +1230,11 @@ class ChunkedIteratorResult(IteratorResult):
         self.raw = raw
         self.iterator = itertools.chain.from_iterable(self.chunks(None))
 
-    def _column_slices(self, indexes):
-        result = super(ChunkedIteratorResult, self)._column_slices(indexes)
-        return result
-
     @_generative
     def yield_per(self, num):
         self._yield_per = num
+        # TODO: this should raise if the iterator has already been started.
+        # we can't change the yield mid-stream like this
         self.iterator = itertools.chain.from_iterable(self.chunks(num))
 
 

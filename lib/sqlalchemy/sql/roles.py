@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+from .. import util
+
 
 class SQLRole(object):
     """Define a "role" within a SQL statement structure.
@@ -145,16 +147,12 @@ class CoerceTextStatementRole(SQLRole):
     _role_name = "Executable SQL or text() construct"
 
 
-#    _executable_statement = None
-
-
 class StatementRole(CoerceTextStatementRole):
     _role_name = "Executable SQL or text() construct"
 
     _is_future = False
 
-    def _get_plugin_compile_state_cls(self, name):
-        return None
+    _propagate_attrs = util.immutabledict()
 
 
 class ReturnsRowsRole(StatementRole):
