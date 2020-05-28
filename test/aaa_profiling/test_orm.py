@@ -849,6 +849,11 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
         @profiling.function_call_count()
         def go():
             for i in range(100):
+                # NOTE: this test was broken in
+                # 77f1b7d236dba6b1c859bb428ef32d118ec372e6 because we started
+                # clearing out the attributes after the first iteration.   make
+                # sure the attributes are there every time.
+                assert compile_state.attributes
                 exec_opts = {}
                 bind_arguments = {}
                 ORMCompileState.orm_pre_session_exec(
@@ -860,6 +865,7 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                     execution_options=exec_opts,
                     bind_arguments=bind_arguments,
                 )
+
                 r.context.compiled.compile_state = compile_state
                 obj = ORMCompileState.orm_setup_cursor_result(sess, {}, r)
                 list(obj)

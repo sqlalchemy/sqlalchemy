@@ -214,7 +214,13 @@ class Load(Generative, LoaderOption):
             compile_state.attributes.update(self.context)
 
     def _generate_path(
-        self, path, attr, for_strategy, wildcard_key, raiseerr=True
+        self,
+        path,
+        attr,
+        for_strategy,
+        wildcard_key,
+        raiseerr=True,
+        polymorphic_entity_context=None,
     ):
         existing_of_type = self._of_type
         self._of_type = None
@@ -316,8 +322,11 @@ class Load(Generative, LoaderOption):
                 ac = attr._of_type
                 ext_info = of_type_info = inspect(ac)
 
+                if polymorphic_entity_context is None:
+                    polymorphic_entity_context = self.context
+
                 existing = path.entity_path[prop].get(
-                    self.context, "path_with_polymorphic"
+                    polymorphic_entity_context, "path_with_polymorphic"
                 )
 
                 if not ext_info.is_aliased_class:
@@ -334,7 +343,7 @@ class Load(Generative, LoaderOption):
                     ext_info = inspect(ac)
 
                 path.entity_path[prop].set(
-                    self.context, "path_with_polymorphic", ac
+                    polymorphic_entity_context, "path_with_polymorphic", ac
                 )
 
                 path = path[prop][ext_info]
@@ -471,15 +480,14 @@ class Load(Generative, LoaderOption):
 
     def _set_for_path(self, context, path, replace=True, merge_opts=False):
         if merge_opts or not replace:
-            existing = path.get(self.context, "loader")
-
+            existing = path.get(context, "loader")
             if existing:
                 if merge_opts:
                     existing.local_opts.update(self.local_opts)
             else:
                 path.set(context, "loader", self)
         else:
-            existing = path.get(self.context, "loader")
+            existing = path.get(context, "loader")
             path.set(context, "loader", self)
             if existing and existing.is_opts_only:
                 self.local_opts.update(existing.local_opts)
@@ -862,15 +870,7 @@ class _UnboundLoad(Load):
         # tokens and populate into the Load().
         loader = Load(path_element)
 
-        if context is not None:
-            # TODO: this creates a cycle with context.attributes.
-            # the current approach to mitigating this is the context /
-            # compile_state attributes are cleared out when a result
-            # is fetched.  However, it would be nice if these attributes
-            # could be passed to all methods so that all the state
-            # gets set up without ever creating any assignments.
-            loader.context = context
-        else:
+        if context is None:
             context = loader.context
 
         loader.strategy = self.strategy
@@ -887,6 +887,7 @@ class _UnboundLoad(Load):
                     self.strategy if idx == len(start_path) - 1 else None,
                     None,
                     raiseerr,
+                    polymorphic_entity_context=context,
                 ):
                     return
 

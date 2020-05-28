@@ -117,11 +117,6 @@ class QueryContext(object):
                 % ", ".join(compile_state._no_yield_pers)
             )
 
-    def dispose(self):
-        self.attributes.clear()
-        self.load_options._refresh_state = None
-        self.load_options._lazy_loaded_from = None
-
 
 class ORMCompileState(CompileState):
     class default_compile_options(CacheableOptions):
