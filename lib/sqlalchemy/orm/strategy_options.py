@@ -1107,7 +1107,7 @@ def load_only(loadopt, *attrs):
 
         session.query(User, Address).join(User.addresses).options(
                     Load(User).load_only("name", "fullname"),
-                    Load(Address).load_only("email_addres")
+                    Load(Address).load_only("email_address")
                 )
 
 
