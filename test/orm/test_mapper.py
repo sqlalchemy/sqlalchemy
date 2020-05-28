@@ -280,7 +280,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(a.user_id, 7)
         eq_(a.id, 1)
         # email address auto-defers
-        assert "email_addres" not in a.__dict__
+        assert "email_address" not in a.__dict__
         eq_(a.email_address, "jack@bean.com")
 
     def test_column_not_present(self):
