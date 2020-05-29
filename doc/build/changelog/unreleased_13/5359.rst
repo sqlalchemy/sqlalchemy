@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 5359
+
+    Fixed an issue where the ``is_disconnect`` function in the SQL Server
+    pyodbc dialect was incorrectly reporting the disconnect state when the
+    exception messsage had a substring that matched a SQL Server ODBC error
+    code.
