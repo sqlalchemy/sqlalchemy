@@ -22,6 +22,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import undefer_group
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql import literal
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -1650,9 +1651,16 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
 
             b_expr = query_expression()
 
+        class C(fixtures.ComparableEntity, Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            x = Column(Integer)
+
+            c_expr = query_expression(literal(1))
+
     @classmethod
     def insert_data(cls, connection):
-        A, B = cls.classes("A", "B")
+        A, B, C = cls.classes("A", "B", "C")
         s = Session(connection)
 
         s.add_all(
@@ -1661,6 +1669,8 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
                 A(id=2, x=2, y=3),
                 A(id=3, x=5, y=10, bs=[B(id=3, p=5, q=0)]),
                 A(id=4, x=2, y=10, bs=[B(id=4, p=19, q=8), B(id=5, p=5, q=5)]),
+                C(id=1, x=1),
+                C(id=2, x=2),
             ]
         )
 
@@ -1678,6 +1688,25 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
         )
 
         eq_(a1.all(), [A(my_expr=5), A(my_expr=15), A(my_expr=12)])
+
+    def test_expr_default_value(self):
+        A = self.classes.A
+        C = self.classes.C
+        s = Session()
+
+        a1 = s.query(A).order_by(A.id).filter(A.x > 1)
+        eq_(a1.all(), [A(my_expr=None), A(my_expr=None), A(my_expr=None)])
+
+        c1 = s.query(C).order_by(C.id)
+        eq_(c1.all(), [C(c_expr=1), C(c_expr=1)])
+
+        c2 = (
+            s.query(C)
+            .options(with_expression(C.c_expr, C.x * 2))
+            .filter(C.x > 1)
+            .order_by(C.id)
+        )
+        eq_(c2.all(), [C(c_expr=4)])
 
     def test_reuse_expr(self):
         A = self.classes.A
