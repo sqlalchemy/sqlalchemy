@@ -125,10 +125,6 @@ def instances(cursor, context):
             if not yield_per:
                 break
 
-        context.dispose()
-        if not cursor.context.compiled.cache_key:
-            compile_state.attributes.clear()
-
     result = ChunkedIteratorResult(
         row_metadata, chunks, source_supports_scalars=single_entity, raw=cursor
     )
