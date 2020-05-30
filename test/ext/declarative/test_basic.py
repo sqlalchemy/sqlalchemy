@@ -2141,8 +2141,8 @@ class DeclarativeTest(DeclarativeTestBase):
             def __init_subclass__(cls, random_keyword_used_here=False, **kw):
                 pass
 
-        # Omitting the kwarg in the class definition should work, i.e. not throw
-        # a TypeError
+        # Including the kwarg in the class definition should work, i.e. not
+        # throw a TypeError
         class User(BaseWithInitSubclass, random_keyword_used_here=True):
             __tablename__ = "user"
             id = Column(Integer, primary_key=True)
