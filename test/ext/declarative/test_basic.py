@@ -2142,21 +2142,23 @@ class DeclarativeTest(DeclarativeTestBase):
                 super().__init_subclass__(**kw)
                 cls._set_random_keyword_used_here = random_keyword_used_here
 
-        # Including the kwarg in the class definition should work, i.e. not
-        # throw a TypeError
-        class User(BaseWithInitSubclass, random_keyword_used_here=True):
-            __tablename__ = "user"
-            id = Column(Integer, primary_key=True)
-
         # Omitting the kwarg in the class definition should work, i.e. not throw
         # a TypeError
         class AnotherUser(BaseWithInitSubclass):
             __tablename__ = "another_user"
             id = Column(Integer, primary_key=True)
-        
-        if util.py36:
-            eq_(User._set_random_keyword_used_here, True)
-            eq_(AnotherUser._set_random_keyword_used_here, False)
+
+        if util.py3k:
+            # Including the kwarg in the class definition should work, i.e. not
+            # throw a TypeError
+            class User(BaseWithInitSubclass, random_keyword_used_here=True):
+                __tablename__ = "user"
+                id = Column(Integer, primary_key=True)
+
+            # Check to see if __init_subclass__ works in supported versions
+            if util.py36:
+                eq_(User._set_random_keyword_used_here, True)
+                eq_(AnotherUser._set_random_keyword_used_here, False)
 
 
 def _produce_test(inline, stringbased):
