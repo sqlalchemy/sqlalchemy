@@ -2131,18 +2131,26 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert not hasattr(Foo, "data_hybrid")
 
-    def test_kw_support_in_declarative_meta(self):
+    def test_kw_support_in_declarative_meta_init(self):
         # This will not fail if DeclarativeMeta __init__ supports **kw
 
         class BaseWithInitSubclass(Base):
             __abstract__ = True
 
             @classmethod
-            def __init_subclass__(cls, random_keyword_used_here=False, **kwargs):
+            def __init_subclass__(cls, random_keyword_used_here=False, **kw):
                 pass
 
+        # Omitting the kwarg in the class definition should work, i.e. not throw
+        # a TypeError
         class User(BaseWithInitSubclass, random_keyword_used_here=True):
             __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
+        # Omitting the kwarg in the class definition should work, i.e. not throw
+        # a TypeError
+        class AnotherUser(BaseWithInitSubclass):
+            __tablename__ = "another_user"
             id = Column(Integer, primary_key=True)
 
 
