@@ -2131,6 +2131,20 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert not hasattr(Foo, "data_hybrid")
 
+    def test_kw_support_in_declarative_meta(self):
+        # This will not fail if DeclarativeMeta __init__ supports **kw
+
+        class BaseWithInitSubclass(Base):
+            __abstract__ = True
+
+            @classmethod
+            def __init_subclass__(cls, random_keyword_used_here=False, **kwargs):
+                pass
+
+        class User(BaseWithInitSubclass, random_keyword_used_here=True):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
 
 def _produce_test(inline, stringbased):
     class ExplicitJoinTest(fixtures.MappedTest):
