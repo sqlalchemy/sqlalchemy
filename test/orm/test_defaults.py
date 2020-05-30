@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import Computed
 from sqlalchemy import event
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -367,3 +368,87 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                     [{"param_1": 2}],
                 ),
             )
+
+
+class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
+    """test that computed columns are recognized as server
+    oninsert/onupdate defaults."""
+
+    __backend__ = True
+    __requires__ = ("identity_columns",)
+    run_create_tables = "each"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "test",
+            metadata,
+            Column("id", Integer, Identity(), primary_key=True),
+            Column("foo", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Thing(cls.Basic):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Thing = cls.classes.Thing
+
+        mapper(Thing, cls.tables.test)
+
+    def test_insert_identity(self):
+        Thing = self.classes.Thing
+
+        s = Session()
+
+        t1, t2 = (Thing(foo=5), Thing(foo=10))
+
+        s.add_all([t1, t2])
+
+        with assert_engine(testing.db) as asserter:
+            s.flush()
+            eq_(t1.id, 1)
+            eq_(t2.id, 2)
+
+        asserter.assert_(
+            Conditional(
+                testing.db.dialect.implicit_returning,
+                [
+                    Conditional(
+                        testing.db.dialect.insert_executemany_returning,
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (foo) VALUES (%(foo)s) "
+                                "RETURNING test.id",
+                                [{"foo": 5}, {"foo": 10}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (foo) VALUES (%(foo)s) "
+                                "RETURNING test.id",
+                                [{"foo": 5}],
+                                dialect="postgresql",
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test (foo) VALUES (%(foo)s) "
+                                "RETURNING test.id",
+                                [{"foo": 10}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                    )
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (foo) VALUES (:foo)", [{"foo": 5}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO test (foo) VALUES (:foo)", [{"foo": 10}],
+                    ),
+                ],
+            )
+        )

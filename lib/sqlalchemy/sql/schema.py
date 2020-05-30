@@ -1098,8 +1098,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           :class:`.SchemaItem` derived constructs which will be applied
           as options to the column.  These include instances of
           :class:`.Constraint`, :class:`_schema.ForeignKey`,
-          :class:`.ColumnDefault`,
-          :class:`.Sequence`, :class:`.Computed`.  In some cases an
+          :class:`.ColumnDefault`, :class:`.Sequence`, :class:`.Computed`
+          :class:`.Identity`.  In some cases an
           equivalent keyword argument is available such as ``server_default``,
           ``default`` and ``unique``.
 
@@ -1113,7 +1113,9 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           AUTO_INCREMENT will be emitted for this column during a table
           create, as well as that the column is assumed to generate new
           integer primary key values when an INSERT statement invokes which
-          will be retrieved by the dialect.
+          will be retrieved by the dialect.  When used in conjunction with
+          :class:`.Identity` on a dialect that supports it, this parameter
+          has no effect.
 
           The flag may be set to ``True`` to indicate that a column which
           is part of a composite (e.g. multi-column) primary key should
@@ -1381,6 +1383,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         self.foreign_keys = set()
         self.comment = kwargs.pop("comment", None)
         self.computed = None
+        self.identity = None
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -1563,6 +1566,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
         self._setup_on_memoized_fks(lambda fk: fk._set_remote_table(table))
 
+        if self.identity and (
+            isinstance(self.default, Sequence)
+            or isinstance(self.onupdate, Sequence)
+        ):
+            raise exc.ArgumentError(
+                "An column cannot specify both Identity and Sequence."
+            )
+
     def _setup_on_memoized_fks(self, fn):
         fk_keys = [
             ((self.table.key, self.key), False),
@@ -1606,7 +1617,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
         server_default = self.server_default
         server_onupdate = self.server_onupdate
-        if isinstance(server_default, Computed):
+        if isinstance(server_default, (Computed, Identity)):
             server_default = server_onupdate = None
             args.append(self.server_default.copy(**kw))
 
@@ -2369,7 +2380,7 @@ class IdentityOptions(object):
         """Construct a :class:`.IdentityOptions` object.
 
         See the :class:`.Sequence` documentation for a complete description
-        of the parameters
+        of the parameters.
 
         :param start: the starting index of the sequence.
         :param increment: the increment value of the sequence.
@@ -3602,7 +3613,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 and not autoinc_true
             ):
                 return False
-            elif col.server_default is not None and not autoinc_true:
+            elif (
+                col.server_default is not None
+                and not isinstance(col.server_default, Identity)
+                and not autoinc_true
+            ):
                 return False
             elif col.foreign_keys and col.autoincrement not in (
                 True,
@@ -4612,3 +4627,143 @@ class Computed(FetchedValue, SchemaItem):
         g = Computed(sqltext, persisted=self.persisted)
 
         return self._schema_item_copy(g)
+
+
+class Identity(IdentityOptions, FetchedValue, SchemaItem):
+    """Defines an identity column, i.e. "GENERATED { ALWAYS | BY DEFAULT }
+    AS IDENTITY" syntax.
+
+    The :class:`.Identity` construct is an inline construct added to the
+    argument list of a :class:`_schema.Column` object::
+
+        from sqlalchemy import Identity
+
+        Table('foo', meta,
+            Column('id', Integer, Identity())
+            Column('description', Text),
+        )
+
+    See the linked documentation below for complete details.
+
+    .. versionadded:: 1.4
+
+    .. seealso::
+
+        :ref:`identity_ddl`
+
+    """
+
+    __visit_name__ = "identity_column"
+
+    def __init__(
+        self,
+        always=False,
+        on_null=None,
+        start=None,
+        increment=None,
+        minvalue=None,
+        maxvalue=None,
+        nominvalue=None,
+        nomaxvalue=None,
+        cycle=None,
+        cache=None,
+        order=None,
+    ):
+        """Construct a GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY DDL
+        construct to accompany a :class:`_schema.Column`.
+
+        See the :class:`.Sequence` documentation for a complete description
+        of most parameters.
+
+        .. note::
+            MSSQL supports this construct as the preferred alternative to
+            generate an IDENTITY on a column, but it uses non standard
+            syntax that only support :paramref:`_schema.Identity.start`
+            and :paramref:`_schema.Identity.increment`.
+            All other parameters are ignored.
+
+        :param always:
+          A boolean, that indicates the type of identity column.
+          If ``False`` is specified, the default, then the user-specified
+          value takes precedence.
+          If ``True`` is specified, a user-specified value is not accepted (
+          on some backends, like PostgreSQL, OVERRIDING SYSTEM VALUE, or
+          similar, may be specified in an INSERT to override the sequence
+          value).
+          Some backends also have a default value for this parameter,
+          ``None`` can be used to omit rendering this part in the DDL. It
+          will be treated as ``False`` if a backend does not have a default
+          value.
+
+        :param on_null:
+          Set to ``True`` to specify ON NULL in conjunction with a
+          'by default' identity column. This option is only supported on
+          some backends, like Oracle.
+
+        :param start: the starting index of the sequence.
+        :param increment: the increment value of the sequence.
+        :param minvalue: the minimum value of the sequence.
+        :param maxvalue: the maximum value of the sequence.
+        :param nominvalue: no minimum value of the sequence.
+        :param nomaxvalue: no maximum value of the sequence.
+        :param cycle: allows the sequence to wrap around when the maxvalue
+         or minvalue has been reached.
+        :param cache: optional integer value; number of future values in the
+         sequence which are calculated in advance.
+        :param order: optional boolean value; if true, renders the
+         ORDER keyword.
+
+        """
+        IdentityOptions.__init__(
+            self,
+            start=start,
+            increment=increment,
+            minvalue=minvalue,
+            maxvalue=maxvalue,
+            nominvalue=nominvalue,
+            nomaxvalue=nomaxvalue,
+            cycle=cycle,
+            cache=cache,
+            order=order,
+        )
+        self.always = always
+        self.on_null = on_null
+        self.column = None
+
+    def _set_parent(self, parent):
+        if not isinstance(
+            parent.server_default, (type(None), Identity)
+        ) or not isinstance(parent.server_onupdate, type(None)):
+            raise exc.ArgumentError(
+                "A column with an Identity object cannot specify a "
+                "server_default or a server_onupdate argument"
+            )
+        if parent.autoincrement is False:
+            raise exc.ArgumentError(
+                "A column with an Identity object cannot specify "
+                "autoincrement=False"
+            )
+        self.column = parent
+        parent.identity = self
+        # self.column.server_onupdate = self
+        self.column.server_default = self
+
+    def _as_for_update(self, for_update):
+        return self
+
+    def copy(self, target_table=None, **kw):
+        i = Identity(
+            always=self.always,
+            on_null=self.on_null,
+            start=self.start,
+            increment=self.increment,
+            minvalue=self.minvalue,
+            maxvalue=self.maxvalue,
+            nominvalue=self.nominvalue,
+            nomaxvalue=self.nomaxvalue,
+            cycle=self.cycle,
+            cache=self.cache,
+            order=self.order,
+        )
+
+        return self._schema_item_copy(i)

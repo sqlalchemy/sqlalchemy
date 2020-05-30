@@ -38,7 +38,7 @@ The above example will generate DDL as:
 .. sourcecode:: sql
 
     CREATE TABLE t (
-        id INTEGER NOT NULL IDENTITY(1,1),
+        id INTEGER NOT NULL IDENTITY,
         x INTEGER NULL,
         PRIMARY KEY (id)
     )
@@ -65,17 +65,25 @@ is set to ``False`` on any integer primary key column::
             Column('x', Integer, autoincrement=True))
     m.create_all(engine)
 
-.. versionchanged::  1.3   Added ``mssql_identity_start`` and
-   ``mssql_identity_increment`` parameters to :class:`_schema.Column`.
-   These replace
+.. versionchanged::  1.4   Added :class:`_schema.Identity` construct
+   in a :class:`_schema.Column` to specify the start and increment
+   parameters of an IDENTITY. These replace
    the use of the :class:`.Sequence` object in order to specify these values.
+
+.. deprecated:: 1.4
+
+   The ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
+   to :class:`_schema.Column` are deprecated and should we replaced by
+   an :class:`_schema.Identity` object. Specifying both ways of configuring
+   an IDENTITY will result in a compile error.
 
 .. deprecated:: 1.3
 
    The use of :class:`.Sequence` to specify IDENTITY characteristics is
    deprecated and will be removed in a future release.   Please use
-   the ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
-   documented at :ref:`mssql_identity`.
+   the :class:`_schema.Identity` object parameters
+   :paramref:`_schema.Identity.start` and
+   :paramref:`_schema.Identity.increment`.
 
 .. versionchanged::  1.4   Removed the ability to use a :class:`.Sequence`
    object to modify IDENTITY characteristics. :class:`.Sequence` objects
@@ -108,16 +116,18 @@ Controlling "Start" and "Increment"
 
 Specific control over the "start" and "increment" values for
 the ``IDENTITY`` generator are provided using the
-``mssql_identity_start`` and ``mssql_identity_increment`` parameters
-passed to the :class:`_schema.Column` object::
+:paramref:`_schema.Identity.start` and :paramref:`_schema.Identity.increment`
+parameters passed to the :class:`_schema.Identity` object::
 
-    from sqlalchemy import Table, Integer, Column
+    from sqlalchemy import Table, Integer, Column, Identity
 
     test = Table(
         'test', metadata,
         Column(
-            'id', Integer, primary_key=True, mssql_identity_start=100,
-             mssql_identity_increment=10
+            'id',
+            Integer,
+            primary_key=True,
+            Identity(start=100, increment=10)
         ),
         Column('name', String(20))
     )
@@ -131,12 +141,18 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
      name VARCHAR(20) NULL,
      )
 
-.. versionchanged:: 1.3  The ``mssql_identity_start`` and
-   ``mssql_identity_increment`` parameters are now used to affect the
+.. note::
+
+   The :class:`_schema.Identity` object supports many other parameter in
+   addition to ``start`` and ``increment``. These are not supported by
+   SQL Server and will be ignored when generating the CREATE TABLE ddl.
+
+.. versionchanged:: 1.3.19  The :class:`_schema.Identity` object is
+   now used to affect the
    ``IDENTITY`` generator for a :class:`_schema.Column` under  SQL Server.
    Previously, the :class:`.Sequence` object was used.  As SQL Server now
    supports real sequences as a separate construct, :class:`.Sequence` will be
-   functional in the normal way in a future SQLAlchemy version.
+   functional in the normal way starting from SQLAlchemy version 1.4.
 
 INSERT behavior
 ^^^^^^^^^^^^^^^^
@@ -717,6 +733,7 @@ import re
 
 from . import information_schema as ischema
 from ... import exc
+from ... import Identity
 from ... import schema as sa_schema
 from ... import Sequence
 from ... import sql
@@ -2079,6 +2096,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 or column.primary_key
                 or isinstance(column.default, sa_schema.Sequence)
                 or column.autoincrement is True
+                or column.identity
             ):
                 colspec += " NOT NULL"
             elif column.computed is None:
@@ -2091,16 +2109,33 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 "in order to generate DDL"
             )
 
-        if (
+        d_opt = column.dialect_options["mssql"]
+        start = d_opt["identity_start"]
+        increment = d_opt["identity_increment"]
+        if start is not None or increment is not None:
+            if column.identity:
+                raise exc.CompileError(
+                    "Cannot specify options 'mssql_identity_start' and/or "
+                    "'mssql_identity_increment' while also using the "
+                    "'Identity' construct."
+                )
+            util.warn_deprecated(
+                "The dialect options 'mssql_identity_start' and "
+                "'mssql_identity_increment' are deprecated. "
+                "Use the 'Identity' object instead.",
+                "1.4",
+            )
+
+        if column.identity:
+            colspec += self.process(column.identity, **kwargs)
+        elif (
             column is column.table._autoincrement_column
             or column.autoincrement is True
         ):
             if not isinstance(column.default, Sequence):
-                start = column.dialect_options["mssql"]["identity_start"]
-                increment = column.dialect_options["mssql"][
-                    "identity_increment"
-                ]
-                colspec += " IDENTITY(%s,%s)" % (start, increment)
+                colspec += self.process(
+                    Identity(start=start, increment=increment)
+                )
         else:
             default = self.get_column_default_string(column)
             if default is not None:
@@ -2230,6 +2265,14 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return super(MSDDLCompiler, self).visit_create_sequence(
             create, prefix=prefix, **kw
         )
+
+    def visit_identity_column(self, identity, **kw):
+        text = " IDENTITY"
+        if identity.start is not None or identity.increment is not None:
+            start = 1 if identity.start is None else identity.start
+            increment = 1 if identity.increment is None else identity.increment
+            text += "(%s,%s)" % (start, increment)
+        return text
 
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
@@ -2447,7 +2490,10 @@ class MSDialect(default.DefaultDialect):
         (sa_schema.PrimaryKeyConstraint, {"clustered": None}),
         (sa_schema.UniqueConstraint, {"clustered": None}),
         (sa_schema.Index, {"clustered": None, "include": None, "where": None}),
-        (sa_schema.Column, {"identity_start": 1, "identity_increment": 1}),
+        (
+            sa_schema.Column,
+            {"identity_start": None, "identity_increment": None},
+        ),
     ]
 
     def __init__(

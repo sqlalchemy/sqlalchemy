@@ -1660,3 +1660,11 @@ class DefaultRequirements(SuiteRequirements):
     def supports_sequence_for_autoincrement_column(self):
         """for mssql, autoincrement means IDENTITY, not sequence"""
         return skip_if("mssql")
+
+    @property
+    def identity_columns(self):
+        return only_if(["postgresql >= 10", "oracle >= 12", "mssql"])
+
+    @property
+    def identity_columns_standard(self):
+        return self.identity_columns + skip_if("mssql")

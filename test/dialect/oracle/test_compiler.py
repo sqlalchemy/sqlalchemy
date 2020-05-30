@@ -6,6 +6,7 @@ from sqlalchemy import exc
 from sqlalchemy import except_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import literal
@@ -1247,6 +1248,44 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             r".*Oracle computed columns do not support 'stored' ",
             schema.CreateTable(t).compile,
             dialect=oracle.dialect(),
+        )
+
+    def test_column_identity(self):
+        # all other tests are in test_identity_column.py
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("y", Integer, Identity(always=True, start=4, increment=7)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
+            "(INCREMENT BY 7 START WITH 4))",
+        )
+
+    def test_column_identity_no_generated(self):
+        m = MetaData()
+        t = Table("t", m, Column("y", Integer, Identity(always=None)))
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER GENERATED  AS IDENTITY)",
+        )
+
+    @testing.combinations(
+        (True, True, "ALWAYS ON NULL"),  # this would error when executed
+        (False, None, "BY DEFAULT"),
+        (False, False, "BY DEFAULT"),
+        (False, True, "BY DEFAULT ON NULL"),
+    )
+    def test_column_identity_on_null(self, always, on_null, text):
+        m = MetaData()
+        t = Table(
+            "t", m, Column("y", Integer, Identity(always, on_null=on_null))
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER GENERATED %s AS IDENTITY)" % text,
         )
 
 

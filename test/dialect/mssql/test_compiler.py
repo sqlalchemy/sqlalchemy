@@ -2,8 +2,10 @@
 from sqlalchemy import Column
 from sqlalchemy import Computed
 from sqlalchemy import delete
+from sqlalchemy import exc
 from sqlalchemy import extract
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import insert
 from sqlalchemy import Integer
@@ -27,6 +29,7 @@ from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1116,96 +1119,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"x_1": 5, "param_1": 0},
         )
 
-    def test_primary_key_no_identity(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column("id", Integer, autoincrement=False, primary_key=True),
-        )
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL, " "PRIMARY KEY (id))",
-        )
-
-    def test_primary_key_defaults_to_identity(self):
-        metadata = MetaData()
-        tbl = Table("test", metadata, Column("id", Integer, primary_key=True))
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1), "
-            "PRIMARY KEY (id))",
-        )
-
-    def test_identity_no_primary_key(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test", metadata, Column("id", Integer, autoincrement=True)
-        )
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1)" ")",
-        )
-
-    def test_identity_separate_from_primary_key(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column("id", Integer, autoincrement=False, primary_key=True),
-            Column("x", Integer, autoincrement=True),
-        )
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL, "
-            "x INTEGER NOT NULL IDENTITY(1,1), "
-            "PRIMARY KEY (id))",
-        )
-
-    def test_identity_illegal_two_autoincrements(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column("id", Integer, autoincrement=True),
-            Column("id2", Integer, autoincrement=True),
-        )
-        # this will be rejected by the database, just asserting this is what
-        # the two autoincrements will do right now
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1), "
-            "id2 INTEGER NOT NULL IDENTITY(1,1))",
-        )
-
-    def test_identity_start_0(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column("id", Integer, mssql_identity_start=0, primary_key=True),
-        )
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
-            "PRIMARY KEY (id))",
-        )
-
-    def test_identity_increment_5(self):
-        metadata = MetaData()
-        tbl = Table(
-            "test",
-            metadata,
-            Column(
-                "id", Integer, mssql_identity_increment=5, primary_key=True
-            ),
-        )
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,5), "
-            "PRIMARY KEY (id))",
-        )
-
     def test_table_pkc_clustering(self):
         metadata = MetaData()
         tbl = Table(
@@ -1385,6 +1298,240 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t (x INTEGER NULL, y AS (x + 2)%s)" % text,
+        )
+
+
+class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = mssql.dialect()
+
+    def assert_compile_with_warning(self, *args, **kwargs):
+        with testing.expect_deprecated(
+            "The dialect options 'mssql_identity_start' and "
+            "'mssql_identity_increment' are deprecated. "
+            "Use the 'Identity' object instead."
+        ):
+            return self.assert_compile(*args, **kwargs)
+
+    def test_primary_key_no_identity(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, autoincrement=False, primary_key=True),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL, PRIMARY KEY (id))",
+        )
+
+    def test_primary_key_defaults_to_identity(self):
+        metadata = MetaData()
+        tbl = Table("test", metadata, Column("id", Integer, primary_key=True))
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY, "
+            "PRIMARY KEY (id))",
+        )
+
+    def test_primary_key_with_identity_object(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(start=3, increment=42),
+                primary_key=True,
+            ),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,42), "
+            "PRIMARY KEY (id))",
+        )
+
+    def test_identity_no_primary_key(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test", metadata, Column("id", Integer, autoincrement=True)
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY)",
+        )
+
+    def test_identity_object_no_primary_key(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test", metadata, Column("id", Integer, Identity(increment=42)),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,42))",
+        )
+
+    def test_identity_object_1_1(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, Identity(start=1, increment=1)),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,1))",
+        )
+
+    def test_identity_object_no_primary_key_non_nullable(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, Identity(start=3), nullable=False,),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,1)" ")",
+        )
+
+    def test_identity_separate_from_primary_key(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, autoincrement=False, primary_key=True),
+            Column("x", Integer, autoincrement=True),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL, "
+            "x INTEGER NOT NULL IDENTITY, "
+            "PRIMARY KEY (id))",
+        )
+
+    def test_identity_object_separate_from_primary_key(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, autoincrement=False, primary_key=True),
+            Column("x", Integer, Identity(start=3, increment=42),),
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL, "
+            "x INTEGER NOT NULL IDENTITY(3,42), "
+            "PRIMARY KEY (id))",
+        )
+
+    def test_identity_illegal_two_autoincrements(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, autoincrement=True),
+            Column("id2", Integer, autoincrement=True),
+        )
+        # this will be rejected by the database, just asserting this is what
+        # the two autoincrements will do right now
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY, "
+            "id2 INTEGER NOT NULL IDENTITY)",
+        )
+
+    def test_identity_object_illegal_two_autoincrements(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(start=3, increment=42),
+                autoincrement=True,
+            ),
+            Column("id2", Integer, Identity(start=7, increment=2),),
+        )
+        # this will be rejected by the database, just asserting this is what
+        # the two autoincrements will do right now
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(3,42), "
+            "id2 INTEGER NOT NULL IDENTITY(7,2))",
+        )
+
+    def test_identity_start_0(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, mssql_identity_start=0, primary_key=True),
+        )
+        self.assert_compile_with_warning(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(0,1), "
+            "PRIMARY KEY (id))",
+        )
+
+    def test_identity_increment_5(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column(
+                "id", Integer, mssql_identity_increment=5, primary_key=True
+            ),
+        )
+        self.assert_compile_with_warning(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY(1,5), "
+            "PRIMARY KEY (id))",
+        )
+
+    @testing.combinations(
+        schema.CreateTable(
+            Table(
+                "test",
+                MetaData(),
+                Column(
+                    "id",
+                    Integer,
+                    Identity(start=2, increment=2),
+                    mssql_identity_start=0,
+                ),
+            )
+        ),
+        schema.CreateTable(
+            Table(
+                "test1",
+                MetaData(),
+                Column(
+                    "id2",
+                    Integer,
+                    Identity(start=3, increment=3),
+                    mssql_identity_increment=5,
+                ),
+            )
+        ),
+    )
+    def test_identity_options_ignored_with_identity_object(self, create_table):
+        assert_raises_message(
+            exc.CompileError,
+            "Cannot specify options 'mssql_identity_start' and/or "
+            "'mssql_identity_increment' while also using the "
+            "'Identity' construct.",
+            create_table.compile,
+            dialect=self.__dialect__,
+        )
+
+    def test_identity_object_no_options(self):
+        metadata = MetaData()
+        tbl = Table("test", metadata, Column("id", Integer, Identity()),)
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE test (id INTEGER NOT NULL IDENTITY)",
         )
 
 

@@ -242,15 +242,10 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
     if inspect.isclass(obj) and plugin_base.want_class(name, obj):
 
-        # in pytest 5.4.0
-        # return [
-        #     pytest.Class.from_parent(collector,
-        # name=parametrize_cls.__name__)
-        #     for parametrize_cls in _parametrize_cls(collector.module, obj)
-        # ]
+        ctor = getattr(pytest.Class, "from_parent", pytest.Class)
 
         return [
-            pytest.Class(parametrize_cls.__name__, parent=collector)
+            ctor(name=parametrize_cls.__name__, parent=collector)
             for parametrize_cls in _parametrize_cls(collector.module, obj)
         ]
     elif (

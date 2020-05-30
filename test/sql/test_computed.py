@@ -39,6 +39,20 @@ class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
             "ALWAYS AS (x + 2)%s)" % text,
         )
 
+    def test_other_options(self):
+        t = Table(
+            "t",
+            MetaData(),
+            Column(
+                "y", Integer, Computed("x + 2"), nullable=False, unique=True
+            ),
+        )
+        self.assert_compile(
+            CreateTable(t),
+            "CREATE TABLE t ("
+            "y INTEGER GENERATED ALWAYS AS (x + 2) NOT NULL, UNIQUE (y))",
+        )
+
     def test_server_default_onupdate(self):
         text = (
             "A generated column cannot specify a server_default or a "

@@ -1254,3 +1254,17 @@ class SuiteRequirements(Requirements):
             lambda config: not config.db.dialect.supports_is_distinct_from,
             "driver doesn't support an IS DISTINCT FROM construct",
         )
+
+    @property
+    def identity_columns(self):
+        """If a backend supports GENERATED { ALWAYS | BY DEFAULT }
+        AS IDENTITY"""
+        return exclusions.closed()
+
+    @property
+    def identity_columns_standard(self):
+        """If a backend supports GENERATED { ALWAYS | BY DEFAULT }
+        AS IDENTITY with a standard syntax.
+        This is mainly to exclude MSSql.
+        """
+        return exclusions.closed()

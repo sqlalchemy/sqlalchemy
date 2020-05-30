@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import MetaData
@@ -309,7 +310,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         t1 = Table(
             "t1",
             meta,
-            Column("id", Integer, mssql_identity_start=100, primary_key=True),
+            Column("id", Integer, Identity(start=100), primary_key=True),
             Column("descr", String(200)),
             # the following flag will prevent the
             # MSSQLCompiler.returning_clause from getting called,
@@ -321,7 +322,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         t2 = Table(
             "t2",
             meta,
-            Column("id", Integer, mssql_identity_start=200, primary_key=True),
+            Column("id", Integer, Identity(start=200), primary_key=True),
             Column("descr", String(200)),
         )
 
