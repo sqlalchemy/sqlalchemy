@@ -2131,6 +2131,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert not hasattr(Foo, "data_hybrid")
 
+    @testing.requires.python3
     def test_kw_support_in_declarative_meta_init(self):
         # This will not fail if DeclarativeMeta __init__ supports **kw
 
@@ -2142,23 +2143,22 @@ class DeclarativeTest(DeclarativeTestBase):
                 super().__init_subclass__(**kw)
                 cls._set_random_keyword_used_here = random_keyword_used_here
 
-        # Omitting the kwarg in the class definition should work, i.e. not throw
-        # a TypeError
+        # Omitting the kwarg in the class definition should work, i.e. not
+        # throw a TypeError
         class AnotherUser(BaseWithInitSubclass):
             __tablename__ = "another_user"
             id = Column(Integer, primary_key=True)
 
-        if util.py3k:
-            # Including the kwarg in the class definition should work, i.e. not
-            # throw a TypeError
-            class User(BaseWithInitSubclass, random_keyword_used_here=True):
-                __tablename__ = "user"
-                id = Column(Integer, primary_key=True)
+        # Including the kwarg in the class definition should work, i.e.
+        # not throw a TypeError
+        class User(BaseWithInitSubclass, random_keyword_used_here=True):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
 
-            # Check to see if __init_subclass__ works in supported versions
-            if util.py36:
-                eq_(User._set_random_keyword_used_here, True)
-                eq_(AnotherUser._set_random_keyword_used_here, False)
+        # Check to see if __init_subclass__ works in supported versions
+        if util.py36:
+            eq_(User._set_random_keyword_used_here, True)
+            eq_(AnotherUser._set_random_keyword_used_here, False)
 
 
 def _produce_test(inline, stringbased):
