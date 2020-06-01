@@ -5789,6 +5789,7 @@ class SessionBindTest(QueryTest):
             subq = session.query(User.id).subquery()
             session.query(subq).all()
 
+    @testing.requires.boolean_col_expressions
     def test_sql_expr_exists_from_entity(self):
         User = self.classes.User
         session = Session()
@@ -5862,6 +5863,7 @@ class SessionBindTest(QueryTest):
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.name + "x").all()
 
+    @testing.requires.boolean_col_expressions
     def test_boolean_op(self):
         User = self.classes.User
         session = Session()
