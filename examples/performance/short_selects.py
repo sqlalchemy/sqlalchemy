@@ -76,6 +76,25 @@ def test_orm_query(n):
 
 
 @Profiler.profile
+def test_orm_query_newstyle(n):
+    """test a straight ORM query of the full entity."""
+
+    # the newstyle query is faster for the following reasons:
+    # 1. it uses LABEL_STYLE_DISAMBIGUATE_ONLY, which saves on a huge amount
+    # of label generation and compilation calls
+    # 2. it does not use the Query @_assertions decorators.
+
+    # however, both test_orm_query and test_orm_query_newstyle are still
+    # 25-30% slower than the full blown Query version in 1.3.x and this
+    # continues to be concerning.
+
+    session = Session(bind=engine)
+    for id_ in random.sample(ids, n):
+        stmt = future_select(Customer).where(Customer.id == id_)
+        session.execute(stmt).scalars().unique().one()
+
+
+@Profiler.profile
 def test_orm_query_cols_only(n):
     """test an ORM query of only the entity columns."""
     session = Session(bind=engine)
