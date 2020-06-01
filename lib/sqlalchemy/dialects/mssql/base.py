@@ -2287,8 +2287,7 @@ def _switch_db(dbname, connection, fn, *arg, **kw):
         current_db = connection.exec_driver_sql("select db_name()").scalar()
         if current_db != dbname:
             connection.exec_driver_sql(
-                "use %s"
-                % connection.dialect.identifier_preparer.quote_schema(dbname)
+                "use %s" % connection.dialect.identifier_preparer.quote(dbname)
             )
     try:
         return fn(*arg, **kw)
@@ -2296,9 +2295,7 @@ def _switch_db(dbname, connection, fn, *arg, **kw):
         if dbname and current_db != dbname:
             connection.exec_driver_sql(
                 "use %s"
-                % connection.dialect.identifier_preparer.quote_schema(
-                    current_db
-                )
+                % connection.dialect.identifier_preparer.quote(current_db)
             )
 
 
@@ -2311,33 +2308,62 @@ def _owner_plus_db(dialect, schema):
         return None, schema
 
 
+_memoized_schema = util.LRUCache()
+
+
 def _schema_elements(schema):
     if isinstance(schema, quoted_name) and schema.quote:
         return None, schema
 
+    if schema in _memoized_schema:
+        return _memoized_schema[schema]
+
+    # tests for this function are in:
+    # test/dialect/mssql/test_reflection.py ->
+    #           OwnerPlusDBTest.test_owner_database_pairs
+    # test/dialect/mssql/test_compiler.py -> test_force_schema_*
+    # test/dialect/mssql/test_compiler.py -> test_schema_many_tokens_*
+    #
+
     push = []
     symbol = ""
     bracket = False
+    has_brackets = False
     for token in re.split(r"(\[|\]|\.)", schema):
         if not token:
             continue
         if token == "[":
             bracket = True
+            has_brackets = True
         elif token == "]":
             bracket = False
         elif not bracket and token == ".":
-            push.append(symbol)
+            if has_brackets:
+                push.append("[%s]" % symbol)
+            else:
+                push.append(symbol)
             symbol = ""
+            has_brackets = False
         else:
             symbol += token
     if symbol:
         push.append(symbol)
     if len(push) > 1:
-        return push[0], "".join(push[1:])
+        dbname, owner = ".".join(push[0:-1]), push[-1]
+
+        # test for internal brackets
+        if re.match(r".*\].*\[.*", dbname[1:-1]):
+            dbname = quoted_name(dbname, quote=False)
+        else:
+            dbname = dbname.lstrip("[").rstrip("]")
+
     elif len(push):
-        return None, push[0]
+        dbname, owner = None, push[0]
     else:
-        return None, None
+        dbname, owner = None, None
+
+    _memoized_schema[schema] = dbname, owner
+    return dbname, owner
 
 
 class MSDialect(default.DefaultDialect):
