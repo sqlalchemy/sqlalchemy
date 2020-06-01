@@ -1743,6 +1743,11 @@ class Mapper(
                     or prop.columns[0] is self.polymorphic_on
                 )
 
+            if isinstance(col, expression.Label):
+                # new in 1.4, get column property against expressions
+                # to be addressable in subqueries
+                col.key = col._key_label = key
+
             self.columns.add(col, key)
             for col in prop.columns + prop._orig_columns:
                 for col in col.proxy_set:
@@ -2281,6 +2286,29 @@ class Mapper(
                 self._with_polymorphic_mappers
             )
         )
+
+    def _columns_plus_keys(self, polymorphic_mappers=()):
+        if polymorphic_mappers:
+            poly_properties = self._iterate_polymorphic_properties(
+                polymorphic_mappers
+            )
+        else:
+            poly_properties = self._polymorphic_properties
+
+        return [
+            (prop.key, prop.columns[0])
+            for prop in poly_properties
+            if isinstance(prop, properties.ColumnProperty)
+        ]
+
+    @HasMemoized.memoized_attribute
+    def _polymorphic_adapter(self):
+        if self.with_polymorphic:
+            return sql_util.ColumnAdapter(
+                self.selectable, equivalents=self._equivalent_columns
+            )
+        else:
+            return None
 
     def _iterate_polymorphic_properties(self, mappers=None):
         """Return an iterator of MapperProperty objects which will render into

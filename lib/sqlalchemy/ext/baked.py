@@ -228,7 +228,7 @@ class BakedQuery(object):
 
         # in 1.4, this is where before_compile() event is
         # invoked
-        statement = query._statement_20(orm_results=True)
+        statement = query._statement_20()
 
         # if the query is not safe to cache, we still do everything as though
         # we did cache it, since the receiver of _bake() assumes subqueryload

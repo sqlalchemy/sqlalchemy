@@ -345,7 +345,7 @@ def load_on_pk_identity(
     if load_options is None:
         load_options = QueryContext.default_load_options
 
-    compile_options = ORMCompileState.default_compile_options.merge(
+    compile_options = ORMCompileState.default_compile_options.safe_merge(
         q.compile_options
     )
 

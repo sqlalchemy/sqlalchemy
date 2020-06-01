@@ -522,7 +522,12 @@ class _MetaOptions(type):
 
     def __init__(cls, classname, bases, dict_):
         cls._cache_attrs = tuple(
-            sorted(d for d in dict_ if not d.startswith("__"))
+            sorted(
+                d
+                for d in dict_
+                if not d.startswith("__")
+                and d not in ("_cache_key_traversal",)
+            )
         )
         type.__init__(cls, classname, bases, dict_)
 
@@ -560,6 +565,31 @@ class Options(util.with_metaclass(_MetaOptions)):
     @_state_dict.classlevel
     def _state_dict(cls):
         return cls._state_dict_const
+
+    @classmethod
+    def safe_merge(cls, other):
+        d = other._state_dict()
+
+        # only support a merge with another object of our class
+        # and which does not have attrs that we dont.   otherwise
+        # we risk having state that might not be part of our cache
+        # key strategy
+
+        if (
+            cls is not other.__class__
+            and other._cache_attrs
+            and set(other._cache_attrs).difference(cls._cache_attrs)
+        ):
+            raise TypeError(
+                "other element %r is not empty, is not of type %s, "
+                "and contains attributes not covered here %r"
+                % (
+                    other,
+                    cls,
+                    set(other._cache_attrs).difference(cls._cache_attrs),
+                )
+            )
+        return cls + d
 
 
 class CacheableOptions(Options, HasCacheKey):

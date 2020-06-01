@@ -2,20 +2,29 @@ from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import literal_column
+from sqlalchemy import or_
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import join as orm_join
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import query_expression
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.selectable import Join as core_join
+from sqlalchemy.sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import eq_
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
-
 
 # TODO:
 # composites / unions, etc.
@@ -178,6 +187,344 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
 
+class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
+    """The Query object calls eanble_eagerloads(False) when you call
+    .subquery().  With Core select, we don't have that information, we instead
+    have to look at the "toplevel" flag to know where we are.   make sure
+    the many different combinations that these two objects and still
+    too many flags at the moment work as expected on the outside.
+
+    """
+
+    __dialect__ = "default"
+
+    run_setup_mappers = None
+
+    @testing.fixture
+    def joinedload_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, lazy="joined")},
+        )
+
+        mapper(Address, addresses)
+
+        return User, Address
+
+    def test_no_joinedload_in_subquery_select_rows(self, joinedload_fixture):
+        User, Address = joinedload_fixture
+
+        sess = Session()
+        stmt1 = sess.query(User).subquery()
+        stmt1 = sess.query(stmt1)
+
+        stmt2 = select(User).subquery()
+
+        stmt2 = select(stmt2)
+
+        expected = (
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users) AS anon_1"
+        )
+        self.assert_compile(
+            stmt1._final_statement(legacy_query_style=False), expected,
+        )
+
+        self.assert_compile(stmt2, expected)
+
+    def test_no_joinedload_in_subquery_select_entity(self, joinedload_fixture):
+        User, Address = joinedload_fixture
+
+        sess = Session()
+        stmt1 = sess.query(User).subquery()
+        ua = aliased(User, stmt1)
+        stmt1 = sess.query(ua)
+
+        stmt2 = select(User).subquery()
+
+        ua = aliased(User, stmt2)
+        stmt2 = select(ua)
+
+        expected = (
+            "SELECT anon_1.id, anon_1.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON anon_1.id = addresses_1.user_id"
+        )
+
+        self.assert_compile(
+            stmt1._final_statement(legacy_query_style=False), expected,
+        )
+
+        self.assert_compile(stmt2, expected)
+
+    # TODO: need to test joinedload options, deferred mappings, deferred
+    # options.  these are all loader options that should *only* have an
+    # effect on the outermost statement, never a subquery.
+
+
+class ExtraColsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    run_setup_mappers = None
+
+    @testing.fixture
+    def query_expression_fixture(self):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=util.OrderedDict([("value", query_expression())]),
+        )
+        return User
+
+    @testing.fixture
+    def column_property_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=util.OrderedDict(
+                [
+                    ("concat", column_property((users.c.id * 2))),
+                    (
+                        "count",
+                        column_property(
+                            select(func.count(addresses.c.id))
+                            .where(users.c.id == addresses.c.user_id,)
+                            .correlate(users)
+                            .scalar_subquery()
+                        ),
+                    ),
+                ]
+            ),
+        )
+
+        mapper(Address, addresses, properties={"user": relationship(User,)})
+
+        return User, Address
+
+    @testing.fixture
+    def plain_fixture(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User, users,
+        )
+
+        mapper(Address, addresses, properties={"user": relationship(User,)})
+
+        return User, Address
+
+    def test_no_joinedload_embedded(self, plain_fixture):
+        User, Address = plain_fixture
+
+        stmt = select(Address).options(joinedload(Address.user))
+
+        subq = stmt.subquery()
+
+        s2 = select(subq)
+
+        self.assert_compile(
+            s2,
+            "SELECT anon_1.id, anon_1.user_id, anon_1.email_address "
+            "FROM (SELECT addresses.id AS id, addresses.user_id AS "
+            "user_id, addresses.email_address AS email_address "
+            "FROM addresses) AS anon_1",
+        )
+
+    def test_with_expr_one(self, query_expression_fixture):
+        User = query_expression_fixture
+
+        stmt = select(User).options(
+            with_expression(User.value, User.name + "foo")
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.name || :name_1 AS anon_1, users.id, "
+            "users.name FROM users",
+        )
+
+    def test_with_expr_two(self, query_expression_fixture):
+        User = query_expression_fixture
+
+        stmt = select(User.id, User.name, (User.name + "foo").label("foo"))
+
+        subq = stmt.subquery()
+        u1 = aliased(User, subq)
+
+        stmt = select(u1).options(with_expression(u1.value, subq.c.foo))
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.foo, anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name, "
+            "users.name || :name_1 AS foo FROM users) AS anon_1",
+        )
+
+    def test_joinedload_outermost(self, plain_fixture):
+        User, Address = plain_fixture
+
+        stmt = select(Address).options(joinedload(Address.user))
+
+        # render joined eager loads with stringify
+        self.assert_compile(
+            stmt,
+            "SELECT addresses.id, addresses.user_id, addresses.email_address, "
+            "users_1.id AS id_1, users_1.name FROM addresses "
+            "LEFT OUTER JOIN users AS users_1 "
+            "ON users_1.id = addresses.user_id",
+        )
+
+    def test_contains_eager_outermost(self, plain_fixture):
+        User, Address = plain_fixture
+
+        stmt = (
+            select(Address)
+            .join(Address.user)
+            .options(contains_eager(Address.user))
+        )
+
+        # render joined eager loads with stringify
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name, addresses.id AS id_1, "
+            "addresses.user_id, "
+            "addresses.email_address "
+            "FROM addresses JOIN users ON users.id = addresses.user_id",
+        )
+
+    def test_column_properties(self, column_property_fixture):
+        """test querying mappings that reference external columns or
+        selectables."""
+
+        User, Address = column_property_fixture
+
+        stmt = select(User)
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id * :id_1 AS anon_1, "
+            "(SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE users.id = addresses.user_id) AS anon_2, users.id, "
+            "users.name FROM users",
+            checkparams={"id_1": 2},
+        )
+
+    def test_column_properties_can_we_use(self, column_property_fixture):
+        """test querying mappings that reference external columns or
+        selectables. """
+
+        # User, Address = column_property_fixture
+
+        # stmt = select(User)
+
+        # TODO: shouldn't we be able to get at count ?
+
+    # stmt = stmt.where(stmt.selected_columns.count > 5)
+
+    # self.assert_compile(stmt, "")
+
+    def test_column_properties_subquery(self, column_property_fixture):
+        """test querying mappings that reference external columns or
+        selectables."""
+
+        User, Address = column_property_fixture
+
+        stmt = select(User)
+
+        # here, the subquery needs to export the columns that include
+        # the column properties
+        stmt = select(stmt.subquery())
+
+        # TODO: shouldnt we be able to get to stmt.subquery().c.count ?
+        self.assert_compile(
+            stmt,
+            "SELECT anon_2.anon_1, anon_2.anon_3, anon_2.id, anon_2.name "
+            "FROM (SELECT users.id * :id_1 AS anon_1, "
+            "(SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE users.id = addresses.user_id) AS anon_3, users.id AS id, "
+            "users.name AS name FROM users) AS anon_2",
+            checkparams={"id_1": 2},
+        )
+
+    def test_column_properties_subquery_two(self, column_property_fixture):
+        """test querying mappings that reference external columns or
+        selectables."""
+
+        User, Address = column_property_fixture
+
+        # col properties will retain anonymous labels, however will
+        # adopt the .key within the subquery collection so they can
+        # be addressed.
+        stmt = select(User.id, User.name, User.concat, User.count,)
+
+        subq = stmt.subquery()
+        # here, the subquery needs to export the columns that include
+        # the column properties
+        stmt = select(subq).where(subq.c.concat == "foo")
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.id, anon_1.name, anon_1.anon_2, anon_1.anon_3 "
+            "FROM (SELECT users.id AS id, users.name AS name, "
+            "users.id * :id_1 AS anon_2, "
+            "(SELECT count(addresses.id) AS count_1 "
+            "FROM addresses WHERE users.id = addresses.user_id) AS anon_3 "
+            "FROM users) AS anon_1 WHERE anon_1.anon_2 = :param_1",
+            checkparams={"id_1": 2, "param_1": "foo"},
+        )
+
+    def test_column_properties_aliased_subquery(self, column_property_fixture):
+        """test querying mappings that reference external columns or
+        selectables."""
+
+        User, Address = column_property_fixture
+
+        u1 = aliased(User)
+        stmt = select(u1)
+
+        # here, the subquery needs to export the columns that include
+        # the column properties
+        stmt = select(stmt.subquery())
+        self.assert_compile(
+            stmt,
+            "SELECT anon_2.anon_1, anon_2.anon_3, anon_2.id, anon_2.name "
+            "FROM (SELECT users_1.id * :id_1 AS anon_1, "
+            "(SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE users_1.id = addresses.user_id) AS anon_3, "
+            "users_1.id AS id, users_1.name AS name "
+            "FROM users AS users_1) AS anon_2",
+            checkparams={"id_1": 2},
+        )
+
+
 class RelationshipNaturalCompileTest(QueryTest, AssertsCompiledSQL):
     """test using core join() with relationship attributes.
 
@@ -193,7 +540,6 @@ class RelationshipNaturalCompileTest(QueryTest, AssertsCompiledSQL):
 
     __dialect__ = "default"
 
-    @testing.fails("need to have of_type() expressions render directly")
     def test_of_type_implicit_join(self):
         User, Address = self.classes("User", "Address")
 
@@ -201,7 +547,12 @@ class RelationshipNaturalCompileTest(QueryTest, AssertsCompiledSQL):
         a1 = aliased(Address)
 
         stmt1 = select(u1).where(u1.addresses.of_type(a1))
-        stmt2 = Session().query(u1).filter(u1.addresses.of_type(a1))
+        stmt2 = (
+            Session()
+            .query(u1)
+            .filter(u1.addresses.of_type(a1))
+            ._final_statement(legacy_query_style=False)
+        )
 
         expected = (
             "SELECT users_1.id, users_1.name FROM users AS users_1, "
@@ -260,6 +611,118 @@ class InheritedTest(_poly_fixtures._Polymorphic):
     run_setup_mappers = "once"
 
 
+class ExplicitWithPolymorhpicTest(
+    _poly_fixtures._PolymorphicUnions, AssertsCompiledSQL
+):
+
+    __dialect__ = "default"
+
+    default_punion = (
+        "(SELECT pjoin.person_id AS person_id, "
+        "pjoin.company_id AS company_id, "
+        "pjoin.name AS name, pjoin.type AS type, "
+        "pjoin.status AS status, pjoin.engineer_name AS engineer_name, "
+        "pjoin.primary_language AS primary_language, "
+        "pjoin.manager_name AS manager_name "
+        "FROM (SELECT engineers.person_id AS person_id, "
+        "people.company_id AS company_id, people.name AS name, "
+        "people.type AS type, engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, "
+        "CAST(NULL AS VARCHAR(50)) AS manager_name "
+        "FROM people JOIN engineers ON people.person_id = engineers.person_id "
+        "UNION ALL SELECT managers.person_id AS person_id, "
+        "people.company_id AS company_id, people.name AS name, "
+        "people.type AS type, managers.status AS status, "
+        "CAST(NULL AS VARCHAR(50)) AS engineer_name, "
+        "CAST(NULL AS VARCHAR(50)) AS primary_language, "
+        "managers.manager_name AS manager_name FROM people "
+        "JOIN managers ON people.person_id = managers.person_id) AS pjoin) "
+        "AS anon_1"
+    )
+
+    def test_subquery_col_expressions_wpoly_one(self):
+        Person, Manager, Engineer = self.classes(
+            "Person", "Manager", "Engineer"
+        )
+
+        wp1 = with_polymorphic(Person, [Manager, Engineer])
+
+        subq1 = select(wp1).subquery()
+
+        wp2 = with_polymorphic(Person, [Engineer, Manager])
+        subq2 = select(wp2).subquery()
+
+        # first thing we see, is that when we go through with_polymorphic,
+        # the entities that get placed into the aliased class go through
+        # Mapper._mappers_from_spec(), which matches them up to the
+        # existing Mapper.self_and_descendants collection, meaning,
+        # the order is the same every time.   Assert here that's still
+        # happening.  If a future internal change modifies this assumption,
+        # that's not necessarily bad, but it would change things.
+
+        eq_(
+            subq1.c.keys(),
+            [
+                "person_id",
+                "company_id",
+                "name",
+                "type",
+                "person_id_1",
+                "status",
+                "engineer_name",
+                "primary_language",
+                "person_id_1",
+                "status_1",
+                "manager_name",
+            ],
+        )
+        eq_(
+            subq2.c.keys(),
+            [
+                "person_id",
+                "company_id",
+                "name",
+                "type",
+                "person_id_1",
+                "status",
+                "engineer_name",
+                "primary_language",
+                "person_id_1",
+                "status_1",
+                "manager_name",
+            ],
+        )
+
+    def test_subquery_col_expressions_wpoly_two(self):
+        Person, Manager, Engineer = self.classes(
+            "Person", "Manager", "Engineer"
+        )
+
+        wp1 = with_polymorphic(Person, [Manager, Engineer])
+
+        subq1 = select(wp1).subquery()
+
+        stmt = select(subq1).where(
+            or_(
+                subq1.c.engineer_name == "dilbert",
+                subq1.c.manager_name == "dogbert",
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.person_id, anon_1.company_id, anon_1.name, "
+            "anon_1.type, anon_1.person_id AS person_id_1, anon_1.status, "
+            "anon_1.engineer_name, anon_1.primary_language, "
+            "anon_1.person_id AS person_id_2, anon_1.status AS status_1, "
+            "anon_1.manager_name FROM "
+            "%s WHERE "
+            "anon_1.engineer_name = :engineer_name_1 "
+            "OR anon_1.manager_name = :manager_name_1" % (self.default_punion),
+        )
+
+
 class ImplicitWithPolymorphicTest(
     _poly_fixtures._PolymorphicUnions, AssertsCompiledSQL
 ):
@@ -310,7 +773,9 @@ class ImplicitWithPolymorphicTest(
         )
         self.assert_compile(stmt, expected)
 
-        self.assert_compile(q.statement, expected)
+        self.assert_compile(
+            q._final_statement(legacy_query_style=False), expected,
+        )
 
     def test_select_where_baseclass(self):
         Person = self.classes.Person
@@ -349,7 +814,9 @@ class ImplicitWithPolymorphicTest(
         )
         self.assert_compile(stmt, expected)
 
-        self.assert_compile(q.statement, expected)
+        self.assert_compile(
+            q._final_statement(legacy_query_style=False), expected,
+        )
 
     def test_select_where_subclass(self):
 
@@ -397,7 +864,10 @@ class ImplicitWithPolymorphicTest(
         # in context.py
         self.assert_compile(stmt, disambiguate_expected)
 
-        self.assert_compile(q.statement, disambiguate_expected)
+        self.assert_compile(
+            q._final_statement(legacy_query_style=False),
+            disambiguate_expected,
+        )
 
     def test_select_where_columns_subclass(self):
 
@@ -436,7 +906,9 @@ class ImplicitWithPolymorphicTest(
         )
 
         self.assert_compile(stmt, expected)
-        self.assert_compile(q.statement, expected)
+        self.assert_compile(
+            q._final_statement(legacy_query_style=False), expected,
+        )
 
 
 class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
@@ -506,15 +978,14 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             orm_join(Company, Person, Company.employees)
         )
         stmt2 = select(Company).join(Company.employees)
-        stmt3 = Session().query(Company).join(Company.employees).statement
-
-        # TODO: can't get aliasing to not happen for .join() verion
-        self.assert_compile(
-            stmt1,
-            self.straight_company_to_person_expected.replace(
-                "pjoin_1", "pjoin"
-            ),
+        stmt3 = (
+            Session()
+            .query(Company)
+            .join(Company.employees)
+            ._final_statement(legacy_query_style=False)
         )
+
+        self.assert_compile(stmt1, self.straight_company_to_person_expected)
         self.assert_compile(stmt2, self.straight_company_to_person_expected)
         self.assert_compile(stmt3, self.straight_company_to_person_expected)
 
@@ -532,12 +1003,11 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             "Company", "Person", "Manager", "Engineer"
         )
 
-        # TODO: fails
-        # stmt1 = (
-        #    select(Company)
-        #    .select_from(orm_join(Company, Person, Company.employees))
-        #    .where(Person.name == "ed")
-        # )
+        stmt1 = (
+            select(Company)
+            .select_from(orm_join(Company, Person, Company.employees))
+            .where(Person.name == "ed")
+        )
 
         stmt2 = (
             select(Company).join(Company.employees).where(Person.name == "ed")
@@ -547,20 +1017,10 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             .query(Company)
             .join(Company.employees)
             .filter(Person.name == "ed")
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
-        # TODO: more inheriance woes, the first statement doesn't know that
-        # it loads polymorphically with Person.  should we have mappers and
-        # ORM attributes return their polymorphic entity for
-        # __clause_element__() ?  or should we know to look inside the
-        # orm_join and find all the entities that are important?  it is
-        # looking like having ORM expressions use their polymoprhic selectable
-        # will solve a lot but not all of these problems.
-
-        # self.assert_compile(stmt1, self.c_to_p_whereclause)
-
-        # self.assert_compile(stmt1, self.c_to_p_whereclause)
+        self.assert_compile(stmt1, self.c_to_p_whereclause)
         self.assert_compile(stmt2, self.c_to_p_whereclause)
         self.assert_compile(stmt3, self.c_to_p_whereclause)
 
@@ -581,16 +1041,12 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             .query(Company)
             .join(Company.employees)
             .join(Person.paperwork)
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
         self.assert_compile(stmt1, self.person_paperwork_expected)
-        self.assert_compile(
-            stmt2, self.person_paperwork_expected.replace("pjoin", "pjoin_1")
-        )
-        self.assert_compile(
-            stmt3, self.person_paperwork_expected.replace("pjoin", "pjoin_1")
-        )
+        self.assert_compile(stmt2, self.person_paperwork_expected)
+        self.assert_compile(stmt3, self.person_paperwork_expected)
 
     def test_wpoly_of_type(self):
         Company, Person, Manager, Engineer = self.classes(
@@ -608,7 +1064,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             Session()
             .query(Company)
             .join(Company.employees.of_type(p1))
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
         expected = (
             "SELECT companies.company_id, companies.name "
@@ -633,7 +1089,11 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
 
         stmt2 = select(Company).join(p1, Company.employees.of_type(p1))
 
-        stmt3 = s.query(Company).join(Company.employees.of_type(p1)).statement
+        stmt3 = (
+            s.query(Company)
+            .join(Company.employees.of_type(p1))
+            ._final_statement(legacy_query_style=False)
+        )
 
         expected = (
             "SELECT companies.company_id, companies.name FROM companies "
@@ -661,7 +1121,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             Session()
             .query(Company)
             .join(Company.employees.of_type(p1))
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
         expected = (
@@ -677,9 +1137,12 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
 class RelNaturalAliasedJoinsTest(
     _poly_fixtures._PolymorphicAliasedJoins, RelationshipNaturalInheritedTest
 ):
+
+    # this is the label style for the polymorphic selectable, not the
+    # outside query
+    label_style = LABEL_STYLE_TABLENAME_PLUS_COL
+
     straight_company_to_person_expected = (
-        # TODO: would rather not have the aliasing here but can't fix
-        # that right now
         "SELECT companies.company_id, companies.name FROM companies "
         "JOIN (SELECT people.person_id AS people_person_id, people.company_id "
         "AS people_company_id, people.name AS people_name, people.type "
@@ -691,8 +1154,8 @@ class RelNaturalAliasedJoinsTest(
         "managers.manager_name AS managers_manager_name FROM people "
         "LEFT OUTER JOIN engineers ON people.person_id = "
         "engineers.person_id LEFT OUTER JOIN managers ON people.person_id = "
-        "managers.person_id) AS pjoin_1 ON companies.company_id = "
-        "pjoin_1.people_company_id"
+        "managers.person_id) AS pjoin ON companies.company_id = "
+        "pjoin.people_company_id"
     )
 
     person_paperwork_expected = (
@@ -768,8 +1231,8 @@ class RelNaturalAliasedJoinsTest(
         "FROM people LEFT OUTER JOIN engineers "
         "ON people.person_id = engineers.person_id "
         "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
-        "AS pjoin_1 ON companies.company_id = pjoin_1.people_company_id "
-        "WHERE pjoin_1.people_name = :name_1"
+        "AS pjoin ON companies.company_id = pjoin.people_company_id "
+        "WHERE pjoin.people_name = :people_name_1"
     )
 
     poly_columns = (
@@ -785,6 +1248,113 @@ class RelNaturalAliasedJoinsTest(
         "LEFT OUTER JOIN engineers ON people.person_id = engineers.person_id "
         "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
         "AS pjoin"
+    )
+
+
+class RelNaturalAliasedJoinsDisamTest(
+    _poly_fixtures._PolymorphicAliasedJoins, RelationshipNaturalInheritedTest
+):
+    # this is the label style for the polymorphic selectable, not the
+    # outside query
+    label_style = LABEL_STYLE_DISAMBIGUATE_ONLY
+
+    straight_company_to_person_expected = (
+        "SELECT companies.company_id, companies.name FROM companies JOIN "
+        "(SELECT people.person_id AS person_id, "
+        "people.company_id AS company_id, people.name AS name, "
+        "people.type AS type, engineers.person_id AS person_id_1, "
+        "engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, "
+        "managers.person_id AS person_id_2, managers.status AS status_1, "
+        "managers.manager_name AS manager_name FROM people "
+        "LEFT OUTER JOIN engineers ON people.person_id = engineers.person_id "
+        "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
+        "AS pjoin ON companies.company_id = pjoin.company_id"
+    )
+
+    person_paperwork_expected = (
+        "SELECT companies.company_id, companies.name FROM companies "
+        "JOIN (SELECT people.person_id AS person_id, people.company_id "
+        "AS company_id, people.name AS name, people.type AS type, "
+        "engineers.person_id AS person_id_1, engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, managers.person_id "
+        "AS person_id_2, managers.status AS status_1, managers.manager_name "
+        "AS manager_name FROM people LEFT OUTER JOIN engineers "
+        "ON people.person_id = engineers.person_id "
+        "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
+        "AS pjoin ON companies.company_id = pjoin.company_id "
+        "JOIN paperwork ON pjoin.person_id = paperwork.person_id"
+    )
+
+    default_pjoin = (
+        "(SELECT people.person_id AS person_id, people.company_id AS "
+        "company_id, people.name AS name, people.type AS type, "
+        "engineers.person_id AS person_id_1, engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, engineers.primary_language "
+        "AS primary_language, managers.person_id AS person_id_2, "
+        "managers.status AS status_1, managers.manager_name AS manager_name "
+        "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
+        "engineers.person_id LEFT OUTER JOIN managers ON people.person_id = "
+        "managers.person_id) AS pjoin "
+        "ON companies.company_id = pjoin.company_id"
+    )
+    flat_aliased_pjoin = (
+        "(SELECT people.person_id AS person_id, people.company_id AS "
+        "company_id, people.name AS name, people.type AS type, "
+        "engineers.person_id AS person_id_1, engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, "
+        "managers.person_id AS person_id_2, managers.status AS status_1, "
+        "managers.manager_name AS manager_name FROM people "
+        "LEFT OUTER JOIN engineers ON people.person_id = engineers.person_id "
+        "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
+        "AS pjoin_1 ON companies.company_id = pjoin_1.company_id"
+    )
+
+    aliased_pjoin = (
+        "(SELECT people.person_id AS person_id, people.company_id AS "
+        "company_id, people.name AS name, people.type AS type, "
+        "engineers.person_id AS person_id_1, engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, engineers.primary_language "
+        "AS primary_language, managers.person_id AS person_id_2, "
+        "managers.status AS status_1, managers.manager_name AS manager_name "
+        "FROM people LEFT OUTER JOIN engineers ON people.person_id = "
+        "engineers.person_id LEFT OUTER JOIN managers ON people.person_id = "
+        "managers.person_id) AS pjoin_1 "
+        "ON companies.company_id = pjoin_1.company_id"
+    )
+
+    c_to_p_whereclause = (
+        "SELECT companies.company_id, companies.name FROM companies JOIN "
+        "(SELECT people.person_id AS person_id, "
+        "people.company_id AS company_id, people.name AS name, "
+        "people.type AS type, engineers.person_id AS person_id_1, "
+        "engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, "
+        "managers.person_id AS person_id_2, managers.status AS status_1, "
+        "managers.manager_name AS manager_name FROM people "
+        "LEFT OUTER JOIN engineers ON people.person_id = engineers.person_id "
+        "LEFT OUTER JOIN managers ON people.person_id = managers.person_id) "
+        "AS pjoin ON companies.company_id = pjoin.company_id "
+        "WHERE pjoin.name = :name_1"
+    )
+
+    poly_columns = (
+        "SELECT pjoin.person_id FROM (SELECT people.person_id AS "
+        "person_id, people.company_id AS company_id, people.name AS name, "
+        "people.type AS type, engineers.person_id AS person_id_1, "
+        "engineers.status AS status, "
+        "engineers.engineer_name AS engineer_name, "
+        "engineers.primary_language AS primary_language, "
+        "managers.person_id AS person_id_2, "
+        "managers.status AS status_1, managers.manager_name AS manager_name "
+        "FROM people LEFT OUTER JOIN engineers "
+        "ON people.person_id = engineers.person_id "
+        "LEFT OUTER JOIN managers "
+        "ON people.person_id = managers.person_id) AS pjoin"
     )
 
 
@@ -808,7 +1378,12 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         stmt1 = select(User).where(User.addresses)
-        stmt2 = Session().query(User).filter(User.addresses).statement
+        stmt2 = (
+            Session()
+            .query(User)
+            .filter(User.addresses)
+            ._final_statement(legacy_query_style=False)
+        )
 
         expected = (
             "SELECT users.id, users.name FROM users, addresses "
@@ -829,7 +1404,12 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
         stmt1 = select(Item).where(Item.keywords)
-        stmt2 = Session().query(Item).filter(Item.keywords).statement
+        stmt2 = (
+            Session()
+            .query(Item)
+            .filter(Item.keywords)
+            ._final_statement(legacy_query_style=False)
+        )
         self.assert_compile(stmt1, expected)
         self.assert_compile(stmt2, expected)
 
@@ -839,7 +1419,10 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         expected = "SELECT * FROM users"
         stmt1 = select(literal_column("*")).select_from(User)
         stmt2 = (
-            Session().query(literal_column("*")).select_from(User).statement
+            Session()
+            .query(literal_column("*"))
+            .select_from(User)
+            ._final_statement(legacy_query_style=False)
         )
 
         self.assert_compile(stmt1, expected)
@@ -850,7 +1433,12 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, name="ua")
 
         stmt1 = select(literal_column("*")).select_from(ua)
-        stmt2 = Session().query(literal_column("*")).select_from(ua)
+        stmt2 = (
+            Session()
+            .query(literal_column("*"))
+            .select_from(ua)
+            ._final_statement(legacy_query_style=False)
+        )
 
         expected = "SELECT * FROM users AS ua"
 
@@ -886,7 +1474,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                 .correlate(User)
                 .scalar_subquery(),
             )
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
         self.assert_compile(stmt1, expected)
@@ -916,7 +1504,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
                 .correlate(uu)
                 .scalar_subquery(),
             )
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
         expected = (
@@ -935,7 +1523,9 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         expected = "SELECT users.id, users.name FROM users"
 
         stmt1 = select(User)
-        stmt2 = Session().query(User).statement
+        stmt2 = (
+            Session().query(User)._final_statement(legacy_query_style=False)
+        )
 
         self.assert_compile(stmt1, expected)
         self.assert_compile(stmt2, expected)
@@ -946,7 +1536,11 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         expected = "SELECT users.id, users.name FROM users"
 
         stmt1 = select(User.id, User.name)
-        stmt2 = Session().query(User.id, User.name).statement
+        stmt2 = (
+            Session()
+            .query(User.id, User.name)
+            ._final_statement(legacy_query_style=False)
+        )
 
         self.assert_compile(stmt1, expected)
         self.assert_compile(stmt2, expected)
@@ -956,7 +1550,11 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, name="ua")
 
         stmt1 = select(ua.id, ua.name)
-        stmt2 = Session().query(ua.id, ua.name).statement
+        stmt2 = (
+            Session()
+            .query(ua.id, ua.name)
+            ._final_statement(legacy_query_style=False)
+        )
         expected = "SELECT ua.id, ua.name FROM users AS ua"
 
         self.assert_compile(stmt1, expected)
@@ -967,7 +1565,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, name="ua")
 
         stmt1 = select(ua)
-        stmt2 = Session().query(ua).statement
+        stmt2 = Session().query(ua)._final_statement(legacy_query_style=False)
         expected = "SELECT ua.id, ua.name FROM users AS ua"
 
         self.assert_compile(stmt1, expected)
@@ -1081,7 +1679,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             .query(Foo)
             .filter(Foo.foob == "somename")
             .order_by(Foo.foob)
-            .statement
+            ._final_statement(legacy_query_style=False)
         )
 
         expected = (

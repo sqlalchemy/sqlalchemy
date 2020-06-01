@@ -1170,9 +1170,9 @@ class RelationshipProperty(StrategizedProperty):
         def __clause_element__(self):
             adapt_from = self._source_selectable()
             if self._of_type:
-                of_type_mapper = inspect(self._of_type).mapper
+                of_type_entity = inspect(self._of_type)
             else:
-                of_type_mapper = None
+                of_type_entity = None
 
             (
                 pj,
@@ -1184,7 +1184,7 @@ class RelationshipProperty(StrategizedProperty):
             ) = self.property._create_joins(
                 source_selectable=adapt_from,
                 source_polymorphic=True,
-                of_type_mapper=of_type_mapper,
+                of_type_entity=of_type_entity,
                 alias_secondary=True,
             )
             if sj is not None:
@@ -1311,7 +1311,6 @@ class RelationshipProperty(StrategizedProperty):
                 secondary,
                 target_adapter,
             ) = self.property._create_joins(
-                dest_polymorphic=True,
                 dest_selectable=to_selectable,
                 source_selectable=source_selectable,
             )
@@ -2424,9 +2423,8 @@ class RelationshipProperty(StrategizedProperty):
         self,
         source_polymorphic=False,
         source_selectable=None,
-        dest_polymorphic=False,
         dest_selectable=None,
-        of_type_mapper=None,
+        of_type_entity=None,
         alias_secondary=False,
     ):
 
@@ -2439,9 +2437,17 @@ class RelationshipProperty(StrategizedProperty):
             if source_polymorphic and self.parent.with_polymorphic:
                 source_selectable = self.parent._with_polymorphic_selectable
 
+        if of_type_entity:
+            dest_mapper = of_type_entity.mapper
+            if dest_selectable is None:
+                dest_selectable = of_type_entity.selectable
+                aliased = True
+        else:
+            dest_mapper = self.mapper
+
         if dest_selectable is None:
             dest_selectable = self.entity.selectable
-            if dest_polymorphic and self.mapper.with_polymorphic:
+            if self.mapper.with_polymorphic:
                 aliased = True
 
             if self._is_self_referential and source_selectable is None:
@@ -2452,8 +2458,6 @@ class RelationshipProperty(StrategizedProperty):
             or self.mapper.with_polymorphic
         ):
             aliased = True
-
-        dest_mapper = of_type_mapper or self.mapper
 
         single_crit = dest_mapper._single_table_criterion
         aliased = aliased or (

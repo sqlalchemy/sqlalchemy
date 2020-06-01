@@ -857,7 +857,10 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                 exec_opts = {}
                 bind_arguments = {}
                 ORMCompileState.orm_pre_session_exec(
-                    sess, compile_state.query, exec_opts, bind_arguments
+                    sess,
+                    compile_state.select_statement,
+                    exec_opts,
+                    bind_arguments,
                 )
 
                 r = sess.connection().execute(

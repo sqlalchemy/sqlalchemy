@@ -401,7 +401,6 @@ Example usage::
 from .. import exc
 from .. import util
 from ..sql import sqltypes
-from ..sql import visitors
 
 
 def compiles(class_, *specs):
@@ -456,12 +455,12 @@ def compiles(class_, *specs):
 
 def deregister(class_):
     """Remove all custom compilers associated with a given
-    :class:`_expression.ClauseElement` type."""
+    :class:`_expression.ClauseElement` type.
+
+    """
 
     if hasattr(class_, "_compiler_dispatcher"):
-        # regenerate default _compiler_dispatch
-        visitors._generate_compiler_dispatch(class_)
-        # remove custom directive
+        class_._compiler_dispatch = class_._original_compiler_dispatch
         del class_._compiler_dispatcher
 
 

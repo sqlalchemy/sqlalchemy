@@ -71,6 +71,7 @@ from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import elements
 from sqlalchemy.sql import label
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
@@ -3293,6 +3294,29 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             't._3foo = :3foo_1 AND t."4(foo" = :4_foo_1',
             checkparams={"3foo_1": "foo", "4_foo_1": "bar"},
         )
+
+    def test_bind_given_anon_name_dont_double(self):
+        c = column("id")
+        l = c.label(None)
+
+        # new case as of Id810f485c5f7ed971529489b84694e02a3356d6d
+        subq = select([l]).subquery()
+
+        # this creates a ColumnClause as a proxy to the Label() that has
+        # an anoymous name, so the column has one too.
+        anon_col = subq.c[0]
+        assert isinstance(anon_col.name, elements._anonymous_label)
+
+        # then when BindParameter is created, it checks the label
+        # and doesn't double up on the anonymous name which is uncachable
+        expr = anon_col > 5
+
+        self.assert_compile(
+            expr, "anon_1.id_1 > :param_1", checkparams={"param_1": 5}
+        )
+
+        # see also test_compare.py -> _statements_w_anonymous_col_names
+        # fixture for cache key
 
     def test_bind_as_col(self):
         t = table("foo", column("id"))

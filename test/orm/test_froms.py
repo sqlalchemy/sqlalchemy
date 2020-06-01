@@ -2478,6 +2478,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 "email_address"
             ),
         ).group_by(Address.user_id)
+
         ag1 = aliased(Address, agg_address.subquery())
         ag2 = aliased(Address, agg_address.subquery(), adapt_on_names=True)
 

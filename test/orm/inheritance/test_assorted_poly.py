@@ -1342,6 +1342,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
             )
             .order_by(Person.name)
         )
+
         eq_(
             list(r),
             [

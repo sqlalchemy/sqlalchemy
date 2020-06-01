@@ -71,6 +71,10 @@ class Select(_LegacySelect):
 
         return self.where(*criteria)
 
+    def _exported_columns_iterator(self):
+        meth = SelectState.get_plugin_class(self).exported_columns_iterator
+        return meth(self)
+
     def _filter_by_zero(self):
         if self._setup_joins:
             meth = SelectState.get_plugin_class(

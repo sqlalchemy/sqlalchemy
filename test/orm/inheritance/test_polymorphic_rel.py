@@ -1522,6 +1522,32 @@ class _PolymorphicTestBase(object):
             expected,
         )
 
+    def test_self_referential_two_newstyle(self):
+        # TODO: this is the first test *EVER* of an aliased class of
+        # an aliased class.  we should add many more tests for this.
+        # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
+        sess = create_session()
+        expected = [(m1, e1), (m1, e2), (m1, b1)]
+
+        p1 = aliased(Person)
+        p2 = aliased(Person)
+        stmt = (
+            future_select(p1, p2)
+            .filter(p1.company_id == p2.company_id)
+            .filter(p1.name == "dogbert")
+            .filter(p1.person_id > p2.person_id)
+        )
+        subq = stmt.subquery()
+
+        pa1 = aliased(p1, subq)
+        pa2 = aliased(p2, subq)
+
+        stmt = future_select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
+
+        eq_(
+            sess.execute(stmt).unique().all(), expected,
+        )
+
     def test_nesting_queries(self):
         # query.statement places a flag "no_adapt" on the returned
         # statement.  This prevents the polymorphic adaptation in the

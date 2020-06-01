@@ -3451,8 +3451,8 @@ class SelectState(util.MemoizedSlots, CompileState):
         self.columns_plus_names = statement._generate_columns_plus_names(True)
 
     def _get_froms(self, statement):
-        froms = []
         seen = set()
+        froms = []
 
         for item in itertools.chain(
             itertools.chain.from_iterable(
@@ -3474,6 +3474,16 @@ class SelectState(util.MemoizedSlots, CompileState):
                 froms.append(item)
                 seen.update(item._cloned_set)
 
+        toremove = set(
+            itertools.chain.from_iterable(
+                [_expand_cloned(f._hide_froms) for f in froms]
+            )
+        )
+        if toremove:
+            # filter out to FROM clauses not in the list,
+            # using a list to maintain ordering
+            froms = [f for f in froms if f not in toremove]
+
         return froms
 
     def _get_display_froms(
@@ -3489,16 +3499,6 @@ class SelectState(util.MemoizedSlots, CompileState):
         """
 
         froms = self.froms
-
-        toremove = set(
-            itertools.chain.from_iterable(
-                [_expand_cloned(f._hide_froms) for f in froms]
-            )
-        )
-        if toremove:
-            # filter out to FROM clauses not in the list,
-            # using a list to maintain ordering
-            froms = [f for f in froms if f not in toremove]
 
         if self.statement._correlate:
             to_correlate = self.statement._correlate
@@ -3557,7 +3557,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
-            for c in _select_iterables(self.statement._raw_columns)
+            for c in self.statement._exported_columns_iterator()
             if c._allow_label_resolve
         )
         only_froms = dict(
@@ -3577,6 +3577,10 @@ class SelectState(util.MemoizedSlots, CompileState):
             return stmt._setup_joins[-1][0]
         else:
             return None
+
+    @classmethod
+    def exported_columns_iterator(cls, statement):
+        return _select_iterables(statement._raw_columns)
 
     def _setup_joins(self, args):
         for (right, onclause, left, flags) in args:
@@ -4599,7 +4603,7 @@ class Select(
         pa = None
         collection = []
 
-        for c in _select_iterables(self._raw_columns):
+        for c in self._exported_columns_iterator():
             # we use key_label since this name is intended for targeting
             # within the ColumnCollection only, it's not related to SQL
             # rendering which always uses column name for SQL label names
@@ -4630,7 +4634,7 @@ class Select(
         return self
 
     def _generate_columns_plus_names(self, anon_for_dupe_key):
-        cols = _select_iterables(self._raw_columns)
+        cols = self._exported_columns_iterator()
 
         # when use_labels is on:
         # in all cases == if we see the same label name, use _label_anon_label
