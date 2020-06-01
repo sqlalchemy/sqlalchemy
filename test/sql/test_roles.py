@@ -1,17 +1,21 @@
 from sqlalchemy import bindparam
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import exc
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.schema import DDL
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql import coercions
-from sqlalchemy.sql import column
 from sqlalchemy.sql import false
 from sqlalchemy.sql import False_
 from sqlalchemy.sql import literal
@@ -25,6 +29,7 @@ from sqlalchemy.sql.selectable import FromGrouping
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_instance_of
@@ -141,26 +146,19 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_scalar_select_no_coercion(self):
-        # this is also tested in test/sql/test_deprecations.py; when the
-        # deprecation is turned to an error, those tests go away, and these
-        # will assert the correct exception plus informative error message.
-        assert_raises_message(
-            exc.SADeprecationWarning,
-            "coercing SELECT object to scalar subquery in a column-expression "
-            "context is deprecated",
-            expect,
-            roles.LabeledColumnExprRole,
-            select([column("q")]),
-        )
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            expect(
+                roles.LabeledColumnExprRole, select([column("q")]),
+            )
 
-        assert_raises_message(
-            exc.SADeprecationWarning,
-            "coercing SELECT object to scalar subquery in a column-expression "
-            "context is deprecated",
-            expect,
-            roles.LabeledColumnExprRole,
-            select([column("q")]).alias(),
-        )
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            expect(
+                roles.LabeledColumnExprRole, select([column("q")]).alias(),
+            )
 
     def test_statement_no_text_coercion(self):
         assert_raises_message(
@@ -298,3 +296,169 @@ class RoleTest(fixtures.TestBase):
 
     def test_columns_clause_role_neg(self):
         self._test_role_neg_comparisons(roles.ColumnsClauseRole)
+
+
+class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    table1 = table(
+        "mytable",
+        column("myid", Integer),
+        column("name", String),
+        column("description", String),
+    )
+
+    table2 = table(
+        "myothertable", column("otherid", Integer), column("othername", String)
+    )
+
+    def test_column_roles(self):
+        stmt = select([self.table1.c.myid])
+
+        for role in [
+            roles.WhereHavingRole,
+            roles.ExpressionElementRole,
+            roles.ByOfRole,
+            roles.OrderByRole,
+            # roles.LabeledColumnExprRole
+        ]:
+            with testing.expect_warnings(
+                "implicitly coercing SELECT object to scalar subquery"
+            ):
+                coerced = coercions.expect(role, stmt)
+                is_true(coerced.compare(stmt.scalar_subquery()))
+
+            with testing.expect_warnings(
+                "implicitly coercing SELECT object to scalar subquery"
+            ):
+                coerced = coercions.expect(role, stmt.alias())
+                is_true(coerced.compare(stmt.scalar_subquery()))
+
+    def test_labeled_role(self):
+        stmt = select([self.table1.c.myid])
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            coerced = coercions.expect(roles.LabeledColumnExprRole, stmt)
+            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            coerced = coercions.expect(
+                roles.LabeledColumnExprRole, stmt.alias()
+            )
+            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
+
+    def test_scalar_select(self):
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            self.assert_compile(
+                func.coalesce(select([self.table1.c.myid])),
+                "coalesce((SELECT mytable.myid FROM mytable))",
+            )
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            s = select([self.table1.c.myid]).alias()
+            self.assert_compile(
+                select([self.table1.c.myid]).where(self.table1.c.myid == s),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid = (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            self.assert_compile(
+                select([self.table1.c.myid]).where(s > self.table1.c.myid),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid < (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            s = select([self.table1.c.myid]).alias()
+            self.assert_compile(
+                select([self.table1.c.myid]).where(self.table1.c.myid == s),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid = (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            self.assert_compile(
+                select([self.table1.c.myid]).where(s > self.table1.c.myid),
+                "SELECT mytable.myid FROM mytable WHERE "
+                "mytable.myid < (SELECT mytable.myid FROM "
+                "mytable)",
+            )
+
+    @testing.fixture()
+    def update_from_fixture(self):
+        metadata = MetaData()
+
+        mytable = Table(
+            "mytable",
+            metadata,
+            Column("myid", Integer),
+            Column("name", String(30)),
+            Column("description", String(50)),
+        )
+        myothertable = Table(
+            "myothertable",
+            metadata,
+            Column("otherid", Integer),
+            Column("othername", String(30)),
+        )
+        return mytable, myothertable
+
+    def test_correlated_update_two(self, update_from_fixture):
+        table1, t2 = update_from_fixture
+
+        mt = table1.alias()
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            u = update(
+                table1,
+                values={
+                    table1.c.name: select(
+                        [mt.c.name], mt.c.myid == table1.c.myid
+                    )
+                },
+            )
+        self.assert_compile(
+            u,
+            "UPDATE mytable SET name=(SELECT mytable_1.name FROM "
+            "mytable AS mytable_1 WHERE "
+            "mytable_1.myid = mytable.myid)",
+        )
+
+    def test_correlated_update_three(self, update_from_fixture):
+        table1, table2 = update_from_fixture
+
+        # test against a regular constructed subquery
+        s = select([table2], table2.c.otherid == table1.c.myid)
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            u = update(
+                table1, table1.c.name == "jack", values={table1.c.name: s}
+            )
+        self.assert_compile(
+            u,
+            "UPDATE mytable SET name=(SELECT myothertable.otherid, "
+            "myothertable.othername FROM myothertable WHERE "
+            "myothertable.otherid = mytable.myid) "
+            "WHERE mytable.name = :name_1",
+        )
