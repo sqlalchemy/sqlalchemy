@@ -1630,3 +1630,18 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def supports_for_update_of(self):
         return only_if(lambda config: config.db.dialect.supports_for_update_of)
+
+    @property
+    def sequences_in_other_clauses(self):
+        """sequences allowed in WHERE, GROUP BY, HAVING, etc."""
+        return skip_if(["mssql", "oracle"])
+
+    @property
+    def supports_lastrowid_for_expressions(self):
+        """sequences allowed in WHERE, GROUP BY, HAVING, etc."""
+        return skip_if("mssql")
+
+    @property
+    def supports_sequence_for_autoincrement_column(self):
+        """for mssql, autoincrement means IDENTITY, not sequence"""
+        return skip_if("mssql")

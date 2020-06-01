@@ -49,6 +49,7 @@ from .elements import ColumnElement
 from .elements import quoted_name
 from .elements import TextClause
 from .selectable import TableClause
+from .type_api import to_instance
 from .visitors import InternalTraversal
 from .. import event
 from .. import exc
@@ -2312,6 +2313,7 @@ class IdentityOptions(object):
         cycle=None,
         cache=None,
         order=None,
+        data_type=None,
     ):
         """Construct a :class:`.IdentityOptions` object.
 
@@ -2330,7 +2332,8 @@ class IdentityOptions(object):
          sequence which are calculated in advance.
         :param order: optional boolean value; if true, renders the
          ORDER keyword.
-         name.
+        :param data_type: The type to be returned by the sequence.
+
         """
         self.start = start
         self.increment = increment
@@ -2341,6 +2344,10 @@ class IdentityOptions(object):
         self.cycle = cycle
         self.cache = cache
         self.order = order
+        if data_type is not None:
+            self.data_type = to_instance(data_type)
+        else:
+            self.data_type = None
 
 
 class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
@@ -2393,6 +2400,7 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
         schema=None,
         cache=None,
         order=None,
+        data_type=None,
         optional=False,
         quote=None,
         metadata=None,
@@ -2402,6 +2410,7 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
         """Construct a :class:`.Sequence` object.
 
         :param name: the name of the sequence.
+
         :param start: the starting index of the sequence.  This value is
          used when the CREATE SEQUENCE command is emitted to the database
          as the value of the "START WITH" clause.   If ``None``, the
@@ -2478,6 +2487,12 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
 
          .. versionadded:: 1.1.12
 
+        :param data_type: The type to be returned by the sequence, for
+         dialects that allow us to choose between INTEGER, BIGINT, etc.
+         (e.g., mssql).
+
+         .. versionadded:: 1.4.0
+
         :param optional: boolean value, when ``True``, indicates that this
          :class:`.Sequence` object only needs to be explicitly generated
          on backends that don't provide another way to generate primary
@@ -2542,6 +2557,7 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
             cycle=cycle,
             cache=cache,
             order=order,
+            data_type=data_type,
         )
         self.name = quoted_name(name, quote)
         self.optional = optional

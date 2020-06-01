@@ -26,7 +26,8 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_create_drop_ddl(self):
         self.assert_compile(
-            CreateSequence(Sequence("foo_seq")), "CREATE SEQUENCE foo_seq"
+            CreateSequence(Sequence("foo_seq")),
+            "CREATE SEQUENCE foo_seq START WITH 1",
         )
 
         self.assert_compile(
@@ -36,7 +37,7 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             CreateSequence(Sequence("foo_seq", increment=2)),
-            "CREATE SEQUENCE foo_seq INCREMENT BY 2",
+            "CREATE SEQUENCE foo_seq INCREMENT BY 2 START WITH 1",
         )
 
         self.assert_compile(
@@ -81,12 +82,12 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             CreateSequence(Sequence("foo_seq", cache=1000, order=True)),
-            "CREATE SEQUENCE foo_seq CACHE 1000 ORDER",
+            "CREATE SEQUENCE foo_seq START WITH 1 CACHE 1000 ORDER",
         )
 
         self.assert_compile(
             CreateSequence(Sequence("foo_seq", order=True)),
-            "CREATE SEQUENCE foo_seq ORDER",
+            "CREATE SEQUENCE foo_seq START WITH 1 ORDER",
         )
 
         self.assert_compile(
@@ -111,7 +112,7 @@ class LegacySequenceExecTest(fixtures.TestBase):
         """asserts return of next_value is an int"""
 
         assert isinstance(ret, util.int_types)
-        assert ret > 0
+        assert ret >= testing.db.dialect.default_sequence_base
 
     def test_implicit_connectionless(self):
         s = Sequence("my_sequence", metadata=MetaData(testing.db))
@@ -169,7 +170,7 @@ class SequenceExecTest(fixtures.TestBase):
         """asserts return of next_value is an int"""
 
         assert isinstance(ret, util.int_types)
-        assert ret > 0
+        assert ret >= testing.db.dialect.default_sequence_base
 
     def test_execute(self, connection):
         s = Sequence("my_sequence")
@@ -202,7 +203,7 @@ class SequenceExecTest(fixtures.TestBase):
         s = Sequence("my_sequence")
         self._assert_seq_result(connection.scalar(select([s.next_value()])))
 
-    @testing.fails_on("oracle", "ORA-02287: sequence number not allowed here")
+    @testing.requires.sequences_in_other_clauses
     @testing.provide_metadata
     def test_func_embedded_whereclause(self, connection):
         """test can use next_value() in whereclause"""
@@ -224,27 +225,11 @@ class SequenceExecTest(fixtures.TestBase):
         """test can use next_value() in values() of _ValuesBase"""
 
         metadata = self.metadata
-        t1 = Table("t", metadata, Column("x", Integer))
+        t1 = Table("t", metadata, Column("x", Integer),)
         t1.create(testing.db)
         s = Sequence("my_sequence")
         connection.execute(t1.insert().values(x=s.next_value()))
         self._assert_seq_result(connection.scalar(t1.select()))
-
-    @testing.requires.supports_lastrowid
-    @testing.provide_metadata
-    def test_inserted_pk_no_returning_w_lastrowid(self):
-        """test inserted_primary_key contains the pk when
-        pk_col=next_value(), lastrowid is supported."""
-
-        metadata = self.metadata
-        t1 = Table("t", metadata, Column("x", Integer, primary_key=True))
-        t1.create(testing.db)
-        e = engines.testing_engine(options={"implicit_returning": False})
-        s = Sequence("my_sequence")
-
-        with e.connect() as conn:
-            r = conn.execute(t1.insert().values(x=s.next_value()))
-            self._assert_seq_result(r.inserted_primary_key[0])
 
     @testing.requires.no_lastrowid_support
     @testing.provide_metadata
@@ -262,6 +247,23 @@ class SequenceExecTest(fixtures.TestBase):
             r = conn.execute(t1.insert().values(x=s.next_value()))
             eq_(r.inserted_primary_key, [None])
 
+    @testing.requires.supports_lastrowid
+    @testing.requires.supports_lastrowid_for_expressions
+    @testing.provide_metadata
+    def test_inserted_pk_no_returning_w_lastrowid(self):
+        """test inserted_primary_key contains the pk when
+        pk_col=next_value(), lastrowid is supported."""
+
+        metadata = self.metadata
+        t1 = Table("t", metadata, Column("x", Integer, primary_key=True,),)
+        t1.create(testing.db)
+        e = engines.testing_engine(options={"implicit_returning": False})
+        s = Sequence("my_sequence")
+
+        with e.connect() as conn:
+            r = conn.execute(t1.insert().values(x=s.next_value()))
+            self._assert_seq_result(r.inserted_primary_key[0])
+
     @testing.requires.returning
     @testing.provide_metadata
     def test_inserted_pk_implicit_returning(self):
@@ -270,7 +272,7 @@ class SequenceExecTest(fixtures.TestBase):
 
         metadata = self.metadata
         s = Sequence("my_sequence")
-        t1 = Table("t", metadata, Column("x", Integer, primary_key=True))
+        t1 = Table("t", metadata, Column("x", Integer, primary_key=True,),)
         t1.create(testing.db)
 
         e = engines.testing_engine(options={"implicit_returning": True})
@@ -298,7 +300,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         try:
             with testing.db.connect() as conn:
                 values = [conn.execute(seq) for i in range(3)]
-                start = seq.start or 1
+                start = seq.start or testing.db.dialect.default_sequence_base
                 inc = seq.increment or 1
                 eq_(values, list(range(start, start + inc * 3, inc)))
 
@@ -380,6 +382,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert not self._has_sequence(connection, "s2")
 
     @testing.requires.returning
+    @testing.requires.supports_sequence_for_autoincrement_column
     @testing.provide_metadata
     def test_freestanding_sequence_via_autoinc(self, connection):
         t = Table(
@@ -416,7 +419,11 @@ class TableBoundSequenceTest(fixtures.TablesTest):
             "cartitems",
             metadata,
             Column(
-                "cart_id", Integer, Sequence("cart_id_seq"), primary_key=True
+                "cart_id",
+                Integer,
+                Sequence("cart_id_seq"),
+                primary_key=True,
+                autoincrement=False,
             ),
             Column("description", String(40)),
             Column("createdate", sa.DateTime()),
@@ -426,7 +433,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         Table(
             "Manager",
             metadata,
-            Column("obj_id", Integer, Sequence("obj_id_seq")),
+            Column("obj_id", Integer, Sequence("obj_id_seq"),),
             Column("name", String(128)),
             Column(
                 "id",
@@ -443,7 +450,8 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         connection.execute(cartitems.insert(), dict(description="there"))
         r = connection.execute(cartitems.insert(), dict(description="lala"))
 
-        eq_(r.inserted_primary_key[0], 3)
+        expected = 2 + testing.db.dialect.default_sequence_base
+        eq_(r.inserted_primary_key[0], expected)
 
         eq_(
             connection.scalar(
@@ -451,7 +459,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
                     cartitems.c.description == "lala"
                 ),
             ),
-            3,
+            expected,
         )
 
     def test_seq_nonpk(self):
@@ -471,15 +479,17 @@ class TableBoundSequenceTest(fixtures.TablesTest):
             conn.execute(
                 sometable.insert(), [{"name": "name3"}, {"name": "name4"}]
             )
+
+            dsb = testing.db.dialect.default_sequence_base
             eq_(
                 list(
                     conn.execute(sometable.select().order_by(sometable.c.id))
                 ),
                 [
-                    (1, "somename", 1),
-                    (2, "someother", 2),
-                    (3, "name3", 3),
-                    (4, "name4", 4),
+                    (dsb, "somename", dsb,),
+                    (dsb + 1, "someother", dsb + 1,),
+                    (dsb + 2, "name3", dsb + 2,),
+                    (dsb + 3, "name4", dsb + 3,),
                 ],
             )
 

@@ -4180,19 +4180,19 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateSequence(s1),
-            "CREATE SEQUENCE [SCHEMA__none].s1",
+            "CREATE SEQUENCE [SCHEMA__none].s1 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             schema.CreateSequence(s2),
-            "CREATE SEQUENCE [SCHEMA_foo].s2",
+            "CREATE SEQUENCE [SCHEMA_foo].s2 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             schema.CreateSequence(s3),
-            "CREATE SEQUENCE [SCHEMA_bar].s3",
+            "CREATE SEQUENCE [SCHEMA_bar].s3 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 

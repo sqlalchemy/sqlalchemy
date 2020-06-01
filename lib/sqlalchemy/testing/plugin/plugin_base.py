@@ -477,6 +477,8 @@ def _prep_testing_database(options, file_config):
                         )
                     )
 
+            # TODO: need to do a get_sequences and drop them also after tables
+
 
 @post
 def _reverse_topological(options, file_config):

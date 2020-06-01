@@ -1,0 +1,18 @@
+.. change::
+    :tags: sql, mssql
+    :tickets: 4235, 4633
+
+    Added support for "CREATE SEQUENCE" and full :class:`.Sequence` support for
+    Microsoft SQL Server.  This removes the deprecated feature of using
+    :class:`.Sequence` objects to manipulate IDENTITY characteristics which
+    should now be performed using ``mssql_identity_start`` and
+    ``mssql_identity_increment`` as documented at :ref:`mssql_identity`. The
+    change includes a new parameter :paramref:`.Sequence.data_type` to
+    accommodate SQL Server's choice of datatype, which for that backend
+    includes INTEGER, BIGINT, and DECIMAL(n, 0).   The default starting value
+    for SQL Server's version of :class:`.Sequence` has been set at 1; this
+    default is now emitted within the CREATE SEQUENCE DDL for all backends.
+
+    .. seealso::
+
+        :ref:`change_4235`

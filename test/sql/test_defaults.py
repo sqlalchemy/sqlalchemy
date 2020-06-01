@@ -998,7 +998,7 @@ class PKIncrementTest(fixtures.TablesTest):
             metadata,
             Column(
                 "id",
-                Integer,
+                testing.db.dialect.sequence_default_column_type,
                 Sequence("ai_id_seq", optional=True),
                 primary_key=True,
             ),
@@ -1036,11 +1036,24 @@ class PKIncrementTest(fixtures.TablesTest):
         self.assert_(last not in ids)
         ids.add(last)
 
-        eq_(ids, set([1, 2, 3, 4]))
+        eq_(
+            ids,
+            set(
+                range(
+                    testing.db.dialect.default_sequence_base,
+                    testing.db.dialect.default_sequence_base + 4,
+                )
+            ),
+        )
 
         eq_(
             list(bind.execute(aitable.select().order_by(aitable.c.id))),
-            [(1, 1, None), (2, None, "row 2"), (3, 3, "row 3"), (4, 4, None)],
+            [
+                (testing.db.dialect.default_sequence_base, 1, None),
+                (testing.db.dialect.default_sequence_base + 1, None, "row 2"),
+                (testing.db.dialect.default_sequence_base + 2, 3, "row 3"),
+                (testing.db.dialect.default_sequence_base + 3, 4, None),
+            ],
         )
 
     def test_autoincrement_autocommit(self):
@@ -1164,6 +1177,7 @@ class AutoIncrementTest(fixtures.TestBase):
         )
         return dataset_no_autoinc
 
+    @testing.skip_if(testing.requires.sequences)
     def test_col_w_optional_sequence_non_autoinc_no_firing(
         self, dataset_no_autoinc, connection
     ):
@@ -1215,7 +1229,7 @@ class SpecialTypePKTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         class MyInteger(TypeDecorator):
-            impl = Integer
+            impl = testing.db.dialect.sequence_default_column_type
 
             def process_bind_param(self, value, dialect):
                 if value is None:
@@ -1248,6 +1262,12 @@ class SpecialTypePKTest(fixtures.TestBase):
             t.create(conn)
             r = conn.execute(t.insert().values(data=5))
 
+            expected_result = "INT_" + str(
+                testing.db.dialect.default_sequence_base
+                if (arg and isinstance(arg[0], Sequence))
+                else 1
+            )
+
             # we don't pre-fetch 'server_default'.
             if "server_default" in kw and (
                 not testing.db.dialect.implicit_returning
@@ -1255,9 +1275,13 @@ class SpecialTypePKTest(fixtures.TestBase):
             ):
                 eq_(r.inserted_primary_key, [None])
             else:
-                eq_(r.inserted_primary_key, ["INT_1"])
+                eq_(
+                    r.inserted_primary_key, [expected_result],
+                )
 
-            eq_(conn.execute(t.select()).first(), ("INT_1", 5))
+            eq_(
+                conn.execute(t.select()).first(), (expected_result, 5),
+            )
 
     def test_plain(self):
         # among other things, tests that autoincrement

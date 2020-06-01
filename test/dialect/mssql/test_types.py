@@ -561,9 +561,10 @@ class TypeRoundTripTest(
             metadata,
             Column(
                 "id",
-                Integer,
+                testing.db.dialect.sequence_default_column_type,
                 Sequence("numeric_id_seq", optional=True),
                 primary_key=True,
+                autoincrement=False,
             ),
             Column(
                 "numericcol", Numeric(precision=38, scale=20, asdecimal=True)
@@ -651,7 +652,7 @@ class TypeRoundTripTest(
             metadata,
             Column(
                 "id",
-                Integer,
+                testing.db.dialect.sequence_default_column_type,
                 Sequence("numeric_id_seq", optional=True),
                 primary_key=True,
             ),

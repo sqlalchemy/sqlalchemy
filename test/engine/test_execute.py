@@ -1001,7 +1001,7 @@ class MockStrategyTest(fixtures.TestBase):
             "testtable",
             metadata,
             Column(
-                "pk", Integer, Sequence("testtable_pk_seq"), primary_key=True
+                "pk", Integer, Sequence("testtable_pk_seq"), primary_key=True,
             ),
         )
 
@@ -1862,7 +1862,12 @@ class EngineEventsTest(fixtures.TestBase):
         t = Table(
             "t",
             self.metadata,
-            Column("x", Integer, Sequence("t_id_seq"), primary_key=True),
+            Column(
+                "x",
+                testing.db.dialect.sequence_default_column_type,
+                Sequence("t_id_seq"),
+                primary_key=True,
+            ),
             implicit_returning=False,
         )
         self.metadata.create_all(engine)

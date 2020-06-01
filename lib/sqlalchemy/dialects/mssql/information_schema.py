@@ -173,3 +173,12 @@ computed_columns = Table(
     Column("definition", CoerceUnicode),
     schema="sys",
 )
+
+sequences = Table(
+    "SEQUENCES",
+    ischema,
+    Column("SEQUENCE_CATALOG", CoerceUnicode, key="sequence_catalog"),
+    Column("SEQUENCE_SCHEMA", CoerceUnicode, key="sequence_schema"),
+    Column("SEQUENCE_NAME", CoerceUnicode, key="sequence_name"),
+    schema="INFORMATION_SCHEMA",
+)

@@ -41,7 +41,9 @@ class LastrowidTest(fixtures.TablesTest):
 
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()
-        eq_(row, (conn.engine.dialect.default_sequence_base, "some data"))
+        eq_(
+            row, (conn.dialect.default_sequence_base, "some data",),
+        )
 
     def test_autoincrement_on_insert(self, connection):
 
@@ -282,7 +284,9 @@ class ReturningTest(fixtures.TablesTest):
 
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()
-        eq_(row, (conn.engine.dialect.default_sequence_base, "some data"))
+        eq_(
+            row, (conn.dialect.default_sequence_base, "some data",),
+        )
 
     @classmethod
     def define_tables(cls, metadata):

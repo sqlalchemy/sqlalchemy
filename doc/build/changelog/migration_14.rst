@@ -1600,3 +1600,30 @@ was not created.
     :ref:`defaults_sequences`
 
 :ticket:`4976`
+
+
+.. _change_4235:
+
+Added Sequence support distinct from IDENTITY to SQL Server
+-----------------------------------------------------------
+
+The :class:`.Sequence` construct is now fully functional with Microsoft
+SQL Server.  When applied to a :class:`.Column`, the DDL for the table will
+no longer include IDENTITY keywords and instead will rely upon "CREATE SEQUENCE"
+to ensure a sequence is present which will then be used for INSERT statements
+on the table.
+
+The :class:`.Sequence` prior to version 1.3 was used to control parameters for
+the IDENTITY column in SQL Server; this usage emitted deprecation warnings
+throughout 1.3 and is now removed in 1.4.  For control of paramters for an
+IDENTITY column, the ``mssql_identity_start`` and ``mssql_identity_increment``
+parameters should be used; see the MSSQL dialect documentation linked below.
+
+
+.. seealso::
+
+    :ref:`mssql_identity`
+
+:ticket:`4235`
+
+:ticket:`4633`

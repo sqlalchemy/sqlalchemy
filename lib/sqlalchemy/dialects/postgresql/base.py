@@ -2446,6 +2446,7 @@ class PGDialect(default.DefaultDialect):
 
     supports_sequences = True
     sequences_optional = True
+    sequence_default_column_type = INTEGER
     preexecute_autoincrement_sequences = True
     postfetch_lastrowid = False
 

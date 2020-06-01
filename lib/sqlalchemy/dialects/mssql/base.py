@@ -22,7 +22,8 @@ behavior for an integer primary key column, described at
 the first
 integer primary key column in a :class:`_schema.Table`
 will be considered to be the
-identity column and will generate DDL as such::
+identity column - unless it is associated with a :class:`.Sequence` - and will
+generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
 
@@ -75,6 +76,10 @@ is set to ``False`` on any integer primary key column::
    deprecated and will be removed in a future release.   Please use
    the ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
    documented at :ref:`mssql_identity`.
+
+.. versionchanged::  1.4   Removed the ability to use a :class:`.Sequence`
+   object to modify IDENTITY characteristics. :class:`.Sequence` objects
+   now only manipulate true T-SQL SEQUENCE types.
 
 .. note::
 
@@ -215,6 +220,17 @@ how SQLAlchemy handles this:
 
 This
 is an auxiliary use case suitable for testing and bulk insert scenarios.
+
+SEQUENCE support
+----------------
+
+The :class:`.Sequence` object now creates "real" sequences, i.e.,
+``CREATE SEQUENCE``. To provide compatibility with other dialects,
+:class:`.Sequence` defaults to a data type of Integer and a start value of 1,
+even though the T-SQL defaults are BIGINT and -9223372036854775808,
+respectively.
+
+.. versionadded:: 1.4.0
 
 MAX on VARCHAR / NVARCHAR
 -------------------------
@@ -701,6 +717,7 @@ import re
 from . import information_schema as ischema
 from ... import exc
 from ... import schema as sa_schema
+from ... import Sequence
 from ... import sql
 from ... import types as sqltypes
 from ... import util
@@ -713,6 +730,7 @@ from ...sql import expression
 from ...sql import func
 from ...sql import quoted_name
 from ...sql import util as sql_util
+from ...sql.type_api import to_instance
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -1465,18 +1483,20 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
         if self.isinsert:
             tbl = self.compiled.statement.table
-            seq_column = tbl._autoincrement_column
-            insert_has_sequence = seq_column is not None
+            id_column = tbl._autoincrement_column
+            insert_has_identity = (id_column is not None) and (
+                not isinstance(id_column.default, Sequence)
+            )
 
-            if insert_has_sequence:
+            if insert_has_identity:
                 compile_state = self.compiled.compile_state
                 self._enable_identity_insert = (
-                    seq_column.key in self.compiled_parameters[0]
+                    id_column.key in self.compiled_parameters[0]
                 ) or (
                     compile_state._dict_parameters
                     and (
-                        seq_column.key in compile_state._dict_parameters
-                        or seq_column in compile_state._dict_parameters
+                        id_column.key in compile_state._dict_parameters
+                        or id_column in compile_state._dict_parameters
                     )
                 )
 
@@ -1485,7 +1505,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
 
             self._select_lastrowid = (
                 not self.compiled.inline
-                and insert_has_sequence
+                and insert_has_identity
                 and not self.compiled.returning
                 and not self._enable_identity_insert
                 and not self.executemany
@@ -1569,6 +1589,23 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
             except Exception:
                 pass
+
+    def get_result_cursor_strategy(self, result):
+        if self._result_strategy:
+            return self._result_strategy
+        else:
+            return super(MSExecutionContext, self).get_result_cursor_strategy(
+                result
+            )
+
+    def fire_sequence(self, seq, type_):
+        return self._execute_scalar(
+            (
+                "SELECT NEXT VALUE FOR %s"
+                % self.dialect.identifier_preparer.format_sequence(seq)
+            ),
+            type_,
+        )
 
 
 class MSSQLCompiler(compiler.SQLCompiler):
@@ -1972,6 +2009,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
+    def visit_sequence(self, seq, **kw):
+        return "NEXT VALUE FOR %s" % self.preparer.format_sequence(seq)
+
 
 class MSSQLStrictCompiler(MSSQLCompiler):
 
@@ -2050,41 +2090,16 @@ class MSDDLCompiler(compiler.DDLCompiler):
                 "in order to generate DDL"
             )
 
-        # install an IDENTITY Sequence if we either a sequence or an implicit
-        # IDENTITY column
-        if isinstance(column.default, sa_schema.Sequence):
-
-            if (
-                column.default.start is not None
-                or column.default.increment is not None
-                or column is not column.table._autoincrement_column
-            ):
-                util.warn_deprecated(
-                    "Use of Sequence with SQL Server in order to affect the "
-                    "parameters of the IDENTITY value is deprecated, as "
-                    "Sequence "
-                    "will correspond to an actual SQL Server "
-                    "CREATE SEQUENCE in "
-                    "a future release.  Please use the mssql_identity_start "
-                    "and mssql_identity_increment parameters.",
-                    version="1.3",
-                )
-            if column.default.start == 0:
-                start = 0
-            else:
-                start = column.default.start or 1
-
-            colspec += " IDENTITY(%s,%s)" % (
-                start,
-                column.default.increment or 1,
-            )
-        elif (
+        if (
             column is column.table._autoincrement_column
             or column.autoincrement is True
         ):
-            start = column.dialect_options["mssql"]["identity_start"]
-            increment = column.dialect_options["mssql"]["identity_increment"]
-            colspec += " IDENTITY(%s,%s)" % (start, increment)
+            if not isinstance(column.default, Sequence):
+                start = column.dialect_options["mssql"]["identity_start"]
+                increment = column.dialect_options["mssql"][
+                    "identity_increment"
+                ]
+                colspec += " IDENTITY(%s,%s)" % (start, increment)
         else:
             default = self.get_column_default_string(column)
             if default is not None:
@@ -2202,6 +2217,18 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if generated.persisted is True:
             text += " PERSISTED"
         return text
+
+    def visit_create_sequence(self, create, **kw):
+
+        if create.element.data_type is not None:
+            data_type = create.element.data_type
+        else:
+            data_type = to_instance(self.dialect.sequence_default_column_type)
+
+        prefix = " AS %s" % self.type_compiler.process(data_type)
+        return super(MSDDLCompiler, self).visit_create_sequence(
+            create, prefix=prefix, **kw
+        )
 
 
 class MSIdentifierPreparer(compiler.IdentifierPreparer):
@@ -2362,6 +2389,12 @@ class MSDialect(default.DefaultDialect):
     )
 
     ischema_names = ischema_names
+
+    supports_sequences = True
+    # T-SQL's actual default is BIGINT
+    sequence_default_column_type = INTEGER
+    # T-SQL's actual default is -9223372036854775808
+    default_sequence_base = 1
 
     supports_native_boolean = False
     non_native_boolean_check_constraint = False
@@ -2560,6 +2593,21 @@ class MSDialect(default.DefaultDialect):
 
         if owner:
             s = s.where(tables.c.table_schema == owner)
+
+        c = connection.execute(s)
+
+        return c.first() is not None
+
+    @_db_plus_owner
+    def has_sequence(self, connection, sequencename, dbname, owner, schema):
+        sequences = ischema.sequences
+
+        s = sql.select([sequences.c.sequence_name]).where(
+            sequences.c.sequence_name == sequencename
+        )
+
+        if owner:
+            s = s.where(sequences.c.sequence_schema == owner)
 
         c = connection.execute(s)
 

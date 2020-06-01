@@ -23,7 +23,7 @@ class SequenceTest(fixtures.TablesTest):
         Table(
             "seq_pk",
             metadata,
-            Column("id", Integer, Sequence("tab_id_seq"), primary_key=True),
+            Column("id", Integer, Sequence("tab_id_seq"), primary_key=True,),
             Column("data", String(50)),
         )
 
@@ -33,7 +33,7 @@ class SequenceTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Sequence("tab_id_seq", optional=True),
+                Sequence("tab_id_seq", data_type=Integer, optional=True),
                 primary_key=True,
             ),
             Column("data", String(50)),
@@ -45,11 +45,11 @@ class SequenceTest(fixtures.TablesTest):
 
     def test_insert_lastrowid(self, connection):
         r = connection.execute(self.tables.seq_pk.insert(), data="some data")
-        eq_(r.inserted_primary_key, [1])
+        eq_(r.inserted_primary_key, [testing.db.dialect.default_sequence_base])
 
     def test_nextval_direct(self, connection):
         r = connection.execute(self.tables.seq_pk.c.id.default)
-        eq_(r, 1)
+        eq_(r, testing.db.dialect.default_sequence_base)
 
     @requirements.sequences_optional
     def test_optional_seq(self, connection):
@@ -60,7 +60,7 @@ class SequenceTest(fixtures.TablesTest):
 
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()
-        eq_(row, (1, "some data"))
+        eq_(row, (testing.db.dialect.default_sequence_base, "some data"))
 
 
 class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):
