@@ -22,7 +22,6 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
@@ -225,106 +224,6 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
                 "(SELECT mytable.myid AS myid FROM mytable) AS anon_1 "
                 "LEFT OUTER JOIN myothertable "
                 "ON myothertable.otherid = mytable.myid",
-            )
-
-    def test_column_roles(self):
-        stmt = select([self.table1.c.myid])
-
-        for role in [
-            roles.WhereHavingRole,
-            roles.ExpressionElementRole,
-            roles.ByOfRole,
-            roles.OrderByRole,
-            # roles.LabeledColumnExprRole
-        ]:
-            with testing.expect_deprecated(
-                "coercing SELECT object to scalar "
-                "subquery in a column-expression context is deprecated"
-            ):
-                coerced = coercions.expect(role, stmt)
-                is_true(coerced.compare(stmt.scalar_subquery()))
-
-            with testing.expect_deprecated(
-                "coercing SELECT object to scalar "
-                "subquery in a column-expression context is deprecated"
-            ):
-                coerced = coercions.expect(role, stmt.alias())
-                is_true(coerced.compare(stmt.scalar_subquery()))
-
-    def test_labeled_role(self):
-        stmt = select([self.table1.c.myid])
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            coerced = coercions.expect(roles.LabeledColumnExprRole, stmt)
-            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            coerced = coercions.expect(
-                roles.LabeledColumnExprRole, stmt.alias()
-            )
-            is_true(coerced.compare(stmt.scalar_subquery().label(None)))
-
-    def test_scalar_select(self):
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            self.assert_compile(
-                func.coalesce(select([self.table1.c.myid])),
-                "coalesce((SELECT mytable.myid FROM mytable))",
-            )
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            s = select([self.table1.c.myid]).alias()
-            self.assert_compile(
-                select([self.table1.c.myid]).where(self.table1.c.myid == s),
-                "SELECT mytable.myid FROM mytable WHERE "
-                "mytable.myid = (SELECT mytable.myid FROM "
-                "mytable)",
-            )
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            self.assert_compile(
-                select([self.table1.c.myid]).where(s > self.table1.c.myid),
-                "SELECT mytable.myid FROM mytable WHERE "
-                "mytable.myid < (SELECT mytable.myid FROM "
-                "mytable)",
-            )
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            s = select([self.table1.c.myid]).alias()
-            self.assert_compile(
-                select([self.table1.c.myid]).where(self.table1.c.myid == s),
-                "SELECT mytable.myid FROM mytable WHERE "
-                "mytable.myid = (SELECT mytable.myid FROM "
-                "mytable)",
-            )
-
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar "
-            "subquery in a column-expression context is deprecated"
-        ):
-            self.assert_compile(
-                select([self.table1.c.myid]).where(s > self.table1.c.myid),
-                "SELECT mytable.myid FROM mytable WHERE "
-                "mytable.myid < (SELECT mytable.myid FROM "
-                "mytable)",
             )
 
     def test_standalone_alias(self):
@@ -1684,66 +1583,4 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt, "UPDATE foo SET bar=%s LIMIT 10", dialect="mysql"
-        )
-
-    @testing.fixture()
-    def update_from_fixture(self):
-        metadata = MetaData()
-
-        mytable = Table(
-            "mytable",
-            metadata,
-            Column("myid", Integer),
-            Column("name", String(30)),
-            Column("description", String(50)),
-        )
-        myothertable = Table(
-            "myothertable",
-            metadata,
-            Column("otherid", Integer),
-            Column("othername", String(30)),
-        )
-        return mytable, myothertable
-
-    def test_correlated_update_two(self, update_from_fixture):
-        table1, t2 = update_from_fixture
-
-        mt = table1.alias()
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar subquery in a column-expression "
-            "context is deprecated"
-        ):
-            u = update(
-                table1,
-                values={
-                    table1.c.name: select(
-                        [mt.c.name], mt.c.myid == table1.c.myid
-                    )
-                },
-            )
-        self.assert_compile(
-            u,
-            "UPDATE mytable SET name=(SELECT mytable_1.name FROM "
-            "mytable AS mytable_1 WHERE "
-            "mytable_1.myid = mytable.myid)",
-        )
-
-    def test_correlated_update_three(self, update_from_fixture):
-        table1, table2 = update_from_fixture
-
-        # test against a regular constructed subquery
-        s = select([table2], table2.c.otherid == table1.c.myid)
-        with testing.expect_deprecated(
-            "coercing SELECT object to scalar subquery in a column-expression "
-            "context is deprecated"
-        ):
-            u = update(
-                table1, table1.c.name == "jack", values={table1.c.name: s}
-            )
-        self.assert_compile(
-            u,
-            "UPDATE mytable SET name=(SELECT myothertable.otherid, "
-            "myothertable.othername FROM myothertable WHERE "
-            "myothertable.otherid = mytable.myid) "
-            "WHERE mytable.name = :name_1",
         )

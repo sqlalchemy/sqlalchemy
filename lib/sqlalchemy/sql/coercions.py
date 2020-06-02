@@ -211,13 +211,10 @@ class _ColumnCoercions(object):
     __slots__ = ()
 
     def _warn_for_scalar_subquery_coercion(self):
-        util.warn_deprecated(
-            "coercing SELECT object to scalar subquery in a "
-            "column-expression context is deprecated in version 1.4; "
+        util.warn(
+            "implicitly coercing SELECT object to scalar subquery; "
             "please use the .scalar_subquery() method to produce a scalar "
-            "subquery.  This automatic coercion will be removed in a "
-            "future release.",
-            version="1.4",
+            "subquery.",
         )
 
     def _implicit_coercions(
@@ -368,11 +365,20 @@ class InElementImpl(RoleImpl):
                 isinstance(resolved, selectable.Alias)
                 and resolved.element._is_select_statement
             ):
-                return resolved.element
+                self._warn_for_implicit_coercion(resolved)
+                return self._post_coercion(resolved.element, **kw)
             else:
-                return resolved.select()
+                self._warn_for_implicit_coercion(resolved)
+                return self._post_coercion(resolved.select(), **kw)
         else:
             self._raise_for_expected(original_element, argname, resolved)
+
+    def _warn_for_implicit_coercion(self, elem):
+        util.warn(
+            "Coercing %s object into a select() for use in IN(); "
+            "please pass a select() construct explicitly"
+            % (elem.__class__.__name__)
+        )
 
     def _literal_coercion(self, element, expr, operator, **kw):
         if isinstance(element, collections_abc.Iterable) and not isinstance(
@@ -407,6 +413,8 @@ class InElementImpl(RoleImpl):
 
     def _post_coercion(self, element, expr, operator, **kw):
         if element._is_select_statement:
+            # for IN, we are doing scalar_subquery() coercion without
+            # a warning
             return element.scalar_subquery()
         elif isinstance(element, elements.ClauseList):
             assert not len(element.clauses) == 0
