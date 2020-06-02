@@ -169,8 +169,21 @@ def deferred(*columns, **kw):
     return ColumnProperty(deferred=True, *columns, **kw)
 
 
-def query_expression():
+def query_expression(default_expr=_sql.null()):
     """Indicate an attribute that populates from a query-time SQL expression.
+
+    :param default_expr: Optional SQL expression object that will be used in
+        all cases if not assigned later with :func:`_orm.with_expression`.
+        E.g.::
+
+            from sqlalchemy.sql import literal
+
+            class C(Base):
+                #...
+                my_expr = query_expression(literal(1))
+
+        .. versionadded:: 1.3.18
+
 
     .. versionadded:: 1.2
 
@@ -179,7 +192,7 @@ def query_expression():
         :ref:`mapper_querytime_expression`
 
     """
-    prop = ColumnProperty(_sql.null())
+    prop = ColumnProperty(default_expr)
     prop.strategy_key = (("query_expression", True),)
     return prop
 

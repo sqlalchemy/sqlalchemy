@@ -234,6 +234,11 @@ class ExpressionColumnLoader(ColumnLoader):
     def __init__(self, parent, strategy_key):
         super(ExpressionColumnLoader, self).__init__(parent, strategy_key)
 
+        null = sql.null()
+        self._have_default_expression = any(
+            not c.compare(null) for c in self.parent_property.columns
+        )
+
     def setup_query(
         self,
         context,
@@ -245,19 +250,24 @@ class ExpressionColumnLoader(ColumnLoader):
         memoized_populators,
         **kwargs
     ):
-
+        columns = None
         if loadopt and "expression" in loadopt.local_opts:
             columns = [loadopt.local_opts["expression"]]
+        elif self._have_default_expression:
+            columns = self.parent_property.columns
 
-            for c in columns:
-                if adapter:
-                    c = adapter.columns[c]
-                column_collection.append(c)
+        if columns is None:
+            return
 
-            fetch = columns[0]
+        for c in columns:
             if adapter:
-                fetch = adapter.columns[fetch]
-            memoized_populators[self.parent_property] = fetch
+                c = adapter.columns[c]
+            column_collection.append(c)
+
+        fetch = columns[0]
+        if adapter:
+            fetch = adapter.columns[fetch]
+        memoized_populators[self.parent_property] = fetch
 
     def create_row_processor(
         self, context, path, loadopt, mapper, result, adapter, populators
