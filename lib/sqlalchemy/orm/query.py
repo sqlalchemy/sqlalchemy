@@ -561,9 +561,9 @@ class Query(
         Analogous to
         :meth:`sqlalchemy.sql.expression.SelectBase.scalar_subquery`.
 
-        .. versionchanged:: 1.4 the :meth:`_query.Query.scalar_subquery`
-           method
-           replaces the :meth:`_query.Query.as_scalar` method.
+        .. versionchanged:: 1.4 The :meth:`_query.Query.scalar_subquery`
+           method replaces the :meth:`_query.Query.as_scalar` method.
+
         """
 
         return self.enable_eagerloads(False).statement.scalar_subquery()
@@ -1621,10 +1621,10 @@ class Query(
 
     @_generative
     def params(self, *args, **kwargs):
-        r"""add values for bind parameters which may have been
+        r"""Add values for bind parameters which may have been
         specified in filter().
 
-        parameters may be specified using \**kwargs, or optionally a single
+        Parameters may be specified using \**kwargs, or optionally a single
         dictionary as the first positional argument. The reason for both is
         that \**kwargs is convenient, however some parameter dictionaries
         contain unicode keys in which case \**kwargs cannot be used.
@@ -1644,7 +1644,7 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
     def filter(self, *criterion):
-        r"""apply the given filtering criterion to a copy
+        r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using SQL expressions.
 
         e.g.::
@@ -1703,7 +1703,7 @@ class Query(
         return self._raw_columns[0]
 
     def filter_by(self, **kwargs):
-        r"""apply the given filtering criterion to a copy
+        r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using keyword expressions.
 
         e.g.::
@@ -1744,11 +1744,12 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
     def order_by(self, *clauses):
-        """apply one or more ORDER BY criterion to the query and return
-        the newly resulting ``Query``
+        """Apply one or more ORDER BY criterion to the query and return
+        the newly resulting :class:`_query.Query`.
 
-        All existing ORDER BY settings candef order_by be suppressed by
-        passing ``None``.
+        All existing ORDER BY settings can be suppressed by  passing
+        ``None``.
+
         """
 
         if len(clauses) == 1 and (clauses[0] is None or clauses[0] is False):
@@ -1775,15 +1776,15 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
     def group_by(self, *clauses):
-        """apply one or more GROUP BY criterion to the query and return
-        the newly resulting :class:`_query.Query`
+        """Apply one or more GROUP BY criterion to the query and return
+        the newly resulting :class:`_query.Query`.
 
         All existing GROUP BY settings can be suppressed by
         passing ``None`` - this will suppress any GROUP BY configured
         on mappers as well.
 
-        .. versionadded:: 1.1 GROUP BY can be cancelled by passing None,
-           in the same way as ORDER BY.
+        .. versionadded:: 1.1 GROUP BY can be cancelled by passing
+           ``None``, in the same way as ORDER BY.
 
         """
 
@@ -1949,7 +1950,7 @@ class Query(
         Where above, the call to :meth:`_query.Query.join` along
         ``User.addresses`` will result in SQL approximately equivalent to::
 
-            SELECT user.id, User.name
+            SELECT user.id, user.name
             FROM user JOIN address ON user.id = address.user_id
 
         In the above example we refer to ``User.addresses`` as passed to

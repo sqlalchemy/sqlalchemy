@@ -371,9 +371,9 @@ class HasHints(object):
 
             :meth:`_expression.Select.with_hint`
 
-            :meth:.`.Select.prefix_with` - generic SELECT prefixing which also
-            can suit some database-specific HINT syntaxes such as MySQL
-            optimizer hints
+            :meth:`_expression.Select.prefix_with` - generic SELECT prefixing
+            which also can suit some database-specific HINT syntaxes such as
+            MySQL optimizer hints
 
         """
         return self.with_hint(None, text, dialect_name)
