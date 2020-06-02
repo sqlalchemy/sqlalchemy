@@ -2258,7 +2258,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_boolean_constraint_type_doesnt_double(self):
         m1 = MetaData()
 
-        t1 = Table("x", m1, Column("flag", Boolean()))
+        t1 = Table("x", m1, Column("flag", Boolean(create_constraint=True)))
         eq_(
             len([c for c in t1.constraints if isinstance(c, CheckConstraint)]),
             1,
@@ -2274,7 +2274,11 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_enum_constraint_type_doesnt_double(self):
         m1 = MetaData()
 
-        t1 = Table("x", m1, Column("flag", Enum("a", "b", "c")))
+        t1 = Table(
+            "x",
+            m1,
+            Column("flag", Enum("a", "b", "c", create_constraint=True)),
+        )
         eq_(
             len([c for c in t1.constraints if isinstance(c, CheckConstraint)]),
             1,
@@ -5031,7 +5035,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Boolean(name="foo")))
+        u1 = Table(
+            "user",
+            m1,
+            Column("x", Boolean(name="foo", create_constraint=True)),
+        )
         # constraint is not hit
         eq_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
@@ -5053,7 +5061,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(column_0_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Boolean()))
+        u1 = Table("user", m1, Column("x", Boolean(create_constraint=True)))
         # constraint is not hit
         is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
@@ -5075,7 +5083,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Enum("a", "b", name="foo")))
+        u1 = Table(
+            "user",
+            m1,
+            Column("x", Enum("a", "b", name="foo", create_constraint=True)),
+        )
         eq_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
                 0
@@ -5097,7 +5109,14 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         u1 = Table(
-            "user", m1, Column("x", Enum("a", "b", name=naming.conv("foo")))
+            "user",
+            m1,
+            Column(
+                "x",
+                Enum(
+                    "a", "b", name=naming.conv("foo"), create_constraint=True
+                ),
+            ),
         )
         eq_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
@@ -5119,7 +5138,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Boolean()))
+        u1 = Table("user", m1, Column("x", Boolean(create_constraint=True)))
         # constraint gets special _defer_none_name
         is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][
@@ -5145,7 +5164,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_schematype_no_ck_name_boolean_no_name(self):
         m1 = MetaData()  # no naming convention
 
-        u1 = Table("user", m1, Column("x", Boolean()))
+        u1 = Table("user", m1, Column("x", Boolean(create_constraint=True)))
         # constraint gets special _defer_none_name
         is_(
             [c for c in u1.constraints if isinstance(c, CheckConstraint)][

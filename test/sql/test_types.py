@@ -1331,25 +1331,43 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
+        # note create_constraint has changed in 1.4 as of #5367
         Table(
             "enum_table",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("someenum", Enum("one", "two", "three", name="myenum")),
+            Column(
+                "someenum",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="myenum",
+                    create_constraint=True,
+                ),
+            ),
         )
 
         Table(
             "non_native_enum_table",
             metadata,
             Column("id", Integer, primary_key=True, autoincrement=False),
-            Column("someenum", Enum("one", "two", "three", native_enum=False)),
+            Column(
+                "someenum",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    native_enum=False,
+                    create_constraint=True,
+                ),
+            ),
             Column(
                 "someotherenum",
                 Enum(
                     "one",
                     "two",
                     "three",
-                    create_constraint=False,
                     native_enum=False,
                     validate_strings=True,
                 ),
@@ -1360,7 +1378,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "stdlib_enum_table",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("someenum", Enum(cls.SomeEnum)),
+            Column("someenum", Enum(cls.SomeEnum, create_constraint=True)),
         )
 
         Table(
@@ -1372,6 +1390,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 Enum(
                     cls.SomeOtherEnum,
                     values_callable=EnumTest.get_enum_string_values,
+                    create_constraint=True,
                 ),
             ),
         )
@@ -1605,9 +1624,21 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             Column(
                 "data",
                 Enum(
-                    "one", "two", "three", native_enum=False, name="e1"
+                    "one",
+                    "two",
+                    "three",
+                    native_enum=False,
+                    name="e1",
+                    create_constraint=True,
                 ).with_variant(
-                    Enum("four", "five", "six", native_enum=False, name="e2"),
+                    Enum(
+                        "four",
+                        "five",
+                        "six",
+                        native_enum=False,
+                        name="e2",
+                        create_constraint=True,
+                    ),
                     "some_other_db",
                 ),
             ),
@@ -1638,9 +1669,21 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             Column(
                 "data",
                 Enum(
-                    "one", "two", "three", native_enum=False, name="e1"
+                    "one",
+                    "two",
+                    "three",
+                    native_enum=False,
+                    name="e1",
+                    create_constraint=True,
                 ).with_variant(
-                    Enum("four", "five", "six", native_enum=False, name="e2"),
+                    Enum(
+                        "four",
+                        "five",
+                        "six",
+                        native_enum=False,
+                        name="e2",
+                        create_constraint=True,
+                    ),
                     testing.db.dialect.name,
                 ),
             ),
@@ -1896,7 +1939,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         class MyEnum(TypeDecorator):
             def __init__(self, values):
                 self.impl = Enum(
-                    *[v.name for v in values], name="myenum", native_enum=False
+                    *[v.name for v in values],
+                    name="myenum",
+                    native_enum=False,
+                    create_constraint=True
                 )
 
             # future method
@@ -1931,7 +1977,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         are created with checkfirst=False"""
 
         e = engines.mock_engine()
-        t = Table("t1", MetaData(), Column("x", Enum("x", "y", name="pge")))
+        t = Table(
+            "t1",
+            MetaData(),
+            Column("x", Enum("x", "y", name="pge", create_constraint=True)),
+        )
         t.create(e, checkfirst=False)
         # basically looking for the start of
         # the constraint, or the ENUM def itself,
@@ -3038,6 +3088,9 @@ class BooleanTest(
     """test edge cases for booleans.  Note that the main boolean test suite
     is now in testing/suite/test_types.py
 
+    the default value of create_constraint was changed to False in
+    version 1.4 with #5367.
+
     """
 
     __backend__ = True
@@ -3048,8 +3101,8 @@ class BooleanTest(
             "boolean_table",
             metadata,
             Column("id", Integer, primary_key=True, autoincrement=False),
-            Column("value", Boolean),
-            Column("unconstrained_value", Boolean(create_constraint=False)),
+            Column("value", Boolean(create_constraint=True)),
+            Column("unconstrained_value", Boolean()),
         )
 
     @testing.fails_on(
@@ -3078,7 +3131,7 @@ class BooleanTest(
                 self.value = value
 
         class MyBool(TypeDecorator):
-            impl = Boolean()
+            impl = Boolean(create_constraint=True)
 
             # future method
             def process_literal_param(self, value, dialect):
