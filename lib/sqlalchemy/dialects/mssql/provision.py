@@ -40,7 +40,7 @@ def _mssql_drop_ignore(conn, ident):
         # for row in conn.execute(
         #     "select session_id from sys.dm_exec_sessions "
         #        "where database_id=db_id('%s')" % ident):
-        #    log.info("killing SQL server sesssion %s", row['session_id'])
+        #    log.info("killing SQL server session %s", row['session_id'])
         #    conn.execute("kill %s" % row['session_id'])
 
         conn.execute("drop database %s" % ident)

@@ -403,7 +403,7 @@ has multiple binds or some other custom scheme for :meth:`.Session.get_bind`,
 we can pass additional arguments to :meth:`.Session.connection` in order to
 affect how the bind is procured::
 
-    sess = my_sesssionmaker()
+    sess = my_sessionmaker()
 
     # set up a transaction for the bind associated with
     # the User mapper

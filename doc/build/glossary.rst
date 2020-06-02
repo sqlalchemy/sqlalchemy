@@ -12,7 +12,7 @@ Glossary
     relational
     relational algebra
 
-        An algrebraic system developed by Edgar F. Codd that is used for
+        An algebraic system developed by Edgar F. Codd that is used for
         modelling and querying the data stored in relational databases.
 
         .. seealso::
@@ -23,7 +23,7 @@ Glossary
         A term used in SQLAlchemy to describe a SQL construct that represents
         a collection of rows.   It's largely similar to the concept of a
         "relation" in :term:`relational algebra`.  In SQLAlchemy, objects
-        that subclass the :class:`expression.Selectable` class are considered to be
+        that subclass the :class:`_expression.Selectable` class are considered to be
         usable as "selectables" when using SQLAlchemy Core.  The two most
         common constructs are that of the :class:`_schema.Table` and that of the
         :class:`_expression.Select` statement.
@@ -131,7 +131,7 @@ Glossary
        An acronym for **Data Manipulation Language**.  DML is the subset of
        SQL that relational databases use to *modify* the data in tables. DML
        typically refers to the three widely familiar statements of INSERT,
-       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronoym for "CReate,
+       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "CReate,
        Update, Delete").
 
         .. seealso::
@@ -206,7 +206,7 @@ Glossary
         In SQLAlchemy, the "dialect" is a Python object that represents information
         and methods that allow database operations to proceed on a particular
         kind of database backend and a particular kind of Python driver (or
-        :term`DBAPI`) for that database.   SQLAlchemy dialects are subclasses
+        :term:`DBAPI`) for that database.   SQLAlchemy dialects are subclasses
         of the :class:`.Dialect` class.
 
         .. seealso::
@@ -412,7 +412,7 @@ Glossary
 
         .. seealso::
 
-        	:ref:`pooling_toplevel`
+            :ref:`pooling_toplevel`
 
     DBAPI
         DBAPI is shorthand for the phrase "Python Database API

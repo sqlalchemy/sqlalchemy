@@ -332,7 +332,7 @@ class TypeEngine(Visitable):
         )
 
     def bind_expression(self, bindvalue):
-        """"Given a bind value (i.e. a :class:`.BindParameter` instance),
+        """Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression in its place.
 
         This is typically a SQL function that wraps the existing bound
@@ -384,7 +384,7 @@ class TypeEngine(Visitable):
         """Return the corresponding type object from the underlying DB-API, if
         any.
 
-         This can be useful for calling ``setinputsizes()``, for example.
+        This can be useful for calling ``setinputsizes()``, for example.
 
         """
         return None
@@ -808,10 +808,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
           def copy(self, **kw):
               return MyType(self.impl.length)
 
-    The class-level "impl" attribute is required, and can reference any
-    TypeEngine class.  Alternatively, the load_dialect_impl() method
-    can be used to provide different type classes based on the dialect
-    given; in this case, the "impl" variable can reference
+    The class-level ``impl`` attribute is required, and can reference any
+    :class:`.TypeEngine` class.  Alternatively, the :meth:`load_dialect_impl`
+    method can be used to provide different type classes based on the dialect
+    given; in this case, the ``impl`` variable can reference
     ``TypeEngine`` as a placeholder.
 
     Types that receive a Python type that isn't similar to the ultimate type
@@ -913,7 +913,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     coerce_to_is_types = (util.NoneType,)
     """Specify those Python types which should be coerced at the expression
     level to "IS <constant>" when compared using ``==`` (and same for
-    ``IS NOT`` in conjunction with ``!=``.
+    ``IS NOT`` in conjunction with ``!=``).
 
     For most SQLAlchemy types, this includes ``NoneType``, as well as
     ``bool``.

@@ -198,7 +198,7 @@ This transaction is "logical" in that it does not actually use any  database
 resources until a SQL statement is invoked, at which point a connection-level
 and DBAPI-level transaction is started.   However, whether or not
 database-level transactions are part of its state, the logical transaction will
-stay in place until it is ended using :meth:`.Session.commit()`,
+stay in place until it is ended using :meth:`.Session.commit`,
 :meth:`.Session.rollback`, or :meth:`.Session.close`.
 
 When the ``flush()`` above fails, the code is still within the transaction

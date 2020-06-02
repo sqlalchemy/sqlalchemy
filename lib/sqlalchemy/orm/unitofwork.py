@@ -178,7 +178,7 @@ class UOWTransaction(object):
         return bool(self.states)
 
     def was_already_deleted(self, state):
-        """return true if the given state is expired and was deleted
+        """Return ``True`` if the given state is expired and was deleted
         previously.
         """
         if state.expired:
@@ -190,7 +190,7 @@ class UOWTransaction(object):
         return False
 
     def is_deleted(self, state):
-        """return true if the given state is marked as deleted
+        """Return ``True`` if the given state is marked as deleted
         within this uowtransaction."""
 
         return state in self.states and self.states[state][0]
@@ -203,7 +203,7 @@ class UOWTransaction(object):
             return ret
 
     def remove_state_actions(self, state):
-        """remove pending actions for a state from the uowtransaction."""
+        """Remove pending actions for a state from the uowtransaction."""
 
         isdelete = self.states[state][0]
 
@@ -212,7 +212,7 @@ class UOWTransaction(object):
     def get_attribute_history(
         self, state, key, passive=attributes.PASSIVE_NO_INITIALIZE
     ):
-        """facade to attributes.get_state_history(), including
+        """Facade to attributes.get_state_history(), including
         caching of results."""
 
         hashkey = ("history", state, key)
@@ -422,10 +422,10 @@ class UOWTransaction(object):
                 rec.execute(self)
 
     def finalize_flush_changes(self):
-        """mark processed objects as clean / deleted after a successful
+        """Mark processed objects as clean / deleted after a successful
         flush().
 
-        this method is called within the flush() method after the
+        This method is called within the flush() method after the
         execute() method has succeeded and the transaction has been committed.
 
         """

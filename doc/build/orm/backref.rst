@@ -216,7 +216,7 @@ However, if we instead created a new ``Address`` object, and associated the
 In the above example, it is **not** as intuitive that the ``Address`` would
 automatically be added to the :class:`.Session`.  However, the backref behavior
 of ``Address.user`` indicates that the ``Address`` object is also appended to
-the ``User.addresses`` collection.  This in turn intiates a **cascade**
+the ``User.addresses`` collection.  This in turn initiates a **cascade**
 operation which indicates that this ``Address`` should be placed into the
 :class:`.Session` as a :term:`pending` object.
 
@@ -228,7 +228,7 @@ to False, as in::
     class User(Base):
         # ...
 
-        addresses = relationship("Address", back_populates="user", cascade_backefs=False)
+        addresses = relationship("Address", back_populates="user", cascade_backrefs=False)
 
 See the example in :ref:`backref_cascade` for further information.
 

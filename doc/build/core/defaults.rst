@@ -152,8 +152,8 @@ otherwise not provided, and the value will be that of whatever value is present
 in the execution for the ``counter`` column, plus the number 12.
 
 For a single statement that is being executed using "executemany" style, e.g.
-with multiple parameter sets passed to :meth:`_engine.Connection.execute`, the user-
-defined function is called once for each set of parameters. For the use case of
+with multiple parameter sets passed to :meth:`_engine.Connection.execute`, the
+user-defined function is called once for each set of parameters. For the use case of
 a multi-valued :class:`_expression.Insert` construct (e.g. with more than one VALUES
 clause set up via the :meth:`_expression.Insert.values` method), the user-defined function
 is also called once for each set of parameters.
@@ -242,8 +242,8 @@ all Python and SQL expressions which were pre-executed, are present in the
 :meth:`_engine.ResultProxy.last_updated_params` collections on
 :class:`~sqlalchemy.engine.ResultProxy`. The
 :attr:`_engine.ResultProxy.inserted_primary_key` collection contains a list of primary
-key values for the row inserted (a list so that single-column and composite-
-column primary keys are represented in the same format).
+key values for the row inserted (a list so that single-column and
+composite-column primary keys are represented in the same format).
 
 .. _server_defaults:
 
@@ -322,10 +322,10 @@ Defining Sequences
 
 SQLAlchemy represents database sequences using the
 :class:`~sqlalchemy.schema.Sequence` object, which is considered to be a
-special case of "column default". It only has an effect on databases which
-have explicit support for sequences, which currently includes PostgreSQL,
-Oracle, and Firebird. The :class:`~sqlalchemy.schema.Sequence` object is
-otherwise ignored.
+special case of "column default". It only has an effect on databases which have
+explicit support for sequences, which currently includes PostgreSQL, Oracle,
+MariaDB 10.3 or greater, and Firebird. The :class:`~sqlalchemy.schema.Sequence`
+object is otherwise ignored.
 
 The :class:`~sqlalchemy.schema.Sequence` may be placed on any column as a
 "default" generator to be used during INSERT operations, and can also be
@@ -370,7 +370,7 @@ Associating a Sequence on a SERIAL column
 PostgreSQL's SERIAL datatype is an auto-incrementing type that implies
 the implicit creation of a PostgreSQL sequence when CREATE TABLE is emitted.
 If a :class:`_schema.Column` specifies an explicit :class:`.Sequence` object
-which also specifies a true value for the :paramref:`.Sequence.optional`
+which also specifies a ``True`` value for the :paramref:`.Sequence.optional`
 boolean flag, the :class:`.Sequence` will not take effect under PostgreSQL,
 and the SERIAL datatype will proceed normally.   Instead, the :class:`.Sequence`
 will only take effect when used against other sequence-supporting

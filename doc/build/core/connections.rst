@@ -23,7 +23,7 @@ the :func:`_sa.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')
 
-The typical usage of :func:`_sa.create_engine()` is once per particular database
+The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`_engine.Engine` manages many individual :term:`DBAPI` connections on behalf of
 the process and is intended to be called upon in a concurrent fashion. The
@@ -38,7 +38,6 @@ per-object or per-function call.
     using ``os.fork`` or Python ``multiprocessing``, it's important that the
     engine is initialized per process.  See :ref:`pooling_multiprocessing` for
     details.
-
 
 The most basic function of the :class:`_engine.Engine` is to provide access to a
 :class:`_engine.Connection`, which can then invoke SQL statements.   To emit
@@ -215,6 +214,7 @@ it so that a SELECT statement will issue a COMMIT::
 
 .. _dbengine_implicit:
 
+
 Connectionless Execution, Implicit Execution
 ============================================
 
@@ -224,8 +224,8 @@ Connectionless Execution, Implicit Execution
 Recall from the first section we mentioned executing with and without explicit
 usage of :class:`_engine.Connection`. "Connectionless" execution
 refers to the usage of the ``execute()`` method on an object which is not a
-:class:`_engine.Connection`.  This was illustrated using the :meth:`_engine.Engine.execute` method
-of :class:`_engine.Engine`::
+:class:`_engine.Connection`.  This was illustrated using the
+:meth:`_engine.Engine.execute` method of :class:`_engine.Engine`::
 
     result = engine.execute("select username from users")
     for row in result:

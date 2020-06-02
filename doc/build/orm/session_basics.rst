@@ -522,10 +522,10 @@ Adding New or Existing Items
 ----------------------------
 
 :meth:`~.Session.add` is used to place instances in the
-session. For *transient* (i.e. brand new) instances, this will have the effect
+session. For :term:`transient` (i.e. brand new) instances, this will have the effect
 of an INSERT taking place for those instances upon the next flush. For
-instances which are *persistent* (i.e. were loaded by this session), they are
-already present and do not need to be added. Instances which are *detached*
+instances which are :term:`persistent` (i.e. were loaded by this session), they are
+already present and do not need to be added. Instances which are :term:`detached`
 (i.e. have been removed from a session) may be re-associated with a session
 using this method::
 
@@ -632,7 +632,7 @@ illustrated in the example below::
         # ...
 
         addresses = relationship(
-            "Address", cascade="all, delete, delete-orphan")
+            "Address", cascade="all, delete-orphan")
 
     # ...
 
@@ -654,7 +654,7 @@ that this related object is not to shared with any other parent simultaneously::
         # ...
 
         preference = relationship(
-            "Preference", cascade="all, delete, delete-orphan",
+            "Preference", cascade="all, delete-orphan",
             single_parent=True)
 
 

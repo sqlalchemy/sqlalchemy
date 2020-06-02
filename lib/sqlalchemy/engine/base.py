@@ -39,7 +39,7 @@ class Connection(Connectable):
     possible that the underlying DBAPI connection may not support shared
     access between threads.  Check the DBAPI documentation for details.
 
-    The Connection object represents a single dbapi connection checked out
+    The Connection object represents a single DBAPI connection checked out
     from the connection pool. In this state, the connection pool has no affect
     upon the connection, including its expiration or timeout state. For the
     connection pool to properly manage connections, connections should be
@@ -155,7 +155,7 @@ class Connection(Connectable):
 
     @property
     def _root(self):
-        """return the 'root' connection.
+        """Return the 'root' connection.
 
         Returns 'self' if this connection is not a branch, else
         returns the root connection from which we ultimately branched.
@@ -168,9 +168,8 @@ class Connection(Connectable):
             return self
 
     def _clone(self):
-        """Create a shallow copy of this Connection.
+        """Create a shallow copy of this Connection."""
 
-        """
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = self.__dict__.copy()
         return c
@@ -1190,7 +1189,9 @@ class Connection(Connectable):
         self, dialect, constructor, statement, parameters, *args
     ):
         """Create an :class:`.ExecutionContext` and execute, returning
-        a :class:`_engine.ResultProxy`."""
+        a :class:`_engine.ResultProxy`.
+
+        """
 
         try:
             try:
@@ -2051,8 +2052,8 @@ class Engine(Connectable, log.Identified):
         return "Engine(%r)" % self.url
 
     def dispose(self):
-        """Dispose of the connection pool used by this :class:`_engine.Engine`
-        .
+        """Dispose of the connection pool used by this
+        :class:`_engine.Engine`.
 
         This has the effect of fully closing all **currently checked in**
         database connections.  Connections that are still checked out

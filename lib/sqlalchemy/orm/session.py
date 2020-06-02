@@ -39,13 +39,13 @@ from ..sql import util as sql_util
 __all__ = ["Session", "SessionTransaction", "SessionExtension", "sessionmaker"]
 
 _sessions = weakref.WeakValueDictionary()
-"""Weak-referencing dictionary of :class:`.Session` objects.
-"""
+"""Weak-referencing dictionary of :class:`.Session` objects."""
 
 
 def _state_session(state):
     """Given an :class:`.InstanceState`, return the :class:`.Session`
-        associated, if any.
+    associated, if any.
+
     """
     if state.session_id:
         try:
@@ -123,8 +123,8 @@ class SessionTransaction(object):
 
     **Life Cycle**
 
-    A :class:`.SessionTransaction` is associated with a :class:`.Session`
-    in its default mode of ``autocommit=False`` immediately, associated
+    A :class:`.SessionTransaction` is associated with a :class:`.Session` in
+    its default mode of ``autocommit=False`` immediately, associated
     with no database connections.  As the :class:`.Session` is called upon
     to emit SQL on behalf of various :class:`_engine.Engine` or
     :class:`_engine.Connection`
@@ -1127,7 +1127,7 @@ class Session(_SessionClassMethods):
             :ref:`session_transaction_isolation`
 
         :param \**kw:
-          Additional keyword arguments are sent to :meth:`get_bind()`,
+          Additional keyword arguments are sent to :meth:`get_bind`,
           allowing additional arguments to be passed to custom
           implementations of :meth:`get_bind`.
 
@@ -1393,8 +1393,8 @@ class Session(_SessionClassMethods):
 
     def bind_mapper(self, mapper, bind):
         """Associate a :class:`_orm.Mapper` or arbitrary Python class with a
-        "bind", e.g. an :class:`_engine.Engine` or :class:`_engine.Connection`
-        .
+        "bind", e.g. an :class:`_engine.Engine` or
+        :class:`_engine.Connection`.
 
         The given entity is added to a lookup used by the
         :meth:`.Session.get_bind` method.
@@ -1466,15 +1466,15 @@ class Session(_SessionClassMethods):
 
         The order of resolution is:
 
-        1. if mapper given and session.binds is present,
+        1. if mapper given and :paramref:`.Session.binds` is present,
            locate a bind based first on the mapper in use, then
            on the mapped class in use, then on any base classes that are
            present in the ``__mro__`` of the mapped class, from more specific
            superclasses to more general.
-        2. if clause given and session.binds is present,
+        2. if clause given and ``Session.binds`` is present,
            locate a bind based on :class:`_schema.Table` objects
-           found in the given clause present in session.binds.
-        3. if session.bind is present, return that.
+           found in the given clause present in ``Session.binds``.
+        3. if ``Session.binds`` is present, return that.
         4. if clause given, attempt to return a bind
            linked to the :class:`_schema.MetaData` ultimately
            associated with the clause.
@@ -2418,7 +2418,7 @@ class Session(_SessionClassMethods):
 
         .. seealso::
 
-            ``load_on_pending`` at :func:`_orm.relationship` - this flag
+            :paramref:`_orm.relationship.load_on_pending` - this flag
             allows per-relationship loading of many-to-ones on items that
             are pending.
 
@@ -3209,7 +3209,7 @@ class sessionmaker(_SessionClassMethods):
 
         sess = Session()
 
-    .. seealso:
+    .. seealso::
 
         :ref:`session_getting` - introductory text on creating
         sessions using :class:`.sessionmaker`.

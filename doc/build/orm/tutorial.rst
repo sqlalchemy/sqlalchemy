@@ -850,7 +850,7 @@ A number of methods on :class:`_query.Query`
 immediately issue SQL and return a value containing loaded
 database results.  Here's a brief tour:
 
-* :meth:`_query.Query.all()` returns a list:
+* :meth:`_query.Query.all` returns a list:
 
   .. sourcecode:: python+sql
 
@@ -881,7 +881,7 @@ database results.  Here's a brief tour:
             :ref:`faq_query_deduplicating`
 
 
-* :meth:`_query.Query.first()` applies a limit of one and returns
+* :meth:`_query.Query.first` applies a limit of one and returns
   the first result as a scalar:
 
   .. sourcecode:: python+sql
@@ -897,7 +897,7 @@ database results.  Here's a brief tour:
       ('%ed', 1, 0)
       {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
-* :meth:`_query.Query.one()` fully fetches all rows, and if not
+* :meth:`_query.Query.one` fully fetches all rows, and if not
   exactly one object identity or composite row is present in the result, raises
   an error.  With multiple rows found:
 
@@ -950,8 +950,8 @@ Literal strings can be used flexibly with
 :class:`~sqlalchemy.orm.query.Query`, by specifying their use
 with the :func:`_expression.text` construct, which is accepted
 by most applicable methods.  For example,
-:meth:`~sqlalchemy.orm.query.Query.filter()` and
-:meth:`~sqlalchemy.orm.query.Query.order_by()`:
+:meth:`_query.Query.filter` and
+:meth:`_query.Query.order_by`:
 
 .. sourcecode:: python+sql
 
@@ -973,7 +973,7 @@ by most applicable methods.  For example,
     fred
 
 Bind parameters can be specified with string-based SQL, using a colon. To
-specify the values, use the :meth:`~sqlalchemy.orm.query.Query.params()`
+specify the values, use the :meth:`_query.Query.params`
 method:
 
 .. sourcecode:: python+sql
@@ -991,7 +991,7 @@ method:
 
 To use an entirely string-based statement, a :func:`_expression.text` construct
 representing a complete statement can be passed to
-:meth:`~sqlalchemy.orm.query.Query.from_statement()`.  Without additional
+:meth:`_query.Query.from_statement`.  Without additional
 specifiers, the columns in the string SQL are matched to the model columns
 based on name, such as below where we use just an asterisk to represent
 loading all columns:
@@ -999,8 +999,7 @@ loading all columns:
 .. sourcecode:: python+sql
 
     {sql}>>> session.query(User).from_statement(
-    ...                     text("SELECT * FROM users where name=:name")).\
-    ...                     params(name='ed').all()
+    ...  text("SELECT * FROM users where name=:name")).params(name='ed').all()
     SELECT * FROM users where name=?
     ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
@@ -1056,7 +1055,7 @@ Counting
 --------
 
 :class:`~sqlalchemy.orm.query.Query` includes a convenience method for
-counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
+counting called :meth:`_query.Query.count`:
 
 .. sourcecode:: python+sql
 
@@ -1081,7 +1080,7 @@ counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
     and always returns the right answer.  Use ``func.count()`` if a
     particular statement absolutely cannot tolerate the subquery being present.
 
-The :meth:`_query.Query.count()` method is used to determine
+The :meth:`_query.Query.count` method is used to determine
 how many rows the SQL statement would return.   Looking
 at the generated SQL above, SQLAlchemy always places whatever it is we are
 querying into a subquery, then counts the rows from that.   In some cases
@@ -1344,7 +1343,7 @@ The `Wikipedia page on SQL JOIN
 join techniques, several of which we'll illustrate here.
 
 To construct a simple implicit join between ``User`` and ``Address``,
-we can use :meth:`_query.Query.filter()` to equate their related columns together.
+we can use :meth:`_query.Query.filter` to equate their related columns together.
 Below we load the ``User`` and ``Address`` entities at once using this method:
 
 .. sourcecode:: python+sql

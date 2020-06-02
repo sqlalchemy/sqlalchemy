@@ -274,7 +274,7 @@ class AppenderMixin(object):
             # this is a hack right now.  The Query only knows how to
             # make subsequent joins() without a given left-hand side
             # from self._from_obj[0].  We need to ensure prop.secondary
-            # is in the FROM.  So we purposly put the mapper selectable
+            # is in the FROM.  So we purposely put the mapper selectable
             # in _from_obj[0] to ensure a user-defined join() later on
             # doesn't fail, and secondary is then in _from_obj[1].
             self._from_obj = (prop.mapper.selectable, prop.secondary)

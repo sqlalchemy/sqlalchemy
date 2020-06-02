@@ -38,7 +38,7 @@ _profile_stats = None
 
 
 class ProfileStatsFile(object):
-    """"Store per-platform/fn profiling results in a file.
+    """Store per-platform/fn profiling results in a file.
 
     We're still targeting Py2.5, 2.4 on 0.7 with no dependencies,
     so no json lib :(  need to roll something silly

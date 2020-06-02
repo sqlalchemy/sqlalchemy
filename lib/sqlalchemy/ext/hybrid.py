@@ -668,8 +668,8 @@ simple::
             return self.parent.parent
 
 For the expression, things are not so clear.   We'd need to construct a
-:class:`_query.Query` where we :meth:`_query.Query.join` twice along ``Node.
-parent`` to
+:class:`_query.Query` where we :meth:`_query.Query.join` twice along 
+``Node.parent`` to
 get to the ``grandparent``.   We can instead return a transforming callable
 that we'll combine with the :class:`.Comparator` class to receive any
 :class:`_query.Query` object, and return a new one that's joined to the
@@ -690,7 +690,7 @@ that we'll combine with the :class:`.Comparator` class to receive any
 
     class Node(Base):
         __tablename__ = 'node'
-        id =Column(Integer, primary_key=True)
+        id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('node.id'))
         parent = relationship("Node", remote_side=id)
 
@@ -711,7 +711,7 @@ the comparison ``Node(id=5)``.  A function ``transform`` is then returned which
 will transform a :class:`_query.Query` first to join to ``Node.parent``,
 then to
 compare ``parent_alias`` using :attr:`.Operators.eq` against the left and right
-sides, passing into :class:`_query.Query.filter`:
+sides, passing into :meth:`_query.Query.filter`:
 
 .. sourcecode:: pycon+sql
 
@@ -987,7 +987,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
         .. note::
 
-           when referring to a hybrid property  from an owning class (e.g.
+           When referring to a hybrid property  from an owning class (e.g.
            ``SomeClass.some_hybrid``), an instance of
            :class:`.QueryableAttribute` is returned, representing the
            expression or comparator object as well as this  hybrid object.
@@ -1027,7 +1027,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
         .. note::
 
-           when referring to a hybrid property  from an owning class (e.g.
+           When referring to a hybrid property  from an owning class (e.g.
            ``SomeClass.some_hybrid``), an instance of
            :class:`.QueryableAttribute` is returned, representing the
            expression or comparator object as this  hybrid object.  However,

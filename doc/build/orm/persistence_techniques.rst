@@ -249,7 +249,7 @@ at :paramref:`_schema.Column.autoincrement`.
 
 For server-generating columns that are not primary key columns or that are not
 simple autoincrementing integer columns, the ORM requires that these columns
-are marked with an appropriate server_default directive that allows the ORM to
+are marked with an appropriate ``server_default`` directive that allows the ORM to
 retrieve this value.   Not all methods are supported on all backends, however,
 so care must be taken to use the appropriate method. The two questions to be
 answered are, 1. is this column part of the primary key or not, and 2. does the

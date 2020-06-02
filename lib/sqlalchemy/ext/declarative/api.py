@@ -255,8 +255,7 @@ class declared_attr(interfaces._MappedAttribute, property):
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
-                        return Column(
-                            ForeignKey('myclass.id'), primary_key=True)
+                        return Column('some_id', ForeignKey('myclass.id'))
                     else:
                         return Column(Integer, primary_key=True)
 
