@@ -1065,7 +1065,13 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_column_defaults_ddl(self):
 
         t = Table(
-            "t", MetaData(), Column("x", Boolean, server_default=sql.false())
+            "t",
+            MetaData(),
+            Column(
+                "x",
+                Boolean(create_constraint=True),
+                server_default=sql.false(),
+            ),
         )
 
         self.assert_compile(

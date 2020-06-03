@@ -1231,11 +1231,10 @@ class Enum(Emulated, String, SchemaType):
     which the column is constrained towards.
 
     The :class:`.Enum` type will make use of the backend's native "ENUM"
-    type if one is available; otherwise, it uses a VARCHAR datatype and
-    produces a CHECK constraint.  Use of the backend-native enum type
-    can be disabled using the :paramref:`.Enum.native_enum` flag, and
-    the production of the CHECK constraint is configurable using the
-    :paramref:`.Enum.create_constraint` flag.
+    type if one is available; otherwise, it uses a VARCHAR datatype.
+    An option also exists to automatically produce a CHECK constraint
+    when the VARCHAR (so called "non-native") variant is produced;
+    see the  :paramref:`.Enum.create_constraint` flag.
 
     The :class:`.Enum` type also provides in-Python validation of string
     values during both read and write operations.  When reading a value
@@ -1329,13 +1328,20 @@ class Enum(Emulated, String, SchemaType):
            result-set processing for this Enum's data. This is set
            automatically based on the presence of unicode label strings.
 
-        :param create_constraint: defaults to True.  When creating a non-native
-           enumerated type, also build a CHECK constraint on the database
-           against the valid values.
+        :param create_constraint: defaults to False.  When creating a
+           non-native enumerated type, also build a CHECK constraint on the
+           database against the valid values.
 
-           .. versionadded:: 1.1 - added :paramref:`.Enum.create_constraint`
-              which provides the option to disable the production of the
-              CHECK constraint for a non-native enumerated type.
+           .. note:: it is strongly recommended that the CHECK constraint
+              have an explicit name in order to support schema-management
+              concerns.  This can be established either by setting the
+              :paramref:`.Enum.name` parameter or by setting up an
+              appropriate naming convention; see
+              :ref:`constraint_naming_conventions` for background.
+
+           .. versionchanged:: 1.4 - this flag now defaults to False, meaning
+              no CHECK constraint is generated for a non-native enumerated
+              type.
 
         :param metadata: Associate this type directly with a ``MetaData``
            object. For types that exist on the target database as an
@@ -1434,7 +1440,7 @@ class Enum(Emulated, String, SchemaType):
 
         """
         self.native_enum = kw.pop("native_enum", True)
-        self.create_constraint = kw.pop("create_constraint", True)
+        self.create_constraint = kw.pop("create_constraint", False)
         self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
@@ -1774,10 +1780,8 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     that the values persisted are simple true/false values.  For all
     backends, only the Python values ``None``, ``True``, ``False``, ``1``
     or ``0`` are accepted as parameter values.   For those backends that
-    don't support a "native boolean" datatype, a CHECK constraint is also
-    created on the target column.   Production of the CHECK constraint
-    can be disabled by passing the :paramref:`.Boolean.create_constraint`
-    flag set to ``False``.
+    don't support a "native boolean" datatype, an option exists to
+    also create a CHECK constraint on the target column
 
     .. versionchanged:: 1.2 the :class:`.Boolean` datatype now asserts that
        incoming Python values are already in pure boolean form.
@@ -1788,12 +1792,27 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     __visit_name__ = "boolean"
     native = True
 
-    def __init__(self, create_constraint=True, name=None, _create_events=True):
+    def __init__(
+        self, create_constraint=False, name=None, _create_events=True
+    ):
         """Construct a Boolean.
 
-        :param create_constraint: defaults to True.  If the boolean
+        :param create_constraint: defaults to False.  If the boolean
           is generated as an int/smallint, also create a CHECK constraint
           on the table that ensures 1 or 0 as a value.
+
+          .. note:: it is strongly recommended that the CHECK constraint
+             have an explicit name in order to support schema-management
+             concerns.  This can be established either by setting the
+             :paramref:`.Boolean.name` parameter or by setting up an
+             appropriate naming convention; see
+             :ref:`constraint_naming_conventions` for background.
+
+           .. versionchanged:: 1.4 - this flag now defaults to False, meaning
+              no CHECK constraint is generated for a non-native enumerated
+              type.
+
+
 
         :param name: if a CHECK constraint is generated, specify
           the name of the constraint.

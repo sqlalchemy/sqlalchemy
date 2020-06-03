@@ -288,7 +288,14 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             metadata,
             Column(
                 "bar",
-                Enum("one", "two", "three", name="myenum", native_enum=False),
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="myenum",
+                    create_constraint=True,
+                    native_enum=False,
+                ),
             ),
         )
 
@@ -317,7 +324,14 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             "foo",
             metadata,
             Column(
-                "bar", Enum("B", util.u("Ü"), name="myenum", native_enum=False)
+                "bar",
+                Enum(
+                    "B",
+                    util.u("Ü"),
+                    name="myenum",
+                    create_constraint=True,
+                    native_enum=False,
+                ),
             ),
         )
 
@@ -500,7 +514,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         t1 = Table(
             "foo",
             metadata,
-            Column("bar", Enum("one", "two", "three", name="myenum")),
+            Column(
+                "bar",
+                Enum(
+                    "one",
+                    "two",
+                    "three",
+                    name="myenum",
+                    create_constraint=True,
+                ),
+            ),
         )
 
         def go():
@@ -1762,7 +1785,12 @@ class ArrayEnum(fixtures.TestBase):
                 "my_col",
                 array_cls(
                     enum_cls(
-                        "foo", "bar", "baz", name="my_enum", native_enum=False
+                        "foo",
+                        "bar",
+                        "baz",
+                        name="my_enum",
+                        create_constraint=True,
+                        native_enum=False,
                     )
                 ),
             ),

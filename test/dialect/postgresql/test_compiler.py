@@ -212,7 +212,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table(
             "sometable",
             MetaData(),
-            Column("somecolumn", Enum("x", "y", "z", native_enum=False)),
+            Column(
+                "somecolumn",
+                Enum("x", "y", "z", native_enum=False, create_constraint=True),
+            ),
         )
         self.assert_compile(
             schema.CreateTable(t1),
