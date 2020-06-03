@@ -951,7 +951,7 @@ class Result(InPlaceGenerative):
         """
         return self._allrows()
 
-    def _only_one_row(self, raise_for_second_row, raise_for_none):
+    def _only_one_row(self, raise_for_second_row, raise_for_none, scalar):
         onerow = self._fetchone_impl
 
         row = onerow(hard_close=True)
@@ -1010,27 +1010,43 @@ class Result(InPlaceGenerative):
             # if we checked for second row then that would have
             # closed us :)
             self._soft_close(hard=True)
-        post_creational_filter = self._post_creational_filter
-        if post_creational_filter:
-            row = post_creational_filter(row)
 
-        return row
+        if not scalar:
+            post_creational_filter = self._post_creational_filter
+            if post_creational_filter:
+                row = post_creational_filter(row)
+
+        if scalar and row:
+            return row[0]
+        else:
+            return row
 
     def first(self):
         """Fetch the first row or None if no row is present.
 
         Closes the result set and discards remaining rows.
 
+        .. note::  This method returns one **row**, e.g. tuple, by default.
+           To return exactly one single scalar value, that is, the first
+           column of the first row, use the :meth:`.Result.scalar` method,
+           or combine :meth:`.Result.scalars` and :meth:`.Result.first`.
+
         .. comment: A warning is emitted if additional rows remain.
 
         :return: a :class:`.Row` object if no filters are applied, or None
          if no rows remain.
          When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
+         or :meth:`._engine.Result.scalars`, different kinds of objects
          may be returned.
 
+         .. seealso::
+
+            :meth:`_result.Result.scalar`
+
+            :meth:`_result.Result.one`
+
         """
-        return self._only_one_row(False, False)
+        return self._only_one_row(False, False, False)
 
     def one_or_none(self):
         """Return at most one result or raise an exception.
@@ -1055,14 +1071,49 @@ class Result(InPlaceGenerative):
             :meth:`_result.Result.one`
 
         """
-        return self._only_one_row(True, False)
+        return self._only_one_row(True, False, False)
+
+    def scalar_one(self):
+        """Return exactly one scalar result or raise an exception.
+
+        This is equvalent to calling :meth:`.Result.scalars` and then
+        :meth:`.Result.one`.
+
+        .. seealso::
+
+            :meth:`.Result.one`
+
+            :meth:`.Result.scalars`
+
+        """
+        return self._only_one_row(True, True, True)
+
+    def scalar_one_or_none(self):
+        """Return exactly one or no scalar result.
+
+        This is equvalent to calling :meth:`.Result.scalars` and then
+        :meth:`.Result.one_or_none`.
+
+        .. seealso::
+
+            :meth:`.Result.one_or_none`
+
+            :meth:`.Result.scalars`
+
+        """
+        return self._only_one_row(True, False, True)
 
     def one(self):
-        """Return exactly one result or raise an exception.
+        """Return exactly one row or raise an exception.
 
         Raises :class:`.NoResultFound` if the result returns no
         rows, or :class:`.MultipleResultsFound` if multiple rows
         would be returned.
+
+        .. note::  This method returns one **row**, e.g. tuple, by default.
+           To return exactly one single scalar value, that is, the first
+           column of the first row, use the :meth:`.Result.scalar_one` method,
+           or combine :meth:`.Result.scalars` and :meth:`.Result.one`.
 
         .. versionadded:: 1.4
 
@@ -1079,24 +1130,26 @@ class Result(InPlaceGenerative):
 
             :meth:`_result.Result.one_or_none`
 
+            :meth:`_result.Result.scalar_one`
+
         """
-        return self._only_one_row(True, True)
+        return self._only_one_row(True, True, False)
 
     def scalar(self):
         """Fetch the first column of the first row, and close the result set.
+
+        Returns None if there are no rows to fetch.
+
+        No validation is performed to test if additional rows remain.
 
         After calling this method, the object is fully closed,
         e.g. the :meth:`_engine.CursorResult.close`
         method will have been called.
 
-        :return: a Python scalar value , or None if no rows remain
+        :return: a Python scalar value , or None if no rows remain.
 
         """
-        row = self.first()
-        if row is not None:
-            return row[0]
-        else:
-            return None
+        return self._only_one_row(False, False, True)
 
 
 class FrozenResult(object):

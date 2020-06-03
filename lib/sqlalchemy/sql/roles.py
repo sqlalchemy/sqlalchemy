@@ -184,8 +184,13 @@ class CompoundElementRole(SQLRole):
     )
 
 
+# TODO: are we using this?
 class DMLRole(StatementRole):
     pass
+
+
+class DMLTableRole(FromClauseRole):
+    _role_name = "subject table for an INSERT, UPDATE or DELETE"
 
 
 class DMLColumnRole(SQLRole):

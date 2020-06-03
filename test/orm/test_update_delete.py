@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -10,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import update
+from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -20,10 +23,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import collections_abc
 
 
 class UpdateDeleteTest(fixtures.MappedTest):
@@ -385,6 +386,58 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([15, 27, 19, 27])),
         )
 
+    def test_update_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = Session()
+
+        john, jack, jill, jane = (
+            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+        )
+
+        sess.execute(
+            update(User)
+            .where(User.age > 29)
+            .values({"age": User.age - 10})
+            .execution_options(synchronize_session="evaluate"),
+        )
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+        eq_(
+            sess.execute(future_select(User.age).order_by(User.id)).all(),
+            list(zip([25, 37, 29, 27])),
+        )
+
+        sess.execute(
+            update(User)
+            .where(User.age > 29)
+            .values({User.age: User.age - 10})
+            .execution_options(synchronize_session="evaluate")
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 27, 29, 27])),
+        )
+
+        sess.query(User).filter(User.age > 27).update(
+            {users.c.age_int: User.age - 10}, synchronize_session="evaluate"
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 19, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 27, 19, 27])),
+        )
+
+        sess.query(User).filter(User.age == 25).update(
+            {User.age: User.age - 10}, synchronize_session="fetch"
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [15, 27, 19, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([15, 27, 19, 27])),
+        )
+
     def test_update_against_table_col(self):
         User, users = self.classes.User, self.tables.users
 
@@ -677,41 +730,111 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         # Do an update using unordered dict and check that the parameters used
         # are ordered in table order
-        q = session.query(User)
-        with mock.patch.object(q, "_execute_crud") as exec_:
-            q.filter(User.id == 15).update({"name": "foob", "id": 123})
-            # Confirm that parameters are a dict instead of tuple or list
-            params = exec_.mock_calls[0][1][0]._values
-            assert isinstance(params, collections_abc.Mapping)
 
-    def test_update_preserve_parameter_order(self):
+        m1 = testing.mock.Mock()
+
+        @event.listens_for(session, "after_bulk_update")
+        def do_orm_execute(bulk_ud):
+            m1(bulk_ud.result.context.compiled.compile_state.statement)
+
+        q = session.query(User)
+        q.filter(User.id == 15).update({"name": "foob", "age": 123})
+        assert m1.mock_calls[0][1][0]._values
+
+    def test_update_preserve_parameter_order_query(self):
         User = self.classes.User
         session = Session()
 
         # Do update using a tuple and check that order is preserved
-        q = session.query(User)
-        with mock.patch.object(q, "_execute_crud") as exec_:
-            q.filter(User.id == 15).update(
-                (("id", 123), ("name", "foob")),
-                update_args={"preserve_parameter_order": True},
-            )
+
+        m1 = testing.mock.Mock()
+
+        @event.listens_for(session, "after_bulk_update")
+        def do_orm_execute(bulk_ud):
+
             cols = [
-                c.key for c, v in exec_.mock_calls[0][1][0]._ordered_values
+                c.key
+                for c, v in (
+                    (
+                        bulk_ud.result.context
+                    ).compiled.compile_state.statement._ordered_values
+                )
             ]
-            eq_(["id", "name"], cols)
+            m1(cols)
+
+        q = session.query(User)
+        q.filter(User.id == 15).update(
+            (("age", 123), ("name", "foob")),
+            update_args={"preserve_parameter_order": True},
+        )
+
+        eq_(m1.mock_calls[0][1][0], ["age_int", "name"])
+
+        m1.mock_calls = []
+
+        q = session.query(User)
+        q.filter(User.id == 15).update(
+            [("name", "foob"), ("age", 123)],
+            update_args={"preserve_parameter_order": True},
+        )
+        eq_(m1.mock_calls[0][1][0], ["name", "age_int"])
+
+    def test_update_multi_values_error_future(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do update using a tuple and check that order is preserved
+
+        stmt = (
+            update(User)
+            .filter(User.id == 15)
+            .values([("id", 123), ("name", "foob")])
+        )
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "UPDATE construct does not support multiple parameter sets.",
+            session.execute,
+            stmt,
+        )
+
+    def test_update_preserve_parameter_order_future(self):
+        User = self.classes.User
+        session = Session()
+
+        # Do update using a tuple and check that order is preserved
+
+        stmt = (
+            update(User)
+            .filter(User.id == 15)
+            .ordered_values(("age", 123), ("name", "foob"))
+        )
+        result = session.execute(stmt)
+        cols = [
+            c.key
+            for c, v in (
+                (
+                    result.context
+                ).compiled.compile_state.statement._ordered_values
+            )
+        ]
+        eq_(["age_int", "name"], cols)
 
         # Now invert the order and use a list instead, and check that order is
         # also preserved
-        q = session.query(User)
-        with mock.patch.object(q, "_execute_crud") as exec_:
-            q.filter(User.id == 15).update(
-                [("name", "foob"), ("id", 123)],
-                update_args={"preserve_parameter_order": True},
-            )
-            cols = [
-                c.key for c, v in exec_.mock_calls[0][1][0]._ordered_values
-            ]
-            eq_(["name", "id"], cols)
+        stmt = (
+            update(User)
+            .filter(User.id == 15)
+            .ordered_values(("name", "foob"), ("age", 123),)
+        )
+        result = session.execute(stmt)
+        cols = [
+            c.key
+            for c, v in (
+                result.context
+            ).compiled.compile_state.statement._ordered_values
+        ]
+        eq_(["name", "age_int"], cols)
 
 
 class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
@@ -1103,16 +1226,23 @@ class ExpressionUpdateTest(fixtures.MappedTest):
 
     def test_update_args(self):
         Data = self.classes.Data
-        session = testing.mock.Mock(wraps=Session())
+        session = Session()
         update_args = {"mysql_limit": 1}
 
+        m1 = testing.mock.Mock()
+
+        @event.listens_for(session, "after_bulk_update")
+        def do_orm_execute(bulk_ud):
+            update_stmt = (
+                bulk_ud.result.context.compiled.compile_state.statement
+            )
+            m1(update_stmt)
+
         q = session.query(Data)
-        with testing.mock.patch.object(q, "_execute_crud") as exec_:
-            q.update({Data.cnt: Data.cnt + 1}, update_args=update_args)
-        eq_(exec_.call_count, 1)
-        args, kwargs = exec_.mock_calls[0][1:3]
-        eq_(len(args), 2)
-        update_stmt = args[0]
+        q.update({Data.cnt: Data.cnt + 1}, update_args=update_args)
+
+        update_stmt = m1.mock_calls[0][1][0]
+
         eq_(update_stmt.dialect_kwargs, update_args)
 
 
@@ -1163,18 +1293,22 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         )
         s.commit()
 
-    def test_illegal_metadata(self):
+    @testing.only_on("mysql", "Multi table update")
+    def test_update_from_join_no_problem(self):
         person = self.classes.Person.__table__
         engineer = self.classes.Engineer.__table__
 
         sess = Session()
-        assert_raises_message(
-            exc.InvalidRequestError,
-            "This operation requires only one Table or entity be "
-            "specified as the target.",
-            sess.query(person.join(engineer)).update,
-            {},
+        sess.query(person.join(engineer)).filter(person.c.name == "e2").update(
+            {person.c.name: "updated", engineer.c.engineer_name: "e2a"},
         )
+        obj = sess.execute(
+            future_select(self.classes.Engineer).filter(
+                self.classes.Engineer.name == "updated"
+            )
+        ).scalar()
+        eq_(obj.name, "updated")
+        eq_(obj.engineer_name, "e2a")
 
     def test_update_subtable_only(self):
         Engineer = self.classes.Engineer

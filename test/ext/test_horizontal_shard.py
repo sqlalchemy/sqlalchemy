@@ -3,6 +3,7 @@ import os
 
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
@@ -13,6 +14,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.future import select as future_select
@@ -444,7 +446,7 @@ class ShardTest(object):
         t = get_tokyo(sess2)
         eq_(t.city, tokyo.city)
 
-    def test_bulk_update(self):
+    def test_bulk_update_synchronize_evaluate(self):
         sess = self._fixture_data()
 
         eq_(
@@ -456,7 +458,8 @@ class ShardTest(object):
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
         sess.query(Report).filter(Report.temperature >= 80).update(
-            {"temperature": Report.temperature + 6}
+            {"temperature": Report.temperature + 6},
+            synchronize_session="evaluate",
         )
 
         eq_(
@@ -467,16 +470,173 @@ class ShardTest(object):
         # test synchronize session as well
         eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
 
-    def test_bulk_delete(self):
+    def test_bulk_update_synchronize_fetch(self):
+        sess = self._fixture_data()
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {80.0, 75.0, 85.0},
+        )
+
+        temps = sess.query(Report).all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.query(Report).filter(Report.temperature >= 80).update(
+            {"temperature": Report.temperature + 6},
+            synchronize_session="fetch",
+        )
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {86.0, 75.0, 91.0},
+        )
+
+        # test synchronize session as well
+        eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
+
+    def test_bulk_delete_synchronize_evaluate(self):
         sess = self._fixture_data()
 
         temps = sess.query(Report).all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
-        sess.query(Report).filter(Report.temperature >= 80).delete()
+        sess.query(Report).filter(Report.temperature >= 80).delete(
+            synchronize_session="evaluate"
+        )
 
         eq_(
             set(row.temperature for row in sess.query(Report.temperature)),
+            {75.0},
+        )
+
+        # test synchronize session as well
+        for t in temps:
+            assert inspect(t).deleted is (t.temperature >= 80)
+
+    def test_bulk_delete_synchronize_fetch(self):
+        sess = self._fixture_data()
+
+        temps = sess.query(Report).all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.query(Report).filter(Report.temperature >= 80).delete(
+            synchronize_session="fetch"
+        )
+
+        eq_(
+            set(row.temperature for row in sess.query(Report.temperature)),
+            {75.0},
+        )
+
+        # test synchronize session as well
+        for t in temps:
+            assert inspect(t).deleted is (t.temperature >= 80)
+
+    def test_bulk_update_future_synchronize_evaluate(self):
+        sess = self._fixture_data()
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
+            {80.0, 75.0, 85.0},
+        )
+
+        temps = sess.execute(future_select(Report)).scalars().all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.execute(
+            update(Report)
+            .filter(Report.temperature >= 80)
+            .values({"temperature": Report.temperature + 6},)
+            .execution_options(synchronize_session="evaluate")
+        )
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
+            {86.0, 75.0, 91.0},
+        )
+
+        # test synchronize session as well
+        eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
+
+    def test_bulk_update_future_synchronize_fetch(self):
+        sess = self._fixture_data()
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
+            {80.0, 75.0, 85.0},
+        )
+
+        temps = sess.execute(future_select(Report)).scalars().all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.execute(
+            update(Report)
+            .filter(Report.temperature >= 80)
+            .values({"temperature": Report.temperature + 6},)
+            .execution_options(synchronize_session="fetch")
+        )
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
+            {86.0, 75.0, 91.0},
+        )
+
+        # test synchronize session as well
+        eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
+
+    def test_bulk_delete_future_synchronize_evaluate(self):
+        sess = self._fixture_data()
+
+        temps = sess.execute(future_select(Report)).scalars().all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.execute(
+            delete(Report)
+            .filter(Report.temperature >= 80)
+            .execution_options(synchronize_session="evaluate")
+        )
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
+            {75.0},
+        )
+
+        # test synchronize session as well
+        for t in temps:
+            assert inspect(t).deleted is (t.temperature >= 80)
+
+    def test_bulk_delete_future_synchronize_fetch(self):
+        sess = self._fixture_data()
+
+        temps = sess.execute(future_select(Report)).scalars().all()
+        eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
+
+        sess.execute(
+            delete(Report)
+            .filter(Report.temperature >= 80)
+            .execution_options(synchronize_session="fetch")
+        )
+
+        eq_(
+            set(
+                row.temperature
+                for row in sess.execute(future_select(Report.temperature))
+            ),
             {75.0},
         )
 

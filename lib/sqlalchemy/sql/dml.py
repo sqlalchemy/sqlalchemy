@@ -19,6 +19,7 @@ from .base import CompileState
 from .base import DialectKWArgs
 from .base import Executable
 from .base import HasCompileState
+from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import Null
 from .selectable import HasCTE
@@ -150,7 +151,6 @@ class UpdateDMLState(DMLState):
 
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
-
         self.isupdate = True
         self._preserve_parameter_order = statement._preserve_parameter_order
         if statement._ordered_values is not None:
@@ -447,7 +447,9 @@ class ValuesBase(UpdateBase):
     _returning = ()
 
     def __init__(self, table, values, prefixes):
-        self.table = coercions.expect(roles.FromClauseRole, table)
+        self.table = coercions.expect(
+            roles.DMLTableRole, table, apply_propagate_attrs=self
+        )
         if values is not None:
             self.values.non_generative(self, values)
         if prefixes:
@@ -949,6 +951,28 @@ class DMLWhereBase(object):
             coercions.expect(roles.WhereHavingRole, whereclause),
         )
 
+    def filter(self, *criteria):
+        """A synonym for the :meth:`_dml.DMLWhereBase.where` method."""
+
+        return self.where(*criteria)
+
+    @property
+    def whereclause(self):
+        """Return the completed WHERE clause for this :class:`.DMLWhereBase`
+        statement.
+
+        This assembles the current collection of WHERE criteria
+        into a single :class:`_expression.BooleanClauseList` construct.
+
+
+        .. versionadded:: 1.4
+
+        """
+
+        return BooleanClauseList._construct_for_whereclause(
+            self._where_criteria
+        )
+
 
 class Update(DMLWhereBase, ValuesBase):
     """Represent an Update construct.
@@ -1266,7 +1290,9 @@ class Delete(DMLWhereBase, UpdateBase):
 
         """
         self._bind = bind
-        self.table = coercions.expect(roles.FromClauseRole, table)
+        self.table = coercions.expect(
+            roles.DMLTableRole, table, apply_propagate_attrs=self
+        )
         self._returning = returning
 
         if prefixes:

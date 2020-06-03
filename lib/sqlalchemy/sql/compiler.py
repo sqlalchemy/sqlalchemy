@@ -3215,6 +3215,8 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         if toplevel:
             self.isupdate = True
+            if not self.compile_state:
+                self.compile_state = compile_state
 
         extra_froms = compile_state._extra_froms
         is_multitable = bool(extra_froms)
@@ -3342,6 +3344,8 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         if toplevel:
             self.isdelete = True
+            if not self.compile_state:
+                self.compile_state = compile_state
 
         extra_froms = compile_state._extra_froms
 

@@ -1764,7 +1764,7 @@ class SessionEvents(event.Events):
         lambda update_context: (
             update_context.session,
             update_context.query,
-            update_context.context,
+            None,
             update_context.result,
         ),
     )
@@ -1782,11 +1782,12 @@ class SessionEvents(event.Events):
               was called upon.
             * ``values`` The "values" dictionary that was passed to
               :meth:`_query.Query.update`.
-            * ``context`` The :class:`.QueryContext` object, corresponding
-              to the invocation of an ORM query.
             * ``result`` the :class:`_engine.CursorResult`
               returned as a result of the
               bulk UPDATE operation.
+
+        .. versionchanged:: 1.4 the update_context no longer has a
+           ``QueryContext`` object associated with it.
 
         .. seealso::
 
@@ -1802,7 +1803,7 @@ class SessionEvents(event.Events):
         lambda delete_context: (
             delete_context.session,
             delete_context.query,
-            delete_context.context,
+            None,
             delete_context.result,
         ),
     )
@@ -1818,11 +1819,12 @@ class SessionEvents(event.Events):
             * ``query`` -the :class:`_query.Query`
               object that this update operation
               was called upon.
-            * ``context`` The :class:`.QueryContext` object, corresponding
-              to the invocation of an ORM query.
             * ``result`` the :class:`_engine.CursorResult`
               returned as a result of the
               bulk DELETE operation.
+
+        .. versionchanged:: 1.4 the update_context no longer has a
+           ``QueryContext`` object associated with it.
 
         .. seealso::
 

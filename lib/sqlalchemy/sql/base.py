@@ -446,10 +446,14 @@ class CompileState(object):
             plugin_name = statement._propagate_attrs.get(
                 "compile_state_plugin", "default"
             )
-        else:
-            plugin_name = "default"
+            klass = cls.plugins.get(
+                (plugin_name, statement.__visit_name__), None
+            )
+            if klass is None:
+                klass = cls.plugins[("default", statement.__visit_name__)]
 
-        klass = cls.plugins[(plugin_name, statement.__visit_name__)]
+        else:
+            klass = cls.plugins[("default", statement.__visit_name__)]
 
         if klass is cls:
             return cls(statement, compiler, **kw)

@@ -1633,6 +1633,12 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             checkparams={"id_1": 5, "name": "ed"},
         )
 
+        self.assert_compile(
+            update(User).values({User.name: "ed"}).where(User.id == 5),
+            "UPDATE users SET name=:name WHERE users.id = :id_1",
+            checkparams={"id_1": 5, "name": "ed"},
+        )
+
     def test_delete_from_entity(self):
         from sqlalchemy.sql import delete
 

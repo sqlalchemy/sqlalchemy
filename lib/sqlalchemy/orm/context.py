@@ -189,7 +189,7 @@ class ORMCompileState(CompileState):
 
     @classmethod
     def orm_pre_session_exec(
-        cls, session, statement, execution_options, bind_arguments
+        cls, session, statement, params, execution_options, bind_arguments
     ):
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
@@ -215,6 +215,8 @@ class ORMCompileState(CompileState):
 
         if load_options._autoflush:
             session._autoflush()
+
+        return execution_options
 
     @classmethod
     def orm_setup_cursor_result(

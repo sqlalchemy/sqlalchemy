@@ -87,6 +87,16 @@ table_a_2_bs = Table(
 
 table_b = Table("b", meta, Column("a", Integer), Column("b", Integer))
 
+table_b_b = Table(
+    "b_b",
+    meta,
+    Column("a", Integer),
+    Column("b", Integer),
+    Column("c", Integer),
+    Column("d", Integer),
+    Column("e", Integer),
+)
+
 table_c = Table("c", meta, Column("x", Integer), Column("y", Integer))
 
 table_d = Table("d", meta, Column("y", Integer), Column("z", Integer))
@@ -710,6 +720,54 @@ class CoreFixtures(object):
         )
 
     fixtures.append(_statements_w_anonymous_col_names)
+
+    def _update_dml_w_dicts():
+        return (
+            table_b_b.update().values(
+                {
+                    table_b_b.c.a: 5,
+                    table_b_b.c.b: 5,
+                    table_b_b.c.c: 5,
+                    table_b_b.c.d: 5,
+                }
+            ),
+            # equivalent, but testing dictionary insert ordering as cache key
+            # / compare
+            table_b_b.update().values(
+                {
+                    table_b_b.c.a: 5,
+                    table_b_b.c.c: 5,
+                    table_b_b.c.b: 5,
+                    table_b_b.c.d: 5,
+                }
+            ),
+            table_b_b.update().values(
+                {table_b_b.c.a: 5, table_b_b.c.b: 5, "c": 5, table_b_b.c.d: 5}
+            ),
+            table_b_b.update().values(
+                {
+                    table_b_b.c.a: 5,
+                    table_b_b.c.b: 5,
+                    table_b_b.c.c: 5,
+                    table_b_b.c.d: 5,
+                    table_b_b.c.e: 10,
+                }
+            ),
+            table_b_b.update()
+            .values(
+                {
+                    table_b_b.c.a: 5,
+                    table_b_b.c.b: 5,
+                    table_b_b.c.c: 5,
+                    table_b_b.c.d: 5,
+                    table_b_b.c.e: 10,
+                }
+            )
+            .where(table_b_b.c.c > 10),
+        )
+
+    if util.py37:
+        fixtures.append(_update_dml_w_dicts)
 
 
 class CacheKeyFixture(object):

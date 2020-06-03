@@ -33,7 +33,9 @@ from .. import future
 from .. import util
 from ..inspection import inspect
 from ..sql import coercions
+from ..sql import dml
 from ..sql import roles
+from ..sql import selectable
 from ..sql import visitors
 from ..sql.base import CompileState
 
@@ -113,16 +115,24 @@ class ORMExecuteState(util.MemoizedSlots):
         "_execution_options",
         "_merged_execution_options",
         "bind_arguments",
+        "_compile_state_cls",
     )
 
     def __init__(
-        self, session, statement, parameters, execution_options, bind_arguments
+        self,
+        session,
+        statement,
+        parameters,
+        execution_options,
+        bind_arguments,
+        compile_state_cls,
     ):
         self.session = session
         self.statement = statement
         self.parameters = parameters
         self._execution_options = execution_options
         self.bind_arguments = bind_arguments
+        self._compile_state_cls = compile_state_cls
 
     def invoke_statement(
         self,
@@ -192,6 +202,38 @@ class ORMExecuteState(util.MemoizedSlots):
         return self.session.execute(
             statement, _params, _execution_options, _bind_arguments
         )
+
+    @property
+    def is_orm_statement(self):
+        """return True if the operation is an ORM statement.
+
+        This indictes that the select(), update(), or delete() being
+        invoked contains ORM entities as subjects.   For a statement
+        that does not have ORM entities and instead refers only to
+        :class:`.Table` metadata, it is invoked as a Core SQL statement
+        and no ORM-level automation takes place.
+
+        """
+        return self._compile_state_cls is not None
+
+    @property
+    def is_select(self):
+        """return True if this is a SELECT operation."""
+        return isinstance(self.statement, selectable.Select)
+
+    @property
+    def is_update(self):
+        """return True if this is an UPDATE operation."""
+        return isinstance(self.statement, dml.Update)
+
+    @property
+    def is_delete(self):
+        """return True if this is a DELETE operation."""
+        return isinstance(self.statement, dml.Delete)
+
+    @property
+    def _is_crud(self):
+        return isinstance(self.statement, (dml.Update, dml.Delete))
 
     @property
     def execution_options(self):
@@ -270,8 +312,28 @@ class ORMExecuteState(util.MemoizedSlots):
     def load_options(self):
         """Return the load_options that will be used for this execution."""
 
+        if not self.is_select:
+            raise sa_exc.InvalidRequestError(
+                "This ORM execution is not against a SELECT statement "
+                "so there are no load options."
+            )
         return self._execution_options.get(
             "_sa_orm_load_options", context.QueryContext.default_load_options
+        )
+
+    @property
+    def update_delete_options(self):
+        """Return the update_delete_options that will be used for this
+        execution."""
+
+        if not self._is_crud:
+            raise sa_exc.InvalidRequestError(
+                "This ORM execution is not against an UPDATE or DELETE "
+                "statement so there are no update options."
+            )
+        return self._execution_options.get(
+            "_sa_orm_update_options",
+            persistence.BulkUDCompileState.default_update_options,
         )
 
     @property
@@ -1455,34 +1517,36 @@ class Session(_SessionClassMethods):
             compile_state_cls = CompileState._get_plugin_class_for_plugin(
                 statement, "orm"
             )
-
-            compile_state_cls.orm_pre_session_exec(
-                self, statement, execution_options, bind_arguments
-            )
-
-            if self.dispatch.do_orm_execute:
-                skip_events = bind_arguments.pop("_sa_skip_events", False)
-
-                if not skip_events:
-                    orm_exec_state = ORMExecuteState(
-                        self,
-                        statement,
-                        params,
-                        execution_options,
-                        bind_arguments,
-                    )
-                    for fn in self.dispatch.do_orm_execute:
-                        result = fn(orm_exec_state)
-                        if result:
-                            return result
-
         else:
             compile_state_cls = None
+
+        if compile_state_cls is not None:
+            execution_options = compile_state_cls.orm_pre_session_exec(
+                self, statement, params, execution_options, bind_arguments
+            )
+        else:
             bind_arguments.setdefault("clause", statement)
             if statement._is_future:
                 execution_options = util.immutabledict().merge_with(
                     execution_options, {"future_result": True}
                 )
+
+        if self.dispatch.do_orm_execute:
+            # run this event whether or not we are in ORM mode
+            skip_events = bind_arguments.get("_sa_skip_events", False)
+            if not skip_events:
+                orm_exec_state = ORMExecuteState(
+                    self,
+                    statement,
+                    params,
+                    execution_options,
+                    bind_arguments,
+                    compile_state_cls,
+                )
+                for fn in self.dispatch.do_orm_execute:
+                    result = fn(orm_exec_state)
+                    if result:
+                        return result
 
         bind = self.get_bind(**bind_arguments)
 
@@ -1601,8 +1665,8 @@ class Session(_SessionClassMethods):
                 self.__binds[insp] = bind
             elif insp.is_mapper:
                 self.__binds[insp.class_] = bind
-                for selectable in insp._all_tables:
-                    self.__binds[selectable] = bind
+                for _selectable in insp._all_tables:
+                    self.__binds[_selectable] = bind
             else:
                 raise sa_exc.ArgumentError(
                     "Not an acceptable bind target: %s" % key
@@ -1664,7 +1728,9 @@ class Session(_SessionClassMethods):
         """
         self._add_bind(table, bind)
 
-    def get_bind(self, mapper=None, clause=None, bind=None):
+    def get_bind(
+        self, mapper=None, clause=None, bind=None, _sa_skip_events=None
+    ):
         """Return a "bind" to which this :class:`.Session` is bound.
 
         The "bind" is usually an instance of :class:`_engine.Engine`,

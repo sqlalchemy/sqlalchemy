@@ -777,7 +777,7 @@ things it can be used for.
 from .. import util
 from ..orm import attributes
 from ..orm import interfaces
-
+from ..sql import elements
 
 HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 """Symbol indicating an :class:`InspectionAttr` that's
@@ -1144,6 +1144,9 @@ class ExprComparator(Comparator):
         return self.hybrid.info
 
     def _bulk_update_tuples(self, value):
+        if isinstance(value, elements.BindParameter):
+            value = value.value
+
         if isinstance(self.expression, attributes.QueryableAttribute):
             return self.expression._bulk_update_tuples(value)
         elif self.hybrid.update_expr is not None:

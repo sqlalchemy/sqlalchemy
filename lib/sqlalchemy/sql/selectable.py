@@ -789,7 +789,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         self._reset_column_collection()
 
 
-class Join(FromClause):
+class Join(roles.DMLTableRole, FromClause):
     """represent a ``JOIN`` construct between two
     :class:`_expression.FromClause`
     elements.
@@ -1406,7 +1406,7 @@ class AliasedReturnsRows(NoInit, FromClause):
         return self.element.bind
 
 
-class Alias(AliasedReturnsRows):
+class Alias(roles.DMLTableRole, AliasedReturnsRows):
     """Represents an table or selectable alias (AS).
 
     Represents an alias, as typically applied to any table or
@@ -1987,7 +1987,7 @@ class FromGrouping(GroupedElement, FromClause):
         self.element = state["element"]
 
 
-class TableClause(Immutable, FromClause):
+class TableClause(roles.DMLTableRole, Immutable, FromClause):
     """Represents a minimal "table" construct.
 
     This is a lightweight table object that has only a name, a

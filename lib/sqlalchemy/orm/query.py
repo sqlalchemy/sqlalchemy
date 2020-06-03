@@ -19,12 +19,12 @@ database to return iterable result sets.
 
 """
 import itertools
+import operator
 
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
-from . import persistence
 from .base import _assertions
 from .context import _column_descriptions
 from .context import _legacy_determine_last_joined_entity
@@ -2825,15 +2825,6 @@ class Query(
 
         return result
 
-    def _execute_crud(self, stmt, mapper):
-        conn = self.session.connection(
-            mapper=mapper, clause=stmt, close_with_result=True
-        )
-
-        return conn._execute_20(
-            stmt, self.load_options._params, self._execution_options
-        )
-
     def __str__(self):
         statement = self._statement_20()
 
@@ -3178,9 +3169,27 @@ class Query(
 
         """
 
-        delete_op = persistence.BulkDelete.factory(self, synchronize_session)
-        delete_op.exec_()
-        return delete_op.rowcount
+        bulk_del = BulkDelete(self,)
+        if self.dispatch.before_compile_delete:
+            for fn in self.dispatch.before_compile_delete:
+                new_query = fn(bulk_del.query, bulk_del)
+                if new_query is not None:
+                    bulk_del.query = new_query
+
+                self = bulk_del.query
+
+        delete_ = sql.delete(*self._raw_columns)
+        delete_._where_criteria = self._where_criteria
+        result = self.session.execute(
+            delete_,
+            self.load_options._params,
+            execution_options={"synchronize_session": synchronize_session},
+        )
+        bulk_del.result = result
+        self.session.dispatch.after_bulk_delete(bulk_del)
+        result.close()
+
+        return result.rowcount
 
     def update(self, values, synchronize_session="evaluate", update_args=None):
         r"""Perform a bulk update query.
@@ -3313,11 +3322,27 @@ class Query(
         """
 
         update_args = update_args or {}
-        update_op = persistence.BulkUpdate.factory(
-            self, synchronize_session, values, update_args
+
+        bulk_ud = BulkUpdate(self, values, update_args)
+
+        if self.dispatch.before_compile_update:
+            for fn in self.dispatch.before_compile_update:
+                new_query = fn(bulk_ud.query, bulk_ud)
+                if new_query is not None:
+                    bulk_ud.query = new_query
+            self = bulk_ud.query
+
+        upd = sql.update(*self._raw_columns, **update_args).values(values)
+        upd._where_criteria = self._where_criteria
+        result = self.session.execute(
+            upd,
+            self.load_options._params,
+            execution_options={"synchronize_session": synchronize_session},
         )
-        update_op.exec_()
-        return update_op.rowcount
+        bulk_ud.result = result
+        self.session.dispatch.after_bulk_update(bulk_ud)
+        result.close()
+        return result.rowcount
 
     def _compile_state(self, for_statement=False, **kw):
         """Create an out-of-compiler ORMCompileState object.
@@ -3427,3 +3452,59 @@ class AliasOption(interfaces.LoaderOption):
 
     def process_compile_state(self, compile_state):
         pass
+
+
+class BulkUD(object):
+    """State used for the orm.Query version of update() / delete().
+
+    This object is now specific to Query only.
+
+    """
+
+    def __init__(self, query):
+        self.query = query.enable_eagerloads(False)
+        self._validate_query_state()
+        self.mapper = self.query._entity_from_pre_ent_zero()
+
+    def _validate_query_state(self):
+        for attr, methname, notset, op in (
+            ("_limit_clause", "limit()", None, operator.is_),
+            ("_offset_clause", "offset()", None, operator.is_),
+            ("_order_by_clauses", "order_by()", (), operator.eq),
+            ("_group_by_clauses", "group_by()", (), operator.eq),
+            ("_distinct", "distinct()", False, operator.is_),
+            (
+                "_from_obj",
+                "join(), outerjoin(), select_from(), or from_self()",
+                (),
+                operator.eq,
+            ),
+            (
+                "_legacy_setup_joins",
+                "join(), outerjoin(), select_from(), or from_self()",
+                (),
+                operator.eq,
+            ),
+        ):
+            if not op(getattr(self.query, attr), notset):
+                raise sa_exc.InvalidRequestError(
+                    "Can't call Query.update() or Query.delete() "
+                    "when %s has been called" % (methname,)
+                )
+
+    @property
+    def session(self):
+        return self.query.session
+
+
+class BulkUpdate(BulkUD):
+    """BulkUD which handles UPDATEs."""
+
+    def __init__(self, query, values, update_kwargs):
+        super(BulkUpdate, self).__init__(query)
+        self.values = values
+        self.update_kwargs = update_kwargs
+
+
+class BulkDelete(BulkUD):
+    """BulkUD which handles DELETEs."""

@@ -1630,6 +1630,15 @@ class CursorResult(BaseCursorResult, Result):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
+    def merge(self, *others):
+        merged_result = super(CursorResult, self).merge(*others)
+        setup_rowcounts = not self._metadata.returns_rows
+        if setup_rowcounts:
+            merged_result.rowcount = sum(
+                result.rowcount for result in (self,) + others
+            )
+        return merged_result
+
     def close(self):
         """Close this :class:`_engine.CursorResult`.
 

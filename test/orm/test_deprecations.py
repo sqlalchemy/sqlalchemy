@@ -1684,7 +1684,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(upd.session, sess)
         eq_(
             canary.after_bulk_update_legacy.mock_calls,
-            [call(sess, upd.query, upd.context, upd.result)],
+            [call(sess, upd.query, None, upd.result)],
         )
 
     def test_on_bulk_delete_hook(self):
@@ -1714,7 +1714,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(upd.session, sess)
         eq_(
             canary.after_bulk_delete_legacy.mock_calls,
-            [call(sess, upd.query, upd.context, upd.result)],
+            [call(sess, upd.query, None, upd.result)],
         )
 
 

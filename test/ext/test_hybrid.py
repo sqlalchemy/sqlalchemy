@@ -9,9 +9,9 @@ from sqlalchemy import String
 from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import persistence
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -588,15 +588,10 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     def test_update_plain(self):
         Person = self.classes.Person
 
-        s = Session()
-        q = s.query(Person)
-
-        bulk_ud = persistence.BulkUpdate.factory(
-            q, False, {Person.fname: "Dr."}, {}
-        )
+        statement = update(Person).values({Person.fname: "Dr."})
 
         self.assert_compile(
-            bulk_ud,
+            statement,
             "UPDATE person SET first_name=:first_name",
             params={"first_name": "Dr."},
         )
@@ -604,15 +599,10 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     def test_update_expr(self):
         Person = self.classes.Person
 
-        s = Session()
-        q = s.query(Person)
-
-        bulk_ud = persistence.BulkUpdate.factory(
-            q, False, {Person.name: "Dr. No"}, {}
-        )
+        statement = update(Person).values({Person.name: "Dr. No"})
 
         self.assert_compile(
-            bulk_ud,
+            statement,
             "UPDATE person SET first_name=:first_name, last_name=:last_name",
             params={"first_name": "Dr.", "last_name": "No"},
         )

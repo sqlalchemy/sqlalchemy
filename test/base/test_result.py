@@ -466,10 +466,16 @@ class ResultTest(fixtures.TestBase):
     def test_scalar_one(self):
         result = self._fixture(num_rows=1)
 
+        row = result.scalar_one()
+        eq_(row, 1)
+
+    def test_scalars_plus_one(self):
+        result = self._fixture(num_rows=1)
+
         row = result.scalars().one()
         eq_(row, 1)
 
-    def test_scalar_one_none(self):
+    def test_scalars_plus_one_none(self):
         result = self._fixture(num_rows=0)
 
         result = result.scalars()
@@ -487,6 +493,21 @@ class ResultTest(fixtures.TestBase):
             "No row was found when one was required",
             result.one,
         )
+
+    def test_one_or_none(self):
+        result = self._fixture(num_rows=1)
+
+        eq_(result.one_or_none(), (1, 1, 1))
+
+    def test_scalar_one_or_none(self):
+        result = self._fixture(num_rows=1)
+
+        eq_(result.scalar_one_or_none(), 1)
+
+    def test_scalar_one_or_none_none(self):
+        result = self._fixture(num_rows=0)
+
+        eq_(result.scalar_one_or_none(), None)
 
     def test_one_or_none_none(self):
         result = self._fixture(num_rows=0)

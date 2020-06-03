@@ -10,6 +10,7 @@ from .. import util
 from ..inspection import inspect
 from ..util import collections_abc
 from ..util import HasMemoized
+from ..util import py37
 
 SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
@@ -562,23 +563,38 @@ class _CacheKey(ExtendedInternalTraversal):
         )
 
     def visit_dml_values(self, attrname, obj, parent, anon_map, bindparams):
+        if py37:
+            # in py37 we can assume two dictionaries created in the same
+            # insert ordering will retain that sorting
+            return (
+                attrname,
+                tuple(
+                    (
+                        k._gen_cache_key(anon_map, bindparams)
+                        if hasattr(k, "__clause_element__")
+                        else k,
+                        obj[k]._gen_cache_key(anon_map, bindparams),
+                    )
+                    for k in obj
+                ),
+            )
+        else:
+            expr_values = {k for k in obj if hasattr(k, "__clause_element__")}
+            if expr_values:
+                # expr values can't be sorted deterministically right now,
+                # so no cache
+                anon_map[NO_CACHE] = True
+                return ()
 
-        expr_values = {k for k in obj if hasattr(k, "__clause_element__")}
-        if expr_values:
-            # expr values can't be sorted deterministically right now,
-            # so no cache
-            anon_map[NO_CACHE] = True
-            return ()
+            str_values = expr_values.symmetric_difference(obj)
 
-        str_values = expr_values.symmetric_difference(obj)
-
-        return (
-            attrname,
-            tuple(
-                (k, obj[k]._gen_cache_key(anon_map, bindparams))
-                for k in sorted(str_values)
-            ),
-        )
+            return (
+                attrname,
+                tuple(
+                    (k, obj[k]._gen_cache_key(anon_map, bindparams))
+                    for k in sorted(str_values)
+                ),
+            )
 
     def visit_dml_multi_values(
         self, attrname, obj, parent, anon_map, bindparams
@@ -1128,6 +1144,18 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
 
         if isinstance(left, collections_abc.Sequence):
             for lv, rv in zip(left, right):
+                if not self._compare_dml_values_or_ce(lv, rv, **kw):
+                    return COMPARE_FAILED
+        elif isinstance(right, collections_abc.Sequence):
+            return COMPARE_FAILED
+        elif py37:
+            # dictionaries guaranteed to support insert ordering in
+            # py37 so that we can compare the keys in order.  without
+            # this, we can't compare SQL expression keys because we don't
+            # know which key is which
+            for (lk, lv), (rk, rv) in zip(left.items(), right.items()):
+                if not self._compare_dml_values_or_ce(lk, rk, **kw):
+                    return COMPARE_FAILED
                 if not self._compare_dml_values_or_ce(lv, rv, **kw):
                     return COMPARE_FAILED
         else:

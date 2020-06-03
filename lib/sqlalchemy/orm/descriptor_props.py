@@ -420,6 +420,9 @@ class CompositeProperty(DescriptorProperty):
             return CompositeProperty.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(self, value):
+            if isinstance(value, sql.elements.BindParameter):
+                value = value.value
+
             if value is None:
                 values = [None for key in self.prop._attribute_keys]
             elif isinstance(value, self.prop.composite_class):

@@ -859,6 +859,7 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                 ORMCompileState.orm_pre_session_exec(
                     sess,
                     compile_state.select_statement,
+                    {},
                     exec_opts,
                     bind_arguments,
                 )

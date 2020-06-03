@@ -50,58 +50,6 @@ class ShardedQuery(Query):
         """
         return self.execution_options(_sa_shard_id=shard_id)
 
-    def _execute_crud(self, stmt, mapper):
-        def exec_for_shard(shard_id):
-            conn = self.session.connection(
-                mapper=mapper,
-                shard_id=shard_id,
-                clause=stmt,
-                close_with_result=True,
-            )
-            result = conn._execute_20(
-                stmt, self.load_options._params, self._execution_options
-            )
-            return result
-
-        if self._shard_id is not None:
-            return exec_for_shard(self._shard_id)
-        else:
-            rowcount = 0
-            results = []
-            # TODO: this will have to be the new object
-            for shard_id in self.execute_chooser(self):
-                result = exec_for_shard(shard_id)
-                rowcount += result.rowcount
-                results.append(result)
-
-            return ShardedResult(results, rowcount)
-
-
-class ShardedResult(object):
-    """A value object that represents multiple :class:`_engine.CursorResult`
-    objects.
-
-    This is used by the :meth:`.ShardedQuery._execute_crud` hook to return
-    an object that takes the place of the single :class:`_engine.CursorResult`.
-
-    Attribute include ``result_proxies``, which is a sequence of the
-    actual :class:`_engine.CursorResult` objects,
-    as well as ``aggregate_rowcount``
-    or ``rowcount``, which is the sum of all the individual rowcount values.
-
-    .. versionadded::  1.3
-    """
-
-    __slots__ = ("result_proxies", "aggregate_rowcount")
-
-    def __init__(self, result_proxies, aggregate_rowcount):
-        self.result_proxies = result_proxies
-        self.aggregate_rowcount = aggregate_rowcount
-
-    @property
-    def rowcount(self):
-        return self.aggregate_rowcount
-
 
 class ShardedSession(Session):
     def __init__(
@@ -259,37 +207,40 @@ class ShardedSession(Session):
 
 
 def execute_and_instances(orm_context):
-    if orm_context.bind_arguments.get("_horizontal_shard", False):
-        return None
-
     params = orm_context.parameters
 
-    load_options = orm_context.load_options
+    if orm_context.is_select:
+        load_options = active_options = orm_context.load_options
+        update_options = None
+        if params is None:
+            params = active_options._params
+
+    else:
+        load_options = None
+        update_options = active_options = orm_context.update_delete_options
+
     session = orm_context.session
     # orm_query = orm_context.orm_query
 
-    if params is None:
-        params = load_options._params
-
-    def iter_for_shard(shard_id, load_options):
+    def iter_for_shard(shard_id, load_options, update_options):
         execution_options = dict(orm_context.local_execution_options)
 
         bind_arguments = dict(orm_context.bind_arguments)
-        bind_arguments["_horizontal_shard"] = True
         bind_arguments["shard_id"] = shard_id
 
-        load_options += {"_refresh_identity_token": shard_id}
-        execution_options["_sa_orm_load_options"] = load_options
+        if orm_context.is_select:
+            load_options += {"_refresh_identity_token": shard_id}
+            execution_options["_sa_orm_load_options"] = load_options
+        else:
+            update_options += {"_refresh_identity_token": shard_id}
+            execution_options["_sa_orm_update_options"] = update_options
 
-        return session.execute(
-            orm_context.statement,
-            orm_context.parameters,
-            execution_options,
-            bind_arguments,
+        return orm_context.invoke_statement(
+            bind_arguments=bind_arguments, execution_options=execution_options
         )
 
-    if load_options._refresh_identity_token is not None:
-        shard_id = load_options._refresh_identity_token
+    if active_options._refresh_identity_token is not None:
+        shard_id = active_options._refresh_identity_token
     elif "_sa_shard_id" in orm_context.merged_execution_options:
         shard_id = orm_context.merged_execution_options["_sa_shard_id"]
     elif "shard_id" in orm_context.bind_arguments:
@@ -298,11 +249,11 @@ def execute_and_instances(orm_context):
         shard_id = None
 
     if shard_id is not None:
-        return iter_for_shard(shard_id, load_options)
+        return iter_for_shard(shard_id, load_options, update_options)
     else:
         partial = []
         for shard_id in session.execute_chooser(orm_context):
-            result_ = iter_for_shard(shard_id, load_options)
+            result_ = iter_for_shard(shard_id, load_options, update_options)
             partial.append(result_)
 
         return partial[0].merge(*partial[1:])

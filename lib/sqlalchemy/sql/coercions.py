@@ -755,6 +755,16 @@ class AnonymizedFromClauseImpl(StrictFromClauseImpl):
         return element.alias(name=name, flat=flat)
 
 
+class DMLTableImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
+    __slots__ = ()
+
+    def _post_coercion(self, element, **kw):
+        if "dml_table" in element._annotations:
+            return element._annotations["dml_table"]
+        else:
+            return element
+
+
 class DMLSelectImpl(_NoTextCoercion, RoleImpl):
     __slots__ = ()
 

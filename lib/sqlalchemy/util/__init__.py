@@ -65,6 +65,7 @@ from .compat import pickle  # noqa
 from .compat import print_  # noqa
 from .compat import py2k  # noqa
 from .compat import py36  # noqa
+from .compat import py37  # noqa
 from .compat import py3k  # noqa
 from .compat import quote_plus  # noqa
 from .compat import raise_  # noqa
