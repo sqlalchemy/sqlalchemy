@@ -1297,17 +1297,16 @@ class Session(_SessionClassMethods):
         )
 
     def _connection_for_bind(self, engine, execution_options=None, **kw):
-        self._autobegin()
-
-        if self._transaction is not None:
+        if self._transaction is not None or self._autobegin():
             return self._transaction._connection_for_bind(
                 engine, execution_options
             )
-        else:
-            conn = engine.connect(**kw)
-            if execution_options:
-                conn = conn.execution_options(**execution_options)
-            return conn
+
+        assert self._transaction is None
+        conn = engine.connect(**kw)
+        if execution_options:
+            conn = conn.execution_options(**execution_options)
+        return conn
 
     def execute(
         self,
@@ -1460,6 +1459,23 @@ class Session(_SessionClassMethods):
             compile_state_cls.orm_pre_session_exec(
                 self, statement, execution_options, bind_arguments
             )
+
+            if self.dispatch.do_orm_execute:
+                skip_events = bind_arguments.pop("_sa_skip_events", False)
+
+                if not skip_events:
+                    orm_exec_state = ORMExecuteState(
+                        self,
+                        statement,
+                        params,
+                        execution_options,
+                        bind_arguments,
+                    )
+                    for fn in self.dispatch.do_orm_execute:
+                        result = fn(orm_exec_state)
+                        if result:
+                            return result
+
         else:
             compile_state_cls = None
             bind_arguments.setdefault("clause", statement)
@@ -1468,18 +1484,6 @@ class Session(_SessionClassMethods):
                     execution_options, {"future_result": True}
                 )
 
-        if self.dispatch.do_orm_execute:
-            skip_events = bind_arguments.pop("_sa_skip_events", False)
-
-            if not skip_events:
-                orm_exec_state = ORMExecuteState(
-                    self, statement, params, execution_options, bind_arguments
-                )
-                for fn in self.dispatch.do_orm_execute:
-                    result = fn(orm_exec_state)
-                    if result:
-                        return result
-
         bind = self.get_bind(**bind_arguments)
 
         conn = self._connection_for_bind(bind, close_with_result=True)
@@ -1487,7 +1491,7 @@ class Session(_SessionClassMethods):
 
         if compile_state_cls:
             result = compile_state_cls.orm_setup_cursor_result(
-                self, bind_arguments, result
+                self, statement, execution_options, bind_arguments, result
             )
 
         return result

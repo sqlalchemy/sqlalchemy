@@ -191,15 +191,9 @@ class ORMCompileState(CompileState):
     def orm_pre_session_exec(
         cls, session, statement, execution_options, bind_arguments
     ):
-        if execution_options:
-            # TODO: will have to provide public API to set some load
-            # options and also extract them from that API here, likely
-            # execution options
-            load_options = execution_options.get(
-                "_sa_orm_load_options", QueryContext.default_load_options
-            )
-        else:
-            load_options = QueryContext.default_load_options
+        load_options = execution_options.get(
+            "_sa_orm_load_options", QueryContext.default_load_options
+        )
 
         bind_arguments["clause"] = statement
 
@@ -223,7 +217,9 @@ class ORMCompileState(CompileState):
             session._autoflush()
 
     @classmethod
-    def orm_setup_cursor_result(cls, session, bind_arguments, result):
+    def orm_setup_cursor_result(
+        cls, session, statement, execution_options, bind_arguments, result
+    ):
         execution_context = result.context
         compile_state = execution_context.compiled.compile_state
 
@@ -231,13 +227,9 @@ class ORMCompileState(CompileState):
         # were passed to session.execute:
         # session.execute(legacy_select([User.id, User.name]))
         # see test_query->test_legacy_tuple_old_select
-        if not execution_context.compiled.statement._is_future:
+        if not statement._is_future:
             return result
 
-        execution_options = execution_context.execution_options
-
-        # we are getting these right above in orm_pre_session_exec(),
-        # then getting them again right here.
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
         )

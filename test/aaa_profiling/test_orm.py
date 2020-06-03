@@ -870,7 +870,9 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
                 )
 
                 r.context.compiled.compile_state = compile_state
-                obj = ORMCompileState.orm_setup_cursor_result(sess, {}, r)
+                obj = ORMCompileState.orm_setup_cursor_result(
+                    sess, compile_state.statement, exec_opts, {}, r
+                )
                 list(obj)
                 sess.close()
 

@@ -2189,6 +2189,10 @@ class BooleanClauseList(ClauseList, ColumnElement):
         has_continue_on = None
 
         convert_clauses = []
+
+        against = operators._asbool
+        lcc = 0
+
         for clause in clauses:
             if clause is continue_on:
                 # instance of continue_on, like and_(x, y, True, z), store it
@@ -2199,24 +2203,26 @@ class BooleanClauseList(ClauseList, ColumnElement):
                 # instance of skip_on, e.g. and_(x, y, False, z), cancels
                 # the rest out
                 convert_clauses = [clause]
+                lcc = 1
                 break
             else:
+                if not lcc:
+                    lcc = 1
+                else:
+                    against = operator
+                    # techincally this would be len(convert_clauses) + 1
+                    # however this only needs to indicate "greater than one"
+                    lcc = 2
                 convert_clauses.append(clause)
 
         if not convert_clauses and has_continue_on is not None:
             convert_clauses = [has_continue_on]
+            lcc = 1
 
-        lcc = len(convert_clauses)
-
-        if lcc > 1:
-            against = operator
-        else:
-            against = operators._asbool
         return lcc, [c.self_group(against=against) for c in convert_clauses]
 
     @classmethod
     def _construct(cls, operator, continue_on, skip_on, *clauses, **kw):
-
         lcc, convert_clauses = cls._process_clauses_for_boolean(
             operator,
             continue_on,

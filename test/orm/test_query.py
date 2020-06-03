@@ -3551,6 +3551,23 @@ class CountTest(QueryTest):
 
         eq_(s.query(User).filter(users.c.name.endswith("ed")).count(), 2)
 
+    def test_basic_future(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        eq_(
+            s.execute(future_select(func.count()).select_from(User)).scalar(),
+            4,
+        )
+
+        eq_(
+            s.execute(
+                future_select(func.count()).filter(User.name.endswith("ed"))
+            ).scalar(),
+            2,
+        )
+
     def test_count_char(self):
         User = self.classes.User
         s = create_session()
@@ -3579,6 +3596,21 @@ class CountTest(QueryTest):
         q = s.query(User, Address).join(User.addresses)
         eq_(q.count(), 5)
 
+    def test_multiple_entity_future(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        s = create_session()
+
+        stmt = future_select(User, Address).join(Address, true())
+
+        stmt = future_select(func.count()).select_from(stmt.subquery())
+        eq_(s.scalar(stmt), 20)  # cartesian product
+
+        stmt = future_select(User, Address).join(Address)
+
+        stmt = future_select(func.count()).select_from(stmt.subquery())
+        eq_(s.scalar(stmt), 5)
+
     def test_nested(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -3591,6 +3623,29 @@ class CountTest(QueryTest):
 
         q = s.query(User, Address).join(User.addresses).limit(100)
         eq_(q.count(), 5)
+
+    def test_nested_future(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        s = create_session()
+
+        stmt = future_select(User, Address).join(Address, true()).limit(2)
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            2,
+        )
+
+        stmt = future_select(User, Address).join(Address, true()).limit(100)
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            20,
+        )
+
+        stmt = future_select(User, Address).join(Address).limit(100)
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            5,
+        )
 
     def test_cols(self):
         """test that column-based queries always nest."""
@@ -3614,6 +3669,49 @@ class CountTest(QueryTest):
         q = s.query(Address.user_id)
         eq_(q.count(), 5)
         eq_(q.distinct().count(), 3)
+
+    def test_cols_future(self):
+
+        User, Address = self.classes.User, self.classes.Address
+
+        s = create_session()
+
+        stmt = future_select(func.count(distinct(User.name)))
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            1,
+        )
+
+        stmt = future_select(func.count(distinct(User.name))).distinct()
+
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            1,
+        )
+
+        stmt = future_select(User.name)
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            4,
+        )
+
+        stmt = future_select(User.name, Address).join(Address, true())
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            20,
+        )
+
+        stmt = future_select(Address.user_id)
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            5,
+        )
+
+        stmt = stmt.distinct()
+        eq_(
+            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
+            3,
+        )
 
 
 class DistinctTest(QueryTest, AssertsCompiledSQL):

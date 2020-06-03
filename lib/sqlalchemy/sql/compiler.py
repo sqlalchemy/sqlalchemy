@@ -2829,10 +2829,12 @@ class SQLCompiler(Compiled):
 
         if self.linting & COLLECT_CARTESIAN_PRODUCTS:
             from_linter = FromLinter({}, set())
+            warn_linting = self.linting & WARN_LINTING
             if toplevel:
                 self.from_linter = from_linter
         else:
             from_linter = None
+            warn_linting = False
 
         if froms:
             text += " \nFROM "
@@ -2872,10 +2874,7 @@ class SQLCompiler(Compiled):
             if t:
                 text += " \nWHERE " + t
 
-        if (
-            self.linting & COLLECT_CARTESIAN_PRODUCTS
-            and self.linting & WARN_LINTING
-        ):
+        if warn_linting:
             from_linter.warn()
 
         if select._group_by_clauses:
