@@ -56,7 +56,7 @@ class PyODBCConnector(Connector):
 
             def check_quote(token):
                 if ";" in str(token):
-                    token = "'%s'" % token
+                    token = "{%s}" % token.replace("}", "}}")
                 return token
 
             keys = dict((k, check_quote(v)) for k, v in keys.items())
