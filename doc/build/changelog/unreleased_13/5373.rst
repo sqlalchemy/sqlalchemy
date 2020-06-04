@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 5373
+
+    Fixed issue with assembling the ODBC connection string for the pyodbc
+    DBAPI. Tokens containing semicolons and/or braces "{}" were not being
+    correctly escaped, causing the ODBC driver to misinterpret the
+    connection string attributes.

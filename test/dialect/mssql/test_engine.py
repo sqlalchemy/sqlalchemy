@@ -211,7 +211,7 @@ class ParseConnectTest(fixtures.TestBase):
 
     def test_pyodbc_token_injection(self):
         token1 = "someuser%3BPORT%3D50001"
-        token2 = "somepw%3BPORT%3D50001"
+        token2 = "some{strange}pw%3BPORT%3D50001"
         token3 = "somehost%3BPORT%3D50001"
         token4 = "somedb%3BPORT%3D50001"
 
@@ -225,8 +225,8 @@ class ParseConnectTest(fixtures.TestBase):
             [
                 [
                     "DRIVER={foob};Server=somehost%3BPORT%3D50001;"
-                    "Database=somedb%3BPORT%3D50001;UID='someuser;PORT=50001';"
-                    "PWD='somepw;PORT=50001'"
+                    "Database=somedb%3BPORT%3D50001;UID={someuser;PORT=50001};"
+                    "PWD={some{strange}}pw;PORT=50001}"
                 ],
                 {},
             ],
