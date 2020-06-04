@@ -2884,24 +2884,28 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
 
             from sqlalchemy import type_coerce
 
-            stmt = select([
-                type_coerce(log_table.date_string, StringDateTime())
-            ])
+            stmt = select([type_coerce(log_table.date_string, StringDateTime())])
 
         The above construct will produce a :class:`.TypeCoerce` object, which
-        renders SQL that labels the expression, but otherwise does not
-        modify its value on the SQL side::
+        does not modify the rendering in any way on the SQL side, with the
+        possible exception of a generated label if used in a columns clause
+        context::
 
             SELECT date_string AS date_string FROM log
 
         When result rows are fetched, the ``StringDateTime`` type processor
         will be applied to result rows on behalf of the ``date_string`` column.
+
+        .. note:: the :func:`.type_coerce` construct does not render any
+           SQL syntax of its own, including that it does not imply
+           parenthesization.   Please use :meth:`.TypeCoerce.self_group`
+           if explicit parenthesization is required.
+
         In order to provide a named label for the expression, use
         :meth:`_expression.ColumnElement.label`::
 
             stmt = select([
-                type_coerce(
-                    log_table.date_string, StringDateTime()).label('date')
+                type_coerce(log_table.date_string, StringDateTime()).label('date')
             ])
 
 
@@ -2918,9 +2922,19 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
             # literal value "some string"
             stmt = select([type_coerce("some string", MyStringType)])
 
-        :func:`.type_coerce` is similar to the :func:`.cast` function,
-        except that it does not render the ``CAST`` expression in the resulting
-        statement.
+        When using :func:`.type_coerce` with composed expressions, note that
+        **parenthesis are not applied**.   If :func:`.type_coerce` is being
+        used in an operator context where the parenthesis normally present from
+        CAST are necessary, use the :meth:`.TypeCoerce.self_group` method::
+
+            >>> some_integer = column("someint", Integer)
+            >>> some_string = column("somestr", String)
+            >>> expr = type_coerce(some_integer + 5, String) + some_string
+            >>> print(expr)
+            someint + :someint_1 || somestr
+            >>> expr = type_coerce(some_integer + 5, String).self_group() + some_string
+            >>> print(expr)
+            (someint + :someint_1) || somestr
 
         :param expression: A SQL expression, such as a
          :class:`_expression.ColumnElement`
@@ -2936,7 +2950,7 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
 
             :func:`.cast`
 
-        """
+        """  # noqa
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
             roles.ExpressionElementRole,
