@@ -412,7 +412,7 @@ Glossary
 
         .. seealso::
 
-        	:ref:`pooling_toplevel`
+            :ref:`pooling_toplevel`
 
     DBAPI
         DBAPI is shorthand for the phrase "Python Database API

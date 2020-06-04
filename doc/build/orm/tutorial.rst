@@ -992,7 +992,7 @@ To use an entirely string-based statement, a :func:`_expression.text` construct
 representing a complete statement can be passed to
 :meth:`~sqlalchemy.orm.query.Query.from_statement()`.   Without further
 specification, the ORM will match columns in the ORM mapping to the result
-returned by the SQL statement based on column name::
+returned by the SQL statement based on column name:
 
 .. sourcecode:: python+sql
 

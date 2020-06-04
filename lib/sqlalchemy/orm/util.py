@@ -312,9 +312,8 @@ def identity_key(*args, **kwargs):
 
       E.g.::
 
-        >>> row = engine.execute(\
-            text("select * from table where a=1 and b=2")\
-            ).first()
+        >>> row = engine.execute(
+        ...     text("select * from table where a=1 and b=2")).first()
         >>> identity_key(MyClass, row=row)
         (<class '__main__.MyClass'>, (1, 2), None)
 

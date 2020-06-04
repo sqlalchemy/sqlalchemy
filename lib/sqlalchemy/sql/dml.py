@@ -685,8 +685,8 @@ class ValuesBase(UpdateBase):
         added to any existing RETURNING clause, provided that
         :meth:`.UpdateBase.returning` is not used simultaneously.  The column
         values will then be available on the result using the
-        :attr:`_engine.CursorResult.returned_defaults` accessor as a dictionary
-        ,
+        :attr:`_engine.CursorResult.returned_defaults` accessor as
+        a dictionary,
         referring to values keyed to the :class:`_schema.Column`
         object as well as
         its ``.key``.
