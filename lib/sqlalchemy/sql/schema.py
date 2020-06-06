@@ -1556,6 +1556,18 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             c.copy(**kw) for c in self.constraints if not c._type_bound
         ] + [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
 
+        # ticket #5276
+        column_kwargs = {}
+        for dialect_name in self.dialect_options:
+            dialect_options = self.dialect_options[dialect_name]._non_defaults
+            for (
+                dialect_option_key,
+                dialect_option_value,
+            ) in dialect_options.items():
+                column_kwargs[
+                    dialect_name + "_" + dialect_option_key
+                ] = dialect_option_value
+
         server_default = self.server_default
         server_onupdate = self.server_onupdate
         if isinstance(server_default, Computed):
@@ -1574,7 +1586,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             nullable=self.nullable,
             unique=self.unique,
             system=self.system,
-            # quote=self.quote,
+            # quote=self.quote,  # disabled 2013-08-27 (commit 031ef080)
             index=self.index,
             autoincrement=self.autoincrement,
             default=self.default,
@@ -1583,7 +1595,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             server_onupdate=server_onupdate,
             doc=self.doc,
             comment=self.comment,
-            *args
+            *args,
+            **column_kwargs
         )
         return self._schema_item_copy(c)
 
@@ -2955,11 +2968,24 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         return x in self.columns
 
     def copy(self, **kw):
+        # ticket #5276
+        constraint_kwargs = {}
+        for dialect_name in self.dialect_options:
+            dialect_options = self.dialect_options[dialect_name]._non_defaults
+            for (
+                dialect_option_key,
+                dialect_option_value,
+            ) in dialect_options.items():
+                constraint_kwargs[
+                    dialect_name + "_" + dialect_option_key
+                ] = dialect_option_value
+
         c = self.__class__(
             name=self.name,
             deferrable=self.deferrable,
             initially=self.initially,
-            *self.columns.keys()
+            *self.columns.keys(),
+            **constraint_kwargs
         )
         return self._schema_item_copy(c)
 
