@@ -5127,3 +5127,82 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             CreateIndex(ix), "CREATE INDEX ix_t_q ON t (q + 5)"
         )
+
+
+class CopyDialectOptionsTest(fixtures.TestBase):
+    @contextmanager
+    def _fixture(self):
+        from sqlalchemy.engine.default import DefaultDialect
+
+        class CopyDialectOptionsTestDialect(DefaultDialect):
+            construct_arguments = [
+                (Table, {"some_table_arg": None}),
+                (Column, {"some_column_arg": None}),
+                (Index, {"some_index_arg": None}),
+                (PrimaryKeyConstraint, {"some_pk_arg": None}),
+                (UniqueConstraint, {"some_uq_arg": None}),
+            ]
+
+        def load(dialect_name):
+            if dialect_name == "copydialectoptionstest":
+                return CopyDialectOptionsTestDialect
+            else:
+                raise exc.NoSuchModuleError("no dialect %r" % dialect_name)
+
+        with mock.patch("sqlalchemy.dialects.registry.load", load):
+            yield
+
+    @classmethod
+    def check_dialect_options_(cls, t):
+        eq_(
+            t.dialect_kwargs["copydialectoptionstest_some_table_arg"], "a1",
+        )
+        eq_(
+            t.c.foo.dialect_kwargs["copydialectoptionstest_some_column_arg"],
+            "a2",
+        )
+        eq_(
+            t.primary_key.dialect_kwargs["copydialectoptionstest_some_pk_arg"],
+            "a3",
+        )
+        eq_(
+            list(t.indexes)[0].dialect_kwargs[
+                "copydialectoptionstest_some_index_arg"
+            ],
+            "a4",
+        )
+        eq_(
+            list(c for c in t.constraints if isinstance(c, UniqueConstraint))[
+                0
+            ].dialect_kwargs["copydialectoptionstest_some_uq_arg"],
+            "a5",
+        )
+
+    def test_dialect_options_are_copied(self):
+        with self._fixture():
+            t1 = Table(
+                "t",
+                MetaData(),
+                Column(
+                    "foo",
+                    Integer,
+                    copydialectoptionstest_some_column_arg="a2",
+                ),
+                Column("bar", Integer),
+                PrimaryKeyConstraint(
+                    "foo", copydialectoptionstest_some_pk_arg="a3"
+                ),
+                UniqueConstraint(
+                    "bar", copydialectoptionstest_some_uq_arg="a5"
+                ),
+                copydialectoptionstest_some_table_arg="a1",
+            )
+            Index(
+                "idx", t1.c.foo, copydialectoptionstest_some_index_arg="a4",
+            )
+
+            self.check_dialect_options_(t1)
+
+            m2 = MetaData()
+            t2 = t1.tometadata(m2)  # make a copy
+            self.check_dialect_options_(t2)
