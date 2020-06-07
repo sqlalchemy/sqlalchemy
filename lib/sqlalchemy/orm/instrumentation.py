@@ -40,7 +40,7 @@ from ..util import HasMemoized
 
 
 class ClassManager(HasMemoized, dict):
-    """tracks state information at the class level."""
+    """Tracks state information at the class level."""
 
     MANAGER_ATTR = base.DEFAULT_MANAGER_ATTR
     STATE_ATTR = base.DEFAULT_STATE_ATTR

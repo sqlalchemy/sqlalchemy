@@ -60,7 +60,8 @@ all_cascades = frozenset(
 
 
 class CascadeOptions(frozenset):
-    """Keeps track of the options sent to relationship().cascade"""
+    """Keeps track of the options sent to
+    :paramref:`.relationship.cascade`"""
 
     _add_w_all_cascades = all_cascades.difference(
         ["all", "none", "delete-orphan"]

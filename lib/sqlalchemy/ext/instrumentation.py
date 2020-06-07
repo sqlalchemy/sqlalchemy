@@ -42,10 +42,10 @@ inheritance hierarchy.
 The value of this attribute must be a callable and will be passed a class
 object.  The callable must return one of:
 
-  - An instance of an InstrumentationManager or subclass
+  - An instance of an :class:`.InstrumentationManager` or subclass
   - An object implementing all or some of InstrumentationManager (TODO)
   - A dictionary of callables, implementing all or some of the above (TODO)
-  - An instance of a ClassManager or subclass
+  - An instance of a :class:`.ClassManager` or subclass
 
 This attribute is consulted by SQLAlchemy instrumentation
 resolution, once the :mod:`sqlalchemy.ext.instrumentation` module

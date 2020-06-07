@@ -155,7 +155,7 @@ the :class:`_schema.MetaData` object used by the declarative base::
     keywords = Table(
         'keywords', Base.metadata,
         Column('author_id', Integer, ForeignKey('authors.id')),
-        Column('keyword_id', Integer, ForeignKey('keywords.id'))
+        Column('keyword_id', Integer, ForeignKey('keyword.id'))
         )
 
     class Author(Base):

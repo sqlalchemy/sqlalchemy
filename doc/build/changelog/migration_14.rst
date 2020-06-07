@@ -1615,7 +1615,7 @@ on the table.
 
 The :class:`.Sequence` prior to version 1.3 was used to control parameters for
 the IDENTITY column in SQL Server; this usage emitted deprecation warnings
-throughout 1.3 and is now removed in 1.4.  For control of paramters for an
+throughout 1.3 and is now removed in 1.4.  For control of parameters for an
 IDENTITY column, the ``mssql_identity_start`` and ``mssql_identity_increment``
 parameters should be used; see the MSSQL dialect documentation linked below.
 
