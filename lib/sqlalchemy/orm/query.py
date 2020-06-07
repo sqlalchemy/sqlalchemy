@@ -61,6 +61,7 @@ from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.util import _entity_namespace_key
+from ..sql.visitors import InternalTraversal
 from ..util import collections_abc
 
 __all__ = ["Query", "QueryContext", "aliased"]
@@ -423,6 +424,7 @@ class Query(
                 _label_style=self._label_style,
                 compile_options=compile_options,
             )
+            stmt.__dict__.pop("session", None)
 
         stmt._propagate_attrs = self._propagate_attrs
         return stmt
@@ -1725,7 +1727,6 @@ class Query(
 
         """
         from_entity = self._filter_by_zero()
-
         if from_entity is None:
             raise sa_exc.InvalidRequestError(
                 "Can't use filter_by when the first entity '%s' of a query "
@@ -2900,7 +2901,10 @@ class Query(
             compile_state = self._compile_state(for_statement=False)
 
             context = QueryContext(
-                compile_state, self.session, self.load_options
+                compile_state,
+                compile_state.statement,
+                self.session,
+                self.load_options,
             )
 
         result = loading.instances(result_proxy, context)
@@ -3376,7 +3380,12 @@ class Query(
 
     def _compile_context(self, for_statement=False):
         compile_state = self._compile_state(for_statement=for_statement)
-        context = QueryContext(compile_state, self.session, self.load_options)
+        context = QueryContext(
+            compile_state,
+            compile_state.statement,
+            self.session,
+            self.load_options,
+        )
 
         return context
 
@@ -3396,6 +3405,11 @@ class FromStatement(SelectStatementGrouping, Executable):
     _is_future = True
 
     _for_update_arg = None
+
+    _traverse_internals = [
+        ("_raw_columns", InternalTraversal.dp_clauseelement_list),
+        ("element", InternalTraversal.dp_clauseelement),
+    ] + Executable._executable_traverse_internals
 
     def __init__(self, entities, element):
         self._raw_columns = [

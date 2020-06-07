@@ -68,7 +68,7 @@ if os.path.exists("orm2010.db"):
     os.remove("orm2010.db")
 # use a file based database so that cursor.execute() has some
 # palpable overhead.
-engine = create_engine("sqlite:///orm2010.db", query_cache_size=100)
+engine = create_engine("sqlite:///orm2010.db")
 
 Base.metadata.create_all(engine)
 
@@ -194,11 +194,11 @@ def run_with_time(factor):
     def status(msg):
         print("%d - %s" % (time.time() - now, msg))
 
-    runit_persist(status, 10)
+    runit_persist(status, factor)
 
     print("Total time: %d" % (time.time() - now))
 
-    runit_query_runs(status, 10)
+    runit_query_runs(status, factor)
 
     print("Total time: %d" % (time.time() - now))
 

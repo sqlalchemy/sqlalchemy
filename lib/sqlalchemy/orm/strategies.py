@@ -25,6 +25,7 @@ from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .context import _column_descriptions
+from .context import ORMCompileState
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
 from .session import _state_session
@@ -156,7 +157,15 @@ class UninstrumentedColumnLoader(LoaderStrategy):
             column_collection.append(c)
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         pass
 
@@ -224,7 +233,15 @@ class ColumnLoader(LoaderStrategy):
         )
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         # look through list of columns represented here
         # to see which, if any, is present in the row.
@@ -281,7 +298,15 @@ class ExpressionColumnLoader(ColumnLoader):
         memoized_populators[self.parent_property] = fetch
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         # look through list of columns represented here
         # to see which, if any, is present in the row.
@@ -332,7 +357,15 @@ class DeferredColumnLoader(LoaderStrategy):
         self.group = self.parent_property.group
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
 
         # for a DeferredColumnLoader, this method is only used during a
@@ -542,7 +575,15 @@ class NoLoader(AbstractRelationshipLoader):
         )
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         def invoke_no_load(state, dict_, row):
             if self.uselist:
@@ -985,7 +1026,15 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 return None
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         key = self.key
 
@@ -1039,12 +1088,27 @@ class PostLoader(AbstractRelationshipLoader):
     """A relationship loader that emits a second SELECT statement."""
 
     def _immediateload_create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         return self.parent_property._get_strategy(
             (("lazy", "immediate"),)
         ).create_row_processor(
-            context, path, loadopt, mapper, result, adapter, populators
+            context,
+            query_entity,
+            path,
+            loadopt,
+            mapper,
+            result,
+            adapter,
+            populators,
         )
 
 
@@ -1057,21 +1121,16 @@ class ImmediateLoader(PostLoader):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    def setup_query(
+    def create_row_processor(
         self,
-        compile_state,
-        entity,
+        context,
+        query_entity,
         path,
         loadopt,
+        mapper,
+        result,
         adapter,
-        column_collection=None,
-        parentmapper=None,
-        **kwargs
-    ):
-        pass
-
-    def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        populators,
     ):
         def load_immediate(state, dict_, row):
             state.get_impl(self.key).get(state, dict_)
@@ -1092,120 +1151,6 @@ class SubqueryLoader(PostLoader):
         self.parent_property._get_strategy(
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
-
-    def setup_query(
-        self,
-        compile_state,
-        entity,
-        path,
-        loadopt,
-        adapter,
-        column_collection=None,
-        parentmapper=None,
-        **kwargs
-    ):
-        if (
-            not compile_state.compile_options._enable_eagerloads
-            or compile_state.compile_options._for_refresh_state
-        ):
-            return
-
-        compile_state.loaders_require_buffering = True
-
-        path = path[self.parent_property]
-
-        # build up a path indicating the path from the leftmost
-        # entity to the thing we're subquery loading.
-        with_poly_entity = path.get(
-            compile_state.attributes, "path_with_polymorphic", None
-        )
-        if with_poly_entity is not None:
-            effective_entity = with_poly_entity
-        else:
-            effective_entity = self.entity
-
-        subq_path = compile_state.attributes.get(
-            ("subquery_path", None), orm_util.PathRegistry.root
-        )
-
-        subq_path = subq_path + path
-
-        # if not via query option, check for
-        # a cycle
-        if not path.contains(compile_state.attributes, "loader"):
-            if self.join_depth:
-                if (
-                    (
-                        compile_state.current_path.length
-                        if compile_state.current_path
-                        else 0
-                    )
-                    + path.length
-                ) / 2 > self.join_depth:
-                    return
-            elif subq_path.contains_mapper(self.mapper):
-                return
-
-        (
-            leftmost_mapper,
-            leftmost_attr,
-            leftmost_relationship,
-        ) = self._get_leftmost(subq_path)
-
-        orig_query = compile_state.attributes.get(
-            ("orig_query", SubqueryLoader), compile_state.select_statement
-        )
-
-        # generate a new Query from the original, then
-        # produce a subquery from it.
-        left_alias = self._generate_from_original_query(
-            compile_state,
-            orig_query,
-            leftmost_mapper,
-            leftmost_attr,
-            leftmost_relationship,
-            entity.entity_zero,
-        )
-
-        # generate another Query that will join the
-        # left alias to the target relationships.
-        # basically doing a longhand
-        # "from_self()".  (from_self() itself not quite industrial
-        # strength enough for all contingencies...but very close)
-
-        q = query.Query(effective_entity)
-
-        def set_state_options(compile_state):
-            compile_state.attributes.update(
-                {
-                    ("orig_query", SubqueryLoader): orig_query,
-                    ("subquery_path", None): subq_path,
-                }
-            )
-
-        q = q._add_context_option(set_state_options, None)._disable_caching()
-
-        q = q._set_enable_single_crit(False)
-        to_join, local_attr, parent_alias = self._prep_for_joins(
-            left_alias, subq_path
-        )
-
-        q = q.add_columns(*local_attr)
-        q = self._apply_joins(
-            q, to_join, left_alias, parent_alias, effective_entity
-        )
-
-        q = self._setup_options(q, subq_path, orig_query, effective_entity)
-        q = self._setup_outermost_orderby(q)
-
-        # add new query to attributes to be picked up
-        # by create_row_processor
-        # NOTE: be sure to consult baked.py for some hardcoded logic
-        # about this structure as well
-        assert q.session is None
-        path.set(
-            compile_state.attributes, "subqueryload_data", {"query": q},
-        )
 
     def _get_leftmost(self, subq_path):
         subq_path = subq_path.path
@@ -1267,27 +1212,34 @@ class SubqueryLoader(PostLoader):
                 q,
                 *{
                     ent["entity"]
-                    for ent in _column_descriptions(orig_query)
+                    for ent in _column_descriptions(
+                        orig_query, compile_state=orig_compile_state
+                    )
                     if ent["entity"] is not None
                 }
             )
 
-        # for column information, look to the compile state that is
-        # already being passed through
-        compile_state = orig_compile_state
-
         # select from the identity columns of the outer (specifically, these
-        # are the 'local_cols' of the property).  This will remove
-        # other columns from the query that might suggest the right entity
-        # which is why we do _set_select_from above.
-        target_cols = compile_state._adapt_col_list(
+        # are the 'local_cols' of the property).  This will remove other
+        # columns from the query that might suggest the right entity which is
+        # why we do set select_from above.   The attributes we have are
+        # coerced and adapted using the original query's adapter, which is
+        # needed only for the case of adapting a subclass column to
+        # that of a polymorphic selectable, e.g. we have
+        # Engineer.primary_language and the entity is Person.  All other
+        # adaptations, e.g. from_self, select_entity_from(), will occur
+        # within the new query when it compiles, as the compile_state we are
+        # using here is only a partial one.  If the subqueryload is from a
+        # with_polymorphic() or other aliased() object, left_attr will already
+        # be the correct attributes so no adaptation is needed.
+        target_cols = orig_compile_state._adapt_col_list(
             [
-                sql.coercions.expect(sql.roles.ByOfRole, o)
+                sql.coercions.expect(sql.roles.ColumnsClauseRole, o)
                 for o in leftmost_attr
             ],
-            compile_state._get_current_adapter(),
+            orig_compile_state._get_current_adapter(),
         )
-        q._set_entities(target_cols)
+        q._raw_columns = target_cols
 
         distinct_target_key = leftmost_relationship.distinct_target_key
 
@@ -1461,13 +1413,13 @@ class SubqueryLoader(PostLoader):
             "_data",
         )
 
-        def __init__(self, context, subq_info):
+        def __init__(self, context, subq):
             # avoid creating a cycle by storing context
             # even though that's preferable
             self.session = context.session
             self.execution_options = context.execution_options
             self.load_options = context.load_options
-            self.subq = subq_info["query"]
+            self.subq = subq
             self._data = None
 
         def get(self, key, default):
@@ -1499,12 +1451,148 @@ class SubqueryLoader(PostLoader):
             if self._data is None:
                 self._load()
 
+    def _setup_query_from_rowproc(
+        self, context, path, entity, loadopt, adapter,
+    ):
+        compile_state = context.compile_state
+        if (
+            not compile_state.compile_options._enable_eagerloads
+            or compile_state.compile_options._for_refresh_state
+        ):
+            return
+
+        context.loaders_require_buffering = True
+
+        path = path[self.parent_property]
+
+        # build up a path indicating the path from the leftmost
+        # entity to the thing we're subquery loading.
+        with_poly_entity = path.get(
+            compile_state.attributes, "path_with_polymorphic", None
+        )
+        if with_poly_entity is not None:
+            effective_entity = with_poly_entity
+        else:
+            effective_entity = self.entity
+
+        subq_path = context.query._execution_options.get(
+            ("subquery_path", None), orm_util.PathRegistry.root
+        )
+
+        subq_path = subq_path + path
+
+        # if not via query option, check for
+        # a cycle
+        if not path.contains(compile_state.attributes, "loader"):
+            if self.join_depth:
+                if (
+                    (
+                        compile_state.current_path.length
+                        if compile_state.current_path
+                        else 0
+                    )
+                    + path.length
+                ) / 2 > self.join_depth:
+                    return
+            elif subq_path.contains_mapper(self.mapper):
+                return
+
+        (
+            leftmost_mapper,
+            leftmost_attr,
+            leftmost_relationship,
+        ) = self._get_leftmost(subq_path)
+
+        # use the current query being invoked, not the compile state
+        # one.  this is so that we get the current parameters.  however,
+        # it means we can't use the existing compile state, we have to make
+        # a new one.    other approaches include possibly using the
+        # compiled query but swapping the params, seems only marginally
+        # less time spent but more complicated
+        orig_query = context.query._execution_options.get(
+            ("orig_query", SubqueryLoader), context.query
+        )
+
+        # make a new compile_state for the query that's probably cached, but
+        # we're sort of undoing a bit of that caching :(
+        compile_state_cls = ORMCompileState._get_plugin_class_for_plugin(
+            orig_query, "orm"
+        )
+
+        # this would create the full blown compile state, which we don't
+        # need
+        # orig_compile_state = compile_state_cls.create_for_statement(
+        # orig_query, None)
+
+        # this is the more "quick" version, however it's not clear how
+        # much of this we need.    in particular I can't get a test to
+        # fail if the "set_base_alias" is missing and not sure why that is.
+        orig_compile_state = compile_state_cls._create_entities_collection(
+            orig_query
+        )
+
+        # generate a new Query from the original, then
+        # produce a subquery from it.
+        left_alias = self._generate_from_original_query(
+            orig_compile_state,
+            orig_query,
+            leftmost_mapper,
+            leftmost_attr,
+            leftmost_relationship,
+            entity,
+        )
+
+        # generate another Query that will join the
+        # left alias to the target relationships.
+        # basically doing a longhand
+        # "from_self()".  (from_self() itself not quite industrial
+        # strength enough for all contingencies...but very close)
+
+        q = query.Query(effective_entity)
+
+        q._execution_options = q._execution_options.union(
+            {
+                ("orig_query", SubqueryLoader): orig_query,
+                ("subquery_path", None): subq_path,
+            }
+        )
+
+        q = q._set_enable_single_crit(False)
+        to_join, local_attr, parent_alias = self._prep_for_joins(
+            left_alias, subq_path
+        )
+
+        q = q.add_columns(*local_attr)
+        q = self._apply_joins(
+            q, to_join, left_alias, parent_alias, effective_entity
+        )
+
+        q = self._setup_options(q, subq_path, orig_query, effective_entity)
+        q = self._setup_outermost_orderby(q)
+
+        return q
+
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         if context.refresh_state:
             return self._immediateload_create_row_processor(
-                context, path, loadopt, mapper, result, adapter, populators
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
             )
 
         if not self.parent.class_manager[self.key].impl.supports_population:
@@ -1513,16 +1601,27 @@ class SubqueryLoader(PostLoader):
                 "population - eager loading cannot be applied." % self
             )
 
-        path = path[self.parent_property]
-
-        subq_info = path.get(context.attributes, "subqueryload_data")
-
-        if subq_info is None:
+        # a little dance here as the "path" is still something that only
+        # semi-tracks the exact series of things we are loading, still not
+        # telling us about with_polymorphic() and stuff like that when it's at
+        # the root..  the initial MapperEntity is more accurate for this case.
+        if len(path) == 1:
+            if not orm_util._entity_isa(query_entity.entity_zero, self.parent):
+                return
+        elif not orm_util._entity_isa(path[-1], self.parent):
             return
 
-        subq = subq_info["query"]
+        subq = self._setup_query_from_rowproc(
+            context, path, path[-1], loadopt, adapter,
+        )
+
+        if subq is None:
+            return
 
         assert subq.session is None
+
+        path = path[self.parent_property]
+
         local_cols = self.parent_property.local_columns
 
         # cache the loaded collections in the context
@@ -1530,7 +1629,7 @@ class SubqueryLoader(PostLoader):
         # call upon create_row_processor again
         collections = path.get(context.attributes, "collections")
         if collections is None:
-            collections = self._SubqCollections(context, subq_info)
+            collections = self._SubqCollections(context, subq)
             path.set(context.attributes, "collections", collections)
 
         if adapter:
@@ -1634,7 +1733,6 @@ class JoinedLoader(AbstractRelationshipLoader):
         if not compile_state.compile_options._enable_eagerloads:
             return
         elif self.uselist:
-            compile_state.loaders_require_uniquing = True
             compile_state.multi_row_eager_loaders = True
 
         path = path[self.parent_property]
@@ -2142,13 +2240,24 @@ class JoinedLoader(AbstractRelationshipLoader):
             return False
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
                 "'%s' does not support object "
                 "population - eager loading cannot be applied." % self
             )
+
+        if self.uselist:
+            context.loaders_require_uniquing = True
 
         our_path = path[self.parent_property]
 
@@ -2160,6 +2269,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             key = self.key
 
             _instance = loading._instance_processor(
+                query_entity,
                 self.mapper,
                 context,
                 result,
@@ -2177,7 +2287,14 @@ class JoinedLoader(AbstractRelationshipLoader):
             self.parent_property._get_strategy(
                 (("lazy", "select"),)
             ).create_row_processor(
-                context, path, loadopt, mapper, result, adapter, populators
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
             )
 
     def _create_collection_loader(self, context, key, _instance, populators):
@@ -2382,11 +2499,26 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         return util.preloaded.ext_baked.bakery(size=50)
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         if context.refresh_state:
             return self._immediateload_create_row_processor(
-                context, path, loadopt, mapper, result, adapter, populators
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
             )
 
         if not self.parent.class_manager[self.key].impl.supports_population:
@@ -2395,12 +2527,19 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 "population - eager loading cannot be applied." % self
             )
 
+        # a little dance here as the "path" is still something that only
+        # semi-tracks the exact series of things we are loading, still not
+        # telling us about with_polymorphic() and stuff like that when it's at
+        # the root..  the initial MapperEntity is more accurate for this case.
+        if len(path) == 1:
+            if not orm_util._entity_isa(query_entity.entity_zero, self.parent):
+                return
+        elif not orm_util._entity_isa(path[-1], self.parent):
+            return
+
         selectin_path = (
             context.compile_state.current_path or orm_util.PathRegistry.root
         ) + path
-
-        if not orm_util._entity_isa(path[-1], self.parent):
-            return
 
         if loading.PostLoad.path_exists(
             context, selectin_path, self.parent_property
@@ -2427,7 +2566,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                     return
             elif selectin_path_w_prop.contains_mapper(self.mapper):
                 return
-
         loading.PostLoad.callable_for_path(
             context,
             selectin_path,
@@ -2543,7 +2681,39 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 )
             )
 
-        orig_query = context.query
+        # a test which exercises what these comments talk about is
+        # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
+        #
+        # effective_entity above is given to us in terms of the cached
+        # statement, namely this one:
+        orig_query = context.compile_state.select_statement
+
+        # the actual statement that was requested is this one:
+        #  context_query = context.query
+        #
+        # that's not the cached one, however.  So while it is of the identical
+        # structure, if it has entities like AliasedInsp, which we get from
+        # aliased() or with_polymorphic(), the AliasedInsp will likely be a
+        # different object identity each time, and will not match up
+        # hashing-wise to the corresponding AliasedInsp that's in the
+        # cached query, meaning it won't match on paths and loader lookups
+        # and loaders like this one will be skipped if it is used in options.
+        #
+        # Now we want to transfer loader options from the parent query to the
+        # "selectinload" query we're about to run.   Which query do we transfer
+        # the options from?  We use the cached query, because the options in
+        # that query will be in terms of the effective entity we were just
+        # handed.
+        #
+        # But now the selectinload/ baked query we are running is *also*
+        # cached.  What if it's cached and running from some previous iteration
+        # of that AliasedInsp?  Well in that case it will also use the previous
+        # iteration of the loader options.   If the baked query expires and
+        # gets generated again, it will be handed the current effective_entity
+        # and the current _with_options, again in terms of whatever
+        # compile_state.select_statement happens to be right now, so the
+        # query will still be internally consistent and loader callables
+        # will be correctly invoked.
 
         q._add_lazyload_options(
             orig_query._with_options, path[self.parent_property]

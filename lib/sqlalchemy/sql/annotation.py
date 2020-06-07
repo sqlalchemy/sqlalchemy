@@ -338,6 +338,15 @@ def _new_annotation_type(cls, base_cls):
         anno_cls._traverse_internals = list(cls._traverse_internals) + [
             ("_annotations", InternalTraversal.dp_annotations_key)
         ]
+    elif cls.__dict__.get("inherit_cache", False):
+        anno_cls._traverse_internals = list(cls._traverse_internals) + [
+            ("_annotations", InternalTraversal.dp_annotations_key)
+        ]
+
+    # some classes include this even if they have traverse_internals
+    # e.g. BindParameter, add it if present.
+    if cls.__dict__.get("inherit_cache", False):
+        anno_cls.inherit_cache = True
 
     anno_cls._is_column_operators = issubclass(cls, operators.ColumnOperators)
 

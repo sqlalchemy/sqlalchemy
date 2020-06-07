@@ -217,18 +217,23 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
         try:
             dispatcher = target.__class__.__dict__[generate_dispatcher_name]
         except KeyError:
+            # most of the dispatchers are generated up front
+            # in sqlalchemy/sql/__init__.py ->
+            # traversals.py-> _preconfigure_traversals().
+            # this block will generate any remaining dispatchers.
             dispatcher = self.generate_dispatch(
-                target, internal_dispatch, generate_dispatcher_name
+                target.__class__, internal_dispatch, generate_dispatcher_name
             )
         return dispatcher(target, self)
 
     def generate_dispatch(
-        self, target, internal_dispatch, generate_dispatcher_name
+        self, target_cls, internal_dispatch, generate_dispatcher_name
     ):
         dispatcher = _generate_dispatcher(
             self, internal_dispatch, generate_dispatcher_name
         )
-        setattr(target.__class__, generate_dispatcher_name, dispatcher)
+        # assert isinstance(target_cls, type)
+        setattr(target_cls, generate_dispatcher_name, dispatcher)
         return dispatcher
 
     dp_has_cache_key = symbol("HC")
@@ -262,10 +267,6 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """Visit a list of :class:`_expression.ClauseElement` objects.
 
     """
-
-    dp_clauseelement_unordered_set = symbol("CU")
-    """Visit an unordered set of :class:`_expression.ClauseElement`
-    objects. """
 
     dp_fromclause_ordered_set = symbol("CO")
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
@@ -413,6 +414,10 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     :class:`_expression.Insert` object.
 
     """
+
+    dp_propagate_attrs = symbol("PA")
+    """Visit the propagate attrs dict.   this hardcodes to the particular
+    elements we care about right now."""
 
 
 class ExtendedInternalTraversal(InternalTraversal):

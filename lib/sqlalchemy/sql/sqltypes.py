@@ -2616,26 +2616,10 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 return_type = self.type
                 if self.type.zero_indexes:
                     index = slice(index.start + 1, index.stop + 1, index.step)
-                index = Slice(
-                    coercions.expect(
-                        roles.ExpressionElementRole,
-                        index.start,
-                        name=self.expr.key,
-                        type_=type_api.INTEGERTYPE,
-                    ),
-                    coercions.expect(
-                        roles.ExpressionElementRole,
-                        index.stop,
-                        name=self.expr.key,
-                        type_=type_api.INTEGERTYPE,
-                    ),
-                    coercions.expect(
-                        roles.ExpressionElementRole,
-                        index.step,
-                        name=self.expr.key,
-                        type_=type_api.INTEGERTYPE,
-                    ),
+                slice_ = Slice(
+                    index.start, index.stop, index.step, _name=self.expr.key
                 )
+                return operators.getitem, slice_, return_type
             else:
                 if self.type.zero_indexes:
                     index += 1
@@ -2647,7 +2631,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                         self.type.__class__, **adapt_kw
                     )
 
-            return operators.getitem, index, return_type
+                return operators.getitem, index, return_type
 
         def contains(self, *arg, **kw):
             raise NotImplementedError(

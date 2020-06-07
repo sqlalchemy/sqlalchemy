@@ -111,8 +111,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_literal_binds(self):
         table1 = self.tables.mytable
 
-        table1 = self.tables.mytable
-
         stmt = (
             table1.update().values(name="jack").where(table1.c.name == "jill")
         )
@@ -121,6 +119,72 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt,
             "UPDATE mytable SET name='jack' WHERE mytable.name = 'jill'",
             literal_binds=True,
+        )
+
+    def test_update_custom_key_thing(self):
+        table1 = self.tables.mytable
+
+        class Thing(object):
+            def __clause_element__(self):
+                return table1.c.name
+
+        stmt = (
+            table1.update()
+            .values({Thing(): "jack"})
+            .where(table1.c.name == "jill")
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name='jack' WHERE mytable.name = 'jill'",
+            literal_binds=True,
+        )
+
+    def test_update_ordered_custom_key_thing(self):
+        table1 = self.tables.mytable
+
+        class Thing(object):
+            def __clause_element__(self):
+                return table1.c.name
+
+        stmt = (
+            table1.update()
+            .ordered_values((Thing(), "jack"))
+            .where(table1.c.name == "jill")
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE mytable SET name='jack' WHERE mytable.name = 'jill'",
+            literal_binds=True,
+        )
+
+    def test_update_broken_custom_key_thing(self):
+        table1 = self.tables.mytable
+
+        class Thing(object):
+            def __clause_element__(self):
+                return 5
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "SET/VALUES column expression or string key expected, got .*Thing",
+            table1.update().values,
+            {Thing(): "jack"},
+        )
+
+    def test_update_ordered_broken_custom_key_thing(self):
+        table1 = self.tables.mytable
+
+        class Thing(object):
+            def __clause_element__(self):
+                return 5
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "SET/VALUES column expression or string key expected, got .*Thing",
+            table1.update().ordered_values,
+            (Thing(), "jack"),
         )
 
     def test_correlated_update_one(self):

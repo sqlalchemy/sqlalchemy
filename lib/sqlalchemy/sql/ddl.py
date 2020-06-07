@@ -28,6 +28,9 @@ class _DDLCompiles(ClauseElement):
 
         return dialect.ddl_compiler(dialect, self, **kw)
 
+    def _compile_w_cache(self, *arg, **kw):
+        raise NotImplementedError()
+
 
 class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     """Base class for DDL expression constructs.

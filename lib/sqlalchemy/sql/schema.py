@@ -1013,6 +1013,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
     __visit_name__ = "column"
 
+    inherit_cache = True
+
     def __init__(self, *args, **kwargs):
         r"""
         Construct a new ``Column`` object.

@@ -140,7 +140,9 @@ def profile_memory(
                         )
 
                     if assert_no_sessions:
-                        assert len(_sessions) == 0, "sessions remain"
+                        assert len(_sessions) == 0, "%d sessions remain" % (
+                            len(_sessions),
+                        )
 
                     # queue.put(('samples', samples))
 
@@ -186,6 +188,27 @@ def profile_memory(
                 else:
                     queue.put(("result", True, "success"))
 
+        def run_plain(*func_args):
+            import queue as _queue
+
+            q = _queue.Queue()
+            profile(q, func_args)
+
+            while True:
+                row = q.get()
+                typ = row[0]
+                if typ == "samples":
+                    print("sample gc sizes:", row[1])
+                elif typ == "status":
+                    print(row[1])
+                elif typ == "result":
+                    break
+                else:
+                    assert False, "can't parse row"
+            assert row[1], row[2]
+
+        # return run_plain
+
         def run_in_process(*func_args):
             queue = multiprocessing.Queue()
             proc = multiprocessing.Process(
@@ -221,7 +244,15 @@ class EnsureZeroed(fixtures.ORMTest):
     def setup(self):
         _sessions.clear()
         _mapper_registry.clear()
-        self.engine = engines.testing_engine(options={"use_reaper": False})
+
+        # enable query caching, however make the cache small so that
+        # the tests don't take too long.  issues w/ caching include making
+        # sure sessions don't get stuck inside of it.  However it will
+        # make tests like test_mapper_reset take a long time because mappers
+        # are very much a part of what's in the cache.
+        self.engine = engines.testing_engine(
+            options={"use_reaper": False, "query_cache_size": 10}
+        )
 
 
 class MemUsageTest(EnsureZeroed):
@@ -771,6 +802,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             sess = Session()
             sess.query(B).options(subqueryload(B.as_.of_type(ASub))).all()
             sess.close()
+            del sess
 
         try:
             go()
@@ -948,7 +980,9 @@ class MemUsageWBackendTest(EnsureZeroed):
                 sess.delete(a)
             sess.flush()
 
-            # don't need to clear_mappers()
+            # mappers necessarily find themselves in the compiled cache,
+            # so to allow them to be GC'ed clear out the cache
+            self.engine.clear_compiled_cache()
             del B
             del A
 
@@ -1151,6 +1185,28 @@ class CycleTest(_fixtures.FixtureTest):
         def go():
             stmt = future_select(User)
             stmt._generate_cache_key()
+
+        go()
+
+    def test_proxied_attribute(self):
+        from sqlalchemy.ext import hybrid
+
+        users = self.tables.users
+
+        class Foo(object):
+            @hybrid.hybrid_property
+            def user_name(self):
+                return self.name
+
+        mapper(Foo, users)
+
+        # unfortunately there's a lot of cycles with an aliased()
+        # for now, however calling upon clause_element does not seem
+        # to make it worse which is what this was looking to test
+        @assert_cycles(68)
+        def go():
+            a1 = aliased(Foo)
+            a1.user_name.__clause_element__()
 
         go()
 

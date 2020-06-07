@@ -210,16 +210,16 @@ the actual ``CREATE TABLE`` statement:
 
     >>> Base.metadata.create_all(engine)
     PRAGMA main.table_info("users")
-    ()
+    [...] ()
     PRAGMA temp.table_info("users")
-    ()
+    [...] ()
     CREATE TABLE users (
         id INTEGER NOT NULL, name VARCHAR,
         fullname VARCHAR,
         nickname VARCHAR,
         PRIMARY KEY (id)
     )
-    ()
+    [...] ()
     COMMIT
 
 .. topic:: Minimal Table Descriptions vs. Full Descriptions
@@ -373,7 +373,7 @@ added:
     {sql}>>> our_user = session.query(User).filter_by(name='ed').first() # doctest:+NORMALIZE_WHITESPACE
     BEGIN (implicit)
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('ed', 'Ed Jones', 'edsnickname')
+    [...] ('ed', 'Ed Jones', 'edsnickname')
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
@@ -381,7 +381,7 @@ added:
     FROM users
     WHERE users.name = ?
      LIMIT ? OFFSET ?
-    ('ed', 1, 0)
+    [...] ('ed', 1, 0)
     {stop}>>> our_user
     <User(name='ed', fullname='Ed Jones', nickname='edsnickname')>
 
@@ -448,13 +448,13 @@ three new ``User`` objects we've added:
 
     {sql}>>> session.commit()
     UPDATE users SET nickname=? WHERE users.id = ?
-    ('eddie', 1)
+    [...] ('eddie', 1)
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('wendy', 'Wendy Williams', 'windy')
+    [...] ('wendy', 'Wendy Williams', 'windy')
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('mary', 'Mary Contrary', 'mary')
+    [...] ('mary', 'Mary Contrary', 'mary')
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('fred', 'Fred Flintstone', 'freddy')
+    [...] ('fred', 'Fred Flintstone', 'freddy')
     COMMIT
 
 :meth:`~.Session.commit` flushes the remaining changes to the
@@ -475,7 +475,7 @@ If we look at Ed's ``id`` attribute, which earlier was ``None``, it now has a va
             users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
-    (1,)
+    [...] (1,)
     {stop}1
 
 After the :class:`~sqlalchemy.orm.session.Session` inserts new rows in the
@@ -519,16 +519,16 @@ Querying the session, we can see that they're flushed into the current transacti
 
     {sql}>>> session.query(User).filter(User.name.in_(['Edwardo', 'fakeuser'])).all()
     UPDATE users SET name=? WHERE users.id = ?
-    ('Edwardo', 1)
+    [...] ('Edwardo', 1)
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('fakeuser', 'Invalid', '12345')
+    [...] ('fakeuser', 'Invalid', '12345')
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
             users.nickname AS users_nickname
     FROM users
     WHERE users.name IN (?, ?)
-    ('Edwardo', 'fakeuser')
+    [...] ('Edwardo', 'fakeuser')
     {stop}[<User(name='Edwardo', fullname='Ed Jones', nickname='eddie')>, <User(name='fakeuser', fullname='Invalid', nickname='12345')>]
 
 Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and
@@ -548,7 +548,7 @@ Rolling back, we can see that ``ed_user``'s name is back to ``ed``, and
             users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
-    (1,)
+    [...] (1,)
     {stop}u'ed'
     >>> fake_user in session
     False
@@ -564,7 +564,7 @@ issuing a SELECT illustrates the changes made to the database:
             users.nickname AS users_nickname
     FROM users
     WHERE users.name IN (?, ?)
-    ('ed', 'fakeuser')
+    [...] ('ed', 'fakeuser')
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 .. _ormtutorial_querying:
@@ -590,7 +590,7 @@ returned:
             users.fullname AS users_fullname,
             users.nickname AS users_nickname
     FROM users ORDER BY users.id
-    ()
+    [...] ()
     {stop}ed Ed Jones
     wendy Wendy Williams
     mary Mary Contrary
@@ -609,7 +609,7 @@ is expressed as tuples:
     SELECT users.name AS users_name,
             users.fullname AS users_fullname
     FROM users
-    ()
+    [...] ()
     {stop}ed Ed Jones
     wendy Wendy Williams
     mary Mary Contrary
@@ -630,7 +630,7 @@ class:
             users.fullname AS users_fullname,
             users.nickname AS users_nickname
     FROM users
-    ()
+    [...] ()
     {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')> ed
     <User(name='wendy', fullname='Wendy Williams', nickname='windy')> wendy
     <User(name='mary', fullname='Mary Contrary', nickname='mary')> mary
@@ -647,7 +647,7 @@ is mapped to one (such as ``User.name``):
     ...    print(row.name_label)
     SELECT users.name AS name_label
     FROM users
-    (){stop}
+    [...] (){stop}
     ed
     wendy
     mary
@@ -669,7 +669,7 @@ entities are present in the call to :meth:`~.Session.query`, can be controlled u
             user_alias.fullname AS user_alias_fullname,
             user_alias.nickname AS user_alias_nickname
     FROM users AS user_alias
-    (){stop}
+    [...] (){stop}
     <User(name='ed', fullname='Ed Jones', nickname='eddie')>
     <User(name='wendy', fullname='Wendy Williams', nickname='windy')>
     <User(name='mary', fullname='Mary Contrary', nickname='mary')>
@@ -689,7 +689,7 @@ conjunction with ORDER BY:
             users.nickname AS users_nickname
     FROM users ORDER BY users.id
     LIMIT ? OFFSET ?
-    (2, 1){stop}
+    [...] (2, 1){stop}
     <User(name='wendy', fullname='Wendy Williams', nickname='windy')>
     <User(name='mary', fullname='Mary Contrary', nickname='mary')>
 
@@ -703,7 +703,7 @@ and filtering results, which is accomplished either with
     ...    print(name)
     SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
-    ('Ed Jones',)
+    [...] ('Ed Jones',)
     {stop}ed
 
 ...or :func:`~sqlalchemy.orm.query.Query.filter`, which uses more flexible SQL
@@ -717,7 +717,7 @@ operators with the class-level attributes on your mapped class:
     ...    print(name)
     SELECT users.name AS users_name FROM users
     WHERE users.fullname = ?
-    ('Ed Jones',)
+    [...] ('Ed Jones',)
     {stop}ed
 
 The :class:`~sqlalchemy.orm.query.Query` object is fully **generative**, meaning
@@ -739,7 +739,7 @@ users named "ed" with a full name of "Ed Jones", you can call
             users.nickname AS users_nickname
     FROM users
     WHERE users.name = ? AND users.fullname = ?
-    ('ed', 'Ed Jones')
+    [...] ('ed', 'Ed Jones')
     {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
 Common Filter Operators
@@ -861,7 +861,7 @@ database results.  Here's a brief tour:
               users.nickname AS users_nickname
       FROM users
       WHERE users.name LIKE ? ORDER BY users.id
-      ('%ed',)
+      [...] ('%ed',)
       {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>,
             <User(name='fred', fullname='Fred Flintstone', nickname='freddy')>]
 
@@ -893,7 +893,7 @@ database results.  Here's a brief tour:
       FROM users
       WHERE users.name LIKE ? ORDER BY users.id
        LIMIT ? OFFSET ?
-      ('%ed', 1, 0)
+      [...] ('%ed', 1, 0)
       {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')>
 
 * :meth:`_query.Query.one()` fully fetches all rows, and if not
@@ -937,7 +937,7 @@ database results.  Here's a brief tour:
       SELECT users.id AS users_id
       FROM users
       WHERE users.name = ? ORDER BY users.id
-      ('ed',)
+      [...] ('ed',)
       {stop}1
 
 .. _orm_tutorial_literal_sql:
@@ -965,7 +965,7 @@ by most applicable methods.  For example,
             users.nickname AS users_nickname
     FROM users
     WHERE id<224 ORDER BY id
-    ()
+    [...] ()
     {stop}ed
     wendy
     mary
@@ -985,7 +985,7 @@ method:
             users.nickname AS users_nickname
     FROM users
     WHERE id<? and name=? ORDER BY users.id
-    (224, 'fred')
+    [...] (224, 'fred')
     {stop}<User(name='fred', fullname='Fred Flintstone', nickname='freddy')>
 
 To use an entirely string-based statement, a :func:`_expression.text` construct
@@ -999,7 +999,7 @@ returned by the SQL statement based on column name::
     {sql}>>> session.query(User).from_statement(
     ...  text("SELECT * FROM users where name=:name")).params(name='ed').all()
     SELECT * FROM users where name=?
-    ('ed',)
+    [...] ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 For better targeting of mapped columns to a textual SELECT, as well as  to
@@ -1013,7 +1013,7 @@ columns are passed in the desired order to :meth:`_expression.TextClause.columns
     >>> stmt = stmt.columns(User.name, User.id, User.fullname, User.nickname)
     {sql}>>> session.query(User).from_statement(stmt).params(name='ed').all()
     SELECT name, id, fullname, nickname FROM users where name=?
-    ('ed',)
+    [...] ('ed',)
     {stop}[<User(name='ed', fullname='Ed Jones', nickname='eddie')>]
 
 When selecting from a :func:`_expression.text` construct, the :class:`_query.Query`
@@ -1028,7 +1028,7 @@ any other case:
     {sql}>>> session.query(User.id, User.name).\
     ...          from_statement(stmt).params(name='ed').all()
     SELECT name, id FROM users where name=?
-    ('ed',)
+    [...] ('ed',)
     {stop}[(1, u'ed')]
 
 .. seealso::
@@ -1052,7 +1052,7 @@ counting called :meth:`~sqlalchemy.orm.query.Query.count()`:
                     users.nickname AS users_nickname
     FROM users
     WHERE users.name LIKE ?) AS anon_1
-    ('%ed',)
+    [...] ('%ed',)
     {stop}2
 
 .. sidebar:: Counting on ``count()``
@@ -1085,7 +1085,7 @@ use it to return the count of each distinct user name:
     {sql}>>> session.query(func.count(User.name), User.name).group_by(User.name).all()
     SELECT count(users.name) AS count_1, users.name AS users_name
     FROM users GROUP BY users.name
-    ()
+    [...] ()
     {stop}[(1, u'ed'), (1, u'fred'), (1, u'mary'), (1, u'wendy')]
 
 To achieve our simple ``SELECT count(*) FROM table``, we can apply it as:
@@ -1095,7 +1095,7 @@ To achieve our simple ``SELECT count(*) FROM table``, we can apply it as:
     {sql}>>> session.query(func.count('*')).select_from(User).scalar()
     SELECT count(?) AS count_1
     FROM users
-    ('*',)
+    [...] ('*',)
     {stop}4
 
 The usage of :meth:`_query.Query.select_from` can be removed if we express the count in terms
@@ -1106,7 +1106,7 @@ of the ``User`` primary key directly:
     {sql}>>> session.query(func.count(User.id)).scalar()
     SELECT count(users.id) AS count_1
     FROM users
-    ()
+    [...] ()
     {stop}4
 
 .. _orm_tutorial_relationship:
@@ -1223,7 +1223,7 @@ already been created:
         PRIMARY KEY (id),
          FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    ()
+    [...] ()
     COMMIT
 
 Working with Related Objects
@@ -1272,11 +1272,11 @@ known as **cascading**:
     >>> session.add(jack)
     {sql}>>> session.commit()
     INSERT INTO users (name, fullname, nickname) VALUES (?, ?, ?)
-    ('jack', 'Jack Bean', 'gjffdd')
+    [...] ('jack', 'Jack Bean', 'gjffdd')
     INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
-    ('jack@google.com', 5)
+    [...] ('jack@google.com', 5)
     INSERT INTO addresses (email_address, user_id) VALUES (?, ?)
-    ('j25@yahoo.com', 5)
+    [...] ('j25@yahoo.com', 5)
     COMMIT
 
 Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addresses:
@@ -1292,7 +1292,7 @@ Querying for Jack, we get just Jack back.  No SQL is yet issued for Jack's addre
             users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
-    ('jack',)
+    [...] ('jack',)
 
     {stop}>>> jack
     <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
@@ -1308,7 +1308,7 @@ Let's look at the ``addresses`` collection.  Watch the SQL:
             addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id ORDER BY addresses.id
-    (5,)
+    [...] (5,)
     {stop}[<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
 
 When we accessed the ``addresses`` collection, SQL was suddenly issued. This
@@ -1349,7 +1349,7 @@ Below we load the ``User`` and ``Address`` entities at once using this method:
     FROM users, addresses
     WHERE users.id = addresses.user_id
             AND addresses.email_address = ?
-    ('jack@google.com',)
+    [...] ('jack@google.com',)
     {stop}<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
     <Address(email_address='jack@google.com')>
 
@@ -1367,7 +1367,7 @@ using the :meth:`_query.Query.join` method:
             users.nickname AS users_nickname
     FROM users JOIN addresses ON users.id = addresses.user_id
     WHERE addresses.email_address = ?
-    ('jack@google.com',)
+    [...] ('jack@google.com',)
     {stop}[<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>]
 
 :meth:`_query.Query.join` knows how to join between ``User``
@@ -1435,7 +1435,7 @@ distinct email addresses at the same time:
             ON users.id = addresses_2.user_id
     WHERE addresses_1.email_address = ?
             AND addresses_2.email_address = ?
-    ('jack@google.com', 'j25@yahoo.com')
+    [...] ('jack@google.com', 'j25@yahoo.com')
     {stop}jack jack@google.com j25@yahoo.com
 
 In addition to using the :meth:`_orm.PropComparator.of_type` method, it is
@@ -1496,7 +1496,7 @@ accessible through an attribute called ``c``:
         FROM addresses GROUP BY addresses.user_id) AS anon_1
         ON users.id = anon_1.user_id
     ORDER BY users.id
-    ('*',)
+    [...] ('*',)
     {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')> None
     <User(name='wendy', fullname='Wendy Williams', nickname='windy')> None
     <User(name='mary', fullname='Mary Contrary', nickname='mary')> None
@@ -1534,7 +1534,7 @@ to associate an "alias" of a mapped class to a subquery:
         FROM addresses
         WHERE addresses.email_address != ?) AS anon_1
         ON users.id = anon_1.user_id
-    ('j25@yahoo.com',)
+    [...] ('j25@yahoo.com',)
     {stop}<User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
     <Address(email_address='jack@google.com')>
 
@@ -1559,7 +1559,7 @@ There is an explicit EXISTS construct, which looks like this:
     WHERE EXISTS (SELECT *
     FROM addresses
     WHERE addresses.user_id = users.id)
-    ()
+    [...] ()
     {stop}jack
 
 The :class:`~sqlalchemy.orm.query.Query` features several operators which make
@@ -1576,7 +1576,7 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     WHERE EXISTS (SELECT 1
     FROM addresses
     WHERE users.id = addresses.user_id)
-    ()
+    [...] ()
     {stop}jack
 
 :meth:`~.RelationshipProperty.Comparator.any` takes criterion as well, to limit the rows matched:
@@ -1591,7 +1591,7 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     WHERE EXISTS (SELECT 1
     FROM addresses
     WHERE users.id = addresses.user_id AND addresses.email_address LIKE ?)
-    ('%google%',)
+    [...] ('%google%',)
     {stop}jack
 
 :meth:`~.RelationshipProperty.Comparator.has` is the same operator as
@@ -1609,7 +1609,7 @@ usage of EXISTS automatically. Above, the statement can be expressed along the
     WHERE NOT (EXISTS (SELECT 1
     FROM users
     WHERE users.id = addresses.user_id AND users.name = ?))
-    ('jack',)
+    [...] ('jack',)
     {stop}[]
 
 Common Relationship Operators
@@ -1685,14 +1685,14 @@ at once:
             users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
-    ('jack',)
+    [...] ('jack',)
     SELECT addresses.user_id AS addresses_user_id,
             addresses.id AS addresses_id,
             addresses.email_address AS addresses_email_address
     FROM addresses
     WHERE addresses.user_id IN (?)
     ORDER BY addresses.id
-    (5,)
+    [...] (5,)
     {stop}>>> jack
     <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
 
@@ -1728,7 +1728,7 @@ will emit the extra join regardless:
     FROM users
         LEFT OUTER JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
     WHERE users.name = ? ORDER BY addresses_1.id
-    ('jack',)
+    [...] ('jack',)
 
     {stop}>>> jack
     <User(name='jack', fullname='Jack Bean', nickname='gjffdd')>
@@ -1792,7 +1792,7 @@ attribute:
             addresses.user_id AS addresses_user_id
     FROM addresses JOIN users ON users.id = addresses.user_id
     WHERE users.name = ?
-    ('jack',)
+    [...] ('jack',)
 
     {stop}>>> jacks_addresses
     [<Address(email_address='jack@google.com')>, <Address(email_address='j25@yahoo.com')>]
@@ -1814,9 +1814,9 @@ in the session, then we'll issue a ``count`` query to see that no rows remain:
     >>> session.delete(jack)
     {sql}>>> session.query(User).filter_by(name='jack').count()
     UPDATE addresses SET user_id=? WHERE addresses.id = ?
-    ((None, 1), (None, 2))
+    [...] ((None, 1), (None, 2))
     DELETE FROM users WHERE users.id = ?
-    (5,)
+    [...] (5,)
     SELECT count(*) AS count_1
     FROM (SELECT users.id AS users_id,
             users.name AS users_name,
@@ -1824,7 +1824,7 @@ in the session, then we'll issue a ``count`` query to see that no rows remain:
             users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?) AS anon_1
-    ('jack',)
+    [...] ('jack',)
     {stop}0
 
 So far, so good.  How about Jack's ``Address`` objects ?
@@ -1840,7 +1840,7 @@ So far, so good.  How about Jack's ``Address`` objects ?
                     addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE addresses.email_address IN (?, ?)) AS anon_1
-    ('jack@google.com', 'j25@yahoo.com')
+    [...] ('jack@google.com', 'j25@yahoo.com')
     {stop}2
 
 Uh oh, they're still there ! Analyzing the flush SQL, we can see that the
@@ -1914,7 +1914,7 @@ being deleted:
             users.nickname AS users_nickname
     FROM users
     WHERE users.id = ?
-    (5,)
+    [...] (5,)
     {stop}
 
     # remove one Address (lazy load fires off)
@@ -1924,7 +1924,7 @@ being deleted:
             addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE ? = addresses.user_id
-    (5,)
+    [...] (5,)
     {stop}
 
     # only one address remains
@@ -1932,14 +1932,14 @@ being deleted:
     ...     Address.email_address.in_(['jack@google.com', 'j25@yahoo.com'])
     ... ).count()
     DELETE FROM addresses WHERE addresses.id = ?
-    (2,)
+    [...] (2,)
     SELECT count(*) AS count_1
     FROM (SELECT addresses.id AS addresses_id,
                     addresses.email_address AS addresses_email_address,
                     addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE addresses.email_address IN (?, ?)) AS anon_1
-    ('jack@google.com', 'j25@yahoo.com')
+    [...] ('jack@google.com', 'j25@yahoo.com')
     {stop}1
 
 Deleting Jack will delete both Jack and the remaining ``Address`` associated
@@ -1951,9 +1951,9 @@ with the user:
 
     {sql}>>> session.query(User).filter_by(name='jack').count()
     DELETE FROM addresses WHERE addresses.id = ?
-    (1,)
+    [...] (1,)
     DELETE FROM users WHERE users.id = ?
-    (5,)
+    [...] (5,)
     SELECT count(*) AS count_1
     FROM (SELECT users.id AS users_id,
                     users.name AS users_name,
@@ -1961,7 +1961,7 @@ with the user:
                     users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?) AS anon_1
-    ('jack',)
+    [...] ('jack',)
     {stop}0
 
     {sql}>>> session.query(Address).filter(
@@ -1973,7 +1973,7 @@ with the user:
                     addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE addresses.email_address IN (?, ?)) AS anon_1
-    ('jack@google.com', 'j25@yahoo.com')
+    [...] ('jack@google.com', 'j25@yahoo.com')
     {stop}0
 
 .. topic:: More on Cascades
@@ -2086,7 +2086,7 @@ Create new tables:
         PRIMARY KEY (id),
         UNIQUE (keyword)
     )
-    ()
+    [...] ()
     COMMIT
     CREATE TABLE posts (
         id INTEGER NOT NULL,
@@ -2096,7 +2096,7 @@ Create new tables:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    ()
+    [...] ()
     COMMIT
     CREATE TABLE post_keywords (
         post_id INTEGER NOT NULL,
@@ -2105,7 +2105,7 @@ Create new tables:
         FOREIGN KEY(post_id) REFERENCES posts (id),
         FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
-    ()
+    [...] ()
     COMMIT
 
 Usage is not too different from what we've been doing.  Let's give Wendy some blog posts:
@@ -2121,7 +2121,7 @@ Usage is not too different from what we've been doing.  Let's give Wendy some bl
             users.nickname AS users_nickname
     FROM users
     WHERE users.name = ?
-    ('wendy',)
+    [...] ('wendy',)
     {stop}
     >>> post = BlogPost("Wendy's Blog Post", "This is a test", wendy)
     >>> session.add(post)
@@ -2144,13 +2144,13 @@ keyword string 'firstpost'":
     ...             filter(BlogPost.keywords.any(keyword='firstpost')).\
     ...             all()
     INSERT INTO keywords (keyword) VALUES (?)
-    ('wendy',)
+    [...] ('wendy',)
     INSERT INTO keywords (keyword) VALUES (?)
-    ('firstpost',)
+    [...] ('firstpost',)
     INSERT INTO posts (user_id, headline, body) VALUES (?, ?, ?)
-    (2, "Wendy's Blog Post", 'This is a test')
+    [...] (2, "Wendy's Blog Post", 'This is a test')
     INSERT INTO post_keywords (post_id, keyword_id) VALUES (?, ?)
-    (...)
+    [...] (...)
     SELECT posts.id AS posts_id,
             posts.user_id AS posts_user_id,
             posts.headline AS posts_headline,
@@ -2161,7 +2161,7 @@ keyword string 'firstpost'":
         WHERE posts.id = post_keywords.post_id
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?)
-    ('firstpost',)
+    [...] ('firstpost',)
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 If we want to look up posts owned by the user ``wendy``, we can tell
@@ -2183,7 +2183,7 @@ the query to narrow down to that ``User`` object as a parent:
         WHERE posts.id = post_keywords.post_id
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?))
-    (2, 'firstpost')
+    [...] (2, 'firstpost')
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 Or we can use Wendy's own ``posts`` relationship, which is a "dynamic"
@@ -2204,7 +2204,7 @@ relationship, to query straight from there:
         WHERE posts.id = post_keywords.post_id
             AND keywords.id = post_keywords.keyword_id
             AND keywords.keyword = ?))
-    (2, 'firstpost')
+    [...] (2, 'firstpost')
     {stop}[BlogPost("Wendy's Blog Post", 'This is a test', <User(name='wendy', fullname='Wendy Williams', nickname='windy')>)]
 
 Further Reference

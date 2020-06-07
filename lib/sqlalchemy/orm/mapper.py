@@ -720,7 +720,7 @@ class Mapper(
         return self
 
     _cache_key_traversal = [
-        ("class_", visitors.ExtendedInternalTraversal.dp_plain_obj)
+        ("mapper", visitors.ExtendedInternalTraversal.dp_plain_obj),
     ]
 
     @property

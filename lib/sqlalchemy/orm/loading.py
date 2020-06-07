@@ -72,8 +72,8 @@ def instances(cursor, context):
         )
 
         if context.yield_per and (
-            context.compile_state.loaders_require_buffering
-            or context.compile_state.loaders_require_uniquing
+            context.loaders_require_buffering
+            or context.loaders_require_uniquing
         ):
             raise sa_exc.InvalidRequestError(
                 "Can't use yield_per with eager loaders that require uniquing "
@@ -545,6 +545,7 @@ def _warn_for_runid_changed(state):
 
 
 def _instance_processor(
+    query_entity,
     mapper,
     context,
     result,
@@ -648,6 +649,7 @@ def _instance_processor(
                         # to see if one fits
                         prop.create_row_processor(
                             context,
+                            query_entity,
                             path,
                             mapper,
                             result,
@@ -667,7 +669,7 @@ def _instance_processor(
     populators = {key: list(value) for key, value in cached_populators.items()}
     for prop in getters["todo"]:
         prop.create_row_processor(
-            context, path, mapper, result, adapter, populators
+            context, query_entity, path, mapper, result, adapter, populators
         )
 
     propagated_loader_options = context.propagated_loader_options
@@ -925,6 +927,7 @@ def _instance_processor(
         _instance = _decorate_polymorphic_switch(
             _instance,
             context,
+            query_entity,
             mapper,
             result,
             path,
@@ -1081,6 +1084,7 @@ def _validate_version_id(mapper, state, dict_, row, getter):
 def _decorate_polymorphic_switch(
     instance_fn,
     context,
+    query_entity,
     mapper,
     result,
     path,
@@ -1112,6 +1116,7 @@ def _decorate_polymorphic_switch(
                 return False
 
             return _instance_processor(
+                query_entity,
                 sub_mapper,
                 context,
                 result,

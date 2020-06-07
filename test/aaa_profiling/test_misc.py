@@ -111,6 +111,7 @@ class CacheKeyTest(fixtures.TestBase):
         current_key = None
         for stmt in stmt_fixture_one:
             key = stmt._generate_cache_key()
+            assert key is not None
             if current_key:
                 eq_(key, current_key)
             else:
@@ -121,6 +122,7 @@ class CacheKeyTest(fixtures.TestBase):
         current_key = None
         for stmt in stmt_fixture_one:
             key = stmt._generate_cache_key()
+            assert key is not None
             if current_key:
                 eq_(key, current_key)
             else:

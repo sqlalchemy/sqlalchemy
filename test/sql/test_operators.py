@@ -113,11 +113,17 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def test_operate(self, operator, right):
         left = column("left")
 
+        if operators.is_comparison(operator):
+            type_ = sqltypes.BOOLEANTYPE
+        else:
+            type_ = sqltypes.NULLTYPE
+
         assert left.comparator.operate(operator, right).compare(
             BinaryExpression(
                 coercions.expect(roles.WhereHavingRole, left),
                 coercions.expect(roles.WhereHavingRole, right),
                 operator,
+                type_=type_,
             )
         )
 
@@ -129,6 +135,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
                 coercions.expect(roles.WhereHavingRole, right),
                 operator,
                 modifiers=modifiers,
+                type_=type_,
             )
         )
 
@@ -167,6 +174,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
                     "left", value=[1, 2, 3], unique=True, expanding=True
                 ),
                 operators.in_op,
+                type_=sqltypes.BOOLEANTYPE,
             )
         )
         self._loop_test(operators.in_op, [1, 2, 3])
@@ -180,6 +188,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
                     "left", value=[1, 2, 3], unique=True, expanding=True
                 ),
                 operators.notin_op,
+                type_=sqltypes.BOOLEANTYPE,
             )
         )
         self._loop_test(operators.notin_op, [1, 2, 3])

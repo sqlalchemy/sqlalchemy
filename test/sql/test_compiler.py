@@ -75,6 +75,7 @@ from sqlalchemy.sql import elements
 from sqlalchemy.sql import label
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
+from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
@@ -85,7 +86,9 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
 from sqlalchemy.util import u
 
 table1 = table(
@@ -3491,6 +3494,140 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "extracted_parameters to construct_params",
             s1_compiled_no_cache_key.construct_params,
             extracted_parameters=s1_cache_key[1],
+        )
+
+    def test_construct_params_w_bind_clones_post(self):
+        """test that a BindParameter that has been cloned after the cache
+        key was generated still matches up when construct_params()
+        is called with an extracted parameter collection.
+
+        This case occurs now with the ORM as the ORM construction will
+        frequently run clause adaptation on elements of the statement within
+        compilation, after the cache key has been generated.  this adaptation
+        hits BindParameter objects which will change their key as they
+        will usually have unqique=True.   So the construct_params() process
+        when it links its internal bind_names to the cache key binds,
+        must do this badsed on bindparam._identifying_key, which does not
+        change across clones, rather than .key which usually will.
+
+        """
+
+        stmt = select([table1.c.myid]).where(table1.c.myid == 5)
+
+        # get the original bindparam.
+        original_bind = stmt._where_criteria[0].right
+
+        # it's anonymous so unique=True
+        is_true(original_bind.unique)
+
+        # cache key against hte original param
+        cache_key = stmt._generate_cache_key()
+
+        # now adapt the statement
+        stmt_adapted = sql_util.ClauseAdapter(table1).traverse(stmt)
+
+        # new bind parameter has a different key but same
+        # identifying key
+        new_bind = stmt_adapted._where_criteria[0].right
+        eq_(original_bind._identifying_key, new_bind._identifying_key)
+        ne_(original_bind.key, new_bind.key)
+
+        # compile the adapted statement but set the cache key to the one
+        # generated from the unadapted statement.  this will look like
+        # when the ORM runs clause adaption inside of visit_select, after
+        # the cache key is generated but before the compiler is given the
+        # core select statement to actually render.
+        compiled = stmt_adapted.compile(cache_key=cache_key)
+
+        # params set up as 5
+        eq_(compiled.construct_params(params={},), {"myid_1": 5})
+
+        # also works w the original cache key
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=cache_key[1]
+            ),
+            {"myid_1": 5},
+        )
+
+        # now make a totally new statement with the same cache key
+        new_stmt = select([table1.c.myid]).where(table1.c.myid == 10)
+        new_cache_key = new_stmt._generate_cache_key()
+
+        # cache keys match
+        eq_(cache_key.key, new_cache_key.key)
+
+        # ensure we get "10" from construct params.   if it matched
+        # based on .key and not ._identifying_key, it would not see that
+        # the bind parameter is part of the cache key.
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=new_cache_key[1]
+            ),
+            {"myid_1": 10},
+        )
+
+    def test_construct_params_w_bind_clones_pre(self):
+        """test that a BindParameter that has been cloned before the cache
+        key was generated, and was doubled up just to make sure it has to
+        be unique, still matches up when construct_params()
+        is called with an extracted parameter collection.
+
+        other ORM feaures like optimized_compare() end up doing something
+        like this, such as if there are multiple "has()" or "any()" which would
+        have cloned the join condition and changed the values of bound
+        parameters.
+
+        """
+
+        stmt = select([table1.c.myid]).where(table1.c.myid == 5)
+
+        original_bind = stmt._where_criteria[0].right
+        # it's anonymous so unique=True
+        is_true(original_bind.unique)
+
+        b1 = original_bind._clone()
+        b1.value = 10
+        b2 = original_bind._clone()
+        b2.value = 12
+
+        # make a new statement that uses the clones as distinct
+        # parameters
+        modified_stmt = select([table1.c.myid]).where(
+            or_(table1.c.myid == b1, table1.c.myid == b2)
+        )
+
+        cache_key = modified_stmt._generate_cache_key()
+        compiled = modified_stmt.compile(cache_key=cache_key)
+
+        eq_(
+            compiled.construct_params(params={}), {"myid_1": 10, "myid_2": 12},
+        )
+
+        # make a new statement doing the same thing and make sure
+        # the binds match up correctly
+        new_stmt = select([table1.c.myid]).where(table1.c.myid == 8)
+
+        new_original_bind = new_stmt._where_criteria[0].right
+        new_b1 = new_original_bind._clone()
+        new_b1.value = 20
+        new_b2 = new_original_bind._clone()
+        new_b2.value = 18
+        modified_new_stmt = select([table1.c.myid]).where(
+            or_(table1.c.myid == new_b1, table1.c.myid == new_b2)
+        )
+
+        new_cache_key = modified_new_stmt._generate_cache_key()
+
+        # cache keys match
+        eq_(cache_key.key, new_cache_key.key)
+
+        # ensure we get both values
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=new_cache_key[1]
+            ),
+            {"myid_1": 20, "myid_2": 18},
         )
 
     def test_tuple_expanding_in_no_values(self):

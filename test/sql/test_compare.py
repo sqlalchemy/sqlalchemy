@@ -13,6 +13,7 @@ from sqlalchemy import exists
 from sqlalchemy import extract
 from sqlalchemy import Float
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -43,6 +44,7 @@ from sqlalchemy.sql.base import HasCacheKey
 from sqlalchemy.sql.elements import _label_reference
 from sqlalchemy.sql.elements import _textual_label_reference
 from sqlalchemy.sql.elements import Annotated
+from sqlalchemy.sql.elements import BindParameter
 from sqlalchemy.sql.elements import ClauseElement
 from sqlalchemy.sql.elements import ClauseList
 from sqlalchemy.sql.elements import CollationClause
@@ -68,6 +70,8 @@ from sqlalchemy.testing import is_not_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import random_choices
+from sqlalchemy.types import ARRAY
+from sqlalchemy.types import JSON
 from sqlalchemy.util import class_hierarchy
 
 meta = MetaData()
@@ -188,6 +192,10 @@ class CoreFixtures(object):
             column("q").like("somstr", escape="X"),
         ),
         lambda: (
+            column("q", ARRAY(Integer))[3] == 5,
+            column("q", ARRAY(Integer))[3:5] == 5,
+        ),
+        lambda: (
             table_a.c.a,
             table_a.c.a._annotate({"orm": True}),
             table_a.c.a._annotate({"orm": True})._annotate({"bar": False}),
@@ -232,6 +240,15 @@ class CoreFixtures(object):
             cast(column("q"), Integer),
             cast(column("q"), Float),
             cast(column("p"), Integer),
+        ),
+        lambda: (
+            column("x", JSON)["key1"],
+            column("x", JSON)["key1"].as_boolean(),
+            column("x", JSON)["key1"].as_float(),
+            column("x", JSON)["key1"].as_integer(),
+            column("x", JSON)["key1"].as_string(),
+            column("y", JSON)["key1"].as_integer(),
+            column("y", JSON)["key1"].as_string(),
         ),
         lambda: (
             bindparam("x"),
@@ -334,6 +351,11 @@ class CoreFixtures(object):
             select([table_a.c.a]),
             select([table_a.c.a, table_a.c.b]),
             select([table_a.c.b, table_a.c.a]),
+            select([table_a.c.b, table_a.c.a]).limit(5),
+            select([table_a.c.b, table_a.c.a]).limit(5).offset(10),
+            select([table_a.c.b, table_a.c.a])
+            .limit(literal_column("foobar"))
+            .offset(10),
             select([table_a.c.b, table_a.c.a]).apply_labels(),
             select([table_a.c.a]).where(table_a.c.b == 5),
             select([table_a.c.a])
@@ -827,18 +849,21 @@ class CacheKeyFixture(object):
                     ne_(a_key.key, b_key.key)
 
             # ClauseElement-specific test to ensure the cache key
-            # collected all the bound parameters
+            # collected all the bound parameters that aren't marked
+            # as "literal execute"
             if isinstance(case_a[a], ClauseElement) and isinstance(
                 case_b[b], ClauseElement
             ):
                 assert_a_params = []
                 assert_b_params = []
-                visitors.traverse(
-                    case_a[a], {}, {"bindparam": assert_a_params.append}
-                )
-                visitors.traverse(
-                    case_b[b], {}, {"bindparam": assert_b_params.append}
-                )
+
+                for elem in visitors.iterate(case_a[a]):
+                    if elem.__visit_name__ == "bindparam":
+                        assert_a_params.append(elem)
+
+                for elem in visitors.iterate(case_b[b]):
+                    if elem.__visit_name__ == "bindparam":
+                        assert_b_params.append(elem)
 
                 # note we're asserting the order of the params as well as
                 # if there are dupes or not.  ordering has to be
@@ -906,6 +931,39 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ]:
             for fixture in fixtures_:
                 self._run_cache_key_fixture(fixture, compare_values)
+
+    def test_literal_binds(self):
+        def fixture():
+            return (
+                bindparam(None, value="x", literal_execute=True),
+                bindparam(None, value="y", literal_execute=True),
+            )
+
+        self._run_cache_key_fixture(
+            fixture, True,
+        )
+
+    def test_bindparam_subclass_nocache(self):
+        # does not implement inherit_cache
+        class _literal_bindparam(BindParameter):
+            pass
+
+        l1 = _literal_bindparam(None, value="x1")
+        is_(l1._generate_cache_key(), None)
+
+    def test_bindparam_subclass_ok_cache(self):
+        # implements inherit_cache
+        class _literal_bindparam(BindParameter):
+            inherit_cache = True
+
+        def fixture():
+            return (
+                _literal_bindparam(None, value="x1"),
+                _literal_bindparam(None, value="x2"),
+                _literal_bindparam(None),
+            )
+
+        self._run_cache_key_fixture(fixture, True)
 
     def test_cache_key_unknown_traverse(self):
         class Foobar1(ClauseElement):
@@ -1263,6 +1321,30 @@ class CompareClausesTest(fixtures.TestBase):
         )
 
         is_false(l1.compare(l2))
+
+    def test_cache_key_limit_offset_values(self):
+        s1 = select([column("q")]).limit(10)
+        s2 = select([column("q")]).limit(25)
+        s3 = select([column("q")]).limit(25).offset(5)
+        s4 = select([column("q")]).limit(25).offset(18)
+        s5 = select([column("q")]).limit(7).offset(12)
+        s6 = select([column("q")]).limit(literal_column("q")).offset(12)
+
+        for should_eq_left, should_eq_right in [(s1, s2), (s3, s4), (s3, s5)]:
+            eq_(
+                should_eq_left._generate_cache_key().key,
+                should_eq_right._generate_cache_key().key,
+            )
+
+        for shouldnt_eq_left, shouldnt_eq_right in [
+            (s1, s3),
+            (s5, s6),
+            (s2, s3),
+        ]:
+            ne_(
+                shouldnt_eq_left._generate_cache_key().key,
+                shouldnt_eq_right._generate_cache_key().key,
+            )
 
     def test_compare_labels(self):
         is_true(column("q").label(None).compare(column("q").label(None)))

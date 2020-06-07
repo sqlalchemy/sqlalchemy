@@ -10,6 +10,7 @@ from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
@@ -79,7 +80,7 @@ class _PolymorphicTestBase(object):
         count = {"": 14, "Polymorphic": 9}.get(self.select_type, 10)
         self.assert_sql_count(testing.db, go, count)
 
-    def test_primary_eager_aliasing_one(self):
+    def test_primary_eager_aliasing_joinedload(self):
         # For both joinedload() and subqueryload(), if the original q is
         # not loading the subclass table, the joinedload doesn't happen.
 
@@ -96,7 +97,9 @@ class _PolymorphicTestBase(object):
         count = {"": 6, "Polymorphic": 3}.get(self.select_type, 4)
         self.assert_sql_count(testing.db, go, count)
 
-    def test_primary_eager_aliasing_two(self):
+    def test_primary_eager_aliasing_subqueryload(self):
+        # test that subqueryload does not occur because the parent
+        # row cannot support it
         sess = create_session()
 
         def go():
@@ -104,6 +107,23 @@ class _PolymorphicTestBase(object):
                 sess.query(Person)
                 .order_by(Person.person_id)
                 .options(subqueryload(Engineer.machines))
+                .all(),
+                all_employees,
+            )
+
+        count = {"": 14, "Polymorphic": 7}.get(self.select_type, 8)
+        self.assert_sql_count(testing.db, go, count)
+
+    def test_primary_eager_aliasing_selectinload(self):
+        # test that selectinload does not occur because the parent
+        # row cannot support it
+        sess = create_session()
+
+        def go():
+            eq_(
+                sess.query(Person)
+                .order_by(Person.person_id)
+                .options(selectinload(Engineer.machines))
                 .all(),
                 all_employees,
             )

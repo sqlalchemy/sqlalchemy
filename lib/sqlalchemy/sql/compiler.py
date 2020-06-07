@@ -373,6 +373,8 @@ class Compiled(object):
 
     _cached_metadata = None
 
+    _result_columns = None
+
     schema_translate_map = None
 
     execution_options = util.immutabledict()
@@ -433,7 +435,6 @@ class Compiled(object):
         self,
         dialect,
         statement,
-        bind=None,
         schema_translate_map=None,
         render_schema_translate=False,
         compile_kwargs=util.immutabledict(),
@@ -463,7 +464,6 @@ class Compiled(object):
         """
 
         self.dialect = dialect
-        self.bind = bind
         self.preparer = self.dialect.identifier_preparer
         if schema_translate_map:
             self.schema_translate_map = schema_translate_map
@@ -526,24 +526,6 @@ class Compiled(object):
     def params(self):
         """Return the bind params for this compiled object."""
         return self.construct_params()
-
-    def execute(self, *multiparams, **params):
-        """Execute this compiled object."""
-
-        e = self.bind
-        if e is None:
-            raise exc.UnboundExecutionError(
-                "This Compiled object is not bound to any Engine "
-                "or Connection.",
-                code="2afi",
-            )
-        return e._execute_compiled(self, multiparams, params)
-
-    def scalar(self, *multiparams, **params):
-        """Execute this compiled object and return the result's
-        scalar value."""
-
-        return self.execute(*multiparams, **params).scalar()
 
 
 class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
@@ -687,6 +669,13 @@ class SQLCompiler(Compiled):
 
     insert_prefetch = update_prefetch = ()
 
+    _cache_key_bind_match = None
+    """a mapping that will relate the BindParameter object we compile
+    to those that are part of the extracted collection of parameters
+    in the cache key, if we were given a cache key.
+
+    """
+
     def __init__(
         self,
         dialect,
@@ -716,6 +705,9 @@ class SQLCompiler(Compiled):
         self.column_keys = column_keys
 
         self.cache_key = cache_key
+
+        if cache_key:
+            self._cache_key_bind_match = {b: b for b in cache_key[1]}
 
         # compile INSERT/UPDATE defaults/sequences inlined (no pre-
         # execute)
@@ -875,8 +867,9 @@ class SQLCompiler(Compiled):
                     replace_context=err,
                 )
 
+            ckbm = self._cache_key_bind_match
             resolved_extracted = {
-                b.key: extracted
+                ckbm[b]: extracted
                 for b, extracted in zip(orig_extracted, extracted_parameters)
             }
         else:
@@ -907,7 +900,7 @@ class SQLCompiler(Compiled):
                 else:
                     if resolved_extracted:
                         value_param = resolved_extracted.get(
-                            bindparam.key, bindparam
+                            bindparam, bindparam
                         )
                     else:
                         value_param = bindparam
@@ -936,9 +929,7 @@ class SQLCompiler(Compiled):
                         )
 
                 if resolved_extracted:
-                    value_param = resolved_extracted.get(
-                        bindparam.key, bindparam
-                    )
+                    value_param = resolved_extracted.get(bindparam, bindparam)
                 else:
                     value_param = bindparam
 
@@ -2021,6 +2012,19 @@ class SQLCompiler(Compiled):
                     )
 
         self.binds[bindparam.key] = self.binds[name] = bindparam
+
+        # if we are given a cache key that we're going to match against,
+        # relate the bindparam here to one that is most likely present
+        # in the "extracted params" portion of the cache key.  this is used
+        # to set up a positional mapping that is used to determine the
+        # correct parameters for a subsequent use of this compiled with
+        # a different set of parameter values.   here, we accommodate for
+        # parameters that may have been cloned both before and after the cache
+        # key was been generated.
+        ckbm = self._cache_key_bind_match
+        if ckbm:
+            ckbm.update({bp: bindparam for bp in bindparam._cloned_set})
+
         if bindparam.isoutparam:
             self.has_out_parameters = True
 

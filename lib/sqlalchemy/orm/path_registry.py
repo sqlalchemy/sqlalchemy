@@ -216,6 +216,8 @@ class RootRegistry(PathRegistry):
 
     """
 
+    inherit_cache = True
+
     path = natural_path = ()
     has_entity = False
     is_aliased_class = False
@@ -247,6 +249,8 @@ class PathToken(HasCacheKey, str):
 
 class TokenRegistry(PathRegistry):
     __slots__ = ("token", "parent", "path", "natural_path")
+
+    inherit_cache = True
 
     def __init__(self, parent, token):
         token = PathToken.intern(token)
@@ -280,6 +284,7 @@ class TokenRegistry(PathRegistry):
 
 class PropRegistry(PathRegistry):
     is_unnatural = False
+    inherit_cache = True
 
     def __init__(self, parent, prop):
         # restate this path in terms of the
@@ -439,6 +444,7 @@ class AbstractEntityRegistry(PathRegistry):
 class SlotsEntityRegistry(AbstractEntityRegistry):
     # for aliased class, return lightweight, no-cycles created
     # version
+    inherit_cache = True
 
     __slots__ = (
         "key",
@@ -453,6 +459,8 @@ class SlotsEntityRegistry(AbstractEntityRegistry):
 class CachingEntityRegistry(AbstractEntityRegistry, dict):
     # for long lived mapper, return dict based caching
     # version that creates reference cycles
+
+    inherit_cache = True
 
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):

@@ -1175,46 +1175,17 @@ class Connection(Connectable):
         )
 
         compiled_cache = execution_options.get(
-            "compiled_cache", self.dialect._compiled_cache
+            "compiled_cache", self.engine._compiled_cache
         )
 
-        if compiled_cache is not None:
-            elem_cache_key = elem._generate_cache_key()
-        else:
-            elem_cache_key = None
-
-        if elem_cache_key:
-            cache_key, extracted_params = elem_cache_key
-            key = (
-                dialect,
-                cache_key,
-                tuple(keys),
-                bool(schema_translate_map),
-                inline,
-            )
-            compiled_sql = compiled_cache.get(key)
-
-            if compiled_sql is None:
-                compiled_sql = elem.compile(
-                    dialect=dialect,
-                    cache_key=elem_cache_key,
-                    column_keys=keys,
-                    inline=inline,
-                    schema_translate_map=schema_translate_map,
-                    linting=self.dialect.compiler_linting
-                    | compiler.WARN_LINTING,
-                )
-                compiled_cache[key] = compiled_sql
-        else:
-            extracted_params = None
-            compiled_sql = elem.compile(
-                dialect=dialect,
-                column_keys=keys,
-                inline=inline,
-                schema_translate_map=schema_translate_map,
-                linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
-            )
-
+        compiled_sql, extracted_params, cache_hit = elem._compile_w_cache(
+            dialect=dialect,
+            compiled_cache=compiled_cache,
+            column_keys=keys,
+            inline=inline,
+            schema_translate_map=schema_translate_map,
+            linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
+        )
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
@@ -1225,6 +1196,7 @@ class Connection(Connectable):
             distilled_params,
             elem,
             extracted_params,
+            cache_hit=cache_hit,
         )
         if has_events:
             self.dispatch.after_execute(
@@ -1389,7 +1361,8 @@ class Connection(Connectable):
         statement,
         parameters,
         execution_options,
-        *args
+        *args,
+        **kw
     ):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
@@ -1407,7 +1380,7 @@ class Connection(Connectable):
                 conn = self._revalidate_connection()
 
             context = constructor(
-                dialect, self, conn, execution_options, *args
+                dialect, self, conn, execution_options, *args, **kw
             )
         except (exc.PendingRollbackError, exc.ResourceClosedError):
             raise
@@ -1455,32 +1428,21 @@ class Connection(Connectable):
 
             self.engine.logger.info(statement)
 
-            # stats = context._get_cache_stats()
+            stats = context._get_cache_stats()
 
             if not self.engine.hide_parameters:
-                # TODO: I love the stats but a ton of tests that are hardcoded.
-                # to certain log output are failing.
                 self.engine.logger.info(
-                    "%r",
+                    "[%s] %r",
+                    stats,
                     sql_util._repr_params(
                         parameters, batches=10, ismulti=context.executemany
                     ),
                 )
-                # self.engine.logger.info(
-                #    "[%s] %r",
-                #    stats,
-                #    sql_util._repr_params(
-                #        parameters, batches=10, ismulti=context.executemany
-                #    ),
-                # )
             else:
                 self.engine.logger.info(
-                    "[SQL parameters hidden due to hide_parameters=True]"
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]"
+                    % (stats,)
                 )
-                # self.engine.logger.info(
-                #    "[%s] [SQL parameters hidden due to hide_parameters=True]"
-                #    % (stats,)
-                # )
 
         evt_handled = False
         try:
@@ -2369,6 +2331,7 @@ class Engine(Connectable, log.Identified):
         url,
         logging_name=None,
         echo=None,
+        query_cache_size=500,
         execution_options=None,
         hide_parameters=False,
     ):
@@ -2379,13 +2342,42 @@ class Engine(Connectable, log.Identified):
             self.logging_name = logging_name
         self.echo = echo
         self.hide_parameters = hide_parameters
+        if query_cache_size != 0:
+            self._compiled_cache = util.LRUCache(
+                query_cache_size, size_alert=self._lru_size_alert
+            )
+        else:
+            self._compiled_cache = None
         log.instance_logger(self, echoflag=echo)
         if execution_options:
             self.update_execution_options(**execution_options)
 
+    def _lru_size_alert(self, cache):
+        if self._should_log_info:
+            self.logger.info(
+                "Compiled cache size pruning from %d items to %d.  "
+                "Increase cache size to reduce the frequency of pruning.",
+                len(cache),
+                cache.capacity,
+            )
+
     @property
     def engine(self):
         return self
+
+    def clear_compiled_cache(self):
+        """Clear the compiled cache associated with the dialect.
+
+        This applies **only** to the built-in cache that is established
+        via the :paramref:`.create_engine.query_cache_size` parameter.
+        It will not impact any dictionary caches that were passed via the
+        :paramref:`.Connection.execution_options.query_cache` parameter.
+
+        .. versionadded:: 1.4
+
+        """
+        if self._compiled_cache:
+            self._compiled_cache.clear()
 
     def update_execution_options(self, **opt):
         r"""Update the default execution_options dictionary
@@ -2874,6 +2866,7 @@ class OptionEngineMixin(object):
         self.dialect = proxied.dialect
         self.logging_name = proxied.logging_name
         self.echo = proxied.echo
+        self._compiled_cache = proxied._compiled_cache
         self.hide_parameters = proxied.hide_parameters
         log.instance_logger(self, echoflag=self.echo)
 

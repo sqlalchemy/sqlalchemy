@@ -61,6 +61,8 @@ if util.TYPE_CHECKING:
 
 
 class _OffsetLimitParam(BindParameter):
+    inherit_cache = True
+
     @property
     def _limit_offset_value(self):
         return self.effective_value
@@ -1426,6 +1428,8 @@ class Alias(roles.DMLTableRole, AliasedReturnsRows):
 
     __visit_name__ = "alias"
 
+    inherit_cache = True
+
     @classmethod
     def _factory(cls, selectable, name=None, flat=False):
         """Return an :class:`_expression.Alias` object.
@@ -1499,6 +1503,8 @@ class Lateral(AliasedReturnsRows):
 
     __visit_name__ = "lateral"
     _is_lateral = True
+
+    inherit_cache = True
 
     @classmethod
     def _factory(cls, selectable, name=None):
@@ -1626,7 +1632,7 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
         AliasedReturnsRows._traverse_internals
         + [
             ("_cte_alias", InternalTraversal.dp_clauseelement),
-            ("_restates", InternalTraversal.dp_clauseelement_unordered_set),
+            ("_restates", InternalTraversal.dp_clauseelement_list),
             ("recursive", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
@@ -1651,7 +1657,7 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
         name=None,
         recursive=False,
         _cte_alias=None,
-        _restates=frozenset(),
+        _restates=(),
         _prefixes=None,
         _suffixes=None,
     ):
@@ -1692,7 +1698,7 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
             self.element.union(other),
             name=self.name,
             recursive=self.recursive,
-            _restates=self._restates.union([self]),
+            _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
@@ -1702,7 +1708,7 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
             self.element.union_all(other),
             name=self.name,
             recursive=self.recursive,
-            _restates=self._restates.union([self]),
+            _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
@@ -1917,6 +1923,8 @@ class Subquery(AliasedReturnsRows):
     __visit_name__ = "subquery"
 
     _is_subquery = True
+
+    inherit_cache = True
 
     @classmethod
     def _factory(cls, selectable, name=None):
@@ -3783,15 +3791,15 @@ class Select(
             ("_group_by_clauses", InternalTraversal.dp_clauseelement_list,),
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple,),
             ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple,),
-            ("_correlate", InternalTraversal.dp_clauseelement_unordered_set),
-            (
-                "_correlate_except",
-                InternalTraversal.dp_clauseelement_unordered_set,
-            ),
+            ("_correlate", InternalTraversal.dp_clauseelement_list),
+            ("_correlate_except", InternalTraversal.dp_clauseelement_list,),
+            ("_limit_clause", InternalTraversal.dp_clauseelement),
+            ("_offset_clause", InternalTraversal.dp_clauseelement),
             ("_for_update_arg", InternalTraversal.dp_clauseelement),
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_list),
             ("_label_style", InternalTraversal.dp_plain_obj),
+            ("_is_future", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
@@ -4522,7 +4530,7 @@ class Select(
         if fromclauses and fromclauses[0] is None:
             self._correlate = ()
         else:
-            self._correlate = set(self._correlate).union(
+            self._correlate = self._correlate + tuple(
                 coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
 
@@ -4560,7 +4568,7 @@ class Select(
         if fromclauses and fromclauses[0] is None:
             self._correlate_except = ()
         else:
-            self._correlate_except = set(self._correlate_except or ()).union(
+            self._correlate_except = (self._correlate_except or ()) + tuple(
                 coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
 
@@ -4866,6 +4874,7 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
     _from_objects = []
     _is_from_container = True
     _is_implicitly_boolean = False
+    inherit_cache = True
 
     def __init__(self, element):
         self.element = element
@@ -4899,6 +4908,7 @@ class Exists(UnaryExpression):
     """
 
     _from_objects = []
+    inherit_cache = True
 
     def __init__(self, *args, **kwargs):
         """Construct a new :class:`_expression.Exists` against an existing
