@@ -294,12 +294,12 @@ namespace, as used by ``logging.getLogger('sqlalchemy')``. When logging has
 been configured (i.e. such as via ``logging.basicConfig()``), the general
 namespace of SA loggers that can be turned on is as follows:
 
-* ``sqlalchemy.engine`` - controls SQL echoing.  set to ``logging.INFO`` for
+* ``sqlalchemy.engine`` - controls SQL echoing.  Set to ``logging.INFO`` for
   SQL query output, ``logging.DEBUG`` for query + result set output.  These
   settings are equivalent to ``echo=True`` and ``echo="debug"`` on
   :paramref:`_sa.create_engine.echo`, respectively.
 
-* ``sqlalchemy.pool`` - controls connection pool logging.  set to
+* ``sqlalchemy.pool`` - controls connection pool logging.  Set to
   ``logging.INFO`` to log connection invalidation and recycle events; set to
   ``logging.DEBUG`` to additionally log all pool checkins and checkouts.
   These settings are equivalent to ``pool_echo=True`` and ``pool_echo="debug"``
