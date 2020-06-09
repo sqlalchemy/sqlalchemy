@@ -49,13 +49,13 @@ class InheritTest(fixtures.MappedTest):
                 test_needs_autoincrement=True,
             ),
             Column(
-                "master_id",
+                "leader_id",
                 Integer,
                 ForeignKey("products.product_id"),
                 nullable=True,
             ),
             Column(
-                "slave_id",
+                "follower_id",
                 Integer,
                 ForeignKey("products.product_id"),
                 nullable=True,
@@ -112,16 +112,16 @@ class InheritTest(fixtures.MappedTest):
                 )
 
         class SpecLine(object):
-            def __init__(self, master=None, slave=None, quantity=1):
-                self.master = master
-                self.slave = slave
+            def __init__(self, leader=None, follower=None, quantity=1):
+                self.leader = leader
+                self.follower = follower
                 self.quantity = quantity
 
             def __repr__(self):
                 return "<%s %.01f %s>" % (
                     self.__class__.__name__,
                     self.quantity or 0.0,
-                    repr(self.slave),
+                    repr(self.follower),
                 )
 
         class Document(object):
@@ -153,19 +153,19 @@ class InheritTest(fixtures.MappedTest):
             SpecLine,
             specification_table,
             properties=dict(
-                master=relationship(
+                leader=relationship(
                     Assembly,
-                    foreign_keys=[specification_table.c.master_id],
-                    primaryjoin=specification_table.c.master_id
+                    foreign_keys=[specification_table.c.leader_id],
+                    primaryjoin=specification_table.c.leader_id
                     == products_table.c.product_id,
                     lazy="select",
                     backref=backref("specification"),
                     uselist=False,
                 ),
-                slave=relationship(
+                follower=relationship(
                     Product,
-                    foreign_keys=[specification_table.c.slave_id],
-                    primaryjoin=specification_table.c.slave_id
+                    foreign_keys=[specification_table.c.follower_id],
+                    primaryjoin=specification_table.c.follower_id
                     == products_table.c.product_id,
                     lazy="select",
                     uselist=False,
@@ -179,10 +179,10 @@ class InheritTest(fixtures.MappedTest):
         a1 = Assembly(name="a1")
 
         p1 = Product(name="p1")
-        a1.specification.append(SpecLine(slave=p1))
+        a1.specification.append(SpecLine(follower=p1))
 
         d1 = Detail(name="d1")
-        a1.specification.append(SpecLine(slave=d1))
+        a1.specification.append(SpecLine(follower=d1))
 
         session.add(a1)
         orig = repr(a1)
@@ -212,10 +212,10 @@ class InheritTest(fixtures.MappedTest):
             SpecLine,
             specification_table,
             properties=dict(
-                slave=relationship(
+                follower=relationship(
                     Product,
-                    foreign_keys=[specification_table.c.slave_id],
-                    primaryjoin=specification_table.c.slave_id
+                    foreign_keys=[specification_table.c.follower_id],
+                    primaryjoin=specification_table.c.follower_id
                     == products_table.c.product_id,
                     lazy="select",
                     uselist=False,
@@ -225,8 +225,8 @@ class InheritTest(fixtures.MappedTest):
 
         session = create_session()
 
-        s = SpecLine(slave=Product(name="p1"))
-        s2 = SpecLine(slave=Detail(name="d1"))
+        s = SpecLine(follower=Product(name="p1"))
+        s2 = SpecLine(follower=Detail(name="d1"))
         session.add(s)
         session.add(s2)
         orig = repr([s, s2])
@@ -256,23 +256,23 @@ class InheritTest(fixtures.MappedTest):
             SpecLine,
             specification_table,
             properties=dict(
-                master=relationship(
+                leader=relationship(
                     Assembly,
                     lazy="joined",
                     uselist=False,
-                    foreign_keys=[specification_table.c.master_id],
-                    primaryjoin=specification_table.c.master_id
+                    foreign_keys=[specification_table.c.leader_id],
+                    primaryjoin=specification_table.c.leader_id
                     == products_table.c.product_id,
                     backref=backref(
                         "specification", cascade="all, delete-orphan"
                     ),
                 ),
-                slave=relationship(
+                follower=relationship(
                     Product,
                     lazy="joined",
                     uselist=False,
-                    foreign_keys=[specification_table.c.slave_id],
-                    primaryjoin=specification_table.c.slave_id
+                    foreign_keys=[specification_table.c.follower_id],
+                    primaryjoin=specification_table.c.follower_id
                     == products_table.c.product_id,
                 ),
                 quantity=specification_table.c.quantity,
@@ -303,7 +303,7 @@ class InheritTest(fixtures.MappedTest):
         session = create_session()
 
         a1 = Assembly(name="a1")
-        a1.specification.append(SpecLine(slave=Detail(name="d1")))
+        a1.specification.append(SpecLine(follower=Detail(name="d1")))
         a1.documents.append(Document("doc1"))
         a1.documents.append(RasterDocument("doc2"))
         session.add(a1)
@@ -391,21 +391,21 @@ class InheritTest(fixtures.MappedTest):
             SpecLine,
             specification_table,
             properties=dict(
-                master=relationship(
+                leader=relationship(
                     Assembly,
                     lazy="joined",
                     uselist=False,
-                    foreign_keys=[specification_table.c.master_id],
-                    primaryjoin=specification_table.c.master_id
+                    foreign_keys=[specification_table.c.leader_id],
+                    primaryjoin=specification_table.c.leader_id
                     == products_table.c.product_id,
                     backref=backref("specification"),
                 ),
-                slave=relationship(
+                follower=relationship(
                     Product,
                     lazy="joined",
                     uselist=False,
-                    foreign_keys=[specification_table.c.slave_id],
-                    primaryjoin=specification_table.c.slave_id
+                    foreign_keys=[specification_table.c.follower_id],
+                    primaryjoin=specification_table.c.follower_id
                     == products_table.c.product_id,
                 ),
                 quantity=specification_table.c.quantity,
@@ -451,7 +451,7 @@ class InheritTest(fixtures.MappedTest):
         session = create_session()
 
         a1 = Assembly(name="a1")
-        a1.specification.append(SpecLine(slave=Detail(name="d1")))
+        a1.specification.append(SpecLine(follower=Detail(name="d1")))
         a1.documents.append(Document("doc1"))
         a1.documents.append(RasterDocument("doc2"))
         session.add(a1)

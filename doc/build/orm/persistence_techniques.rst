@@ -591,21 +591,21 @@ More comprehensive rule-based class-level partitioning can be built by
 overriding the :meth:`.Session.get_bind` method.   Below we illustrate
 a custom :class:`.Session` which delivers the following rules:
 
-1. Flush operations are delivered to the engine named ``master``.
+1. Flush operations are delivered to the engine named ``leader``.
 
 2. Operations on objects that subclass ``MyOtherClass`` all
    occur on the ``other`` engine.
 
 3. Read operations for all other classes occur on a random
-   choice of the ``slave1`` or ``slave2`` database.
+   choice of the ``follower1`` or ``follower2`` database.
 
 ::
 
     engines = {
-        'master':create_engine("sqlite:///master.db"),
+        'leader':create_engine("sqlite:///leader.db"),
         'other':create_engine("sqlite:///other.db"),
-        'slave1':create_engine("sqlite:///slave1.db"),
-        'slave2':create_engine("sqlite:///slave2.db"),
+        'follower1':create_engine("sqlite:///follower1.db"),
+        'follower2':create_engine("sqlite:///follower2.db"),
     }
 
     from sqlalchemy.orm import Session, sessionmaker
@@ -616,10 +616,10 @@ a custom :class:`.Session` which delivers the following rules:
             if mapper and issubclass(mapper.class_, MyOtherClass):
                 return engines['other']
             elif self._flushing:
-                return engines['master']
+                return engines['leader']
             else:
                 return engines[
-                    random.choice(['slave1','slave2'])
+                    random.choice(['follower1','follower2'])
                 ]
 
 The above :class:`.Session` class is plugged in using the ``class_``
