@@ -7,12 +7,12 @@ The expression API consists of a series of classes each of which represents a
 specific lexical element within a SQL string.  Composed together
 into a larger structure, they form a statement construct that may
 be *compiled* into a string representation that can be passed to a database.
-The classes are organized into a
-hierarchy that begins at the basemost ClauseElement class. Key subclasses
-include ColumnElement, which represents the role of any column-based expression
+The classes are organized into a hierarchy that begins at the basemost
+:class:`.ClauseElement` class. Key subclasses include :class:`.ColumnElement`,
+which represents the role of any column-based expression
 in a SQL statement, such as in the columns clause, WHERE clause, and ORDER BY
-clause, and FromClause, which represents the role of a token that is placed in
-the FROM clause of a SELECT statement.
+clause, and :class:`.FromClause`, which represents the role of a token that
+is placed in the FROM clause of a SELECT statement.
 
 .. autofunction:: all_
 

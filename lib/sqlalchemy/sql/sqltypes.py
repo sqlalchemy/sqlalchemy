@@ -2237,8 +2237,8 @@ class JSON(Indexable, TypeEngine):
         )
 
     While it is possible to use :attr:`_types.JSON.NULL` in this context, the
-    :attr:`_types.JSON.NULL` value will be returned as the value of the column
-    ,
+    :attr:`_types.JSON.NULL` value will be returned as the value of the 
+    column,
     which in the context of the ORM or other repurposing of the default
     value, may not be desirable.  Using a SQL expression means the value
     will be re-fetched from the database within the context of retrieving

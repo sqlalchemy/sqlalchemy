@@ -879,8 +879,8 @@ class Query(
          the order in which they correspond to the mapped
          :class:`_schema.Table`
          object's primary key columns, or if the
-         :paramref:`_orm.Mapper.primary_key` configuration parameter were used
-         , in
+         :paramref:`_orm.Mapper.primary_key` configuration parameter were
+         used, in
          the order used for that parameter. For example, if the primary key
          of a row is represented by the integer
          digits "5, 10" the call would look like::

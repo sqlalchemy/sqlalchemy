@@ -874,7 +874,7 @@ class ColumnCollection(object):
         Column('x', Integer(), table=None)
         >>> cc['y']
 
-    :class`.ColumnCollection` also indexes the columns in order and allows
+    :class:`.ColumnCollection` also indexes the columns in order and allows
     them to be accessible by their integer position::
 
         >>> cc[0]
@@ -892,8 +892,8 @@ class ColumnCollection(object):
         [Column('x', Integer(), table=None),
          Column('y', Integer(), table=None)]
 
-    The base :class:`_expression.ColumnCollection` object can store duplicates
-    , which can
+    The base :class:`_expression.ColumnCollection` object can store
+    duplicates, which can
     mean either two columns with the same key, in which case the column
     returned by key  access is **arbitrary**::
 
@@ -1073,7 +1073,7 @@ class ColumnCollection(object):
         ancestor column.
 
         :param column: the target :class:`_expression.ColumnElement`
-                      to be matched
+                      to be matched.
 
         :param require_embedded: only return corresponding columns for
          the given :class:`_expression.ColumnElement`, if the given

@@ -1013,7 +1013,7 @@ class CreateEnginePlugin(object):
          what it needs here as well as remove its custom arguments from the
          :attr:`.URL.query` collection.  The URL can be modified in-place
          in any other way as well.
-        :param kwargs: The keyword arguments passed to :func`.create_engine`.
+        :param kwargs: The keyword arguments passed to :func:`.create_engine`.
          The plugin can read and modify this dictionary in-place, to affect
          the ultimate arguments used to create the engine.  It should
          remove its custom arguments from the dictionary as well.

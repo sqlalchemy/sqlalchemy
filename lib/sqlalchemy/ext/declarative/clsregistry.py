@@ -132,7 +132,7 @@ class _MultipleClassMarker(object):
 
 
 class _ModuleMarker(object):
-    """"refers to a module name within
+    """Refers to a module name within
     _decl_class_registry.
 
     """

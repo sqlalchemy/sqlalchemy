@@ -143,7 +143,7 @@ class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
 
         .. versionadded:: 1.4
 
-        .. seealso:
+        .. seealso::
 
             :attr:`_expression.FromClause.exported_columns`
 
@@ -208,7 +208,7 @@ class Selectable(ReturnsRows):
         column.
 
         :param column: the target :class:`_expression.ColumnElement`
-                      to be matched
+                      to be matched.
 
         :param require_embedded: only return corresponding columns for
          the given :class:`_expression.ColumnElement`, if the given
@@ -656,7 +656,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         .. versionadded:: 1.4
 
-        .. seealso:
+        .. seealso::
 
             :attr:`expression.Selectable.exported_columns`
 
@@ -2048,8 +2048,8 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
     def __init__(self, name, *columns, **kw):
         """Produce a new :class:`_expression.TableClause`.
 
-        The object returned is an instance of :class:`_expression.TableClause`
-        , which
+        The object returned is an instance of
+        :class:`_expression.TableClause`, which
         represents the "syntactical" portion of the schema-level
         :class:`_schema.Table` object.
         It may be used to construct lightweight table constructs.
@@ -2398,7 +2398,7 @@ class SelectBase(
 
         .. versionadded:: 1.4
 
-        .. seealso:
+        .. seealso::
 
             :attr:`expression.Selectable.exported_columns`
 
@@ -3111,12 +3111,12 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         A similar :func:`union()` method is available on all
         :class:`_expression.FromClause` subclasses.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
-           available keyword arguments are the same as those of
-           :func:`select`.
+        :param \**kwargs:
+          available keyword arguments are the same as those of
+          :func:`select`.
 
         """
         return CompoundSelect(CompoundSelect.UNION, *selects, **kwargs)
@@ -3131,10 +3131,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         A similar :func:`union_all()` method is available on all
         :class:`_expression.FromClause` subclasses.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
+        :param \**kwargs:
           available keyword arguments are the same as those of
           :func:`select`.
 
@@ -3148,10 +3148,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         The returned object is an instance of
         :class:`_expression.CompoundSelect`.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
+        :param \**kwargs:
           available keyword arguments are the same as those of
           :func:`select`.
 
@@ -3165,10 +3165,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         The returned object is an instance of
         :class:`_expression.CompoundSelect`.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
+        :param \**kwargs:
           available keyword arguments are the same as those of
           :func:`select`.
 
@@ -3182,10 +3182,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         The returned object is an instance of
         :class:`_expression.CompoundSelect`.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
+        :param \**kwargs:
           available keyword arguments are the same as those of
           :func:`select`.
 
@@ -3199,10 +3199,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         The returned object is an instance of
         :class:`_expression.CompoundSelect`.
 
-        \*selects
+        :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        \**kwargs
+        :param \**kwargs:
           available keyword arguments are the same as those of
           :func:`select`.
 
@@ -4255,7 +4255,7 @@ class Select(
 
     @util.preload_module("sqlalchemy.sql.util")
     def reduce_columns(self, only_synonyms=True):
-        """Return a new :func`.select` construct with redundantly
+        """Return a new :func:`.select` construct with redundantly
         named, equivalently-valued columns removed from the columns clause.
 
         "Redundant" here means two columns where one refers to the
@@ -4815,14 +4815,15 @@ class Select(
         return CompoundSelect._create_union_all(self, other, **kwargs)
 
     def except_(self, other, **kwargs):
-        """return a SQL EXCEPT of this select() construct against the given
-        selectable."""
+        """Return a SQL ``EXCEPT`` of this select() construct against
+        the given selectable.
 
+        """
         return CompoundSelect._create_except(self, other, **kwargs)
 
     def except_all(self, other, **kwargs):
-        """return a SQL EXCEPT ALL of this select() construct against the
-        given selectable.
+        """Return a SQL ``EXCEPT ALL`` of this select() construct against
+        the given selectable.
 
         """
         return CompoundSelect._create_except_all(self, other, **kwargs)

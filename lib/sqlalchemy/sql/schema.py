@@ -2203,7 +2203,7 @@ class ColumnDefault(DefaultGenerator):
     """
 
     def __init__(self, arg, **kwargs):
-        """"Construct a new :class:`.ColumnDefault`.
+        """Construct a new :class:`.ColumnDefault`.
 
 
         :param arg: argument representing the default value.

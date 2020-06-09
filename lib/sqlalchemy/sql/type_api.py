@@ -337,7 +337,7 @@ class TypeEngine(Traversible):
         )
 
     def bind_expression(self, bindvalue):
-        """"Given a bind value (i.e. a :class:`.BindParameter` instance),
+        """Given a bind value (i.e. a :class:`.BindParameter` instance),
         return a SQL expression in its place.
 
         This is typically a SQL function that wraps the existing bound
@@ -809,10 +809,10 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
           def copy(self, **kw):
               return MyType(self.impl.length)
 
-    The class-level "impl" attribute is required, and can reference any
-    TypeEngine class.  Alternatively, the load_dialect_impl() method
-    can be used to provide different type classes based on the dialect
-    given; in this case, the "impl" variable can reference
+    The class-level ``impl`` attribute is required, and can reference any
+    :class:`.TypeEngine` class.  Alternatively, the :meth:`load_dialect_impl`
+    method can be used to provide different type classes based on the dialect
+    given; in this case, the ``impl`` variable can reference
     ``TypeEngine`` as a placeholder.
 
     Types that receive a Python type that isn't similar to the ultimate type

@@ -3536,7 +3536,7 @@ class sessionmaker(_SessionClassMethods):
 
         sess = Session()
 
-    .. seealso:
+    .. seealso::
 
         :ref:`session_getting` - introductory text on creating
         sessions using :class:`.sessionmaker`.
