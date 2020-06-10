@@ -63,6 +63,8 @@ class QueryContext(object):
         "post_load_paths",
         "identity_token",
         "yield_per",
+        "loaders_require_buffering",
+        "loaders_require_uniquing",
     )
 
     class default_load_options(Options):
@@ -80,21 +82,23 @@ class QueryContext(object):
     def __init__(
         self,
         compile_state,
+        statement,
         session,
         load_options,
         execution_options=None,
         bind_arguments=None,
     ):
-
         self.load_options = load_options
         self.execution_options = execution_options or _EMPTY_DICT
         self.bind_arguments = bind_arguments or _EMPTY_DICT
         self.compile_state = compile_state
-        self.query = query = compile_state.select_statement
+        self.query = statement
         self.session = session
+        self.loaders_require_buffering = False
+        self.loaders_require_uniquing = False
 
         self.propagated_loader_options = {
-            o for o in query._with_options if o.propagate_to_loaders
+            o for o in statement._with_options if o.propagate_to_loaders
         }
 
         self.attributes = dict(compile_state.attributes)
@@ -237,6 +241,7 @@ class ORMCompileState(CompileState):
         )
         querycontext = QueryContext(
             compile_state,
+            statement,
             session,
             load_options,
             execution_options,
@@ -278,8 +283,6 @@ class ORMFromStatementCompileState(ORMCompileState):
     _has_orm_entities = False
     multi_row_eager_loaders = False
     compound_eager_adapter = None
-    loaders_require_buffering = False
-    loaders_require_uniquing = False
 
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
@@ -386,8 +389,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     _has_orm_entities = False
     multi_row_eager_loaders = False
     compound_eager_adapter = None
-    loaders_require_buffering = False
-    loaders_require_uniquing = False
 
     correlate = None
     _where_criteria = ()
@@ -416,7 +417,14 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self = cls.__new__(cls)
 
-        self.select_statement = select_statement
+        if select_statement._execution_options:
+            # execution options should not impact the compilation of a
+            # query, and at the moment subqueryloader is putting some things
+            # in here that we explicitly don't want stuck in a cache.
+            self.select_statement = select_statement._clone()
+            self.select_statement._execution_options = util.immutabledict()
+        else:
+            self.select_statement = select_statement
 
         # indicates this select() came from Query.statement
         self.for_statement = (
@@ -654,6 +662,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             )
             self._setup_with_polymorphics()
 
+        # entities will also set up polymorphic adapters for mappers
+        # that have with_polymorphic configured
         _QueryEntity.to_compile_state(self, query._raw_columns)
         return self
 
@@ -1810,10 +1820,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 self._where_criteria += (single_crit,)
 
 
-def _column_descriptions(query_or_select_stmt):
-    ctx = ORMSelectCompileState._create_entities_collection(
-        query_or_select_stmt
-    )
+def _column_descriptions(query_or_select_stmt, compile_state=None):
+    if compile_state is None:
+        compile_state = ORMSelectCompileState._create_entities_collection(
+            query_or_select_stmt
+        )
+    ctx = compile_state
     return [
         {
             "name": ent._label_name,
@@ -2097,6 +2109,7 @@ class _MapperEntity(_QueryEntity):
             only_load_props = refresh_state = None
 
         _instance = loading._instance_processor(
+            self,
             self.mapper,
             context,
             result,

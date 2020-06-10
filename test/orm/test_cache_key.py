@@ -1,10 +1,13 @@
 from sqlalchemy import inspect
+from sqlalchemy import text
 from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
+from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -71,6 +74,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 defer("id"),
                 defer("*"),
                 defer(Address.id),
+                subqueryload(User.orders),
+                selectinload(User.orders),
                 joinedload(User.addresses).defer(Address.id),
                 joinedload(aliased(User).addresses).defer(Address.id),
                 joinedload(User.addresses).defer("id"),
@@ -163,6 +168,65 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 future_select(User)
                 .join(Address, User.addresses)
                 .join_from(User, User.orders),
+                future_select(User.id, Order.id).select_from(
+                    orm_join(User, Order, User.orders)
+                ),
+            ),
+            compare_values=True,
+        )
+
+    def test_orm_query_w_orm_joins(self):
+
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        a1 = aliased(Address)
+
+        self._run_cache_key_fixture(
+            lambda: stmt_20(
+                Session().query(User).join(User.addresses),
+                Session().query(User).join(User.orders),
+                Session().query(User).join(User.addresses).join(User.orders),
+                Session()
+                .query(User)
+                .join("addresses")
+                .join("dingalings", from_joinpoint=True),
+                Session().query(User).join("addresses"),
+                Session().query(User).join("orders"),
+                Session().query(User).join("addresses").join("orders"),
+                Session().query(User).join(Address, User.addresses),
+                Session().query(User).join(a1, "addresses"),
+                Session().query(User).join(a1, "addresses", aliased=True),
+                Session().query(User).join(User.addresses.of_type(a1)),
+            ),
+            compare_values=True,
+        )
+
+    def test_orm_query_from_statement(self):
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: stmt_20(
+                Session()
+                .query(User)
+                .from_statement(text("select * from user")),
+                Session()
+                .query(User)
+                .options(selectinload(User.addresses))
+                .from_statement(text("select * from user")),
+                Session()
+                .query(User)
+                .options(subqueryload(User.addresses))
+                .from_statement(text("select * from user")),
+                Session()
+                .query(User)
+                .from_statement(text("select * from user order by id")),
+                Session()
+                .query(User.id)
+                .from_statement(text("select * from user")),
             ),
             compare_values=True,
         )

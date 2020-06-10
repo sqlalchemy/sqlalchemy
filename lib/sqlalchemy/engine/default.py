@@ -230,7 +230,6 @@ class DefaultDialect(interfaces.Dialect):
         supports_native_boolean=None,
         max_identifier_length=None,
         label_length=None,
-        query_cache_size=0,
         # int() is because the @deprecated_params decorator cannot accommodate
         # the direct reference to the "NO_LINTING" object
         compiler_linting=int(compiler.NO_LINTING),
@@ -262,10 +261,6 @@ class DefaultDialect(interfaces.Dialect):
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
         self.case_sensitive = case_sensitive
-        if query_cache_size != 0:
-            self._compiled_cache = util.LRUCache(query_cache_size)
-        else:
-            self._compiled_cache = None
 
         self._user_defined_max_identifier_length = max_identifier_length
         if self._user_defined_max_identifier_length:
@@ -794,6 +789,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         parameters,
         invoked_statement,
         extracted_parameters,
+        cache_hit=False,
     ):
         """Initialize execution context for a Compiled construct."""
 
@@ -804,6 +800,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.extracted_parameters = extracted_parameters
         self.invoked_statement = invoked_statement
         self.compiled = compiled
+        self.cache_hit = cache_hit
 
         self.execution_options = execution_options
 
@@ -1027,13 +1024,15 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _get_cache_stats(self):
         if self.compiled is None:
-            return "raw SQL"
+            return "raw sql"
 
         now = time.time()
         if self.compiled.cache_key is None:
-            return "gen %.5fs" % (now - self.compiled._gen_time,)
+            return "no key %.5fs" % (now - self.compiled._gen_time,)
+        elif self.cache_hit:
+            return "cached for %.4gs" % (now - self.compiled._gen_time,)
         else:
-            return "cached %.5fs" % (now - self.compiled._gen_time,)
+            return "generated in %.5fs" % (now - self.compiled._gen_time,)
 
     @util.memoized_property
     def engine(self):

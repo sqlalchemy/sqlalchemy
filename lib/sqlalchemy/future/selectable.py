@@ -11,6 +11,7 @@ class Select(_LegacySelect):
     _is_future = True
     _setup_joins = ()
     _legacy_setup_joins = ()
+    inherit_cache = True
 
     @classmethod
     def _create_select(cls, *entities):

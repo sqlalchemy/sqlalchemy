@@ -85,16 +85,16 @@ class QueryableAttribute(
         self,
         class_,
         key,
+        parententity,
         impl=None,
         comparator=None,
-        parententity=None,
         of_type=None,
     ):
         self.class_ = class_
         self.key = key
+        self._parententity = parententity
         self.impl = impl
         self.comparator = comparator
-        self._parententity = parententity
         self._of_type = of_type
 
         manager = manager_of_class(class_)
@@ -197,8 +197,12 @@ class QueryableAttribute(
     @util.memoized_property
     def expression(self):
         return self.comparator.__clause_element__()._annotate(
-            {"orm_key": self.key}
+            {"orm_key": self.key, "entity_namespace": self._entity_namespace}
         )
+
+    @property
+    def _entity_namespace(self):
+        return self._parententity
 
     @property
     def _annotations(self):
@@ -230,9 +234,9 @@ class QueryableAttribute(
         return QueryableAttribute(
             self.class_,
             self.key,
-            self.impl,
-            self.comparator.of_type(entity),
             self._parententity,
+            impl=self.impl,
+            comparator=self.comparator.of_type(entity),
             of_type=inspection.inspect(entity),
         )
 
@@ -301,6 +305,8 @@ class InstrumentedAttribute(QueryableAttribute):
 
     """
 
+    inherit_cache = True
+
     def __set__(self, instance, value):
         self.impl.set(
             instance_state(instance), instance_dict(instance), value, None
@@ -318,6 +324,11 @@ class InstrumentedAttribute(QueryableAttribute):
             return dict_[self.key]
         else:
             return self.impl.get(instance_state(instance), dict_)
+
+
+HasEntityNamespace = util.namedtuple(
+    "HasEntityNamespace", ["entity_namespace"]
+)
 
 
 def create_proxied_attribute(descriptor):
@@ -363,6 +374,15 @@ def create_proxied_attribute(descriptor):
                 self.original_property is not None
                 and getattr(self.class_, self.key).impl.uses_objects
             )
+
+        @property
+        def _entity_namespace(self):
+            if hasattr(self._comparator, "_parententity"):
+                return self._comparator._parententity
+            else:
+                # used by hybrid attributes which try to remain
+                # agnostic of any ORM concepts like mappers
+                return HasEntityNamespace(self.class_)
 
         @property
         def property(self):

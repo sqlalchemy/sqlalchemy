@@ -436,7 +436,13 @@ def create_engine(url, **kwargs):
         .. versionadded:: 1.2.3
 
     :param query_cache_size: size of the cache used to cache the SQL string
-     form of queries.  Defaults to zero, which disables caching.
+     form of queries.  Set to zero to disable caching.
+
+     The cache is pruned of its least recently used items when its size reaches
+     N * 1.5.  Defaults to 500, meaning the cache will always store at least
+     500 SQL statements when filled, and will grow up to 750 items at which
+     point it is pruned back down to 500 by removing the 250 least recently
+     used items.
 
      Caching is accomplished on a per-statement basis by generating a
      cache key that represents the statement's structure, then generating
@@ -445,6 +451,11 @@ def create_engine(url, **kwargs):
      such as an INSERT with a large set of parameters will intentionally
      bypass the cache.   SQL logging will indicate statistics for each
      statement whether or not it were pull from the cache.
+
+     .. note:: some ORM functions related to unit-of-work persistence as well
+        as some attribute loading strategies will make use of individual
+        per-mapper caches outside of the main cache.
+
 
      .. seealso::
 

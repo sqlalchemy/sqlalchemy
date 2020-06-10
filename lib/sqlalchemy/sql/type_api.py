@@ -555,7 +555,12 @@ class TypeEngine(Traversible):
     def _static_cache_key(self):
         names = util.get_cls_kwargs(self.__class__)
         return (self.__class__,) + tuple(
-            (k, self.__dict__[k])
+            (
+                k,
+                self.__dict__[k]._static_cache_key
+                if isinstance(self.__dict__[k], TypeEngine)
+                else self.__dict__[k],
+            )
             for k in names
             if k in self.__dict__ and not k.startswith("_")
         )

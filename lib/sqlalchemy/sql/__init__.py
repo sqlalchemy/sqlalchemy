@@ -100,6 +100,7 @@ def __go(lcls):
     from .elements import AnnotatedColumnElement
     from .elements import ClauseList  # noqa
     from .selectable import AnnotatedFromClause  # noqa
+    from .traversals import _preconfigure_traversals
 
     from . import base
     from . import coercions
@@ -121,6 +122,8 @@ def __go(lcls):
     _prepare_annotations(ColumnElement, AnnotatedColumnElement)
     _prepare_annotations(FromClause, AnnotatedFromClause)
     _prepare_annotations(ClauseList, Annotated)
+
+    _preconfigure_traversals(ClauseElement)
 
     _sa_util.preloaded.import_prefix("sqlalchemy.sql")
 

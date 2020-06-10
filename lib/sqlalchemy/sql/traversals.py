@@ -19,6 +19,7 @@ NO_CACHE = util.symbol("no_cache")
 CACHE_IN_PLACE = util.symbol("cache_in_place")
 CALL_GEN_CACHE_KEY = util.symbol("call_gen_cache_key")
 STATIC_CACHE_KEY = util.symbol("static_cache_key")
+PROPAGATE_ATTRS = util.symbol("propagate_attrs")
 ANON_NAME = util.symbol("anon_name")
 
 
@@ -31,9 +32,73 @@ def compare(obj1, obj2, **kw):
     return strategy.compare(obj1, obj2, **kw)
 
 
+def _preconfigure_traversals(target_hierarchy):
+
+    stack = [target_hierarchy]
+    while stack:
+        cls = stack.pop()
+        stack.extend(cls.__subclasses__())
+
+        if hasattr(cls, "_traverse_internals"):
+            cls._generate_cache_attrs()
+            _copy_internals.generate_dispatch(
+                cls,
+                cls._traverse_internals,
+                "_generated_copy_internals_traversal",
+            )
+            _get_children.generate_dispatch(
+                cls,
+                cls._traverse_internals,
+                "_generated_get_children_traversal",
+            )
+
+
 class HasCacheKey(object):
     _cache_key_traversal = NO_CACHE
     __slots__ = ()
+
+    @classmethod
+    def _generate_cache_attrs(cls):
+        """generate cache key dispatcher for a new class.
+
+        This sets the _generated_cache_key_traversal attribute once called
+        so should only be called once per class.
+
+        """
+        inherit = cls.__dict__.get("inherit_cache", False)
+
+        if inherit:
+            _cache_key_traversal = getattr(cls, "_cache_key_traversal", None)
+            if _cache_key_traversal is None:
+                try:
+                    _cache_key_traversal = cls._traverse_internals
+                except AttributeError:
+                    cls._generated_cache_key_traversal = NO_CACHE
+                    return NO_CACHE
+
+            # TODO: wouldn't we instead get this from our superclass?
+            # also, our superclass may not have this yet, but in any case,
+            # we'd generate for the superclass that has it.   this is a little
+            # more complicated, so for the moment this is a little less
+            # efficient on startup but simpler.
+            return _cache_key_traversal_visitor.generate_dispatch(
+                cls, _cache_key_traversal, "_generated_cache_key_traversal"
+            )
+        else:
+            _cache_key_traversal = cls.__dict__.get(
+                "_cache_key_traversal", None
+            )
+            if _cache_key_traversal is None:
+                _cache_key_traversal = cls.__dict__.get(
+                    "_traverse_internals", None
+                )
+                if _cache_key_traversal is None:
+                    cls._generated_cache_key_traversal = NO_CACHE
+                    return NO_CACHE
+
+            return _cache_key_traversal_visitor.generate_dispatch(
+                cls, _cache_key_traversal, "_generated_cache_key_traversal"
+            )
 
     @util.preload_module("sqlalchemy.sql.elements")
     def _gen_cache_key(self, anon_map, bindparams):
@@ -72,14 +137,18 @@ class HasCacheKey(object):
         else:
             id_ = None
 
-        _cache_key_traversal = self._cache_key_traversal
-        if _cache_key_traversal is None:
-            try:
-                _cache_key_traversal = self._traverse_internals
-            except AttributeError:
-                _cache_key_traversal = NO_CACHE
+        try:
+            dispatcher = self.__class__.__dict__[
+                "_generated_cache_key_traversal"
+            ]
+        except KeyError:
+            # most of the dispatchers are generated up front
+            # in sqlalchemy/sql/__init__.py ->
+            # traversals.py-> _preconfigure_traversals().
+            # this block will generate any remaining dispatchers.
+            dispatcher = self.__class__._generate_cache_attrs()
 
-        if _cache_key_traversal is NO_CACHE:
+        if dispatcher is NO_CACHE:
             if anon_map is not None:
                 anon_map[NO_CACHE] = True
             return None
@@ -87,19 +156,13 @@ class HasCacheKey(object):
         result = (id_, self.__class__)
 
         # inline of _cache_key_traversal_visitor.run_generated_dispatch()
-        try:
-            dispatcher = self.__class__.__dict__[
-                "_generated_cache_key_traversal"
-            ]
-        except KeyError:
-            dispatcher = _cache_key_traversal_visitor.generate_dispatch(
-                self, _cache_key_traversal, "_generated_cache_key_traversal"
-            )
 
         for attrname, obj, meth in dispatcher(
             self, _cache_key_traversal_visitor
         ):
             if obj is not None:
+                # TODO: see if C code can help here as Python lacks an
+                # efficient switch construct
                 if meth is CACHE_IN_PLACE:
                     # cache in place is always going to be a Python
                     # tuple, dict, list, etc. so we can do a boolean check
@@ -116,6 +179,15 @@ class HasCacheKey(object):
                         attrname,
                         obj._gen_cache_key(anon_map, bindparams),
                     )
+                elif meth is PROPAGATE_ATTRS:
+                    if obj:
+                        result += (
+                            attrname,
+                            obj["compile_state_plugin"],
+                            obj["plugin_subject"]._gen_cache_key(
+                                anon_map, bindparams
+                            ),
+                        )
                 elif meth is InternalTraversal.dp_annotations_key:
                     # obj is here is the _annotations dict.   however,
                     # we want to use the memoized cache key version of it.
@@ -332,6 +404,8 @@ class _CacheKey(ExtendedInternalTraversal):
     visit_type = STATIC_CACHE_KEY
     visit_anon_name = ANON_NAME
 
+    visit_propagate_attrs = PROPAGATE_ATTRS
+
     def visit_inspectable(self, attrname, obj, parent, anon_map, bindparams):
         return (attrname, inspect(obj)._gen_cache_key(anon_map, bindparams))
 
@@ -445,10 +519,16 @@ class _CacheKey(ExtendedInternalTraversal):
     def visit_setup_join_tuple(
         self, attrname, obj, parent, anon_map, bindparams
     ):
+        is_legacy = "legacy" in attrname
+
         return tuple(
             (
-                target._gen_cache_key(anon_map, bindparams),
-                onclause._gen_cache_key(anon_map, bindparams)
+                target
+                if is_legacy and isinstance(target, str)
+                else target._gen_cache_key(anon_map, bindparams),
+                onclause
+                if is_legacy and isinstance(onclause, str)
+                else onclause._gen_cache_key(anon_map, bindparams)
                 if onclause is not None
                 else None,
                 from_._gen_cache_key(anon_map, bindparams)
@@ -711,6 +791,11 @@ class _CopyInternals(InternalTraversal):
             for sequence in element
         ]
 
+    def visit_propagate_attrs(
+        self, attrname, parent, element, clone=_clone, **kw
+    ):
+        return element
+
 
 _copy_internals = _CopyInternals()
 
@@ -780,6 +865,9 @@ class _GetChildren(InternalTraversal):
             yield element[k]
 
     def visit_dml_multi_values(self, element, **kw):
+        return ()
+
+    def visit_propagate_attrs(self, element, **kw):
         return ()
 
 
@@ -915,6 +1003,13 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             self.anon_map[1], []
         ):
             return COMPARE_FAILED
+
+    def visit_propagate_attrs(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        return self.compare_inner(
+            left.get("plugin_subject", None), right.get("plugin_subject", None)
+        )
 
     def visit_has_cache_key_list(
         self, attrname, left_parent, left, right_parent, right, **kw

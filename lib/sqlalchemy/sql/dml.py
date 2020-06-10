@@ -641,7 +641,7 @@ class ValuesBase(UpdateBase):
         if self._preserve_parameter_order:
             arg = [
                 (
-                    k,
+                    coercions.expect(roles.DMLColumnRole, k),
                     coercions.expect(
                         roles.ExpressionElementRole,
                         v,
@@ -654,7 +654,7 @@ class ValuesBase(UpdateBase):
             self._ordered_values = arg
         else:
             arg = {
-                k: coercions.expect(
+                coercions.expect(roles.DMLColumnRole, k): coercions.expect(
                     roles.ExpressionElementRole,
                     v,
                     type_=NullType(),
@@ -772,6 +772,7 @@ class Insert(ValuesBase):
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
+        + Executable._executable_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(
@@ -997,6 +998,7 @@ class Update(DMLWhereBase, ValuesBase):
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
+        + Executable._executable_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(
@@ -1187,7 +1189,7 @@ class Update(DMLWhereBase, ValuesBase):
             )
         arg = [
             (
-                k,
+                coercions.expect(roles.DMLColumnRole, k),
                 coercions.expect(
                     roles.ExpressionElementRole,
                     v,
@@ -1238,6 +1240,7 @@ class Delete(DMLWhereBase, UpdateBase):
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
+        + Executable._executable_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(

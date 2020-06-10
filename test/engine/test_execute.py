@@ -840,7 +840,7 @@ class CompiledCacheTest(fixtures.TestBase):
 
         ins = users.insert()
         with patch.object(
-            ins, "compile", Mock(side_effect=ins.compile)
+            ins, "_compiler", Mock(side_effect=ins._compiler)
         ) as compile_mock:
             cached_conn.execute(ins, {"user_name": "u1"})
             cached_conn.execute(ins, {"user_name": "u2"})
@@ -881,7 +881,7 @@ class CompiledCacheTest(fixtures.TestBase):
 
         ins = photo.insert()
         with patch.object(
-            ins, "compile", Mock(side_effect=ins.compile)
+            ins, "_compiler", Mock(side_effect=ins._compiler)
         ) as compile_mock:
             cached_conn.execute(ins, {"photo_blob": blob})
         eq_(compile_mock.call_count, 1)
@@ -908,7 +908,7 @@ class CompiledCacheTest(fixtures.TestBase):
         upd = users.update().where(users.c.user_id == bindparam("b_user_id"))
 
         with patch.object(
-            upd, "compile", Mock(side_effect=upd.compile)
+            upd, "_compiler", Mock(side_effect=upd._compiler)
         ) as compile_mock:
             cached_conn.execute(
                 upd,

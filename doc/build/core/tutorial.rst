@@ -157,7 +157,7 @@ each table first before creating, so it's safe to call multiple times:
         fullname VARCHAR,
         PRIMARY KEY (id)
     )
-    ()
+    [...] ()
     COMMIT
     CREATE TABLE addresses (
         id INTEGER NOT NULL,
@@ -166,7 +166,7 @@ each table first before creating, so it's safe to call multiple times:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    ()
+    [...] ()
     COMMIT
 
 .. note::
@@ -263,7 +263,7 @@ checked out DBAPI connection resource. Lets feed it our
 
     >>> result = conn.execute(ins)
     {opensql}INSERT INTO users (name, fullname) VALUES (?, ?)
-    ('jack', 'Jack Jones')
+    [...] ('jack', 'Jack Jones')
     COMMIT
 
 So the INSERT statement was now issued to the database. Although we got
@@ -325,7 +325,7 @@ and use it in the "normal" way:
     >>> ins = users.insert()
     >>> conn.execute(ins, id=2, name='wendy', fullname='Wendy Williams')
     {opensql}INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
-    (2, 'wendy', 'Wendy Williams')
+    [...] (2, 'wendy', 'Wendy Williams')
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -349,7 +349,7 @@ inserted, as we do here to add some email addresses:
     ...    {'user_id': 2, 'email_address' : 'wendy@aol.com'},
     ... ])
     {opensql}INSERT INTO addresses (user_id, email_address) VALUES (?, ?)
-    ((1, 'jack@yahoo.com'), (1, 'jack@msn.com'), (2, 'www@www.org'), (2, 'wendy@aol.com'))
+    [...] ((1, 'jack@yahoo.com'), (1, 'jack@msn.com'), (2, 'www@www.org'), (2, 'wendy@aol.com'))
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -384,7 +384,7 @@ statements is the :func:`_expression.select` function:
     >>> result = conn.execute(s)
     {opensql}SELECT users.id, users.name, users.fullname
     FROM users
-    ()
+    [...] ()
 
 Above, we issued a basic :func:`_expression.select` call, placing the ``users`` table
 within the COLUMNS clause of the select, and then executing. SQLAlchemy
@@ -414,7 +414,7 @@ of these tuples as rows are fetched is through tuple assignment:
     {sql}>>> result = conn.execute(s)
     SELECT users.id, users.name, users.fullname
     FROM users
-    ()
+    [...] ()
 
     {stop}>>> for id, name, fullname in result:
     ...     print("name:", name, "; fullname: ", fullname)
@@ -430,7 +430,7 @@ access:
     {sql}>>> result = conn.execute(s)
     SELECT users.id, users.name, users.fullname
     FROM users
-    ()
+    [...] ()
 
     {stop}>>> for row in result:
     ...     print("name:", row.name, "; fullname: ", row.fullname)
@@ -446,7 +446,7 @@ progammatically generated, or contains non-ascii characters, the
     {sql}>>> result = conn.execute(s)
     SELECT users.id, users.name, users.fullname
     FROM users
-    ()
+    [...] ()
 
     {stop}>>> row = result.fetchone()
     >>> print("name:", row._mapping['name'], "; fullname:", row._mapping['fullname'])
@@ -490,7 +490,7 @@ collection:
     ...     print("name:", row._mapping[users.c.name], "; fullname:", row._mapping[users.c.fullname])
     SELECT users.id, users.name, users.fullname
     FROM users
-    ()
+    [...] ()
     {stop}name: jack ; fullname: Jack Jones
     name: wendy ; fullname: Wendy Williams
 
@@ -528,7 +528,7 @@ the ``c`` attribute of the :class:`~sqlalchemy.schema.Table` object:
     {sql}>>> result = conn.execute(s)
     SELECT users.name, users.fullname
     FROM users
-    ()
+    [...] ()
     {stop}>>> for row in result:
     ...     print(row)
     (u'jack', u'Jack Jones')
@@ -546,7 +546,7 @@ our :func:`_expression.select` statement:
     ...     print(row)
     SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address
     FROM users, addresses
-    ()
+    [...] ()
     {stop}(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com')
     (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')
     (1, u'jack', u'Jack Jones', 3, 2, u'www@www.org')
@@ -571,7 +571,7 @@ WHERE clause.  We do that using :meth:`_expression.Select.where`:
        addresses.user_id, addresses.email_address
     FROM users, addresses
     WHERE users.id = addresses.user_id
-    ()
+    [...] ()
     {stop}(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com')
     (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')
     (2, u'wendy', u'Wendy Williams', 3, 2, u'www@www.org')
@@ -801,7 +801,7 @@ not have a name:
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    (', ', 'm', 'z', '%@aol.com', '%@msn.com')
+    [...] (', ', 'm', 'z', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 Once again, SQLAlchemy figured out the FROM clause for our statement. In fact
@@ -830,7 +830,7 @@ A shortcut to using :func:`.and_` is to chain together multiple
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    (', ', 'm', 'z', '%@aol.com', '%@msn.com')
+    [...] (', ', 'm', 'z', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 The way that we can build up a :func:`_expression.select` construct through successive
@@ -865,7 +865,7 @@ unchanged.  Below, we create a :func:`_expression.text` object and execute it:
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
     (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    ('m', 'z', '%@aol.com', '%@msn.com')
+    [...] ('m', 'z', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 Above, we can see that bound parameters are specified in
@@ -944,7 +944,7 @@ result column names in the textual SQL:
     {opensql}SELECT users.id, addresses.id, users.id, users.name,
         addresses.email_address AS email
     FROM users JOIN addresses ON users.id=addresses.user_id WHERE users.id = 1
-    ()
+    [...] ()
     {stop}
 
 Above, there's three columns in the result that are named "id", but since
@@ -1020,7 +1020,7 @@ need to refer to any pre-established :class:`_schema.Table` metadata:
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN 'm' AND 'z'
     AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    ('%@aol.com', '%@msn.com')
+    [...] ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 .. versionchanged:: 1.0.0
@@ -1074,7 +1074,7 @@ be quoted:
     WHERE users.id = addresses.user_id
     AND users.name BETWEEN 'm' AND 'z'
     AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
-    (', ', '%@aol.com', '%@msn.com')
+    [...] (', ', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
 Ordering or Grouping by a Label
@@ -1101,7 +1101,7 @@ are rendered fully:
     {sql}>>> conn.execute(stmt).fetchall()
     SELECT addresses.user_id, count(addresses.id) AS num_addresses
     FROM addresses GROUP BY addresses.user_id ORDER BY addresses.user_id, num_addresses
-    ()
+    [...] ()
     {stop}[(1, 2), (2, 2)]
 
 We can use modifiers like :func:`.asc` or :func:`.desc` by passing the string
@@ -1118,7 +1118,7 @@ name:
     {sql}>>> conn.execute(stmt).fetchall()
     SELECT addresses.user_id, count(addresses.id) AS num_addresses
     FROM addresses GROUP BY addresses.user_id ORDER BY addresses.user_id, num_addresses DESC
-    ()
+    [...] ()
     {stop}[(1, 2), (2, 2)]
 
 Note that the string feature here is very much tailored to when we have
@@ -1141,7 +1141,7 @@ by a column name that appears more than once:
     users_2.name, users_2.fullname
     FROM users AS users_1, users AS users_2
     WHERE users_1.name > users_2.name ORDER BY users_1.name
-    ()
+    [...] ()
     {stop}[(2, u'wendy', u'Wendy Williams', 1, u'jack', u'Jack Jones')]
 
 
@@ -1193,7 +1193,7 @@ once for each address.   We create two :class:`_expression.Alias` constructs aga
         AND users.id = addresses_2.user_id
         AND addresses_1.email_address = ?
         AND addresses_2.email_address = ?
-    ('jack@msn.com', 'jack@yahoo.com')
+    [...] ('jack@msn.com', 'jack@yahoo.com')
     {stop}[(1, u'jack', u'Jack Jones')]
 
 Note that the :class:`_expression.Alias` construct generated the names ``addresses_1`` and
@@ -1235,7 +1235,7 @@ by making :class:`.Subquery` of the entire statement:
             AND addresses_1.email_address = ?
             AND addresses_2.email_address = ?) AS anon_1
     WHERE users.id = anon_1.id
-    ('jack@msn.com', 'jack@yahoo.com')
+    [...] ('jack@msn.com', 'jack@yahoo.com')
     {stop}[(u'jack',)]
 
 .. versionchanged:: 1.4 Added the :class:`.Subquery` object and created more of a
@@ -1291,7 +1291,7 @@ here we make use of the :meth:`_expression.Select.select_from` method:
     {sql}>>> conn.execute(s).fetchall()
     SELECT users.fullname
     FROM users JOIN addresses ON addresses.email_address LIKE users.name || ?
-    ('%',)
+    [...] ('%',)
     {stop}[(u'Jack Jones',), (u'Jack Jones',), (u'Wendy Williams',)]
 
 The :meth:`_expression.FromClause.outerjoin` method creates ``LEFT OUTER JOIN`` constructs,
@@ -1350,7 +1350,7 @@ typically acquires using the :meth:`_expression.Select.cte` method on a
      SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses, anon_1
     WHERE addresses.user_id = anon_1.id ORDER BY addresses.id
-    ('wendy',)
+    [...] ('wendy',)
     {stop}[(3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
 
 The CTE construct is a great way to provide a source of rows that is
@@ -1388,7 +1388,7 @@ this form looks like:
      SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses, anon_1
     WHERE addresses.user_id = anon_1.id ORDER BY addresses.id
-    ()
+    [...] ()
     {stop}[(1, 1, 'jack@yahoo.com'), (2, 1, 'jack@msn.com'), (3, 2, 'www@www.org'), (4, 2, 'wendy@aol.com')]
 
 
@@ -1421,7 +1421,7 @@ at execution time, as here where it converts to positional for SQLite:
     SELECT users.id, users.name, users.fullname
     FROM users
     WHERE users.name = ?
-    ('wendy',)
+    [...] ('wendy',)
     {stop}[(2, u'wendy', u'Wendy Williams')]
 
 Another important aspect of :func:`.bindparam` is that it may be assigned a
@@ -1436,7 +1436,7 @@ off to the database:
     SELECT users.id, users.name, users.fullname
     FROM users
     WHERE users.name LIKE ? || '%'
-    ('wendy',)
+    [...] ('wendy',)
     {stop}[(2, u'wendy', u'Wendy Williams')]
 
 
@@ -1462,7 +1462,7 @@ single named value is needed in the execute parameters:
     FROM users LEFT OUTER JOIN addresses ON users.id = addresses.user_id
     WHERE users.name LIKE ? || '%' OR addresses.email_address LIKE ? || '@%'
     ORDER BY addresses.id
-    ('jack', 'jack')
+    [...] ('jack', 'jack')
     {stop}[(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com'), (1, u'jack', u'Jack Jones', 2, 1, u'jack@msn.com')]
 
 .. seealso::
@@ -1531,7 +1531,7 @@ not important in this case:
     ...     ).scalar()
     {opensql}SELECT max(addresses.email_address) AS maxemail
     FROM addresses
-    ()
+    [...] ()
     {stop}u'www@www.org'
 
 Databases such as PostgreSQL and Oracle which support functions that return
@@ -1648,7 +1648,7 @@ object as arguments:
     >>> conn.execute(s).fetchall()
     {opensql}SELECT CAST(users.id AS VARCHAR) AS id
     FROM users
-    ()
+    [...] ()
     {stop}[('1',), ('2',)]
 
 The :func:`.cast` function is used not just when converting between datatypes,
@@ -1724,7 +1724,7 @@ module level functions :func:`_expression.union` and
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ? ORDER BY email_address
-    ('foo@bar.com', '%@yahoo.com')
+    [...] ('foo@bar.com', '%@yahoo.com')
     {stop}[(1, 1, u'jack@yahoo.com')]
 
 Also available, though not supported on all databases, are
@@ -1750,7 +1750,7 @@ Also available, though not supported on all databases, are
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ?
-    ('%@%.com', '%@msn.com')
+    [...] ('%@%.com', '%@msn.com')
     {stop}[(1, 1, u'jack@yahoo.com'), (4, 2, u'wendy@aol.com')]
 
 A common issue with so-called "compound" selectables arises due to the fact
@@ -1788,7 +1788,7 @@ want the "union" to be stated as a subquery:
     SELECT addresses.id, addresses.user_id, addresses.email_address
     FROM addresses
     WHERE addresses.email_address LIKE ?
-    ('%@yahoo.com', '%@msn.com', '%@msn.com')
+    [...] ('%@yahoo.com', '%@msn.com', '%@msn.com')
     {stop}[(1, 1, u'jack@yahoo.com')]
 
 .. seealso::
@@ -1868,7 +1868,7 @@ other column within another :func:`_expression.select`:
     FROM addresses
     WHERE users.id = addresses.user_id) AS anon_1
     FROM users
-    ()
+    [...] ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
 
 To apply a non-anonymous column name to our scalar select, we create
@@ -1884,7 +1884,7 @@ it using :meth:`_expression.SelectBase.label` instead:
     FROM addresses
     WHERE users.id = addresses.user_id) AS address_count
     FROM users
-    ()
+    [...] ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
 
 .. seealso::
@@ -1918,7 +1918,7 @@ still have at least one FROM clause of its own.  For example:
         FROM addresses
         WHERE addresses.user_id = users.id
         AND addresses.email_address = ?)
-    ('jack@yahoo.com',)
+    [...] ('jack@yahoo.com',)
     {stop}[(u'jack',)]
 
 Auto-correlation will usually do what's expected, however it can also be controlled.
@@ -1943,7 +1943,7 @@ may be correlated:
      WHERE users.id = (SELECT users.id
      FROM users
      WHERE users.id = addresses.user_id AND users.name = ?)
-     ('jack',)
+     [...] ('jack',)
      {stop}[(u'jack', u'jack@yahoo.com'), (u'jack', u'jack@msn.com')]
 
 To entirely disable a statement from correlating, we can pass ``None``
@@ -1962,7 +1962,7 @@ as the argument:
      WHERE users.id = (SELECT users.id
       FROM users
       WHERE users.name = ?)
-    ('wendy',)
+    [...] ('wendy',)
     {stop}[(u'wendy',)]
 
 We can also control correlation via exclusion, using the :meth:`_expression.Select.correlate_except`
@@ -1985,7 +1985,7 @@ by telling it to correlate all FROM clauses except for ``users``:
      WHERE users.id = (SELECT users.id
      FROM users
      WHERE users.id = addresses.user_id AND users.name = ?)
-     ('jack',)
+     [...] ('jack',)
      {stop}[(u'jack', u'jack@yahoo.com'), (u'jack', u'jack@msn.com')]
 
 .. _lateral_selects:
@@ -2070,7 +2070,7 @@ Ordering is done by passing column expressions to the
     >>> conn.execute(stmt).fetchall()
     {opensql}SELECT users.name
     FROM users ORDER BY users.name
-    ()
+    [...] ()
     {stop}[(u'jack',), (u'wendy',)]
 
 Ascending or descending can be controlled using the :meth:`_expression.ColumnElement.asc`
@@ -2082,7 +2082,7 @@ and :meth:`_expression.ColumnElement.desc` modifiers:
     >>> conn.execute(stmt).fetchall()
     {opensql}SELECT users.name
     FROM users ORDER BY users.name DESC
-    ()
+    [...] ()
     {stop}[(u'wendy',), (u'jack',)]
 
 Grouping refers to the GROUP BY clause, and is usually used in conjunction
@@ -2099,7 +2099,7 @@ This is provided via the :meth:`_expression.SelectBase.group_by` method:
     FROM users JOIN addresses
         ON users.id = addresses.user_id
     GROUP BY users.name
-    ()
+    [...] ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
 
 HAVING can be used to filter results on an aggregate value, after GROUP BY has
@@ -2118,7 +2118,7 @@ method:
         ON users.id = addresses.user_id
     GROUP BY users.name
     HAVING length(users.name) > ?
-    (4,)
+    [...] (4,)
     {stop}[(u'wendy', 2)]
 
 A common system of dealing with duplicates in composed SELECT statements
@@ -2135,7 +2135,7 @@ is the DISTINCT modifier.  A simple DISTINCT clause can be added using the
     {opensql}SELECT DISTINCT users.name
     FROM users, addresses
     WHERE (addresses.email_address LIKE '%' || users.name || '%')
-    ()
+    [...] ()
     {stop}[(u'jack',), (u'wendy',)]
 
 Most database backends support a system of limiting how many rows
@@ -2156,7 +2156,7 @@ into the current backend's methodology:
     {opensql}SELECT users.name, addresses.email_address
     FROM users JOIN addresses ON users.id = addresses.user_id
      LIMIT ? OFFSET ?
-    (1, 1)
+    [...] (1, 1)
     {stop}[(u'jack', u'jack@msn.com')]
 
 
@@ -2181,7 +2181,7 @@ as a value:
     ...             values(fullname="Fullname: " + users.c.name)
     >>> conn.execute(stmt)
     {opensql}UPDATE users SET fullname=(? || users.name)
-    ('Fullname: ',)
+    [...] ('Fullname: ',)
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2210,7 +2210,7 @@ as in the example below:
     ...        {'id':6, '_name':'name3'},
     ...     ])
     {opensql}INSERT INTO users (id, name) VALUES (?, (? || ?))
-    ((4, 'name1', ' .. name'), (5, 'name2', ' .. name'), (6, 'name3', ' .. name'))
+    [...] ((4, 'name1', ' .. name'), (5, 'name2', ' .. name'), (6, 'name3', ' .. name'))
     COMMIT
     <sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2226,7 +2226,7 @@ that can be specified:
 
     >>> conn.execute(stmt)
     {opensql}UPDATE users SET name=? WHERE users.name = ?
-    ('ed', 'jack')
+    [...] ('ed', 'jack')
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2246,7 +2246,7 @@ used to achieve this:
     ...     {'oldname':'jim', 'newname':'jake'},
     ...     ])
     {opensql}UPDATE users SET name=? WHERE users.name = ?
-    (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
+    [...] (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2268,7 +2268,7 @@ subquery using :meth:`_expression.Select.scalar_subquery`:
         FROM addresses
         WHERE addresses.user_id = users.id
         LIMIT ? OFFSET ?)
-    (1, 0)
+    [...] (1, 0)
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2385,13 +2385,13 @@ Finally, a delete.  This is accomplished easily enough using the
 
     >>> conn.execute(addresses.delete())
     {opensql}DELETE FROM addresses
-    ()
+    [...] ()
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
     >>> conn.execute(users.delete().where(users.c.name > 'm'))
     {opensql}DELETE FROM users WHERE users.name > ?
-    ('m',)
+    [...] ('m',)
     COMMIT
     {stop}<sqlalchemy.engine.cursor.LegacyCursorResult object at 0x...>
 
@@ -2439,7 +2439,7 @@ The value is available as :attr:`_engine.CursorResult.rowcount`:
 
     >>> result = conn.execute(users.delete())
     {opensql}DELETE FROM users
-    ()
+    [...] ()
     COMMIT
     {stop}>>> result.rowcount
     1

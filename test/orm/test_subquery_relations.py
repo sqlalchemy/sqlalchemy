@@ -1,13 +1,13 @@
 import sqlalchemy as sa
 from sqlalchemy import bindparam
 from sqlalchemy import ForeignKey
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import create_session
@@ -85,6 +85,44 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(self.static.user_address_result, q.order_by(User.id).all())
 
         self.assert_sql_count(testing.db, go, 2)
+
+    def test_params_arent_cached(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="subquery",
+                    order_by=Address.id,
+                )
+            },
+        )
+        query_cache = {}
+        sess = create_session()
+
+        u1 = (
+            sess.query(User)
+            .execution_options(query_cache=query_cache)
+            .filter(User.id == 7)
+            .one()
+        )
+
+        u2 = (
+            sess.query(User)
+            .execution_options(query_cache=query_cache)
+            .filter(User.id == 8)
+            .one()
+        )
+        eq_(len(u1.addresses), 1)
+        eq_(len(u2.addresses), 3)
 
     def test_from_aliased(self):
         users, Dingaling, User, dingalings, Address, addresses = (
@@ -2689,33 +2727,40 @@ class CyclicalInheritingEagerTestTwo(
             movies = relationship("Movie", foreign_keys=Movie.director_id)
             name = Column(String(50))
 
+    @classmethod
+    def insert_data(cls, connection):
+        Director, Movie = cls.classes("Director", "Movie")
+        s = Session(connection)
+        s.add_all([Director(movies=[Movie(title="m1"), Movie(title="m2")])])
+        s.commit()
+
     def test_from_subclass(self):
         Director = self.classes.Director
 
         s = create_session()
 
-        ctx = s.query(Director).options(subqueryload("*"))._compile_context()
-
-        q = ctx.attributes[
-            (
-                "subqueryload_data",
-                (inspect(Director), inspect(Director).attrs.movies),
-            )
-        ]["query"]
-        self.assert_compile(
-            q,
-            "SELECT movie.id AS movie_id, "
-            "persistent.id AS persistent_id, "
-            "movie.director_id AS movie_director_id, "
-            "movie.title AS movie_title, "
-            "anon_1.director_id AS anon_1_director_id "
-            "FROM (SELECT director.id AS director_id "
-            "FROM persistent JOIN director "
-            "ON persistent.id = director.id) AS anon_1 "
-            "JOIN (persistent JOIN movie "
-            "ON persistent.id = movie.id) "
-            "ON anon_1.director_id = movie.director_id",
-            dialect="default",
+        with self.sql_execution_asserter(testing.db) as asserter:
+            s.query(Director).options(subqueryload("*")).all()
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT director.id AS director_id, "
+                "persistent.id AS persistent_id, director.name "
+                "AS director_name FROM persistent JOIN director "
+                "ON persistent.id = director.id"
+            ),
+            CompiledSQL(
+                "SELECT movie.id AS movie_id, "
+                "persistent.id AS persistent_id, "
+                "movie.director_id AS movie_director_id, "
+                "movie.title AS movie_title, "
+                "anon_1.director_id AS anon_1_director_id "
+                "FROM (SELECT director.id AS director_id "
+                "FROM persistent JOIN director "
+                "ON persistent.id = director.id) AS anon_1 "
+                "JOIN (persistent JOIN movie "
+                "ON persistent.id = movie.id) "
+                "ON anon_1.director_id = movie.director_id",
+            ),
         )
 
     def test_integrate(self):
@@ -2762,7 +2807,9 @@ class SubqueryloadDistinctTest(
             )
             path = Column(String(255))
             director_id = Column(Integer, ForeignKey("director.id"))
-            director = relationship(Director, backref="photos")
+            director = relationship(
+                Director, backref=backref("photos", order_by=id)
+            )
 
         class Movie(Base):
             __tablename__ = "movie"
@@ -2824,87 +2871,58 @@ class SubqueryloadDistinctTest(
 
         s = create_session(testing.db)
 
-        q = s.query(Movie).options(
-            subqueryload(Movie.director).subqueryload(Director.photos)
-        )
-        ctx = q._compile_context()
-
-        q2 = ctx.attributes[
-            (
-                "subqueryload_data",
-                (inspect(Movie), inspect(Movie).attrs.director),
+        with self.sql_execution_asserter(testing.db) as asserter:
+            result = (
+                s.query(Movie)
+                .options(
+                    subqueryload(Movie.director).subqueryload(Director.photos)
+                )
+                .all()
             )
-        ]["query"]
-        self.assert_compile(
-            q2,
-            "SELECT director.id AS director_id, "
-            "director.name AS director_name, "
-            "anon_1.movie_director_id AS anon_1_movie_director_id "
-            "FROM (SELECT%s movie.director_id AS movie_director_id "
-            "FROM movie) AS anon_1 "
-            "JOIN director ON director.id = anon_1.movie_director_id"
-            % (" DISTINCT" if expect_distinct else ""),
-        )
-
-        ctx2 = q2._compile_context()
-        stmt = q2.statement
-
-        result = s.connection().execute(stmt)
-        rows = result.fetchall()
-
-        if expect_distinct:
-            eq_(rows, [(1, "Woody Allen", 1)])
-        else:
-            eq_(rows, [(1, "Woody Allen", 1), (1, "Woody Allen", 1)])
-
-        q3 = ctx2.attributes[
-            (
-                "subqueryload_data",
-                (inspect(Director), inspect(Director).attrs.photos),
-            )
-        ]["query"]
-
-        self.assert_compile(
-            q3,
-            "SELECT director_photo.id AS director_photo_id, "
-            "director_photo.path AS director_photo_path, "
-            "director_photo.director_id AS director_photo_director_id, "
-            "director_1.id AS director_1_id "
-            "FROM (SELECT%s movie.director_id AS movie_director_id "
-            "FROM movie) AS anon_1 "
-            "JOIN director AS director_1 "
-            "ON director_1.id = anon_1.movie_director_id "
-            "JOIN director_photo "
-            "ON director_1.id = director_photo.director_id"
-            % (" DISTINCT" if expect_distinct else ""),
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT movie.id AS movie_id, movie.director_id "
+                "AS movie_director_id, movie.title AS movie_title FROM movie"
+            ),
+            CompiledSQL(
+                "SELECT director.id AS director_id, "
+                "director.name AS director_name, "
+                "anon_1.movie_director_id AS anon_1_movie_director_id "
+                "FROM (SELECT%s movie.director_id AS movie_director_id "
+                "FROM movie) AS anon_1 "
+                "JOIN director ON director.id = anon_1.movie_director_id"
+                % (" DISTINCT" if expect_distinct else ""),
+            ),
+            CompiledSQL(
+                "SELECT director_photo.id AS director_photo_id, "
+                "director_photo.path AS director_photo_path, "
+                "director_photo.director_id AS director_photo_director_id, "
+                "director_1.id AS director_1_id "
+                "FROM (SELECT%s movie.director_id AS movie_director_id "
+                "FROM movie) AS anon_1 "
+                "JOIN director AS director_1 "
+                "ON director_1.id = anon_1.movie_director_id "
+                "JOIN director_photo "
+                "ON director_1.id = director_photo.director_id "
+                "ORDER BY director_photo.id"
+                % (" DISTINCT" if expect_distinct else ""),
+            ),
         )
 
-        stmt = q3.statement
-
-        result = s.connection().execute(stmt)
-
-        rows = result.fetchall()
-        if expect_distinct:
-            eq_(
-                set(tuple(t) for t in rows),
-                set([(1, "/1.jpg", 1, 1), (2, "/2.jpg", 1, 1)]),
-            )
-        else:
-            # oracle might not order the way we expect here
-            eq_(
-                set(tuple(t) for t in rows),
-                set(
-                    [
-                        (1, "/1.jpg", 1, 1),
-                        (2, "/2.jpg", 1, 1),
-                        (1, "/1.jpg", 1, 1),
-                        (2, "/2.jpg", 1, 1),
-                    ]
-                ),
-            )
-
-        movies = q.all()  # noqa
-
+        eq_(
+            [
+                (
+                    movie.title,
+                    movie.director.name,
+                    [photo.path for photo in movie.director.photos],
+                )
+                for movie in result
+            ],
+            [
+                ("Manhattan", "Woody Allen", ["/1.jpg", "/2.jpg"]),
+                ("Sweet and Lowdown", "Woody Allen", ["/1.jpg", "/2.jpg"]),
+            ],
+        )
         # check number of persistent objects in session
         eq_(len(list(s)), 5)
 
@@ -2919,24 +2937,41 @@ class SubqueryloadDistinctTest(
 
         s = create_session(testing.db)
 
-        q = s.query(Credit).options(
-            subqueryload(Credit.movie).subqueryload(Movie.director)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            result = (
+                s.query(Credit)
+                .options(
+                    subqueryload(Credit.movie).subqueryload(Movie.director)
+                )
+                .all()
+            )
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT credit.id AS credit_id, credit.movie_id AS "
+                "credit_movie_id FROM credit"
+            ),
+            CompiledSQL(
+                "SELECT movie.id AS movie_id, movie.director_id "
+                "AS movie_director_id, movie.title AS movie_title, "
+                "anon_1.credit_movie_id AS anon_1_credit_movie_id "
+                "FROM (SELECT DISTINCT credit.movie_id AS credit_movie_id "
+                "FROM credit) AS anon_1 JOIN movie ON movie.id = "
+                "anon_1.credit_movie_id"
+            ),
+            CompiledSQL(
+                "SELECT director.id AS director_id, director.name "
+                "AS director_name, movie_1.director_id AS movie_1_director_id "
+                "FROM (SELECT DISTINCT credit.movie_id AS credit_movie_id "
+                "FROM credit) AS anon_1 JOIN movie AS movie_1 ON "
+                "movie_1.id = anon_1.credit_movie_id JOIN director "
+                "ON director.id = movie_1.director_id"
+            ),
         )
 
-        ctx = q._compile_context()
-
-        q2 = ctx.attributes[
-            ("subqueryload_data", (inspect(Credit), Credit.movie.property))
-        ]["query"]
-        ctx2 = q2._compile_context()
-        q3 = ctx2.attributes[
-            ("subqueryload_data", (inspect(Movie), Movie.director.property))
-        ]["query"]
-
-        stmt = q3.statement
-
-        result = s.connection().execute(stmt)
-        eq_(result.fetchall(), [(1, "Woody Allen", 1), (1, "Woody Allen", 1)])
+        eq_(
+            [credit.movie.director.name for credit in result],
+            ["Woody Allen", "Woody Allen", "Woody Allen"],
+        )
 
 
 class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
@@ -3196,6 +3231,13 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
     neutron is currently dependent on this use case which means others
     are too.
 
+    Additionally tests functionality related to #5836, where we are using the
+    non-cached context.query, rather than
+    context.compile_state.select_statement to generate the subquery.  this is
+    so we get the current parameters from the new statement being run, but it
+    also means we have to get a new CompileState from that query in order to
+    deal with the correct entities.
+
     """
 
     @classmethod
@@ -3213,55 +3255,147 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
             a = relationship("A")
+            ds = relationship("D", order_by="D.id")
 
         class C(Base, ComparableEntity):
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id"))
 
+        class D(Base, ComparableEntity):
+            __tablename__ = "d"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+
     @classmethod
     def insert_data(cls, connection):
-        A, B, C = cls.classes("A", "B", "C")
+        A, B, C, D = cls.classes("A", "B", "C", "D")
 
         s = Session(connection)
 
-        as_ = [A(id=i, cs=[C(), C()]) for i in range(1, 5)]
+        as_ = [A(id=i, cs=[C(), C()],) for i in range(1, 5)]
 
-        s.add_all([B(a=as_[0]), B(a=as_[1]), B(a=as_[2]), B(a=as_[3])])
+        s.add_all(
+            [
+                B(a=as_[0], ds=[D()]),
+                B(a=as_[1], ds=[D()]),
+                B(a=as_[2]),
+                B(a=as_[3]),
+            ]
+        )
 
         s.commit()
 
-    def test_subqload_w_from_self(self):
+    def test_subq_w_from_self_one(self):
         A, B, C = self.classes("A", "B", "C")
 
         s = Session()
 
-        q = (
-            s.query(B)
-            .join(B.a)
-            .filter(B.id < 4)
-            .filter(A.id > 1)
-            .from_self()
-            .options(subqueryload(B.a).subqueryload(A.cs))
-            .from_self()
-        )
+        cache = {}
 
-        def go():
-            results = q.all()
-            eq_(
-                results,
-                [
-                    B(
-                        a=A(cs=[C(a_id=2, id=3), C(a_id=2, id=4)], id=2),
-                        a_id=2,
-                        id=2,
-                    ),
-                    B(
-                        a=A(cs=[C(a_id=3, id=5), C(a_id=3, id=6)], id=3),
-                        a_id=3,
-                        id=3,
-                    ),
-                ],
+        for i in range(3):
+            q = (
+                s.query(B)
+                .execution_options(compiled_cache=cache)
+                .join(B.a)
+                .filter(B.id < 4)
+                .filter(A.id > 1)
+                .from_self()
+                .options(subqueryload(B.a).subqueryload(A.cs))
+                .from_self()
             )
 
-        self.assert_sql_count(testing.db, go, 3)
+            def go():
+                results = q.all()
+                eq_(
+                    results,
+                    [
+                        B(
+                            a=A(cs=[C(a_id=2, id=3), C(a_id=2, id=4)], id=2),
+                            a_id=2,
+                            id=2,
+                        ),
+                        B(
+                            a=A(cs=[C(a_id=3, id=5), C(a_id=3, id=6)], id=3),
+                            a_id=3,
+                            id=3,
+                        ),
+                    ],
+                )
+
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT anon_1.anon_2_b_id AS anon_1_anon_2_b_id, "
+                    "anon_1.anon_2_b_a_id AS anon_1_anon_2_b_a_id FROM "
+                    "(SELECT anon_2.b_id AS anon_2_b_id, anon_2.b_a_id "
+                    "AS anon_2_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_2) AS anon_1"
+                ),
+                CompiledSQL(
+                    "SELECT a.id AS a_id, anon_1.anon_2_anon_3_b_a_id AS "
+                    "anon_1_anon_2_anon_3_b_a_id FROM (SELECT DISTINCT "
+                    "anon_2.anon_3_b_a_id AS anon_2_anon_3_b_a_id FROM "
+                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
+                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
+                    "AS anon_2) AS anon_1 JOIN a "
+                    "ON a.id = anon_1.anon_2_anon_3_b_a_id"
+                ),
+                CompiledSQL(
+                    "SELECT c.id AS c_id, c.a_id AS c_a_id, a_1.id "
+                    "AS a_1_id FROM (SELECT DISTINCT anon_2.anon_3_b_a_id AS "
+                    "anon_2_anon_3_b_a_id FROM "
+                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
+                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
+                    "AS anon_2) AS anon_1 JOIN a AS a_1 ON a_1.id = "
+                    "anon_1.anon_2_anon_3_b_a_id JOIN c ON a_1.id = c.a_id "
+                    "ORDER BY c.id"
+                ),
+            )
+
+            s.close()
+
+    def test_subq_w_from_self_two(self):
+
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session()
+        cache = {}
+
+        for i in range(3):
+
+            def go():
+                q = (
+                    s.query(B)
+                    .execution_options(compiled_cache=cache)
+                    .join(B.a)
+                    .from_self()
+                )
+                q = q.options(subqueryload(B.ds))
+
+                q.all()
+
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS "
+                    "anon_1_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id) AS anon_1"
+                ),
+                CompiledSQL(
+                    "SELECT d.id AS d_id, d.b_id AS d_b_id, "
+                    "anon_1.anon_2_b_id AS anon_1_anon_2_b_id "
+                    "FROM (SELECT anon_2.b_id AS anon_2_b_id FROM "
+                    "(SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
+                    "JOIN a ON a.id = b.a_id) AS anon_2) AS anon_1 "
+                    "JOIN d ON anon_1.anon_2_b_id = d.b_id ORDER BY d.id"
+                ),
+            )
+            s.close()

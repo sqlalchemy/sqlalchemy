@@ -3681,7 +3681,7 @@ class PGDialect(default.DefaultDialect):
             WHERE t.typtype = 'd'
         """
 
-        s = sql.text(SQL_DOMAINS).columns(attname=sqltypes.Unicode)
+        s = sql.text(SQL_DOMAINS)
         c = connection.execution_options(future_result=True).execute(s)
 
         domains = {}

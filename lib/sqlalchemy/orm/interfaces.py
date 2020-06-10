@@ -158,7 +158,7 @@ class MapperProperty(
         """
 
     def create_row_processor(
-        self, context, path, mapper, result, adapter, populators
+        self, context, query_entity, path, mapper, result, adapter, populators
     ):
         """Produce row processing functions and append to the given
         set of populators lists.
@@ -539,7 +539,7 @@ class StrategizedProperty(MapperProperty):
         "_wildcard_token",
         "_default_path_loader_key",
     )
-
+    inherit_cache = True
     strategy_wildcard_key = None
 
     def _memoized_attr__wildcard_token(self):
@@ -600,7 +600,7 @@ class StrategizedProperty(MapperProperty):
         )
 
     def create_row_processor(
-        self, context, path, mapper, result, adapter, populators
+        self, context, query_entity, path, mapper, result, adapter, populators
     ):
         loader = self._get_context_loader(context, path)
         if loader and loader.strategy:
@@ -608,7 +608,14 @@ class StrategizedProperty(MapperProperty):
         else:
             strat = self.strategy
         strat.create_row_processor(
-            context, path, loader, mapper, result, adapter, populators
+            context,
+            query_entity,
+            path,
+            loader,
+            mapper,
+            result,
+            adapter,
+            populators,
         )
 
     def do_init(self):
@@ -668,7 +675,7 @@ class StrategizedProperty(MapperProperty):
         )
 
 
-class ORMOption(object):
+class ORMOption(HasCacheKey):
     """Base class for option objects that are passed to ORM queries.
 
     These options may be consumed by :meth:`.Query.options`,
@@ -696,7 +703,7 @@ class ORMOption(object):
     _is_compile_state = False
 
 
-class LoaderOption(HasCacheKey, ORMOption):
+class LoaderOption(ORMOption):
     """Describe a loader modification to an ORM statement at compilation time.
 
     .. versionadded:: 1.4
@@ -735,9 +742,6 @@ class UserDefinedOption(ORMOption):
 
     def __init__(self, payload=None):
         self.payload = payload
-
-    def _gen_cache_key(self, *arg, **kw):
-        return ()
 
 
 @util.deprecated_cls(
@@ -855,7 +859,15 @@ class LoaderStrategy(object):
         """
 
     def create_row_processor(
-        self, context, path, loadopt, mapper, result, adapter, populators
+        self,
+        context,
+        query_entity,
+        path,
+        loadopt,
+        mapper,
+        result,
+        adapter,
+        populators,
     ):
         """Establish row processing functions for a given QueryContext.
 

@@ -51,6 +51,7 @@ class CursorResultMetaData(ResultMetaData):
         "_keys",
         "_tuplefilter",
         "_translated_indexes",
+        "_safe_for_cache"
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -104,11 +105,11 @@ class CursorResultMetaData(ResultMetaData):
         return new_metadata
 
     def _adapt_to_context(self, context):
-        """When using a cached result metadata against a new context,
-        we need to rewrite the _keymap so that it has the specific
-        Column objects in the new context inside of it.  this accommodates
-        for select() constructs that contain anonymized columns and
-        are cached.
+        """When using a cached Compiled construct that has a _result_map,
+        for a new statement that used the cached Compiled, we need to ensure
+        the keymap has the Column objects from our new statement as keys.
+        So here we rewrite keymap with new entries for the new columns
+        as matched to those of the cached statement.
 
         """
         if not context.compiled._result_columns:
@@ -124,14 +125,15 @@ class CursorResultMetaData(ResultMetaData):
         # to the result map.
         md = self.__class__.__new__(self.__class__)
 
-        md._keymap = self._keymap.copy()
+        md._keymap = dict(self._keymap)
 
         # match up new columns positionally to the result columns
         for existing, new in zip(
             context.compiled._result_columns,
             invoked_statement._exported_columns_iterator(),
         ):
-            md._keymap[new] = md._keymap[existing[RM_NAME]]
+            if existing[RM_NAME] in md._keymap:
+                md._keymap[new] = md._keymap[existing[RM_NAME]]
 
         md.case_sensitive = self.case_sensitive
         md._processors = self._processors
@@ -147,6 +149,7 @@ class CursorResultMetaData(ResultMetaData):
         self._tuplefilter = None
         self._translated_indexes = None
         self.case_sensitive = dialect.case_sensitive
+        self._safe_for_cache = False
 
         if context.result_column_struct:
             (
@@ -341,6 +344,10 @@ class CursorResultMetaData(ResultMetaData):
             self._keys = [elem[0] for elem in result_columns]
             # pure positional 1-1 case; doesn't need to read
             # the names from cursor.description
+
+            # this metadata is safe to cache because we are guaranteed
+            # to have the columns in the same order for new executions
+            self._safe_for_cache = True
             return [
                 (
                     idx,
@@ -359,9 +366,12 @@ class CursorResultMetaData(ResultMetaData):
                 for idx, rmap_entry in enumerate(result_columns)
             ]
         else:
+
             # name-based or text-positional cases, where we need
             # to read cursor.description names
+
             if textual_ordered:
+                self._safe_for_cache = True
                 # textual positional case
                 raw_iterator = self._merge_textual_cols_by_position(
                     context, cursor_description, result_columns
@@ -369,6 +379,9 @@ class CursorResultMetaData(ResultMetaData):
             elif num_ctx_cols:
                 # compiled SQL with a mismatch of description cols
                 # vs. compiled cols, or textual w/ unordered columns
+                # the order of columns can change if the query is
+                # against a "select *", so not safe to cache
+                self._safe_for_cache = False
                 raw_iterator = self._merge_cols_by_name(
                     context,
                     cursor_description,
@@ -376,7 +389,9 @@ class CursorResultMetaData(ResultMetaData):
                     loose_column_name_matching,
                 )
             else:
-                # no compiled SQL, just a raw string
+                # no compiled SQL, just a raw string, order of columns
+                # can change for "select *"
+                self._safe_for_cache = False
                 raw_iterator = self._merge_cols_by_none(
                     context, cursor_description
                 )
@@ -1152,7 +1167,6 @@ class BaseCursorResult(object):
 
     out_parameters = None
     _metadata = None
-    _metadata_from_cache = False
     _soft_closed = False
     closed = False
 
@@ -1209,33 +1223,38 @@ class BaseCursorResult(object):
     def _init_metadata(self, context, cursor_description):
         if context.compiled:
             if context.compiled._cached_metadata:
-                cached_md = self.context.compiled._cached_metadata
-                self._metadata_from_cache = True
-
-                # result rewrite/ adapt step.  two translations can occur here.
-                # one is if we are invoked against a cached statement, we want
-                # to rewrite the ResultMetaData to reflect the column objects
-                # that are in our current selectable, not the cached one.  the
-                # other is, the CompileState can return an alternative Result
-                # object.   Finally, CompileState might want to tell us to not
-                # actually do the ResultMetaData adapt step if it in fact has
-                # changed the selected columns in any case.
-                compiled = context.compiled
-                if (
-                    compiled
-                    and not compiled._rewrites_selected_columns
-                    and compiled.statement is not context.invoked_statement
-                ):
-                    cached_md = cached_md._adapt_to_context(context)
-
-                self._metadata = metadata = cached_md
-
+                metadata = self.context.compiled._cached_metadata
             else:
-                self._metadata = (
-                    metadata
-                ) = context.compiled._cached_metadata = self._cursor_metadata(
-                    self, cursor_description
-                )
+                metadata = self._cursor_metadata(self, cursor_description)
+                if metadata._safe_for_cache:
+                    context.compiled._cached_metadata = metadata
+
+            # result rewrite/ adapt step.  this is to suit the case
+            # when we are invoked against a cached Compiled object, we want
+            # to rewrite the ResultMetaData to reflect the Column objects
+            # that are in our current SQL statement object, not the one
+            # that is associated with the cached Compiled object.
+            # the Compiled object may also tell us to not
+            # actually do this step; this is to support the ORM where
+            # it is to produce a new Result object in any case, and will
+            # be using the cached Column objects against this database result
+            # so we don't want to rewrite them.
+            #
+            # Basically this step suits the use case where the end user
+            # is using Core SQL expressions and is accessing columns in the
+            # result row using row._mapping[table.c.column].
+            compiled = context.compiled
+            if (
+                compiled
+                and compiled._result_columns
+                and context.cache_hit
+                and not compiled._rewrites_selected_columns
+                and compiled.statement is not context.invoked_statement
+            ):
+                metadata = metadata._adapt_to_context(context)
+
+            self._metadata = metadata
+
         else:
             self._metadata = metadata = self._cursor_metadata(
                 self, cursor_description

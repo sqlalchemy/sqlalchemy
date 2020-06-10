@@ -624,17 +624,12 @@ class Executable(Generative):
     _bind = None
     _with_options = ()
     _with_context_options = ()
-    _cache_enable = True
 
     _executable_traverse_internals = [
         ("_with_options", ExtendedInternalTraversal.dp_has_cache_key_list),
         ("_with_context_options", ExtendedInternalTraversal.dp_plain_obj),
-        ("_cache_enable", ExtendedInternalTraversal.dp_plain_obj),
+        ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
-
-    @_generative
-    def _disable_caching(self):
-        self._cache_enable = HasCacheKey()
 
     @_generative
     def options(self, *options):

@@ -86,11 +86,17 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count()
     def test_string(self):
-        [tuple(row) for row in t.select().execute().fetchall()]
+        with testing.db.connect().execution_options(
+            compiled_cache=None
+        ) as conn:
+            [tuple(row) for row in conn.execute(t.select()).fetchall()]
 
     @profiling.function_call_count()
     def test_unicode(self):
-        [tuple(row) for row in t2.select().execute().fetchall()]
+        with testing.db.connect().execution_options(
+            compiled_cache=None
+        ) as conn:
+            [tuple(row) for row in conn.execute(t2.select()).fetchall()]
 
     @profiling.function_call_count(variance=0.10)
     def test_raw_string(self):
@@ -110,13 +116,17 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count()
     def test_fetch_by_key_legacy(self):
-        with testing.db.connect() as conn:
+        with testing.db.connect().execution_options(
+            compiled_cache=None
+        ) as conn:
             for row in conn.execute(t.select()).fetchall():
                 [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
 
     @profiling.function_call_count()
     def test_fetch_by_key_mappings(self):
-        with testing.db.connect() as conn:
+        with testing.db.connect().execution_options(
+            compiled_cache=None
+        ) as conn:
             for row in conn.execute(t.select()).mappings().fetchall():
                 [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
 
@@ -126,7 +136,9 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def test_one_or_none(self, one_or_first, rows_present):
         # TODO: this is not testing the ORM level "scalar_mapping"
         # mode which has a different performance profile
-        with testing.db.connect() as conn:
+        with testing.db.connect().execution_options(
+            compiled_cache=None
+        ) as conn:
             stmt = t.select()
             if rows_present == 0:
                 stmt = stmt.where(1 == 0)

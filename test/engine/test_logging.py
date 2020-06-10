@@ -56,7 +56,8 @@ class LogParamsTest(fixtures.TestBase):
         )
         eq_(
             self.buf.buffer[1].message,
-            "[{'data': '0'}, {'data': '1'}, {'data': '2'}, {'data': '3'}, "
+            "[raw sql] [{'data': '0'}, {'data': '1'}, {'data': '2'}, "
+            "{'data': '3'}, "
             "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
             "  ... displaying 10 of 100 total bound "
             "parameter sets ...  {'data': '98'}, {'data': '99'}]",
@@ -85,7 +86,7 @@ class LogParamsTest(fixtures.TestBase):
         )
         eq_(
             self.buf.buffer[1].message,
-            "[SQL parameters hidden due to hide_parameters=True]",
+            "[raw sql] [SQL parameters hidden due to hide_parameters=True]",
         )
 
     def test_log_large_list_of_tuple(self):
@@ -96,7 +97,7 @@ class LogParamsTest(fixtures.TestBase):
         )
         eq_(
             self.buf.buffer[1].message,
-            "[('0',), ('1',), ('2',), ('3',), ('4',), ('5',), "
+            "[raw sql] [('0',), ('1',), ('2',), ('3',), ('4',), ('5',), "
             "('6',), ('7',)  ... displaying 10 of 100 total "
             "bound parameter sets ...  ('98',), ('99',)]",
         )
@@ -115,7 +116,10 @@ class LogParamsTest(fixtures.TestBase):
                 "[parameters: ([1, 2, 3], 'hi')]\n" in str(exc_info)
             )
 
-            eq_(self.buf.buffer[1].message, "([1, 2, 3], 'hi')")
+            eq_regex(
+                self.buf.buffer[1].message,
+                r"\[generated .*\] \(\[1, 2, 3\], 'hi'\)",
+            )
 
     def test_repr_params_positional_array(self):
         eq_(
@@ -223,7 +227,7 @@ class LogParamsTest(fixtures.TestBase):
 
         eq_(
             self.buf.buffer[1].message,
-            "('%s ... (4702 characters truncated) ... %s',)"
+            "[raw sql] ('%s ... (4702 characters truncated) ... %s',)"
             % (largeparam[0:149], largeparam[-149:]),
         )
 
@@ -238,8 +242,8 @@ class LogParamsTest(fixtures.TestBase):
 
         eq_(
             self.buf.buffer[1].message,
-            "('%s', '%s', '%s ... (372 characters truncated) ... %s')"
-            % (lp1, lp2, lp3[0:149], lp3[-149:]),
+            "[raw sql] ('%s', '%s', '%s ... (372 characters truncated) "
+            "... %s')" % (lp1, lp2, lp3[0:149], lp3[-149:]),
         )
 
     def test_log_large_parameter_multiple(self):
@@ -257,7 +261,8 @@ class LogParamsTest(fixtures.TestBase):
 
         eq_(
             self.buf.buffer[1].message,
-            "[('%s ... (4702 characters truncated) ... %s',), ('%s',), "
+            "[raw sql] [('%s ... (4702 characters truncated) ... %s',), "
+            "('%s',), "
             "('%s ... (372 characters truncated) ... %s',)]"
             % (lp1[0:149], lp1[-149:], lp2, lp3[0:149], lp3[-149:]),
         )
@@ -342,7 +347,7 @@ class LogParamsTest(fixtures.TestBase):
 
         eq_(
             self.buf.buffer[1].message,
-            "('%s ... (4702 characters truncated) ... %s',)"
+            "[raw sql] ('%s ... (4702 characters truncated) ... %s',)"
             % (largeparam[0:149], largeparam[-149:]),
         )
 

@@ -38,6 +38,7 @@ from ..sql.base import Options
 from ..sql.dml import DeleteDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
+from ..sql.util import _entity_namespace_key
 
 
 def _bulk_insert(
@@ -1820,8 +1821,12 @@ class BulkUDCompileState(CompileState):
                     if isinstance(k, util.string_types):
                         desc = sql.util._entity_namespace_key(mapper, k)
                         values.extend(desc._bulk_update_tuples(v))
-                    elif isinstance(k, attributes.QueryableAttribute):
-                        values.extend(k._bulk_update_tuples(v))
+                    elif "entity_namespace" in k._annotations:
+                        k_anno = k._annotations
+                        attr = _entity_namespace_key(
+                            k_anno["entity_namespace"], k_anno["orm_key"]
+                        )
+                        values.extend(attr._bulk_update_tuples(v))
                     else:
                         values.append((k, v))
                 else:

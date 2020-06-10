@@ -18,13 +18,29 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class MergeTest(fixtures.MappedTest):
+class NoCache(object):
+    run_setup_bind = "each"
+
+    @classmethod
+    def setup_class(cls):
+        super(NoCache, cls).setup_class()
+        cls._cache = config.db._compiled_cache
+        config.db._compiled_cache = None
+
+    @classmethod
+    def teardown_class(cls):
+        config.db._compiled_cache = cls._cache
+        super(NoCache, cls).teardown_class()
+
+
+class MergeTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -140,7 +156,7 @@ class MergeTest(fixtures.MappedTest):
         self.assert_sql_count(testing.db, go2, 2)
 
 
-class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
+class LoadManyToOneFromIdentityTest(NoCache, fixtures.MappedTest):
 
     """test overhead associated with many-to-one fetches.
 
@@ -239,7 +255,7 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
         go()
 
 
-class MergeBackrefsTest(fixtures.MappedTest):
+class MergeBackrefsTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -333,7 +349,7 @@ class MergeBackrefsTest(fixtures.MappedTest):
             s.merge(a)
 
 
-class DeferOptionsTest(fixtures.MappedTest):
+class DeferOptionsTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -397,7 +413,7 @@ class DeferOptionsTest(fixtures.MappedTest):
         ).all()
 
 
-class AttributeOverheadTest(fixtures.MappedTest):
+class AttributeOverheadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -476,7 +492,7 @@ class AttributeOverheadTest(fixtures.MappedTest):
         go()
 
 
-class SessionTest(fixtures.MappedTest):
+class SessionTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -542,7 +558,7 @@ class SessionTest(fixtures.MappedTest):
         go()
 
 
-class QueryTest(fixtures.MappedTest):
+class QueryTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -604,7 +620,7 @@ class QueryTest(fixtures.MappedTest):
         go()
 
 
-class SelectInEagerLoadTest(fixtures.MappedTest):
+class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
     """basic test for selectin() loading, which uses a baked query.
 
     if the baked query starts spoiling due to some bug in cache keys,
@@ -695,7 +711,7 @@ class SelectInEagerLoadTest(fixtures.MappedTest):
         go()
 
 
-class JoinedEagerLoadTest(fixtures.MappedTest):
+class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -880,7 +896,7 @@ class JoinedEagerLoadTest(fixtures.MappedTest):
         go()
 
 
-class JoinConditionTest(fixtures.DeclarativeMappedTest):
+class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -969,7 +985,7 @@ class JoinConditionTest(fixtures.DeclarativeMappedTest):
         go()
 
 
-class BranchedOptionTest(fixtures.MappedTest):
+class BranchedOptionTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod
@@ -1182,7 +1198,7 @@ class BranchedOptionTest(fixtures.MappedTest):
         go()
 
 
-class AnnotatedOverheadTest(fixtures.MappedTest):
+class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     __requires__ = ("python_profiling_backend",)
 
     @classmethod

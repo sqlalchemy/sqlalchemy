@@ -411,7 +411,6 @@ class CompositeProperty(DescriptorProperty):
         def expression(self):
             clauses = self.clauses._annotate(
                 {
-                    "bundle": True,
                     "parententity": self._parententity,
                     "parentmapper": self._parententity,
                     "orm_key": self.prop.key,

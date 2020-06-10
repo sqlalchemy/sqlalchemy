@@ -168,8 +168,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
         s = Session()
 
         assert_raises_message(
-            exc.InvalidRequestError,
-            "Invalid expression type: 5",
+            exc.ArgumentError,
+            "SET/VALUES column expression or string key expected, got .*Thing",
             s.query(User).update,
             {Thing(): "moonbeam"},
             synchronize_session="evaluate",

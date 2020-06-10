@@ -3,7 +3,6 @@
 import datetime
 
 from sqlalchemy import and_
-from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -51,20 +50,6 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         self.metadata.drop_all()
         self.metadata.clear()
-
-    def test_compiled_insert(self):
-        table = Table(
-            "testtable",
-            self.metadata,
-            Column("id", Integer, primary_key=True),
-            Column("data", String(30)),
-        )
-        self.metadata.create_all()
-        ins = table.insert(
-            inline=True, values={"data": bindparam("x")}
-        ).compile()
-        ins.execute({"x": "five"}, {"x": "seven"})
-        eq_(table.select().execute().fetchall(), [(1, "five"), (2, "seven")])
 
     def test_foreignkey_missing_insert(self):
         Table("t1", self.metadata, Column("id", Integer, primary_key=True))
@@ -602,7 +587,9 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     def _assert_data_noautoincrement(self, table):
         engine = engines.testing_engine(options={"implicit_returning": False})
 
-        with engine.connect() as conn:
+        # turning off the cache because we are checking for compile-time
+        # warnings
+        with engine.connect().execution_options(compiled_cache=None) as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 
             with expect_warnings(

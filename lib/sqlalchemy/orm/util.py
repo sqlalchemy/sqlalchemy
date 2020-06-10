@@ -1187,9 +1187,9 @@ class Bundle(ORMColumnsClauseRole, SupportsCloneAnnotations, InspectionAttr):
         return cloned
 
     def __clause_element__(self):
-        annotations = self._annotations.union(
-            {"bundle": self, "entity_namespace": self}
-        )
+        # ensure existing entity_namespace remains
+        annotations = {"bundle": self, "entity_namespace": self}
+        annotations.update(self._annotations)
         return expression.ClauseList(
             _literal_as_text_role=roles.ColumnsClauseRole,
             group=False,
@@ -1257,6 +1257,8 @@ class _ORMJoin(expression.Join):
     """Extend Join to support ORM constructs as input."""
 
     __visit_name__ = expression.Join.__visit_name__
+
+    inherit_cache = True
 
     def __init__(
         self,
