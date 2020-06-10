@@ -1215,7 +1215,7 @@ SELECT-oriented constructs which extend from :class:`_expression.SelectBase` may
 into aliased subqueries using the :meth:`_expression.SelectBase.subquery` method, which
 produces a :class:`.Subquery` construct; for ease of use, there is also a
 :meth:`_expression.SelectBase.alias` method that is synonymous with
-:class:`_expression.SelectBase.subquery`.   Like  :class:`_expression.Alias`, :class:`.Subquery` is
+:meth:`_expression.SelectBase.subquery`.   Like  :class:`_expression.Alias`, :class:`.Subquery` is
 also a :class:`_expression.FromClause` object that may be part of any enclosing SELECT
 using the same techniques one would use for a :class:`_expression.Alias`.
 

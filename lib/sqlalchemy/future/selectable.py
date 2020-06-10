@@ -91,7 +91,7 @@ class Select(_LegacySelect):
         return self._raw_columns[0]
 
     def filter_by(self, **kwargs):
-        r"""apply the given filtering criterion as a WHERE clause
+        r"""Apply the given filtering criterion as a WHERE clause
         to this select.
 
         """

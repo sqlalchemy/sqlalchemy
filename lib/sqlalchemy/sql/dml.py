@@ -943,7 +943,7 @@ class DMLWhereBase(object):
 
     @_generative
     def where(self, whereclause):
-        """return a new construct with the given expression added to
+        """Return a new construct with the given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
         """

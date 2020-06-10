@@ -711,7 +711,7 @@ the comparison ``Node(id=5)``.  A function ``transform`` is then returned which
 will transform a :class:`_query.Query` first to join to ``Node.parent``,
 then to
 compare ``parent_alias`` using :attr:`.Operators.eq` against the left and right
-sides, passing into :class:`_query.Query.filter`:
+sides, passing into :meth:`_query.Query.filter`:
 
 .. sourcecode:: pycon+sql
 

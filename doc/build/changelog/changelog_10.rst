@@ -1473,7 +1473,7 @@
         to a modern pool invalidation in that connections aren't actively
         closed, but are recycled only on next checkout; this is essentially
         a per-connection version of that feature.  A new event
-        :class:`_events.PoolEvents.soft_invalidate` is added to complement it.
+        :meth:`_events.PoolEvents.soft_invalidate` is added to complement it.
 
         Also added new flag
         :attr:`.ExceptionContext.invalidate_pool_on_disconnect`.

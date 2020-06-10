@@ -733,7 +733,7 @@ class Mapper(
         return self.class_
 
     local_table = None
-    """The :class:`expression.Selectable` which this :class:`_orm.Mapper`
+    """The :class:`_expression.Selectable` which this :class:`_orm.Mapper`
     manages.
 
     Typically is an instance of :class:`_schema.Table` or
@@ -756,7 +756,7 @@ class Mapper(
     """
 
     persist_selectable = None
-    """The :class:`expression.Selectable` to which this :class:`_orm.Mapper`
+    """The :class:`_expression.Selectable` to which this :class:`_orm.Mapper`
     is mapped.
 
     Typically an instance of :class:`_schema.Table`, 

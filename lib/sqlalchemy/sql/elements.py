@@ -312,9 +312,11 @@ class ClauseElement(
             raise exc.ObjectNotExecutableError(self)
 
     def unique_params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elements replaced.
+        """Return a copy with :func:`_expression.bindparam` elements
+        replaced.
 
-        Same functionality as ``params()``, except adds `unique=True`
+        Same functionality as :meth:`_expression.ClauseElement.params`,
+        except adds `unique=True`
         to affected bind parameters so that multiple statements can be
         used.
 
@@ -322,9 +324,11 @@ class ClauseElement(
         return self._replace_params(True, optionaldict, kwargs)
 
     def params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elements replaced.
+        """Return a copy with :func:`_expression.bindparam` elements
+        replaced.
 
-        Returns a copy of this ClauseElement with :func:`bindparam()`
+        Returns a copy of this ClauseElement with
+        :func:`_expression.bindparam`
         elements replaced with values taken from the given dictionary::
 
           >>> clause = column('x') + bindparam('foo')
@@ -354,7 +358,8 @@ class ClauseElement(
         return cloned_traverse(self, {}, {"bindparam": visit_bindparam})
 
     def compare(self, other, **kw):
-        r"""Compare this ``ClauseElement`` to the given ``ClauseElement``.
+        r"""Compare this :class:`_expression.ClauseElement` to
+        the given :class:`_expression.ClauseElement`.
 
         Subclasses should override the default behavior, which is a
         straight identity comparison.
@@ -396,8 +401,8 @@ class ClauseElement(
                     setattr(self, attrname, result)
 
     def get_children(self, omit_attrs=(), **kw):
-        r"""Return immediate child :class:`.Traversible` elements of this
-        :class:`.Traversible`.
+        r"""Return immediate child :class:`.visitors.Traversible`
+        elements of this :class:`.visitors.Traversible`.
 
         This is used for visit traversal.
 

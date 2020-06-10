@@ -436,7 +436,7 @@ class Query(
         reduce_columns=False,
         _legacy_core_statement=False,
     ):
-        """return the full SELECT statement represented by
+        """Return the full SELECT statement represented by
         this :class:`_query.Query`, embedded within an
         :class:`_expression.Alias`.
 
@@ -1812,7 +1812,7 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
     def having(self, criterion):
-        r"""apply a HAVING criterion to the query and return the
+        r"""Apply a HAVING criterion to the query and return the
         newly resulting :class:`_query.Query`.
 
         :meth:`_query.Query.having` is used in conjunction with

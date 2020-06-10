@@ -23,7 +23,7 @@ Glossary
         A term used in SQLAlchemy to describe a SQL construct that represents
         a collection of rows.   It's largely similar to the concept of a
         "relation" in :term:`relational algebra`.  In SQLAlchemy, objects
-        that subclass the :class:`expression.Selectable` class are considered to be
+        that subclass the :class:`_expression.Selectable` class are considered to be
         usable as "selectables" when using SQLAlchemy Core.  The two most
         common constructs are that of the :class:`_schema.Table` and that of the
         :class:`_expression.Select` statement.
