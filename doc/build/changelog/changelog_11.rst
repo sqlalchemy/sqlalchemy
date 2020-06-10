@@ -163,7 +163,7 @@
     :version: 1.1.15
     :released: November 3, 2017
 
-    .. change:
+    .. change::
         :tags: bug, sqlite
         :tickets: 4099
         :versions: 1.2.0b3
@@ -284,7 +284,7 @@
         for single inheritance discriminator criteria inappropriately re-applying
         the criteria to the outer query.
 
-    .. change:
+    .. change::
         :tags: bug, mysql
         :tickets: 4096
         :versions: 1.2.0b3
@@ -293,7 +293,7 @@
         in the MariaDB 10.2 series due to a syntax change, where the function
         is now represented as ``current_timestamp()``.
 
-    .. change:
+    .. change::
         :tags: bug, mysql
         :tickets: 4098
         :versions: 1.2.0b3
