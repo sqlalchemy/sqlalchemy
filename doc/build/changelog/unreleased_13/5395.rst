@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 5395
+
+    Added "exists" to the list of reserved words for SQLite so that this word
+    will be quoted when used as a label or column name. Pull request courtesy
+    Thodoris Sotiropoulos.

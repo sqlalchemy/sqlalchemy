@@ -614,6 +614,7 @@ class DialectTest(
             Column("true", Integer),
             Column("false", Integer),
             Column("column", Integer),
+            Column("exists", Integer),
         )
         try:
             meta.create_all()
