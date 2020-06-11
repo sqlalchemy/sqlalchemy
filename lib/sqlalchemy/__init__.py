@@ -143,5 +143,9 @@ def __go(lcls):
 
     _sa_util.dependencies.resolve_all("sqlalchemy")
 
+    from . import exc
+
+    exc._version_token = "".join(__version__.split(".")[0:2])
+
 
 __go(locals())
