@@ -1334,6 +1334,7 @@ class SQLiteIdentifierPreparer(compiler.IdentifierPreparer):
             "escape",
             "except",
             "exclusive",
+            "exists",
             "explain",
             "false",
             "fail",
