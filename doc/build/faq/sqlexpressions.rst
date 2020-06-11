@@ -95,12 +95,19 @@ flag, passed to ``compile_kwargs``::
 
     s = select([t]).where(t.c.x == 5)
 
-    print(s.compile(compile_kwargs={"literal_binds": True}))  # **do not use** with untrusted input!!!
+    # **do not use** with untrusted input!!!
+    print(s.compile(compile_kwargs={"literal_binds": True}))
 
-the above approach has the caveats that it is only supported for basic
+The above approach has the caveats that it is only supported for basic
 types, such as ints and strings, and furthermore if a :func:`.bindparam`
 without a pre-set value is used directly, it won't be able to
 stringify that either.
+
+This functionality is provided mainly for
+logging or debugging purposes, where having the raw sql string of a query
+may prove useful.  Note that the ``dialect`` parameter should also
+passed to the :meth:`_expression.ClauseElement.compile` method to render
+the query that will be sent to the database.
 
 To support inline literal rendering for types not supported, implement
 a :class:`.TypeDecorator` for the target type which includes a
@@ -119,10 +126,8 @@ a :class:`.TypeDecorator` for the target type which includes a
 
     tab = Table('mytable', MetaData(), Column('x', MyFancyType()))
 
-    print(
-        tab.select().where(tab.c.x > 5).compile(
-            compile_kwargs={"literal_binds": True})
-    )
+    stmt = tab.select().where(tab.c.x > 5)
+    print(stmt.compile(compile_kwargs={"literal_binds": True}))
 
 producing output like::
 
