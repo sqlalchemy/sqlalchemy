@@ -433,7 +433,7 @@ class Inspector(object):
         * ``autoincrement`` - indicates that the column is auto incremented -
           this is returned as a boolean or 'auto'
 
-        * ``comment`` - (optional) the commnet on the column. Only some
+        * ``comment`` - (optional) the comment on the column. Only some
           dialects return this key
 
         * ``computed`` - (optional) when present it indicates that this column

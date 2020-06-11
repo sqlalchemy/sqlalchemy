@@ -249,7 +249,7 @@ like the following is generated::
 .. versionchanged:: 1.0.0 - The DDL system invoked by
    :meth:`_schema.MetaData.create_all`
    and :meth:`_schema.MetaData.drop_all` will now automatically resolve mutually
-   depdendent foreign keys between tables declared by
+   dependent foreign keys between tables declared by
    :class:`_schema.ForeignKeyConstraint` and :class:`_schema.ForeignKey` objects, without
    the need to explicitly set the :paramref:`_schema.ForeignKeyConstraint.use_alter`
    flag.

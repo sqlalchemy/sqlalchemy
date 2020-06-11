@@ -1944,7 +1944,7 @@ class Transaction(object):
         "deactive", however leave this transaction object in place as far
         as the connection's state.
 
-        for a "real" transaction this should roll back the transction
+        for a "real" transaction this should roll back the transaction
         and ensure this transaction is no longer a reset agent.
 
         this is used for nesting of marker transactions where the marker

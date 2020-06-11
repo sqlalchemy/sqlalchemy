@@ -189,7 +189,7 @@ at :ref:`relationship_aliased_class`.
 As far as the use case of a class that can actually be fully persisted
 to different tables under different scenarios, very early versions of
 SQLAlchemy offered a feature for this adapted from Hibernate, known
-as the "entity name" feature.  However, this use case became infeasable
+as the "entity name" feature.  However, this use case became infeasible
 within SQLAlchemy once the mapped class itself became the source of SQL
 expression construction; that is, the class' attributes themselves link
 directly to mapped table columns.   The feature was removed and replaced

@@ -427,7 +427,7 @@ class ResultTest(fixtures.TestBase):
         eq_(result.all(), [])
 
     def test_one_unique(self):
-        # assert that one() counts rows after uniquness has been applied.
+        # assert that one() counts rows after uniqueness has been applied.
         # this would raise if we didnt have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 
@@ -444,7 +444,7 @@ class ResultTest(fixtures.TestBase):
         assert_raises(exc.MultipleResultsFound, result.unique().one)
 
     def test_one_unique_mapping(self):
-        # assert that one() counts rows after uniquness has been applied.
+        # assert that one() counts rows after uniqueness has been applied.
         # this would raise if we didnt have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 

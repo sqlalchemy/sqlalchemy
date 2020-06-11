@@ -100,7 +100,7 @@ Unicode
 
 As is the case for all DBAPIs under Python 3, all strings are inherently
 Unicode strings.     Under Python 2, cx_Oracle also supports Python Unicode
-objects directly.    In all cases however, the driver requires an explcit
+objects directly.    In all cases however, the driver requires an explicit
 encoding configuration.
 
 Ensuring the Correct Client Encoding

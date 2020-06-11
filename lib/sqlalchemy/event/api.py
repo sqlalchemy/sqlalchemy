@@ -67,7 +67,7 @@ def listen(target, identifier, fn, *args, **kw):
     .. warning:: The ``once`` argument does not imply automatic de-registration
        of the listener function after it has been invoked a first time; a
        listener entry will remain associated with the target object.
-       Associating an arbitrarily high number of listeners without explictitly
+       Associating an arbitrarily high number of listeners without explicitly
        removing them will cause memory to grow unbounded even if ``once=True``
        is specified.
 
@@ -134,7 +134,7 @@ def listens_for(target, identifier, *args, **kw):
     .. warning:: The ``once`` argument does not imply automatic de-registration
        of the listener function after it has been invoked a first time; a
        listener entry will remain associated with the target object.
-       Associating an arbitrarily high number of listeners without explictitly
+       Associating an arbitrarily high number of listeners without explicitly
        removing them will cause memory to grow unbounded even if ``once=True``
        is specified.
 

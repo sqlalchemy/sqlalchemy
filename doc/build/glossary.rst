@@ -12,7 +12,7 @@ Glossary
     relational
     relational algebra
 
-        An algrebraic system developed by Edgar F. Codd that is used for
+        An algebraic system developed by Edgar F. Codd that is used for
         modelling and querying the data stored in relational databases.
 
         .. seealso::
@@ -131,7 +131,7 @@ Glossary
        An acronym for **Data Manipulation Language**.  DML is the subset of
        SQL that relational databases use to *modify* the data in tables. DML
        typically refers to the three widely familiar statements of INSERT,
-       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronoym for "CReate,
+       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "CReate,
        Update, Delete").
 
         .. seealso::

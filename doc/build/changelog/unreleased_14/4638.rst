@@ -4,6 +4,6 @@
 
     All long-deprecated "extension" classes have been removed, including
     MapperExtension, SessionExtension, PoolListener, ConnectionProxy,
-    AttributExtension.  These classes have been deprecated since version 0.7
+    AttributeExtension.  These classes have been deprecated since version 0.7
     long superseded by the event listener system.
 

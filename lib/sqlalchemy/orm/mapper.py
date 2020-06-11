@@ -324,7 +324,7 @@ class Mapper(
           that specify ``delete-orphan`` cascade.  This behavior is more
           consistent with that of a persistent object, and allows behavior to
           be consistent in more scenarios independently of whether or not an
-          orphanable object has been flushed yet or not.
+          orphan object has been flushed yet or not.
 
           See the change note and example at :ref:`legacy_is_orphan_addition`
           for more detail on this change.
