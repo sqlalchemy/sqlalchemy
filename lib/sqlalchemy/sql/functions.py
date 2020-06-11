@@ -58,7 +58,7 @@ def register_function(identifier, fn, package="_default"):
     if identifier in reg:
         util.warn(
             "The GenericFunction '{}' is already registered and "
-            "is going to be overriden.".format(identifier)
+            "is going to be overridden.".format(identifier)
         )
     reg[identifier] = fn
 
