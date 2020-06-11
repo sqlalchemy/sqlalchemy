@@ -457,7 +457,7 @@ class ValuesBase(UpdateBase):
 
     @_generative
     def values(self, *args, **kwargs):
-        r"""specify a fixed VALUES clause for an INSERT statement, or the SET
+        r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
         Note that the :class:`_expression.Insert` and
@@ -1122,7 +1122,7 @@ class Update(DMLWhereBase, ValuesBase):
           a scalar-returning :func:`_expression.select` construct,
           etc.
 
-        when combining :func:`_expression.select` constructs within the
+        When combining :func:`_expression.select` constructs within the
         values clause of an :func:`_expression.update`
         construct, the subquery represented
         by the :func:`_expression.select` should be *correlated* to the
