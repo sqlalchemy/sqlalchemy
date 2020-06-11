@@ -15,6 +15,8 @@ raised as a result of DBAPI exceptions are all subclasses of
 
 from .util import compat
 
+_version_token = None
+
 
 class SQLAlchemyError(Exception):
     """Generic error class."""
@@ -33,7 +35,7 @@ class SQLAlchemyError(Exception):
         else:
             return (
                 "(Background on this error at: "
-                "http://sqlalche.me/e/%s)" % (self.code,)
+                "http://sqlalche.me/e/%s/%s)" % (_version_token, self.code,)
             )
 
     def _message(self, as_unicode=compat.py3k):

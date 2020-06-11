@@ -142,5 +142,9 @@ def __go(lcls):
 
     _sa_util.preloaded.import_prefix("sqlalchemy")
 
+    from . import exc
+
+    exc._version_token = "".join(__version__.split(".")[0:2])
+
 
 __go(locals())
