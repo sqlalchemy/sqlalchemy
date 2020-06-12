@@ -320,6 +320,22 @@ class TransactionTest(fixtures.TestBase):
             1,
         )
 
+    def test_deactivated_warning_ctxmanager(self, local_connection):
+        with expect_warnings(
+            "transaction already deassociated from connection"
+        ):
+            with local_connection.begin() as trans:
+                trans.rollback()
+
+    @testing.requires.savepoints
+    def test_deactivated_savepoint_warning_ctxmanager(self, local_connection):
+        with expect_warnings(
+            "nested transaction already deassociated from connection"
+        ):
+            with local_connection.begin():
+                with local_connection.begin_nested() as savepoint:
+                    savepoint.rollback()
+
     def test_commit_fails_flat(self, local_connection):
         connection = local_connection
 
@@ -355,7 +371,10 @@ class TransactionTest(fixtures.TestBase):
 
         t1 = transaction[0]
         assert not t1.is_active
-        t1.rollback()  # no error
+        with expect_warnings(
+            "transaction already deassociated from connection"
+        ):
+            t1.rollback()  # no error
 
     @testing.requires.savepoints_w_release
     def test_savepoint_rollback_fails_flat(self, local_connection):

@@ -66,7 +66,8 @@ class TestBase(object):
         try:
             yield conn
         finally:
-            trans.rollback()
+            if trans.is_active:
+                trans.rollback()
             conn.close()
 
     # propose a replacement for @testing.provide_metadata.

@@ -2095,6 +2095,9 @@ class RootTransaction(Transaction):
             ):
                 self.connection._dbapi_connection._reset_agent = None
 
+        elif self.connection._transaction is not self:
+            util.warn("transaction already deassociated from connection")
+
         # we have tests that want to make sure the pool handles this
         # correctly.  TODO: how to disable internal assertions cleanly?
         # else:
@@ -2133,7 +2136,7 @@ class RootTransaction(Transaction):
     def _connection_commit_impl(self):
         self.connection._commit_impl()
 
-    def _close_impl(self):
+    def _close_impl(self, try_deactivate=False):
         try:
             if self.is_active:
                 self._connection_rollback_impl()
@@ -2141,7 +2144,7 @@ class RootTransaction(Transaction):
             if self.connection._nested_transaction:
                 self.connection._nested_transaction._cancel()
         finally:
-            if self.is_active:
+            if self.is_active or try_deactivate:
                 self._deactivate_from_connection()
             if self.connection._transaction is self:
                 self.connection._transaction = None
@@ -2153,7 +2156,7 @@ class RootTransaction(Transaction):
         self._close_impl()
 
     def _do_rollback(self):
-        self._close_impl()
+        self._close_impl(try_deactivate=True)
 
     def _do_commit(self):
         if self.is_active:
