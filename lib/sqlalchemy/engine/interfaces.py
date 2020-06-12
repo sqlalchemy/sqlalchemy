@@ -377,13 +377,13 @@ class Dialect(object):
         Given a string `table_name` and an optional string `schema`, return
         check constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the check constraint's name
 
-        sqltext
+        * ``sqltext`` -
           the check constraint's SQL expression
 
-        \**kw
+        * ``**kw`` -
           other options passed to the dialect's get_check_constraints()
           method.
 
@@ -415,7 +415,7 @@ class Dialect(object):
         """convert the given name to lowercase if it is detected as
         case insensitive.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """
@@ -425,7 +425,7 @@ class Dialect(object):
         """convert the given name to a case insensitive identifier
         for the backend if it is an all-lowercase name.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """

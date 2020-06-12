@@ -1308,7 +1308,7 @@ class Session(_SessionClassMethods):
         resolved through any of the optional keyword arguments.   This
         ultimately makes usage of the :meth:`.get_bind` method for resolution.
 
-        :param bind_arguments: dictionary of bind arguments. May include
+        :param bind_arguments: dictionary of bind arguments.  May include
          "mapper", "bind", "clause", other custom arguments that are passed
          to :meth:`.Session.get_bind`.
 

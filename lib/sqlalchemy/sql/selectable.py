@@ -224,7 +224,7 @@ class Selectable(ReturnsRows):
 
             :attr:`_expression.Selectable.exported_columns` - the
             :class:`_expression.ColumnCollection`
-            that is used for the operation
+            that is used for the operation.
 
             :meth:`_expression.ColumnCollection.corresponding_column`
             - implementation
@@ -704,18 +704,20 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     @util.memoized_property
     def primary_key(self):
-        """Return the collection of Column objects which comprise the
-        primary key of this FromClause."""
+        """Return the collection of :class:`_schema.Column` objects
+        which comprise the primary key of this FromClause.
 
+        """
         self._init_collections()
         self._populate_column_collection()
         return self.primary_key
 
     @util.memoized_property
     def foreign_keys(self):
-        """Return the collection of ForeignKey objects which this
-        FromClause references."""
+        """Return the collection of :class:`_schema.ForeignKey` objects
+        which this FromClause references.
 
+        """
         self._init_collections()
         self._populate_column_collection()
         return self.foreign_keys

@@ -2370,7 +2370,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
     @classmethod
     def and_(cls, *clauses):
-        """Produce a conjunction of expressions joined by ``AND``.
+        r"""Produce a conjunction of expressions joined by ``AND``.
 
         E.g.::
 
@@ -2399,11 +2399,9 @@ class BooleanClauseList(ClauseList, ColumnElement):
         times against a statement, which will have the effect of each
         clause being combined using :func:`.and_`::
 
-            stmt = (
-                select([users_table]).
-                where(users_table.c.name == 'wendy').
-                where(users_table.c.enrolled == True)
-            )
+            stmt = select([users_table]).\
+                    where(users_table.c.name == 'wendy').\
+                    where(users_table.c.enrolled == True)
 
         The :func:`.and_` construct must be given at least one positional
         argument in order to be valid; a :func:`.and_` construct with no

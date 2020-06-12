@@ -23,7 +23,7 @@ the :func:`_sa.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')
 
-The typical usage of :func:`_sa.create_engine()` is once per particular database
+The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`_engine.Engine` manages many individual :term:`DBAPI` connections on behalf of
 the process and is intended to be called upon in a concurrent fashion. The

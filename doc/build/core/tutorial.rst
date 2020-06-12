@@ -956,8 +956,8 @@ Fetching the ``email_address`` column would be::
     >>> row._mapping[addresses.c.email_address]
     'jack@yahoo.com'
 
-If on the other hand we used a string column key, the usual rules of name-
-based matching still apply, and we'd get an ambiguous column error for
+If on the other hand we used a string column key, the usual rules of
+name-based matching still apply, and we'd get an ambiguous column error for
 the ``id`` value::
 
     >>> row._mapping["id"]
