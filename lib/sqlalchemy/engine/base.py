@@ -2510,8 +2510,8 @@ class Engine(Connectable, log.Identified):
         return "Engine(%r)" % self.url
 
     def dispose(self):
-        """Dispose of the connection pool used by this :class:`_engine.Engine`
-        .
+        """Dispose of the connection pool used by this
+        :class:`_engine.Engine`.
 
         This has the effect of fully closing all **currently checked in**
         database connections.  Connections that are still checked out

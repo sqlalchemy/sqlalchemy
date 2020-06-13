@@ -645,8 +645,8 @@ class Query(
 
         .. note:: The :meth:`_query.Query.with_labels` method *only* applies
            the output of :attr:`_query.Query.statement`, and *not* to any of
-           the result-row invoking systems of :class:`_query.Query` itself, e.
-           g.
+           the result-row invoking systems of :class:`_query.Query` itself,
+           e.g.
            :meth:`_query.Query.first`, :meth:`_query.Query.all`, etc.
            To execute
            a query using :meth:`_query.Query.with_labels`, invoke the

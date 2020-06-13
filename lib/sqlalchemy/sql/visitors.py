@@ -380,8 +380,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_table_hint_list = symbol("TH")
-    """Visit the ``_hints`` collection of a :class:`_expression.Select` object
-    .
+    """Visit the ``_hints`` collection of a :class:`_expression.Select` 
+    object.
 
     """
 

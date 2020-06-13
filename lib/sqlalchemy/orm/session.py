@@ -1674,8 +1674,8 @@ class Session(_SessionClassMethods):
 
     def bind_mapper(self, mapper, bind):
         """Associate a :class:`_orm.Mapper` or arbitrary Python class with a
-        "bind", e.g. an :class:`_engine.Engine` or :class:`_engine.Connection`
-        .
+        "bind", e.g. an :class:`_engine.Engine` or
+        :class:`_engine.Connection`.
 
         The given entity is added to a lookup used by the
         :meth:`.Session.get_bind` method.

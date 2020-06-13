@@ -890,8 +890,8 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     ORM-mapped in this case.
 
     :param element: element to be aliased.  Is normally a mapped class,
-     but for convenience can also be a :class:`_expression.FromClause` element
-     .
+     but for convenience can also be a :class:`_expression.FromClause`
+     element.
 
     :param alias: Optional selectable unit to map the element to.  This is
      usually used to link the object to a subquery, and should be an aliased
