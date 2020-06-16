@@ -29,7 +29,7 @@ class URL(object):
 
     This object is suitable to be passed directly to a
     :func:`~sqlalchemy.create_engine` call.  The fields of the URL are parsed
-    from a string by the :func:`.make_url` function.  the string
+    from a string by the :func:`.make_url` function.  The string
     format of the URL is an RFC-1738-style string.
 
     All initialization parameters are available as public attributes.

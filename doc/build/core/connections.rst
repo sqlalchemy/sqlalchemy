@@ -492,7 +492,7 @@ The introduction on using :meth:`_engine.Connection.execute` made use of the
 :func:`_expression.text` construct in order to illustrate how textual SQL statements
 may be invoked.  When working with SQLAlchemy, textual SQL is actually more
 of the exception rather than the norm, as the Core expression language
-and the ORM both abstract away the textual representation of SQL.  Hpwever, the
+and the ORM both abstract away the textual representation of SQL.  However, the
 :func:`_expression.text` construct itself also provides some abstraction of textual
 SQL in that it normalizes how bound parameters are passed, as well as that
 it supports datatyping behavior for parameters and result set rows.

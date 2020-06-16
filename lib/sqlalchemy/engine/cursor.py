@@ -1534,7 +1534,7 @@ class BaseCursorResult(object):
 
     @property
     def lastrowid(self):
-        """return the 'lastrowid' accessor on the DBAPI cursor.
+        """Return the 'lastrowid' accessor on the DBAPI cursor.
 
         This is a DBAPI specific method and is only functional
         for those backends which support it, for statements

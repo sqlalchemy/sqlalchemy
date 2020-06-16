@@ -446,7 +446,7 @@ class Dialect(object):
         """Check the existence of a particular index name in the database.
 
         Given a :class:`_engine.Connection` object, a string
-        `table_name` and stiring index name, return True if an index of the
+        `table_name` and string index name, return True if an index of the
         given name on the given table exists, false otherwise.
 
         The :class:`.DefaultDialect` implements this in terms of the

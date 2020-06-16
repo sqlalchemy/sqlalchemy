@@ -1540,7 +1540,7 @@ The behavior was first introduced in 0.9 and was part of the larger change of
 allowing for right nested joins as described at :ref:`feature_joins_09`.
 However the SQLite workaround produced many regressions in the 2013-2014
 period due to its complexity. In 2016, the dialect was modified so that the
-join rewriting logic would only occur for SQLite verisons prior to 3.7.16 after
+join rewriting logic would only occur for SQLite versions prior to 3.7.16 after
 bisection was used to  identify where SQLite fixed its support for this
 construct, and no further issues were reported against the behavior (even
 though some bugs were found internally).    It is now anticipated that there

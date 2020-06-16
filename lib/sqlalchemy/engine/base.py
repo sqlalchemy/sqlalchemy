@@ -42,7 +42,7 @@ class Connection(Connectable):
     possible that the underlying DBAPI connection may not support shared
     access between threads.  Check the DBAPI documentation for details.
 
-    The Connection object represents a single dbapi connection checked out
+    The Connection object represents a single DBAPI connection checked out
     from the connection pool. In this state, the connection pool has no affect
     upon the connection, including its expiration or timeout state. For the
     connection pool to properly manage connections, connections should be
@@ -117,7 +117,7 @@ class Connection(Connectable):
         return self._execution_options.get("schema_translate_map", None)
 
     def schema_for_object(self, obj):
-        """return the schema name for the given schema item taking into
+        """Return the schema name for the given schema item taking into
         account current schema translate map.
 
         """
