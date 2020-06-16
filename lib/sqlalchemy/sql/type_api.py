@@ -389,7 +389,7 @@ class TypeEngine(Traversible):
         """Return the corresponding type object from the underlying DB-API, if
         any.
 
-         This can be useful for calling ``setinputsizes()``, for example.
+        This can be useful for calling ``setinputsizes()``, for example.
 
         """
         return None
@@ -914,7 +914,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     coerce_to_is_types = (util.NoneType,)
     """Specify those Python types which should be coerced at the expression
     level to "IS <constant>" when compared using ``==`` (and same for
-    ``IS NOT`` in conjunction with ``!=``.
+    ``IS NOT`` in conjunction with ``!=``).
 
     For most SQLAlchemy types, this includes ``NoneType``, as well as
     ``bool``.
