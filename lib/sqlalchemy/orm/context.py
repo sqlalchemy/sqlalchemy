@@ -2245,7 +2245,7 @@ class _BundleEntity(_QueryEntity):
 
 
 class _ColumnEntity(_QueryEntity):
-    __slots__ = ()
+    __slots__ = ("_fetch_column", "_row_processor")
 
     @classmethod
     def _for_columns(cls, compile_state, columns, parent_bundle=None):
@@ -2275,6 +2275,44 @@ class _ColumnEntity(_QueryEntity):
     def use_id_for_hash(self):
         return not self.column.type.hashable
 
+    def row_processor(self, context, result):
+        compile_state = context.compile_state
+
+        # the resulting callable is entirely cacheable so just return
+        # it if we already made one
+        if self._row_processor is not None:
+            return self._row_processor
+
+        # retrieve the column that would have been set up in
+        # setup_compile_state, to avoid doing redundant work
+        if self._fetch_column is not None:
+            column = self._fetch_column
+        else:
+            # fetch_column will be None when we are doing a from_statement
+            # and setup_compile_state may not have been called.
+            column = self.column
+
+            # previously, the RawColumnEntity didn't look for from_obj_alias
+            # however I can't think of a case where we would be here and
+            # we'd want to ignore it if this is the from_statement use case.
+            # it's not really a use case to have raw columns + from_statement
+            if compile_state._from_obj_alias:
+                column = compile_state._from_obj_alias.columns[column]
+
+            if column._annotations:
+                # annotated columns perform more slowly in compiler and
+                # result due to the __eq__() method, so use deannotated
+                column = column._deannotate()
+
+        if compile_state.compound_eager_adapter:
+            column = compile_state.compound_eager_adapter.columns[column]
+
+        getter = result._getter(column)
+
+        ret = getter, self._label_name, self._extra_entities
+        self._row_processor = ret
+        return ret
+
 
 class _RawColumnEntity(_ColumnEntity):
     entity_zero = None
@@ -2303,27 +2341,10 @@ class _RawColumnEntity(_ColumnEntity):
             self.column._from_objects[0] if self.column._from_objects else None
         )
         self._extra_entities = (self.expr, self.column)
+        self._fetch_column = self._row_processor = None
 
     def corresponds_to(self, entity):
         return False
-
-    def row_processor(self, context, result):
-        if ("fetch_column", self) in context.attributes:
-            column = context.attributes[("fetch_column", self)]
-        else:
-            column = self.column
-
-            if column._annotations:
-                # annotated columns perform more slowly in compiler and
-                # result due to the __eq__() method, so use deannotated
-                column = column._deannotate()
-
-        compile_state = context.compile_state
-        if compile_state.compound_eager_adapter:
-            column = compile_state.compound_eager_adapter.columns[column]
-
-        getter = result._getter(column)
-        return getter, self._label_name, self._extra_entities
 
     def setup_compile_state(self, compile_state):
         current_adapter = compile_state._get_current_adapter()
@@ -2338,7 +2359,7 @@ class _RawColumnEntity(_ColumnEntity):
             column = column._deannotate()
 
         compile_state.primary_columns.append(column)
-        compile_state.attributes[("fetch_column", self)] = column
+        self._fetch_column = column
 
 
 class _ORMColumnEntity(_ColumnEntity):
@@ -2386,6 +2407,7 @@ class _ORMColumnEntity(_ColumnEntity):
 
         compile_state._has_orm_entities = True
         self.column = column
+        self._fetch_column = self._row_processor = None
 
         self._extra_entities = (self.expr, self.column)
 
@@ -2406,27 +2428,6 @@ class _ORMColumnEntity(_ColumnEntity):
             return not _is_aliased_class(
                 self.entity_zero
             ) and entity.common_parent(self.entity_zero)
-
-    def row_processor(self, context, result):
-        compile_state = context.compile_state
-
-        if ("fetch_column", self) in context.attributes:
-            column = context.attributes[("fetch_column", self)]
-        else:
-            column = self.column
-            if compile_state._from_obj_alias:
-                column = compile_state._from_obj_alias.columns[column]
-
-            if column._annotations:
-                # annotated columns perform more slowly in compiler and
-                # result due to the __eq__() method, so use deannotated
-                column = column._deannotate()
-
-        if compile_state.compound_eager_adapter:
-            column = compile_state.compound_eager_adapter.columns[column]
-
-        getter = result._getter(column)
-        return getter, self._label_name, self._extra_entities
 
     def setup_compile_state(self, compile_state):
         current_adapter = compile_state._get_current_adapter()
@@ -2460,5 +2461,4 @@ class _ORMColumnEntity(_ColumnEntity):
             compile_state._fallback_from_clauses.append(ezero.selectable)
 
         compile_state.primary_columns.append(column)
-
-        compile_state.attributes[("fetch_column", self)] = column
+        self._fetch_column = column

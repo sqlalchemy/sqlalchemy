@@ -495,8 +495,14 @@ class Generative(HasMemoized):
 
     def _generate(self):
         skip = self._memoized_keys
-        s = self.__class__.__new__(self.__class__)
-        s.__dict__ = {k: v for k, v in self.__dict__.items() if k not in skip}
+        cls = self.__class__
+        s = cls.__new__(cls)
+        if skip:
+            s.__dict__ = {
+                k: v for k, v in self.__dict__.items() if k not in skip
+            }
+        else:
+            s.__dict__ = self.__dict__.copy()
         return s
 
 

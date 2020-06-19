@@ -4440,6 +4440,26 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_textual_select_orm_columns(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        s = create_session()
+        q = s.query(User.name, User.id, Address.id).from_statement(
+            text(
+                "select users.name AS users_name, users.id AS users_id, "
+                "addresses.id AS addresses_id FROM users JOIN addresses "
+                "ON users.id = addresses.user_id WHERE users.id=8 "
+                "ORDER BY addresses.id"
+            ).columns(users.c.name, users.c.id, addresses.c.id)
+        )
+
+        eq_(q.all(), [("ed", 8, 2), ("ed", 8, 3), ("ed", 8, 4)])
+
     @testing.combinations(
         (
             False,
@@ -4562,6 +4582,21 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             )
             .all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)],
+        )
+
+    def test_columns_via_textasfrom_from_statement(self):
+        User = self.classes.User
+        s = create_session()
+
+        eq_(
+            s.query(User.id, User.name)
+            .from_statement(
+                text("select * from users order by id").columns(
+                    id=Integer, name=String
+                )
+            )
+            .all(),
+            [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
         )
 
     def test_via_textasfrom_use_mapped_columns(self):

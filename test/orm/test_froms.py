@@ -2310,6 +2310,18 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
         assert result == expected
 
+    def test_multi_columns_3(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        sess = create_session()
+
+        q = sess.query(User.id, User.name)
+        stmt = select([users]).order_by(users.c.id)
+        q = q.from_statement(stmt)
+
+        eq_(q.all(), [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")])
+
     def test_raw_columns(self):
         addresses, users, User = (
             self.tables.addresses,
