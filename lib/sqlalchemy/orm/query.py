@@ -2121,6 +2121,19 @@ class Query(object):
                     join(Order.items).\
                     join(Item.keywords)
 
+        .. note:: as seen in the above example, **the order in which each
+           call to the join() method occurs is important**.    Query would not,
+           for example, know how to join correctly if we were to specify
+           ``User``, then ``Item``, then ``Order``, in our chain of joins; in
+           such a case, depending on the arguments passed, it may raise an
+           error that it doesn't know how to join, or it may produce invalid
+           SQL in which case the database will raise an error. In correct
+           practice, the
+           :meth:`_query.Query.join` method is invoked in such a way that lines
+           up with how we would want the JOIN clauses in SQL to be
+           rendered, and each call should represent a clear link from what
+           precedes it.
+
         **Joins to a Target Entity or Selectable**
 
         A second form of :meth:`_query.Query.join` allows any mapped entity or
