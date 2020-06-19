@@ -8,6 +8,7 @@
 from .. import exc
 from .. import util
 from ..util import collections_abc
+from ..util import immutabledict
 
 
 def connection_memoize(key):
@@ -85,9 +86,11 @@ _no_kw = util.immutabledict()
 
 
 def _distill_params_20(params):
+    # TODO: this has to be in C
     if params is None:
         return _no_tuple, _no_kw, []
-    elif isinstance(params, collections_abc.MutableSequence):  # list
+    elif isinstance(params, list):
+        # collections_abc.MutableSequence): # avoid abc.__instancecheck__
         if params and not isinstance(
             params[0], (collections_abc.Mapping, tuple)
         ):
@@ -99,7 +102,9 @@ def _distill_params_20(params):
         return tuple(params), _no_kw, params
     elif isinstance(
         params,
-        (collections_abc.Sequence, collections_abc.Mapping),  # tuple or dict
+        (tuple, dict, immutabledict),
+        # avoid abc.__instancecheck__
+        # (collections_abc.Sequence, collections_abc.Mapping),
     ):
         return _no_tuple, params, [params]
     else:

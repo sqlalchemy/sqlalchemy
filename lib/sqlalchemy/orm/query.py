@@ -1637,8 +1637,7 @@ class Query(
                 "params() takes zero or one positional argument, "
                 "which is a dictionary."
             )
-        params = dict(self.load_options._params)
-        params.update(kwargs)
+        params = self.load_options._params.union(kwargs)
         self.load_options += {"_params": params}
 
     @_generative
