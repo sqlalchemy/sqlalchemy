@@ -1,0 +1,6 @@
+.. change::
+    :tags: installation
+    :tickets: 5404
+
+    Installation has been modernized to use setup.cfg for most package
+    metadata.

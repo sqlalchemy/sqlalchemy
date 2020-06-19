@@ -4,19 +4,15 @@ from distutils.errors import DistutilsExecError
 from distutils.errors import DistutilsPlatformError
 import os
 import platform
-import re
 import sys
 
 from setuptools import Distribution as _Distribution
 from setuptools import Extension
-from setuptools import find_packages
 from setuptools import setup
 from setuptools.command.test import test as TestCommand
 
 
 cmdclass = {}
-if sys.version_info < (2, 7):
-    raise Exception("SQLAlchemy requires Python 2.7 or higher.")
 
 cpython = platform.python_implementation() == "CPython"
 
@@ -120,19 +116,6 @@ def status_msgs(*msgs):
     print("*" * 75)
 
 
-with open(
-    os.path.join(os.path.dirname(__file__), "lib", "sqlalchemy", "__init__.py")
-) as v_file:
-    VERSION = (
-        re.compile(r""".*__version__ = ["'](.*?)['"]""", re.S)
-        .match(v_file.read())
-        .group(1)
-    )
-
-with open(os.path.join(os.path.dirname(__file__), "README.rst")) as r_file:
-    readme = r_file.read()
-
-
 def run_setup(with_cext):
     kwargs = {}
     if with_cext:
@@ -146,56 +129,7 @@ def run_setup(with_cext):
 
         kwargs["ext_modules"] = []
 
-    setup(
-        name="SQLAlchemy",
-        version=VERSION,
-        description="Database Abstraction Library",
-        author="Mike Bayer",
-        author_email="mike_mp@zzzcomputing.com",
-        url="http://www.sqlalchemy.org",
-        project_urls={
-            "Documentation": "https://docs.sqlalchemy.org",
-            "Issue Tracker": "https://github.com/sqlalchemy/sqlalchemy/",
-        },
-        packages=find_packages("lib"),
-        package_dir={"": "lib"},
-        license="MIT",
-        cmdclass=cmdclass,
-        long_description=readme,
-        python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
-        classifiers=[
-            "Development Status :: 5 - Production/Stable",
-            "Intended Audience :: Developers",
-            "License :: OSI Approved :: MIT License",
-            "Programming Language :: Python",
-            "Programming Language :: Python :: 2",
-            "Programming Language :: Python :: 2.7",
-            "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.5",
-            "Programming Language :: Python :: 3.6",
-            "Programming Language :: Python :: 3.7",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: Implementation :: CPython",
-            "Programming Language :: Python :: Implementation :: PyPy",
-            "Topic :: Database :: Front-Ends",
-            "Operating System :: OS Independent",
-        ],
-        distclass=Distribution,
-        extras_require={
-            "mysql": ["mysqlclient"],
-            "pymysql": ["pymysql"],
-            "postgresql": ["psycopg2"],
-            "postgresql_psycopg2binary": ["psycopg2-binary"],
-            "postgresql_pg8000": ["pg8000"],
-            "postgresql_psycopg2cffi": ["psycopg2cffi"],
-            "oracle": ["cx_oracle"],
-            "mssql_pyodbc": ["pyodbc"],
-            "mssql_pymssql": ["pymssql"],
-            "mssql": ["pyodbc"],
-        },
-        **kwargs
-    )
+    setup(cmdclass=cmdclass, distclass=Distribution, **kwargs)
 
 
 if not cpython:
