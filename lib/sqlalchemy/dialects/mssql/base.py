@@ -2640,6 +2640,19 @@ class MSDialect(default.DefaultDialect):
         return c.first() is not None
 
     @reflection.cache
+    @_db_plus_owner_listing
+    def get_sequence_names(self, connection, dbname, owner, schema, **kw):
+        sequences = ischema.sequences
+
+        s = sql.select([sequences.c.sequence_name])
+        if owner:
+            s = s.where(sequences.c.sequence_schema == owner)
+
+        c = connection.execute(s)
+
+        return [row[0] for row in c]
+
+    @reflection.cache
     def get_schema_names(self, connection, **kw):
         s = sql.select(
             [ischema.schemata.c.schema_name],

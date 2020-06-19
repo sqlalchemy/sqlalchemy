@@ -1,0 +1,9 @@
+.. change::
+    :tags: reflection, usecase
+    :tickets: 2056
+
+    Added new reflection method :meth:`.Inspector.get_sequence_names` which
+    returns all the sequences defined and :meth:`.Inspector.has_sequence` to
+    check if a particular sequence exits.
+    Support for this method has been added to the backend that support
+    :class:`.Sequence`: PostgreSQL, Oracle and MariaDB >= 10.3.

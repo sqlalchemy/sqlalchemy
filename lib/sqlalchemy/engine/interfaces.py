@@ -304,8 +304,17 @@ class Dialect(object):
     def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
-        schema:
-          Optional, retrieve names from a non-default schema.
+        :param schema: schema name to query, if not the default schema.
+        """
+
+        raise NotImplementedError()
+
+    def get_sequence_names(self, connection, schema=None, **kw):
+        """Return a list of all sequence names available in the database.
+
+        :param schema: schema name to query, if not the default schema.
+
+        .. versionadded:: 1.4
         """
 
         raise NotImplementedError()

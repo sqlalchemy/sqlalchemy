@@ -136,6 +136,7 @@ class TablesTest(TestBase):
     metadata = None
     tables = None
     other = None
+    sequences = None
 
     @classmethod
     def setup_class(cls):
@@ -154,6 +155,7 @@ class TablesTest(TestBase):
 
         cls.other = adict()
         cls.tables = adict()
+        cls.sequences = adict()
 
         cls.bind = cls.setup_bind()
         cls.metadata = sa.MetaData()
@@ -173,6 +175,7 @@ class TablesTest(TestBase):
             if cls.run_create_tables == "once":
                 cls.metadata.create_all(cls.bind)
             cls.tables.update(cls.metadata.tables)
+            cls.sequences.update(cls.metadata._sequences)
 
     def _setup_each_tables(self):
         if self.run_define_tables == "each":
@@ -180,6 +183,7 @@ class TablesTest(TestBase):
             if self.run_create_tables == "each":
                 self.metadata.create_all(self.bind)
             self.tables.update(self.metadata.tables)
+            self.sequences.update(self.metadata._sequences)
         elif self.run_create_tables == "each":
             self.metadata.create_all(self.bind)
 

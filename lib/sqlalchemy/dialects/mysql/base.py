@@ -2517,6 +2517,8 @@ class MySQLDialect(default.DefaultDialect):
                 rs.close()
 
     def has_sequence(self, connection, sequence_name, schema=None):
+        if not self.supports_sequences:
+            self._sequences_not_supported()
         if not schema:
             schema = self.default_schema_name
         # MariaDB implements sequences as a special type of table
@@ -2524,12 +2526,39 @@ class MySQLDialect(default.DefaultDialect):
         cursor = connection.execute(
             sql.text(
                 "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
-                "WHERE TABLE_NAME=:name AND "
+                "WHERE TABLE_TYPE='SEQUENCE' and TABLE_NAME=:name AND "
                 "TABLE_SCHEMA=:schema_name"
             ),
             dict(name=sequence_name, schema_name=schema),
         )
         return cursor.first() is not None
+
+    def _sequences_not_supported(self):
+        raise NotImplementedError(
+            "Sequences are supported only by the "
+            "MariaDB series 10.3 or greater"
+        )
+
+    @reflection.cache
+    def get_sequence_names(self, connection, schema=None, **kw):
+        if not self.supports_sequences:
+            self._sequences_not_supported()
+        if not schema:
+            schema = self.default_schema_name
+        # MariaDB implements sequences as a special type of table
+        cursor = connection.execute(
+            sql.text(
+                "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES "
+                "WHERE TABLE_TYPE='SEQUENCE' and TABLE_SCHEMA=:schema_name"
+            ),
+            dict(schema_name=schema),
+        )
+        return [
+            row[0]
+            for row in self._compat_fetchall(
+                cursor, charset=self._connection_charset
+            )
+        ]
 
     def initialize(self, connection):
         self._connection_charset = self._detect_charset(connection)
