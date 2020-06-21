@@ -1412,16 +1412,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     "from, there are multiple FROMS which can "
                     "join to this entity. Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explicit ON clause if not present already to "
-                    "help resolve the ambiguity."
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %r. "
                     "Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explicit ON clause if not present already to "
-                    "help resolve the ambiguity." % (right,)
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity." % (right,)
                 )
 
         elif self._entities:
@@ -1458,16 +1458,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     "from, there are multiple FROMS which can "
                     "join to this entity. Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explicit ON clause if not present already to "
-                    "help resolve the ambiguity."
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %r. "
                     "Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explicit ON clause if not present already to "
-                    "help resolve the ambiguity." % (right,)
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity." % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(

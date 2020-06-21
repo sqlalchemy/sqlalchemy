@@ -759,7 +759,7 @@ class Mapper(
     """The :class:`_expression.Selectable` to which this :class:`_orm.Mapper`
     is mapped.
 
-    Typically an instance of :class:`_schema.Table`, 
+    Typically an instance of :class:`_schema.Table`,
     :class:`_expression.Join`, or :class:`_expression.Alias`.
 
     The :attr:`_orm.Mapper.persist_selectable` is separate from
