@@ -35,6 +35,10 @@ _straight_ops = set(
     )
 )
 
+_extended_ops = {
+    operators.in_op: (lambda a, b: a in b),
+    operators.notin_op: (lambda a, b: a not in b),
+}
 
 _notimplemented_ops = set(
     getattr(operators, op)
@@ -43,9 +47,8 @@ _notimplemented_ops = set(
         "notlike_op",
         "ilike_op",
         "notilike_op",
+        "startswith_op",
         "between_op",
-        "in_op",
-        "notin_op",
         "endswith_op",
         "concat_op",
     )
@@ -136,6 +139,17 @@ class EvaluatorCompiler(object):
                         return False
                 return True
 
+        elif clause.operator is operators.comma_op:
+
+            def evaluate(obj):
+                values = []
+                for sub_evaluate in evaluators:
+                    value = sub_evaluate(obj)
+                    if value is None:
+                        return None
+                    values.append(value)
+                return tuple(values)
+
         else:
             raise UnevaluatableError(
                 "Cannot evaluate clauselist with operator %s" % clause.operator
@@ -157,6 +171,16 @@ class EvaluatorCompiler(object):
 
             def evaluate(obj):
                 return eval_left(obj) != eval_right(obj)
+
+        elif operator in _extended_ops:
+
+            def evaluate(obj):
+                left_val = eval_left(obj)
+                right_val = eval_right(obj)
+                if left_val is None or right_val is None:
+                    return None
+
+                return _extended_ops[operator](left_val, right_val)
 
         elif operator in _straight_ops:
 

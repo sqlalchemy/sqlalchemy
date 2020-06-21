@@ -220,7 +220,6 @@ def execute_and_instances(orm_context):
         update_options = active_options = orm_context.update_delete_options
 
     session = orm_context.session
-    # orm_query = orm_context.orm_query
 
     def iter_for_shard(shard_id, load_options, update_options):
         execution_options = dict(orm_context.local_execution_options)

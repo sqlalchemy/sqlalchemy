@@ -116,6 +116,8 @@ class ORMExecuteState(util.MemoizedSlots):
         "_merged_execution_options",
         "bind_arguments",
         "_compile_state_cls",
+        "_starting_event_idx",
+        "_events_todo",
     )
 
     def __init__(
@@ -126,6 +128,7 @@ class ORMExecuteState(util.MemoizedSlots):
         execution_options,
         bind_arguments,
         compile_state_cls,
+        events_todo,
     ):
         self.session = session
         self.statement = statement
@@ -133,6 +136,10 @@ class ORMExecuteState(util.MemoizedSlots):
         self._execution_options = execution_options
         self.bind_arguments = bind_arguments
         self._compile_state_cls = compile_state_cls
+        self._events_todo = list(events_todo)
+
+    def _remaining_events(self):
+        return self._events_todo[self._starting_event_idx + 1 :]
 
     def invoke_statement(
         self,
@@ -200,7 +207,11 @@ class ORMExecuteState(util.MemoizedSlots):
             _execution_options = self._execution_options
 
         return self.session.execute(
-            statement, _params, _execution_options, _bind_arguments
+            statement,
+            _params,
+            _execution_options,
+            _bind_arguments,
+            _parent_execute_state=self,
         )
 
     @property
@@ -1376,6 +1387,8 @@ class Session(_SessionClassMethods):
         params=None,
         execution_options=util.immutabledict(),
         bind_arguments=None,
+        _parent_execute_state=None,
+        _add_event=None,
         **kw
     ):
         r"""Execute a SQL expression construct or string statement within
@@ -1521,8 +1534,16 @@ class Session(_SessionClassMethods):
             compile_state_cls = None
 
         if compile_state_cls is not None:
-            execution_options = compile_state_cls.orm_pre_session_exec(
-                self, statement, params, execution_options, bind_arguments
+            (
+                statement,
+                execution_options,
+            ) = compile_state_cls.orm_pre_session_exec(
+                self,
+                statement,
+                params,
+                execution_options,
+                bind_arguments,
+                _parent_execute_state is not None,
             )
         else:
             bind_arguments.setdefault("clause", statement)
@@ -1531,22 +1552,28 @@ class Session(_SessionClassMethods):
                     execution_options, {"future_result": True}
                 )
 
-        if self.dispatch.do_orm_execute:
-            # run this event whether or not we are in ORM mode
-            skip_events = bind_arguments.get("_sa_skip_events", False)
-            if not skip_events:
-                orm_exec_state = ORMExecuteState(
-                    self,
-                    statement,
-                    params,
-                    execution_options,
-                    bind_arguments,
-                    compile_state_cls,
-                )
-                for fn in self.dispatch.do_orm_execute:
-                    result = fn(orm_exec_state)
-                    if result:
-                        return result
+        if _parent_execute_state:
+            events_todo = _parent_execute_state._remaining_events()
+        else:
+            events_todo = self.dispatch.do_orm_execute
+            if _add_event:
+                events_todo = list(events_todo) + [_add_event]
+
+        if events_todo:
+            orm_exec_state = ORMExecuteState(
+                self,
+                statement,
+                params,
+                execution_options,
+                bind_arguments,
+                compile_state_cls,
+                events_todo,
+            )
+            for idx, fn in enumerate(events_todo):
+                orm_exec_state._starting_event_idx = idx
+                result = fn(orm_exec_state)
+                if result:
+                    return result
 
         bind = self.get_bind(**bind_arguments)
 
@@ -1729,7 +1756,12 @@ class Session(_SessionClassMethods):
         self._add_bind(table, bind)
 
     def get_bind(
-        self, mapper=None, clause=None, bind=None, _sa_skip_events=None
+        self,
+        mapper=None,
+        clause=None,
+        bind=None,
+        _sa_skip_events=None,
+        _sa_skip_for_implicit_returning=False,
     ):
         """Return a "bind" to which this :class:`.Session` is bound.
 

@@ -312,12 +312,30 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def full_returning(self):
+        """target platform supports RETURNING completely, including
+        multiple rows returned.
+
+        """
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.full_returning,
+            "%(database)s %(does_support)s 'RETURNING of multiple rows'",
+        )
+
+    @property
     def returning(self):
-        """target platform supports RETURNING."""
+        """target platform supports RETURNING for at least one row.
+
+        .. seealso::
+
+            :attr:`.Requirements.full_returning`
+
+        """
 
         return exclusions.only_if(
             lambda config: config.db.dialect.implicit_returning,
-            "%(database)s %(does_support)s 'returning'",
+            "%(database)s %(does_support)s 'RETURNING of a single row'",
         )
 
     @property

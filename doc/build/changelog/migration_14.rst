@@ -349,7 +349,7 @@ New Result object
 -----------------
 
 The ``ResultProxy`` object has been replaced with the 2.0 -style
-:class:`.Result` object discussed at :ref:`change_result_20_core`.  This result object
+:class:`_result.Result` object discussed at :ref:`change_result_20_core`.  This result object
 is fully compatible with ``ResultProxy`` and includes many new features,
 that are now applied to both Core and ORM results equally, including methods
 such as:
@@ -366,7 +366,7 @@ such as:
 
 When using Core, the object returned is an instance of :class:`.CursorResult`,
 which continues to feature the same API features as ``ResultProxy`` regarding
-inserted primary keys, defaults, rowcounts, etc.   For ORM, a :class:`.Result`
+inserted primary keys, defaults, rowcounts, etc.   For ORM, a :class:`_result.Result`
 subclass will be returned that performs translation of Core rows into
 ORM rows, and then allows all the same operations to take place.
 
@@ -593,6 +593,55 @@ as was present previously.
     :ref:`deferred_raiseload`
 
 :ticket:`4826`
+
+.. _change_orm_update_returning_14:
+
+ORM Bulk Update and Delete use RETURNING for "fetch" strategy when available
+----------------------------------------------------------------------------
+
+An ORM bulk update or delete that uses the "fetch" strategy::
+
+    sess.query(User).filter(User.age > 29).update(
+        {"age": User.age - 10}, synchronize_session="fetch"
+    )
+
+Will now use RETURNING if the backend database supports it; this currently
+includes PostgreSQL and SQL Server (the Oracle dialect does not support RETURNING
+of multiple rows)::
+
+    UPDATE users SET age_int=(users.age_int - %(age_int_1)s) WHERE users.age_int > %(age_int_2)s RETURNING users.id
+    [generated in 0.00060s] {'age_int_1': 10, 'age_int_2': 29}
+    Col ('id',)
+    Row (2,)
+    Row (4,)
+
+For backends that do not support RETURNING of multiple rows, the previous approach
+of emitting SELECT for the primary keys beforehand is still used::
+
+    SELECT users.id FROM users WHERE users.age_int > %(age_int_1)s
+    [generated in 0.00043s] {'age_int_1': 29}
+    Col ('id',)
+    Row (2,)
+    Row (4,)
+    UPDATE users SET age_int=(users.age_int - %(age_int_1)s) WHERE users.age_int > %(age_int_2)s
+    [generated in 0.00102s] {'age_int_1': 10, 'age_int_2': 29}
+
+One of the intricate challenges of this change is to support cases such as the
+horizontal sharding extension, where a single bulk update or delete may be
+multiplexed among backends some of which support RETURNING and some don't.   The
+new 1.4 execution archiecture supports this case so that the "fetch" strategy
+can be left intact with a graceful degrade to using a SELECT, rather than having
+to add a new "returning" strategy that would not be backend-agnostic.
+
+As part of this change, the "fetch" strategy is also made much more efficient
+in that it will no longer expire the objects located which match the rows,
+for Python expressions used in the SET clause which can be evaluated in
+Python; these are instead assigned
+directly onto the object in the same way as the "evaluate" strategy.  Only
+for SQL expressions that can't be evaluated does it fall back to expiring
+the attributes.   The "evaluate" strategy has also been enhanced to fall back
+to "expire" for a value that cannot be evaluated.
+
 
 Behavioral Changes - ORM
 ========================

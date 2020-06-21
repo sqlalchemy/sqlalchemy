@@ -2402,6 +2402,9 @@ class MSDialect(default.DefaultDialect):
     max_identifier_length = 128
     schema_name = "dbo"
 
+    implicit_returning = True
+    full_returning = True
+
     colspecs = {
         sqltypes.DateTime: _MSDateTime,
         sqltypes.Date: _MSDate,
@@ -2567,11 +2570,10 @@ class MSDialect(default.DefaultDialect):
                 "features may not function properly."
                 % ".".join(str(x) for x in self.server_version_info)
             )
-        if (
-            self.server_version_info >= MS_2005_VERSION
-            and "implicit_returning" not in self.__dict__
-        ):
-            self.implicit_returning = True
+
+        if self.server_version_info < MS_2005_VERSION:
+            self.implicit_returning = self.full_returning = False
+
         if self.server_version_info >= MS_2008_VERSION:
             self.supports_multivalues_insert = True
         if self.deprecate_large_types is None:

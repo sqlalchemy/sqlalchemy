@@ -35,8 +35,6 @@ from sqlalchemy.testing import provision
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.engines import testing_reaper
 
-# TODO: ShardTest can be turned into a base for further subclasses
-
 
 class ShardTest(object):
     __skip_if__ = (lambda: util.win32,)
@@ -47,9 +45,9 @@ class ShardTest(object):
     def setUp(self):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
-        db1, db2, db3, db4 = self._init_dbs()
+        db1, db2, db3, db4 = self._dbs = self._init_dbs()
 
-        meta = MetaData()
+        meta = self.metadata = MetaData()
         ids = Table("ids", meta, Column("nextid", Integer, nullable=False))
 
         def id_generator(ctx):
@@ -578,9 +576,11 @@ class ShardTest(object):
         temps = sess.execute(future_select(Report)).scalars().all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
+        # MARKMARK
+        # omitting the criteria so that the UPDATE affects three out of
+        # four shards
         sess.execute(
             update(Report)
-            .filter(Report.temperature >= 80)
             .values({"temperature": Report.temperature + 6},)
             .execution_options(synchronize_session="fetch")
         )
@@ -590,11 +590,11 @@ class ShardTest(object):
                 row.temperature
                 for row in sess.execute(future_select(Report.temperature))
             ),
-            {86.0, 75.0, 91.0},
+            {86.0, 81.0, 91.0},
         )
 
         # test synchronize session as well
-        eq_(set(t.temperature for t in temps), {86.0, 75.0, 91.0})
+        eq_(set(t.temperature for t in temps), {86.0, 81.0, 91.0})
 
     def test_bulk_delete_future_synchronize_evaluate(self):
         sess = self._fixture_data()
@@ -711,9 +711,8 @@ class TableNameConventionShardTest(ShardTest, fixtures.TestBase):
     This used to be called "AttachedFileShardTest" but I didn't see any
     ATTACH going on.
 
-    The approach taken by this test is awkward and I wouldn't recommend  using
-    this pattern in a real situation.  I'm not sure of the history of this test
-    but it likely predates when we knew how to use real ATTACH in SQLite.
+    A more modern approach here would be to use the schema_translate_map
+    option.
 
     """
 
@@ -740,6 +739,49 @@ class TableNameConventionShardTest(ShardTest, fixtures.TestBase):
             return stmt, params
 
         return db1, db2, db3, db4
+
+
+class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
+    __only_on__ = "postgresql"
+
+    schema = "changeme"
+
+    def _init_dbs(self):
+        e1 = testing_engine("sqlite://")
+        with e1.connect() as conn:
+            for i in [1, 3]:
+                conn.exec_driver_sql(
+                    'ATTACH DATABASE "shard%s_%s.db" AS shard%s'
+                    % (i, provision.FOLLOWER_IDENT, i)
+                )
+
+        e2 = testing_engine()
+        with e2.connect() as conn:
+            for i in [2, 4]:
+                conn.exec_driver_sql(
+                    "CREATE SCHEMA IF NOT EXISTS shard%s" % (i,)
+                )
+
+        db1 = e1.execution_options(schema_translate_map={"changeme": "shard1"})
+        db2 = e2.execution_options(schema_translate_map={"changeme": "shard2"})
+        db3 = e1.execution_options(schema_translate_map={"changeme": "shard3"})
+        db4 = e2.execution_options(schema_translate_map={"changeme": "shard4"})
+
+        self.sqlite_engine = e1
+        self.postgresql_engine = e2
+        return db1, db2, db3, db4
+
+    def teardown(self):
+        clear_mappers()
+
+        self.sqlite_engine.connect().invalidate()
+        for i in [1, 3]:
+            os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
+
+        with self.postgresql_engine.connect() as conn:
+            self.metadata.drop_all(conn)
+            for i in [2, 4]:
+                conn.exec_driver_sql("DROP SCHEMA shard%s CASCADE" % (i,))
 
 
 class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):

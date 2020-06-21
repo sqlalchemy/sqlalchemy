@@ -193,8 +193,17 @@ class ORMCompileState(CompileState):
 
     @classmethod
     def orm_pre_session_exec(
-        cls, session, statement, params, execution_options, bind_arguments
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        is_reentrant_invoke,
     ):
+        if is_reentrant_invoke:
+            return statement, execution_options
+
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
         )
@@ -220,7 +229,7 @@ class ORMCompileState(CompileState):
         if load_options._autoflush:
             session._autoflush()
 
-        return execution_options
+        return statement, execution_options
 
     @classmethod
     def orm_setup_cursor_result(
@@ -2259,9 +2268,20 @@ class _ColumnEntity(_QueryEntity):
                 )
 
             if _entity:
-                _ORMColumnEntity(
-                    compile_state, column, _entity, parent_bundle=parent_bundle
-                )
+                if "identity_token" in column._annotations:
+                    _IdentityTokenEntity(
+                        compile_state,
+                        column,
+                        _entity,
+                        parent_bundle=parent_bundle,
+                    )
+                else:
+                    _ORMColumnEntity(
+                        compile_state,
+                        column,
+                        _entity,
+                        parent_bundle=parent_bundle,
+                    )
             else:
                 _RawColumnEntity(
                     compile_state, column, parent_bundle=parent_bundle
@@ -2462,3 +2482,14 @@ class _ORMColumnEntity(_ColumnEntity):
 
         compile_state.primary_columns.append(column)
         self._fetch_column = column
+
+
+class _IdentityTokenEntity(_ORMColumnEntity):
+    def setup_compile_state(self, compile_state):
+        pass
+
+    def row_processor(self, context, result):
+        def getter(row):
+            return context.load_options._refresh_identity_token
+
+        return getter, self._label_name, self._extra_entities

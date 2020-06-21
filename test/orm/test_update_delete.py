@@ -23,6 +23,9 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
+from sqlalchemy.testing import not_in_
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -143,6 +146,50 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 "%s has been called" % mname,
                 q.delete,
             )
+
+    def test_update_w_unevaluatable_value_evaluate(self):
+        """test that the "evaluate" strategy falls back to 'expire' for an
+        update SET that is not evaluable in Python."""
+
+        User = self.classes.User
+
+        s = Session()
+
+        jill = s.query(User).filter(User.name == "jill").one()
+
+        s.execute(
+            update(User)
+            .filter(User.name == "jill")
+            .values({"name": User.name + User.name}),
+            execution_options={"synchronize_session": "evaluate"},
+        )
+
+        eq_(jill.name, "jilljill")
+
+    def test_update_w_unevaluatable_value_fetch(self):
+        """test that the "fetch" strategy falls back to 'expire' for an
+        update SET that is not evaluable in Python.
+
+        Prior to 1.4 the "fetch" strategy used expire for everything
+        but now it tries to evaluate a SET clause to avoid a round
+        trip.
+
+        """
+
+        User = self.classes.User
+
+        s = Session()
+
+        jill = s.query(User).filter(User.name == "jill").one()
+
+        s.execute(
+            update(User)
+            .filter(User.name == "jill")
+            .values({"name": User.name + User.name}),
+            execution_options={"synchronize_session": "fetch"},
+        )
+
+        eq_(jill.name, "jilljill")
 
     def test_evaluate_clauseelement(self):
         User = self.classes.User
@@ -478,6 +525,87 @@ class UpdateDeleteTest(fixtures.MappedTest):
             sess.query(User.age).order_by(User.id).all(),
             list(zip([25, 37, 29, 27])),
         )
+
+    def test_update_fetch_returning(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        with self.sql_execution_asserter() as asserter:
+            sess.query(User).filter(User.age > 29).update(
+                {"age": User.age - 10}, synchronize_session="fetch"
+            )
+
+            # these are simple values, these are now evaluated even with
+            # the "fetch" strategy, new in 1.4, so there is no expiry
+            eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+
+        if testing.db.dialect.full_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
+                    "WHERE users.age_int > %(age_int_2)s RETURNING users.id",
+                    [{"age_int_1": 10, "age_int_2": 29}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users "
+                    "WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int - :age_int_1) "
+                    "WHERE users.age_int > :age_int_2",
+                    [{"age_int_1": 10, "age_int_2": 29}],
+                ),
+            )
+
+    def test_delete_fetch_returning(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        in_(john, sess)
+        in_(jack, sess)
+
+        with self.sql_execution_asserter() as asserter:
+            sess.query(User).filter(User.age > 29).delete(
+                synchronize_session="fetch"
+            )
+
+        if testing.db.dialect.full_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
+                    "RETURNING users.id",
+                    [{"age_int_1": 29}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users "
+                    "WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+            )
+
+        in_(john, sess)
+        not_in_(jack, sess)
+        in_(jill, sess)
+        not_in_(jane, sess)
 
     def test_update_without_load(self):
         User = self.classes.User
