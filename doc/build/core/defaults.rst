@@ -152,8 +152,8 @@ otherwise not provided, and the value will be that of whatever value is present
 in the execution for the ``counter`` column, plus the number 12.
 
 For a single statement that is being executed using "executemany" style, e.g.
-with multiple parameter sets passed to :meth:`_engine.Connection.execute`, the user-
-defined function is called once for each set of parameters. For the use case of
+with multiple parameter sets passed to :meth:`_engine.Connection.execute`, the
+user-defined function is called once for each set of parameters. For the use case of
 a multi-valued :class:`_expression.Insert` construct (e.g. with more than one VALUES
 clause set up via the :meth:`_expression.Insert.values` method), the user-defined function
 is also called once for each set of parameters.
@@ -242,8 +242,8 @@ all Python and SQL expressions which were pre-executed, are present in the
 :meth:`_engine.CursorResult.last_updated_params` collections on
 :class:`~sqlalchemy.engine.CursorResult`. The
 :attr:`_engine.CursorResult.inserted_primary_key` collection contains a list of primary
-key values for the row inserted (a list so that single-column and composite-
-column primary keys are represented in the same format).
+key values for the row inserted (a list so that single-column and
+composite-column primary keys are represented in the same format).
 
 .. _server_defaults:
 
@@ -371,7 +371,7 @@ Associating a Sequence on a SERIAL column
 PostgreSQL's SERIAL datatype is an auto-incrementing type that implies
 the implicit creation of a PostgreSQL sequence when CREATE TABLE is emitted.
 If a :class:`_schema.Column` specifies an explicit :class:`.Sequence` object
-which also specifies a true value for the :paramref:`.Sequence.optional`
+which also specifies a ``True`` value for the :paramref:`.Sequence.optional`
 boolean flag, the :class:`.Sequence` will not take effect under PostgreSQL,
 and the SERIAL datatype will proceed normally.   Instead, the :class:`.Sequence`
 will only take effect when used against other sequence-supporting

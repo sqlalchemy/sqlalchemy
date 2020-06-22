@@ -792,7 +792,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         if self.order_by:
             # the default coercion for ORDER BY is now the OrderByRole,
             # which adds an additional post coercion to ByOfRole in that
-            # elements are converted into label refernences.  For the
+            # elements are converted into label references.  For the
             # eager load / subquery wrapping case, we need to un-coerce
             # the original expressions outside of the label references
             # in order to have them render.
@@ -1421,16 +1421,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     "from, there are multiple FROMS which can "
                     "join to this entity. Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explcit ON clause if not present already to "
-                    "help resolve the ambiguity."
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %r. "
                     "Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explcit ON clause if not present already to "
-                    "help resolve the ambiguity." % (right,)
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity." % (right,)
                 )
 
         elif self._entities:
@@ -1467,16 +1467,16 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     "from, there are multiple FROMS which can "
                     "join to this entity. Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explcit ON clause if not present already to "
-                    "help resolve the ambiguity."
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity."
                 )
             else:
                 raise sa_exc.InvalidRequestError(
                     "Don't know how to join to %r. "
                     "Please use the .select_from() "
                     "method to establish an explicit left side, as well as "
-                    "providing an explcit ON clause if not present already to "
-                    "help resolve the ambiguity." % (right,)
+                    "providing an explicit ON clause if not present already "
+                    "to help resolve the ambiguity." % (right,)
                 )
         else:
             raise sa_exc.InvalidRequestError(
@@ -2471,7 +2471,7 @@ class _ORMColumnEntity(_ColumnEntity):
             column = column._deannotate()
 
         # use entity_zero as the from if we have it. this is necessary
-        # for polymorpic scenarios where our FROM is based on ORM entity,
+        # for polymorphic scenarios where our FROM is based on ORM entity,
         # not the FROM of the column.  but also, don't use it if our column
         # doesn't actually have any FROMs that line up, such as when its
         # a scalar subquery.

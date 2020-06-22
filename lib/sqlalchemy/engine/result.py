@@ -891,7 +891,7 @@ class Result(InPlaceGenerative):
            None and the ending value.   Prefer to use iterative / collection
            methods which support scalar None values.
 
-        this method is provided for backwards compatibility with
+        This method is provided for backwards compatibility with
         SQLAlchemy 1.x.x.
 
         To fetch the first row of a result only, use the
@@ -921,7 +921,7 @@ class Result(InPlaceGenerative):
 
         When all rows are exhausted, returns an empty list.
 
-        this method is provided for backwards compatibility with
+        This method is provided for backwards compatibility with
         SQLAlchemy 1.x.x.
 
         To fetch rows in groups, use the :meth:`._result.Result.partitions`

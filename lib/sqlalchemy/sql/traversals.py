@@ -287,7 +287,7 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         return None
 
     def to_offline_string(self, statement_cache, statement, parameters):
-        """generate an "offline string" form of this :class:`.CacheKey`
+        """Generate an "offline string" form of this :class:`.CacheKey`
 
         The "offline string" is basically the string SQL for the
         statement plus a repr of the bound parameter values in series.
@@ -295,8 +295,8 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         identities in order to work as a cache key, the "offline" version
         is suitable for a cache that will work for other processes as well.
 
-        The given "statement_cache" is a dictionary-like object where the
-        string form of the statement itself will be cached.  this dictionary
+        The given ``statement_cache`` is a dictionary-like object where the
+        string form of the statement itself will be cached.  This dictionary
         should be in a longer lived scope in order to reduce the time spent
         stringifying statements.
 

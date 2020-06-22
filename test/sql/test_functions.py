@@ -260,7 +260,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         with expect_warnings(
             "The GenericFunction 'replaceable_func' is already registered and "
-            "is going to be overriden.",
+            "is going to be overridden.",
             regex=False,
         ):
 
@@ -283,7 +283,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         with expect_warnings(
             "The GenericFunction 'replaceable_func' is already registered and "
-            "is going to be overriden.",
+            "is going to be overridden.",
             regex=False,
         ):
 

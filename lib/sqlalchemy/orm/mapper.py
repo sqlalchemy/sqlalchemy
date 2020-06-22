@@ -324,7 +324,7 @@ class Mapper(
           that specify ``delete-orphan`` cascade.  This behavior is more
           consistent with that of a persistent object, and allows behavior to
           be consistent in more scenarios independently of whether or not an
-          orphanable object has been flushed yet or not.
+          orphan object has been flushed yet or not.
 
           See the change note and example at :ref:`legacy_is_orphan_addition`
           for more detail on this change.
@@ -733,7 +733,7 @@ class Mapper(
         return self.class_
 
     local_table = None
-    """The :class:`expression.Selectable` which this :class:`_orm.Mapper`
+    """The :class:`_expression.Selectable` which this :class:`_orm.Mapper`
     manages.
 
     Typically is an instance of :class:`_schema.Table` or
@@ -756,12 +756,11 @@ class Mapper(
     """
 
     persist_selectable = None
-    """The :class:`expression.Selectable` to which this :class:`_orm.Mapper`
+    """The :class:`_expression.Selectable` to which this :class:`_orm.Mapper`
     is mapped.
 
-    Typically an instance of :class:`_schema.Table`, :class:`_expression.Join`
-    , or
-    :class:`_expression.Alias`.
+    Typically an instance of :class:`_schema.Table`,
+    :class:`_expression.Join`, or :class:`_expression.Alias`.
 
     The :attr:`_orm.Mapper.persist_selectable` is separate from
     :attr:`_orm.Mapper.selectable` in that the former represents columns

@@ -20,5 +20,4 @@ Base Type API
 
 
 .. autoclass:: Variant
-
    :members: with_variant, __init__

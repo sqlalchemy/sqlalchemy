@@ -312,9 +312,11 @@ class ClauseElement(
             raise exc.ObjectNotExecutableError(self)
 
     def unique_params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elements replaced.
+        """Return a copy with :func:`_expression.bindparam` elements
+        replaced.
 
-        Same functionality as ``params()``, except adds `unique=True`
+        Same functionality as :meth:`_expression.ClauseElement.params`,
+        except adds `unique=True`
         to affected bind parameters so that multiple statements can be
         used.
 
@@ -322,9 +324,11 @@ class ClauseElement(
         return self._replace_params(True, optionaldict, kwargs)
 
     def params(self, *optionaldict, **kwargs):
-        """Return a copy with :func:`bindparam()` elements replaced.
+        """Return a copy with :func:`_expression.bindparam` elements
+        replaced.
 
-        Returns a copy of this ClauseElement with :func:`bindparam()`
+        Returns a copy of this ClauseElement with
+        :func:`_expression.bindparam`
         elements replaced with values taken from the given dictionary::
 
           >>> clause = column('x') + bindparam('foo')
@@ -354,14 +358,15 @@ class ClauseElement(
         return cloned_traverse(self, {}, {"bindparam": visit_bindparam})
 
     def compare(self, other, **kw):
-        r"""Compare this ClauseElement to the given ClauseElement.
+        r"""Compare this :class:`_expression.ClauseElement` to
+        the given :class:`_expression.ClauseElement`.
 
         Subclasses should override the default behavior, which is a
         straight identity comparison.
 
-        \**kw are arguments consumed by subclass compare() methods and
-        may be used to modify the criteria for comparison.
-        (see :class:`_expression.ColumnElement`)
+        \**kw are arguments consumed by subclass ``compare()`` methods and
+        may be used to modify the criteria for comparison
+        (see :class:`_expression.ColumnElement`).
 
         """
         return traversals.compare(self, other, **kw)
@@ -396,8 +401,8 @@ class ClauseElement(
                     setattr(self, attrname, result)
 
     def get_children(self, omit_attrs=(), **kw):
-        r"""Return immediate child :class:`.Traversible` elements of this
-        :class:`.Traversible`.
+        r"""Return immediate child :class:`.visitors.Traversible`
+        elements of this :class:`.visitors.Traversible`.
 
         This is used for visit traversal.
 
@@ -732,12 +737,12 @@ class ColumnElement(
     """
 
     key = None
-    """the 'key' that in some circumstances refers to this object in a
+    """The 'key' that in some circumstances refers to this object in a
     Python namespace.
 
     This typically refers to the "key" of the column as present in the
-    ``.c`` collection of a selectable, e.g. sometable.c["somekey"] would
-    return a Column with a .key of "somekey".
+    ``.c`` collection of a selectable, e.g. ``sometable.c["somekey"]`` would
+    return a :class:`_schema.Column` with a ``.key`` of "somekey".
 
     """
 
@@ -970,7 +975,7 @@ class ColumnElement(
 
         This is a shortcut to the :func:`_expression.label` function.
 
-        if 'name' is None, an anonymous label name will be generated.
+        If 'name' is ``None``, an anonymous label name will be generated.
 
         """
         return Label(name, self, self.type)
@@ -989,14 +994,14 @@ class ColumnElement(
 
     @util.memoized_property
     def anon_label(self):
-        """provides a constant 'anonymous label' for this ColumnElement.
+        """Provides a constant 'anonymous label' for this ColumnElement.
 
         This is a label() expression which will be named at compile time.
-        The same label() is returned each time anon_label is called so
-        that expressions can reference anon_label multiple times, producing
-        the same label name at compile time.
+        The same label() is returned each time ``anon_label`` is called so
+        that expressions can reference ``anon_label`` multiple times,
+        producing the same label name at compile time.
 
-        the compiler uses this function automatically at compile time
+        The compiler uses this function automatically at compile time
         for expressions that are known to be 'unnamed' like binary
         expressions and function calls.
 
@@ -1689,7 +1694,7 @@ class TextClause(
         be eligible for autocommit if no transaction is in progress.
 
         :param text:
-          the text of the SQL statement to be created.  use ``:<param>``
+          the text of the SQL statement to be created.  Use ``:<param>``
           to specify bind parameters; they will be compiled to their
           engine-specific format.
 
@@ -1952,7 +1957,7 @@ class TextClause(
 
         :param \**types: A mapping of string names to :class:`.TypeEngine`
          type objects indicating the datatypes to use for names that are
-         SELECTed from the textual string.  Prefer to use the ``\*cols``
+         SELECTed from the textual string.  Prefer to use the ``*cols``
          argument as it also indicates positional ordering.
 
         """
@@ -2365,7 +2370,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
     @classmethod
     def and_(cls, *clauses):
-        """Produce a conjunction of expressions joined by ``AND``.
+        r"""Produce a conjunction of expressions joined by ``AND``.
 
         E.g.::
 
@@ -2395,8 +2400,8 @@ class BooleanClauseList(ClauseList, ColumnElement):
         clause being combined using :func:`.and_`::
 
             stmt = select([users_table]).\
-                        where(users_table.c.name == 'wendy').\
-                        where(users_table.c.enrolled == True)
+                    where(users_table.c.name == 'wendy').\
+                    where(users_table.c.enrolled == True)
 
         The :func:`.and_` construct must be given at least one positional
         argument in order to be valid; a :func:`.and_` construct with no
@@ -2799,7 +2804,7 @@ def literal_column(text, type_=None):
     :param type\_: an optional :class:`~sqlalchemy.types.TypeEngine`
       object which will
       provide result-set translation and additional expression semantics for
-      this column. If left as None the type will be NullType.
+      this column. If left as ``None`` the type will be :class:`.NullType`.
 
     .. seealso::
 
@@ -3166,8 +3171,8 @@ class UnaryExpression(ColumnElement):
 
             from sqlalchemy import desc, nullsfirst
 
-            stmt = select([users_table]).\
-                        order_by(nullsfirst(desc(users_table.c.name)))
+            stmt = select([users_table]).order_by(
+                nullsfirst(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
 
@@ -3179,9 +3184,8 @@ class UnaryExpression(ColumnElement):
         rather than as its standalone
         function version, as in::
 
-            stmt = (select([users_table]).
-                    order_by(users_table.c.name.desc().nullsfirst())
-                    )
+            stmt = select([users_table]).order_by(
+                users_table.c.name.desc().nullsfirst())
 
         .. seealso::
 
@@ -3211,8 +3215,8 @@ class UnaryExpression(ColumnElement):
 
             from sqlalchemy import desc, nullslast
 
-            stmt = select([users_table]).\
-                        order_by(nullslast(desc(users_table.c.name)))
+            stmt = select([users_table]).order_by(
+                nullslast(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
 
@@ -3224,8 +3228,8 @@ class UnaryExpression(ColumnElement):
         rather than as its standalone
         function version, as in::
 
-            stmt = select([users_table]).\
-                        order_by(users_table.c.name.desc().nullslast())
+            stmt = select([users_table]).order_by(
+                users_table.c.name.desc().nullslast())
 
         .. seealso::
 
@@ -3778,7 +3782,7 @@ class Over(ColumnElement):
             ROW_NUMBER() OVER(ORDER BY some_column
             RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
 
-        A value of None indicates "unbounded", a
+        A value of ``None`` indicates "unbounded", a
         value of zero indicates "current row", and negative / positive
         integers indicate "preceding" and "following":
 
@@ -3810,8 +3814,8 @@ class Over(ColumnElement):
          of such, that will be used as the ORDER BY clause
          of the OVER construct.
         :param range\_: optional range clause for the window.  This is a
-         tuple value which can contain integer values or None, and will
-         render a RANGE BETWEEN PRECEDING / FOLLOWING clause
+         tuple value which can contain integer values or ``None``,
+         and will render a RANGE BETWEEN PRECEDING / FOLLOWING clause.
 
          .. versionadded:: 1.1
 

@@ -873,7 +873,7 @@ of self-referential joins, such as::
 
 Where above, there would be two JOINs between three instances of the "node"
 table assuming ``Node.children`` is a self-referential (e.g. adjacency list)
-relationship to the ``Node`` class itself.    the "node" table would be aliased
+relationship to the ``Node`` class itself.    The "node" table would be aliased
 at each step and the final ``filter()`` call would adapt itself to the last
 "node" table in the chain.
 

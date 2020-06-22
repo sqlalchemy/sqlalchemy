@@ -12,7 +12,7 @@ Glossary
     relational
     relational algebra
 
-        An algrebraic system developed by Edgar F. Codd that is used for
+        An algebraic system developed by Edgar F. Codd that is used for
         modelling and querying the data stored in relational databases.
 
         .. seealso::
@@ -23,7 +23,7 @@ Glossary
         A term used in SQLAlchemy to describe a SQL construct that represents
         a collection of rows.   It's largely similar to the concept of a
         "relation" in :term:`relational algebra`.  In SQLAlchemy, objects
-        that subclass the :class:`expression.Selectable` class are considered to be
+        that subclass the :class:`_expression.Selectable` class are considered to be
         usable as "selectables" when using SQLAlchemy Core.  The two most
         common constructs are that of the :class:`_schema.Table` and that of the
         :class:`_expression.Select` statement.
@@ -50,6 +50,7 @@ Glossary
         within the join expression.
 
     crud
+    CRUD
         An acronym meaning "Create, Update, Delete".  The term in SQL refers to the
         set of operations that create, modify and delete data from the database,
         also known as :term:`DML`, and typically refers to the ``INSERT``,
@@ -131,7 +132,7 @@ Glossary
        An acronym for **Data Manipulation Language**.  DML is the subset of
        SQL that relational databases use to *modify* the data in tables. DML
        typically refers to the three widely familiar statements of INSERT,
-       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronoym for "CReate,
+       UPDATE and  DELETE, otherwise known as :term:`CRUD` (acronym for "CReate,
        Update, Delete").
 
         .. seealso::
@@ -206,7 +207,7 @@ Glossary
         In SQLAlchemy, the "dialect" is a Python object that represents information
         and methods that allow database operations to proceed on a particular
         kind of database backend and a particular kind of Python driver (or
-        :term`DBAPI`) for that database.   SQLAlchemy dialects are subclasses
+        :term:`DBAPI`) for that database.   SQLAlchemy dialects are subclasses
         of the :class:`.Dialect` class.
 
         .. seealso::
@@ -239,7 +240,7 @@ Glossary
     identity map
         A mapping between Python objects and their database identities.
         The identity map is a collection that's associated with an
-        ORM :term:`session` object, and maintains a single instance
+        ORM :term:`Session` object, and maintains a single instance
         of every database object keyed to its identity.   The advantage
         to this pattern is that all operations which occur for a particular
         database identity are transparently coordinated onto a single
@@ -412,7 +413,7 @@ Glossary
 
         .. seealso::
 
-        	:ref:`pooling_toplevel`
+            :ref:`pooling_toplevel`
 
     DBAPI
         DBAPI is shorthand for the phrase "Python Database API
@@ -461,6 +462,7 @@ Glossary
     expire
     expires
     expiring
+    Expiring
         In the SQLAlchemy ORM, refers to when the data in a :term:`persistent`
         or sometimes :term:`detached` object is erased, such that when
         the object's attributes are next accessed, a :term:`lazy load` SQL
@@ -682,6 +684,7 @@ Glossary
 
     isolation
     isolated
+    Isolation
     isolation level
         The isolation property of the :term:`ACID` model
         ensures that the concurrent execution
@@ -1226,7 +1229,7 @@ Glossary
 
     transient
         This describes one of the major object states which
-        an object can have within a :term:`session`; a transient object
+        an object can have within a :term:`Session`; a transient object
         is a new object that doesn't have any database identity
         and has not been associated with a session yet.  When the
         object is added to the session, it moves to the
@@ -1238,7 +1241,7 @@ Glossary
 
     pending
         This describes one of the major object states which
-        an object can have within a :term:`session`; a pending object
+        an object can have within a :term:`Session`; a pending object
         is a new object that doesn't have any database identity,
         but has been recently associated with a session.   When
         the session emits a flush and the row is inserted, the
@@ -1250,7 +1253,7 @@ Glossary
 
     deleted
         This describes one of the major object states which
-        an object can have within a :term:`session`; a deleted object
+        an object can have within a :term:`Session`; a deleted object
         is an object that was formerly persistent and has had a
         DELETE statement emitted to the database within a flush
         to delete its row.  The object will move to the :term:`detached`
@@ -1265,7 +1268,7 @@ Glossary
 
     persistent
         This describes one of the major object states which
-        an object can have within a :term:`session`; a persistent object
+        an object can have within a :term:`Session`; a persistent object
         is an object that has a database identity (i.e. a primary key)
         and is currently associated with a session.   Any object
         that was previously :term:`pending` and has now been inserted
@@ -1280,7 +1283,7 @@ Glossary
 
     detached
         This describes one of the major object states which
-        an object can have within a :term:`session`; a detached object
+        an object can have within a :term:`Session`; a detached object
         is an object that has a database identity (i.e. a primary key)
         but is not associated with any session.  An object that
         was previously :term:`persistent` and was removed from its

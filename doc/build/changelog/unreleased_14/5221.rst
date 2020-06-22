@@ -6,8 +6,8 @@
     :func:`_expression.select` construct such that when a select statement
     is used in a subquery, repeated column names from different tables are now
     automatically labeled with a unique label name, without the need to use the
-    full "apply_labels()" feature that conbines tablename plus column name.
-    The disambigated labels are available as plain string keys in the .c
+    full "apply_labels()" feature that combines tablename plus column name.
+    The disambiguated labels are available as plain string keys in the .c
     collection of the subquery, and most importantly the feature allows an ORM
     :func:`_orm.aliased` construct against the combination of an entity and an
     arbitrary subquery to work correctly, targeting the correct columns despite

@@ -91,7 +91,7 @@ class Select(_LegacySelect):
         return self._raw_columns[0]
 
     def filter_by(self, **kwargs):
-        r"""apply the given filtering criterion as a WHERE clause
+        r"""Apply the given filtering criterion as a WHERE clause
         to this select.
 
         """
@@ -114,7 +114,7 @@ class Select(_LegacySelect):
 
     @_generative
     def join(self, target, onclause=None, isouter=False, full=False):
-        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
         and apply generatively, returning the newly resulting
         :class:`_expression.Select`.
@@ -132,7 +132,7 @@ class Select(_LegacySelect):
     def join_from(
         self, from_, target, onclause=None, isouter=False, full=False
     ):
-        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
         and apply generatively, returning the newly resulting
         :class:`_expression.Select`.

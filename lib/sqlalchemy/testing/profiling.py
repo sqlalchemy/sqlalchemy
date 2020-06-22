@@ -57,7 +57,7 @@ def _start_current_test(id_):
 
 
 class ProfileStatsFile(object):
-    """"Store per-platform/fn profiling results in a file.
+    """Store per-platform/fn profiling results in a file.
 
     There was no json module available when this was written, but now
     the file format which is very deterministically line oriented is kind of

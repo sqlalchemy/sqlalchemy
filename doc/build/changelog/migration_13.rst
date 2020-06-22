@@ -886,7 +886,7 @@ FOR UPDATE clause is rendered within the joined eager load subquery as well as o
 
 This change applies specifically to the use of the :func:`_orm.joinedload` loading
 strategy in conjunction with a row limited query, e.g. using :meth:`_query.Query.first`
-or :meth:`_query.Query.limit`, as well as with use of the :class:`_query.Query.with_for_update` method.
+or :meth:`_query.Query.limit`, as well as with use of the :meth:`_query.Query.with_for_update` method.
 
 Given a query as::
 

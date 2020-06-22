@@ -181,7 +181,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
         ]
 
     Above, the :class:`.Case` class indicates its internal state as the
-    attributes named ``value``, ``whens``, and ``else\_``.    They each
+    attributes named ``value``, ``whens``, and ``else_``.    They each
     link to an :class:`.InternalTraversal` method which indicates the type
     of datastructure referred towards.
 
@@ -330,7 +330,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_dialect_options = symbol("DO")
-    """visit a dialect options structure."""
+    """Visit a dialect options structure."""
 
     dp_string_clauseelement_dict = symbol("CD")
     """Visit a dictionary of string keys to :class:`_expression.ClauseElement`
@@ -380,8 +380,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_table_hint_list = symbol("TH")
-    """Visit the ``_hints`` collection of a :class:`_expression.Select` object
-    .
+    """Visit the ``_hints`` collection of a :class:`_expression.Select`
+    object.
 
     """
 
@@ -400,17 +400,17 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_dml_ordered_values = symbol("DML_OV")
-    """visit the values() ordered tuple list of an
+    """Visit the values() ordered tuple list of an
     :class:`_expression.Update` object."""
 
     dp_dml_values = symbol("DML_V")
-    """visit the values() dictionary of a :class:`.ValuesBase`
+    """Visit the values() dictionary of a :class:`.ValuesBase`
     (e.g. Insert or Update) object.
 
     """
 
     dp_dml_multi_values = symbol("DML_MV")
-    """visit the values() multi-valued list of dictionaries of an
+    """Visit the values() multi-valued list of dictionaries of an
     :class:`_expression.Insert` object.
 
     """
@@ -479,14 +479,14 @@ class ExternalTraversal(object):
                 return meth(obj, **kw)
 
     def iterate(self, obj):
-        """traverse the given expression structure, returning an iterator
+        """Traverse the given expression structure, returning an iterator
         of all elements.
 
         """
         return iterate(obj, self.__traverse_options__)
 
     def traverse(self, obj):
-        """traverse and visit the given expression structure."""
+        """Traverse and visit the given expression structure."""
 
         return traverse(obj, self.__traverse_options__, self._visitor_dict)
 
@@ -501,7 +501,7 @@ class ExternalTraversal(object):
 
     @property
     def visitor_iterator(self):
-        """iterate through this visitor and each 'chained' visitor."""
+        """Iterate through this visitor and each 'chained' visitor."""
 
         v = self
         while v:
@@ -509,9 +509,9 @@ class ExternalTraversal(object):
             v = getattr(v, "_next", None)
 
     def chain(self, visitor):
-        """'chain' an additional ClauseVisitor onto this ClauseVisitor.
+        """'Chain' an additional ClauseVisitor onto this ClauseVisitor.
 
-        the chained visitor will receive all visit events after this one.
+        The chained visitor will receive all visit events after this one.
 
         """
         tail = list(self.visitor_iterator)[-1]
@@ -537,7 +537,7 @@ class CloningExternalTraversal(ExternalTraversal):
         return [self.traverse(x) for x in list_]
 
     def traverse(self, obj):
-        """traverse and visit the given expression structure."""
+        """Traverse and visit the given expression structure."""
 
         return cloned_traverse(
             obj, self.__traverse_options__, self._visitor_dict
@@ -554,7 +554,7 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
     """
 
     def replace(self, elem):
-        """receive pre-copied elements during a cloning traversal.
+        """Receive pre-copied elements during a cloning traversal.
 
         If the method returns a new element, the element is used
         instead of creating a simple copy of the element.  Traversal
@@ -563,7 +563,7 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
         return None
 
     def traverse(self, obj):
-        """traverse and visit the given expression structure."""
+        """Traverse and visit the given expression structure."""
 
         def replace(elem):
             for v in self.visitor_iterator:
@@ -583,9 +583,9 @@ ReplacingCloningVisitor = ReplacingExternalTraversal
 
 
 def iterate(obj, opts=util.immutabledict()):
-    r"""traverse the given expression structure, returning an iterator.
+    r"""Traverse the given expression structure, returning an iterator.
 
-    traversal is configured to be breadth-first.
+    Traversal is configured to be breadth-first.
 
     The central API feature used by the :func:`.visitors.iterate`
     function is the
@@ -618,7 +618,7 @@ def iterate(obj, opts=util.immutabledict()):
 
 
 def traverse_using(iterator, obj, visitors):
-    """visit the given expression structure using the given iterator of
+    """Visit the given expression structure using the given iterator of
     objects.
 
     :func:`.visitors.traverse_using` is usually called internally as the result
@@ -650,7 +650,7 @@ def traverse_using(iterator, obj, visitors):
 
 
 def traverse(obj, opts, visitors):
-    """traverse and visit the given expression structure using the default
+    """Traverse and visit the given expression structure using the default
     iterator.
 
      e.g.::
@@ -683,7 +683,7 @@ def traverse(obj, opts, visitors):
 
 
 def cloned_traverse(obj, opts, visitors):
-    """clone the given expression structure, allowing modifications by
+    """Clone the given expression structure, allowing modifications by
     visitors.
 
     Traversal usage is the same as that of :func:`.visitors.traverse`.
@@ -738,14 +738,14 @@ def cloned_traverse(obj, opts, visitors):
 
 
 def replacement_traverse(obj, opts, replace):
-    """clone the given expression structure, allowing element
+    """Clone the given expression structure, allowing element
     replacement by a given replacement function.
 
     This function is very similar to the :func:`.visitors.cloned_traverse`
     function, except instead of being passed a dictionary of visitors, all
     elements are unconditionally passed into the given replace function.
     The replace function then has the option to return an entirely new object
-    which will replace the one given.  if it returns ``None``, then the object
+    which will replace the one given.  If it returns ``None``, then the object
     is kept in place.
 
     The difference in usage between :func:`.visitors.cloned_traverse` and
