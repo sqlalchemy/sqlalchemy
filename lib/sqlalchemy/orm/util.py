@@ -264,7 +264,7 @@ def polymorphic_union(
 
 
 def identity_key(*args, **kwargs):
-    """Generate "identity key" tuples, as are used as keys in the
+    r"""Generate "identity key" tuples, as are used as keys in the
     :attr:`.Session.identity_map` dictionary.
 
     This function has several call styles:
@@ -313,8 +313,9 @@ def identity_key(*args, **kwargs):
 
       E.g.::
 
-        >>> row = engine.execute(
-        ...     text("select * from table where a=1 and b=2")).first()
+        >>> row = engine.execute(\
+            text("select * from table where a=1 and b=2")\
+            ).first()
         >>> identity_key(MyClass, row=row)
         (<class '__main__.MyClass'>, (1, 2), None)
 
