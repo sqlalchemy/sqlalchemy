@@ -441,6 +441,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             dict(result.returned_defaults._mapping),
             {"id": 1, "data": None, "insdef": 0},
         )
+        eq_(result.inserted_primary_key, (1,))
 
     def test_update_non_default_plus_default(self, connection):
         t1 = self.tables.t1
@@ -464,6 +465,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             dict(result.returned_defaults._mapping),
             {"id": 1, "data": None, "insdef": 0},
         )
+        eq_(result.inserted_primary_key, (1,))
 
     def test_update_all(self, connection):
         t1 = self.tables.t1
@@ -472,6 +474,125 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             t1.update().values(insdef=2).return_defaults()
         )
         eq_(dict(result.returned_defaults._mapping), {"upddef": 1})
+
+    @testing.requires.insert_executemany_returning
+    def test_insert_executemany_no_defaults_passed(self, connection):
+        t1 = self.tables.t1
+        result = connection.execute(
+            t1.insert().return_defaults(),
+            [
+                {"data": "d1"},
+                {"data": "d2"},
+                {"data": "d3"},
+                {"data": "d4"},
+                {"data": "d5"},
+                {"data": "d6"},
+            ],
+        )
+
+        eq_(
+            [row._mapping for row in result.returned_defaults_rows],
+            [
+                {"id": 1, "insdef": 0, "upddef": None},
+                {"id": 2, "insdef": 0, "upddef": None},
+                {"id": 3, "insdef": 0, "upddef": None},
+                {"id": 4, "insdef": 0, "upddef": None},
+                {"id": 5, "insdef": 0, "upddef": None},
+                {"id": 6, "insdef": 0, "upddef": None},
+            ],
+        )
+
+        eq_(
+            result.inserted_primary_key_rows,
+            [(1,), (2,), (3,), (4,), (5,), (6,)],
+        )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This statement was an executemany call; "
+            "if return defaults is supported",
+            lambda: result.returned_defaults,
+        )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This statement was an executemany call; "
+            "if primary key returning is supported",
+            lambda: result.inserted_primary_key,
+        )
+
+    @testing.requires.insert_executemany_returning
+    def test_insert_executemany_insdefault_passed(self, connection):
+        t1 = self.tables.t1
+        result = connection.execute(
+            t1.insert().return_defaults(),
+            [
+                {"data": "d1", "insdef": 11},
+                {"data": "d2", "insdef": 12},
+                {"data": "d3", "insdef": 13},
+                {"data": "d4", "insdef": 14},
+                {"data": "d5", "insdef": 15},
+                {"data": "d6", "insdef": 16},
+            ],
+        )
+
+        eq_(
+            [row._mapping for row in result.returned_defaults_rows],
+            [
+                {"id": 1, "upddef": None},
+                {"id": 2, "upddef": None},
+                {"id": 3, "upddef": None},
+                {"id": 4, "upddef": None},
+                {"id": 5, "upddef": None},
+                {"id": 6, "upddef": None},
+            ],
+        )
+
+        eq_(
+            result.inserted_primary_key_rows,
+            [(1,), (2,), (3,), (4,), (5,), (6,)],
+        )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This statement was an executemany call; "
+            "if return defaults is supported",
+            lambda: result.returned_defaults,
+        )
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This statement was an executemany call; "
+            "if primary key returning is supported",
+            lambda: result.inserted_primary_key,
+        )
+
+    @testing.requires.insert_executemany_returning
+    def test_insert_executemany_only_pk_passed(self, connection):
+        t1 = self.tables.t1
+        result = connection.execute(
+            t1.insert().return_defaults(),
+            [
+                {"id": 10, "data": "d1"},
+                {"id": 11, "data": "d2"},
+                {"id": 12, "data": "d3"},
+                {"id": 13, "data": "d4"},
+                {"id": 14, "data": "d5"},
+                {"id": 15, "data": "d6"},
+            ],
+        )
+
+        eq_(
+            [row._mapping for row in result.returned_defaults_rows],
+            [
+                {"insdef": 0, "upddef": None},
+                {"insdef": 0, "upddef": None},
+                {"insdef": 0, "upddef": None},
+                {"insdef": 0, "upddef": None},
+                {"insdef": 0, "upddef": None},
+                {"insdef": 0, "upddef": None},
+            ],
+        )
+        eq_(
+            result.inserted_primary_key_rows,
+            [(10,), (11,), (12,), (13,), (14,), (15,)],
+        )
 
 
 class ImplicitReturningFlag(fixtures.TestBase):

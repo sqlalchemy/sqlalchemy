@@ -977,11 +977,11 @@ class PKDefaultTest(fixtures.TablesTest):
         with engine.begin() as conn:
             conn.execute(t2.insert(), nextid=1)
             r = conn.execute(t1.insert(), data="hi")
-            eq_([1], r.inserted_primary_key)
+            eq_((1,), r.inserted_primary_key)
 
             conn.execute(t2.insert(), nextid=2)
             r = conn.execute(t1.insert(), data="there")
-            eq_([2], r.inserted_primary_key)
+            eq_((2,), r.inserted_primary_key)
 
             r = conn.execute(date_table.insert())
             assert isinstance(r.inserted_primary_key[0], datetime.datetime)
@@ -1273,10 +1273,10 @@ class SpecialTypePKTest(fixtures.TestBase):
                 not testing.db.dialect.implicit_returning
                 or not implicit_returning
             ):
-                eq_(r.inserted_primary_key, [None])
+                eq_(r.inserted_primary_key, (None,))
             else:
                 eq_(
-                    r.inserted_primary_key, [expected_result],
+                    r.inserted_primary_key, (expected_result,),
                 )
 
             eq_(
@@ -1350,7 +1350,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         )
         metadata.create_all(connection)
         r = connection.execute(t.insert(), dict(data="data"))
-        eq_(r.inserted_primary_key, [None])
+        eq_(r.inserted_primary_key, (None,))
         eq_(list(connection.execute(t.select())), [("key_one", "data")])
 
     @testing.requires.returning
@@ -1370,7 +1370,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         )
         metadata.create_all(connection)
         r = connection.execute(t.insert(), dict(data="data"))
-        eq_(r.inserted_primary_key, ["key_one"])
+        eq_(r.inserted_primary_key, ("key_one",))
         eq_(list(connection.execute(t.select())), [("key_one", "data")])
 
     @testing.provide_metadata
@@ -1386,7 +1386,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         assert t._autoincrement_column is None
         metadata.create_all(connection)
         r = connection.execute(t.insert(), dict(data="data"))
-        eq_(r.inserted_primary_key, [None])
+        eq_(r.inserted_primary_key, (None,))
         if testing.against("sqlite"):
             eq_(list(connection.execute(t.select())), [(1, "data")])
         else:
@@ -1425,7 +1425,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         t2 = Table("x", m2, autoload_with=connection, implicit_returning=False)
 
         r = connection.execute(t2.insert(), dict(data="data"))
-        eq_(r.inserted_primary_key, [None])
+        eq_(r.inserted_primary_key, (None,))
         if testing.against("sqlite"):
             eq_(list(connection.execute(t2.select())), [(1, "data")])
         else:
@@ -1444,7 +1444,7 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
 
         metadata.create_all(connection)
         r = connection.execute(t.insert(), dict(data="data"))
-        eq_(r.inserted_primary_key, [5])
+        eq_(r.inserted_primary_key, (5,))
         eq_(list(connection.execute(t.select())), [(5, "data")])
 
 

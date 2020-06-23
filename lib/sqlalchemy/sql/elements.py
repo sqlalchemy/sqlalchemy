@@ -482,14 +482,6 @@ class ClauseElement(
             's bound engine,
             if any.
 
-        :param inline: Used for INSERT statements, for a dialect which does
-            not support inline retrieval of newly generated primary key
-            columns, will force the expression used to create the new primary
-            key value to be rendered inline within the INSERT statement's
-            VALUES clause. This typically refers to Sequence execution but may
-            also refer to any server-side default generation function
-            associated with a primary key `Column`.
-
         :param compile_kwargs: optional dictionary of additional parameters
             that will be passed through to the compiler within all "visit"
             methods.  This allows any custom flag to be passed through to
@@ -528,7 +520,7 @@ class ClauseElement(
         dialect,
         compiled_cache=None,
         column_keys=None,
-        inline=False,
+        for_executemany=False,
         schema_translate_map=None,
         **kw
     ):
@@ -546,7 +538,7 @@ class ClauseElement(
                 cache_key,
                 tuple(column_keys),
                 bool(schema_translate_map),
-                inline,
+                for_executemany,
             )
             compiled_sql = compiled_cache.get(key)
 
@@ -555,7 +547,7 @@ class ClauseElement(
                     dialect,
                     cache_key=elem_cache_key,
                     column_keys=column_keys,
-                    inline=inline,
+                    for_executemany=for_executemany,
                     schema_translate_map=schema_translate_map,
                     **kw
                 )
@@ -568,7 +560,7 @@ class ClauseElement(
                 dialect,
                 cache_key=elem_cache_key,
                 column_keys=column_keys,
-                inline=inline,
+                for_executemany=for_executemany,
                 schema_translate_map=schema_translate_map,
                 **kw
             )

@@ -693,18 +693,18 @@ class ValuesBase(UpdateBase):
 
         This method differs from :meth:`.UpdateBase.returning` in these ways:
 
-        1. :meth:`.ValuesBase.return_defaults` is only intended for use with
-           an INSERT or an UPDATE statement that matches exactly one row.
-           While the RETURNING construct in the general sense supports
-           multiple rows for a multi-row UPDATE or DELETE statement, or for
-           special cases of INSERT that return multiple rows (e.g. INSERT from
-           SELECT, multi-valued VALUES clause),
+        1. :meth:`.ValuesBase.return_defaults` is only intended for use with an
+           INSERT or an UPDATE statement that matches exactly one row per
+           parameter set. While the RETURNING construct in the general sense
+           supports multiple rows for a multi-row UPDATE or DELETE statement,
+           or for special cases of INSERT that return multiple rows (e.g.
+           INSERT from SELECT, multi-valued VALUES clause),
            :meth:`.ValuesBase.return_defaults` is intended only for an
-           "ORM-style" single-row INSERT/UPDATE statement.  The row returned
-           by the statement is also consumed implicitly when
+           "ORM-style" single-row INSERT/UPDATE statement.  The row
+           returned by the statement is also consumed implicitly when
            :meth:`.ValuesBase.return_defaults` is used.  By contrast,
-           :meth:`.UpdateBase.returning` leaves the RETURNING result-set
-           intact with a collection of any number of rows.
+           :meth:`.UpdateBase.returning` leaves the RETURNING result-set intact
+           with a collection of any number of rows.
 
         2. It is compatible with the existing logic to fetch auto-generated
            primary key values, also known as "implicit returning".  Backends
@@ -717,6 +717,16 @@ class ValuesBase(UpdateBase):
            RETURNING will skip the usage of the feature, rather than raising
            an exception.  The return value of
            :attr:`_engine.CursorResult.returned_defaults` will be ``None``
+
+        4. An INSERT statement invoked with executemany() is supported if the
+           backend database driver supports the
+           ``insert_executemany_returning`` feature, currently this includes
+           PostgreSQL with psycopg2.  When executemany is used, the
+           :attr:`_engine.CursorResult.returned_defaults_rows` and
+           :attr:`_engine.CursorResult.inserted_primary_key_rows` accessors
+           will return the inserted defaults and primary keys.
+
+           .. versionadded:: 1.4
 
         :meth:`.ValuesBase.return_defaults` is used by the ORM to provide
         an efficient implementation for the ``eager_defaults`` feature of
@@ -734,6 +744,12 @@ class ValuesBase(UpdateBase):
             :meth:`.UpdateBase.returning`
 
             :attr:`_engine.CursorResult.returned_defaults`
+
+            :attr:`_engine.CursorResult.returned_defaults_rows`
+
+            :attr:`_engine.CursorResult.inserted_primary_key`
+
+            :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
         self._return_defaults = cols or True

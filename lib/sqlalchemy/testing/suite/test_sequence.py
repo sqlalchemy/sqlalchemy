@@ -46,7 +46,9 @@ class SequenceTest(fixtures.TablesTest):
 
     def test_insert_lastrowid(self, connection):
         r = connection.execute(self.tables.seq_pk.insert(), data="some data")
-        eq_(r.inserted_primary_key, [testing.db.dialect.default_sequence_base])
+        eq_(
+            r.inserted_primary_key, (testing.db.dialect.default_sequence_base,)
+        )
 
     def test_nextval_direct(self, connection):
         r = connection.execute(self.tables.seq_pk.c.id.default)
@@ -57,7 +59,7 @@ class SequenceTest(fixtures.TablesTest):
         r = connection.execute(
             self.tables.seq_opt_pk.insert(), data="some data"
         )
-        eq_(r.inserted_primary_key, [1])
+        eq_(r.inserted_primary_key, (1,))
 
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()

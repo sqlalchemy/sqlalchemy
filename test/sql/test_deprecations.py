@@ -1511,7 +1511,6 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
             "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
             "foo))",
-            inline_flag=True,
         )
 
     def test_insert_inline_kw_default(self):
@@ -1529,9 +1528,7 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt = table.insert(values={}, inline=True)
 
         self.assert_compile(
-            stmt,
-            "INSERT INTO sometable (foo) VALUES (foobar())",
-            inline_flag=True,
+            stmt, "INSERT INTO sometable (foo) VALUES (foobar())",
         )
 
         with testing.expect_deprecated_20(
@@ -1540,10 +1537,7 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt = table.insert(inline=True)
 
         self.assert_compile(
-            stmt,
-            "INSERT INTO sometable (foo) VALUES (foobar())",
-            params={},
-            inline_flag=True,
+            stmt, "INSERT INTO sometable (foo) VALUES (foobar())", params={},
         )
 
     def test_update_inline_kw_defaults(self):
@@ -1572,7 +1566,6 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
             "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
             "col3=:col3",
-            inline_flag=True,
         )
 
     def test_update_dialect_kwargs(self):

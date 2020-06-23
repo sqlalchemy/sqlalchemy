@@ -1296,10 +1296,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def psycopg2_native_json(self):
-        return self.psycopg2_compatibility
-
-    @property
     def psycopg2_native_hstore(self):
         return self.psycopg2_compatibility
 

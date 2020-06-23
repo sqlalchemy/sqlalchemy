@@ -324,6 +324,20 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def insert_executemany_returning(self):
+        """target platform supports RETURNING when INSERT is used with
+        executemany(), e.g. multiple parameter sets, indicating
+        as many rows come back as do parameter sets were passed.
+
+        """
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.insert_executemany_returning,
+            "%(database)s %(does_support)s 'RETURNING of "
+            "multiple rows with INSERT executemany'",
+        )
+
+    @property
     def returning(self):
         """target platform supports RETURNING for at least one row.
 

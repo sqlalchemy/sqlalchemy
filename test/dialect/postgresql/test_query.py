@@ -172,12 +172,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 # execute with explicit id
 
                 r = conn.execute(table.insert(), {"id": 30, "data": "d1"})
-                eq_(r.inserted_primary_key, [30])
+                eq_(r.inserted_primary_key, (30,))
 
                 # execute with prefetch id
 
                 r = conn.execute(table.insert(), {"data": "d2"})
-                eq_(r.inserted_primary_key, [1])
+                eq_(r.inserted_primary_key, (1,))
 
                 # executemany with explicit ids
 
@@ -254,7 +254,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             with engine.connect() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 r = conn.execute(table.insert(), {"data": "d2"})
-                eq_(r.inserted_primary_key, [5])
+                eq_(r.inserted_primary_key, (5,))
                 conn.execute(
                     table.insert(),
                     {"id": 31, "data": "d3"},
@@ -316,12 +316,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 # execute with explicit id
 
                 r = conn.execute(table.insert(), {"id": 30, "data": "d1"})
-                eq_(r.inserted_primary_key, [30])
+                eq_(r.inserted_primary_key, (30,))
 
                 # execute with prefetch id
 
                 r = conn.execute(table.insert(), {"data": "d2"})
-                eq_(r.inserted_primary_key, [1])
+                eq_(r.inserted_primary_key, (1,))
 
                 # executemany with explicit ids
 
@@ -398,7 +398,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             with engine.connect() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 r = conn.execute(table.insert(), {"data": "d2"})
-                eq_(r.inserted_primary_key, [5])
+                eq_(r.inserted_primary_key, (5,))
                 conn.execute(
                     table.insert(),
                     {"id": 31, "data": "d3"},

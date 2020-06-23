@@ -106,7 +106,7 @@ class CompiledSQL(SQLMatchRule):
             compiled = execute_observed.clauseelement.compile(
                 dialect=compare_dialect,
                 column_keys=context.compiled.column_keys,
-                inline=context.compiled.inline,
+                for_executemany=context.compiled.for_executemany,
                 schema_translate_map=map_,
             )
         _received_statement = re.sub(r"[\n\t]", "", util.text_type(compiled))

@@ -98,14 +98,14 @@ class OnConflictTest(fixtures.TablesTest):
                 insert(users).on_conflict_do_nothing(),
                 dict(id=1, name="name1"),
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             result = conn.execute(
                 insert(users).on_conflict_do_nothing(),
                 dict(id=1, name="name2"),
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -120,7 +120,7 @@ class OnConflictTest(fixtures.TablesTest):
             insert(users).on_conflict_do_nothing(constraint="uq_login_email"),
             dict(name="name1", login_email="email1"),
         )
-        eq_(result.inserted_primary_key, [1])
+        eq_(result.inserted_primary_key, (1,))
         eq_(result.returned_defaults, (1,))
 
         result = connection.execute(
@@ -148,7 +148,7 @@ class OnConflictTest(fixtures.TablesTest):
                 ),
                 dict(id=1, name="name1"),
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             result = conn.execute(
@@ -157,7 +157,7 @@ class OnConflictTest(fixtures.TablesTest):
                 ),
                 dict(id=1, name="name2"),
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -177,7 +177,7 @@ class OnConflictTest(fixtures.TablesTest):
             )
             result = conn.execute(i, dict(id=1, name="name1"))
 
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -198,7 +198,7 @@ class OnConflictTest(fixtures.TablesTest):
             )
 
             result = conn.execute(i, dict(id=1, name="name2"))
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -218,7 +218,7 @@ class OnConflictTest(fixtures.TablesTest):
                 set_=dict(name=i.excluded.name),
             )
             result = conn.execute(i, dict(id=1, name="name3"))
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -239,7 +239,7 @@ class OnConflictTest(fixtures.TablesTest):
             ).values(id=1, name="name4")
 
             result = conn.execute(i)
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -260,7 +260,7 @@ class OnConflictTest(fixtures.TablesTest):
             ).values(id=1, name="name4")
 
             result = conn.execute(i)
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -292,7 +292,7 @@ class OnConflictTest(fixtures.TablesTest):
             )
 
             result = conn.execute(i)
-            eq_(result.inserted_primary_key, [None])
+            eq_(result.inserted_primary_key, (None,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -349,7 +349,7 @@ class OnConflictTest(fixtures.TablesTest):
                     lets_index_this="not",
                 ),
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -383,7 +383,7 @@ class OnConflictTest(fixtures.TablesTest):
                     lets_index_this="unique",
                 ),
             )
-            eq_(result.inserted_primary_key, [42])
+            eq_(result.inserted_primary_key, (42,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -422,7 +422,7 @@ class OnConflictTest(fixtures.TablesTest):
                     lets_index_this="unique",
                 ),
             )
-            eq_(result.inserted_primary_key, [43])
+            eq_(result.inserted_primary_key, (43,))
             eq_(result.returned_defaults, None)
 
             eq_(
@@ -454,7 +454,7 @@ class OnConflictTest(fixtures.TablesTest):
             result = conn.execute(
                 i, dict(name="name3", login_email="name1@gmail.com")
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
             eq_(result.returned_defaults, (1,))
 
             eq_(
