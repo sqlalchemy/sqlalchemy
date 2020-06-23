@@ -129,6 +129,32 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         )
         eq_(result2.fetchall(), [(1, True), (2, False)])
 
+    @testing.requires.full_returning
+    def test_update_full_returning(self, connection):
+        connection.execute(
+            table.insert(),
+            [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
+        )
+
+        result = connection.execute(
+            table.update(table.c.persons > 2)
+            .values(full=True)
+            .returning(table.c.id, table.c.full)
+        )
+        eq_(result.fetchall(), [(1, True), (2, True)])
+
+    @testing.requires.full_returning
+    def test_delete_full_returning(self, connection):
+        connection.execute(
+            table.insert(),
+            [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
+        )
+
+        result = connection.execute(
+            table.delete().returning(table.c.id, table.c.full)
+        )
+        eq_(result.fetchall(), [(1, False), (2, False)])
+
     def test_insert_returning(self, connection):
         result = connection.execute(
             table.insert().returning(table.c.id), {"persons": 1, "full": False}
@@ -473,13 +499,6 @@ class ImplicitReturningFlag(fixtures.TestBase):
 
         testing.requires.returning(go)()
         e = engines.testing_engine()
-
-        # starts as False.  This is because all of Firebird,
-        # PostgreSQL, Oracle, SQL Server started supporting RETURNING
-        # as of a certain version, and the flag is not set until
-        # version detection occurs.  If some DB comes along that has
-        # RETURNING in all cases, this test can be adjusted.
-        assert e.dialect.implicit_returning is False
 
         # version detection on connect sets it
         c = e.connect()

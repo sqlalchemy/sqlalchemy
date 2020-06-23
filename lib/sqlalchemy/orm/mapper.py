@@ -2240,7 +2240,6 @@ class Mapper(
             "entity_namespace": self,
             "parententity": self,
             "parentmapper": self,
-            "compile_state_plugin": "orm",
         }
         if self.persist_selectable is not self.local_table:
             # joined table inheritance, with polymorphic selectable,
@@ -2250,7 +2249,6 @@ class Mapper(
                     "entity_namespace": self,
                     "parententity": self,
                     "parentmapper": self,
-                    "compile_state_plugin": "orm",
                 }
             )._set_propagate_attrs(
                 {"compile_state_plugin": "orm", "plugin_subject": self}
@@ -2258,6 +2256,23 @@ class Mapper(
 
         return self.selectable._annotate(annotations)._set_propagate_attrs(
             {"compile_state_plugin": "orm", "plugin_subject": self}
+        )
+
+    @util.memoized_property
+    def select_identity_token(self):
+        return (
+            expression.null()
+            ._annotate(
+                {
+                    "entity_namespace": self,
+                    "parententity": self,
+                    "parentmapper": self,
+                    "identity_token": True,
+                }
+            )
+            ._set_propagate_attrs(
+                {"compile_state_plugin": "orm", "plugin_subject": self}
+            )
         )
 
     @property

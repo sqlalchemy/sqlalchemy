@@ -1259,6 +1259,10 @@ class IteratorResult(Result):
         return list(itertools.islice(self.iterator, 0, size))
 
 
+def null_result():
+    return IteratorResult(SimpleResultMetaData([]), iter([]))
+
+
 class ChunkedIteratorResult(IteratorResult):
     """An :class:`.IteratorResult` that works from an iterator-producing callable.
 

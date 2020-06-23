@@ -130,11 +130,14 @@ class FromCache(UserDefinedOption):
         self.expiration_time = expiration_time
         self.ignore_expiration = ignore_expiration
 
+    def _gen_cache_key(self, anon_map, bindparams):
+        return None
+
     def _generate_cache_key(self, statement, parameters, orm_cache):
         statement_cache_key = statement._generate_cache_key()
 
         key = statement_cache_key.to_offline_string(
-            orm_cache._statement_cache, parameters
+            orm_cache._statement_cache, statement, parameters
         ) + repr(self.cache_key)
 
         # print("here's our key...%s" % key)

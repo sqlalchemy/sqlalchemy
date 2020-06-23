@@ -8,6 +8,7 @@ from sqlalchemy import Integer
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy import String
+from sqlalchemy import tuple_
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -18,7 +19,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-
 
 compiler = evaluator.EvaluatorCompiler()
 
@@ -188,6 +188,54 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=1), False),
                 (User(id=2), True),
                 (User(id=None), None),
+            ],
+        )
+
+    def test_in(self):
+        User = self.classes.User
+
+        eval_eq(
+            User.name.in_(["foo", "bar"]),
+            testcases=[
+                (User(id=1, name="foo"), True),
+                (User(id=2, name="bat"), False),
+                (User(id=1, name="bar"), True),
+                (User(id=1, name=None), None),
+            ],
+        )
+
+        eval_eq(
+            User.name.notin_(["foo", "bar"]),
+            testcases=[
+                (User(id=1, name="foo"), False),
+                (User(id=2, name="bat"), True),
+                (User(id=1, name="bar"), False),
+                (User(id=1, name=None), None),
+            ],
+        )
+
+    def test_in_tuples(self):
+        User = self.classes.User
+
+        eval_eq(
+            tuple_(User.id, User.name).in_([(1, "foo"), (2, "bar")]),
+            testcases=[
+                (User(id=1, name="foo"), True),
+                (User(id=2, name="bat"), False),
+                (User(id=1, name="bar"), False),
+                (User(id=2, name="bar"), True),
+                (User(id=1, name=None), None),
+            ],
+        )
+
+        eval_eq(
+            tuple_(User.id, User.name).notin_([(1, "foo"), (2, "bar")]),
+            testcases=[
+                (User(id=1, name="foo"), False),
+                (User(id=2, name="bat"), True),
+                (User(id=1, name="bar"), True),
+                (User(id=2, name="bar"), False),
+                (User(id=1, name=None), None),
             ],
         )
 

@@ -1197,7 +1197,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     @testing.provide_metadata
     def test_reflect_all(self):
         existing = inspect(testing.db).get_table_names()
-
         names = ["rt_%s" % name for name in ("a", "b", "c", "d", "e")]
         nameset = set(names)
         for name in names:

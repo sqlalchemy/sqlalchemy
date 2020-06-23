@@ -67,6 +67,7 @@ class DefaultDialect(interfaces.Dialect):
     preexecute_autoincrement_sequences = False
     postfetch_lastrowid = True
     implicit_returning = False
+    full_returning = False
 
     cte_follows_insert = False
 

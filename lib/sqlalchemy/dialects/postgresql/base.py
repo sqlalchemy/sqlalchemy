@@ -2510,6 +2510,9 @@ class PGDialect(default.DefaultDialect):
     inspector = PGInspector
     isolation_level = None
 
+    implicit_returning = True
+    full_returning = True
+
     construct_arguments = [
         (
             schema.Index,
@@ -2555,10 +2558,10 @@ class PGDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(PGDialect, self).initialize(connection)
-        self.implicit_returning = self.server_version_info > (
-            8,
-            2,
-        ) and self.__dict__.get("implicit_returning", True)
+
+        if self.server_version_info <= (8, 2):
+            self.full_returning = self.implicit_returning = False
+
         self.supports_native_enum = self.server_version_info >= (8, 3)
         if not self.supports_native_enum:
             self.colspecs = self.colspecs.copy()
