@@ -28,7 +28,6 @@ import contextlib
 import itertools
 import operator
 import re
-import time
 
 from . import base
 from . import coercions
@@ -482,7 +481,7 @@ class Compiled(object):
                 self.string = self.preparer._render_schema_translates(
                     self.string, schema_translate_map
                 )
-        self._gen_time = time.time()
+        self._gen_time = util.perf_counter()
 
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options

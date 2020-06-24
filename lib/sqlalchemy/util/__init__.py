@@ -61,6 +61,7 @@ from .compat import itertools_filterfalse  # noqa
 from .compat import namedtuple  # noqa
 from .compat import next  # noqa
 from .compat import parse_qsl  # noqa
+from .compat import perf_counter  # noqa
 from .compat import pickle  # noqa
 from .compat import print_  # noqa
 from .compat import py2k  # noqa

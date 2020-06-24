@@ -99,6 +99,7 @@ if py3k:
     from io import BytesIO as byte_buffer
     from io import StringIO
     from itertools import zip_longest
+    from time import perf_counter
     from urllib.parse import (
         quote_plus,
         unquote_plus,
@@ -192,6 +193,7 @@ else:
     from StringIO import StringIO  # noqa
     from cStringIO import StringIO as byte_buffer  # noqa
     from itertools import izip_longest as zip_longest  # noqa
+    from time import clock as perf_counter  # noqa
     from urllib import quote  # noqa
     from urllib import quote_plus  # noqa
     from urllib import unquote  # noqa

@@ -16,7 +16,6 @@ as the base class for their own corresponding classes.
 import codecs
 import random
 import re
-import time
 import weakref
 
 from . import cursor as _cursor
@@ -1027,7 +1026,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.compiled is None:
             return "raw sql"
 
-        now = time.time()
+        now = util.perf_counter()
         if self.compiled.cache_key is None:
             return "no key %.5fs" % (now - self.compiled._gen_time,)
         elif self.cache_hit:
