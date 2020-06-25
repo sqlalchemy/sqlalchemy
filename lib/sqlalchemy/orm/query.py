@@ -4312,7 +4312,6 @@ class _MapperEntity(_QueryEntity):
         Note the newer style of using a free standing
         ``with_polymporphic()`` construct doesn't make use of this method.
 
-
         """
         if self.is_aliased_class:
             # TODO: invalidrequest ?

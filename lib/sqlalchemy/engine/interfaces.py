@@ -257,13 +257,13 @@ class Dialect(object):
           boolean
 
         * ``sequence`` -
-          a dictionary of the form
+          a dictionary of the form::
               {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
                'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
                'cycle': bool, 'cache': int, 'order': bool}
 
         Additional column attributes may be present.
-        
+
         """
 
         raise NotImplementedError()
@@ -377,7 +377,7 @@ class Dialect(object):
 
         * ``unique`` -
           boolean
-          
+
         """
 
         raise NotImplementedError()
