@@ -1,7 +1,0 @@
-.. change::
-    :tags: change, mssql
-    :tickets: 5321
-
-    Moved the ``supports_sane_rowcount_returning = False`` requirement from
-    the ``PyODBCConnector`` level to the ``MSDialect_pyodbc`` since pyodbc
-    does work properly in some circumstances.

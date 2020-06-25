@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 5198
-
-    Added a new parameter :paramref:`_orm.query_expression.default_expr` to the
-    :func:`_orm.query_expression` construct, which will be appled to queries
-    automatically if the :func:`_orm.with_expression` option is not used. Pull
-    request courtesy Haoyu Sun.

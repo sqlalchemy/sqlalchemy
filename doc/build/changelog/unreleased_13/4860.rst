@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, mysql
-    :tickets: 4860
-
-    Implemented row-level locking support for mysql.  Pull request courtesy
-    Quentin Somerville.
