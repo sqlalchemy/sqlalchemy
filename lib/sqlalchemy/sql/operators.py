@@ -124,7 +124,7 @@ class Operators(object):
     def op(
         self, opstring, precedence=0, is_comparison=False, return_type=None
     ):
-        """produce a generic operator function.
+        """Produce a generic operator function.
 
         e.g.::
 
@@ -726,7 +726,7 @@ class ColumnOperators(Operators):
 
             somecolumn LIKE :param || '%' ESCAPE '/'
 
-          With the value of :param as ``"foo/%bar"``.
+          With the value of ``:param`` as ``"foo/%bar"``.
 
           .. versionadded:: 1.2
 
@@ -814,7 +814,7 @@ class ColumnOperators(Operators):
 
             somecolumn LIKE '%' || :param ESCAPE '/'
 
-          With the value of :param as ``"foo/%bar"``.
+          With the value of ``:param`` as ``"foo/%bar"``.
 
           .. versionadded:: 1.2
 
@@ -902,7 +902,7 @@ class ColumnOperators(Operators):
 
             somecolumn LIKE '%' || :param || '%' ESCAPE '/'
 
-          With the value of :param as ``"foo/%bar"``.
+          With the value of ``:param`` as ``"foo/%bar"``.
 
           .. versionadded:: 1.2
 

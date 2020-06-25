@@ -189,7 +189,6 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             ).engine
             is e2
         )
-
         sess.close()
 
     def test_bind_arg(self):

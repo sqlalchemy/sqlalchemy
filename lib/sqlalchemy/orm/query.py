@@ -18,7 +18,6 @@ ORM session, whereas the ``Select`` construct interacts directly with the
 database to return iterable result sets.
 
 """
-
 from itertools import chain
 
 from . import attributes
@@ -53,7 +52,6 @@ from ..sql import visitors
 from ..sql.base import ColumnCollection
 from ..sql.expression import _interpret_as_from
 from ..sql.selectable import ForUpdateArg
-
 
 __all__ = ["Query", "QueryContext", "aliased"]
 
@@ -131,8 +129,7 @@ class Query(object):
 
     lazy_loaded_from = None
     """An :class:`.InstanceState` that is using this :class:`_query.Query`
-    for a
-    lazy load operation.
+    for a lazy load operation.
 
     The primary rationale for this attribute is to support the horizontal
     sharding extension, where it is available within specific query
@@ -194,6 +191,7 @@ class Query(object):
             :meth:`_query.Query.with_session`
 
         """
+
         self.session = session
         self._polymorphic_adapters = {}
         self._set_entities(entities)
@@ -400,7 +398,7 @@ class Query(object):
         return self._entities[0]
 
     def _mapper_zero(self):
-        """return the Mapper associated with the first QueryEntity."""
+        """Return the Mapper associated with the first QueryEntity."""
         return self._entities[0].mapper
 
     def _entity_zero(self):
@@ -565,7 +563,7 @@ class Query(object):
         return stmt
 
     def subquery(self, name=None, with_labels=False, reduce_columns=False):
-        """return the full SELECT statement represented by
+        """Return the full SELECT statement represented by
         this :class:`_query.Query`, embedded within an
         :class:`_expression.Alias`.
 
@@ -660,7 +658,7 @@ class Query(object):
         :class:`_query.Query`, converted
         to a scalar subquery with a label of the given name.
 
-        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.label`.
+        Analogous to :meth:`_expression.SelectBase.label`.
 
         """
 
@@ -670,7 +668,7 @@ class Query(object):
         """Return the full SELECT statement represented by this
         :class:`_query.Query`, converted to a scalar subquery.
 
-        Analogous to :meth:`sqlalchemy.sql.expression.SelectBase.as_scalar`.
+        Analogous to :meth:`_expression.SelectBase.as_scalar`.
 
         """
 
@@ -770,9 +768,8 @@ class Query(object):
 
         .. note:: The :meth:`_query.Query.with_labels` method *only* applies
            the output of :attr:`_query.Query.statement`, and *not* to any of
-           the result-row invoking systems of :class:`_query.Query` itself, e.
-           g.
-           :meth:`_query.Query.first`, :meth:`_query.Query.all`, etc.
+           the result-row invoking systems of :class:`_query.Query` itself,
+           e.g. :meth:`_query.Query.first`, :meth:`_query.Query.all`, etc.
            To execute
            a query using :meth:`_query.Query.with_labels`, invoke the
            :attr:`_query.Query.statement` using :meth:`.Session.execute`::
@@ -818,7 +815,7 @@ class Query(object):
 
     @_generative()
     def _with_current_path(self, path):
-        """indicate that this query applies to objects loaded
+        """Indicate that this query applies to objects loaded
         within a certain path.
 
         Used by deferred loaders (see strategies.py) which transfer
@@ -994,8 +991,8 @@ class Query(object):
          the order in which they correspond to the mapped
          :class:`_schema.Table`
          object's primary key columns, or if the
-         :paramref:`_orm.Mapper.primary_key` configuration parameter were used
-         , in
+         :paramref:`_orm.Mapper.primary_key` configuration parameter were
+         used, in
          the order used for that parameter. For example, if the primary key
          of a row is represented by the integer
          digits "5, 10" the call would look like::
@@ -1139,10 +1136,9 @@ class Query(object):
 
     @_generative()
     def correlate(self, *args):
-        """Return a :class:`_query.Query`
-        construct which will correlate the given
-        FROM clauses to that of an enclosing :class:`_query.Query` or
-        :func:`_expression.select`.
+        """Return a :class:`.Query` construct which will correlate the given
+        FROM clauses to that of an enclosing :class:`.Query` or
+        :func:`~.expression.select`.
 
         The method here accepts mapped classes, :func:`.aliased` constructs,
         and :func:`.mapper` constructs as arguments, which are resolved into
@@ -1473,6 +1469,7 @@ class Query(object):
          those being selected.
 
         """
+
         fromclause = (
             self.with_labels()
             .enable_eagerloads(False)
@@ -1519,7 +1516,9 @@ class Query(object):
 
     def values(self, *columns):
         """Return an iterator yielding result tuples corresponding
-        to the given list of columns"""
+        to the given list of columns.
+
+        """
 
         if not columns:
             return iter(())
@@ -1533,7 +1532,9 @@ class Query(object):
 
     def value(self, column):
         """Return a scalar result corresponding to the given
-        column expression."""
+        column expression.
+
+        """
         try:
             return next(self.values(column))[0]
         except StopIteration:
@@ -1609,6 +1610,7 @@ class Query(object):
             :ref:`relationship_loader_options`
 
         """
+
         return self._options(False, *args)
 
     def _conditional_options(self, *args):
@@ -1656,7 +1658,7 @@ class Query(object):
         this :class:`_query.Query`.
 
         Functionality is passed straight through to
-        :meth:`~sqlalchemy.sql.expression.Select.with_hint`,
+        :meth:`_expression.Select.with_hint`,
         with the addition that ``selectable`` can be a
         :class:`_schema.Table`, :class:`_expression.Alias`,
         or ORM entity / mapped class
@@ -1671,13 +1673,14 @@ class Query(object):
             optimizer hints
 
         """
+
         if selectable is not None:
             selectable = inspect(selectable).selectable
 
         self._with_hints += ((selectable, text, dialect_name),)
 
     def with_statement_hint(self, text, dialect_name="*"):
-        """add a statement hint to this :class:`_expression.Select`.
+        """Add a statement hint to this :class:`_expression.Select`.
 
         This method is similar to :meth:`_expression.Select.with_hint`
         except that
@@ -1810,10 +1813,10 @@ class Query(object):
 
     @_generative()
     def params(self, *args, **kwargs):
-        r"""add values for bind parameters which may have been
+        r"""Add values for bind parameters which may have been
         specified in filter().
 
-        parameters may be specified using \**kwargs, or optionally a single
+        Parameters may be specified using \**kwargs, or optionally a single
         dictionary as the first positional argument. The reason for both is
         that \**kwargs is convenient, however some parameter dictionaries
         contain unicode keys in which case \**kwargs cannot be used.
@@ -1831,7 +1834,7 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def filter(self, *criterion):
-        r"""apply the given filtering criterion to a copy
+        r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using SQL expressions.
 
         e.g.::
@@ -1866,7 +1869,7 @@ class Query(object):
                 self._criterion = criterion
 
     def filter_by(self, **kwargs):
-        r"""apply the given filtering criterion to a copy
+        r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using keyword expressions.
 
         e.g.::
@@ -1907,8 +1910,8 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def order_by(self, *criterion):
-        """apply one or more ORDER BY criterion to the query and return
-        the newly resulting ``Query``
+        """Apply one or more ORDER BY criterion to the query and return
+        the newly resulting :class:`_query.Query`.
 
         All existing ORDER BY settings can be suppressed by
         passing ``None`` - this will suppress any ordering configured
@@ -1935,15 +1938,15 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def group_by(self, *criterion):
-        """apply one or more GROUP BY criterion to the query and return
-        the newly resulting :class:`_query.Query`
+        """Apply one or more GROUP BY criterion to the query and return
+        the newly resulting :class:`_query.Query`.
 
         All existing GROUP BY settings can be suppressed by
         passing ``None`` - this will suppress any GROUP BY configured
         on mappers as well.
 
-        .. versionadded:: 1.1 GROUP BY can be cancelled by passing None,
-           in the same way as ORDER BY.
+        .. versionadded:: 1.1 GROUP BY can be cancelled by passing
+           ``None``, in the same way as ORDER BY.
 
         """
 
@@ -1962,7 +1965,7 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def having(self, criterion):
-        r"""apply a HAVING criterion to the query and return the
+        r"""Apply a HAVING criterion to the query and return the
         newly resulting :class:`_query.Query`.
 
         :meth:`_query.Query.having` is used in conjunction with
@@ -2105,7 +2108,7 @@ class Query(object):
         Where above, the call to :meth:`_query.Query.join` along
         ``User.addresses`` will result in SQL approximately equivalent to::
 
-            SELECT user.id, User.name
+            SELECT user.id, user.name
             FROM user JOIN address ON user.id = address.user_id
 
         In the above example we refer to ``User.addresses`` as passed to
@@ -2378,10 +2381,11 @@ class Query(object):
         )
 
     def outerjoin(self, *props, **kwargs):
-        """Create a left outer join against this ``Query`` object's criterion
-        and apply generatively, returning the newly resulting ``Query``.
+        """Create a left outer join against this :class:`_query.Query`
+        object's criterion and apply generatively, returning the newly
+        resulting :class:`_query.Query`.
 
-        Usage is the same as the ``join()`` method.
+        Usage is the same as the :meth:`_query.Query.join` method.
 
         """
         aliased, from_joinpoint, full = (
@@ -2415,7 +2419,8 @@ class Query(object):
 
     @_generative(_no_statement_condition, _no_limit_offset)
     def _join(self, keys, outerjoin, full, create_aliases, from_joinpoint):
-        """consumes arguments from join() or outerjoin(), places them into a
+        """Consumes arguments from :meth:`_query.Query.join` or
+        :meth:`_query.Query.outerjoin`, places them into a
         consistent format with which to form the actual JOIN constructs.
 
         """
@@ -2559,7 +2564,7 @@ class Query(object):
     def _join_left_to_right(
         self, left, right, onclause, prop, create_aliases, outerjoin, full
     ):
-        """given raw "left", "right", "onclause" parameters consumed from
+        """Given raw "left", "right", "onclause" parameters consumed from
         a particular key within _join(), add a real ORMJoin object to
         our _from_obj list (or augment an existing one)
 
@@ -2806,7 +2811,7 @@ class Query(object):
     def _join_check_and_adapt_right_side(
         self, left, right, onclause, prop, create_aliases
     ):
-        """transform the "right" side of the join as well as the onclause
+        """Transform the "right" side of the join as well as the onclause
         according to polymorphic mapping translations, aliasing on the query
         or on the join, special cases where the right and left side have
         overlapping tables.
@@ -3224,7 +3229,7 @@ class Query(object):
     @_generative(_no_statement_condition)
     def limit(self, limit):
         """Apply a ``LIMIT`` to the query and return the newly resulting
-        ``Query``.
+        :class:`_query.Query`.
 
         """
         self._limit = limit
@@ -3232,7 +3237,7 @@ class Query(object):
     @_generative(_no_statement_condition)
     def offset(self, offset):
         """Apply an ``OFFSET`` to the query and return the newly resulting
-        ``Query``.
+        :class:`_query.Query`.
 
         """
         self._offset = offset
@@ -3240,7 +3245,7 @@ class Query(object):
     @_generative(_no_statement_condition)
     def distinct(self, *expr):
         r"""Apply a ``DISTINCT`` to the query and return the newly resulting
-        ``Query``.
+        :class:`_query.Query`.
 
 
         .. note::
@@ -3272,7 +3277,7 @@ class Query(object):
     @_generative()
     def prefix_with(self, *prefixes):
         r"""Apply the prefixes to the query and return the newly resulting
-        ``Query``.
+        :class:`_query.Query`.
 
         :param \*prefixes: optional prefixes, typically strings,
          not using any commas.   In particular is useful for MySQL keywords
@@ -3303,7 +3308,7 @@ class Query(object):
     @_generative()
     def suffix_with(self, *suffixes):
         r"""Apply the suffix to the query and return the newly resulting
-        ``Query``.
+        :class:`_query.Query`.
 
         :param \*suffixes: optional suffixes, typically strings,
          not using any commas.
@@ -4248,7 +4253,7 @@ class LockmodeArg(ForUpdateArg):
 
 
 class _QueryEntity(object):
-    """represent an entity column returned within a Query result."""
+    """Represent an entity column returned within a Query result."""
 
     def __new__(cls, *args, **kwargs):
         if cls is _QueryEntity:
@@ -4301,10 +4306,11 @@ class _MapperEntity(_QueryEntity):
     def set_with_polymorphic(
         self, query, cls_or_mappers, selectable, polymorphic_on
     ):
-        """Receive an update from a call to query.with_polymorphic().
+        """Receive an update from a call to
+        :meth:`_query.Query.with_polymorphic`.
 
-        Note the newer style of using a free standing with_polymporphic()
-        construct doesn't make use of this method.
+        Note the newer style of using a free standing
+        ``with_polymporphic()`` construct doesn't make use of this method.
 
 
         """
@@ -4433,8 +4439,7 @@ class _MapperEntity(_QueryEntity):
 @inspection._self_inspects
 class Bundle(InspectionAttr):
     """A grouping of SQL expressions that are returned by a
-    :class:`_query.Query`
-    under one namespace.
+    :class:`_query.Query` under one namespace.
 
     The :class:`.Bundle` essentially allows nesting of the tuple-based
     results returned by a column-oriented :class:`_query.Query` object.
@@ -4912,8 +4917,7 @@ class QueryContext(object):
 class AliasOption(interfaces.MapperOption):
     def __init__(self, alias):
         r"""Return a :class:`.MapperOption` that will indicate to the
-        :class:`_query.Query`
-        that the main table has been aliased.
+        :class:`_query.Query` that the main table has been aliased.
 
         This is a seldom-used option to suit the
         very rare case that :func:`.contains_eager`

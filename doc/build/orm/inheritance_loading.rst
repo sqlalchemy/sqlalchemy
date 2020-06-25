@@ -541,7 +541,7 @@ similarly to the following:
     WHERE employee.id IN (?) ORDER BY employee.id
     (1,)
 
-Combining "selectin" polymorhic loading with query-time
+Combining "selectin" polymorphic loading with query-time
 :func:`_orm.with_polymorphic` usage is also possible (though this is very
 outer-space stuff!); assuming the above mappings had no ``polymorphic_load``
 set up, we could get the same result as follows::

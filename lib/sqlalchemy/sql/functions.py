@@ -64,7 +64,7 @@ def register_function(identifier, fn, package="_default"):
         if raw_identifier in case_sensitive_reg[identifier]:
             util.warn(
                 "The GenericFunction '{}' is already registered and "
-                "is going to be overriden.".format(identifier)
+                "is going to be overridden.".format(identifier)
             )
             reg[identifier] = fn
         else:
@@ -159,7 +159,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
     @property
     def columns(self):
-        """The set of columns exported by this :class:`.FunctionElement`.
+        r"""The set of columns exported by this :class:`.FunctionElement`.
 
         Function objects currently have no result column names built in;
         this method returns a single-element column collection with
@@ -943,7 +943,7 @@ class user(AnsiFunction):
 
 
 class array_agg(GenericFunction):
-    """support for the ARRAY_AGG function.
+    """Support for the ARRAY_AGG function.
 
     The ``func.array_agg(expr)`` construct returns an expression of
     type :class:`_types.ARRAY`.
@@ -996,7 +996,7 @@ class OrderedSetAgg(GenericFunction):
 
 
 class mode(OrderedSetAgg):
-    """implement the ``mode`` ordered-set aggregate function.
+    """Implement the ``mode`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
     modifier to supply a sort expression to operate upon.
@@ -1009,7 +1009,7 @@ class mode(OrderedSetAgg):
 
 
 class percentile_cont(OrderedSetAgg):
-    """implement the ``percentile_cont`` ordered-set aggregate function.
+    """Implement the ``percentile_cont`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
     modifier to supply a sort expression to operate upon.
@@ -1026,7 +1026,7 @@ class percentile_cont(OrderedSetAgg):
 
 
 class percentile_disc(OrderedSetAgg):
-    """implement the ``percentile_disc`` ordered-set aggregate function.
+    """Implement the ``percentile_disc`` ordered-set aggregate function.
 
     This function must be used with the :meth:`.FunctionElement.within_group`
     modifier to supply a sort expression to operate upon.

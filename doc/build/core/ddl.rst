@@ -140,7 +140,7 @@ provide DDL expressions. For example, to produce a ``CREATE TABLE`` statement:
 .. sourcecode:: python+sql
 
     from sqlalchemy.schema import CreateTable
-    with engine.connecT() as conn:
+    with engine.connect() as conn:
     {sql}    conn.execute(CreateTable(mytable))
     CREATE TABLE mytable (
         col1 INTEGER,

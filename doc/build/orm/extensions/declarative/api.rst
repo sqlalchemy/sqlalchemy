@@ -105,7 +105,7 @@ Above, classes which inherit from ``DefaultBase`` will use one
 created perhaps within distinct databases::
 
     DefaultBase.metadata.create_all(some_engine)
-    OtherBase.metadata_create_all(some_other_engine)
+    OtherBase.metadata.create_all(some_other_engine)
 
 
 ``__table_cls__``

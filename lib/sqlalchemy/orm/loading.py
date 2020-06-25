@@ -28,7 +28,6 @@ from .. import exc as sa_exc
 from .. import util
 from ..sql import util as sql_util
 
-
 _new_runid = util.counter()
 
 
@@ -733,6 +732,7 @@ def _populate_full(
             for key, set_callable in populators["expire"]:
                 if set_callable:
                     state.expired_attributes.add(key)
+
         for key, populator in populators["new"]:
             populator(state, dict_, row)
         for key, populator in populators["delayed"]:
@@ -954,7 +954,7 @@ def load_scalar_attributes(mapper, state, attribute_names):
     # concrete inheritance, the class manager might have some keys
     # of attributes on the superclass that we didn't actually map.
     # These could be mapped as "concrete, dont load" or could be completely
-    # exluded from the mapping and we know nothing about them.  Filter them
+    # excluded from the mapping and we know nothing about them.  Filter them
     # here to prevent them from coming through.
     if attribute_names:
         attribute_names = attribute_names.intersection(mapper.attrs.keys())

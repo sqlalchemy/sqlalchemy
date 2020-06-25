@@ -5,7 +5,7 @@ Core Internals
 
 Some key internal constructs are listed here.
 
-.. currentmodule: sqlalchemy
+.. currentmodule:: sqlalchemy
 
 .. autoclass:: sqlalchemy.engine.interfaces.Compiled
     :members:

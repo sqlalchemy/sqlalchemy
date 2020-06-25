@@ -534,7 +534,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
         type that is explicitly known to be a decimal type
         (e.g. ``DECIMAL``, ``NUMERIC``, others) and not a floating point
         type (e.g. ``FLOAT``, ``REAL``, others).
-        If the database column on the server is in fact a floating-point type
+        If the database column on the server is in fact a floating-point
         type, such as ``FLOAT`` or ``REAL``, use the :class:`.Float`
         type or a subclass, otherwise numeric coercion between
         ``float``/``Decimal`` may or may not function as expected.
@@ -1124,7 +1124,7 @@ class SchemaType(SchemaEventTarget):
         return self.metadata and self.metadata.bind or None
 
     def create(self, bind=None, checkfirst=False):
-        """Issue CREATE ddl for this type, if applicable."""
+        """Issue CREATE DDL for this type, if applicable."""
 
         if bind is None:
             bind = _bind_or_error(self)
@@ -1133,7 +1133,7 @@ class SchemaType(SchemaEventTarget):
             t.create(bind=bind, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=False):
-        """Issue DROP ddl for this type, if applicable."""
+        """Issue DROP DDL for this type, if applicable."""
 
         if bind is None:
             bind = _bind_or_error(self)
@@ -1374,7 +1374,7 @@ class Enum(Emulated, String, SchemaType):
            default, the database value of the enumeration is used as the
            sorting function.
 
-            .. versionadded:: 1.3.8
+           .. versionadded:: 1.3.8
 
 
 
@@ -2179,8 +2179,8 @@ class JSON(Indexable, TypeEngine):
         )
 
     While it is possible to use :attr:`_types.JSON.NULL` in this context, the
-    :attr:`_types.JSON.NULL` value will be returned as the value of the column
-    ,
+    :attr:`_types.JSON.NULL` value will be returned as the value of the
+    column,
     which in the context of the ORM or other repurposing of the default
     value, may not be desirable.  Using a SQL expression means the value
     will be re-fetched from the database within the context of retrieving
@@ -2215,7 +2215,7 @@ class JSON(Indexable, TypeEngine):
         self.none_as_null = none_as_null
 
     class JSONElementType(TypeEngine):
-        """common function for index / path elements in a JSON expression."""
+        """Common function for index / path elements in a JSON expression."""
 
         _integer = Integer()
         _string = String()
@@ -2540,7 +2540,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     __visit_name__ = "ARRAY"
 
     zero_indexes = False
-    """if True, Python zero-based indexes should be interpreted as one-based
+    """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""
 
     class Comparator(Indexable.Comparator, Concatenable.Comparator):

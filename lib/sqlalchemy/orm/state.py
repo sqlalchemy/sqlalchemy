@@ -119,7 +119,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @property
     def transient(self):
-        """Return true if the object is :term:`transient`.
+        """Return ``True`` if the object is :term:`transient`.
 
         .. seealso::
 
@@ -130,7 +130,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @property
     def pending(self):
-        """Return true if the object is :term:`pending`.
+        """Return ``True`` if the object is :term:`pending`.
 
 
         .. seealso::
@@ -142,7 +142,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @property
     def deleted(self):
-        """Return true if the object is :term:`deleted`.
+        """Return ``True`` if the object is :term:`deleted`.
 
         An object that is in the deleted state is guaranteed to
         not be within the :attr:`.Session.identity_map` of its parent
@@ -196,7 +196,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @property
     def persistent(self):
-        """Return true if the object is :term:`persistent`.
+        """Return ``True`` if the object is :term:`persistent`.
 
         An object that is in the persistent state is guaranteed to
         be within the :attr:`.Session.identity_map` of its parent
@@ -217,7 +217,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     @property
     def detached(self):
-        """Return true if the object is :term:`detached`.
+        """Return ``True`` if the object is :term:`detached`.
 
         .. seealso::
 
@@ -320,7 +320,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
         """Return ``True`` if this object has an identity key.
 
         This should always have the same value as the
-        expression ``state.persistent or state.detached``.
+        expression ``state.persistent`` or ``state.detached``.
 
         """
         return bool(self.key)

@@ -20,7 +20,6 @@ from .. import util
 from ..orm.query import Query
 from ..orm.session import Session
 
-
 __all__ = ["ShardedSession", "ShardedQuery"]
 
 
@@ -32,10 +31,11 @@ class ShardedQuery(Query):
         self._shard_id = None
 
     def set_shard(self, shard_id):
-        """return a new query, limited to a single shard ID.
+        """Return a new query, limited to a single shard ID.
 
-        all subsequent operations with the returned query will
+        All subsequent operations with the returned query will
         be against the single shard regardless of other state.
+
         """
 
         q = self._clone()
@@ -94,7 +94,7 @@ class ShardedQuery(Query):
         lazy_loaded_from=None,
         **kw
     ):
-        """override the default Query._identity_lookup method so that we
+        """Override the default Query._identity_lookup method so that we
         search for a given non-token primary key identity across all
         possible identity tokens (e.g. shard ids).
 
@@ -166,6 +166,7 @@ class ShardedResult(object):
     or ``rowcount``, which is the sum of all the individual rowcount values.
 
     .. versionadded::  1.3
+
     """
 
     __slots__ = ("result_proxies", "aggregate_rowcount")

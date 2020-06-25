@@ -50,7 +50,8 @@ all_cascades = frozenset(
 
 
 class CascadeOptions(frozenset):
-    """Keeps track of the options sent to relationship().cascade"""
+    """Keeps track of the options sent to
+    :paramref:`.relationship.cascade`"""
 
     _add_w_all_cascades = all_cascades.difference(
         ["all", "none", "delete-orphan"]
@@ -254,7 +255,7 @@ def polymorphic_union(
 
 
 def identity_key(*args, **kwargs):
-    """Generate "identity key" tuples, as are used as keys in the
+    r"""Generate "identity key" tuples, as are used as keys in the
     :attr:`.Session.identity_map` dictionary.
 
     This function has several call styles:
@@ -757,31 +758,32 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
 
         session.query(MyClass, my_alias).filter(MyClass.id > my_alias.id)
 
-    The :func:`.aliased` function is used to create an ad-hoc mapping
-    of a mapped class to a new selectable.  By default, a selectable
-    is generated from the normally mapped selectable (typically a
-    :class:`_schema.Table`) using the :meth:`_expression.FromClause.alias`
-    method.
-    However, :func:`.aliased` can also be used to link the class to
-    a new :func:`_expression.select` statement.   Also, the
-    :func:`.with_polymorphic`
-    function is a variant of :func:`.aliased` that is intended to specify
-    a so-called "polymorphic selectable", that corresponds to the union
-    of several joined-inheritance subclasses at once.
+    The :func:`.aliased` function is used to create an ad-hoc mapping of a
+    mapped class to a new selectable.  By default, a selectable is generated
+    from the normally mapped selectable (typically a :class:`_schema.Table`)
+    using the
+    :meth:`_expression.FromClause.alias` method. However, :func:`.aliased`
+    can also be
+    used to link the class to a new :func:`_expression.select` statement.
+    Also, the :func:`.with_polymorphic` function is a variant of
+    :func:`.aliased` that is intended to specify a so-called "polymorphic
+    selectable", that corresponds to the union of several joined-inheritance
+    subclasses at once.
 
     For convenience, the :func:`.aliased` function also accepts plain
     :class:`_expression.FromClause` constructs, such as a
     :class:`_schema.Table` or
     :func:`_expression.select` construct.   In those cases, the
     :meth:`_expression.FromClause.alias`
-    method is called on the object and the new :class:`_expression.Alias`
-    object
-    returned.  The returned :class:`_expression.Alias`
-    is not ORM-mapped in this case.
+    method is called on the object and the new
+    :class:`_expression.Alias` object returned.  The returned
+    :class:`_expression.Alias` is not
+    ORM-mapped in this case.
 
     :param element: element to be aliased.  Is normally a mapped class,
-     but for convenience can also be a :class:`_expression.FromClause` element
-     .
+     but for convenience can also be a :class:`_expression.FromClause`
+     element.
+
     :param alias: Optional selectable unit to map the element to.  This is
      usually used to link the object to a subquery, and should be an aliased
      select construct as one would produce from the

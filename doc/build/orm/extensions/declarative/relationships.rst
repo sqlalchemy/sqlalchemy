@@ -152,8 +152,8 @@ with declarative as with traditional mappings. The
 traditional way.  The :class:`_schema.Table` usually shares
 the :class:`_schema.MetaData` object used by the declarative base::
 
-    keywords = Table(
-        'keywords', Base.metadata,
+    keyword_author = Table(
+        'keyword_author', Base.metadata,
         Column('author_id', Integer, ForeignKey('authors.id')),
         Column('keyword_id', Integer, ForeignKey('keywords.id'))
         )
@@ -161,7 +161,7 @@ the :class:`_schema.MetaData` object used by the declarative base::
     class Author(Base):
         __tablename__ = 'authors'
         id = Column(Integer, primary_key=True)
-        keywords = relationship("Keyword", secondary=keywords)
+        keywords = relationship("Keyword", secondary=keyword_author)
 
 Like other :func:`~sqlalchemy.orm.relationship` arguments, a string is accepted
 as well, passing the string name of the table as defined in the
@@ -170,7 +170,7 @@ as well, passing the string name of the table as defined in the
     class Author(Base):
         __tablename__ = 'authors'
         id = Column(Integer, primary_key=True)
-        keywords = relationship("Keyword", secondary="keywords")
+        keywords = relationship("Keyword", secondary="keyword_author")
 
 As with traditional mapping, its generally not a good idea to use
 a :class:`_schema.Table` as the "secondary" argument which is also mapped to

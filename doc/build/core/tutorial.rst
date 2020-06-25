@@ -250,8 +250,8 @@ The interesting part of an :class:`~sqlalchemy.sql.expression.Insert` is
 executing it. In this tutorial, we will generally focus on the most explicit
 method of executing a SQL construct, and later touch upon some "shortcut" ways
 to do it. The ``engine`` object we created is a repository for database
-connections capable of issuing SQL to the database. To acquire a connection,
-we use the ``connect()`` method::
+connections capable of issuing SQL to the database. To acquire a
+connection, we will use the :meth:`.Engine.connect` method::
 
     >>> conn = engine.connect()
     >>> conn
@@ -900,8 +900,8 @@ Fetching the ``email_address`` column would be::
     >>> row[addresses.c.email_address]
     'jack@yahoo.com'
 
-If on the other hand we used a string column key, the usual rules of name-
-based matching still apply, and we'd get an ambiguous column error for
+If on the other hand we used a string column key, the usual rules of
+name-based matching still apply, and we'd get an ambiguous column error for
 the ``id`` value::
 
     >>> row["id"]
@@ -2235,8 +2235,8 @@ method as Python dictionary keys, there is no other fixed ordering
 available.
 
 However in some cases, the order of parameters rendered in the SET clause of an
-UPDATE statement can be significant.  The main example of this is when using
-MySQL and providing updates to column values based on that of other
+UPDATE statement may need to be explicitly stated.  The main example of this is
+when using MySQL and providing updates to column values based on that of other
 column values.  The end result of the following statement::
 
     UPDATE some_table SET x = y + 10, y = 20

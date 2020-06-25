@@ -1006,9 +1006,10 @@ class DeprecatedDeclTest(fixtures.TestBase):
 
 
 class DeprecatedMapperExtensionTest(_fixtures.FixtureTest):
-
     """Superseded by MapperEventsTest - test backwards
-    compatibility of MapperExtension."""
+    compatibility of MapperExtension.
+
+    """
 
     run_inserts = None
 

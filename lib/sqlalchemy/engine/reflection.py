@@ -234,7 +234,7 @@ class Inspector(object):
             :meth:`_reflection.Inspector.get_table_names`
 
             :func:`.sort_tables_and_constraints` - similar method which works
-             with an already-given :class:`_schema.MetaData`.
+            with an already-given :class:`_schema.MetaData`.
 
         """
         if hasattr(self.dialect, "get_table_names"):
@@ -270,7 +270,7 @@ class Inspector(object):
         ] + [(None, list(remaining_fkcs))]
 
     def get_temp_table_names(self):
-        """return a list of temporary table names for the current bind.
+        """Return a list of temporary table names for the current bind.
 
         This method is unsupported by most dialects; currently
         only SQLite implements it.
@@ -283,7 +283,7 @@ class Inspector(object):
         )
 
     def get_temp_view_names(self):
-        """return a list of temporary view names for the current bind.
+        """Return a list of temporary view names for the current bind.
 
         This method is unsupported by most dialects; currently
         only SQLite implements it.
@@ -358,7 +358,7 @@ class Inspector(object):
         * ``autoincrement`` - indicates that the column is auto incremented -
           this is returned as a boolean or 'auto'
 
-        * ``comment`` - (optional) the commnet on the column. Only some
+        * ``comment`` - (optional) the comment on the column. Only some
           dialects return this key
 
         * ``computed`` - (optional) when present it indicates that this column
@@ -422,10 +422,10 @@ class Inspector(object):
         Given a string `table_name`, and an optional string `schema`, return
         primary key information as a dictionary with these keys:
 
-        constrained_columns
+        * ``constrained_columns`` -
           a list of column names that make up the primary key
 
-        name
+        * ``name`` -
           optional name of the primary key constraint.
 
         :param table_name: string name of the table.  For special quoting,
@@ -446,20 +446,20 @@ class Inspector(object):
         Given a string `table_name`, and an optional string `schema`, return
         foreign key information as a list of dicts with these keys:
 
-        constrained_columns
+        * ``constrained_columns`` -
           a list of column names that make up the foreign key
 
-        referred_schema
+        * ``referred_schema`` -
           the name of the referred schema
 
-        referred_table
+        * ``referred_table`` -
           the name of the referred table
 
-        referred_columns
+        * ``referred_columns`` -
           a list of column names in the referred table that correspond to
           constrained_columns
 
-        name
+        * ``name`` -
           optional name of the foreign key constraint.
 
         :param table_name: string name of the table.  For special quoting,
@@ -481,22 +481,22 @@ class Inspector(object):
         Given a string `table_name` and an optional string `schema`, return
         index information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the index's name
 
-        column_names
+        * ``column_names`` -
           list of column names in order
 
-        unique
+        * ``unique`` -
           boolean
 
-        column_sorting
+        * ``column_sorting`` -
           optional dict mapping column names to tuple of sort keywords,
           which may include ``asc``, ``desc``, ``nullsfirst``, ``nullslast``.
 
           .. versionadded:: 1.3.5
 
-        dialect_options
+        * ``dialect_options`` -
           dict of dialect-specific index options.  May not be present
           for all dialects.
 
@@ -521,10 +521,10 @@ class Inspector(object):
         Given a string `table_name` and an optional string `schema`, return
         unique constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the unique constraint's name
 
-        column_names
+        * ``column_names`` -
           list of column names in order
 
         :param table_name: string name of the table.  For special quoting,
@@ -546,7 +546,7 @@ class Inspector(object):
         Given a string ``table_name`` and an optional string ``schema``,
         return table comment information as a dictionary with these keys:
 
-        text
+        * ``text`` -
             text of the comment.
 
         Raises ``NotImplementedError`` for a dialect that does not support
@@ -566,13 +566,13 @@ class Inspector(object):
         Given a string `table_name` and an optional string `schema`, return
         check constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the check constraint's name
 
-        sqltext
+        * ``sqltext`` -
           the check constraint's SQL expression
 
-        dialect_options
+        * ``dialect_options`` -
           may or may not be present; a dictionary with additional
           dialect-specific options for this CHECK constraint
 
@@ -601,8 +601,8 @@ class Inspector(object):
         resolve_fks=True,
         _extend_on=None,
     ):
-        """Given a Table object, load its internal constructs based on
-        introspection.
+        """Given a :class:`_schema.Table` object, load its internal
+        constructs based on introspection.
 
         This is the underlying method used by most dialects to produce
         table reflection.  Direct usage is like::

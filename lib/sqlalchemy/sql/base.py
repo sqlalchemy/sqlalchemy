@@ -331,7 +331,7 @@ class Generative(object):
 
 
 class Executable(Generative):
-    """Mark a ClauseElement as supporting execution.
+    """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
     of objects, including :func:`select`, :func:`delete`, :func:`update`,
@@ -345,7 +345,7 @@ class Executable(Generative):
 
     @_generative
     def execution_options(self, **kw):
-        """ Set non-SQL options for the statement which take effect during
+        """Set non-SQL options for the statement which take effect during
         execution.
 
         Execution options can be set on a per-statement or
@@ -391,13 +391,14 @@ class Executable(Generative):
         self._execution_options = self._execution_options.union(kw)
 
     def get_execution_options(self):
-        """ Get the non-SQL options which will take effect during execution.
+        """Get the non-SQL options which will take effect during execution.
 
         .. versionadded:: 1.3
 
         .. seealso::
 
             :meth:`.Executable.execution_options`
+
         """
         return self._execution_options
 
@@ -426,8 +427,7 @@ class Executable(Generative):
     @property
     def bind(self):
         """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
-        to
-        which this :class:`.Executable` is bound, or None if none found.
+        to which this :class:`.Executable` is bound, or None if none found.
 
         This is a traversal which checks locally, then
         checks among the "from" clauses of associated objects
@@ -491,17 +491,17 @@ class ColumnCollection(util.OrderedProperties):
         return repr([str(c) for c in self])
 
     def replace(self, column):
-        """add the given column to this collection, removing unaliased
+        """Add the given column to this collection, removing unaliased
            versions of this column  as well as existing columns with the
            same key.
 
-            e.g.::
+           E.g.::
 
                 t = Table('sometable', metadata, Column('col1', Integer))
                 t.columns.replace(Column('col1', Integer, key='columnone'))
 
-            will remove the original 'col1' from the collection, and add
-            the new column under the name 'columnname'.
+           will remove the original 'col1' from the collection, and add
+           the new column under the name 'columnname'.
 
            Used by schema.Column to override columns during table reflection.
 

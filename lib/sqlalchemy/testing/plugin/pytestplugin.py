@@ -373,7 +373,7 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
     }
 
     def combinations(self, *arg_sets, **kw):
-        """facade for pytest.mark.paramtrize.
+        """Facade for pytest.mark.parametrize.
 
         Automatically derives argument names from the callable which in our
         case is always a method on a class with positional arguments.

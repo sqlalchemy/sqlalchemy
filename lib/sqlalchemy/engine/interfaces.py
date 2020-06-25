@@ -241,28 +241,29 @@ class Dialect(object):
         `table_name`, and an optional string `schema`, return column
         information as a list of dictionaries with these keys:
 
-        name
+        * ``name`` -
           the column's name
 
-        type
+        * ``type`` -
           [sqlalchemy.types#TypeEngine]
 
-        nullable
+        * ``nullable`` -
           boolean
 
-        default
+        * ``default`` -
           the column's default value
 
-        autoincrement
+        * ``autoincrement`` -
           boolean
 
-        sequence
+        * ``sequence`` -
           a dictionary of the form
-              {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
-               'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
-               'cycle': bool, 'cache': int, 'order': bool}
+          {'name' : str, 'start' :int, 'increment': int, 'minvalue': int,
+          'maxvalue': int, 'nominvalue': bool, 'nomaxvalue': bool,
+          'cycle': bool, 'cache': int, 'order': bool}
 
         Additional column attributes may be present.
+
         """
 
         raise NotImplementedError()
@@ -274,9 +275,7 @@ class Dialect(object):
         ":meth:`.Dialect.get_pk_constraint` method. ",
     )
     def get_primary_keys(self, connection, table_name, schema=None, **kw):
-        """Return information about primary keys in `table_name`.
-
-        """
+        """Return information about primary keys in `table_name`."""
 
         raise NotImplementedError()
 
@@ -288,10 +287,10 @@ class Dialect(object):
         `table_name`, and an optional string `schema`, return primary
         key information as a dictionary with these keys:
 
-        constrained_columns
+        * ``constrained_columns`` -
           a list of column names that make up the primary key
 
-        name
+        * ``name`` -
           optional name of the primary key constraint.
 
         """
@@ -304,19 +303,19 @@ class Dialect(object):
         `table_name`, and an optional string `schema`, return foreign
         key information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the constraint's name
 
-        constrained_columns
+        * ``constrained_columns`` -
           a list of column names that make up the foreign key
 
-        referred_schema
+        * ``referred_schema`` -
           the name of the referred schema
 
-        referred_table
+        * ``referred_table`` -
           the name of the referred table
 
-        referred_columns
+        * ``referred_columns`` -
           a list of column names in the referred table that correspond to
           constrained_columns
         """
@@ -339,7 +338,7 @@ class Dialect(object):
     def get_view_names(self, connection, schema=None, **kw):
         """Return a list of all view names available in the database.
 
-        schema:
+        :param schema:
           Optional, retrieve names from a non-default schema.
         """
 
@@ -370,14 +369,15 @@ class Dialect(object):
         `table_name` and an optional string `schema`, return index
         information as a list of dictionaries with these keys:
 
-        name
+        * ``name`` -
           the index's name
 
-        column_names
+        * ``column_names`` -
           list of column names in order
 
-        unique
+        * ``unique`` -
           boolean
+
         """
 
         raise NotImplementedError()
@@ -390,13 +390,13 @@ class Dialect(object):
         Given a string `table_name` and an optional string `schema`, return
         unique constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the unique constraint's name
 
-        column_names
+        * ``column_names`` -
           list of column names in order
 
-        \**kw
+        * ``**kw`` -
           other options passed to the dialect's get_unique_constraints()
           method.
 
@@ -412,13 +412,13 @@ class Dialect(object):
         Given a string `table_name` and an optional string `schema`, return
         check constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the check constraint's name
 
-        sqltext
+        * ``sqltext`` -
           the check constraint's SQL expression
 
-        \**kw
+        * ``**kw`` -
           other options passed to the dialect's get_check_constraints()
           method.
 
@@ -450,7 +450,7 @@ class Dialect(object):
         """convert the given name to lowercase if it is detected as
         case insensitive.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """
@@ -460,7 +460,7 @@ class Dialect(object):
         """convert the given name to a case insensitive identifier
         for the backend if it is an all-lowercase name.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """
@@ -473,6 +473,7 @@ class Dialect(object):
         `table_name`, return True if the given table (possibly within
         the specified `schema`) exists in the database, False
         otherwise.
+
         """
 
         raise NotImplementedError()
@@ -483,6 +484,7 @@ class Dialect(object):
         Given a :class:`_engine.Connection` object and a string
         `sequence_name`, return True if the given sequence exists in
         the database, False otherwise.
+
         """
 
         raise NotImplementedError()
@@ -671,13 +673,17 @@ class Dialect(object):
 
     def do_executemany(self, cursor, statement, parameters, context=None):
         """Provide an implementation of ``cursor.executemany(statement,
-        parameters)``."""
+        parameters)``.
+
+        """
 
         raise NotImplementedError()
 
     def do_execute(self, cursor, statement, parameters, context=None):
         """Provide an implementation of ``cursor.execute(statement,
-        parameters)``."""
+        parameters)``.
+
+        """
 
         raise NotImplementedError()
 
@@ -694,7 +700,9 @@ class Dialect(object):
 
     def is_disconnect(self, e, connection, cursor):
         """Return True if the given DB-API error indicates an invalid
-        connection"""
+        connection.
+
+        """
 
         raise NotImplementedError()
 
@@ -732,7 +740,7 @@ class Dialect(object):
         """
 
     def on_connect(self):
-        """return a callable which sets up a newly created DBAPI connection.
+        """Return a callable which sets up a newly created DBAPI connection.
 
         The callable should accept a single argument "conn" which is the
         DBAPI connection itself.  The inner callable has no
@@ -882,7 +890,7 @@ class Dialect(object):
 
     @classmethod
     def load_provisioning(cls):
-        """set up the provision.py module for this dialect.
+        """Set up the provision.py module for this dialect.
 
         For dialects that include a provision.py module that sets up
         provisioning followers, this method should initiate that process.
@@ -1030,7 +1038,7 @@ class CreateEnginePlugin(object):
          what it needs here as well as remove its custom arguments from the
          :attr:`.URL.query` collection.  The URL can be modified in-place
          in any other way as well.
-        :param kwargs: The keyword arguments passed to :func`.create_engine`.
+        :param kwargs: The keyword arguments passed to :func:`.create_engine`.
          The plugin can read and modify this dictionary in-place, to affect
          the ultimate arguments used to create the engine.  It should
          remove its custom arguments from the dictionary as well.
@@ -1181,25 +1189,31 @@ class ExecutionContext(object):
         """Return a result object corresponding to this ExecutionContext.
 
         Returns a ResultProxy.
+
         """
 
         raise NotImplementedError()
 
     def handle_dbapi_exception(self, e):
         """Receive a DBAPI exception which occurred upon execute, result
-        fetch, etc."""
+        fetch, etc.
+
+        """
 
         raise NotImplementedError()
 
     def should_autocommit_text(self, statement):
         """Parse the given textual statement and return True if it refers to
-        a "committable" statement"""
+        a "committable" statement
+
+        """
 
         raise NotImplementedError()
 
     def lastrow_has_defaults(self):
         """Return True if the last INSERT or UPDATE row contained
         inlined or database-side defaults.
+
         """
 
         raise NotImplementedError()

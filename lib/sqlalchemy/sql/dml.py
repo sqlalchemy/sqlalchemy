@@ -193,7 +193,8 @@ class UpdateBase(
         :param dialect_name: defaults to ``*``, if specified as the name
          of a particular dialect, will apply these hints only when
          that dialect is in use.
-         """
+
+        """
         if selectable is None:
             selectable = self.table
 
@@ -222,7 +223,7 @@ class ValuesBase(UpdateBase):
 
     @_generative
     def values(self, *args, **kwargs):
-        r"""specify a fixed VALUES clause for an INSERT statement, or the SET
+        r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
         Note that the :class:`_expression.Insert` and
@@ -254,31 +255,28 @@ class ValuesBase(UpdateBase):
          as a single positional argument in order to form the VALUES or
          SET clause of the statement.  The forms that are accepted vary
          based on whether this is an :class:`_expression.Insert` or an
-         :class:`_expression.Update`
-         construct.
+         :class:`_expression.Update` construct.
 
          For either an :class:`_expression.Insert` or
-         :class:`_expression.Update` construct, a
-         single dictionary can be passed, which works the same as that of
-         the kwargs form::
+         :class:`_expression.Update`
+         construct, a single dictionary can be passed, which works the same as
+         that of the kwargs form::
 
             users.insert().values({"name": "some name"})
 
             users.update().values({"name": "some new name"})
 
          Also for either form but more typically for the
-         :class:`_expression.Insert`
-         construct, a tuple that contains an entry for every column in the
-         table is also accepted::
+         :class:`_expression.Insert` construct, a tuple that contains an
+         entry for every column in the table is also accepted::
 
             users.insert().values((5, "some name"))
 
-         The :class:`_expression.Insert`
-         construct also supports being passed a list
-         of dictionaries or full-table-tuples, which on the server will
-         render the less common SQL syntax of "multiple values" - this
-         syntax is supported on backends such as SQLite, PostgreSQL, MySQL,
-         but not necessarily others::
+         The :class:`_expression.Insert` construct also supports being
+         passed a list of dictionaries or full-table-tuples, which on the
+         server will render the less common SQL syntax of "multiple values" -
+         this syntax is supported on backends such as SQLite, PostgreSQL,
+         MySQL, but not necessarily others::
 
             users.insert().values([
                                 {"name": "some name"},
@@ -329,7 +327,7 @@ class ValuesBase(UpdateBase):
          construct supports a special form which is a
          list of 2-tuples, which when provided must be passed in conjunction
          with the
-         :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+         :paramref:`_expression.update.preserve_parameter_order`
          parameter.
          This form causes the UPDATE statement to render the SET clauses
          using the order of parameters given to
@@ -338,13 +336,13 @@ class ValuesBase(UpdateBase):
 
            .. versionadded:: 1.0.10 - added support for parameter-ordered
               UPDATE statements via the
-              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+              :paramref:`_expression.update.preserve_parameter_order`
               flag.
 
            .. seealso::
 
               :ref:`updates_order_parameters` - full example of the
-              :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`
+              :paramref:`_expression.update.preserve_parameter_order`
               flag
 
         .. seealso::
@@ -429,8 +427,8 @@ class ValuesBase(UpdateBase):
         added to any existing RETURNING clause, provided that
         :meth:`.UpdateBase.returning` is not used simultaneously.  The column
         values will then be available on the result using the
-        :attr:`_engine.ResultProxy.returned_defaults` accessor as a dictionary
-        ,
+        :attr:`_engine.ResultProxy.returned_defaults` accessor as
+        a dictionary,
         referring to values keyed to the :class:`_schema.Column`
         object as well as
         its ``.key``.
@@ -523,10 +521,9 @@ class Insert(ValuesBase):
         :param values: collection of values to be inserted; see
          :meth:`_expression.Insert.values`
          for a description of allowed formats here.
-         Can be omitted entirely; a :class:`_expression.Insert`
-         construct will also
-         dynamically render the VALUES clause at execution time based on
-         the parameters passed to :meth:`_engine.Connection.execute`.
+         Can be omitted entirely; a :class:`_expression.Insert` construct
+         will also dynamically render the VALUES clause at execution time
+         based on the parameters passed to :meth:`_engine.Connection.execute`.
 
         :param inline: if True, no attempt will be made to retrieve the
          SQL-generated default values to be provided within the statement;
@@ -808,7 +805,7 @@ class Update(ValuesBase):
 
     @_generative
     def where(self, whereclause):
-        """return a new update() construct with the given expression added to
+        """Return a new update() construct with the given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
         """

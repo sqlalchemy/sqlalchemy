@@ -302,7 +302,7 @@
         Fixed issue where an :class:`.Index` that is deferred in being associated
         with a table, such as as when it contains a :class:`.Column` that is not
         associated with any :class:`.Table` yet,  would fail to attach correctly if
-        it also contained a non table-oriented expession.
+        it also contained a non table-oriented expression.
 
 
     .. change::
@@ -391,7 +391,7 @@
         :tags: bug, mysql
         :tickets: 5239
 
-        Fixed issue in MySQL dialect when connecting to a psuedo-MySQL database
+        Fixed issue in MySQL dialect when connecting to a pseudo-MySQL database
         such as that provided by ProxySQL, the up front check for isolation level
         when it returns no row will not prevent the dialect from continuing to
         connect. A warning is emitted that the isolation level could not be

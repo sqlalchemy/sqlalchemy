@@ -345,7 +345,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     :param implicit_returning: True by default - indicates that
         RETURNING can be used by default to fetch newly inserted primary key
         values, for backends which support this.  Note that
-        create_engine() also provides an implicit_returning flag.
+        :func:`_sa.create_engine` also provides an ``implicit_returning``
+        flag.
 
     :param include_columns: A list of strings indicating a subset of
         columns to be loaded via the ``autoload`` operation; table columns who
@@ -1321,13 +1322,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 :ref:`server_defaults` - complete discussion of server side
                 defaults
 
-        :param server_onupdate:   A :class:`.FetchedValue` instance
-             representing a database-side default generation function,
-             such as a trigger. This
-             indicates to SQLAlchemy that a newly generated value will be
-             available after updates. This construct does not actually
-             implement any kind of generation function within the database,
-             which instead must be specified separately.
+        :param server_onupdate: A :class:`.FetchedValue` instance
+            representing a database-side default generation function,
+            such as a trigger. This
+            indicates to SQLAlchemy that a newly generated value will be
+            available after updates. This construct does not actually
+            implement any kind of generation function within the database,
+            which instead must be specified separately.
 
             .. seealso::
 
@@ -1615,7 +1616,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
     def copy(self, **kw):
         """Create a copy of this ``Column``, uninitialized.
 
-        This is used in ``Table.tometadata``.
+        This is used in :meth:`_schema.Table.tometadata`.
 
         """
 
@@ -2296,7 +2297,7 @@ class ColumnDefault(DefaultGenerator):
     """
 
     def __init__(self, arg, **kwargs):
-        """"Construct a new :class:`.ColumnDefault`.
+        """Construct a new :class:`.ColumnDefault`.
 
 
         :param arg: argument representing the default value.
@@ -2430,7 +2431,7 @@ class IdentityOptions(object):
          or minvalue has been reached.
         :param cache: optional integer value; number of future values in the
          sequence which are calculated in advance.
-        :param order: optional boolean value; if true, renders the
+        :param order: optional boolean value; if ``True``, renders the
          ORDER keyword.
          name.
         """
@@ -2571,7 +2572,7 @@ class Sequence(IdentityOptions, DefaultGenerator):
 
          .. versionadded:: 1.1.12
 
-        :param order: optional boolean value; if true, renders the
+        :param order: optional boolean value; if ``True``, renders the
          ORDER keyword, understood by Oracle, indicating the sequence is
          definitively ordered.   May be necessary to provide deterministic
          ordering using Oracle RAC.
@@ -3437,7 +3438,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         This list is either the original string arguments sent
         to the constructor of the :class:`_schema.ForeignKeyConstraint`,
         or if the constraint has been initialized with :class:`_schema.Column`
-        objects, is the string .key of each element.
+        objects, is the string ``.key`` of each element.
 
         .. versionadded:: 1.0.0
 
@@ -3989,12 +3990,14 @@ class MetaData(SchemaItem):
 
         :param bind:
           An Engine or Connection to bind to.  May also be a string or URL
-          instance, these are passed to create_engine() and this MetaData will
+          instance, these are passed to :func:`_sa.create_engine` and
+          this :class:`_schema.MetaData` will
           be bound to the resulting engine.
 
         :param reflect:
           Optional, automatically load all tables from the bound database.
-          Defaults to False. ``bind`` is required when this option is set.
+          Defaults to False. :paramref:`_schema.MetaData.bind` is required
+          when this option is set.
 
         :param schema:
            The default schema to use for the :class:`_schema.Table`,
@@ -4737,15 +4740,15 @@ class Computed(FetchedValue, SchemaItem):
           Optional, controls how this column should be persisted by the
           database.   Possible values are:
 
-          * None, the default, it will use the default persistence defined
-            by the database.
-          * True, will render ``GENERATED ALWAYS AS ... STORED``, or the
-            equivalent for the target database if supported
-          * False, will render ``GENERATED ALWAYS AS ... VIRTUAL``, or the
+          * ``None``, the default, it will use the default persistence
+            defined by the database.
+          * ``True``, will render ``GENERATED ALWAYS AS ... STORED``, or the
             equivalent for the target database if supported.
+          * ``False``, will render ``GENERATED ALWAYS AS ... VIRTUAL``, or
+            the equivalent for the target database if supported.
 
           Specifying ``True`` or ``False`` may raise an error when the DDL
-          is emitted to the target database if the databse does not support
+          is emitted to the target database if the database does not support
           that persistence option.   Leaving this parameter at its default
           of ``None`` is guaranteed to succeed for all databases that support
           ``GENERATED ALWAYS AS``.

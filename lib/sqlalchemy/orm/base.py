@@ -477,8 +477,8 @@ class InspectionAttr(object):
     __slots__ = ()
 
     is_selectable = False
-    """Return True if this object is an instance of """
-    """:class:`expression.Selectable`."""
+    """Return True if this object is an instance of
+    :class:`_expression.Selectable`."""
 
     is_aliased_class = False
     """True if this object is an instance of :class:`.AliasedClass`."""
@@ -516,8 +516,8 @@ class InspectionAttr(object):
     """
 
     is_clause_element = False
-    """True if this object is an instance of """
-    """:class:`_expression.ClauseElement`."""
+    """True if this object is an instance of
+    :class:`_expression.ClauseElement`."""
 
     extension_type = NOT_EXTENSION
     """The extension type, if any.
