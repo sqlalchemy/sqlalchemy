@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, schema
-    :tickets: 5276
-
-    Fixed issue where ``dialect_options`` were omitted when a
-    database object (e.g., :class:`.Table`) was copied using
-    :func:`.tometadata`.

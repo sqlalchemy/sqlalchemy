@@ -12,7 +12,188 @@
 
 .. changelog::
     :version: 1.3.18
-    :include_notes_from: unreleased_13
+    :released: June 25, 2020
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 5395
+
+        Added "exists" to the list of reserved words for SQLite so that this word
+        will be quoted when used as a label or column name. Pull request courtesy
+        Thodoris Sotiropoulos.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5366, 5364
+
+        Refined the logic used by the SQL Server dialect to interpret multi-part
+        schema names that contain many dots, to not actually lose any dots if the
+        name does not have bracking or quoting used, and additionally to support a
+        "dbname" token that has many parts including that it may have multiple,
+        independently-bracketed sections.
+
+
+
+    .. change::
+        :tags: bug, mssql, pyodbc
+        :tickets: 5346
+
+        Fixed an issue in the pyodbc connector such that a warning about pyodbc
+        "drivername" would be emitted when using a totally empty URL.  Empty URLs
+        are normal when producing a non-connected dialect object or when using the
+        "creator" argument to create_engine(). The warning now only emits if the
+        driver name is missing but other parameters are still present.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5373
+
+        Fixed issue with assembling the ODBC connection string for the pyodbc
+        DBAPI. Tokens containing semicolons and/or braces "{}" were not being
+        correctly escaped, causing the ODBC driver to misinterpret the
+        connection string attributes.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 5326
+
+        Improve error message when using :meth:`_query.Query.filter_by` in
+        a query where the first entity is not a mapped class.
+
+    .. change::
+        :tags: sql, schema
+        :tickets: 5324
+
+        Introduce :class:`.IdentityOptions` to store common parameters for
+        sequences and identity columns.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 5309
+
+        Added a ".schema" parameter to the :func:`_expression.table` construct,
+        allowing ad-hoc table expressions to also include a schema name.
+        Pull request courtesy Dylan Modesitt.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5339
+
+        Fixed issue where ``datetime.time`` parameters were being converted to
+        ``datetime.datetime``, making them incompatible with comparisons like
+        ``>=`` against an actual :class:`_mssql.TIME` column.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5359
+
+        Fixed an issue where the ``is_disconnect`` function in the SQL Server
+        pyodbc dialect was incorrectly reporting the disconnect state when the
+        exception messsage had a substring that matched a SQL Server ODBC error
+        code.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5326
+
+        Further refinements to the fixes to the "reset" agent fixed in
+        :ticket:`5326`, which now emits a warning when it is not being correctly
+        invoked and corrects for the behavior.  Additional scenarios have been
+        identified and fixed where this warning was being emitted.
+
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 5297
+
+        SQLite 3.31 added support for computed column. This change
+        enables their support in SQLAlchemy when targeting SQLite.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 5276
+
+        Fixed issue where ``dialect_options`` were omitted when a
+        database object (e.g., :class:`.Table`) was copied using
+        :func:`.tometadata`.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5344
+
+        Correctly apply self_group in type_coerce element.
+
+        The type coerce element did not correctly apply grouping rules when using
+        in an expression
+
+    .. change::
+        :tags: bug, oracle, reflection
+        :tickets: 5421
+
+        Fixed bug in Oracle dialect where indexes that contain the full set of
+        primary key columns would be mistaken as the primary key index itself,
+        which is omitted, even if there were multiples.  The check has been refined
+        to compare the name of the primary key constraint against the index name
+        itself, rather than trying to guess based on the columns present in the
+        index.
+
+    .. change::
+        :tags: change, sql, sybase
+        :tickets: 5294
+
+        Added ``.offset`` support to sybase dialect.
+        Pull request courtesy Alan D. Snow.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5341
+
+        Fixed issue in :class:`.URL` object where stringifying the object
+        would not URL encode special characters, preventing the URL from being
+        re-consumable as a real URL.  Pull request courtesy Miguel Grinberg.
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 4860
+
+        Implemented row-level locking support for mysql.  Pull request courtesy
+        Quentin Somerville.
+
+    .. change::
+        :tags: change, mssql
+        :tickets: 5321
+
+        Moved the ``supports_sane_rowcount_returning = False`` requirement from
+        the ``PyODBCConnector`` level to the ``MSDialect_pyodbc`` since pyodbc
+        does work properly in some circumstances.
+
+    .. change::
+        :tags: change, examples
+
+        Added new option ``--raw`` to the examples.performance suite
+        which will dump the raw profile test for consumption by any
+        number of profiling visualizer tools.   Removed the "runsnake"
+        option as runsnake is very hard to build at this point;
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5353
+
+        Added :meth:`.Select.with_hint` output to the generic SQL string that is
+        produced when calling ``str()`` on a statement.  Previously, this clause
+        would be omitted under the assumption that it was dialect specific.
+        The hint text is presented within brackets to indicate the rendering
+        of such hints varies among backends.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 5198
+
+        Added a new parameter :paramref:`_orm.query_expression.default_expr` to the
+        :func:`_orm.query_expression` construct, which will be appled to queries
+        automatically if the :func:`_orm.with_expression` option is not used. Pull
+        request courtesy Haoyu Sun.
 
 .. changelog::
     :version: 1.3.17
