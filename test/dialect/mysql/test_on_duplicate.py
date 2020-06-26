@@ -56,7 +56,7 @@ class OnDuplicateTest(fixtures.TablesTest):
             )
             stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, [2])
+            eq_(result.inserted_primary_key, (2,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "ab", "bz", False)],
@@ -71,7 +71,7 @@ class OnDuplicateTest(fixtures.TablesTest):
             )
             stmt = stmt.on_duplicate_key_update(updated_once=None)
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, [2])
+            eq_(result.inserted_primary_key, (2,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "b", "bz", None)],
@@ -88,7 +88,7 @@ class OnDuplicateTest(fixtures.TablesTest):
                 bar=func.concat(stmt.inserted.bar, "_foo")
             )
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, [2])
+            eq_(result.inserted_primary_key, (2,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "ab_foo", "bz", False)],
@@ -168,7 +168,7 @@ class OnDuplicateTest(fixtures.TablesTest):
                     bar=stmt.inserted.bar, baz="newbz"
                 )
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))
 
             stmt = insert(foos).values({"id": 1, "bar": "b", "baz": "bz"})
             result = conn.execute(
@@ -176,4 +176,4 @@ class OnDuplicateTest(fixtures.TablesTest):
                     bar=stmt.inserted.bar, baz="newbz"
                 )
             )
-            eq_(result.inserted_primary_key, [1])
+            eq_(result.inserted_primary_key, (1,))

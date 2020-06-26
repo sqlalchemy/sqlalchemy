@@ -776,6 +776,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_incorrect_none_type(self):
+        from sqlalchemy.sql.expression import FunctionElement
+
         class MissingType(FunctionElement):
             name = "mt"
             type = None
@@ -784,7 +786,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             TypeError,
             "Object None associated with '.type' attribute is "
             "not a TypeEngine class or object",
-            MissingType().compile,
+            lambda: column("x", MissingType()) == 5,
         )
 
     def test_as_comparison(self):

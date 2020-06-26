@@ -180,7 +180,7 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
             eq_([(9, "Python")], list(cats))
 
             result = conn.execute(cattable.insert().values(description="PHP"))
-            eq_([10], result.inserted_primary_key)
+            eq_(result.inserted_primary_key, (10,))
             lastcat = conn.execute(
                 cattable.select().order_by(desc(cattable.c.id))
             )
@@ -346,9 +346,9 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         # if windows drivers / servers have different behavior here.
         meta.create_all(connection)
         r = connection.execute(t2.insert(), descr="hello")
-        self.assert_(r.inserted_primary_key == [200])
+        eq_(r.inserted_primary_key, (200,))
         r = connection.execute(t1.insert(), descr="hello")
-        self.assert_(r.inserted_primary_key == [100])
+        eq_(r.inserted_primary_key, (100,))
 
     @testing.provide_metadata
     def _test_disable_scope_identity(self):

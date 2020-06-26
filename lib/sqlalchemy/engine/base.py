@@ -1163,10 +1163,10 @@ class Connection(Connectable):
             # ensure we don't retain a link to the view object for keys()
             # which links to the values, which we don't want to cache
             keys = sorted(distilled_params[0])
-            inline = len(distilled_params) > 1
+            for_executemany = len(distilled_params) > 1
         else:
             keys = []
-            inline = False
+            for_executemany = False
 
         dialect = self.dialect
 
@@ -1182,7 +1182,7 @@ class Connection(Connectable):
             dialect=dialect,
             compiled_cache=compiled_cache,
             column_keys=keys,
-            inline=inline,
+            for_executemany=for_executemany,
             schema_translate_map=schema_translate_map,
             linting=self.dialect.compiler_linting | compiler.WARN_LINTING,
         )

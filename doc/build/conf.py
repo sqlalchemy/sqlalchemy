@@ -129,6 +129,7 @@ zzzeeksphinx_module_prefixes = {
     "_schema": "sqlalchemy.schema",
     "_types": "sqlalchemy.types",
     "_expression": "sqlalchemy.sql.expression",
+    "_sql": "sqlalchemy.sql.expression",
     "_functions": "sqlalchemy.sql.functions",
     "_pool": "sqlalchemy.pool",
     "_event": "sqlalchemy.event",

@@ -781,7 +781,14 @@ def _get_returning_modifiers(compiler, stmt, compile_state):
 
     need_pks = (
         compile_state.isinsert
-        and not compiler.inline
+        and not stmt._inline
+        and (
+            not compiler.for_executemany
+            or (
+                compiler.dialect.insert_executemany_returning
+                and stmt._return_defaults
+            )
+        )
         and not stmt._returning
         and not compile_state._has_multi_parameters
     )

@@ -67,6 +67,7 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
     full_returning = False
+    insert_executemany_returning = False
 
     cte_follows_insert = False
 
@@ -704,7 +705,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     compiled = None
     statement = None
     result_column_struct = None
-    returned_defaults = None
+    returned_default_rows = None
     execution_options = util.immutabledict()
 
     cursor_fetch_strategy = _cursor._DEFAULT_FETCH
@@ -1322,12 +1323,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         if self.isinsert:
             if self._is_implicit_returning:
-                row = result.fetchone()
-                self.returned_defaults = row
-                self._setup_ins_pk_from_implicit_returning(row)
+                rows = result.all()
 
-                # test that it has a cursor metadata that is accurate.
-                # the first row will have been fetched and current assumptions
+                self.returned_default_rows = rows
+
+                self._setup_ins_pk_from_implicit_returning(result, rows)
+
+                # test that it has a cursor metadata that is accurate. the
+                # first row will have been fetched and current assumptions
                 # are that the result has only one row, until executemany()
                 # support is added here.
                 assert result._metadata.returns_rows
@@ -1343,7 +1346,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         elif self.isupdate and self._is_implicit_returning:
             row = result.fetchone()
-            self.returned_defaults = row
+            self.returned_default_rows = [row]
             result._soft_close()
 
             # test that it has a cursor metadata that is accurate.
@@ -1359,61 +1362,33 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return result
 
     def _setup_ins_pk_from_lastrowid(self):
-        key_getter = self.compiled._key_getters_for_crud_column[2]
-        table = self.compiled.statement.table
-        compiled_params = self.compiled_parameters[0]
+
+        getter = self.compiled._inserted_primary_key_from_lastrowid_getter
 
         lastrowid = self.get_lastrowid()
-        if lastrowid is not None:
-            autoinc_col = table._autoincrement_column
-            if autoinc_col is not None:
-                # apply type post processors to the lastrowid
-                proc = autoinc_col.type._cached_result_processor(
-                    self.dialect, None
-                )
-                if proc is not None:
-                    lastrowid = proc(lastrowid)
-            self.inserted_primary_key = [
-                lastrowid
-                if c is autoinc_col
-                else compiled_params.get(key_getter(c), None)
-                for c in table.primary_key
-            ]
-        else:
-            # don't have a usable lastrowid, so
-            # do the same as _setup_ins_pk_from_empty
-            self.inserted_primary_key = [
-                compiled_params.get(key_getter(c), None)
-                for c in table.primary_key
-            ]
-
-    def _setup_ins_pk_from_empty(self):
-        key_getter = self.compiled._key_getters_for_crud_column[2]
-        table = self.compiled.statement.table
-        compiled_params = self.compiled_parameters[0]
-        self.inserted_primary_key = [
-            compiled_params.get(key_getter(c), None) for c in table.primary_key
+        self.inserted_primary_key_rows = [
+            getter(lastrowid, self.compiled_parameters[0])
         ]
 
-    def _setup_ins_pk_from_implicit_returning(self, row):
-        if row is None:
-            self.inserted_primary_key = None
+    def _setup_ins_pk_from_empty(self):
+
+        getter = self.compiled._inserted_primary_key_from_lastrowid_getter
+
+        self.inserted_primary_key_rows = [
+            getter(None, self.compiled_parameters[0])
+        ]
+
+    def _setup_ins_pk_from_implicit_returning(self, result, rows):
+
+        if not rows:
+            self.inserted_primary_key_rows = []
             return
 
-        key_getter = self.compiled._key_getters_for_crud_column[2]
-        table = self.compiled.statement.table
-        compiled_params = self.compiled_parameters[0]
+        getter = self.compiled._inserted_primary_key_from_returning_getter
+        compiled_params = self.compiled_parameters
 
-        # TODO: why are we using keyed index here?  can't we get the ints?
-        # can compiler build up the structure here as far as what was
-        # explicit and what comes back in returning?
-        row_mapping = row._mapping
-        self.inserted_primary_key = [
-            row_mapping[col] if value is None else value
-            for col, value in [
-                (col, compiled_params.get(key_getter(col), None))
-                for col in table.primary_key
-            ]
+        self.inserted_primary_key_rows = [
+            getter(row, param) for row, param in zip(rows, compiled_params)
         ]
 
     def lastrow_has_defaults(self):

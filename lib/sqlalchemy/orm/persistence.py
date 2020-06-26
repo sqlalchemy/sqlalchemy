@@ -1146,7 +1146,7 @@ def _emit_insert_statements(
                         statement, params
                     )
 
-                primary_key = result.context.inserted_primary_key
+                primary_key = result.inserted_primary_key
                 if primary_key is not None:
                     # set primary key attributes
                     for pk, col in zip(
@@ -1527,7 +1527,7 @@ def _postfetch(
         load_evt_attrs = []
 
     if returning_cols:
-        row = result.context.returned_defaults
+        row = result.returned_defaults
         if row is not None:
             for row_value, col in zip(row, returning_cols):
                 # pk cols returned from insert are handled

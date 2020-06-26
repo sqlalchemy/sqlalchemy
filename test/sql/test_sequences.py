@@ -401,7 +401,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.metadata.create_all(connection)
 
         result = connection.execute(t.insert())
-        eq_(result.inserted_primary_key, [1])
+        eq_(result.inserted_primary_key, (1,))
 
 
 class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):

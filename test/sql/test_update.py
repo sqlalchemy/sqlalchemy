@@ -401,7 +401,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
             "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
             "col3=:col3",
-            inline_flag=False,
         )
 
         self.assert_compile(
@@ -409,7 +408,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE test SET col1=foo(:foo_1), col2=(SELECT "
             "coalesce(max(foo.id)) AS coalesce_1 FROM foo), "
             "col3=:col3",
-            inline_flag=True,
         )
 
     def test_update_1(self):

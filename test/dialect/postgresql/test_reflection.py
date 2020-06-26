@@ -488,7 +488,7 @@ class ReflectionTest(fixtures.TestBase):
         t2 = Table("t", m2, autoload=True, implicit_returning=False)
         eq_(t2.c.id.server_default.arg.text, "nextval('t_id_seq'::regclass)")
         r = t2.insert().execute()
-        eq_(r.inserted_primary_key, [1])
+        eq_(r.inserted_primary_key, (1,))
         testing.db.connect().execution_options(
             autocommit=True
         ).exec_driver_sql("alter table t_id_seq rename to foobar_id_seq")
@@ -499,7 +499,7 @@ class ReflectionTest(fixtures.TestBase):
             "nextval('foobar_id_seq'::regclass)",
         )
         r = t3.insert().execute()
-        eq_(r.inserted_primary_key, [2])
+        eq_(r.inserted_primary_key, (2,))
 
     @testing.provide_metadata
     def test_altered_type_autoincrement_pk_reflection(self):

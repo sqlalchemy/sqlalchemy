@@ -56,7 +56,7 @@ class LastrowidTest(fixtures.TablesTest):
             self.tables.autoinc_pk.insert(), data="some data"
         )
         pk = connection.scalar(select([self.tables.autoinc_pk.c.id]))
-        eq_(r.inserted_primary_key, [pk])
+        eq_(r.inserted_primary_key, (pk,))
 
     @requirements.dbapi_lastrowid
     def test_native_lastrowid_autoinc(self, connection):
@@ -184,7 +184,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
             )
         )
 
-        eq_(result.inserted_primary_key, [None])
+        eq_(result.inserted_primary_key, (None,))
 
         result = connection.execute(
             select([dest_table.c.data]).order_by(dest_table.c.data)
@@ -204,7 +204,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
                 ),
             )
         )
-        eq_(result.inserted_primary_key, [None])
+        eq_(result.inserted_primary_key, (None,))
 
         result = connection.execute(
             select([dest_table.c.data]).order_by(dest_table.c.data)
@@ -329,7 +329,7 @@ class ReturningTest(fixtures.TablesTest):
             self.tables.autoinc_pk.insert(), data="some data"
         )
         pk = connection.scalar(select([self.tables.autoinc_pk.c.id]))
-        eq_(r.inserted_primary_key, [pk])
+        eq_(r.inserted_primary_key, (pk,))
 
 
 __all__ = ("LastrowidTest", "InsertBehaviorTest", "ReturningTest")

@@ -39,6 +39,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import engines
+from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -89,7 +90,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             t.create(engine)
             with engine.begin() as conn:
                 r = conn.execute(t.insert())
-                assert r.inserted_primary_key == [1]
+                eq_(r.inserted_primary_key, (1,))
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):

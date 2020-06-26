@@ -140,7 +140,6 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
             "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
             "foo))",
-            inline_flag=False,
         )
 
         self.assert_compile(
@@ -148,7 +147,6 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "INSERT INTO test (col1, col2) VALUES (foo(:foo_1), "
             "(SELECT coalesce(max(foo.id)) AS coalesce_1 FROM "
             "foo))",
-            inline_flag=True,
         )
 
     def test_generic_insert_bind_params_all_columns(self):
@@ -302,27 +300,23 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             table.insert().values(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
-            inline_flag=False,
         )
 
         self.assert_compile(
             table.insert(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
             params={},
-            inline_flag=False,
         )
 
         self.assert_compile(
             table.insert().values().inline(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
-            inline_flag=True,
         )
 
         self.assert_compile(
             table.insert().inline(),
             "INSERT INTO sometable (foo) VALUES (foobar())",
             params={},
-            inline_flag=True,
         )
 
     def test_insert_returning_not_in_default(self):

@@ -260,7 +260,7 @@ class InsertExecTest(fixtures.TablesTest):
         )
         t.create(eng)
         r = eng.execute(t.insert().values(y=5))
-        eq_(r.inserted_primary_key, [0])
+        eq_(r.inserted_primary_key, (0,))
 
     @testing.fails_on(
         "sqlite", "sqlite autoincrement doesn't work with composite pks"
@@ -299,7 +299,7 @@ class InsertExecTest(fixtures.TablesTest):
         eq_(id_, 12)
 
         r = t6.insert().values(manual_id=id_).execute()
-        eq_(r.inserted_primary_key, [12, 1])
+        eq_(r.inserted_primary_key, (12, 1))
 
     def test_implicit_id_insert_select_columns(self):
         users = self.tables.users
@@ -409,7 +409,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
-            inserted_primary_key=[1],
+            inserted_primary_key=(1,),
         )
 
     def test_uppercase_inline(self):
@@ -417,7 +417,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().inline().values(id=1, data="data", x=5),
             (1, "data", 5),
-            inserted_primary_key=[1],
+            inserted_primary_key=(1,),
         )
 
     @testing.crashes(
@@ -429,7 +429,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().inline().values(data="data", x=5),
             (1, "data", 5),
-            inserted_primary_key=[None],
+            inserted_primary_key=(None,),
         )
 
     def test_uppercase_implicit(self):
@@ -437,7 +437,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
-            inserted_primary_key=[testing.db.dialect.default_sequence_base],
+            inserted_primary_key=(testing.db.dialect.default_sequence_base,),
         )
 
     def test_uppercase_direct_params(self):
@@ -445,7 +445,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
-            inserted_primary_key=[1],
+            inserted_primary_key=(1,),
         )
 
     @testing.requires.returning
@@ -462,7 +462,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
-            inserted_primary_key=[],
+            inserted_primary_key=(),
         )
 
     @testing.requires.returning
@@ -481,7 +481,7 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
-            inserted_primary_key=[],
+            inserted_primary_key=(),
         )
 
     @testing.requires.emulated_lastrowid_even_with_sequences
@@ -505,5 +505,5 @@ class TableInsertTest(fixtures.TablesTest):
         self._test(
             t.insert().inline().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
-            inserted_primary_key=[],
+            inserted_primary_key=(),
         )

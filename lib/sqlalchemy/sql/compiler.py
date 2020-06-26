@@ -675,13 +675,15 @@ class SQLCompiler(Compiled):
 
     """
 
+    inline = False
+
     def __init__(
         self,
         dialect,
         statement,
         cache_key=None,
         column_keys=None,
-        inline=False,
+        for_executemany=False,
         linting=NO_LINTING,
         **kwargs
     ):
@@ -694,8 +696,13 @@ class SQLCompiler(Compiled):
         :param column_keys:  a list of column names to be compiled into an
          INSERT or UPDATE statement.
 
-        :param inline: whether to generate INSERT statements as "inline", e.g.
-         not formatted to return any generated defaults
+        :param for_executemany: whether INSERT / UPDATE statements should
+         expect that they are to be invoked in an "executemany" style,
+         which may impact how the statement will be expected to return the
+         values of defaults and autoincrement / sequences and similar.
+         Depending on the backend and driver in use, support for retreiving
+         these values may be disabled which means SQL expressions may
+         be rendered inline, RETURNING may not be rendered, etc.
 
         :param kwargs: additional keyword arguments to be consumed by the
          superclass.
@@ -708,9 +715,10 @@ class SQLCompiler(Compiled):
         if cache_key:
             self._cache_key_bind_match = {b: b for b in cache_key[1]}
 
-        # compile INSERT/UPDATE defaults/sequences inlined (no pre-
-        # execute)
-        self.inline = inline or getattr(statement, "_inline", False)
+        # compile INSERT/UPDATE defaults/sequences to expect executemany
+        # style execution, which may mean no pre-execute of defaults,
+        # or no RETURNING
+        self.for_executemany = for_executemany
 
         self.linting = linting
 
@@ -754,10 +762,21 @@ class SQLCompiler(Compiled):
 
         Compiled.__init__(self, dialect, statement, **kwargs)
 
-        if (
-            self.isinsert or self.isupdate or self.isdelete
-        ) and statement._returning:
-            self.returning = statement._returning
+        if self.isinsert or self.isupdate or self.isdelete:
+            if statement._returning:
+                self.returning = statement._returning
+
+            if self.isinsert or self.isupdate:
+                if statement._inline:
+                    self.inline = True
+                elif self.for_executemany and (
+                    not self.isinsert
+                    or (
+                        self.dialect.insert_executemany_returning
+                        and statement._return_defaults
+                    )
+                ):
+                    self.inline = True
 
         if self.positional and self._numeric_binds:
             self._apply_numbered_params()
@@ -1086,6 +1105,61 @@ class SQLCompiler(Compiled):
         return cursor.CursorResultMetaData._create_description_match_map(
             self._result_columns
         )
+
+    @util.memoized_property
+    def _inserted_primary_key_from_lastrowid_getter(self):
+        key_getter = self._key_getters_for_crud_column[2]
+        table = self.statement.table
+
+        getters = [
+            (operator.methodcaller("get", key_getter(col), None), col)
+            for col in table.primary_key
+        ]
+
+        autoinc_col = table._autoincrement_column
+        if autoinc_col is not None:
+            # apply type post processors to the lastrowid
+            proc = autoinc_col.type._cached_result_processor(
+                self.dialect, None
+            )
+        else:
+            proc = None
+
+        def get(lastrowid, parameters):
+            if proc is not None:
+                lastrowid = proc(lastrowid)
+
+            if lastrowid is None:
+                return tuple(getter(parameters) for getter, col in getters)
+            else:
+                return tuple(
+                    lastrowid if col is autoinc_col else getter(parameters)
+                    for getter, col in getters
+                )
+
+        return get
+
+    @util.memoized_property
+    def _inserted_primary_key_from_returning_getter(self):
+        key_getter = self._key_getters_for_crud_column[2]
+        table = self.statement.table
+
+        ret = {col: idx for idx, col in enumerate(self.returning)}
+
+        getters = [
+            (operator.itemgetter(ret[col]), True)
+            if col in ret
+            else (operator.methodcaller("get", key_getter(col), None), False)
+            for col in table.primary_key
+        ]
+
+        def get(row, parameters):
+            return tuple(
+                getter(row) if use_row else getter(parameters)
+                for getter, use_row in getters
+            )
+
+        return get
 
     def default_from(self):
         """Called when a SELECT statement has no froms, and no FROM clause is

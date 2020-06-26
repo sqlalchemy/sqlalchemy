@@ -355,7 +355,6 @@ class AssertsCompiledSQL(object):
         schema_translate_map=None,
         render_schema_translate=False,
         default_schema_name=None,
-        inline_flag=None,
     ):
         if use_default_dialect:
             dialect = default.DefaultDialect()
@@ -451,8 +450,6 @@ class AssertsCompiledSQL(object):
                 },
                 check_post_param,
             )
-        if inline_flag is not None:
-            eq_(c.inline, inline_flag)
 
 
 class ComparesTables(object):

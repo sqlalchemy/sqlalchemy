@@ -12,7 +12,6 @@ from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import DateTime
 from sqlalchemy import Enum
-from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import Float
 from sqlalchemy import func
@@ -2171,7 +2170,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_bind_serialize_default(self):
 
-        dialect = postgresql.dialect()
+        dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(
             proc(util.OrderedDict([("key1", "value1"), ("key2", "value2")])),
@@ -2179,12 +2178,12 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_bind_serialize_with_slashes_and_quotes(self):
-        dialect = postgresql.dialect()
+        dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_bind_processor(dialect)
         eq_(proc({'\\"a': '\\"1'}), '"\\\\\\"a"=>"\\\\\\"1"')
 
     def test_parse_error(self):
-        dialect = postgresql.dialect()
+        dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_result_processor(
             dialect, None
         )
@@ -2198,7 +2197,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_result_deserialize_default(self):
-        dialect = postgresql.dialect()
+        dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_result_processor(
             dialect, None
         )
@@ -2208,7 +2207,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
     def test_result_deserialize_with_slashes_and_quotes(self):
-        dialect = postgresql.dialect()
+        dialect = postgresql.dialect(use_native_hstore=False)
         proc = self.test_table.c.hash.type._cached_result_processor(
             dialect, None
         )
@@ -3123,76 +3122,24 @@ class JSONRoundTripTest(fixtures.TablesTest):
             )
             self._assert_column_is_JSON_NULL(conn, column="nulldata")
 
-    def _non_native_engine(self, json_serializer=None, json_deserializer=None):
-        if json_serializer is not None or json_deserializer is not None:
-            options = {
-                "json_serializer": json_serializer,
-                "json_deserializer": json_deserializer,
-            }
-        else:
-            options = {}
-
-        if testing.against(
-            "postgresql+psycopg2"
-        ) and testing.db.dialect.psycopg2_version >= (2, 5):
-            from psycopg2.extras import register_default_json
-
-            engine = engines.testing_engine(options=options)
-
-            @event.listens_for(engine, "connect")
-            def connect(dbapi_connection, connection_record):
-                engine.dialect._has_native_json = False
-
-                def pass_(value):
-                    return value
-
-                register_default_json(dbapi_connection, loads=pass_)
-
-        elif options:
-            engine = engines.testing_engine(options=options)
-        else:
-            engine = testing.db
-        engine.connect().close()
-        return engine
-
     def test_reflect(self):
         insp = inspect(testing.db)
         cols = insp.get_columns("data_table")
         assert isinstance(cols[2]["type"], self.test_type)
 
-    @testing.requires.psycopg2_native_json
-    def test_insert_native(self, connection):
+    def test_insert(self, connection):
         self._test_insert(connection)
 
-    @testing.requires.psycopg2_native_json
-    def test_insert_native_nulls(self, connection):
+    def test_insert_nulls(self, connection):
         self._test_insert_nulls(connection)
 
-    @testing.requires.psycopg2_native_json
-    def test_insert_native_none_as_null(self, connection):
+    def test_insert_none_as_null(self, connection):
         self._test_insert_none_as_null(connection)
 
-    @testing.requires.psycopg2_native_json
-    def test_insert_native_nulljson_into_none_as_null(self, connection):
+    def test_insert_nulljson_into_none_as_null(self, connection):
         self._test_insert_nulljson_into_none_as_null(connection)
 
-    def test_insert_python(self):
-        engine = self._non_native_engine()
-        self._test_insert(engine)
-
-    def test_insert_python_nulls(self):
-        engine = self._non_native_engine()
-        self._test_insert_nulls(engine)
-
-    def test_insert_python_none_as_null(self):
-        engine = self._non_native_engine()
-        self._test_insert_none_as_null(engine)
-
-    def test_insert_python_nulljson_into_none_as_null(self):
-        engine = self._non_native_engine()
-        self._test_insert_nulljson_into_none_as_null(engine)
-
-    def _test_custom_serialize_deserialize(self, native):
+    def test_custom_serialize_deserialize(self):
         import json
 
         def loads(value):
@@ -3205,35 +3152,16 @@ class JSONRoundTripTest(fixtures.TablesTest):
             value["x"] = "dumps_y"
             return json.dumps(value)
 
-        if native:
-            engine = engines.testing_engine(
-                options=dict(json_serializer=dumps, json_deserializer=loads)
-            )
-        else:
-            engine = self._non_native_engine(
-                json_serializer=dumps, json_deserializer=loads
-            )
+        engine = engines.testing_engine(
+            options=dict(json_serializer=dumps, json_deserializer=loads)
+        )
 
         s = select([cast({"key": "value", "x": "q"}, self.test_type)])
         with engine.begin() as conn:
             eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
 
-    @testing.requires.psycopg2_native_json
-    def test_custom_native(self):
-        self._test_custom_serialize_deserialize(True)
-
-    @testing.requires.psycopg2_native_json
-    def test_custom_python(self):
-        self._test_custom_serialize_deserialize(False)
-
-    @testing.requires.psycopg2_native_json
-    def test_criterion_native(self):
+    def test_criterion(self):
         engine = testing.db
-        self._fixture_data(engine)
-        self._test_criterion(engine)
-
-    def test_criterion_python(self):
-        engine = self._non_native_engine()
         self._fixture_data(engine)
         self._test_criterion(engine)
 
@@ -3304,59 +3232,39 @@ class JSONRoundTripTest(fixtures.TablesTest):
             ).first()
             eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
 
-    def _test_fixed_round_trip(self, engine):
-        with engine.begin() as conn:
-            s = select(
-                [
-                    cast(
-                        {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
-                        self.test_type,
-                    )
-                ]
-            )
-            eq_(
-                conn.scalar(s),
-                {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
-            )
+    def test_fixed_round_trip(self, connection):
+        s = select(
+            [
+                cast(
+                    {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
+                    self.test_type,
+                )
+            ]
+        )
+        eq_(
+            connection.scalar(s),
+            {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
+        )
 
-    def test_fixed_round_trip_python(self):
-        engine = self._non_native_engine()
-        self._test_fixed_round_trip(engine)
-
-    @testing.requires.psycopg2_native_json
-    def test_fixed_round_trip_native(self):
-        engine = testing.db
-        self._test_fixed_round_trip(engine)
-
-    def _test_unicode_round_trip(self, engine):
-        with engine.begin() as conn:
-            s = select(
-                [
-                    cast(
-                        {
-                            util.u("réveillé"): util.u("réveillé"),
-                            "data": {"k1": util.u("drôle")},
-                        },
-                        self.test_type,
-                    )
-                ]
-            )
-            eq_(
-                conn.scalar(s),
-                {
-                    util.u("réveillé"): util.u("réveillé"),
-                    "data": {"k1": util.u("drôle")},
-                },
-            )
-
-    def test_unicode_round_trip_python(self):
-        engine = self._non_native_engine()
-        self._test_unicode_round_trip(engine)
-
-    @testing.requires.psycopg2_native_json
-    def test_unicode_round_trip_native(self):
-        engine = testing.db
-        self._test_unicode_round_trip(engine)
+    def test_unicode_round_trip(self, connection):
+        s = select(
+            [
+                cast(
+                    {
+                        util.u("réveillé"): util.u("réveillé"),
+                        "data": {"k1": util.u("drôle")},
+                    },
+                    self.test_type,
+                )
+            ]
+        )
+        eq_(
+            connection.scalar(s),
+            {
+                util.u("réveillé"): util.u("réveillé"),
+                "data": {"k1": util.u("drôle")},
+            },
+        )
 
     def test_eval_none_flag_orm(self):
         Base = declarative_base()
@@ -3441,12 +3349,8 @@ class JSONBRoundTripTest(JSONRoundTripTest):
     test_type = JSONB
 
     @testing.requires.postgresql_utf8_server_encoding
-    def test_unicode_round_trip_python(self):
-        super(JSONBRoundTripTest, self).test_unicode_round_trip_python()
-
-    @testing.requires.postgresql_utf8_server_encoding
-    def test_unicode_round_trip_native(self):
-        super(JSONBRoundTripTest, self).test_unicode_round_trip_native()
+    def test_unicode_round_trip(self, connection):
+        super(JSONBRoundTripTest, self).test_unicode_round_trip(connection)
 
 
 class JSONBSuiteTest(suite.JSONTest):

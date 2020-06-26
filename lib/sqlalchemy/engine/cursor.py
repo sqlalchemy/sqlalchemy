@@ -1077,7 +1077,7 @@ class FullyBufferedCursorFetchStrategy(CursorFetchStrategy):
     __slots__ = ("_rowbuffer", "alternate_cursor_description")
 
     def __init__(
-        self, dbapi_cursor, alternate_description, initial_buffer=None
+        self, dbapi_cursor, alternate_description=None, initial_buffer=None
     ):
         self.alternate_cursor_description = alternate_description
         if initial_buffer is not None:
@@ -1304,7 +1304,37 @@ class BaseCursorResult(object):
             self.connection._safe_close_cursor(cursor)
             self._soft_closed = True
 
-    @util.memoized_property
+    @property
+    def inserted_primary_key_rows(self):
+        """Return a list of tuples, each containing the primary key for each row
+        just inserted.
+
+        Usually, this method will return at most a list with a single
+        entry which is the same row one would get back from
+        :attr:`_engine.CursorResult.inserted_primary_key`.   To support
+        "executemany with INSERT" mode, multiple rows can be part of the
+        list returned.
+
+        .. versionadded:: 1.4
+
+        """
+        if not self.context.compiled:
+            raise exc.InvalidRequestError(
+                "Statement is not a compiled " "expression construct."
+            )
+        elif not self.context.isinsert:
+            raise exc.InvalidRequestError(
+                "Statement is not an insert() " "expression construct."
+            )
+        elif self.context._is_explicit_returning:
+            raise exc.InvalidRequestError(
+                "Can't call inserted_primary_key "
+                "when returning() "
+                "is used."
+            )
+        return self.context.inserted_primary_key_rows
+
+    @property
     def inserted_primary_key(self):
         """Return the primary key for the row just inserted.
 
@@ -1331,22 +1361,18 @@ class BaseCursorResult(object):
 
         """
 
-        if not self.context.compiled:
+        if self.context.executemany:
             raise exc.InvalidRequestError(
-                "Statement is not a compiled " "expression construct."
-            )
-        elif not self.context.isinsert:
-            raise exc.InvalidRequestError(
-                "Statement is not an insert() " "expression construct."
-            )
-        elif self.context._is_explicit_returning:
-            raise exc.InvalidRequestError(
-                "Can't call inserted_primary_key "
-                "when returning() "
-                "is used."
+                "This statement was an executemany call; if primary key "
+                "returning is supported, please "
+                "use .inserted_primary_key_rows."
             )
 
-        return self.context.inserted_primary_key
+        ikp = self.inserted_primary_key_rows
+        if ikp:
+            return ikp[0]
+        else:
+            return None
 
     def last_updated_params(self):
         """Return the collection of updated parameters from this
@@ -1393,6 +1419,19 @@ class BaseCursorResult(object):
             return self.context.compiled_parameters[0]
 
     @property
+    def returned_defaults_rows(self):
+        """Return a list of rows each containing the values of default
+        columns that were fetched using
+        the :meth:`.ValuesBase.return_defaults` feature.
+
+        The return value is a list of :class:`.Row` objects.
+
+        .. versionadded:: 1.4
+
+        """
+        return self.context.returned_default_rows
+
+    @property
     def returned_defaults(self):
         """Return the values of default columns that were fetched using
         the :meth:`.ValuesBase.return_defaults` feature.
@@ -1408,7 +1447,18 @@ class BaseCursorResult(object):
             :meth:`.ValuesBase.return_defaults`
 
         """
-        return self.context.returned_defaults
+
+        if self.context.executemany:
+            raise exc.InvalidRequestError(
+                "This statement was an executemany call; if return defaults "
+                "is supported, please use .returned_defaults_rows."
+            )
+
+        rows = self.context.returned_default_rows
+        if rows:
+            return rows[0]
+        else:
+            return None
 
     def lastrow_has_defaults(self):
         """Return ``lastrow_has_defaults()`` from the underlying
