@@ -720,7 +720,7 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
             if result is not None:
                 if result[MD_OBJECTS] is _UNPICKLED:
                     util.warn_deprecated(
-                        "Retreiving row values using Column objects from a "
+                        "Retrieving row values using Column objects from a "
                         "row that was unpickled is deprecated; adequate "
                         "state cannot be pickled for this to be efficient.   "
                         "This usage will raise KeyError in a future release.",
@@ -728,7 +728,7 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
                     )
                 else:
                     util.warn_deprecated(
-                        "Retreiving row values using Column objects with only "
+                        "Retrieving row values using Column objects with only "
                         "matching names as keys is deprecated, and will raise "
                         "KeyError in a future release; only Column "
                         "objects that are explicitly part of the statement "
@@ -802,7 +802,7 @@ class ResultFetchStrategy(object):
 class NoCursorFetchStrategy(ResultFetchStrategy):
     """Cursor strategy for a result that has no open cursor.
 
-    There are two varities of this strategy, one for DQL and one for
+    There are two varieties of this strategy, one for DQL and one for
     DML (and also DDL), each of which represent a result that had a cursor
     but no longer has one.
 
@@ -1584,7 +1584,7 @@ class BaseCursorResult(object):
 
     @property
     def lastrowid(self):
-        """return the 'lastrowid' accessor on the DBAPI cursor.
+        """Return the 'lastrowid' accessor on the DBAPI cursor.
 
         This is a DBAPI specific method and is only functional
         for those backends which support it, for statements

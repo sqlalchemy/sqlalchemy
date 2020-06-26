@@ -218,7 +218,7 @@ class ORMExecuteState(util.MemoizedSlots):
     def is_orm_statement(self):
         """return True if the operation is an ORM statement.
 
-        This indictes that the select(), update(), or delete() being
+        This indicates that the select(), update(), or delete() being
         invoked contains ORM entities as subjects.   For a statement
         that does not have ORM entities and instead refers only to
         :class:`.Table` metadata, it is invoked as a Core SQL statement
@@ -1319,7 +1319,7 @@ class Session(_SessionClassMethods):
         resolved through any of the optional keyword arguments.   This
         ultimately makes usage of the :meth:`.get_bind` method for resolution.
 
-        :param bind_arguments: dictionary of bind arguments.  may include
+        :param bind_arguments: dictionary of bind arguments.  May include
          "mapper", "bind", "clause", other custom arguments that are passed
          to :meth:`.Session.get_bind`.
 
@@ -1462,8 +1462,8 @@ class Session(_SessionClassMethods):
 
         The :meth:`.Session.execute` method does *not* invoke autoflush.
 
-        The :class:`_engine.CursorResult` returned by the :meth:`.Session.
-        execute`
+        The :class:`_engine.CursorResult` returned by the
+        :meth:`.Session.execute`
         method is returned with the "close_with_result" flag set to true;
         the significance of this flag is that if this :class:`.Session` is
         autocommitting and does not have a transaction-dedicated
@@ -1476,7 +1476,7 @@ class Session(_SessionClassMethods):
         :class:`.Session` is configured with autocommit=True and no
         transaction has been started.
 
-        :param clause:
+        :param statement:
             An executable statement (i.e. an :class:`.Executable` expression
             such as :func:`_expression.select`) or string SQL statement
             to be executed.
@@ -1489,7 +1489,7 @@ class Session(_SessionClassMethods):
             must correspond to parameter names present in the statement.
 
         :param bind_arguments: dictionary of additional arguments to determine
-         the bind.  may include "mapper", "bind", or other custom arguments.
+         the bind.  May include "mapper", "bind", or other custom arguments.
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
@@ -1701,8 +1701,8 @@ class Session(_SessionClassMethods):
 
     def bind_mapper(self, mapper, bind):
         """Associate a :class:`_orm.Mapper` or arbitrary Python class with a
-        "bind", e.g. an :class:`_engine.Engine` or :class:`_engine.Connection`
-        .
+        "bind", e.g. an :class:`_engine.Engine` or
+        :class:`_engine.Connection`.
 
         The given entity is added to a lookup used by the
         :meth:`.Session.get_bind` method.
@@ -1781,15 +1781,15 @@ class Session(_SessionClassMethods):
 
         The order of resolution is:
 
-        1. if mapper given and session.binds is present,
+        1. if mapper given and :paramref:`.Session.binds` is present,
            locate a bind based first on the mapper in use, then
            on the mapped class in use, then on any base classes that are
            present in the ``__mro__`` of the mapped class, from more specific
            superclasses to more general.
-        2. if clause given and session.binds is present,
+        2. if clause given and ``Session.binds`` is present,
            locate a bind based on :class:`_schema.Table` objects
-           found in the given clause present in session.binds.
-        3. if session.bind is present, return that.
+           found in the given clause present in ``Session.binds``.
+        3. if ``Session.binds`` is present, return that.
         4. if clause given, attempt to return a bind
            linked to the :class:`_schema.MetaData` ultimately
            associated with the clause.
@@ -2783,7 +2783,7 @@ class Session(_SessionClassMethods):
 
         .. seealso::
 
-            ``load_on_pending`` at :func:`_orm.relationship` - this flag
+            :paramref:`_orm.relationship.load_on_pending` - this flag
             allows per-relationship loading of many-to-ones on items that
             are pending.
 
@@ -3568,7 +3568,7 @@ class sessionmaker(_SessionClassMethods):
 
         sess = Session()
 
-    .. seealso:
+    .. seealso::
 
         :ref:`session_getting` - introductory text on creating
         sessions using :class:`.sessionmaker`.

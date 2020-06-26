@@ -457,7 +457,7 @@ class ValuesBase(UpdateBase):
 
     @_generative
     def values(self, *args, **kwargs):
-        r"""specify a fixed VALUES clause for an INSERT statement, or the SET
+        r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
         Note that the :class:`_expression.Insert` and
@@ -685,8 +685,8 @@ class ValuesBase(UpdateBase):
         added to any existing RETURNING clause, provided that
         :meth:`.UpdateBase.returning` is not used simultaneously.  The column
         values will then be available on the result using the
-        :attr:`_engine.CursorResult.returned_defaults` accessor as a dictionary
-        ,
+        :attr:`_engine.CursorResult.returned_defaults` accessor as
+        a dictionary,
         referring to values keyed to the :class:`_schema.Column`
         object as well as
         its ``.key``.
@@ -959,7 +959,7 @@ class DMLWhereBase(object):
 
     @_generative
     def where(self, whereclause):
-        """return a new construct with the given expression added to
+        """Return a new construct with the given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
         """
@@ -1138,7 +1138,7 @@ class Update(DMLWhereBase, ValuesBase):
           a scalar-returning :func:`_expression.select` construct,
           etc.
 
-        when combining :func:`_expression.select` constructs within the
+        When combining :func:`_expression.select` constructs within the
         values clause of an :func:`_expression.update`
         construct, the subquery represented
         by the :func:`_expression.select` should be *correlated* to the

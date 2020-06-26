@@ -25,7 +25,7 @@
    :tags: change, mysql
    :tickets: 4643
 
-   Remove deprecated dialect ``mysql+gaerdbms`` that has beed deprecated
+   Remove deprecated dialect ``mysql+gaerdbms`` that has been deprecated
    since version 1.0. Use the MySQLdb dialect directly.
 
    Remove deprecated parameter ``quoting`` from :class:`.mysql.ENUM`

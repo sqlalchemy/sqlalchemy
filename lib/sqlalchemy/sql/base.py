@@ -617,7 +617,7 @@ class CacheableOptions(Options, HasCacheKey):
 
 
 class Executable(Generative):
-    """Mark a ClauseElement as supporting execution.
+    """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
     of objects, including :func:`select`, :func:`delete`, :func:`update`,
@@ -880,7 +880,7 @@ class ColumnCollection(object):
         Column('x', Integer(), table=None)
         >>> cc['y']
 
-    :class`.ColumnCollection` also indexes the columns in order and allows
+    :class:`.ColumnCollection` also indexes the columns in order and allows
     them to be accessible by their integer position::
 
         >>> cc[0]
@@ -898,8 +898,8 @@ class ColumnCollection(object):
         [Column('x', Integer(), table=None),
          Column('y', Integer(), table=None)]
 
-    The base :class:`_expression.ColumnCollection` object can store duplicates
-    , which can
+    The base :class:`_expression.ColumnCollection` object can store
+    duplicates, which can
     mean either two columns with the same key, in which case the column
     returned by key  access is **arbitrary**::
 
@@ -1079,23 +1079,23 @@ class ColumnCollection(object):
         ancestor column.
 
         :param column: the target :class:`_expression.ColumnElement`
-                      to be matched
+                      to be matched.
 
         :param require_embedded: only return corresponding columns for
          the given :class:`_expression.ColumnElement`, if the given
          :class:`_expression.ColumnElement`
          is actually present within a sub-element
-         of this :class:`expression.Selectable`.
+         of this :class:`_expression.Selectable`.
          Normally the column will match if
          it merely shares a common ancestor with one of the exported
-         columns of this :class:`expression.Selectable`.
+         columns of this :class:`_expression.Selectable`.
 
         .. seealso::
 
-            :meth:`expression.Selectable.corresponding_column`
+            :meth:`_expression.Selectable.corresponding_column`
             - invokes this method
             against the collection returned by
-            :attr:`expression.Selectable.exported_columns`.
+            :attr:`_expression.Selectable.exported_columns`.
 
         .. versionchanged:: 1.4 the implementation for ``corresponding_column``
            was moved onto the :class:`_expression.ColumnCollection` itself.

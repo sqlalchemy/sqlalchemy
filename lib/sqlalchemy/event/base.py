@@ -213,7 +213,7 @@ class Events(util.with_metaclass(_EventMeta, object)):
         # This allows an Events subclass to define additional utility
         # methods made available to the target via
         # "self.dispatch._events.<utilitymethod>"
-        # @staticemethod to allow easy "super" calls while in a metaclass
+        # @staticmethod to allow easy "super" calls while in a metaclass
         # constructor.
         cls.dispatch = dispatch_cls(None)
         dispatch_cls._events = cls

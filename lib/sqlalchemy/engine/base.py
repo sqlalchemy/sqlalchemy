@@ -42,7 +42,7 @@ class Connection(Connectable):
     possible that the underlying DBAPI connection may not support shared
     access between threads.  Check the DBAPI documentation for details.
 
-    The Connection object represents a single dbapi connection checked out
+    The Connection object represents a single DBAPI connection checked out
     from the connection pool. In this state, the connection pool has no affect
     upon the connection, including its expiration or timeout state. For the
     connection pool to properly manage connections, connections should be
@@ -117,7 +117,7 @@ class Connection(Connectable):
         return self._execution_options.get("schema_translate_map", None)
 
     def schema_for_object(self, obj):
-        """return the schema name for the given schema item taking into
+        """Return the schema name for the given schema item taking into
         account current schema translate map.
 
         """
@@ -1944,7 +1944,7 @@ class Transaction(object):
         "deactive", however leave this transaction object in place as far
         as the connection's state.
 
-        for a "real" transaction this should roll back the transction
+        for a "real" transaction this should roll back the transaction
         and ensure this transaction is no longer a reset agent.
 
         this is used for nesting of marker transactions where the marker
@@ -2372,7 +2372,7 @@ class Engine(Connectable, log.Identified):
         """Clear the compiled cache associated with the dialect.
 
         This applies **only** to the built-in cache that is established
-        via the :paramref:`.create_engine.query_cache_size` parameter.
+        via the :paramref:`_engine.create_engine.query_cache_size` parameter.
         It will not impact any dictionary caches that were passed via the
         :paramref:`.Connection.execution_options.query_cache` parameter.
 
@@ -2510,8 +2510,8 @@ class Engine(Connectable, log.Identified):
         return "Engine(%r)" % self.url
 
     def dispose(self):
-        """Dispose of the connection pool used by this :class:`_engine.Engine`
-        .
+        """Dispose of the connection pool used by this
+        :class:`_engine.Engine`.
 
         This has the effect of fully closing all **currently checked in**
         database connections.  Connections that are still checked out

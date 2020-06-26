@@ -23,7 +23,7 @@ the :func:`_sa.create_engine` call::
 
     engine = create_engine('mysql://scott:tiger@localhost/test')
 
-The typical usage of :func:`_sa.create_engine()` is once per particular database
+The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`_engine.Engine` manages many individual :term:`DBAPI` connections on behalf of
 the process and is intended to be called upon in a concurrent fashion. The
@@ -492,7 +492,7 @@ The introduction on using :meth:`_engine.Connection.execute` made use of the
 :func:`_expression.text` construct in order to illustrate how textual SQL statements
 may be invoked.  When working with SQLAlchemy, textual SQL is actually more
 of the exception rather than the norm, as the Core expression language
-and the ORM both abstract away the textual representation of SQL.  Hpwever, the
+and the ORM both abstract away the textual representation of SQL.  However, the
 :func:`_expression.text` construct itself also provides some abstraction of textual
 SQL in that it normalizes how bound parameters are passed, as well as that
 it supports datatyping behavior for parameters and result set rows.

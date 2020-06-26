@@ -1329,7 +1329,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         def go():
             with testing.expect_deprecated(
                 r"Using the Query.instances\(\) method without a context",
-                "Retreiving row values using Column objects with only "
+                "Retrieving row values using Column objects with only "
                 "matching names",
             ):
                 result = list(
@@ -1442,7 +1442,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 r"Using the Query.instances\(\) method without a context",
                 r"Passing a string name for the 'alias' argument to "
                 r"'contains_eager\(\)` is deprecated",
-                "Retreiving row values using Column objects with only "
+                "Retrieving row values using Column objects with only "
                 "matching names",
             ):
                 result = list(
@@ -1512,7 +1512,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 r"Using the Query.instances\(\) method without a context",
                 r"Passing a string name for the 'alias' argument to "
                 r"'contains_eager\(\)` is deprecated",
-                "Retreiving row values using Column objects with only "
+                "Retrieving row values using Column objects with only "
                 "matching names",
             ):
                 result = list(

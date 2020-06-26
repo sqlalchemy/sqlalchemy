@@ -98,26 +98,40 @@ The current :class:`~sqlalchemy.engine.Connection` held by the
 
     connection = session.connection()
 
-The examples above deal with a :class:`~sqlalchemy.orm.session.Session` that's
-bound to a single :class:`~sqlalchemy.engine.Engine` or
-:class:`~sqlalchemy.engine.Connection`. To execute statements using a
-:class:`~sqlalchemy.orm.session.Session` which is bound either to multiple
+The examples above deal with a :class:`_orm.Session` that's
+bound to a single :class:`_engine.Engine` or
+:class:`_engine.Connection`. To execute statements using a
+:class:`_orm.Session` which is bound either to multiple
 engines, or none at all (i.e. relies upon bound metadata), both
-:meth:`~.Session.execute` and
-:meth:`~.Session.connection` accept a ``mapper`` keyword
-argument, which is passed a mapped class or
-:class:`~sqlalchemy.orm.mapper.Mapper` instance, which is used to locate the
+:meth:`_orm.Session.execute` and
+:meth:`_orm.Session.connection` accept a dictionary of bind arguments
+:paramref:`_orm.Session.execute.bind_arguments` which may include "mapper"
+which is passed a mapped class or
+:class:`_orm.Mapper` instance, which is used to locate the
 proper context for the desired engine::
 
     Session = sessionmaker()
     session = Session()
 
     # need to specify mapper or class when executing
-    result = session.execute("select * from table where id=:id", {'id':7}, mapper=MyMappedClass)
+    result = session.execute(
+        text("select * from table where id=:id"),
+        {'id':7},
+        bind_arguments={'mapper': MyMappedClass}
+    )
 
-    result = session.execute(select([mytable], mytable.c.id==7), mapper=MyMappedClass)
+    result = session.execute(
+        select([mytable], mytable.c.id==7),
+        bind_arguments={'mapper': MyMappedClass}
+    )
 
     connection = session.connection(MyMappedClass)
+
+.. versionchanged:: 1.4 the ``mapper`` and ``clause`` arguments to
+   :meth:`_orm.Session.execute` are now passed as part of a dictionary
+   sent as the :paramref:`_orm.Session.execute.bind_arguments` parameter.
+   The previous arguments are still accepted however this usage is
+   deprecated.
 
 .. _session_forcing_null:
 
@@ -249,7 +263,7 @@ at :paramref:`_schema.Column.autoincrement`.
 
 For server-generating columns that are not primary key columns or that are not
 simple autoincrementing integer columns, the ORM requires that these columns
-are marked with an appropriate server_default directive that allows the ORM to
+are marked with an appropriate ``server_default`` directive that allows the ORM to
 retrieve this value.   Not all methods are supported on all backends, however,
 so care must be taken to use the appropriate method. The two questions to be
 answered are, 1. is this column part of the primary key or not, and 2. does the

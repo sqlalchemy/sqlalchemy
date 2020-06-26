@@ -34,9 +34,9 @@ class ShardedQuery(Query):
         self._shard_id = None
 
     def set_shard(self, shard_id):
-        """return a new query, limited to a single shard ID.
+        """Return a new query, limited to a single shard ID.
 
-        all subsequent operations with the returned query will
+        All subsequent operations with the returned query will
         be against the single shard regardless of other state.
 
         The shard_id can be passed for a 2.0 style execution to the
@@ -79,7 +79,7 @@ class ShardedSession(Session):
           where the query should be issued.  Results from all shards returned
           will be combined together into a single listing.
 
-          .. versionchanged:: 1.4  The ``execute_chooser`` paramter
+          .. versionchanged:: 1.4  The ``execute_chooser`` parameter
              supersedes the ``query_chooser`` parameter.
 
         :param shards: A dictionary of string shard names

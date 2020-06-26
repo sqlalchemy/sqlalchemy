@@ -844,8 +844,8 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance):
         """Produce a proxied 'contains' expression using EXISTS.
 
         This expression will be a composed product
-        using the :meth:`.RelationshipProperty.Comparator.any`
-        , :meth:`.RelationshipProperty.Comparator.has`,
+        using the :meth:`.RelationshipProperty.Comparator.any`,
+        :meth:`.RelationshipProperty.Comparator.has`,
         and/or :meth:`.RelationshipProperty.Comparator.contains`
         operators of the underlying proxied attributes.
         """

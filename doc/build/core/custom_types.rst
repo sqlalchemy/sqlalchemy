@@ -473,7 +473,7 @@ Redefining and Creating New Operators
 -------------------------------------
 
 SQLAlchemy Core defines a fixed set of expression operators available to all column expressions.
-Some of these operations have the effect of overloading Python's built in operators;
+Some of these operations have the effect of overloading Python's built-in operators;
 examples of such operators include
 :meth:`.ColumnOperators.__eq__` (``table.c.somecolumn == 'foo'``),
 :meth:`.ColumnOperators.__invert__` (``~table.c.flag``),
@@ -484,7 +484,7 @@ explicit methods on column expressions, such as
 
 The Core expression constructs in all cases consult the type of the expression in order to determine
 the behavior of existing operators, as well as to locate additional operators that aren't part of
-the built in set.   The :class:`.TypeEngine` base class defines a root "comparison" implementation
+the built-in set.   The :class:`.TypeEngine` base class defines a root "comparison" implementation
 :class:`.TypeEngine.Comparator`, and many specific types provide their own sub-implementations of this
 class.   User-defined :class:`.TypeEngine.Comparator` implementations can be built directly into a
 simple subclass of a particular type in order to override or define new operations.  Below,

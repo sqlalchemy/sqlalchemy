@@ -609,7 +609,7 @@ class CoreFixtures(object):
 
     dont_compare_values_fixtures = [
         lambda: (
-            # note the in_(...) all have different column names becuase
+            # note the in_(...) all have different column names because
             # otherwise all IN expressions would compare as equivalent
             column("x").in_(random_choices(range(10), k=3)),
             column("y").in_(

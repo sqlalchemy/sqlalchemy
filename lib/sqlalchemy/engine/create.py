@@ -123,13 +123,13 @@ def create_engine(url, **kwargs):
         parameters specified in the URL argument to be bypassed.
 
         This hook is not as flexible as the newer
-        :class:`_events.DialectEvents.do_connect` hook which allows complete
+        :meth:`_events.DialectEvents.do_connect` hook which allows complete
         control over how a connection is made to the database, given the full
         set of URL arguments and state beforehand.
 
         .. seealso::
 
-            :class:`_events.DialectEvents.do_connect` - event hook that allows
+            :meth:`_events.DialectEvents.do_connect` - event hook that allows
             full control over DBAPI connection mechanics.
 
             :ref:`custom_dbapi_args`

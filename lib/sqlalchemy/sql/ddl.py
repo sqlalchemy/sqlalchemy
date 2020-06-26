@@ -93,10 +93,10 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
           ``.bind`` property.
 
         :param target:
-          Optional, defaults to None.  The target SchemaItem for the
-          execute call.  Will be passed to the ``on`` callable if any,
-          and may also provide string expansion data for the
-          statement. See ``execute_at`` for more information.
+          Optional, defaults to None.  The target :class:`_schema.SchemaItem`
+          for the execute call.  Will be passed to the ``on`` callable if any,
+          and may also provide string expansion data for the statement.
+          See ``execute_at`` for more information.
 
         """
 
@@ -167,7 +167,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
              set during the call to ``create()``, ``create_all()``,
              ``drop()``, ``drop_all()``.
 
-          If the callable returns a true value, the DDL statement will be
+          If the callable returns a True value, the DDL statement will be
           executed.
 
         :param state: any value which will be passed to the callable\_
@@ -955,8 +955,8 @@ class SchemaDropper(DDLBase):
 def sort_tables(
     tables, skip_fn=None, extra_dependencies=None,
 ):
-    """sort a collection of :class:`_schema.Table` objects based on dependency
-    .
+    """Sort a collection of :class:`_schema.Table` objects based on
+    dependency.
 
     This is a dependency-ordered sort which will emit :class:`_schema.Table`
     objects such that they will follow their dependent :class:`_schema.Table`
@@ -1040,7 +1040,7 @@ def sort_tables(
 def sort_tables_and_constraints(
     tables, filter_fn=None, extra_dependencies=None, _warn_for_cycles=False
 ):
-    """sort a collection of :class:`_schema.Table`  /
+    """Sort a collection of :class:`_schema.Table`  /
     :class:`_schema.ForeignKeyConstraint`
     objects.
 

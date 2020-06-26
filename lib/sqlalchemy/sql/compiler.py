@@ -2643,8 +2643,8 @@ class SQLCompiler(Compiled):
         return froms
 
     translate_select_structure = None
-    """if none None, should be a callable which accepts (select_stmt, **kw)
-    and returns a select object.   this is used for structural changes
+    """if not ``None``, should be a callable which accepts ``(select_stmt,
+    **kw)`` and returns a select object.   this is used for structural changes
     mostly to accommodate for LIMIT/OFFSET schemes
 
     """

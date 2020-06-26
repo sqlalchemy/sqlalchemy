@@ -40,7 +40,7 @@ from ..util import HasMemoized
 
 
 class ClassManager(HasMemoized, dict):
-    """tracks state information at the class level."""
+    """Tracks state information at the class level."""
 
     MANAGER_ATTR = base.DEFAULT_MANAGER_ATTR
     STATE_ATTR = base.DEFAULT_STATE_ATTR
@@ -229,7 +229,7 @@ class ClassManager(HasMemoized, dict):
         setattr(self.class_, self.MANAGER_ATTR, self)
 
     def dispose(self):
-        """Dissasociate this manager from its class."""
+        """Disassociate this manager from its class."""
 
         delattr(self.class_, self.MANAGER_ATTR)
 
@@ -493,7 +493,7 @@ class InstrumentationFactory(object):
 
 
 # this attribute is replaced by sqlalchemy.ext.instrumentation
-# when importred.
+# when imported.
 _instrumentation_factory = InstrumentationFactory()
 
 # these attributes are replaced by sqlalchemy.ext.instrumentation

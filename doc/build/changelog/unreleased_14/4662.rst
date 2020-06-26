@@ -7,7 +7,7 @@
     rather than throw a :class:`.FlushError`. The rationale is so that the
     flush will proceed and raise a :class:`.IntegrityError` instead, in the
     same way as if the existing object were not present in the identity map
-    already.   This helps with schemes that are uinsg the
+    already.   This helps with schemes that are using the
     :class:`.IntegrityError` as a means of catching whether or not a row
     already exists in the table.
 

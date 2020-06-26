@@ -45,7 +45,7 @@
     :class:`_expression.SelectBase` (which is what's produced by :func:`_expression.select`) or
     :class:`_query.Query` object is passed directly to these functions and others,
     the ORM is typically coercing them to be a subquery by calling the
-    :meth:`_expression.SelectBase.alias` method automatically (which is now superceded by
+    :meth:`_expression.SelectBase.alias` method automatically (which is now superseded by
     the :meth:`_expression.SelectBase.subquery` method).   See the migration notes linked
     below for further details.
 

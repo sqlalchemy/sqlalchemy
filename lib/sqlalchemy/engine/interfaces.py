@@ -386,13 +386,13 @@ class Dialect(object):
         Given a string `table_name` and an optional string `schema`, return
         check constraint information as a list of dicts with these keys:
 
-        name
+        * ``name`` -
           the check constraint's name
 
-        sqltext
+        * ``sqltext`` -
           the check constraint's SQL expression
 
-        \**kw
+        * ``**kw`` -
           other options passed to the dialect's get_check_constraints()
           method.
 
@@ -424,7 +424,7 @@ class Dialect(object):
         """convert the given name to lowercase if it is detected as
         case insensitive.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """
@@ -434,7 +434,7 @@ class Dialect(object):
         """convert the given name to a case insensitive identifier
         for the backend if it is an all-lowercase name.
 
-        this method is only used if the dialect defines
+        This method is only used if the dialect defines
         requires_name_normalize=True.
 
         """
@@ -455,7 +455,7 @@ class Dialect(object):
         """Check the existence of a particular index name in the database.
 
         Given a :class:`_engine.Connection` object, a string
-        `table_name` and stiring index name, return True if an index of the
+        `table_name` and string index name, return True if an index of the
         given name on the given table exists, false otherwise.
 
         The :class:`.DefaultDialect` implements this in terms of the
@@ -1022,7 +1022,7 @@ class CreateEnginePlugin(object):
          what it needs here as well as remove its custom arguments from the
          :attr:`.URL.query` collection.  The URL can be modified in-place
          in any other way as well.
-        :param kwargs: The keyword arguments passed to :func`.create_engine`.
+        :param kwargs: The keyword arguments passed to :func:`.create_engine`.
          The plugin can read and modify this dictionary in-place, to affect
          the ultimate arguments used to create the engine.  It should
          remove its custom arguments from the dictionary as well.

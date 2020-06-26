@@ -267,7 +267,7 @@ class Connection(_LegacyConnection):
          * :class:`_schema.DDL` and objects which inherit from
            :class:`_schema.DDLElement`
 
-        :param parameters: parameters which will be bound into the statment.
+        :param parameters: parameters which will be bound into the statement.
          This may be either a dictionary of parameter names to values,
          or a mutable sequence (e.g. a list) of dictionaries.  When a
          list of dictionaries is passed, the underlying statement execution
@@ -343,7 +343,7 @@ class Engine(_LegacyEngine):
         # they aren't calling "engine.begin()" explicitly, however, DDL
         # may be a special case for which we want to continue doing it this
         # way.  A big win here is that the full DDL sequence is inside of a
-        # single transaction rather than COMMIT for each statment.
+        # single transaction rather than COMMIT for each statement.
         with self.begin() as conn:
             conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 

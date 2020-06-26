@@ -802,7 +802,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         not_in_(bar.c.content_type, row)
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(sql.column("content_type"), row)
@@ -813,7 +813,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         not_in_(content.c.type, row)
         not_in_(bar.c.content_type, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(sql.column("content_type"), row)
@@ -830,12 +830,12 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.b, row)
@@ -848,12 +848,12 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(b, row)
@@ -869,33 +869,33 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.b, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(b, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
             in_(stmt.c.a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
@@ -913,23 +913,23 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.b, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
             in_(stmt.c.keyed2_a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
@@ -946,23 +946,23 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(keyed2.c.b, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
             in_(stmt.c.keyed2_a, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
             "The SelectBase.c and SelectBase.columns",
         ):
@@ -1019,10 +1019,10 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         with testing.expect_deprecated(
-            #           "Retreiving row values using Column objects "
-            #           "with only matching names",
-            #           "Using non-integer/slice indices on Row is "
-            #           "deprecated and will be removed in version 2.0",
+            "Retrieving row values using Column objects "
+            "with only matching names",
+            "Using non-integer/slice indices on Row is "
+            "deprecated and will be removed in version 2.0",
         ):
             # this will create column() objects inside
             # the select(), these need to match on name anyway
@@ -1036,14 +1036,14 @@ class CursorResultTest(fixtures.TablesTest):
 
         r._keymap.pop(users.c.user_id)  # reset lookup
         with testing.expect_deprecated(
-            #           "Retreiving row values using Column objects "
-            #           "with only matching names"
+            "Retrieving row values using Column objects "
+            "with only matching names"
         ):
             eq_(r._mapping[users.c.user_id], 2)
 
         with testing.expect_deprecated(
-            #           "Retreiving row values using Column objects "
-            #           "with only matching names"
+            "Retrieving row values using Column objects "
+            "with only matching names"
         ):
             eq_(r._mapping[users.c.user_name], "jack")
 
@@ -1053,7 +1053,7 @@ class CursorResultTest(fixtures.TablesTest):
         with testing.expect_deprecated(
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0",
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
         ):
             r = connection.execute(
@@ -1064,7 +1064,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         r._keymap.pop(users.c.user_id)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             eq_(r._mapping[users.c.user_id], 2)
@@ -1072,14 +1072,14 @@ class CursorResultTest(fixtures.TablesTest):
         with testing.expect_deprecated(
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0",
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names",
         ):
             eq_(r[users.c.user_name], "jack")
 
         r._keymap.pop(users.c.user_name)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             eq_(r._mapping[users.c.user_name], "jack")
@@ -1095,7 +1095,7 @@ class CursorResultTest(fixtures.TablesTest):
         in_(content.c.type, row._mapping)
         not_in_(bar.c.content_type, row)
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(sql.column("content_type"), row)
@@ -1104,7 +1104,7 @@ class CursorResultTest(fixtures.TablesTest):
             select([content.c.type.label("content_type")])
         ).first()
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(content.c.type, row)
@@ -1112,7 +1112,7 @@ class CursorResultTest(fixtures.TablesTest):
         not_in_(bar.c.content_type, row)
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(sql.column("content_type"), row)
@@ -1126,7 +1126,7 @@ class CursorResultTest(fixtures.TablesTest):
         not_in_(bar.c.content_type, row)
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             in_(sql.column("content_type"), row)
@@ -1156,27 +1156,27 @@ class CursorResultTest(fixtures.TablesTest):
 
                     if pickle:
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[users.c.user_id], 7)
 
                         result[0]._keymap.pop(users.c.user_id)
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[users.c.user_id], 7)
 
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[users.c.user_name], "jack")
 
                         result[0]._keymap.pop(users.c.user_name)
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[users.c.user_name], "jack")
@@ -1196,14 +1196,14 @@ class CursorResultTest(fixtures.TablesTest):
                         # causing 'user_id' to match when use_labels wasn't
                         # used.
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[addresses.c.user_id], 7)
 
                         result[0]._keymap.pop(addresses.c.user_id)
                         with testing.expect_deprecated(
-                            "Retreiving row values using Column objects "
+                            "Retrieving row values using Column objects "
                             "from a row that was unpickled"
                         ):
                             eq_(result[0]._mapping[addresses.c.user_id], 7)
@@ -1395,7 +1395,7 @@ class PositionalTextTest(fixtures.TablesTest):
         row = result.first()
 
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             eq_(row._mapping[text1.c.a], "a1")
@@ -1420,7 +1420,7 @@ class PositionalTextTest(fixtures.TablesTest):
         # key fallback rules still match this to a column
         # unambiguously based on its name
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             eq_(row._mapping[text1.c.a], "a1")
@@ -1428,7 +1428,7 @@ class PositionalTextTest(fixtures.TablesTest):
         # key fallback rules still match this to a column
         # unambiguously based on its name
         with testing.expect_deprecated(
-            "Retreiving row values using Column objects "
+            "Retrieving row values using Column objects "
             "with only matching names"
         ):
             eq_(row._mapping[text1.c.d], "d1")

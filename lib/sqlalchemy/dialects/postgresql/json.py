@@ -234,8 +234,8 @@ class JSON(sqltypes.JSON):
 class JSONB(JSON):
     """Represent the PostgreSQL JSONB type.
 
-    The :class:`_postgresql.JSONB` type stores arbitrary JSONB format data, e.
-    g.::
+    The :class:`_postgresql.JSONB` type stores arbitrary JSONB format data,
+    e.g.::
 
         data_table = Table('data_table', metadata,
             Column('id', Integer, primary_key=True),
@@ -249,8 +249,8 @@ class JSONB(JSON):
             )
 
     The :class:`_postgresql.JSONB` type includes all operations provided by
-    :class:`_types.JSON`, including the same behaviors for indexing operations
-    .
+    :class:`_types.JSON`, including the same behaviors for indexing
+    operations.
     It also adds additional operators specific to JSONB, including
     :meth:`.JSONB.Comparator.has_key`, :meth:`.JSONB.Comparator.has_all`,
     :meth:`.JSONB.Comparator.has_any`, :meth:`.JSONB.Comparator.contains`,

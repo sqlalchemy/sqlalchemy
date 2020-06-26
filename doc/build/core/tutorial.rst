@@ -249,7 +249,7 @@ Executing
 The interesting part of an :class:`~sqlalchemy.sql.expression.Insert` is
 executing it.  This is performed using a database connection, which  is
 represented by the :class:`_engine.Connection` object.  To acquire a
-connection, we will use the :meth:`.Engine.connect` method::
+connection, we will use the :meth:`_engine.Engine.connect` method::
 
     >>> conn = engine.connect()
     >>> conn
@@ -956,8 +956,8 @@ Fetching the ``email_address`` column would be::
     >>> row._mapping[addresses.c.email_address]
     'jack@yahoo.com'
 
-If on the other hand we used a string column key, the usual rules of name-
-based matching still apply, and we'd get an ambiguous column error for
+If on the other hand we used a string column key, the usual rules of
+name-based matching still apply, and we'd get an ambiguous column error for
 the ``id`` value::
 
     >>> row._mapping["id"]
@@ -1215,7 +1215,7 @@ SELECT-oriented constructs which extend from :class:`_expression.SelectBase` may
 into aliased subqueries using the :meth:`_expression.SelectBase.subquery` method, which
 produces a :class:`.Subquery` construct; for ease of use, there is also a
 :meth:`_expression.SelectBase.alias` method that is synonymous with
-:class:`_expression.SelectBase.subquery`.   Like  :class:`_expression.Alias`, :class:`.Subquery` is
+:meth:`_expression.SelectBase.subquery`.   Like  :class:`_expression.Alias`, :class:`.Subquery` is
 also a :class:`_expression.FromClause` object that may be part of any enclosing SELECT
 using the same techniques one would use for a :class:`_expression.Alias`.
 

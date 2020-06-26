@@ -60,7 +60,8 @@ all_cascades = frozenset(
 
 
 class CascadeOptions(frozenset):
-    """Keeps track of the options sent to relationship().cascade"""
+    """Keeps track of the options sent to
+    :paramref:`.relationship.cascade`"""
 
     _add_w_all_cascades = all_cascades.difference(
         ["all", "none", "delete-orphan"]
@@ -263,7 +264,7 @@ def polymorphic_union(
 
 
 def identity_key(*args, **kwargs):
-    """Generate "identity key" tuples, as are used as keys in the
+    r"""Generate "identity key" tuples, as are used as keys in the
     :attr:`.Session.identity_map` dictionary.
 
     This function has several call styles:
@@ -890,8 +891,8 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     ORM-mapped in this case.
 
     :param element: element to be aliased.  Is normally a mapped class,
-     but for convenience can also be a :class:`_expression.FromClause` element
-     .
+     but for convenience can also be a :class:`_expression.FromClause`
+     element.
 
     :param alias: Optional selectable unit to map the element to.  This is
      usually used to link the object to a subquery, and should be an aliased
