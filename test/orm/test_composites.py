@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import CompositeProperty
@@ -89,14 +88,14 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             },
         )
 
-    def _fixture(self):
+    def _fixture(self, future=False):
         Graph, Edge, Point = (
             self.classes.Graph,
             self.classes.Edge,
             self.classes.Point,
         )
 
-        sess = Session()
+        sess = Session(future=future)
         g = Graph(
             id=1,
             edges=[
@@ -230,10 +229,10 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_bulk_update_sql(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
-        sess = self._fixture()
+        sess = self._fixture(future=True)
 
         e1 = sess.execute(
-            future_select(Edge).filter(Edge.start == Point(14, 5))
+            select(Edge).filter(Edge.start == Point(14, 5))
         ).scalar_one()
 
         eq_(e1.end, Point(2, 7))
@@ -255,10 +254,10 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_bulk_update_evaluate(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
-        sess = self._fixture()
+        sess = self._fixture(future=True)
 
         e1 = sess.execute(
-            future_select(Edge).filter(Edge.start == Point(14, 5))
+            select(Edge).filter(Edge.start == Point(14, 5))
         ).scalar_one()
 
         eq_(e1.end, Point(2, 7))
@@ -329,7 +328,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         start, end = Edge.start, Edge.end
 
-        stmt = select([start, end]).where(start == Point(3, 4))
+        stmt = select(start, end).where(start == Point(3, 4))
         self.assert_compile(
             stmt,
             "SELECT edges.x1, edges.y1, edges.x2, edges.y2 "
@@ -1207,7 +1206,7 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         configure_mappers()
 
         self.assert_compile(
-            select([Edge]).order_by(Edge.start),
+            select(Edge).order_by(Edge.start),
             "SELECT edge.id, edge.x1, edge.y1, edge.x2, edge.y2 FROM edge "
             "ORDER BY edge.x1, edge.y1",
         )

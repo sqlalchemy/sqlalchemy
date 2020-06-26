@@ -1997,7 +1997,7 @@ class ColumnMappedWSerialize(fixtures.MappedTest):
     def test_selectable_column_mapped(self):
         from sqlalchemy import select
 
-        s = select([self.tables.foo]).alias()
+        s = select(self.tables.foo).alias()
         Foo = self.classes.Foo
         mapper(Foo, s)
         self._run_test([(Foo.b, Foo(b=5), 5), (s.c.b, Foo(b=5), 5)])

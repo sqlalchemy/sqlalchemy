@@ -14,7 +14,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
@@ -440,7 +439,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         def go():
             sessmaker = sessionmaker(bind=self.engine)
             sess = sessmaker()
-            r = sess.execute(select([1]))
+            r = sess.execute(select(1))
             r.close()
             sess.close()
             del sess
@@ -656,9 +655,10 @@ class MemUsageWBackendTest(EnsureZeroed):
             # execute with a non-unicode object. a warning is emitted,
             # this warning shouldn't clog up memory.
 
-            self.engine.execute(
-                table1.select().where(table1.c.col2 == "foo%d" % i[0])
-            )
+            with self.engine.connect() as conn:
+                conn.execute(
+                    table1.select().where(table1.c.col2 == "foo%d" % i[0])
+                )
             i[0] += 1
 
         try:
@@ -1172,7 +1172,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles()
         def go():
-            stmt = future_select(User)
+            stmt = select(User)
             s.execute(stmt)
 
         go()
@@ -1183,7 +1183,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles()
         def go():
-            stmt = future_select(User)
+            stmt = select(User)
             stmt._generate_cache_key()
 
         go()
@@ -1404,7 +1404,7 @@ class CycleTest(_fixtures.FixtureTest):
         # as of cache key
         @assert_cycles(7)
         def go():
-            s = select([users]).select_from(users.join(addresses))
+            s = select(users).select_from(users.join(addresses))
             state = s._compile_state_factory(s, s.compile())
             state.froms
 
@@ -1528,7 +1528,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_adapt_statement_replacement_traversal(self):
         User, Address = self.classes("User", "Address")
 
-        statement = select([User]).select_from(
+        statement = select(User).select_from(
             orm_join(User, Address, User.addresses)
         )
 
@@ -1541,7 +1541,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_adapt_statement_cloned_traversal(self):
         User, Address = self.classes("User", "Address")
 
-        statement = select([User]).select_from(
+        statement = select(User).select_from(
             orm_join(User, Address, User.addresses)
         )
 

@@ -69,7 +69,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table("sometable", m, Column("somecolumn", String))
 
         self.assert_compile(
-            select([t]).order_by(
+            select(t).order_by(
                 t.c.somecolumn.collate("Latin1_General_CS_AS_KS_WS_CI").asc()
             ),
             "SELECT sometable.somecolumn FROM sometable "
@@ -267,7 +267,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "#other", meta, Column("sym", String), Column("newval", Integer)
         )
         stmt = table.update().values(
-            val=select([other.c.newval])
+            val=select(other.c.newval)
             .where(table.c.sym == other.c.sym)
             .scalar_subquery()
         )
@@ -306,7 +306,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.combinations(
         (
-            lambda: select([literal("x"), literal("y")]),
+            lambda: select(literal("x"), literal("y")),
             "SELECT [POSTCOMPILE_param_1] AS anon_1, "
             "[POSTCOMPILE_param_2] AS anon_2",
             {
@@ -315,7 +315,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         ),
         (
-            lambda t: select([t]).where(t.c.foo.in_(["x", "y", "z"])),
+            lambda t: select(t).where(t.c.foo.in_(["x", "y", "z"])),
             "SELECT sometable.foo FROM sometable WHERE sometable.foo "
             "IN ([POSTCOMPILE_foo_1])",
             {
@@ -537,7 +537,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # for now, we don't really know what the above means, at least
         # don't lose the dot
         self.assert_compile(
-            select([tbl]),
+            select(tbl),
             "SELECT [abc.def.efg].hij.test.id FROM [abc.def.efg].hij.test",
         )
 
@@ -556,7 +556,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select([tbl]),
+            select(tbl),
             "SELECT [abc].[def].[efg].hij.test.id "
             "FROM [abc].[def].[efg].hij.test",
         )
@@ -570,7 +570,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema=quoted_name("foo.dbo", True),
         )
         self.assert_compile(
-            select([tbl]), "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
+            select(tbl), "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
         )
 
     def test_force_schema_quoted_w_dot_case_insensitive(self):
@@ -582,7 +582,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema=quoted_name("foo.dbo", True),
         )
         self.assert_compile(
-            select([tbl]), "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
+            select(tbl), "SELECT [foo.dbo].test.id FROM [foo.dbo].test"
         )
 
     def test_force_schema_quoted_name_w_dot_case_sensitive(self):
@@ -594,7 +594,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema=quoted_name("Foo.dbo", True),
         )
         self.assert_compile(
-            select([tbl]), "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
+            select(tbl), "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
         )
 
     def test_force_schema_quoted_w_dot_case_sensitive(self):
@@ -606,7 +606,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="[Foo.dbo]",
         )
         self.assert_compile(
-            select([tbl]), "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
+            select(tbl), "SELECT [Foo.dbo].test.id FROM [Foo.dbo].test"
         )
 
     def test_schema_autosplit_w_dot_case_insensitive(self):
@@ -618,7 +618,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="foo.dbo",
         )
         self.assert_compile(
-            select([tbl]), "SELECT foo.dbo.test.id FROM foo.dbo.test"
+            select(tbl), "SELECT foo.dbo.test.id FROM foo.dbo.test"
         )
 
     def test_schema_autosplit_w_dot_case_sensitive(self):
@@ -630,7 +630,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="Foo.dbo",
         )
         self.assert_compile(
-            select([tbl]), "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test"
+            select(tbl), "SELECT [Foo].dbo.test.id FROM [Foo].dbo.test"
         )
 
     def test_delete_schema(self):
@@ -645,7 +645,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             tbl.delete(tbl.c.id == 1),
             "DELETE FROM paj.test WHERE paj.test.id = " ":id_1",
         )
-        s = select([tbl.c.id]).where(tbl.c.id == 1)
+        s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
             tbl.delete().where(tbl.c.id.in_(s)),
             "DELETE FROM paj.test WHERE paj.test.id IN "
@@ -665,7 +665,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             tbl.delete(tbl.c.id == 1),
             "DELETE FROM banana.paj.test WHERE " "banana.paj.test.id = :id_1",
         )
-        s = select([tbl.c.id]).where(tbl.c.id == 1)
+        s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
             tbl.delete().where(tbl.c.id.in_(s)),
             "DELETE FROM banana.paj.test WHERE "
@@ -687,7 +687,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "DELETE FROM [banana split].paj.test WHERE "
             "[banana split].paj.test.id = :id_1",
         )
-        s = select([tbl.c.id]).where(tbl.c.id == 1)
+        s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
             tbl.delete().where(tbl.c.id.in_(s)),
             "DELETE FROM [banana split].paj.test WHERE "
@@ -711,7 +711,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "space].test WHERE [banana split].[paj "
             "with a space].test.id = :id_1",
         )
-        s = select([tbl.c.id]).where(tbl.c.id == 1)
+        s = select(tbl.c.id).where(tbl.c.id == 1)
         self.assert_compile(
             tbl.delete().where(tbl.c.id.in_(s)),
             "DELETE FROM [banana split].[paj with a space].test "
@@ -781,7 +781,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "sometable", m, Column("col1", Integer), Column("col2", Integer)
         )
         self.assert_compile(
-            select([func.max(t.c.col1)]),
+            select(func.max(t.c.col1)),
             "SELECT max(sometable.col1) AS max_1 FROM " "sometable",
         )
 
@@ -794,7 +794,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for field in "day", "month", "year":
             self.assert_compile(
-                select([extract(field, t.c.col1)]),
+                select(extract(field, t.c.col1)),
                 "SELECT DATEPART(%s, t.col1) AS anon_1 FROM t" % field,
             )
 
@@ -899,7 +899,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_using_top(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10)
 
         self.assert_compile(
             s,
@@ -911,7 +911,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_zero_using_top(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(0)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(0)
 
         self.assert_compile(
             s,
@@ -926,7 +926,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_offset_using_window(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).offset(20)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).offset(20)
 
         # test that the select is not altered with subsequent compile
         # calls
@@ -948,7 +948,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("t", column("x", Integer), column("y", Integer))
 
         s = (
-            select([t])
+            select(t)
             .where(t.c.x == 5)
             .order_by(t.c.y)
             .limit(10)
@@ -969,7 +969,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_offset_using_window(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
 
         self.assert_compile(
             s,
@@ -991,7 +991,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect_2012 = mssql.base.MSDialect()
         dialect_2012._supports_offset_fetch = True
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
 
         self.assert_compile(
             s,
@@ -1037,9 +1037,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t1", column("x", Integer), column("y", Integer))
         t2 = table("t2", column("x", Integer), column("y", Integer))
 
-        order_by = select([t2.c.y]).where(t1.c.x == t2.c.x).scalar_subquery()
+        order_by = select(t2.c.y).where(t1.c.x == t2.c.x).scalar_subquery()
         s = (
-            select([t1])
+            select(t1)
             .where(t1.c.x == 5)
             .order_by(order_by)
             .limit(10)
@@ -1072,8 +1072,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expr1 = func.foo(t.c.x).label("x")
         expr2 = func.foo(t.c.x).label("y")
 
-        stmt1 = select([expr1]).order_by(expr1.desc()).offset(1)
-        stmt2 = select([expr2]).order_by(expr2.desc()).offset(1)
+        stmt1 = select(expr1).order_by(expr1.desc()).offset(1)
+        stmt2 = select(expr2).order_by(expr2.desc()).offset(1)
 
         self.assert_compile(
             stmt1,
@@ -1092,7 +1092,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_zero_offset_using_window(self):
         t = table("t", column("x", Integer), column("y", Integer))
 
-        s = select([t]).where(t.c.x == 5).order_by(t.c.y).limit(0).offset(0)
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(0).offset(0)
 
         # render the LIMIT of zero, but not the OFFSET
         # of zero, so produces TOP 0
@@ -1349,7 +1349,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("t1", metadata, Column("id", Integer, primary_key=True))
 
         self.assert_compile(
-            select([try_cast(t1.c.id, Integer)]),
+            select(try_cast(t1.c.id, Integer)),
             "SELECT TRY_CAST (t1.id AS INTEGER) AS id FROM t1",
         )
 

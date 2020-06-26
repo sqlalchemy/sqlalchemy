@@ -405,7 +405,7 @@ class Result(object):
         )
 
         result = self.session.execute(
-            statement, params, execution_options=execution_options
+            statement, params, execution_options=execution_options, future=True
         )
         if result._attributes.get("is_single_entity", False):
             result = result.scalars()

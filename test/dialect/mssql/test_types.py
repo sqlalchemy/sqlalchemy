@@ -161,7 +161,7 @@ class MSDateTypeTest(fixtures.TestBase):
             ("day", fivedaysago.day),
         ):
             r = connection.execute(
-                select([extract(field, fivedaysago)])
+                select(extract(field, fivedaysago))
             ).scalar()
             eq_(r, exp)
 
@@ -228,7 +228,7 @@ class RowVersionTest(fixtures.TablesTest):
             if convert_int:
                 last_ts_1 = int(codecs.encode(last_ts_1, "hex"), 16)
 
-            eq_(conn.scalar(select([t.c.rv])), last_ts_1)
+            eq_(conn.scalar(select(t.c.rv)), last_ts_1)
 
             conn.execute(
                 t.update().values(data="bar").where(t.c.data == "foo")
@@ -237,7 +237,7 @@ class RowVersionTest(fixtures.TablesTest):
             if convert_int:
                 last_ts_2 = int(codecs.encode(last_ts_2, "hex"), 16)
 
-            eq_(conn.scalar(select([t.c.rv])), last_ts_2)
+            eq_(conn.scalar(select(t.c.rv)), last_ts_2)
 
     def test_cant_insert_rowvalue(self):
         self._test_cant_insert(self.tables.rv_t)
@@ -640,7 +640,7 @@ class TypeRoundTripTest(
                 )
                 primary_key = result.inserted_primary_key
                 returned = conn.scalar(
-                    select([numeric_table.c.numericcol]).where(
+                    select(numeric_table.c.numericcol).where(
                         numeric_table.c.id == primary_key[0]
                     )
                 )
@@ -1077,7 +1077,7 @@ class TypeRoundTripTest(
                     conn.execute(tbl.insert())
                     if "int_y" in tbl.c:
                         eq_(
-                            conn.execute(select([tbl.c.int_y])).scalar(),
+                            conn.execute(select(tbl.c.int_y)).scalar(),
                             counter + 1,
                         )
                         assert (
@@ -1172,7 +1172,7 @@ class BinaryTest(fixtures.TestBase):
         with engine.connect() as conn:
             conn.execute(binary_table.insert(), data=data)
 
-            eq_(conn.scalar(select([binary_table.c.data])), expected)
+            eq_(conn.scalar(select(binary_table.c.data)), expected)
 
             eq_(
                 conn.scalar(
@@ -1186,7 +1186,7 @@ class BinaryTest(fixtures.TestBase):
             conn.execute(binary_table.delete())
 
             conn.execute(binary_table.insert(), data=None)
-            eq_(conn.scalar(select([binary_table.c.data])), None)
+            eq_(conn.scalar(select(binary_table.c.data)), None)
 
             eq_(
                 conn.scalar(

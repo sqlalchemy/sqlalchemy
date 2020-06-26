@@ -17,7 +17,6 @@ from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -165,7 +164,7 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
         query = select(
             [func.count(addresses.c.id)], addresses.c.user_id == users.c.id
         ).scalar_subquery()
-        query = select([users.c.name.label("users_name"), query])
+        query = select(users.c.name.label("users_name"), query)
         self.assert_compile(
             query, self.query_correlated, dialect=default.DefaultDialect()
         )
@@ -179,7 +178,7 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
             .correlate(users)
             .scalar_subquery()
         )
-        query = select([users.c.name.label("users_name"), query])
+        query = select(users.c.name.label("users_name"), query)
         self.assert_compile(
             query, self.query_correlated, dialect=default.DefaultDialect()
         )
@@ -193,7 +192,7 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
             .correlate(None)
             .scalar_subquery()
         )
-        query = select([users.c.name.label("users_name"), query])
+        query = select(users.c.name.label("users_name"), query)
         self.assert_compile(
             query, self.query_not_correlated, dialect=default.DefaultDialect()
         )
@@ -277,16 +276,16 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
     def test_correlate_to_union_newstyle(self):
         User = self.classes.User
 
-        q = future_select(User).apply_labels()
+        q = select(User).apply_labels()
 
-        q = future_select(User).union(q).apply_labels().subquery()
+        q = select(User).union(q).apply_labels().subquery()
 
         u_alias = aliased(User)
 
         raw_subq = exists().where(u_alias.id > q.c[0])
 
         self.assert_compile(
-            future_select(q, raw_subq).apply_labels(),
+            select(q, raw_subq).apply_labels(),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
             "EXISTS (SELECT * FROM users AS users_1 "
@@ -592,7 +591,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             q3.all(), [(7, 1), (8, 1), (9, 1), (10, 1)],
         )
 
-        q3 = future_select(q2)
+        q3 = select(q2)
         eq_(sess.execute(q3).fetchall(), [(7, 1), (8, 1), (9, 1), (10, 1)])
 
 
@@ -687,10 +686,10 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         from sqlalchemy.sql import column
 
         c1, c2 = column("c1"), column("c2")
-        q1 = future_select(c1, c2).where(c1 == "dog")
-        q2 = future_select(c1, c2).where(c1 == "cat")
+        q1 = select(c1, c2).where(c1 == "dog")
+        q2 = select(c1, c2).where(c1 == "cat")
         subq = q1.union(q2).subquery()
-        q3 = future_select(subq).apply_labels()
+        q3 = select(subq).apply_labels()
 
         self.assert_compile(
             q3.order_by(subq.c.c1),
@@ -723,17 +722,13 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         from sqlalchemy.sql import column
 
         t1 = table("t1", column("c1"), column("c2"))
-        stmt = (
-            future_select(t1.c.c1, t1.c.c2)
-            .where(t1.c.c1 == "dog")
-            .apply_labels()
-        )
+        stmt = select(t1.c.c1, t1.c.c2).where(t1.c.c1 == "dog").apply_labels()
 
         subq1 = stmt.subquery("anon_2").select().apply_labels()
 
         subq2 = subq1.subquery("anon_1")
 
-        q1 = future_select(subq2).apply_labels()
+        q1 = select(subq2).apply_labels()
 
         self.assert_compile(
             # as in test_anonymous_expression_from_self_twice_newstyle_wlabels,
@@ -773,11 +768,11 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         from sqlalchemy.sql import column
 
         c1, c2 = column("c1"), column("c2")
-        subq = future_select(c1, c2).where(c1 == "dog").subquery()
+        subq = select(c1, c2).where(c1 == "dog").subquery()
 
-        subq2 = future_select(subq).apply_labels().subquery()
+        subq2 = select(subq).apply_labels().subquery()
 
-        stmt = future_select(subq2).apply_labels()
+        stmt = select(subq2).apply_labels()
 
         self.assert_compile(
             # because of the apply labels we don't have simple keys on
@@ -794,11 +789,11 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         from sqlalchemy.sql import column
 
         c1, c2 = column("c1"), column("c2")
-        subq = future_select(c1, c2).where(c1 == "dog").subquery()
+        subq = select(c1, c2).where(c1 == "dog").subquery()
 
-        subq2 = future_select(subq).subquery()
+        subq2 = select(subq).subquery()
 
-        stmt = future_select(subq2)
+        stmt = select(subq2)
 
         self.assert_compile(
             # without labels we can access .c1 but the statement will not
@@ -827,10 +822,10 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
 
     def test_anonymous_labeled_expression_newstyle(self):
         c1, c2 = column("c1"), column("c2")
-        q1 = future_select(c1.label("foo"), c2.label("bar")).where(c1 == "dog")
-        q2 = future_select(c1.label("foo"), c2.label("bar")).where(c1 == "cat")
+        q1 = select(c1.label("foo"), c2.label("bar")).where(c1 == "dog")
+        q2 = select(c1.label("foo"), c2.label("bar")).where(c1 == "cat")
         subq = union(q1, q2).subquery()
-        q3 = future_select(subq).apply_labels()
+        q3 = select(subq).apply_labels()
         self.assert_compile(
             q3.order_by(subq.c.foo),
             "SELECT anon_1.foo AS anon_1_foo, anon_1.bar AS anon_1_bar FROM "
@@ -1575,7 +1570,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         subq = (
-            select([func.count()])
+            select(func.count())
             .where(User.id == Address.user_id)
             .correlate(users)
             .label("count")
@@ -1594,7 +1589,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         # same thing without the correlate, as it should
         # not be needed
         subq = (
-            select([func.count()])
+            select(func.count())
             .where(User.id == Address.user_id)
             .label("count")
         )
@@ -2079,13 +2074,13 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
     def test_from_self_internal_literals_newstyle(self):
         Order = self.classes.Order
 
-        stmt = future_select(
+        stmt = select(
             Order.id, Order.description, literal_column("'q'").label("foo")
         ).where(Order.description == "order 3")
 
         subq = aliased(Order, stmt.apply_labels().subquery())
 
-        stmt = future_select(subq).apply_labels()
+        stmt = select(subq).apply_labels()
         self.assert_compile(
             stmt,
             "SELECT anon_1.orders_id AS "
@@ -2299,7 +2294,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         # TODO: figure out why group_by(users) doesn't work here
         count = func.count(addresses.c.id).label("count")
         s = (
-            select([users, count])
+            select(users, count)
             .select_from(users.outerjoin(addresses))
             .group_by(*[c for c in users.c])
             .order_by(User.id)
@@ -2317,7 +2312,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         q = sess.query(User.id, User.name)
-        stmt = select([users]).order_by(users.c.id)
+        stmt = select(users).order_by(users.c.id)
         q = q.from_statement(stmt)
 
         eq_(q.all(), [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")])
@@ -2588,7 +2583,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         not_users = table("users", column("id"), column("name"))
-        ua = aliased(User, select([not_users]).alias(), adapt_on_names=True)
+        ua = aliased(User, select(not_users).alias(), adapt_on_names=True)
 
         q = sess.query(User.name).select_entity_from(ua).order_by(User.name)
         self.assert_compile(
@@ -3613,7 +3608,7 @@ class ExternalColumnsTest(QueryTest):
             addresses,
             properties={
                 "username": column_property(
-                    select([User.fullname])
+                    select(User.fullname)
                     .where(User.id == addresses.c.user_id)
                     .label("y")
                 )

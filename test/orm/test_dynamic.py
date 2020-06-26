@@ -542,7 +542,7 @@ class UOWTest(
 
         eq_(
             testing.db.scalar(
-                select([func.count(cast(1, Integer))]).where(
+                select(func.count(cast(1, Integer))).where(
                     addresses.c.user_id != None
                 )
             ),  # noqa
@@ -554,7 +554,7 @@ class UOWTest(
 
         eq_(
             testing.db.execute(
-                select([addresses]).where(addresses.c.user_id != None)  # noqa
+                select(addresses).where(addresses.c.user_id != None)  # noqa
             ).fetchall(),
             [(a1.id, u1.id, "foo")],
         )
@@ -563,7 +563,7 @@ class UOWTest(
         sess.flush()
         eq_(
             testing.db.scalar(
-                select([func.count(cast(1, Integer))]).where(
+                select(func.count(cast(1, Integer))).where(
                     addresses.c.user_id != None
                 )
             ),  # noqa
@@ -574,7 +574,7 @@ class UOWTest(
         sess.flush()
         eq_(
             testing.db.execute(
-                select([addresses]).where(addresses.c.user_id != None)  # noqa
+                select(addresses).where(addresses.c.user_id != None)  # noqa
             ).fetchall(),
             [(a1.id, u1.id, "foo")],
         )
@@ -585,7 +585,7 @@ class UOWTest(
         sess.flush()
         eq_(
             testing.db.execute(
-                select([addresses]).where(addresses.c.user_id != None)  # noqa
+                select(addresses).where(addresses.c.user_id != None)  # noqa
             ).fetchall(),
             [(a2.id, u1.id, "bar")],
         )
@@ -757,13 +757,13 @@ class UOWTest(
         sess.commit()
         eq_(
             testing.db.scalar(
-                select([func.count("*")]).where(addresses.c.user_id == None)
+                select(func.count("*")).where(addresses.c.user_id == None)
             ),  # noqa
             0,
         )
         eq_(
             testing.db.scalar(
-                select([func.count("*")]).where(addresses.c.user_id != None)
+                select(func.count("*")).where(addresses.c.user_id != None)
             ),  # noqa
             6,
         )
@@ -775,7 +775,7 @@ class UOWTest(
         if expected:
             eq_(
                 testing.db.scalar(
-                    select([func.count("*")]).where(
+                    select(func.count("*")).where(
                         addresses.c.user_id == None
                     )  # noqa
                 ),
@@ -783,7 +783,7 @@ class UOWTest(
             )
             eq_(
                 testing.db.scalar(
-                    select([func.count("*")]).where(
+                    select(func.count("*")).where(
                         addresses.c.user_id != None
                     )  # noqa
                 ),
@@ -792,7 +792,7 @@ class UOWTest(
         else:
             eq_(
                 testing.db.scalar(
-                    select([func.count("*")]).select_from(addresses)
+                    select(func.count("*")).select_from(addresses)
                 ),
                 0,
             )

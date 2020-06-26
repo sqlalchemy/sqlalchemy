@@ -516,10 +516,10 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         Engineer = _poly_fixtures.Engineer
 
         with DeprecatedQueryTest._expect_implicit_subquery():
-            p_poly = with_polymorphic(Person, [Engineer], select([Person]))
+            p_poly = with_polymorphic(Person, [Engineer], select(Person))
 
         is_true(
-            sa.inspect(p_poly).selectable.compare(select([Person]).subquery())
+            sa.inspect(p_poly).selectable.compare(select(Person).subquery())
         )
 
     def test_multiple_adaption(self):

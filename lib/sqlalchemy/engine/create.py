@@ -227,6 +227,15 @@ def create_engine(url, **kwargs):
         be applied to all connections.  See
         :meth:`~sqlalchemy.engine.Connection.execution_options`
 
+    :param future: Use the 2.0 style :class:`_future.Engine` and
+        :class:`_future.Connection` API.
+
+        ..versionadded:: 1.4
+
+        .. seealso::
+
+            :ref:`migration_20_toplevel`
+
     :param hide_parameters: Boolean, when set to True, SQL statement parameters
         will not be displayed in INFO logging nor will they be formatted into
         the string representation of :class:`.StatementError` objects.
@@ -575,7 +584,14 @@ def create_engine(url, **kwargs):
         pool._dialect = dialect
 
     # create engine.
-    engineclass = kwargs.pop("_future_engine_class", base.Engine)
+    if kwargs.pop("future", False):
+        from sqlalchemy import future
+
+        default_engine_class = future.Engine
+    else:
+        default_engine_class = base.Engine
+
+    engineclass = kwargs.pop("_future_engine_class", default_engine_class)
 
     engine_args = {}
     for k in util.get_cls_kwargs(engineclass):

@@ -140,7 +140,7 @@ drop synonym %(test_schema)s.local_table;
             "%(test_schema)s_pt.data FROM %(test_schema)s_pt"
             % {"test_schema": testing.config.test_schema},
         )
-        select([parent]).execute().fetchall()
+        select(parent).execute().fetchall()
 
     def test_reflect_alt_synonym_owner_local_table(self):
         meta = MetaData(testing.db)
@@ -158,7 +158,7 @@ drop synonym %(test_schema)s.local_table;
             "FROM %(test_schema)s.local_table"
             % {"test_schema": testing.config.test_schema},
         )
-        select([parent]).execute().fetchall()
+        select(parent).execute().fetchall()
 
     @testing.provide_metadata
     def test_create_same_names_implicit_schema(self):
@@ -192,7 +192,7 @@ drop synonym %(test_schema)s.local_table;
             "%(test_schema)s.parent.id = %(test_schema)s.child.parent_id"
             % {"test_schema": testing.config.test_schema},
         )
-        select([parent, child]).select_from(
+        select(parent, child).select_from(
             parent.join(child)
         ).execute().fetchall()
 
@@ -244,7 +244,7 @@ drop synonym %(test_schema)s.local_table;
                 "localtable.parent_id"
                 % {"test_schema": testing.config.test_schema},
             )
-            select([parent, lcl]).select_from(
+            select(parent, lcl).select_from(
                 parent.join(lcl)
             ).execute().fetchall()
         finally:
@@ -265,7 +265,7 @@ drop synonym %(test_schema)s.local_table;
             "%(test_schema)s.child.parent_id"
             % {"test_schema": testing.config.test_schema},
         )
-        select([parent, child]).select_from(
+        select(parent, child).select_from(
             parent.join(child)
         ).execute().fetchall()
 
@@ -289,7 +289,7 @@ drop synonym %(test_schema)s.local_table;
                 "localtable.parent_id"
                 % {"test_schema": testing.config.test_schema},
             )
-            select([parent, lcl]).select_from(
+            select(parent, lcl).select_from(
                 parent.join(lcl)
             ).execute().fetchall()
         finally:
@@ -319,7 +319,7 @@ drop synonym %(test_schema)s.local_table;
             "%(test_schema)s.ctable.parent_id"
             % {"test_schema": testing.config.test_schema},
         )
-        select([parent, child]).select_from(
+        select(parent, child).select_from(
             parent.join(child)
         ).execute().fetchall()
 

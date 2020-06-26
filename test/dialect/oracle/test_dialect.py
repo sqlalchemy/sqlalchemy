@@ -257,7 +257,7 @@ class ComputedReturningTest(fixtures.TablesTest):
 
             eq_(result.returned_defaults, (47,))
 
-            eq_(conn.scalar(select([test.c.bar])), 47)
+            eq_(conn.scalar(select(test.c.bar)), 47)
 
     def test_computed_update_warning(self):
         test = self.tables.test
@@ -274,7 +274,7 @@ class ComputedReturningTest(fixtures.TablesTest):
                 # returns the *old* value
                 eq_(result.returned_defaults, (47,))
 
-            eq_(conn.scalar(select([test.c.bar])), 52)
+            eq_(conn.scalar(select(test.c.bar)), 52)
 
     def test_computed_update_no_warning(self):
         test = self.tables.test_no_returning
@@ -288,7 +288,7 @@ class ComputedReturningTest(fixtures.TablesTest):
             # no returning
             eq_(result.returned_defaults, None)
 
-            eq_(conn.scalar(select([test.c.bar])), 52)
+            eq_(conn.scalar(select(test.c.bar)), 52)
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
@@ -366,10 +366,8 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         eq_(
             connection.scalar(
                 select(
-                    [
-                        literal_column("2", type_=Integer())
-                        + bindparam("2_1", value=2)
-                    ]
+                    literal_column("2", type_=Integer())
+                    + bindparam("2_1", value=2)
                 )
             ),
             4,
@@ -389,7 +387,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
         t.create(connection)
 
         connection.execute(
-            select([t]).where(t.c.foo.in_(bindparam("uid", expanding=True))),
+            select(t).where(t.c.foo.in_(bindparam("uid", expanding=True))),
             uid=[1, 2, 3],
         )
 

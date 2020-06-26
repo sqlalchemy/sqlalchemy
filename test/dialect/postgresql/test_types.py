@@ -110,13 +110,13 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             (Numeric(asdecimal=False), 140.381230939),
         ]:
             ret = connection.execute(
-                select([func.stddev_pop(data_table.c.data, type_=type_)])
+                select(func.stddev_pop(data_table.c.data, type_=type_))
             ).scalar()
 
             eq_(round_decimal(ret, 9), result)
 
             ret = connection.execute(
-                select([cast(func.stddev_pop(data_table.c.data), type_)])
+                select(cast(func.stddev_pop(data_table.c.data), type_))
             ).scalar()
             eq_(round_decimal(ret, 9), result)
 
@@ -314,7 +314,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ],
         )
         connection.execute(t1.insert(), {"bar": "two"})
-        eq_(connection.scalar(select([t1.c.bar])), "two")
+        eq_(connection.scalar(select(t1.c.bar)), "two")
 
     @testing.provide_metadata
     def test_non_native_enum_w_unicode(self, connection):
@@ -353,7 +353,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
         connection.execute(t1.insert(), {"bar": util.u("Ü")})
-        eq_(connection.scalar(select([t1.c.bar])), util.u("Ü"))
+        eq_(connection.scalar(select(t1.c.bar)), util.u("Ü"))
 
     @testing.provide_metadata
     def test_disable_create(self):
@@ -661,7 +661,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         self.metadata.create_all(testing.db)
 
         connection.execute(t1.insert(), {"data": "two"})
-        eq_(connection.scalar(select([t1.c.data])), "twoHITHERE")
+        eq_(connection.scalar(select(t1.c.data)), "twoHITHERE")
 
     @testing.provide_metadata
     def test_generic_w_pg_variant(self, connection):
@@ -760,7 +760,7 @@ class RegClassTest(fixtures.TestBase):
     @staticmethod
     def _scalar(expression):
         with testing.db.connect() as conn:
-            return conn.scalar(select([expression]))
+            return conn.scalar(select(expression))
 
     def test_cast_name(self):
         eq_(self._scalar(cast("pg_class", postgresql.REGCLASS)), "pg_class")
@@ -786,7 +786,7 @@ class RegClassTest(fixtures.TestBase):
         )
         with testing.db.connect() as conn:
             oid = conn.scalar(
-                select([pga.c.attrelid]).where(
+                select(pga.c.attrelid).where(
                     pga.c.attrelid == cast("pg_class", postgresql.REGCLASS)
                 )
             )
@@ -1102,7 +1102,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_any(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col.any(7, operator=operators.lt)]),
+            select(col.any(7, operator=operators.lt)),
             "SELECT %(param_1)s < ANY (x) AS anon_1",
             checkparams={"param_1": 7},
         )
@@ -1110,7 +1110,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_all(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col.all(7, operator=operators.lt)]),
+            select(col.all(7, operator=operators.lt)),
             "SELECT %(param_1)s < ALL (x) AS anon_1",
             checkparams={"param_1": 7},
         )
@@ -1172,7 +1172,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         literal = array([4, 5])
 
         self.assert_compile(
-            select([col + literal]),
+            select(col + literal),
             "SELECT x || ARRAY[%(param_1)s, %(param_2)s] AS anon_1",
             checkparams={"param_1": 4, "param_2": 5},
         )
@@ -1332,7 +1332,7 @@ class ArrayRoundTripTest(object):
             values_table.insert(), [{"value": i} for i in range(1, 10)]
         )
 
-        stmt = select([func.array_agg(values_table.c.value)])
+        stmt = select(func.array_agg(values_table.c.value))
         eq_(connection.execute(stmt).scalar(), list(range(1, 10)))
 
         stmt = select([func.array_agg(values_table.c.value)[3]])
@@ -1447,7 +1447,7 @@ class ArrayRoundTripTest(object):
             strarr=[util.u("abc"), util.u("def")],
         )
         results = connection.execute(
-            select([arrtable.c.id]).where(arrtable.c.intarr < [4, 5, 6])
+            select(arrtable.c.id).where(arrtable.c.intarr < [4, 5, 6])
         ).fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], 5)
@@ -1575,7 +1575,7 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(arrtable.insert(), dimarr=[[1, 2, 3], [4, 5, 6]])
         eq_(
-            connection.scalar(select([arrtable.c.dimarr])),
+            connection.scalar(select(arrtable.c.dimarr)),
             [[-1, 0, 1], [2, 3, 4]],
         )
 
@@ -1584,7 +1584,7 @@ class ArrayRoundTripTest(object):
         connection.execute(arrtable.insert(), intarr=[4, 5, 6])
         eq_(
             connection.scalar(
-                select([arrtable.c.intarr]).where(
+                select(arrtable.c.intarr).where(
                     postgresql.Any(5, arrtable.c.intarr)
                 )
             ),
@@ -1596,7 +1596,7 @@ class ArrayRoundTripTest(object):
         connection.execute(arrtable.insert(), intarr=[4, 5, 6])
         eq_(
             connection.scalar(
-                select([arrtable.c.intarr]).where(
+                select(arrtable.c.intarr).where(
                     arrtable.c.intarr.all(4, operator=operators.le)
                 )
             ),
@@ -1688,7 +1688,7 @@ class PGArrayRoundTripTest(
         with testing.db.begin() as conn:
             eq_(
                 conn.scalar(
-                    select([arrtable.c.intarr]).where(
+                    select(arrtable.c.intarr).where(
                         arrtable.c.intarr.contains(struct([4, 5]))
                     )
                 ),
@@ -1702,7 +1702,7 @@ class PGArrayRoundTripTest(
         with testing.db.begin() as conn:
             eq_(
                 conn.scalar(
-                    select([dim_arrtable.c.intarr]).where(
+                    select(dim_arrtable.c.intarr).where(
                         dim_arrtable.c.intarr.contains(struct([4, 5]))
                     )
                 ),
@@ -1724,9 +1724,7 @@ class PGArrayRoundTripTest(
         self._fixture_456(arrtable)
         eq_(
             connection.scalar(
-                select([arrtable.c.intarr]).where(
-                    arrtable.c.intarr.contains([])
-                )
+                select(arrtable.c.intarr).where(arrtable.c.intarr.contains([]))
             ),
             [4, 5, 6],
         )
@@ -1736,7 +1734,7 @@ class PGArrayRoundTripTest(
         connection.execute(arrtable.insert(), intarr=[4, 5, 6])
         eq_(
             connection.scalar(
-                select([arrtable.c.intarr]).where(
+                select(arrtable.c.intarr).where(
                     arrtable.c.intarr.overlap([7, 6])
                 )
             ),
@@ -1838,14 +1836,14 @@ class ArrayEnum(fixtures.TestBase):
             tbl.insert(), [{"enum_col": ["foo"]}, {"enum_col": ["foo", "bar"]}]
         )
 
-        sel = select([tbl.c.enum_col]).order_by(tbl.c.id)
+        sel = select(tbl.c.enum_col).order_by(tbl.c.id)
         eq_(
             connection.execute(sel).fetchall(), [(["foo"],), (["foo", "bar"],)]
         )
 
         if util.py3k:
             connection.execute(tbl.insert(), {"pyenum_col": [MyEnum.a]})
-            sel = select([tbl.c.pyenum_col]).order_by(tbl.c.id.desc())
+            sel = select(tbl.c.pyenum_col).order_by(tbl.c.id.desc())
             eq_(connection.scalar(sel), [MyEnum.a])
 
 
@@ -1880,7 +1878,7 @@ class ArrayJSON(fixtures.TestBase):
             ],
         )
 
-        sel = select([tbl.c.json_col]).order_by(tbl.c.id)
+        sel = select(tbl.c.json_col).order_by(tbl.c.id)
         eq_(
             connection.execute(sel).fetchall(),
             [(["foo"],), ([{"foo": "bar"}, [1]],), ([None],)],
@@ -1962,14 +1960,14 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
     __backend__ = True
 
     def test_timestamp(self, connection):
-        s = select([text("timestamp '2007-12-25'")])
+        s = select(text("timestamp '2007-12-25'"))
         result = connection.execute(s).first()
         eq_(result[0], datetime.datetime(2007, 12, 25, 0, 0))
 
     def test_interval_arithmetic(self, connection):
         # basically testing that we get timedelta back for an INTERVAL
         # result.  more of a driver assertion.
-        s = select([text("timestamp '2007-12-25' - timestamp '2007-11-15'")])
+        s = select(text("timestamp '2007-12-25' - timestamp '2007-11-15'"))
         result = connection.execute(s).first()
         eq_(result[0], datetime.timedelta(40))
 
@@ -2056,13 +2054,12 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         t = Table("t1", self.metadata, Column("data", postgresql.TSVECTOR))
         t.create()
         connection.execute(t.insert(), data="a fat cat sat")
-        eq_(connection.scalar(select([t.c.data])), "'a' 'cat' 'fat' 'sat'")
+        eq_(connection.scalar(select(t.c.data)), "'a' 'cat' 'fat' 'sat'")
 
         connection.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
 
         eq_(
-            connection.scalar(select([t.c.data])),
-            "'a' 'cat' 'fat' 'mat' 'sat'",
+            connection.scalar(select(t.c.data)), "'a' 'cat' 'fat' 'mat' 'sat'",
         )
 
     @testing.provide_metadata
@@ -2113,7 +2110,7 @@ class UUIDTest(fixtures.TestBase):
         connection.execute(utable.insert(), {"data": value1})
         connection.execute(utable.insert(), {"data": value2})
         r = connection.execute(
-            select([utable.c.data]).where(utable.c.data != value1)
+            select(utable.c.data).where(utable.c.data != value1)
         )
         eq_(r.fetchone()[0], value2)
         eq_(r.fetchone(), None)
@@ -2161,7 +2158,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
         self.hashcol = self.test_table.c.hash
 
     def _test_where(self, whereclause, expected):
-        stmt = select([self.test_table]).where(whereclause)
+        stmt = select(self.test_table).where(whereclause)
         self.assert_compile(
             stmt,
             "SELECT test_table.id, test_table.hash FROM test_table "
@@ -2412,7 +2409,7 @@ class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     )
     def test_cols(self, colclause_fn, expected, from_):
         colclause = colclause_fn(self)
-        stmt = select([colclause])
+        stmt = select(colclause)
         self.assert_compile(
             stmt,
             ("SELECT %s" + (" FROM test_table" if from_ else "")) % expected,
@@ -2448,7 +2445,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     def _assert_data(self, compare, conn):
         data = conn.execute(
-            select([self.tables.data_table.c.data]).order_by(
+            select(self.tables.data_table.c.data).order_by(
                 self.tables.data_table.c.name
             )
         ).fetchall()
@@ -2485,7 +2482,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         expr = hstore(
             postgresql.array(["1", "2"]), postgresql.array(["3", None])
         )["1"]
-        eq_(connection.scalar(select([expr])), "3")
+        eq_(connection.scalar(select(expr)), "3")
 
     @testing.requires.psycopg2_native_hstore
     def test_insert_native(self):
@@ -2511,7 +2508,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         with engine.begin() as conn:
             result = conn.execute(
-                select([data_table.c.data]).where(
+                select(data_table.c.data).where(
                     data_table.c.data["k1"] == "r3v1"
                 )
             ).first()
@@ -2775,9 +2772,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         assert isinstance(cols[0]["type"], self._col_type)
 
     def _assert_data(self, conn):
-        data = conn.execute(
-            select([self.tables.data_table.c.range])
-        ).fetchall()
+        data = conn.execute(select(self.tables.data_table.c.range)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
     def test_insert_obj(self, connection):
@@ -2799,7 +2794,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         )
         # select
         range_ = self.tables.data_table.c.range
-        data = connection.execute(select([range_ + range_])).fetchall()
+        data = connection.execute(select(range_ + range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
     def test_intersection_result(self, connection):
@@ -2809,7 +2804,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         )
         # select
         range_ = self.tables.data_table.c.range
-        data = connection.execute(select([range_ * range_])).fetchall()
+        data = connection.execute(select(range_ * range_)).fetchall()
         eq_(data, [(self._data_obj(),)])
 
     def test_difference_result(self, connection):
@@ -2819,7 +2814,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         )
         # select
         range_ = self.tables.data_table.c.range
-        data = connection.execute(select([range_ - range_])).fetchall()
+        data = connection.execute(select(range_ - range_)).fetchall()
         eq_(data, [(self._data_obj().__class__(empty=True),)])
 
 
@@ -3000,7 +2995,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     )
     def test_where(self, whereclause_fn, expected):
         whereclause = whereclause_fn(self)
-        stmt = select([self.test_table]).where(whereclause)
+        stmt = select(self.test_table).where(whereclause)
         self.assert_compile(
             stmt,
             "SELECT test_table.id, test_table.test_column FROM test_table "
@@ -3035,7 +3030,7 @@ class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     )
     def test_cols(self, colclause_fn, expected, from_):
         colclause = colclause_fn(self)
-        stmt = select([colclause])
+        stmt = select(colclause)
         self.assert_compile(
             stmt,
             ("SELECT %s" + (" FROM test_table" if from_ else "")) % expected,
@@ -3075,19 +3070,19 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def _assert_data(self, compare, conn, column="data"):
         col = self.tables.data_table.c[column]
         data = conn.execute(
-            select([col]).order_by(self.tables.data_table.c.name)
+            select(col).order_by(self.tables.data_table.c.name)
         ).fetchall()
         eq_([d for d, in data], compare)
 
     def _assert_column_is_NULL(self, conn, column="data"):
         col = self.tables.data_table.c[column]
-        data = conn.execute(select([col]).where(col.is_(null()))).fetchall()
+        data = conn.execute(select(col).where(col.is_(null()))).fetchall()
         eq_([d for d, in data], [None])
 
     def _assert_column_is_JSON_NULL(self, conn, column="data"):
         col = self.tables.data_table.c[column]
         data = conn.execute(
-            select([col]).where(cast(col, String) == "null")
+            select(col).where(cast(col, String) == "null")
         ).fetchall()
         eq_([d for d, in data], [None])
 
@@ -3156,7 +3151,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             options=dict(json_serializer=dumps, json_deserializer=loads)
         )
 
-        s = select([cast({"key": "value", "x": "q"}, self.test_type)])
+        s = select(cast({"key": "value", "x": "q"}, self.test_type))
         with engine.begin() as conn:
             eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
 
@@ -3171,7 +3166,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
 
         result = connection.execute(
-            select([data_table.c.name]).where(
+            select(data_table.c.name).where(
                 data_table.c.data[("k1", "r6v1", "subr")].astext == "[1, 2, 3]"
             )
         )
@@ -3186,7 +3181,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
 
         result = connection.execute(
-            select([data_table.c.name]).where(
+            select(data_table.c.name).where(
                 data_table.c.data["k1"]["r6v1"]["subr"].astext == "[1, 2, 3]"
             )
         )
@@ -3219,14 +3214,14 @@ class JSONRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         with engine.begin() as conn:
             result = conn.execute(
-                select([data_table.c.data]).where(
+                select(data_table.c.data).where(
                     data_table.c.data["k1"].astext == "r3v1"
                 )
             ).first()
             eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
 
             result = conn.execute(
-                select([data_table.c.data]).where(
+                select(data_table.c.data).where(
                     data_table.c.data["k1"].astext.cast(String) == "r3v1"
                 )
             ).first()
@@ -3234,12 +3229,10 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def test_fixed_round_trip(self, connection):
         s = select(
-            [
-                cast(
-                    {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
-                    self.test_type,
-                )
-            ]
+            cast(
+                {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
+                self.test_type,
+            )
         )
         eq_(
             connection.scalar(s),
@@ -3248,15 +3241,13 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def test_unicode_round_trip(self, connection):
         s = select(
-            [
-                cast(
-                    {
-                        util.u("réveillé"): util.u("réveillé"),
-                        "data": {"k1": util.u("drôle")},
-                    },
-                    self.test_type,
-                )
-            ]
+            cast(
+                {
+                    util.u("réveillé"): util.u("réveillé"),
+                    "data": {"k1": util.u("drôle")},
+                },
+                self.test_type,
+            )
         )
         eq_(
             connection.scalar(s),

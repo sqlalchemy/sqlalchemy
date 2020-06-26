@@ -459,7 +459,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         sess.flush()
 
         stmt = (
-            select([reports, employees])
+            select(reports, employees)
             .select_from(
                 reports.outerjoin(
                     employees,
@@ -1573,27 +1573,23 @@ class SingleFromPolySelectableTest(
 
         poly = (
             select(
-                [
-                    employee.c.id,
-                    employee.c.type,
-                    employee.c.name,
-                    manager.c.manager_data,
-                    null().label("engineer_info"),
-                    null().label("manager_id"),
-                ]
+                employee.c.id,
+                employee.c.type,
+                employee.c.name,
+                manager.c.manager_data,
+                null().label("engineer_info"),
+                null().label("manager_id"),
             )
             .select_from(employee.join(manager))
             .apply_labels()
             .union_all(
                 select(
-                    [
-                        employee.c.id,
-                        employee.c.type,
-                        employee.c.name,
-                        null().label("manager_data"),
-                        engineer.c.engineer_info,
-                        engineer.c.manager_id,
-                    ]
+                    employee.c.id,
+                    employee.c.type,
+                    employee.c.name,
+                    null().label("manager_data"),
+                    engineer.c.engineer_info,
+                    engineer.c.manager_id,
                 )
                 .select_from(employee.join(engineer))
                 .apply_labels()

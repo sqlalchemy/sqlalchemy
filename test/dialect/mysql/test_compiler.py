@@ -70,7 +70,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("col1", Integer),
             Column("master_ssl_verify_server_cert", Integer),
         )
-        x = select([table.c.col1, table.c.master_ssl_verify_server_cert])
+        x = select(table.c.col1, table.c.master_ssl_verify_server_cert)
 
         self.assert_compile(
             x,
@@ -471,18 +471,18 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(
-            select([t]).limit(10).offset(20),
+            select(t).limit(10).offset(20),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s, %s",
             {"param_1": 20, "param_2": 10},
         )
         self.assert_compile(
-            select([t]).limit(10),
+            select(t).limit(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s",
             {"param_1": 10},
         )
 
         self.assert_compile(
-            select([t]).offset(10),
+            select(t).offset(10),
             "SELECT t.col1, t.col2 FROM t  LIMIT %s, 18446744073709551615",
             {"param_1": 10},
         )
@@ -712,13 +712,13 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for field in "year", "month", "day":
             self.assert_compile(
-                select([extract(field, t.c.col1)]),
+                select(extract(field, t.c.col1)),
                 "SELECT EXTRACT(%s FROM t.col1) AS anon_1 FROM t" % field,
             )
 
         # millsecondS to millisecond
         self.assert_compile(
-            select([extract("milliseconds", t.c.col1)]),
+            select(extract("milliseconds", t.c.col1)),
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t",
         )
 

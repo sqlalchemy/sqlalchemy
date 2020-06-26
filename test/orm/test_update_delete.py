@@ -12,7 +12,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -153,7 +152,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session()
+        s = Session(future=True)
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -178,7 +177,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session()
+        s = Session(future=True)
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -375,15 +374,13 @@ class UpdateDeleteTest(fixtures.MappedTest):
         assert_raises(
             exc.InvalidRequestError,
             sess.query(User)
-            .filter(
-                User.name == select([func.max(User.name)]).scalar_subquery()
-            )
+            .filter(User.name == select(func.max(User.name)).scalar_subquery())
             .delete,
             synchronize_session="evaluate",
         )
 
         sess.query(User).filter(
-            User.name == select([func.max(User.name)]).scalar_subquery()
+            User.name == select(func.max(User.name)).scalar_subquery()
         ).delete(synchronize_session="fetch")
 
         assert john not in sess
@@ -436,10 +433,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_future(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = Session(future=True)
 
         john, jack, jill, jane = (
-            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+            sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
         sess.execute(
@@ -451,7 +448,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(
-            sess.execute(future_select(User.age).order_by(User.id)).all(),
+            sess.execute(select(User.age).order_by(User.id)).all(),
             list(zip([25, 37, 29, 27])),
         )
 
@@ -922,7 +919,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_update_multi_values_error_future(self):
         User = self.classes.User
-        session = Session()
+        session = Session(future=True)
 
         # Do update using a tuple and check that order is preserved
 
@@ -941,7 +938,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_update_preserve_parameter_order_future(self):
         User = self.classes.User
-        session = Session()
+        session = Session(future=True)
 
         # Do update using a tuple and check that order is preserved
 
@@ -1439,12 +1436,12 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         person = self.classes.Person.__table__
         engineer = self.classes.Engineer.__table__
 
-        sess = Session()
+        sess = Session(future=True)
         sess.query(person.join(engineer)).filter(person.c.name == "e2").update(
             {person.c.name: "updated", engineer.c.engineer_name: "e2a"},
         )
         obj = sess.execute(
-            future_select(self.classes.Engineer).filter(
+            select(self.classes.Engineer).filter(
                 self.classes.Engineer.name == "updated"
             )
         ).scalar()

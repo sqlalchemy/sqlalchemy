@@ -1,10 +1,9 @@
 import random
 
 from sqlalchemy import inspect
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy.future import select
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
@@ -154,7 +153,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
         ]:
             eq_(left._generate_cache_key(), right._generate_cache_key())
 
-    def test_future_selects_w_orm_joins(self):
+    def test_selects_w_orm_joins(self):
 
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
@@ -164,19 +163,19 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         self._run_cache_key_fixture(
             lambda: (
-                future_select(User).join(User.addresses),
-                future_select(User).join(User.orders),
-                future_select(User).join(User.addresses).join(User.orders),
-                future_select(User).join(Address, User.addresses),
-                future_select(User).join(a1, User.addresses),
-                future_select(User).join(User.addresses.of_type(a1)),
-                future_select(User)
+                select(User).join(User.addresses),
+                select(User).join(User.orders),
+                select(User).join(User.addresses).join(User.orders),
+                select(User).join(Address, User.addresses),
+                select(User).join(a1, User.addresses),
+                select(User).join(User.addresses.of_type(a1)),
+                select(User)
                 .join(Address, User.addresses)
                 .join_from(User, Order),
-                future_select(User)
+                select(User)
                 .join(Address, User.addresses)
                 .join_from(User, User.orders),
-                future_select(User.id, Order.id).select_from(
+                select(User.id, Order.id).select_from(
                     orm_join(User, Order, User.orders)
                 ),
             ),
@@ -317,7 +316,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
                     with_polymorphic(
                         Person,
                         [Manager, Engineer],
-                        future_select(Person)
+                        select(Person)
                         .outerjoin(Manager)
                         .outerjoin(Engineer)
                         .subquery(),
@@ -362,7 +361,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
         def five():
             subq = (
-                future_select(Person)
+                select(Person)
                 .outerjoin(Manager)
                 .outerjoin(Engineer)
                 .subquery()
@@ -373,7 +372,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
         def six():
             subq = (
-                future_select(Person)
+                select(Person)
                 .outerjoin(Manager)
                 .outerjoin(Engineer)
                 .subquery()
@@ -473,7 +472,7 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         # query.
         User, Address = plain_fixture
 
-        s = Session()
+        s = Session(future=True)
 
         def query(names):
             stmt = (

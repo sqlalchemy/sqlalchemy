@@ -355,8 +355,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.commit()
         sess.close()
         engine2.dispose()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(addresses).scalar(), 1)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(addresses).scalar(), 1)
 
     @testing.requires.independent_connections
     def test_invalidate(self):
@@ -613,7 +613,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.add(to_flush.pop())
         sess.commit()
         eq_(x, [2])
-        eq_(sess.scalar(select([func.count(users.c.id)])), 3)
+        eq_(sess.scalar(select(func.count(users.c.id))), 3)
 
     def test_continue_flushing_guard(self):
         users, User = self.tables.users, self.classes.User
@@ -1316,10 +1316,10 @@ class AutoExpireTest(_LocalFixture):
         u1 = s.query(User).filter_by(name="ed").one()
         assert u1_state not in s.identity_map.all_states()
 
-        eq_(s.scalar(select([func.count("*")]).select_from(users)), 1)
+        eq_(s.scalar(select(func.count("*")).select_from(users)), 1)
         s.delete(u1)
         s.flush()
-        eq_(s.scalar(select([func.count("*")]).select_from(users)), 0)
+        eq_(s.scalar(select(func.count("*")).select_from(users)), 0)
         s.commit()
 
     def test_trans_deleted_cleared_on_rollback(self):

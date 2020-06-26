@@ -1662,7 +1662,7 @@ class LifecycleTest(fixtures.MappedTest):
         sess.close()
 
         sess = create_session()
-        d1 = sess.query(Data).from_statement(select([Data.id])).first()
+        d1 = sess.query(Data).from_statement(select(Data.id)).first()
 
         # cols not present in the row are implicitly expired
         def go():
@@ -1683,7 +1683,7 @@ class LifecycleTest(fixtures.MappedTest):
         sess = create_session()
         d1 = (
             sess.query(Data)
-            .from_statement(select([Data.id]))
+            .from_statement(select(Data.id))
             .options(undefer(Data.data))
             .first()
         )

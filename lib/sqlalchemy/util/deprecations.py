@@ -8,6 +8,7 @@
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
 
+import os
 import re
 import warnings
 
@@ -19,7 +20,19 @@ from .langhelpers import inject_param_text
 from .. import exc
 
 
+SQLALCHEMY_WARN_20 = False
+
+if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
+    SQLALCHEMY_WARN_20 = True
+
+
 def _warn_with_version(msg, version, type_, stacklevel):
+    if type_ is exc.RemovedIn20Warning and not SQLALCHEMY_WARN_20:
+        return
+
+    if type_ is exc.RemovedIn20Warning:
+        msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+
     warn = type_(msg)
     warn.deprecated_since = version
 
@@ -41,7 +54,6 @@ def warn_deprecated_limited(msg, args, version, stacklevel=3):
 
 
 def warn_deprecated_20(msg, stacklevel=3):
-    msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
     _warn_with_version(
         msg,
@@ -69,7 +81,7 @@ def deprecated_cls(version, message, constructor="__init__"):
 
 def deprecated_20_cls(clsname, alternative=None, constructor="__init__"):
     message = (
-        ".. deprecated:: 2.0 The %s class is considered legacy as of the "
+        ".. deprecated:: 1.4 The %s class is considered legacy as of the "
         "1.x series of SQLAlchemy and will be removed in 2.0." % clsname
     )
 
@@ -108,8 +120,16 @@ def deprecated(
 
     """
 
+    # nothing is deprecated "since" 2.0 at this time.  All "removed in 2.0"
+    # should emit the RemovedIn20Warning, but messaging should be expressed
+    # in terms of "deprecated since 1.4".
+
+    if version == "2.0":
+        if warning is None:
+            warning = exc.RemovedIn20Warning
+        version = "1.4"
     if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s %s" % (version, (message or ""))
+        header = ".. deprecated:: %s %s" % (version, (message or ""),)
     else:
         header = None
 
@@ -119,7 +139,8 @@ def deprecated(
     if warning is None:
         warning = exc.SADeprecationWarning
 
-    message += " (deprecated since: %s)" % version
+    if warning is not exc.RemovedIn20Warning:
+        message += " (deprecated since: %s)" % version
 
     def decorate(fn):
         return _decorate_with_warning(
@@ -162,6 +183,7 @@ def deprecated_params(**specs):
     messages = {}
     versions = {}
     version_warnings = {}
+
     for param, (version, message) in specs.items():
         versions[param] = version
         messages[param] = _sanitize_restructured_text(message)
@@ -173,6 +195,7 @@ def deprecated_params(**specs):
 
     def decorate(fn):
         spec = compat.inspect_getfullargspec(fn)
+
         if spec.defaults is not None:
             defaults = dict(
                 zip(
@@ -186,6 +209,8 @@ def deprecated_params(**specs):
             check_defaults = ()
             check_kw = set(messages)
 
+        check_any_kw = spec.varkw
+
         @decorator
         def warned(fn, *args, **kwargs):
             for m in check_defaults:
@@ -198,6 +223,18 @@ def deprecated_params(**specs):
                         version_warnings[m],
                         stacklevel=3,
                     )
+
+            if check_any_kw in messages and set(kwargs).difference(
+                check_defaults
+            ):
+
+                _warn_with_version(
+                    messages[check_any_kw],
+                    versions[check_any_kw],
+                    version_warnings[check_any_kw],
+                    stacklevel=3,
+                )
+
             for m in check_kw:
                 if m in kwargs:
                     _warn_with_version(
@@ -206,7 +243,6 @@ def deprecated_params(**specs):
                         version_warnings[m],
                         stacklevel=3,
                     )
-
             return fn(*args, **kwargs)
 
         doc = fn.__doc__ is not None and fn.__doc__ or ""
@@ -214,7 +250,8 @@ def deprecated_params(**specs):
             doc = inject_param_text(
                 doc,
                 {
-                    param: ".. deprecated:: %s %s" % (version, (message or ""))
+                    param: ".. deprecated:: %s %s"
+                    % ("1.4" if version == "2.0" else version, (message or ""))
                     for param, (version, message) in specs.items()
                 },
             )

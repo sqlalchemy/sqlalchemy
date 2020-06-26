@@ -3,9 +3,9 @@ from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import literal_column
 from sqlalchemy import or_
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager

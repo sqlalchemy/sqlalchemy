@@ -74,7 +74,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         users.insert().values({User.foobar: "name1"}).execute()
         eq_(
-            sa.select([User.foobar])
+            sa.select(User.foobar)
             .where(User.foobar == "name1")
             .execute()
             .fetchall(),
@@ -83,7 +83,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         users.update().values({User.foobar: User.foobar + "foo"}).execute()
         eq_(
-            sa.select([User.foobar])
+            sa.select(User.foobar)
             .where(User.foobar == "name1foo")
             .execute()
             .fetchall(),
@@ -215,13 +215,13 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_no_pks_1(self):
         User, users = self.classes.User, self.tables.users
 
-        s = sa.select([users.c.name]).alias("foo")
+        s = sa.select(users.c.name).alias("foo")
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     def test_no_pks_2(self):
         User, users = self.classes.User, self.tables.users
 
-        s = sa.select([users.c.name]).alias()
+        s = sa.select(users.c.name).alias()
         assert_raises(sa.exc.ArgumentError, mapper, User, s)
 
     def test_reconfigure_on_other_mapper(self):
@@ -268,7 +268,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         a = (
             s.query(Address)
             .from_statement(
-                sa.select([addresses.c.id, addresses.c.user_id]).order_by(
+                sa.select(addresses.c.id, addresses.c.user_id).order_by(
                     addresses.c.id
                 )
             )
@@ -762,7 +762,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert User.id.property.columns[0] is users.c.id
         assert User.name.property.columns[0] is users.c.name
         expr = User.name + "name"
-        expr2 = sa.select([User.name, users.c.id])
+        expr2 = sa.select(User.name, users.c.id)
         m.add_property("x", column_property(expr))
         m.add_property("y", column_property(expr2.scalar_subquery()))
 
@@ -1189,8 +1189,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         sess.add(a)
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(addresses).scalar(), 6)
-        eq_(select([func.count("*")]).select_from(email_bounces).scalar(), 5)
+        eq_(select(func.count("*")).select_from(addresses).scalar(), 6)
+        eq_(select(func.count("*")).select_from(email_bounces).scalar(), 5)
 
     def test_mapping_to_outerjoin(self):
         """Mapping to an outer join with a nullable composite primary key."""
@@ -3625,7 +3625,7 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h1s.append(H1())
 
         s.flush()
-        eq_(select([func.count("*")]).select_from(ht1).scalar(), 4)
+        eq_(select(func.count("*")).select_from(ht1).scalar(), 4)
 
         h6 = H6()
         h6.h1a = h1

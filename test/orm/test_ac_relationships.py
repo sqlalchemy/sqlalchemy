@@ -40,12 +40,10 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
             b_id = Column(ForeignKey("b.id"))
 
         partition = select(
-            [
-                B,
-                func.row_number()
-                .over(order_by=B.id, partition_by=B.a_id)
-                .label("index"),
-            ]
+            B,
+            func.row_number()
+            .over(order_by=B.id, partition_by=B.a_id)
+            .label("index"),
         ).alias()
 
         partitioned_b = aliased(B, alias=partition)

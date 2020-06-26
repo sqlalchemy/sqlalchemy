@@ -449,6 +449,55 @@ refined so that it is more compatible with Core.
 
 :ticket:`4617`
 
+
+.. _change_5284:
+
+select() now accepts positional expressions
+-------------------------------------------
+
+The :func:`.select` construct will now accept "columns clause"
+arguments positionally::
+
+    # new way, supports 2.0
+    stmt = select(table.c.col1, table.c.col2, ...)
+
+When sending the arguments positionally, no other keyword arguments are permitted.
+In SQLAlchemy 2.0, the above calling style will be the only calling style
+supported.
+
+For the duration of 1.4, the previous calling style will still continue
+to function, which passes the list of columns or other expressions as a list::
+
+    # old way, still works in 1.4
+    stmt = select([table.c.col1, table.c.col2, ...])
+
+The above legacy calling style also accepts the old keyword arguments that have
+since been removed from most narrative documentation::
+
+    # very much the old way, but still works in 1.4
+    stmt = select([table.c.col1, table.c.col2, ...], whereclause=table.c.col1 == 5)
+
+The detection between the two styles is based on whether or not the first
+positional argument is a list.   There are unfortunately still likely some
+usages that look like the following, where the keyword for the "whereclause"
+is omitted::
+
+    # very much the old way, but still works in 1.4
+    stmt = select([table.c.col1, table.c.col2, ...], table.c.col1 == 5)
+
+As part of this change, the :class:`.Select` construct also gains the 2.0-style
+"future" API which includes an updated :meth:`.Select.join` method as well
+as methods like :meth:`.Select.filter_by` and :meth:`.Select.join_from`.
+
+.. seealso::
+
+    :ref:`error_c9ae`
+
+    :ref:`migration_20_toplevel`
+
+
+:ticket:`5284`
+
 .. _change_4645:
 
 All IN expressions render parameters for each value in the list on the fly (e.g. expanding parameters)

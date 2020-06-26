@@ -818,10 +818,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Item, items)
 
         open_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 1).alias()
+            Order, select(orders).where(orders.c.isopen == 1).alias()
         )
         closed_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 0).alias()
+            Order, select(orders).where(orders.c.isopen == 0).alias()
         )
 
         mapper(

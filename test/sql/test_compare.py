@@ -29,7 +29,6 @@ from sqlalchemy import util
 from sqlalchemy import values
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.future import select as future_select
 from sqlalchemy.schema import Sequence
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import ColumnElement
@@ -374,26 +373,20 @@ class CoreFixtures(object):
             .correlate_except(table_b),
         ),
         lambda: (
-            future_select(table_a.c.a),
-            future_select(table_a.c.a).join(
-                table_b, table_a.c.a == table_b.c.a
-            ),
-            future_select(table_a.c.a).join_from(
+            select(table_a.c.a),
+            select(table_a.c.a).join(table_b, table_a.c.a == table_b.c.a),
+            select(table_a.c.a).join_from(
                 table_a, table_b, table_a.c.a == table_b.c.a
             ),
-            future_select(table_a.c.a).join_from(table_a, table_b),
-            future_select(table_a.c.a).join_from(table_c, table_b),
-            future_select(table_a.c.a)
+            select(table_a.c.a).join_from(table_a, table_b),
+            select(table_a.c.a).join_from(table_c, table_b),
+            select(table_a.c.a)
             .join(table_b, table_a.c.a == table_b.c.a)
             .join(table_c, table_b.c.b == table_c.c.x),
-            future_select(table_a.c.a).join(table_b),
-            future_select(table_a.c.a).join(table_c),
-            future_select(table_a.c.a).join(
-                table_b, table_a.c.a == table_b.c.b
-            ),
-            future_select(table_a.c.a).join(
-                table_c, table_a.c.a == table_c.c.x
-            ),
+            select(table_a.c.a).join(table_b),
+            select(table_a.c.a).join(table_c),
+            select(table_a.c.a).join(table_b, table_a.c.a == table_b.c.b),
+            select(table_a.c.a).join(table_c, table_a.c.a == table_c.c.x),
         ),
         lambda: (
             select([table_a.c.a]).cte(),
@@ -841,7 +834,7 @@ class CoreFixtures(object):
             # lambda statements don't collect bindparameter objects
             # for fixed values, has to be in a variable
             value = random.randint(10, 20)
-            return lambda_stmt(lambda: future_select(table_a)) + (
+            return lambda_stmt(lambda: select(table_a)) + (
                 lambda s: s.where(table_a.c.a == value)
             )
 

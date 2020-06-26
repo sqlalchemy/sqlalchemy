@@ -228,7 +228,7 @@ class ExecuteManyMode(object):
                 )
 
                 eq_(
-                    conn.execute(select([self.tables.data])).fetchall(),
+                    conn.execute(select(self.tables.data)).fetchall(),
                     [
                         (1, "x1", "y1", 5),
                         (2, "x2", "y2", 5),
@@ -438,7 +438,7 @@ class ExecuteManyMode(object):
             )
             eq_(
                 conn.execute(
-                    select([self.tables.data]).order_by(self.tables.data.c.id)
+                    select(self.tables.data).order_by(self.tables.data.c.id)
                 ).fetchall(),
                 [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
             )
@@ -557,7 +557,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         ins = t.insert(inline=True).values(
             id=bindparam("id"),
-            x=select([literal_column("5")])
+            x=select(literal_column("5"))
             .select_from(self.tables.data)
             .scalar_subquery(),
             y=bindparam("y"),
@@ -609,7 +609,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         ins = t.insert(inline=True).values(
             id=bindparam("id"),
-            x=select([literal_column("5")])
+            x=select(literal_column("5"))
             .select_from(self.tables.data)
             .scalar_subquery(),
             y=bindparam("y"),
@@ -828,7 +828,7 @@ $$ LANGUAGE plpgsql;
 
     def test_extract(self, connection):
         fivedaysago = testing.db.scalar(
-            select([func.now()])
+            select(func.now())
         ) - datetime.timedelta(days=5)
         for field, exp in (
             ("year", fivedaysago.year),
@@ -837,7 +837,7 @@ $$ LANGUAGE plpgsql;
         ):
             r = connection.execute(
                 select(
-                    [extract(field, func.now() + datetime.timedelta(days=-5))]
+                    extract(field, func.now() + datetime.timedelta(days=-5))
                 )
             ).scalar()
             eq_(r, exp)
@@ -898,12 +898,7 @@ $$ LANGUAGE plpgsql;
             eq_(
                 conn.scalar(
                     select(
-                        [
-                            cast(
-                                literal(quoted_name("some_name", False)),
-                                String,
-                            )
-                        ]
+                        cast(literal(quoted_name("some_name", False)), String,)
                     )
                 ),
                 "some_name",

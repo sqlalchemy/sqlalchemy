@@ -267,15 +267,15 @@ class TypesTest(fixtures.TestBase):
         with testing.db.begin() as conn:
             t.create(conn)
             conn.execute(t.insert(), {"x": 5})
-            s1 = select([t]).subquery()
-            s2 = select([column("rowid")]).select_from(s1)
+            s1 = select(t).subquery()
+            s2 = select(column("rowid")).select_from(s1)
             rowid = conn.scalar(s2)
 
             # the ROWID type is not really needed here,
             # as cx_oracle just treats it as a string,
             # but we want to make sure the ROWID works...
             rowid_col = column("rowid", oracle.ROWID)
-            s3 = select([t.c.x, rowid_col]).where(
+            s3 = select(t.c.x, rowid_col).where(
                 rowid_col == cast(rowid, oracle.ROWID)
             )
             eq_(conn.execute(s3).fetchall(), [(5, rowid)])
@@ -368,10 +368,7 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            select([t1.c.numericcol])
-            .order_by(t1.c.intcol)
-            .execute()
-            .fetchall(),
+            select(t1.c.numericcol).order_by(t1.c.intcol).execute().fetchall(),
             [(float("inf"),), (float("-inf"),)],
         )
 
@@ -400,10 +397,7 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            select([t1.c.numericcol])
-            .order_by(t1.c.intcol)
-            .execute()
-            .fetchall(),
+            select(t1.c.numericcol).order_by(t1.c.intcol).execute().fetchall(),
             [(decimal.Decimal("Infinity"),), (decimal.Decimal("-Infinity"),)],
         )
 
@@ -434,7 +428,7 @@ class TypesTest(fixtures.TestBase):
         eq_(
             [
                 tuple(str(col) for col in row)
-                for row in select([t1.c.numericcol])
+                for row in select(t1.c.numericcol)
                 .order_by(t1.c.intcol)
                 .execute()
             ],
@@ -471,10 +465,7 @@ class TypesTest(fixtures.TestBase):
         )
 
         eq_(
-            select([t1.c.numericcol])
-            .order_by(t1.c.intcol)
-            .execute()
-            .fetchall(),
+            select(t1.c.numericcol).order_by(t1.c.intcol).execute().fetchall(),
             [(decimal.Decimal("NaN"),), (decimal.Decimal("NaN"),)],
         )
 
@@ -871,7 +862,7 @@ class TypesTest(fixtures.TestBase):
         t = Table("t", metadata, Column("data", oracle.LONG))
         metadata.create_all(testing.db)
         connection.execute(t.insert(), data="xyz")
-        eq_(connection.scalar(select([t.c.data])), "xyz")
+        eq_(connection.scalar(select(t.c.data)), "xyz")
 
     @testing.provide_metadata
     def test_longstring(self, connection):

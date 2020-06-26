@@ -1701,9 +1701,9 @@ def inject_param_text(doctext, inject_params):
     while doclines:
         line = doclines.pop(0)
         if to_inject is None:
-            m = re.match(r"(\s+):param (?:\\\*\*?)?(.+?):", line)
+            m = re.match(r"(\s+):param (.+?):", line)
             if m:
-                param = m.group(2)
+                param = m.group(2).lstrip("*")
                 if param in inject_params:
                     # default indent to that of :param: plus one
                     indent = " " * len(m.group(1)) + " "

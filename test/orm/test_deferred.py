@@ -336,13 +336,11 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         Order, orders = self.classes.Order, self.tables.orders
 
         order_select = sa.select(
-            [
-                orders.c.id,
-                orders.c.user_id,
-                orders.c.address_id,
-                orders.c.description,
-                orders.c.isopen,
-            ]
+            orders.c.id,
+            orders.c.user_id,
+            orders.c.address_id,
+            orders.c.description,
+            orders.c.isopen,
         ).alias()
         mapper(
             Order,
@@ -867,7 +865,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         sess = create_session()
-        stmt = sa.select([Order]).order_by(Order.id)
+        stmt = sa.select(Order).order_by(Order.id)
         o1 = (sess.query(Order).from_statement(stmt).all())[0]
 
         def go():
@@ -889,7 +887,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         sess = create_session()
-        stmt = sa.select([Order]).order_by(Order.id)
+        stmt = sa.select(Order).order_by(Order.id)
         o1 = (sess.query(Order).from_statement(stmt).all())[0]
 
         assert_raises_message(
@@ -906,7 +904,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         mapper(Order, orders)
 
         sess = create_session()
-        stmt = sa.select([Order]).order_by(Order.id)
+        stmt = sa.select(Order).order_by(Order.id)
         o1 = (
             sess.query(Order)
             .from_statement(stmt)
@@ -927,7 +925,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         mapper(Order, orders)
 
         sess = create_session()
-        stmt = sa.select([Order]).order_by(Order.id)
+        stmt = sa.select(Order).order_by(Order.id)
         o1 = (
             sess.query(Order)
             .from_statement(stmt)
@@ -2078,7 +2076,7 @@ class AutoflushTest(fixtures.DeclarativeMappedTest):
             a_id = Column(ForeignKey("a.id"))
 
         A.b_count = deferred(
-            select([func.count(1)]).where(A.id == B.a_id).scalar_subquery()
+            select(func.count(1)).where(A.id == B.a_id).scalar_subquery()
         )
 
     def test_deferred_autoflushes(self):

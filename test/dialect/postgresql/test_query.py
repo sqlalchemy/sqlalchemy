@@ -74,11 +74,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
-                assert_raises(
-                    (exc.IntegrityError, exc.ProgrammingError),
-                    eng.execute,
-                    t2.insert(),
-                )
+                with eng.connect() as conn:
+                    assert_raises(
+                        (exc.IntegrityError, exc.ProgrammingError),
+                        conn.execute,
+                        t2.insert(),
+                    )
 
     def test_sequence_insert(self):
         table = Table(
@@ -988,7 +989,7 @@ class ExtractTest(fixtures.TablesTest):
 
         for field in fields:
             result = self.bind.scalar(
-                select([extract(field, expr)]).select_from(t)
+                select(extract(field, expr)).select_from(t)
             )
             eq_(result, fields[field])
 

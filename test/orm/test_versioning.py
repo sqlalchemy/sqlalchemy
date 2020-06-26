@@ -1251,7 +1251,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
         session.commit()
         eq_(b1.version_id, 1)
         # base is populated
-        eq_(select([base.c.version_id]).scalar(), 1)
+        eq_(select(base.c.version_id).scalar(), 1)
 
     def test_sub_both(self):
         Base, sub, base, Sub = (
@@ -1270,10 +1270,10 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
         session.commit()
 
         # table is populated
-        eq_(select([sub.c.version_id]).scalar(), 1)
+        eq_(select(sub.c.version_id).scalar(), 1)
 
         # base is populated
-        eq_(select([base.c.version_id]).scalar(), 1)
+        eq_(select(base.c.version_id).scalar(), 1)
 
     def test_sub_only(self):
         Base, sub, base, Sub = (
@@ -1292,10 +1292,10 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
         session.commit()
 
         # table is populated
-        eq_(select([sub.c.version_id]).scalar(), 1)
+        eq_(select(sub.c.version_id).scalar(), 1)
 
         # base is not
-        eq_(select([base.c.version_id]).scalar(), None)
+        eq_(select(base.c.version_id).scalar(), None)
 
     def test_mismatch_version_col_warning(self):
         Base, sub, base, Sub = (

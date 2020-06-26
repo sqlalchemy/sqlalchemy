@@ -569,7 +569,7 @@ class OnConflictTest(fixtures.TablesTest):
             conn.execute(i, {"id": 1, "data": "initial data"})
 
             eq_(
-                conn.scalar(sql.select([bind_targets.c.data])),
+                conn.scalar(sql.select(bind_targets.c.data)),
                 "initial data processed",
             )
 
@@ -581,6 +581,6 @@ class OnConflictTest(fixtures.TablesTest):
             conn.execute(i, {"id": 1, "data": "new inserted data"})
 
             eq_(
-                conn.scalar(sql.select([bind_targets.c.data])),
+                conn.scalar(sql.select(bind_targets.c.data)),
                 "new updated data processed",
             )

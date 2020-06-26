@@ -873,10 +873,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Item, items)
 
         open_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 1).alias()
+            Order, select(orders).where(orders.c.isopen == 1).alias()
         )
         closed_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 0).alias()
+            Order, select(orders).where(orders.c.isopen == 0).alias()
         )
 
         mapper(
@@ -3227,7 +3227,7 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
     if the original Query has a from_self() present, it needs to create
     .subquery() in terms of the Query class as a from_self() selectable
     doesn't work correctly with the future select.   So it has
-    to create a Query object now that it gets only a future_select.
+    to create a Query object now that it gets only a select.
     neutron is currently dependent on this use case which means others
     are too.
 

@@ -494,10 +494,10 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
                 scale_value=45.768392065789,
                 unscale_value=45.768392065789,
             )
-            result = conn.scalar(select([t.c.scale_value]))
+            result = conn.scalar(select(t.c.scale_value))
             eq_(result, decimal.Decimal("45.768392065789"))
 
-            result = conn.scalar(select([t.c.unscale_value]))
+            result = conn.scalar(select(t.c.unscale_value))
             eq_(result, decimal.Decimal("45.768392065789"))
 
     @testing.only_if("mysql")
@@ -524,9 +524,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         # MySQLdb 1.2.3 and also need to pass either use_unicode=1
         # or charset=utf8 to the URL.
         t.insert().execute(id=1, data=u("some text"))
-        assert isinstance(
-            testing.db.scalar(select([t.c.data])), util.text_type
-        )
+        assert isinstance(testing.db.scalar(select(t.c.data)), util.text_type)
 
     @testing.metadata_fixture(ddl="class")
     def bit_table(self, metadata):
@@ -722,7 +720,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
             conn.execute(t.insert().values(t1=datetime.time(8, 37, 35)))
             eq_(
-                conn.execute(select([t.c.t1])).scalar(),
+                conn.execute(select(t.c.t1)).scalar(),
                 datetime.time(8, 37, 35),
             )
 
@@ -785,7 +783,7 @@ class JSONTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.execute(mysql_json.insert(), foo=value)
 
-            eq_(conn.scalar(select([mysql_json.c.foo])), value)
+            eq_(conn.scalar(select(mysql_json.c.foo)), value)
 
 
 class EnumSetTest(
@@ -1331,7 +1329,7 @@ class EnumSetTest(
 
             eq_(
                 conn.execute(
-                    select([t.c.e1, t.c.e2]).order_by(t.c.id)
+                    select(t.c.e1, t.c.e2).order_by(t.c.id)
                 ).fetchall(),
                 [("", ""), ("", ""), ("two", "two"), (None, None)],
             )

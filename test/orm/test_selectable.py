@@ -40,7 +40,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_no_tables(self):
         Subset = self.classes.Subset
 
-        selectable = select([column("x"), column("y"), column("z")]).alias()
+        selectable = select(column("x"), column("y"), column("z")).alias()
         mapper(Subset, selectable, primary_key=[selectable.c.x])
 
         self.assert_compile(
@@ -53,7 +53,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_no_table_needs_pl(self):
         Subset = self.classes.Subset
 
-        selectable = select([column("x"), column("y"), column("z")]).alias()
+        selectable = select(column("x"), column("y"), column("z")).alias()
         assert_raises_message(
             sa.exc.ArgumentError,
             "could not assemble any primary key columns",
@@ -65,13 +65,13 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_no_selects(self):
         Subset, common = self.classes.Subset, self.tables.common
 
-        subset_select = select([common.c.id, common.c.data])
+        subset_select = select(common.c.id, common.c.data)
         assert_raises(sa.exc.ArgumentError, mapper, Subset, subset_select)
 
     def test_basic(self):
         Subset, common = self.classes.Subset, self.tables.common
 
-        subset_select = select([common.c.id, common.c.data]).alias()
+        subset_select = select(common.c.id, common.c.data).alias()
         mapper(Subset, subset_select)
         sess = Session(bind=testing.db)
         sess.add(Subset(data=1))

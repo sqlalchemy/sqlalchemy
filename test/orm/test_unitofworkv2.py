@@ -1548,7 +1548,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
 
         eq_(
             sess.scalar(
-                select([func.count("*")]).select_from(self.tables.parent)
+                select(func.count("*")).select_from(self.tables.parent)
             ),
             0,
         )

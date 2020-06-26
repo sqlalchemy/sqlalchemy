@@ -477,7 +477,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                         assert not c.autoincrement
                 tbl.insert().execute()
                 if "int_y" in tbl.c:
-                    assert select([tbl.c.int_y]).scalar() == 1
+                    assert select(tbl.c.int_y).scalar() == 1
                     assert list(tbl.select().execute().first()).count(1) == 1
                 else:
                     assert 1 not in list(tbl.select().execute().first())

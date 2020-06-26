@@ -86,7 +86,7 @@ class InstancesTest(_fixtures.FixtureTest):
         s = Session()
 
         q = s.query(User.id, User.name)
-        stmt = select([User.id])
+        stmt = select(User.id)
 
         assert_raises_message(
             exc.NoSuchColumnError,

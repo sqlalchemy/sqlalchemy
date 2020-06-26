@@ -429,7 +429,7 @@ class TestGeometries(GeometryFixtureBase):
         a_table, c_table, d_table, e_table = self.tables("a", "c", "d", "e")
 
         poly = (
-            select([a_table.c.id, a_table.c.type, c_table, d_table, e_table])
+            select(a_table.c.id, a_table.c.type, c_table, d_table, e_table)
             .select_from(
                 a_table.join(c_table).outerjoin(d_table).outerjoin(e_table)
             )

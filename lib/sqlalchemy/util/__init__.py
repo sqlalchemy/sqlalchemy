@@ -92,6 +92,7 @@ from .deprecations import deprecated_20_cls  # noqa
 from .deprecations import deprecated_cls  # noqa
 from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
+from .deprecations import SQLALCHEMY_WARN_20  # noqa
 from .deprecations import warn_deprecated  # noqa
 from .deprecations import warn_deprecated_20  # noqa
 from .langhelpers import add_parameter_text  # noqa
@@ -149,6 +150,3 @@ from .langhelpers import warn  # noqa
 from .langhelpers import warn_exception  # noqa
 from .langhelpers import warn_limited  # noqa
 from .langhelpers import wrap_callable  # noqa
-
-
-SQLALCHEMY_WARN_20 = False

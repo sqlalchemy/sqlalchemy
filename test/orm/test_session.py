@@ -83,7 +83,7 @@ class ExecutionTest(_fixtures.FixtureTest):
         sess.execute(users.insert(), {"id": 9, "name": "u9"})
         eq_(
             sess.execute(
-                sa.select([users.c.id]).order_by(users.c.id)
+                sa.select(users.c.id).order_by(users.c.id)
             ).fetchall(),
             [(7,), (8,), (9,)],
         )
@@ -129,19 +129,19 @@ class TransScopingTest(_fixtures.FixtureTest):
 
         is_(s._transaction, None)
 
-        s.execute(select([1]))
+        s.execute(select(1))
         is_not_(s._transaction, None)
 
         s.commit()
         is_(s._transaction, None)
 
-        s.execute(select([1]))
+        s.execute(select(1))
         is_not_(s._transaction, None)
 
         s.close()
         is_(s._transaction, None)
 
-        s.execute(select([1]))
+        s.execute(select(1))
         is_not_(s._transaction, None)
 
         s.close()
