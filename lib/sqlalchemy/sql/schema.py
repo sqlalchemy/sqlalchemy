@@ -867,6 +867,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
+    @util.deprecated(
+        "1.4",
+        ":meth:`_schema.Table.tometadata` is renamed to "
+        ":meth:`_schema.Table.to_metadata`",
+    )
     def tometadata(
         self,
         metadata,
@@ -878,6 +883,26 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         associated with a different
         :class:`_schema.MetaData`.
 
+        See :meth:`_schema.Table.to_metadata` for a full description.
+
+        """
+        return self.to_metadata(
+            metadata,
+            schema=schema,
+            referred_schema_fn=referred_schema_fn,
+            name=name,
+        )
+
+    def to_metadata(
+        self,
+        metadata,
+        schema=RETAIN_SCHEMA,
+        referred_schema_fn=None,
+        name=None,
+    ):
+        """Return a copy of this :class:`_schema.Table` associated with a
+        different :class:`_schema.MetaData`.
+
         E.g.::
 
             m1 = MetaData()
@@ -885,7 +910,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             user = Table('user', m1, Column('id', Integer, primary_key=True))
 
             m2 = MetaData()
-            user_copy = user.tometadata(m2)
+            user_copy = user.to_metadata(m2)
+
+        .. versionchanged:: 1.4  The :meth:`_schema.Table.to_metadata` function
+           was renamed from :meth:`_schema.Table.tometadata`.
+
 
         :param metadata: Target :class:`_schema.MetaData` object,
          into which the
@@ -905,12 +934,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             m2 = MetaData(schema='newschema')
 
             # user_copy_one will have "newschema" as the schema name
-            user_copy_one = user.tometadata(m2, schema=None)
+            user_copy_one = user.to_metadata(m2, schema=None)
 
             m3 = MetaData()  # schema defaults to None
 
             # user_copy_two will have None as the schema name
-            user_copy_two = user.tometadata(m3, schema=None)
+            user_copy_two = user.to_metadata(m3, schema=None)
 
         :param referred_schema_fn: optional callable which can be supplied
          in order to provide for the schema name that should be assigned
@@ -929,7 +958,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     else:
                         return to_schema
 
-                new_table = table.tometadata(m2, schema="alt_schema",
+                new_table = table.to_metadata(m2, schema="alt_schema",
                                         referred_schema_fn=referred_schema_fn)
 
          .. versionadded:: 0.9.2
@@ -1548,7 +1577,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
     def copy(self, **kw):
         """Create a copy of this ``Column``, uninitialized.
 
-        This is used in :meth:`_schema.Table.tometadata`.
+        This is used in :meth:`_schema.Table.to_metadata`.
 
         """
 

@@ -60,7 +60,7 @@ class DDLEvents(event.Events):
 
     For all :class:`.DDLEvent` events, the ``propagate=True`` keyword argument
     will ensure that a given event handler is propagated to copies of the
-    object, which are made when using the :meth:`_schema.Table.tometadata`
+    object, which are made when using the :meth:`_schema.Table.to_metadata`
     method::
 
         from sqlalchemy import DDL
@@ -71,7 +71,7 @@ class DDLEvents(event.Events):
             propagate=True
         )
 
-        new_table = some_table.tometadata(new_metadata)
+        new_table = some_table.to_metadata(new_metadata)
 
     The above :class:`.DDL` object will also be associated with the
     :class:`_schema.Table` object represented by ``new_table``.
@@ -109,7 +109,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -131,7 +131,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -153,7 +153,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -175,7 +175,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -190,7 +190,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -205,7 +205,7 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """
 
@@ -284,6 +284,6 @@ class DDLEvents(event.Events):
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
-        :meth:`_schema.Table.tometadata` is used.
+        :meth:`_schema.Table.to_metadata` is used.
 
         """

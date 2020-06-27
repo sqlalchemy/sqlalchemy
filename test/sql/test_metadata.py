@@ -804,9 +804,9 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
 
         def test_to_metadata():
             meta2 = MetaData()
-            table_c = table.tometadata(meta2)
-            table2_c = table2.tometadata(meta2)
-            table3_c = table3.tometadata(meta2)
+            table_c = table.to_metadata(meta2)
+            table2_c = table2.to_metadata(meta2)
+            table3_c = table3.to_metadata(meta2)
             return (table_c, table2_c, table3_c)
 
         def test_pickle():
@@ -905,8 +905,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         assert b.c.y.references(a.c.x)
 
         m2 = MetaData()
-        b2 = b.tometadata(m2)
-        a2 = a.tometadata(m2)
+        b2 = b.to_metadata(m2)
+        a2 = a.to_metadata(m2)
         assert b2.c.y.references(a2.c.x)
 
     def test_change_schema(self):
@@ -931,8 +931,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2, schema="someschema")
-        table2_c = table2.tometadata(meta2, schema="someschema")
+        table_c = table.to_metadata(meta2, schema="someschema")
+        table2_c = table2.to_metadata(meta2, schema="someschema")
 
         eq_(
             str(table_c.join(table2_c).onclause),
@@ -967,8 +967,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2)
-        table2_c = table2.tometadata(meta2)
+        table_c = table.to_metadata(meta2)
+        table2_c = table2.to_metadata(meta2)
 
         eq_(
             str(table_c.join(table2_c).onclause),
@@ -994,8 +994,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             schema="myschema",
         )
 
-        table2 = table.tometadata(table.metadata, name="newtable")
-        table3 = table.tometadata(
+        table2 = table.to_metadata(table.metadata, name="newtable")
+        table3 = table.to_metadata(
             table.metadata, schema="newschema", name="newtable"
         )
 
@@ -1026,7 +1026,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             schema="myschema",
         )
 
-        table2 = table.tometadata(meta2, name="newtable")
+        table2 = table.to_metadata(meta2, name="newtable")
 
         assert table.metadata is not table2.metadata
         eq_((table.name, table2.name), ("mytable", "newtable"))
@@ -1046,7 +1046,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             Column("ref_id", ForeignKey("ref.id")),
         )
 
-        table2 = table.tometadata(table.metadata, name="newtable")
+        table2 = table.to_metadata(table.metadata, name="newtable")
         assert table.metadata is table2.metadata
         assert table2.c.ref_id.references(referenced.c.id)
         assert table2.c.parent_id.references(table2.c.id)
@@ -1065,10 +1065,10 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             Column("ref_id", ForeignKey("ref.id")),
         )
 
-        table2 = table.tometadata(
+        table2 = table.to_metadata(
             table.metadata, name="newtable", schema="newschema"
         )
-        ref2 = referenced.tometadata(table.metadata, schema="newschema")
+        ref2 = referenced.to_metadata(table.metadata, schema="newschema")
         assert table.metadata is table2.metadata
         assert table2.c.ref_id.references(ref2.c.id)
         assert table2.c.parent_id.references(table2.c.id)
@@ -1077,12 +1077,12 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         existing_schema = t2.schema
         if schema:
-            t2c = t2.tometadata(
+            t2c = t2.to_metadata(
                 m2, schema=schema, referred_schema_fn=referred_schema_fn
             )
             eq_(t2c.schema, schema)
         else:
-            t2c = t2.tometadata(m2, referred_schema_fn=referred_schema_fn)
+            t2c = t2.to_metadata(m2, referred_schema_fn=referred_schema_fn)
             eq_(t2c.schema, existing_schema)
         eq_(list(t2c.c.y.foreign_keys)[0]._get_colspec(), expected)
 
@@ -1239,7 +1239,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         fkc.info["fkcinfo"] = True
 
         m2 = MetaData()
-        t2 = t.tometadata(m2)
+        t2 = t.to_metadata(m2)
 
         m.info["minfo"] = False
         fk.info["fkinfo"] = False
@@ -1279,7 +1279,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2)
+        table_c = table.to_metadata(meta2)
 
         eq_(table.kwargs, {"mysql_engine": "InnoDB"})
 
@@ -1301,7 +1301,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         Index("multi-func", table.c.data1, func.abs(table.c.data2))
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2)
+        table_c = table.to_metadata(meta2)
 
         def _get_key(i):
             return (
@@ -1339,7 +1339,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2)
+        table_c = table.to_metadata(meta2)
 
         def _get_key(i):
             return (
@@ -1365,8 +1365,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
             "mytable", meta2, Column("yourid", Integer, primary_key=True)
         )
 
-        table_c = table1.tometadata(meta2)
-        table_d = table2.tometadata(meta2)
+        table_c = table1.to_metadata(meta2)
+        table_d = table2.to_metadata(meta2)
 
         # d'oh!
         assert table_c is table_d
@@ -1393,8 +1393,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData(schema="someschema")
-        table_c = table.tometadata(meta2, schema=None)
-        table2_c = table2.tometadata(meta2, schema=None)
+        table_c = table.to_metadata(meta2, schema=None)
+        table2_c = table2.to_metadata(meta2, schema=None)
 
         eq_(
             str(table_c.join(table2_c).onclause),
@@ -1427,8 +1427,8 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
         meta2 = MetaData()
-        table_c = table.tometadata(meta2, schema=None)
-        table2_c = table2.tometadata(meta2, schema=None)
+        table_c = table.to_metadata(meta2, schema=None)
+        table2_c = table2.to_metadata(meta2, schema=None)
 
         eq_(
             str(table_c.join(table2_c).onclause),
@@ -1446,7 +1446,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
 
         m2 = MetaData()
 
-        t2 = table.tometadata(m2)
+        t2 = table.to_metadata(m2)
 
         eq_(
             len(
@@ -1466,7 +1466,7 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
 
         m2 = MetaData()
 
-        t2 = table.tometadata(m2)
+        t2 = table.to_metadata(m2)
 
         eq_(len(t2.indexes), 1)
 
@@ -2067,14 +2067,14 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "z")
 
-    def test_tometadata_copy_type(self):
+    def test_to_metadata_copy_type(self):
         m1 = MetaData()
 
         type_ = self.MyType()
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
-        t2 = t1.tometadata(m2)
+        t2 = t1.to_metadata(m2)
 
         # metadata isn't set
         is_(t2.c.y.type.metadata, None)
@@ -2082,7 +2082,7 @@ class SchemaTypeTest(fixtures.TestBase):
         # our test type sets table, though
         is_(t2.c.y.type.table, t2)
 
-    def test_tometadata_copy_decorated(self):
+    def test_to_metadata_copy_decorated(self):
         class MyDecorated(TypeDecorator):
             impl = self.MyType
 
@@ -2092,40 +2092,40 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
-        t2 = t1.tometadata(m2)
+        t2 = t1.to_metadata(m2)
         eq_(t2.c.y.type.schema, "z")
 
-    def test_tometadata_independent_schema(self):
+    def test_to_metadata_independent_schema(self):
         m1 = MetaData()
 
         type_ = self.MyType()
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
-        t2 = t1.tometadata(m2, schema="bar")
+        t2 = t1.to_metadata(m2, schema="bar")
 
         eq_(t2.c.y.type.schema, None)
 
-    def test_tometadata_inherit_schema(self):
+    def test_to_metadata_inherit_schema(self):
         m1 = MetaData()
 
         type_ = self.MyType(inherit_schema=True)
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
-        t2 = t1.tometadata(m2, schema="bar")
+        t2 = t1.to_metadata(m2, schema="bar")
 
         eq_(t1.c.y.type.schema, None)
         eq_(t2.c.y.type.schema, "bar")
 
-    def test_tometadata_independent_events(self):
+    def test_to_metadata_independent_events(self):
         m1 = MetaData()
 
         type_ = self.MyType()
         t1 = Table("x", m1, Column("y", type_))
 
         m2 = MetaData()
-        t2 = t1.tometadata(m2)
+        t2 = t1.to_metadata(m2)
 
         t1.dispatch.before_create(t1, testing.db)
         eq_(t1.c.y.type.evt_targets, (t1,))
@@ -2264,7 +2264,7 @@ class SchemaTypeTest(fixtures.TestBase):
             1,
         )
         m2 = MetaData()
-        t2 = t1.tometadata(m2)
+        t2 = t1.to_metadata(m2)
 
         eq_(
             len([c for c in t2.constraints if isinstance(c, CheckConstraint)]),
@@ -2284,7 +2284,7 @@ class SchemaTypeTest(fixtures.TestBase):
             1,
         )
         m2 = MetaData()
-        t2 = t1.tometadata(m2)
+        t2 = t1.to_metadata(m2)
 
         eq_(
             len([c for c in t2.constraints if isinstance(c, CheckConstraint)]),
@@ -3268,7 +3268,7 @@ class ConstraintTest(fixtures.TestBase):
         ):
             assert True
 
-    def test_tometadata_ok(self):
+    def test_to_metadata_ok(self):
         m = MetaData()
 
         t = Table("tbl", m, Column("a", Integer), Column("b", Integer))
@@ -3282,7 +3282,7 @@ class ConstraintTest(fixtures.TestBase):
 
         m2 = MetaData()
 
-        t3 = t.tometadata(m2)
+        t3 = t.to_metadata(m2)
 
         eq_(len(t3.constraints), 4)
 
@@ -5290,5 +5290,5 @@ class CopyDialectOptionsTest(fixtures.TestBase):
             self.check_dialect_options_(t1)
 
             m2 = MetaData()
-            t2 = t1.tometadata(m2)  # make a copy
+            t2 = t1.to_metadata(m2)  # make a copy
             self.check_dialect_options_(t2)

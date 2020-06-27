@@ -829,7 +829,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         m2 = MetaData()
-        tbl2 = tbl.tometadata(m2)
+        tbl2 = tbl.to_metadata(m2)
         self.assert_compile(
             schema.CreateTable(tbl2),
             "CREATE TABLE testtbl (room SERIAL NOT NULL, "

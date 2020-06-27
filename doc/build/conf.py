@@ -154,6 +154,7 @@ zzzeeksphinx_module_prefixes = {
     "_mssql": "sqlalchemy.dialects.mssql",
     "_oracle": "sqlalchemy.dialects.oracle",
     "_sqlite": "sqlalchemy.dialects.sqlite",
+    "_util": "sqlalchemy.util",
 }
 
 
