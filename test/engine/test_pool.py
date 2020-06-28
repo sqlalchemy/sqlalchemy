@@ -699,12 +699,28 @@ class PoolFirstConnectSyncTest(PoolTestBase):
                 time.sleep(0.02)
 
         threads = []
+
+        # what we're trying to do here is have concurrent use of
+        # all three pooled connections at once, and the thing we want
+        # to test is that first_connect() finishes completely before
+        # any of the connections get returned.   so first_connect()
+        # sleeps for one second, then pings the mock.  the threads should
+        # not have made it to the "checkout() event for that one second.
         for i in range(5):
             th = threading.Thread(target=checkout)
             th.start()
             threads.append(th)
         for th in threads:
             th.join(join_timeout)
+
+        # there is a very unlikely condition observed in CI on windows
+        # where even though we have five threads above all calling upon the
+        # pool, we didn't get concurrent use of all three connections, two
+        # connections were enough.  so here we purposely just check out
+        # all three at once just to get a consistent test result.
+        make_sure_all_three_are_connected = [pool.connect() for i in range(3)]
+        for conn in make_sure_all_three_are_connected:
+            conn.close()
 
         eq_(
             evt.mock_calls,
