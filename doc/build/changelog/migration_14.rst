@@ -23,6 +23,118 @@ What's New in SQLAlchemy 1.4?
 Behavioral Changes - General
 ============================
 
+.. _change_5159:
+
+ORM Query is internally unified with select, update, delete; 2.0 style execution available
+------------------------------------------------------------------------------------------
+
+The biggest conceptual change to SQLAlchemy for version 2.0 and essentially
+in 1.4 as well is that the great separation between the :class:`_sql.Select`
+construct in Core and the :class:`_orm.Query` object in the ORM has been removed,
+as well as between the :meth:`_orm.Query.update` and :meth:`_orm.Query.delete`
+methods in how they relate to :class:`_dml.Update` and :class:`_dml.Delete`.
+
+With regards to :class:`_sql.Select` and :class:`_orm.Query`, these two objects
+have for many versions had similar, largely overlapping APIs and even some
+ability to change between one and the other, while remaining very different in
+their usage patterns and behaviors.   The historical background for this was
+that the :class:`_orm.Query` object was introduced to overcome shortcomings in
+the :class:`_sql.Select` object which used to be at the core of how ORM objects
+were queried, except that they had to be queried in terms of
+:class:`_schema.Table` metadata only.    However :class:`_orm.Query` had only a
+simplistic interface for loading objects, and only over the course of many
+major releases did it eventually gain most of the flexibility of the
+:class:`_sql.Select` object, which then led to the ongoing awkwardness that
+these two objects became highly similar yet still largely incompatible with
+each other.
+
+In version 1.4, all Core and ORM SELECT statements are rendered from a
+:class:`_sql.Select` object directly; when the :class:`_orm.Query` object
+is used, at statement invocation time it copies its state to a :class:`_sql.Select`
+which is then invoked internally using :term:`2.0 style` execution.   Going forward,
+the :class:`_orm.Query` object will become legacy only, and applications will
+be encouraged to move to :term:`2.0 style` execution which allows Core constructs
+to be used freely against ORM entities::
+
+    with Session(engine, future=True) as sess:
+
+        stmt = select(User).where(
+            User.name == 'sandy'
+        ).join(User.addresses).where(Address.email_address.like("%gmail%"))
+
+        result = sess.execute(stmt)
+
+        for user in result.scalars():
+            print(user)
+
+Things to note about the above example:
+
+* The :class:`_orm.Session` and :class:`_orm.sessionmaker` objects now feature
+  full context manager (i.e. the ``with:`` statement) capability;
+  see the revised documentation at :ref:`session_getting` for an example.
+
+* Within the 1.4 series, all :term:`2.0 style` ORM invocation uses a
+  :class:`_orm.Session` that includes the :paramref:`_orm.Session.future`
+  flag set to ``True``; this flag indicates the :class:`_orm.Session` should
+  have 2.0-style behaviors, which include that ORM queries can be invoked
+  from :class:`_orm.Session.execute` as well as some changes in transactional
+  features.   In version 2.0 this flag will always be ``True``.
+
+* The :func:`_sql.select` construct no longer needs brackets around the
+  columns clause; see :ref:`change_5284` for background on this improvement.
+
+* The :func:`_sql.select`  / :class:`_sql.Select` object has a :meth:`_sql.Select.join`
+  method that acts like that of the :class:`_orm.Query` and even accommodates
+  an ORM relationship attribute (without breaking the separation between
+  Core and ORM!) - see :ref:`change_select_join` for background on this.
+
+* Statements that work with ORM entities and are expected to return ORM
+  results are invoked using :meth:`.orm.Session.execute`.  See
+  :ref:`session_querying_20` for a primer.
+
+* a :class:`_engine.Result` object is returned, rather than a plain list, which
+  itself is a much more sophisticated version of the previous ``ResultProxy``
+  object; this object is now used both for Core and ORM results.   See
+  :ref:`change_result_14_core`,
+  :ref:`change_4710_core`, and :ref:`change_4710_orm` for information on this.
+
+Throughout SQLAlchemy's documentation, there will be many references to
+:term:`1.x style` and :term:`2.0 style` execution.  This is to distinguish
+between the two querying styles and to attempt to forwards-document the new
+calling style going forward.  In SQLAlchemy 2.0, while the :class:`_orm.Query`
+object may remain as a legacy construct, it will no longer be featured in
+most documentation.
+
+Similar adjustments have been made to "bulk updates and deletes" such that
+Core :func:`_sql.update` and :func:`_sql.delete` can be used for bulk
+operations.   A bulk update like the following::
+
+    session.query(User).filter(User.name == 'sandy').update({"password": "foobar"}, synchronize_session="fetch")
+
+can now be achieved in :term:`2.0 style` (and indeed the above runs internally
+in this way) as follows::
+
+    with Session(engine, future=True) as sess:
+        stmt = update(User).where(
+            User.name == 'sandy'
+        ).values(password="foobar").execution_options(
+            synchronize_session="fetch"
+        )
+
+        sess.execute(stmt)
+
+Note the use of the :meth:`_sql.Executable.execution_options` method to pass
+ORM-related options.  The use of "execution options" is now much more prevalent
+within both Core and ORM, and many ORM-related methods from :class:`_orm.Query`
+are now implemented as execution options (see :meth:`_orm.Query.execution_options`
+for some examples).
+
+.. seealso::
+
+    :ref:`migration_20_toplevel`
+
+:ticket:`5159`
+
 .. _change_4639:
 
 Transparent SQL Compilation Caching added to All DQL, DML Statements in Core, ORM
@@ -34,7 +146,7 @@ systems from the base of Core all the way through ORM now allows the
 majority of Python computation involved producing SQL strings and related
 statement metadata from a user-constructed statement to be cached in memory,
 such that subsequent invocations of an identical statement construct will use
-35-60% fewer resources.
+35-60% fewer CPU resources.
 
 This caching goes beyond the construction of the SQL string to also include the
 construction of result fetching structures that link the SQL construct to the
@@ -66,23 +178,17 @@ In 1.4, the code above without modification completes::
 This first test indicates that regular ORM queries when using caching can run
 over many iterations in the range of **30% faster**.
 
-"Baked Query" style construction now available for all Core and ORM Queries
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A second variant of the feature is the optional use of Python lambdas to defer
+the construction of the query itself.  This is a more sophisticated variant of
+the approach used by the "Baked Query" extension, which was introduced in
+version 1.0.0.     The "lambda" feature may be used in a style very similar to
+that of baked queries, except that it is available in an ad-hoc way for any SQL
+construct.  It additionally includes the ability to scan each invocation of the
+lambda for bound literal values that change on every invocation, as well as
+changes to other constructs, such as querying from a different entity or column
+each time, while still not having to run the actual code each time.
 
-The "Baked Query" extension has been in SQLAlchemy for several years and
-provides a caching system that is based on defining segments of SQL statements
-within Python functions, so that the functions both serve as cache keys
-(since they uniquely and persistently identify a specific line in the
-source code) as well as that they allow the construction of a statement
-to be deferred so that it only need to be invoked once, rather than every
-time the query is rendered.   The functionality of "Baked Query" is now a native
-part of the new caching system, which is available by simply using Python
-functions, typically lambda expressions, either inside of a statement,
-or on the outside using the ``lambda_stmt()`` function that works just
-like a Baked Query.
-
-Making use of the newer 2.0 style of using ``select()`` and adding the use
-of **optional** lambdas to defer the computation::
+Using this API looks as follows::
 
     session = Session(bind=engine)
     for id_ in random.sample(ids, n):
@@ -96,127 +202,17 @@ The code above completes::
 
 This test indicates that using the newer "select()" style of ORM querying,
 in conjunction with a full "baked" style invocation that caches the entire
-construction, can run over many iterations in the range of **60% faster**.
-This performance is roughly the same as what the Baked Query extension
-provides as well.  The new approach effectively supersedes the Baked Query
-extension.
+construction, can run over many iterations in the range of **60% faster** and
+grants performace about the same as the baked query system which is now superseded
+by the native caching system.
 
-For comparison, a Baked Query looks like the following::
+The new system makes use of the existing
+:paramref:`_engine.Connection.execution_options.compiled_cache` execution
+option and also adds a cache to the :class:`_engine.Engine` directly, which is
+configured using the :paramref:`_engine.Engine.query_cache_size` parameter.
 
-    bakery = baked.bakery()
-    s = Session(bind=engine)
-    for id_ in random.sample(ids, n):
-        q = bakery(lambda s: s.query(Customer))
-        q += lambda q: q.filter(Customer.id == bindparam("id"))
-        q(s).params(id=id_).one()
-
-The new API allows the same very fast "baked query" approach of building up a
-statement with lambdas, but does not require any other syntactical changes from
-regular statements.  It also no longer requires that "bindparam()" is used for
-literal values that may change; the "closure" of the Python function is scanned
-on every call to extract Python literal values that should be turned into
-parameters.
-
-Methodology Overview
-^^^^^^^^^^^^^^^^^^^^
-
-SQLAlchemy has also for many years included a "compiled_cache" option that is
-used internally by the ORM flush process as well as the Baked Query extension,
-which caches a SQL expression object based on the identity of the object
-itself.  That is, if you create a particular select() object and make use of
-the compiled cache feature, if you pass the same select() object each time, the
-SQL compilation would be cached.  This feature was of limited use since
-SQLAlchemy's programming paradigm is based on the continuous construction of
-new SQL expression objects each time one is required.
-
-The new caching feature uses the same "compiled_cache", however instead of
-using the statement object itself as the cache key, a separate tuple-oriented
-cache key is generated which represents the complete structure of the
-statement.   Two SQL constructs that are composed in exactly the same way will
-produce the same cache key, independent of the bound parameter values that are
-bundled with the statement; these are collected separately from each statement
-and are used when the cached SQL is executed.   The ORM ``Query`` integrates by
-producing a ``select()`` object from itself that is interpreted as an
-ORM-enabled SELECT within the SQL compilation process that occurs beyond the
-cache boundary.
-
-A general listing of architectural changes needed to support this feature:
-
-* The system by which arguments passed to SQL constructs are type-checked and
-  coerced into their desired form was rewritten from an ad-hoc and disorganized
-  system into the ``sqlalchemy.sql.roles`` and
-  ``sqlalchemy.sql.coercions`` modules which provide a type-based approach
-  to the task of composing SQL expression objects, error handling, coercion
-  of objects such as turning SELECT statements into subqueries, as well as
-  integrating with a new "plugin" system that allows SQL constructs to include
-  ORM functionality.
-
-* The system by which clause expressions constructs are iterated and compared
-  from an object structure point of view was also
-  rewritten from one which was ad-hoc and inconsistent into a complete system
-  within the new ``sqlalchemy.sql.traversals`` module.   A test suite was added
-  which ensures that all SQL construction objects include fully consistent
-  comparison and iteration behavior.   This work began with :ticket:`4336`.
-
-* The new iteration system naturally gave rise to the cache-key creation
-  system, which also uses a performance-optimized version of the
-  ``sqlalchemy.sql.traversals`` module to generate a deterministic cache key
-  for any SQL expression based on its structure.   Two instances of a SQL
-  expression that represent the same SQL structure, such as ``select(table('x',
-  column('q'))).where(column('z') > 5)``, are guaranteed to produce the same
-  cache key, independent of the bound parameters which for this statement would
-  be one parameter with the value "5".   Two instances of a SQL expression
-  where any elements are different will produce different cache keys.   When
-  the cache key is generated, the parameters are also collected which will be
-  used to formulate the final parameter list.  This work was completed over
-  many merges and was overall related to :ticket:`4639`.
-
-* The mechanism by which statements such as ``select()`` generate expensive
-  collections and datamembers that are only used for SQL compilation, such
-  as the list of columns and their labels, were organized into a new
-  decoupled system called ``CompileState``.
-
-* All elements of queries that needed to be made compatible with the concept of
-  deterministic SQL compilation were updated, including an expansion of the
-  "postcompile" concept used to render individual parameters inside of "IN"
-  expressions first included in 1.3 as well as alterations to how dialects like
-  the SQL Server dialect render LIMIT / OFFSET expressions that are not
-  compatible with bound parameters.
-
-* The ORM ``Query`` object was fully refactored such that all of the intense
-  computation which would previously occur whenever methods of ``Query`` were
-  called, such as the construction of the ``Query`` itself, when methods
-  ``filter()`` or ``join()`` would be called, etc., was completely reorganized
-  to take place within the ``CompileState`` architecture, meaning the ORM
-  process that generates a Core ``select()`` to render now takes place
-  **within** the SQL compilation process, beyond the caching boundary.  More
-  detail on this change is at
-  :ref:`change_deferred_construction`.
-
-* The ``Query`` object was unified with the ``select()`` object, such that
-  these two objects now have cross-compatible internal state.   The ``Query``
-  can turn itself into a ``select()`` that generates ORM queries by copying its
-  ``__dict__`` into a new ``Select`` object.
-
-* The 2.0-style :class:`.Result` object as well as the "future" version of
-  :class:`_engine.Engine` were developed and integrated into Core and later
-  the ORM also integrated on top of :class:`.Result`.
-
-* The Core and ORM execution models were completely reworked to integrate the
-  new cache key system, and in particular the ORM ``Query`` was reworked such
-  that its execution model now produces a ``Select`` which is passed to
-  ``Session.execute()``, which then invokes the 2.0-style execution model that
-  allows the ``Select`` to be processed as an ORM query beyond the caching
-  boundary.
-
-* Other systems such as ``Query`` bulk updates and deletes, the horizontal
-  sharding extension, the Baked Query extension, and the dogpile caching
-  example were updated to integrate with the new execution model and a new
-  event hook :meth:`.SessionEvents.do_orm_execute` has been added.
-
-* The caching has been enabled via the :paramref:`.create_engine.query_cache_size`
-  parameter, new logging features were added, and the "lambda" argument
-  construction module was added.
+A significant portion of API and behavioral changes throughout 1.4 were
+driven in order to support this new feature.
 
 .. seealso::
 
@@ -232,8 +228,8 @@ A general listing of architectural changes needed to support this feature:
 .. _change_deferred_construction:
 
 
-Many Core and ORM statement objects now perform much of their validation in the compile phase
----------------------------------------------------------------------------------------------
+Many Core and ORM statement objects now perform much of their construction and validation in the compile phase
+--------------------------------------------------------------------------------------------------------------
 
 A major initiative in the 1.4 series is to approach the model of both Core SQL
 statements as well as the ORM Query to allow for an efficient, cacheable model
@@ -241,12 +237,17 @@ of statement creation and compilation, where the compilation step would be
 cached, based on a cache key generated by the created statement object, which
 itself is newly created for each use.  Towards this goal, much of the Python
 computation which occurs within the construction of statements, particularly
-the ORM :class:`_query.Query`, is being moved to occur later, when the
-statement is actually compiled, and additionally that it will only occur if the
-compiled form of the statement is not already cached.   This means that some of
-the error messages which can arise based on arguments passed to the object will
-no longer be raised immediately, and instead will occur only when the statement
-is invoked and its compiled form is not yet cached.
+that of the ORM :class:`_query.Query` as well as the :func:`_sql.select`
+construct when used to invoke ORM queries, is being moved to occur within
+the compilation phase of the statement which only occurs after the statement
+has been invoked, and only if the statement's compiled form was not yet
+cached.
+
+From an end-user perspective, this means that some of the error messages which
+can arise based on arguments passed to the object will no longer be raised
+immediately, and instead will occur only when the statement is invoked for
+the first time.    These conditions are always structural and not data driven,
+so there is no risk of such a condition being missed due to a cached statement.
 
 Error conditions which fall under this category include:
 
@@ -286,8 +287,8 @@ instead.
 
 :ticket:`4689`
 
-API Changes - Core
-==================
+API and Behavioral Changes - Core
+==================================
 
 .. _change_4617:
 
@@ -318,93 +319,70 @@ Raising::
     got <...Select object ...>. To create a FROM clause from a <class
     'sqlalchemy.sql.selectable.Select'> object, use the .subquery() method.
 
-The correct calling form is instead::
+The correct calling form is instead (noting also that :ref:`brackets are no
+longer required for select() <change_5284>`)::
 
-    sq1 = select([user.c.id, user.c.name]).subquery()
-    stmt2 = select([addresses, sq1]).select_from(addresses.join(sq1))
+    sq1 = select(user.c.id, user.c.name).subquery()
+    stmt2 = select(addresses, sq1).select_from(addresses.join(sq1))
 
 Noting above that the :meth:`_expression.SelectBase.subquery` method is essentially
 equivalent to using the :meth:`_expression.SelectBase.alias` method.
 
-The above calling form is typically required in any case as the call to
-:meth:`_expression.SelectBase.subquery` or :meth:`_expression.SelectBase.alias` is needed to
-ensure the subquery has a name.  The MySQL and PostgreSQL databases do not
-accept unnamed subqueries in the FROM clause and they are of limited use
-on other platforms; this is described further below.
 
-Along with the above change, the general capability of :func:`_expression.select` and
-related constructs to create unnamed subqueries, which means a FROM subquery
-that renders without any name i.e. "AS somename", has been removed, and the
-ability of the :func:`_expression.select` construct to implicitly create subqueries
-without explicit calling code to do so is mostly deprecated.   In the above
-example, as has always been the case, using the :meth:`_expression.SelectBase.alias`
-method as well as the new :meth:`_expression.SelectBase.subquery` method without passing a
-name will generate a so-called "anonymous" name, which is the familiar
-``anon_1`` name we see in SQLAlchemy queries::
+The rationale for this change is based on the following:
 
-    SELECT
-        addresses.id, addresses.email, addresses.user_id,
-        anon_1.id, anon_1.name
-    FROM
-    addresses JOIN
-    (SELECT users.id AS id, users.name AS name FROM users) AS anon_1
-    ON addresses.user_id = anon_1.id
+* In order to support the unification of :class:`_sql.Select` with
+  :class:`_orm.Query`, the :class:`_sql.Select` object needs to have
+  :meth:`_sql.Select.join` and :meth:`_sql.Select.outerjoin` methods that
+  actually add JOIN criteria to the existing FROM clause, as is what users have
+  always expected it to do in any case.    The previous behavior, having to
+  align with what a :class:`.FromClause` would do, was that it would generate
+  an unnamed subquery and then JOIN to it, which was a completely useless
+  feature that only confused those users unfortunate enough to try this.  This
+  change is discussed at :ref:`change_select_join`.
 
-Unnamed subqueries in the FROM clause (which note are different from
-so-called "scalar subqueries" which take the place of a column expression
-in the columns clause or WHERE clause) are of extremely limited use in SQL,
-and their production in SQLAlchemy has mostly presented itself as an
-undesirable behavior that needs to be worked around.    For example,
-both the MySQL and PostgreSQL outright reject the usage of unnamed subqueries::
+* The behavior of including a SELECT in the FROM clause of another SELECT
+  without first creating an alias or subquery would be that it creates an
+  unnamed subquery.   While standard SQL does support this syntax, in practice
+  it is rejected by most databases.  For example, both the MySQL and PostgreSQL
+  outright reject the usage of unnamed subqueries::
 
-    # MySQL / MariaDB:
+      # MySQL / MariaDB:
 
-    MariaDB [(none)]> select * from (select 1);
-    ERROR 1248 (42000): Every derived table must have its own alias
+      MariaDB [(none)]> select * from (select 1);
+      ERROR 1248 (42000): Every derived table must have its own alias
 
 
-    # PostgreSQL:
+      # PostgreSQL:
 
-    test=> select * from (select 1);
-    ERROR:  subquery in FROM must have an alias
-    LINE 1: select * from (select 1);
-                          ^
-    HINT:  For example, FROM (SELECT ...) [AS] foo.
+      test=> select * from (select 1);
+      ERROR:  subquery in FROM must have an alias
+      LINE 1: select * from (select 1);
+                            ^
+      HINT:  For example, FROM (SELECT ...) [AS] foo.
 
-A database like SQLite accepts them, however it is still often the case that
-the names produced from such a subquery are too ambiguous to be useful::
+  A database like SQLite accepts them, however it is still often the case that
+  the names produced from such a subquery are too ambiguous to be useful::
 
-    sqlite> CREATE TABLE a(id integer);
-    sqlite> CREATE TABLE b(id integer);
-    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=id;
-    Error: ambiguous column name: id
-    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=b.id;
-    Error: no such column: b.id
+      sqlite> CREATE TABLE a(id integer);
+      sqlite> CREATE TABLE b(id integer);
+      sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=id;
+      Error: ambiguous column name: id
+      sqlite> SELECT * FROM a JOIN (SELECT * FROM b) ON a.id=b.id;
+      Error: no such column: b.id
 
-    # use a name
-    sqlite> SELECT * FROM a JOIN (SELECT * FROM b) AS anon_1 ON a.id=anon_1.id;
+      # use a name
+      sqlite> SELECT * FROM a JOIN (SELECT * FROM b) AS anon_1 ON a.id=anon_1.id;
 
-Due to the above limitations, there are very few places in SQLAlchemy where
-such a query form was valid; the one exception was within the Oracle dialect
-where they were used to create OFFSET / LIMIT subqueries as Oracle does not
-support these keywords directly; this implementation has been replaced by
-one which uses anonymous subqueries.   Throughout the ORM, exception cases
-that detect where a SELECT statement would be SELECTed from either encourage
-the user to, or implicitly create, an anonymously named subquery; it is hoped
-by moving to an all-explicit subquery much of the complexity incurred by
-these areas can be removed.
+  ..
 
-As :class:`_expression.SelectBase` objects are no longer :class:`_expression.FromClause` objects,
-attributes like the ``.c`` attribute as well as methods like ``.select()``,
-``.join()``, and ``.outerjoin()`` upon :class:`_expression.SelectBase` are now
-deprecated, as these methods all imply implicit production of a subquery.
-Instead, as is already what the vast majority of applications have to do
-in any case, invoking :meth:`_expression.SelectBase.alias` or :meth:`_expression.SelectBase.subquery`
-will provide for a :class:`.Subquery` object that provides all these attributes,
-as it is part of the :class:`_expression.FromClause` hierarchy.   In the interim, these
-methods are still available, however they now produce an anonymously named
-subquery rather than an unnamed one, and this subquery is distinct from the
-:class:`_expression.SelectBase` construct itself.
+As :class:`_expression.SelectBase` objects are no longer
+:class:`_expression.FromClause` objects, attributes like the ``.c`` attribute
+as well as methods like ``.select()`` is now deprecated, as they imply implicit
+production of a subquery. The ``.join()`` and ``.outerjoin()`` methods are now
+:ref:`repurposed to append JOIN criteria to the existing query <change_select_join>` in a similar
+way as that of :meth:`_orm.Query.join`, which is what users have always
+expected these methods to do in any case.
 
 In place of the ``.c`` attribute, a new attribute :attr:`_expression.SelectBase.selected_columns`
 is added.  This attribute resolves to a column collection that is what most
@@ -427,36 +405,100 @@ present in the ``users.c`` collection::
     stmt = select([users])
     stmt = stmt.where(stmt.selected_columns.name == 'foo')
 
-There is of course the notion that perhaps ``.c`` on :class:`_expression.SelectBase` could
-simply act the way :attr:`_expression.SelectBase.selected_columns` does above, however in
-light of the fact that ``.c`` is strongly associated with the :class:`_expression.FromClause`
-hierarchy, meaning that it is a set of columns that can be directly in the
-FROM clause of another SELECT, it's better that a column collection that
-serves an entirely different purpose have a new name.
-
-In the bigger picture, the reason this change is being made now is towards the
-goal of unifying the ORM :class:`_query.Query` object into the :class:`_expression.SelectBase`
-hierarchy in SQLAlchemy 2.0, so that the ORM will have a "``select()``"
-construct that extends directly from the existing :func:`_expression.select` object,
-having the same methods and behaviors except that it will have additional ORM
-functionality.   All statement objects in Core will also be fully cacheable
-using a new system that resembles "baked queries" except that it will work
-transparently for all statements across Core and ORM.   In order to achieve
-this, the Core class hierarchy needs to be refined to behave in such a way that
-is more easily compatible with the ORM, and the ORM class hierarchy needs to be
-refined so that it is more compatible with Core.
-
 
 :ticket:`4617`
 
 
+.. _change_select_join:
+
+select().join() and outerjoin() add JOIN criteria to the current query, rather than creating a subquery
+-------------------------------------------------------------------------------------------------------
+
+Towards the goal of unifying :class:`_orm.Query` and :class:`_sql.Select`,
+particularly for :term:`2.0 style` use of :class:`_sql.Select`, it was critical
+that there be a working :meth:`_sql.Select.join` method that behaves like the
+:meth:`_orm.Query.join` method, adding additional entries to the FROM clause of
+the existing SELECT and then returning the new :class:`_sql.Select` object for
+further modification, instead of wrapping the object inside of an unnamed
+subquery and returning a JOIN from that subquery, a behavior that has always
+been virtually useless and completely misleading to users.
+
+To allow this to be the case, :ref:`change_4617` was first implemented which
+splits off :class:`_sql.Select` from having to be a :class:`_sql.FromClause`;
+this removed the requirement that :meth:`_sql.Select.join` would need to
+return a :class:`_sql.Join` object rather than a new version of that
+:class:`_sql.Select` object that includes a new JOIN in its FROM clause.
+
+From that point on, as the :meth:`_sql.Select.join` and :meth:`_sql.Select.outerjoin`
+did have an existing behavior, the original plan was that these
+methods would be deprecated, and the new "useful" version of
+the methods would be available on an alternate, "future" :class:`_sql.Select`
+object available as a separate import.
+
+However, after some time working with this particular codebase, it was decided
+that having two different kinds of :class:`_sql.Select` objects floating
+around, each with 95% the same behavior except for some subtle difference
+in how some of the methods behave was going to be more misleading and inconvenient
+than simply making a hard change in how these two methods behave, given
+that the existing behavior of :meth:`_sql.Select.join` and :meth:`_sql.Select.outerjoin`
+is essentially never used and only causes confusion.
+
+So it was decided, given how very useless the current behavior is, and how
+extremely useful and important and useful the new behavior would be, to make a
+**hard behavioral change** in this one area, rather than waiting another year
+and having a more awkward API in the interim.   SQLAlchemy developers do not
+take it lightly to make a completely breaking change like this, however this is
+a very special case and it is extremely unlikely that the previous
+implementation of these methods was being used;  as noted in
+:ref:`change_4617`, major databases such as MySQL and PostgreSQL don't allow
+for unnamed subqueries in any case and from a syntactical point of view it's
+nearly impossible for a JOIN from an unnamed subquery to be useful since it's
+very difficult to refer to the columns within it unambiguously.
+
+With the new implementation, :meth:`_sql.Select.join` and
+:meth:`_sql.Select.outerjoin` now behave very similarly to that of
+:meth:`_orm.Query.join`, adding JOIN criteria to the existing statement by
+matching to the left entity::
+
+    stmt = select(user_table).join(addresses_table, user_table.c.id == addresses_table.c.user_id)
+
+producing::
+
+    SELECT user.id, user.name FROM user JOIN address ON user.id=address.user_id
+
+As is the case for :class:`_sql.Join`, the ON clause is automatically determined
+if feasible::
+
+    stmt = select(user_table).join(addresses_table)
+
+When ORM entities are used in the statement, this is essentially how ORM
+queries are built up using :term:`2.0 style` invocation.  ORM entities will
+assign a "plugin" to the statement internally such that ORM-related compilation
+rules will take place when the statement is compiled into a SQL string. More
+directly, the :meth:`_sql.Select.join` method can accommodate ORM
+relationships, without breaking the hard separation between Core and ORM
+internals::
+
+    stmt = select(User).join(User.addresses)
+
+Another new method :meth:`_sql.Select.join_from` is also added, which
+allows easier specification of the left and right side of a join at once::
+
+    stmt = select(Address.email_address, User.name).join_from(User, Address)
+
+producing::
+
+    SELECT address.email_address, user.name FROM user JOIN address ON user.id == address.user_id
+
+
 .. _change_5284:
 
-select() now accepts positional expressions
--------------------------------------------
+select(), case() now accept positional expressions
+---------------------------------------------------
 
-The :func:`.select` construct will now accept "columns clause"
-arguments positionally::
+As it may be seen elsewhere in this document, the :func:`_sql.select` construct will
+now accept "columns clause" arguments positionally, rather than requiring they
+be passed as a list::
 
     # new way, supports 2.0
     stmt = select(table.c.col1, table.c.col2, ...)
@@ -472,7 +514,8 @@ to function, which passes the list of columns or other expressions as a list::
     stmt = select([table.c.col1, table.c.col2, ...])
 
 The above legacy calling style also accepts the old keyword arguments that have
-since been removed from most narrative documentation::
+since been removed from most narrative documentation.  The existence of these
+keyword arguments is why the columns clause was passed as a list in the first place::
 
     # very much the old way, but still works in 1.4
     stmt = select([table.c.col1, table.c.col2, ...], whereclause=table.c.col1 == 5)
@@ -489,11 +532,27 @@ As part of this change, the :class:`.Select` construct also gains the 2.0-style
 "future" API which includes an updated :meth:`.Select.join` method as well
 as methods like :meth:`.Select.filter_by` and :meth:`.Select.join_from`.
 
+In a related change, the :func:`_sql.case` construct has also been modified
+to accept its list of WHEN clauses positionally, with a similar deprecation
+track for the old calling style::
+
+    stmt = select(users_table).where(
+        case(
+            (users_table.c.name == 'wendy', 'W'),
+            (users_table.c.name == 'jack', 'J'),
+            else_='E'
+        )
+    )
+
+The convention for SQLAlchemy constructs accepting ``*args`` vs. a list of
+values, as is the latter case for a construct like
+:meth:`_sql.ColumnOperators.in_`, is that **positional arguments are used for
+structural specification, lists are used for data specification**.
+
+
 .. seealso::
 
     :ref:`error_c9ae`
-
-    :ref:`migration_20_toplevel`
 
 
 :ticket:`5284`
@@ -605,6 +664,134 @@ details.
     :class:`.BindParameter`
 
 :ticket:`4645`
+
+.. _change_4737:
+
+
+Built-in FROM linting will warn for any potential cartesian products in a SELECT statement
+------------------------------------------------------------------------------------------
+
+As the Core expression language as well as the ORM are built on an "implicit
+FROMs" model where a particular FROM clause is automatically added if any part
+of the query refers to it, a common issue is the case where a SELECT statement,
+either a top level statement or an embedded subquery, contains FROM elements
+that are not joined to the rest of the FROM elements in the query, causing
+what's referred to as a "cartesian product" in the result set, i.e. every
+possible combination of rows from each FROM element not otherwise joined.  In
+relational databases, this is nearly always an undesirable outcome as it
+produces an enormous result set full of duplicated, uncorrelated data.
+
+SQLAlchemy, for all of its great features, is particularly prone to this sort
+of issue happening as a SELECT statement will have elements added to its FROM
+clause automatically from any table seen in the other clauses. A typical
+scenario looks like the following, where two tables are JOINed together,
+however an additional entry in the WHERE clause that perhaps inadvertently does
+not line up with these two tables will create an additional FROM entry::
+
+    address_alias = aliased(Address)
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo')
+
+The above query selects from a JOIN of ``User`` and ``address_alias``, the
+latter of which is an alias of the ``Address`` entity.  However, the
+``Address`` entity is used within the WHERE clause directly, so the above would
+result in the SQL::
+
+    SELECT
+        users.id AS users_id, users.name AS users_name,
+        users.fullname AS users_fullname,
+        users.nickname AS users_nickname
+    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE addresses.email_address = :email_address_1
+
+In the above SQL, we can see what SQLAlchemy developers term "the dreaded
+comma", as we see "FROM addresses, users JOIN addresses" in the FROM clause
+which is the classic sign of a cartesian product; where a query is making use
+of JOIN in order to join FROM clauses together, however because one of them is
+not joined, it uses a comma.      The above query will return a full set of
+rows that join the "user" and "addresses" table together on the "id / user_id"
+column, and will then apply all those rows into a cartesian product against
+every row in the "addresses" table directly.   That is, if there are ten user
+rows and 100 rows in addresses, the above query will return its expected result
+rows, likely to be 100 as all address rows would be selected, multiplied by 100
+again, so that the total result size would be 10000 rows.
+
+The "table1, table2 JOIN table3" pattern is one that also occurs quite
+frequently within the SQLAlchemy ORM due to either subtle mis-application of
+ORM features particularly those related to joined eager loading or joined table
+inheritance, as well as a result of SQLAlchemy ORM bugs within those same
+systems.   Similar issues apply to SELECT statements that use "implicit joins",
+where the JOIN keyword is not used and instead each FROM element is linked with
+another one via the WHERE clause.
+
+For some years there has been a recipe on the Wiki that applies a graph
+algorithm to a :func:`_expression.select` construct at query execution time and inspects
+the structure of the query for these un-linked FROM clauses, parsing through
+the WHERE clause and all JOIN clauses to determine how FROM elements are linked
+together and ensuring that all the FROM elements are connected in a single
+graph. This recipe has now been adapted to be part of the :class:`.SQLCompiler`
+itself where it now optionally emits a warning for a statement if this
+condition is detected.   The warning is enabled using the
+:paramref:`_sa.create_engine.enable_from_linting` flag and is enabled by default.
+The computational overhead of the linter is very low, and additionally it only
+occurs during statement compilation which means for a cached SQL statement it
+only occurs once.
+
+Using this feature, our ORM query above will emit a warning::
+
+    >>> q.all()
+    SAWarning: SELECT statement has a cartesian product between FROM
+    element(s) "addresses_1", "users" and FROM element "addresses".
+    Apply join condition(s) between each element to resolve.
+
+The linter feature accommodates not just for tables linked together through the
+JOIN clauses but also through the WHERE clause  Above, we can add a WHERE
+clause to link the new ``Address`` entity with the previous ``address_alias``
+entity and that will remove the warning::
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo').\
+        filter(Address.id == address_alias.id)  # resolve cartesian products,
+                                                # will no longer warn
+
+The cartesian product warning considers **any** kind of link between two
+FROM clauses to be a resolution, even if the end result set is still
+wasteful, as the linter is intended only to detect the common case of a
+FROM clause that is completely unexpected.  If the FROM clause is referred
+to explicitly elsewhere and linked to the other FROMs, no warning is emitted::
+
+    q = session.query(User).\
+        join(address_alias, User.addresses).\
+        filter(Address.email_address == 'foo').\
+        filter(Address.id > address_alias.id)  # will generate a lot of rows,
+                                               # but no warning
+
+Full cartesian products are also allowed if they are explicitly stated; if we
+wanted for example the cartesian product of ``User`` and ``Address``, we can
+JOIN on :func:`.true` so that every row will match with every other; the
+following query will return all rows and produce no warnings::
+
+    from sqlalchemy import true
+
+    # intentional cartesian product
+    q = session.query(User).join(Address, true())  # intentional cartesian product
+
+The warning is only generated by default when the statement is compiled by the
+:class:`_engine.Connection` for execution; calling the :meth:`_expression.ClauseElement.compile`
+method will not emit a warning unless the linting flag is supplied::
+
+    >>> from sqlalchemy.sql import FROM_LINTING
+    >>> print(q.statement.compile(linting=FROM_LINTING))
+    SAWarning: SELECT statement has a cartesian product between FROM element(s) "addresses" and FROM element "users".  Apply join condition(s) between each element to resolve.
+    SELECT users.id, users.name, users.fullname, users.nickname
+    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
+    WHERE addresses.email_address = :email_address_1
+
+:ticket:`4737`
+
 
 .. _change_result_14_core:
 
@@ -781,6 +968,289 @@ There are many reasons why the above assumptions do not hold:
     :ref:`change_4710_orm`
 
 :ticket:`4710`
+
+.. _change_4753:
+
+SELECT objects and derived FROM clauses allow for duplicate columns and column labels
+-------------------------------------------------------------------------------------
+
+This change allows that the :func:`_expression.select` construct now allows for duplicate
+column labels as well as duplicate column objects themselves, so that result
+tuples are organized and ordered in the identical way in that the columns were
+selected.  The ORM :class:`_query.Query` already works this way, so this change
+allows for greater cross-compatibility between the two, which is a key goal of
+the 2.0 transition::
+
+    >>> from sqlalchemy import column, select
+    >>> c1, c2, c3, c4 = column('c1'), column('c2'), column('c3'), column('c4')
+    >>> stmt = select([c1, c2, c3.label('c2'), c2, c4])
+    >>> print(stmt)
+    SELECT c1, c2, c3 AS c2, c2, c4
+
+To support this change, the :class:`_expression.ColumnCollection` used by
+:class:`_expression.SelectBase` as well as for derived FROM clauses such as subqueries
+also support duplicate columns; this includes the new
+:attr:`_expression.SelectBase.selected_columns` attribute, the deprecated ``SelectBase.c``
+attribute, as well as the :attr:`_expression.FromClause.c` attribute seen on constructs
+such as :class:`.Subquery` and :class:`_expression.Alias`::
+
+    >>> list(stmt.selected_columns)
+    [
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcca20; c1>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
+        <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
+        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540897048; c4>
+    ]
+
+    >>> print(stmt.subquery().select())
+    SELECT anon_1.c1, anon_1.c2, anon_1.c2, anon_1.c2, anon_1.c4
+    FROM (SELECT c1, c2, c3 AS c2, c2, c4) AS anon_1
+
+:class:`_expression.ColumnCollection` also allows access by integer index to support
+when the string "key" is ambiguous::
+
+    >>> stmt.selected_columns[2]
+    <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>
+
+To suit the use of :class:`_expression.ColumnCollection` in objects such as
+:class:`_schema.Table` and :class:`.PrimaryKeyConstraint`, the old "deduplicating"
+behavior which is more critical for these objects is preserved in a new class
+:class:`.DedupeColumnCollection`.
+
+The change includes that the familiar warning ``"Column %r on table %r being
+replaced by %r, which has the same key.  Consider use_labels for select()
+statements."`` is **removed**; the :meth:`_expression.Select.apply_labels` is still
+available and is still used by the ORM for all SELECT operations, however it
+does not imply deduplication of column objects, although it does imply
+deduplication of implicitly generated labels::
+
+    >>> from sqlalchemy import table
+    >>> user = table('user', column('id'), column('name'))
+    >>> stmt = select([user.c.id, user.c.name, user.c.id]).apply_labels()
+    >>> print(stmt)
+    SELECT "user".id AS user_id, "user".name AS user_name, "user".id AS id_1
+    FROM "user"
+
+Finally, the change makes it easier to create UNION and other
+:class:`_selectable.CompoundSelect` objects, by ensuring that the number and position
+of columns in a SELECT statement mirrors what was given, in a use case such
+as::
+
+    >>> s1 = select([user, user.c.id])
+    >>> s2 = select([c1, c2, c3])
+    >>> from sqlalchemy import union
+    >>> u = union(s1, s2)
+    >>> print(u)
+    SELECT "user".id, "user".name, "user".id
+    FROM "user" UNION SELECT c1, c2, c3
+
+
+
+:ticket:`4753`
+
+
+
+.. _change_4449:
+
+Improved column labeling for simple column expressions using CAST or similar
+----------------------------------------------------------------------------
+
+A user pointed out that the PostgreSQL database has a convenient behavior when
+using functions like CAST against a named column, in that the result column name
+is named the same as the inner expression::
+
+    test=> SELECT CAST(data AS VARCHAR) FROM foo;
+
+    data
+    ------
+     5
+    (1 row)
+
+This allows one to apply CAST to table columns while not losing the column
+name (above using the name ``"data"``) in the result row.    Compare to
+databases such as MySQL/MariaDB, as well as most others, where the column
+name is taken from the full SQL expression and is not very portable::
+
+    MariaDB [test]> SELECT CAST(data AS CHAR) FROM foo;
+    +--------------------+
+    | CAST(data AS CHAR) |
+    +--------------------+
+    | 5                  |
+    +--------------------+
+    1 row in set (0.003 sec)
+
+
+In SQLAlchemy Core expressions, we never deal with a raw generated name like
+the above, as SQLAlchemy applies auto-labeling to expressions like these, which
+are up until now always a so-called "anonymous" expression::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS anon_1     # old behavior
+    FROM foo
+
+These anonymous expressions were necessary as SQLAlchemy's
+:class:`_engine.ResultProxy` made heavy use of result column names in order to match
+up datatypes, such as the :class:`.String` datatype which used to have
+result-row-processing behavior, to the correct column, so most importantly the
+names had to be both easy to determine in a database-agnostic manner as well as
+unique in all cases.    In SQLAlchemy 1.0 as part of :ticket:`918`, this
+reliance on named columns in result rows (specifically the
+``cursor.description`` element of the PEP-249 cursor) was scaled back to not be
+necessary for most Core SELECT constructs; in release 1.4, the system overall
+is becoming more comfortable with SELECT statements that have duplicate column
+or label names such as in :ref:`change_4753`.  So we now emulate PostgreSQL's
+reasonable behavior for simple modifications to a single column, most
+prominently with CAST::
+
+    >>> print(select([cast(foo.c.data, String)]))
+    SELECT CAST(foo.data AS VARCHAR) AS data
+    FROM foo
+
+For CAST against expressions that don't have a name, the previous logic is used
+to generate the usual "anonymous" labels::
+
+    >>> print(select([cast('hi there,' + foo.c.data, String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
+    FROM foo
+
+A :func:`.cast` against a :class:`.Label`, despite having to omit the label
+expression as these don't render inside of a CAST, will nonetheless make use of
+the given name::
+
+    >>> print(select([cast(('hi there,' + foo.c.data).label('hello_data'), String)]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+And of course as was always the case, :class:`.Label` can be applied to the
+expression on the outside to apply an "AS <name>" label directly::
+
+    >>> print(select([cast(('hi there,' + foo.c.data), String).label('hello_data')]))
+    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
+    FROM foo
+
+
+:ticket:`4449`
+
+.. _change_4808:
+
+New "post compile" bound parameters used for LIMIT/OFFSET in Oracle, SQL Server
+-------------------------------------------------------------------------------
+
+A major goal of the 1.4 series is to establish that all Core SQL constructs
+are completely cacheable, meaning that a particular :class:`.Compiled`
+structure will produce an identical SQL string regardless of any SQL parameters
+used with it, which notably includes those used to specify the LIMIT and
+OFFSET values, typically used for pagination and "top N" style results.
+
+While SQLAlchemy has used bound parameters for LIMIT/OFFSET schemes for many
+years, a few outliers remained where such parameters were not allowed, including
+a SQL Server "TOP N" statement, such as::
+
+    SELECT TOP 5 mytable.id, mytable.data FROM mytable
+
+as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
+use if the ``optimize_limits=True`` parameter is passed to
+:func:`_sa.create_engine` with an Oracle URL) does not allow them,
+but also that using bound parameters with ROWNUM comparisons has been reported
+as producing slower query plans::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= :param_1
+    ) anon_1 WHERE ora_rn > :param_2
+
+In order to allow for all statements to be unconditionally cacheable at the
+compilation level, a new form of bound parameter called a "post compile"
+parameter has been added, which makes use of the same mechanism as that
+of "expanding IN parameters".  This is a :func:`.bindparam` that behaves
+identically to any other bound parameter except that parameter value will
+be rendered literally into the SQL string before sending it to the DBAPI
+``cursor.execute()`` method.   The new parameter is used internally by the
+SQL Server and Oracle dialects, so that the drivers receive the literal
+rendered value but the rest of SQLAlchemy can still consider this as a
+bound parameter.   The above two statements when stringified using
+``str(statement.compile(dialect=<dialect>))`` now look like::
+
+    SELECT TOP [POSTCOMPILE_param_1] mytable.id, mytable.data FROM mytable
+
+and::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id, mytable.data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= [POSTCOMPILE_param_1]
+    ) anon_1 WHERE ora_rn > [POSTCOMPILE_param_2]
+
+The ``[POSTCOMPILE_<param>]`` format is also what is seen when an
+"expanding IN" is used.
+
+When viewing the SQL logging output, the final form of the statement will
+be seen::
+
+    SELECT anon_1.id, anon_1.data FROM (
+        SELECT /*+ FIRST_ROWS(5) */
+        anon_2.id AS id,
+        anon_2.data AS data,
+        ROWNUM AS ora_rn FROM (
+            SELECT mytable.id AS id, mytable.data AS data FROM mytable
+        ) anon_2
+        WHERE ROWNUM <= 8
+    ) anon_1 WHERE ora_rn > 3
+
+
+The "post compile parameter" feature is exposed as public API through the
+:paramref:`.bindparam.literal_execute` parameter, however is currently not
+intended for general use.   The literal values are rendered using the
+:meth:`.TypeEngine.literal_processor` of the underlying datatype, which in
+SQLAlchemy has **extremely limited** scope, supporting only integers and simple
+string values.
+
+:ticket:`4808`
+
+.. _change_4712:
+
+Connection-level transactions can now be inactive based on subtransaction
+-------------------------------------------------------------------------
+
+A :class:`_engine.Connection` now includes the behavior where a :class:`.Transaction`
+can be made inactive due to a rollback on an inner transaction, however the
+:class:`.Transaction` will not clear until it is itself rolled back.
+
+This is essentially a new error condition which will disallow statement
+executions to proceed on a :class:`_engine.Connection` if an inner "sub" transaction
+has been rolled back.  The behavior works very similarly to that of the
+ORM :class:`.Session`, where if an outer transaction has been begun, it needs
+to be rolled back to clear the invalid transaction; this behavior is described
+in :ref:`faq_session_rollback`.
+
+While the :class:`_engine.Connection` has had a less strict behavioral pattern than
+the :class:`.Session`, this change was made as it helps to identify when
+a subtransaction has rolled back the DBAPI transaction, however the external
+code isn't aware of this and attempts to continue proceeding, which in fact
+runs operations on a new transaction.   The "test harness" pattern described
+at :ref:`session_external_transaction` is the common place for this to occur.
+
+The "subtransaction" feature of Core and ORM is itself deprecated and will
+no longer be present in version 2.0.   As a result, this new error condition
+is itself temporary as it will no longer apply once subtransactions are removed.
+
+In order to work with the 2.0 style behavior that does not include
+subtransactions, use the :paramref:`_sa.create_engine.future` parameter
+on :func:`_sa.create_engine`.
+
+The error message is described in the errors page at :ref:`error_8s2a`.
+
+
 
 New Features - ORM
 ==================
@@ -1133,6 +1603,53 @@ now the default behavior.
 
 :ticket:`5237`
 
+.. _change_5150:
+
+cascade_backrefs behavior deprecated for removal in 2.0
+-------------------------------------------------------
+
+SQLAlchemy has long had a behavior of cascading objects into the
+:class:`_orm.Session` based on backref assignment.   Given ``User`` below
+already in a :class:`_orm.Session`, assigning it to the ``Address.user``
+attribute of an ``Address`` object, assuming a bidrectional relationship
+is set up, would mean that the ``Address`` also gets put into the
+:class:`_orm.Session` at that point::
+
+    u1 = User()
+    session.add(u1)
+
+    a1 = Address()
+    a1.user = u1  # <--- adds "a1" to the Session
+
+The above behavior was an unintended side effect of backref behavior, in that
+since ``a1.user`` implies ``u1.addresses.append(a1)``, ``a1`` would get
+cascaded into the :class:`_orm.Session`.  This remains the default behavior
+throughout 1.4.     At some point, a new flag :paramref:`_orm.relationship.cascade_backrefs`
+was added to disable to above behavior, as it can be surprising and also gets in
+the way of some operations where the object would be placed in the :class:`_orm.Session`
+too early and get prematurely flushed.
+
+In 2.0, the default behavior will be that "cascade_backrefs" is False, and
+additionally there will be no "True" behavior as this is not generally a desirable
+behavior.    When 2.0 deprecation warnings are enabled, a warning will be emitted
+when a "backref cascade" actually takes place.    To get the new behavior, either
+set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on the target
+relationship, as is already supported in 1.3 and earlier, or alternatively make
+use of the :paramref:`_orm.Session.future` flag to :term:`2.0-style` mode::
+
+    Session = sessionmaker(engine, future=True)
+
+    with Session() as session:
+      u1 = User()
+      session.add(u1)
+
+      a1 = Address()
+      a1.user = u1  # <--- will not add "a1" to the Session
+
+
+
+:ticket:`5150`
+
 .. _change_1763:
 
 Eager loaders emit during unexpire operations
@@ -1396,53 +1913,6 @@ configured to raise an exception using the Python warnings filter.
 
 :ticket:`4662`
 
-.. _change_5150:
-
-cascade_backrefs behavior deprecated for removal in 2.0
--------------------------------------------------------
-
-SQLAlchemy has long had a behavior of cascading objects into the
-:class:`_orm.Session` based on backref assignment.   Given ``User`` below
-already in a :class:`_orm.Session`, assigning it to the ``Address.user``
-attribute of an ``Address`` object, assuming a bidrectional relationship
-is set up, would mean that the ``Address`` also gets put into the
-:class:`_orm.Session` at that point::
-
-    u1 = User()
-    session.add(u1)
-
-    a1 = Address()
-    a1.user = u1  # <--- adds "a1" to the Session
-
-The above behavior was an unintended side effect of backref behavior, in that
-since ``a1.user`` implies ``u1.addresses.append(a1)``, ``a1`` would get
-cascaded into the :class:`_orm.Session`.  This remains the default behavior
-throughout 1.4.     At some point, a new flag :paramref:`_orm.relationship.cascade_backrefs`
-was added to disable to above behavior, as it can be surprising and also gets in
-the way of some operations where the object would be placed in the :class:`_orm.Session`
-too early and get prematurely flushed.
-
-In 2.0, the default behavior will be that "cascade_backrefs" is False, and
-additionally there will be no "True" behavior as this is not generally a desirable
-behavior.    When 2.0 deprecation warnings are enabled, a warning will be emitted
-when a "backref cascade" actually takes place.    To get the new behavior, either
-set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on the target
-relationship, as is already supported in 1.3 and earlier, or alternatively make
-use of the :paramref:`_orm.Session.future` flag to :term:`2.0-style` mode::
-
-    Session = sessionmaker(engine, future=True)
-
-    with Session() as session:
-      u1 = User()
-      session.add(u1)
-
-      a1 = Address()
-      a1.user = u1  # <--- will not add "a1" to the Session
-
-
-
-:ticket:`5150`
-
 .. _change_4994:
 
 Persistence-related cascade operations disallowed with viewonly=True
@@ -1591,416 +2061,6 @@ discriminator column::
 
 
 :ticket:`5122`
-
-
-New Features - Core
-====================
-
-.. _change_4737:
-
-
-Built-in FROM linting will warn for any potential cartesian products in a SELECT statement
-------------------------------------------------------------------------------------------
-
-As the Core expression language as well as the ORM are built on an "implicit
-FROMs" model where a particular FROM clause is automatically added if any part
-of the query refers to it, a common issue is the case where a SELECT statement,
-either a top level statement or an embedded subquery, contains FROM elements
-that are not joined to the rest of the FROM elements in the query, causing
-what's referred to as a "cartesian product" in the result set, i.e. every
-possible combination of rows from each FROM element not otherwise joined.  In
-relational databases, this is nearly always an undesirable outcome as it
-produces an enormous result set full of duplicated, uncorrelated data.
-
-SQLAlchemy, for all of its great features, is particularly prone to this sort
-of issue happening as a SELECT statement will have elements added to its FROM
-clause automatically from any table seen in the other clauses. A typical
-scenario looks like the following, where two tables are JOINed together,
-however an additional entry in the WHERE clause that perhaps inadvertently does
-not line up with these two tables will create an additional FROM entry::
-
-    address_alias = aliased(Address)
-
-    q = session.query(User).\
-        join(address_alias, User.addresses).\
-        filter(Address.email_address == 'foo')
-
-The above query selects from a JOIN of ``User`` and ``address_alias``, the
-latter of which is an alias of the ``Address`` entity.  However, the
-``Address`` entity is used within the WHERE clause directly, so the above would
-result in the SQL::
-
-    SELECT
-        users.id AS users_id, users.name AS users_name,
-        users.fullname AS users_fullname,
-        users.nickname AS users_nickname
-    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    WHERE addresses.email_address = :email_address_1
-
-In the above SQL, we can see what SQLAlchemy developers term "the dreaded
-comma", as we see "FROM addresses, users JOIN addresses" in the FROM clause
-which is the classic sign of a cartesian product; where a query is making use
-of JOIN in order to join FROM clauses together, however because one of them is
-not joined, it uses a comma.      The above query will return a full set of
-rows that join the "user" and "addresses" table together on the "id / user_id"
-column, and will then apply all those rows into a cartesian product against
-every row in the "addresses" table directly.   That is, if there are ten user
-rows and 100 rows in addresses, the above query will return its expected result
-rows, likely to be 100 as all address rows would be selected, multiplied by 100
-again, so that the total result size would be 10000 rows.
-
-The "table1, table2 JOIN table3" pattern is one that also occurs quite
-frequently within the SQLAlchemy ORM due to either subtle mis-application of
-ORM features particularly those related to joined eager loading or joined table
-inheritance, as well as a result of SQLAlchemy ORM bugs within those same
-systems.   Similar issues apply to SELECT statements that use "implicit joins",
-where the JOIN keyword is not used and instead each FROM element is linked with
-another one via the WHERE clause.
-
-For some years there has been a recipe on the Wiki that applies a graph
-algorithm to a :func:`_expression.select` construct at query execution time and inspects
-the structure of the query for these un-linked FROM clauses, parsing through
-the WHERE clause and all JOIN clauses to determine how FROM elements are linked
-together and ensuring that all the FROM elements are connected in a single
-graph. This recipe has now been adapted to be part of the :class:`.SQLCompiler`
-itself where it now optionally emits a warning for a statement if this
-condition is detected.   The warning is enabled using the
-:paramref:`_sa.create_engine.enable_from_linting` flag and is enabled by default.
-The computational overhead of the linter is very low, and additionally it only
-occurs during statement compilation which means for a cached SQL statement it
-only occurs once.
-
-Using this feature, our ORM query above will emit a warning::
-
-    >>> q.all()
-    SAWarning: SELECT statement has a cartesian product between FROM
-    element(s) "addresses_1", "users" and FROM element "addresses".
-    Apply join condition(s) between each element to resolve.
-
-The linter feature accommodates not just for tables linked together through the
-JOIN clauses but also through the WHERE clause  Above, we can add a WHERE
-clause to link the new ``Address`` entity with the previous ``address_alias``
-entity and that will remove the warning::
-
-    q = session.query(User).\
-        join(address_alias, User.addresses).\
-        filter(Address.email_address == 'foo').\
-        filter(Address.id == address_alias.id)  # resolve cartesian products,
-                                                # will no longer warn
-
-The cartesian product warning considers **any** kind of link between two
-FROM clauses to be a resolution, even if the end result set is still
-wasteful, as the linter is intended only to detect the common case of a
-FROM clause that is completely unexpected.  If the FROM clause is referred
-to explicitly elsewhere and linked to the other FROMs, no warning is emitted::
-
-    q = session.query(User).\
-        join(address_alias, User.addresses).\
-        filter(Address.email_address == 'foo').\
-        filter(Address.id > address_alias.id)  # will generate a lot of rows,
-                                               # but no warning
-
-Full cartesian products are also allowed if they are explicitly stated; if we
-wanted for example the cartesian product of ``User`` and ``Address``, we can
-JOIN on :func:`.true` so that every row will match with every other; the
-following query will return all rows and produce no warnings::
-
-    from sqlalchemy import true
-
-    # intentional cartesian product
-    q = session.query(User).join(Address, true())  # intentional cartesian product
-
-The warning is only generated by default when the statement is compiled by the
-:class:`_engine.Connection` for execution; calling the :meth:`_expression.ClauseElement.compile`
-method will not emit a warning unless the linting flag is supplied::
-
-    >>> from sqlalchemy.sql import FROM_LINTING
-    >>> print(q.statement.compile(linting=FROM_LINTING))
-    SAWarning: SELECT statement has a cartesian product between FROM element(s) "addresses" and FROM element "users".  Apply join condition(s) between each element to resolve.
-    SELECT users.id, users.name, users.fullname, users.nickname
-    FROM addresses, users JOIN addresses AS addresses_1 ON users.id = addresses_1.user_id
-    WHERE addresses.email_address = :email_address_1
-
-:ticket:`4737`
-
-
-
-Behavior Changes - Core
-========================
-
-.. _change_4753:
-
-SELECT objects and derived FROM clauses allow for duplicate columns and column labels
--------------------------------------------------------------------------------------
-
-This change allows that the :func:`_expression.select` construct now allows for duplicate
-column labels as well as duplicate column objects themselves, so that result
-tuples are organized and ordered in the identical way in that the columns were
-selected.  The ORM :class:`_query.Query` already works this way, so this change
-allows for greater cross-compatibility between the two, which is a key goal of
-the 2.0 transition::
-
-    >>> from sqlalchemy import column, select
-    >>> c1, c2, c3, c4 = column('c1'), column('c2'), column('c3'), column('c4')
-    >>> stmt = select([c1, c2, c3.label('c2'), c2, c4])
-    >>> print(stmt)
-    SELECT c1, c2, c3 AS c2, c2, c4
-
-To support this change, the :class:`_expression.ColumnCollection` used by
-:class:`_expression.SelectBase` as well as for derived FROM clauses such as subqueries
-also support duplicate columns; this includes the new
-:attr:`_expression.SelectBase.selected_columns` attribute, the deprecated ``SelectBase.c``
-attribute, as well as the :attr:`_expression.FromClause.c` attribute seen on constructs
-such as :class:`.Subquery` and :class:`_expression.Alias`::
-
-    >>> list(stmt.selected_columns)
-    [
-        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcca20; c1>,
-        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
-        <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>,
-        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540bcc9e8; c2>,
-        <sqlalchemy.sql.elements.ColumnClause at 0x7fa540897048; c4>
-    ]
-
-    >>> print(stmt.subquery().select())
-    SELECT anon_1.c1, anon_1.c2, anon_1.c2, anon_1.c2, anon_1.c4
-    FROM (SELECT c1, c2, c3 AS c2, c2, c4) AS anon_1
-
-:class:`_expression.ColumnCollection` also allows access by integer index to support
-when the string "key" is ambiguous::
-
-    >>> stmt.selected_columns[2]
-    <sqlalchemy.sql.elements.Label object at 0x7fa540b3e2e8>
-
-To suit the use of :class:`_expression.ColumnCollection` in objects such as
-:class:`_schema.Table` and :class:`.PrimaryKeyConstraint`, the old "deduplicating"
-behavior which is more critical for these objects is preserved in a new class
-:class:`.DedupeColumnCollection`.
-
-The change includes that the familiar warning ``"Column %r on table %r being
-replaced by %r, which has the same key.  Consider use_labels for select()
-statements."`` is **removed**; the :meth:`_expression.Select.apply_labels` is still
-available and is still used by the ORM for all SELECT operations, however it
-does not imply deduplication of column objects, although it does imply
-deduplication of implicitly generated labels::
-
-    >>> from sqlalchemy import table
-    >>> user = table('user', column('id'), column('name'))
-    >>> stmt = select([user.c.id, user.c.name, user.c.id]).apply_labels()
-    >>> print(stmt)
-    SELECT "user".id AS user_id, "user".name AS user_name, "user".id AS id_1
-    FROM "user"
-
-Finally, the change makes it easier to create UNION and other
-:class:`_selectable.CompoundSelect` objects, by ensuring that the number and position
-of columns in a SELECT statement mirrors what was given, in a use case such
-as::
-
-    >>> s1 = select([user, user.c.id])
-    >>> s2 = select([c1, c2, c3])
-    >>> from sqlalchemy import union
-    >>> u = union(s1, s2)
-    >>> print(u)
-    SELECT "user".id, "user".name, "user".id
-    FROM "user" UNION SELECT c1, c2, c3
-
-
-
-:ticket:`4753`
-
-
-
-.. _change_4449:
-
-Improved column labeling for simple column expressions using CAST or similar
-----------------------------------------------------------------------------
-
-A user pointed out that the PostgreSQL database has a convenient behavior when
-using functions like CAST against a named column, in that the result column name
-is named the same as the inner expression::
-
-    test=> SELECT CAST(data AS VARCHAR) FROM foo;
-
-    data
-    ------
-     5
-    (1 row)
-
-This allows one to apply CAST to table columns while not losing the column
-name (above using the name ``"data"``) in the result row.    Compare to
-databases such as MySQL/MariaDB, as well as most others, where the column
-name is taken from the full SQL expression and is not very portable::
-
-    MariaDB [test]> SELECT CAST(data AS CHAR) FROM foo;
-    +--------------------+
-    | CAST(data AS CHAR) |
-    +--------------------+
-    | 5                  |
-    +--------------------+
-    1 row in set (0.003 sec)
-
-
-In SQLAlchemy Core expressions, we never deal with a raw generated name like
-the above, as SQLAlchemy applies auto-labeling to expressions like these, which
-are up until now always a so-called "anonymous" expression::
-
-    >>> print(select([cast(foo.c.data, String)]))
-    SELECT CAST(foo.data AS VARCHAR) AS anon_1     # old behavior
-    FROM foo
-
-These anonymous expressions were necessary as SQLAlchemy's
-:class:`_engine.ResultProxy` made heavy use of result column names in order to match
-up datatypes, such as the :class:`.String` datatype which used to have
-result-row-processing behavior, to the correct column, so most importantly the
-names had to be both easy to determine in a database-agnostic manner as well as
-unique in all cases.    In SQLAlchemy 1.0 as part of :ticket:`918`, this
-reliance on named columns in result rows (specifically the
-``cursor.description`` element of the PEP-249 cursor) was scaled back to not be
-necessary for most Core SELECT constructs; in release 1.4, the system overall
-is becoming more comfortable with SELECT statements that have duplicate column
-or label names such as in :ref:`change_4753`.  So we now emulate PostgreSQL's
-reasonable behavior for simple modifications to a single column, most
-prominently with CAST::
-
-    >>> print(select([cast(foo.c.data, String)]))
-    SELECT CAST(foo.data AS VARCHAR) AS data
-    FROM foo
-
-For CAST against expressions that don't have a name, the previous logic is used
-to generate the usual "anonymous" labels::
-
-    >>> print(select([cast('hi there,' + foo.c.data, String)]))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
-    FROM foo
-
-A :func:`.cast` against a :class:`.Label`, despite having to omit the label
-expression as these don't render inside of a CAST, will nonetheless make use of
-the given name::
-
-    >>> print(select([cast(('hi there,' + foo.c.data).label('hello_data'), String)]))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
-    FROM foo
-
-And of course as was always the case, :class:`.Label` can be applied to the
-expression on the outside to apply an "AS <name>" label directly::
-
-    >>> print(select([cast(('hi there,' + foo.c.data), String).label('hello_data')]))
-    SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
-    FROM foo
-
-
-:ticket:`4449`
-
-.. _change_4808:
-
-New "post compile" bound parameters used for LIMIT/OFFSET in Oracle, SQL Server
--------------------------------------------------------------------------------
-
-A major goal of the 1.4 series is to establish that all Core SQL constructs
-are completely cacheable, meaning that a particular :class:`.Compiled`
-structure will produce an identical SQL string regardless of any SQL parameters
-used with it, which notably includes those used to specify the LIMIT and
-OFFSET values, typically used for pagination and "top N" style results.
-
-While SQLAlchemy has used bound parameters for LIMIT/OFFSET schemes for many
-years, a few outliers remained where such parameters were not allowed, including
-a SQL Server "TOP N" statement, such as::
-
-    SELECT TOP 5 mytable.id, mytable.data FROM mytable
-
-as well as with Oracle, where the FIRST_ROWS() hint (which SQLAlchemy will
-use if the ``optimize_limits=True`` parameter is passed to
-:func:`_sa.create_engine` with an Oracle URL) does not allow them,
-but also that using bound parameters with ROWNUM comparisons has been reported
-as producing slower query plans::
-
-    SELECT anon_1.id, anon_1.data FROM (
-        SELECT /*+ FIRST_ROWS(5) */
-        anon_2.id AS id,
-        anon_2.data AS data,
-        ROWNUM AS ora_rn FROM (
-            SELECT mytable.id, mytable.data FROM mytable
-        ) anon_2
-        WHERE ROWNUM <= :param_1
-    ) anon_1 WHERE ora_rn > :param_2
-
-In order to allow for all statements to be unconditionally cacheable at the
-compilation level, a new form of bound parameter called a "post compile"
-parameter has been added, which makes use of the same mechanism as that
-of "expanding IN parameters".  This is a :func:`.bindparam` that behaves
-identically to any other bound parameter except that parameter value will
-be rendered literally into the SQL string before sending it to the DBAPI
-``cursor.execute()`` method.   The new parameter is used internally by the
-SQL Server and Oracle dialects, so that the drivers receive the literal
-rendered value but the rest of SQLAlchemy can still consider this as a
-bound parameter.   The above two statements when stringified using
-``str(statement.compile(dialect=<dialect>))`` now look like::
-
-    SELECT TOP [POSTCOMPILE_param_1] mytable.id, mytable.data FROM mytable
-
-and::
-
-    SELECT anon_1.id, anon_1.data FROM (
-        SELECT /*+ FIRST_ROWS([POSTCOMPILE__ora_frow_1]) */
-        anon_2.id AS id,
-        anon_2.data AS data,
-        ROWNUM AS ora_rn FROM (
-            SELECT mytable.id, mytable.data FROM mytable
-        ) anon_2
-        WHERE ROWNUM <= [POSTCOMPILE_param_1]
-    ) anon_1 WHERE ora_rn > [POSTCOMPILE_param_2]
-
-The ``[POSTCOMPILE_<param>]`` format is also what is seen when an
-"expanding IN" is used.
-
-When viewing the SQL logging output, the final form of the statement will
-be seen::
-
-    SELECT anon_1.id, anon_1.data FROM (
-        SELECT /*+ FIRST_ROWS(5) */
-        anon_2.id AS id,
-        anon_2.data AS data,
-        ROWNUM AS ora_rn FROM (
-            SELECT mytable.id AS id, mytable.data AS data FROM mytable
-        ) anon_2
-        WHERE ROWNUM <= 8
-    ) anon_1 WHERE ora_rn > 3
-
-
-The "post compile parameter" feature is exposed as public API through the
-:paramref:`.bindparam.literal_execute` parameter, however is currently not
-intended for general use.   The literal values are rendered using the
-:meth:`.TypeEngine.literal_processor` of the underlying datatype, which in
-SQLAlchemy has **extremely limited** scope, supporting only integers and simple
-string values.
-
-:ticket:`4808`
-
-.. _change_4712:
-
-Connection-level transactions can now be inactive based on subtransaction
--------------------------------------------------------------------------
-
-A :class:`_engine.Connection` now includes the behavior where a :class:`.Transaction`
-can be made inactive due to a rollback on an inner transaction, however the
-:class:`.Transaction` will not clear until it is itself rolled back.
-
-This is essentially a new error condition which will disallow statement
-executions to proceed on a :class:`_engine.Connection` if an inner "sub" transaction
-has been rolled back.  The behavior works very similarly to that of the
-ORM :class:`.Session`, where if an outer transaction has been begun, it needs
-to be rolled back to clear the invalid transaction; this behavior is described
-in :ref:`faq_session_rollback`
-
-While the :class:`_engine.Connection` has had a less strict behavioral pattern than
-the :class:`.Session`, this change was made as it helps to identify when
-a subtransaction has rolled back the DBAPI transaction, however the external
-code isn't aware of this and attempts to continue proceeding, which in fact
-runs operations on a new transaction.   The "test harness" pattern described
-at :ref:`session_external_transaction` is the common place for this to occur.
-
-The new behavior is described in the errors page at :ref:`error_8s2a`.
-
 
 Dialect Changes
 ===============

@@ -96,25 +96,13 @@ def _standard_listen_example(dispatch_collection, sample_target, fn):
     else:
         current_since = None
     text = (
-        "from sqlalchemy import event\n\n"
-        "# standard decorator style%(current_since)s\n"
+        "from sqlalchemy import event\n\n\n"
         "@event.listens_for(%(sample_target)s, '%(event_name)s')\n"
         "def receive_%(event_name)s("
         "%(named_event_arguments)s%(has_kw_arguments)s):\n"
         "    \"listen for the '%(event_name)s' event\"\n"
         "\n    # ... (event handling logic) ...\n"
     )
-
-    if len(dispatch_collection.arg_names) > 3:
-        text += (
-            "\n# named argument style (new in 0.9)\n"
-            "@event.listens_for("
-            "%(sample_target)s, '%(event_name)s', named=True)\n"
-            "def receive_%(event_name)s(**kw):\n"
-            "    \"listen for the '%(event_name)s' event\"\n"
-            "%(example_kw_arg)s\n"
-            "\n    # ... (event handling logic) ...\n"
-        )
 
     text %= {
         "current_since": " (arguments as of %s)" % current_since

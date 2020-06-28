@@ -1,31 +1,37 @@
 """
 Illustrates how to embed
-`dogpile.cache <https://dogpilecache.readthedocs.io/>`_
-functionality within the :class:`.Query` object, allowing full cache control
+`dogpile.cache <https://dogpilecache.sqlalchemy.org/>`_
+functionality with ORM queries, allowing full cache control
 as well as the ability to pull "lazy loaded" attributes from long term cache.
 
 In this demo, the following techniques are illustrated:
 
-* Using custom subclasses of :class:`.Query`
-* Basic technique of circumventing Query to pull from a
+* Using the :meth:`_orm.SessionEvents.do_orm_execute` event hook
+* Basic technique of circumventing :meth:`_orm.Session.execute` to pull from a
   custom cache source instead of the database.
 * Rudimental caching with dogpile.cache, using "regions" which allow
   global control over a fixed set of configurations.
-* Using custom :class:`.MapperOption` objects to configure options on
-  a Query, including the ability to invoke the options
-  deep within an object graph when lazy loads occur.
+* Using custom :class:`.UserDefinedOption` objects to configure options in
+  a statement object.
+
+.. seealso::
+
+    :ref:`do_orm_execute_re_executing` - includes a general example of the
+    technique presented here.
 
 E.g.::
 
     # query for Person objects, specifying cache
-    q = Session.query(Person).options(FromCache("default"))
+    stmt = select(Person).options(FromCache("default"))
 
     # specify that each Person's "addresses" collection comes from
     # cache too
-    q = q.options(RelationshipCache(Person.addresses, "default"))
+    stmt = stmt.options(RelationshipCache(Person.addresses, "default"))
 
-    # query
-    print(q.all())
+    # execute and results
+    result = session.execute(stmt)
+
+    print(result.scalars.all())
 
 To run, both SQLAlchemy and dogpile.cache must be
 installed or on the current PYTHONPATH. The demo will create a local

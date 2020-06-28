@@ -26,7 +26,7 @@ the caching of the SQL calls and result sets themselves is available in
    action taken by the user, using the system described at :ref:`sql_caching`.
 
 
-.. note::
+.. deepalchemy::
 
     The :mod:`sqlalchemy.ext.baked` extension is **not for beginners**.  Using
     it correctly requires a good high level understanding of how SQLAlchemy, the

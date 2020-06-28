@@ -530,7 +530,7 @@ ResultProxy replaced with Result which has more refined methods and behaviors
 
   Review the new future API for result sets:
 
-    :class:`_future.Result`
+    :class:`_engine.Result`
 
 
 A major goal of SQLAlchemy 2.0 is to unify how "results" are handled between
@@ -747,18 +747,22 @@ pattern which basically does the same thing.
 ORM Query Unified with Core Select
 ==================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: definite
 
-  Tenative overall, however there will almost definitely be
-  architectural changes in :class:`_query.Query` that move it closer to
-  :func:`_expression.select`.
+    This is now implemented in 1.4.  The :class:`_orm.Query` object now
+    generates a :class:`_sql.Select` object, which is then executed
+    via :meth:`_orm.Session.execute`.  The API to instead use :class:`_sql.Select`
+    and :meth:`_orm.Session.execute` directly, foregoing the usage of
+    :class:`_orm.Query` altogether, is fully available in 1.4.   Most internal
+    ORM systems for loading and refreshing objects has been transitioned to
+    use :class:`_sql.Select` directly.
 
-  The ``session.query(<cls>)`` pattern itself will likely **not** be fully
-  removed.   As this pattern is extremely prevalent and numerous within any
-  individual application, and that it does not intrinsically suggest an
-  "antipattern" from a development standpoint, at the moment we are hoping
-  that a transition to 2.0 won't require a rewrite of every ``session.query()``
-  call, however it will be a legacy pattern that may warn as such.
+    The ``session.query(<cls>)`` pattern itself will likely **not** be fully
+    removed.   As this pattern is extremely prevalent and numerous within any
+    individual application, and that it does not intrinsically suggest an
+    "antipattern" from a development standpoint, at the moment we are hoping
+    that a transition to 2.0 won't require a rewrite of every ``session.query()``
+    call, however it will be a legacy pattern that may warn as such.
 
 Ever wonder why SQLAlchemy :func:`_expression.select` uses :meth:`_expression.Select.where` to add
 a WHERE clause and :class:`_query.Query` uses :meth:`_query.Query.filter` ?   Same here!
@@ -1082,9 +1086,10 @@ The above query will disambiguate the ``.id`` column of ``User`` and
 Transparent Statement Compilation Caching replaces "Baked" queries, works in Core
 ==================================================================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: definite
 
-  Pending further architectural prototyping and performance testing
+  This is now implemented in 1.4.   The migration notes at :ref:`change_4639`
+  detail the change.
 
 A major restructuring of the Core internals as well as of that of the ORM
 :class:`_query.Query` will be reorganizing the major statement objects to have very
@@ -1136,13 +1141,15 @@ it will be fully transparent.   Applications that wish to reduce statement
 building latency even further to the levels currently offered by the "baked"
 system can opt to use the "lambda" constructs.
 
-Uniquifying ORM Rows
-====================
+ORM Rows not uniquified by default
+===================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: likely
 
-  However this is a widely requested behavior so
-  it's likely something will have to happen in this regard
+    This is now partially implemented for the :term:`2.0 style` use of ORM
+    queries, in that rows are not automatically uniquified unless unique() is
+    called. However we have yet to receive user feedback (or
+    complaints) on this change.
 
 ORM rows returned by ``session.execute(stmt)`` are no longer automatically
 "uniqued"; this must be called explicitly::
@@ -1171,10 +1178,10 @@ will now be the same.
 Tuples, Scalars, single-row results with ORM / Core results made consistent
 ============================================================================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: likely
 
-    Again this is an often requested behavior
-    at the ORM level so something will have to happen in this regard
+    This is also implemented for :term:`2.0 style` ORM use however we don't
+    have user feedback yet.
 
 The :meth:`.future.Result.all` method now delivers named-tuple results
 in all cases, even for an ORM select that is against a single entity.   This
@@ -1240,73 +1247,132 @@ The same pattern is needed for "dynamic" relationships::
     user.addresses.where(Address.id > 10).execute().all()
 
 
-What about asyncio???
+Asyncio Support
 =====================
 
-.. admonition:: Certainty: tentative
+.. admonition:: Certainty: definite
 
-  Not much is really being proposed here except a willingness to continue
-  working with third-party extensions and contributors who want to work on
-  the problem, as well as hopefully making the task of integration a little
-  bit more straightforward.
+  A surprising development will allow asyncio support including with the
+  ORM to be fully implemented.   There will even be a **completely optional**
+  path to having lazy loading be available, for those willing to make use of
+  some "controversial" patterns.
 
-How can SQLAlchemy do a whole re-think for Python 3 only and not take into
-account asyncio?   The current thinking here is going to be mixed for fans
-of asyncio-everything, here are the bulletpoints:
+There was an entire section here detailing how asyncio is a nice to have,
+but not really necessary, there are some approaches already, and maybe
+third parties can keep doing it.
 
-* As is likely well known SQLAlchemy developers maintain that `asyncio with
-  SQL queries usually not that compelling of an
-  idea <https://techspot.zzzeek.org/2015/02/15/asynchronous-python-and-databases/>`_
+What's changed is that there is now an approach to doing this in SQLAlchemy
+directly that does not impact the existing library nor does it imply an
+entirely separate version of everything be maintained.  What has *not* changed
+is that asyncio is not very necessary for relational databases but **that's
+fine, we will have asyncio, no more need to debate :) :) :)**.
 
-* There's almost no actual advantage to having an "asyncio" version of
-  SQLAlchemy other than personal preference and arguably interoperability
-  with existing asyncio code (however thread executors remain probably a
-  better option).   Database connections do not
-  usually fit the criteria of the kind of socket connection that benefits
-  by being accessed in a non-blocking way, since they are usually local,
-  fast services that are accessed on a connection-limited scale.  This is
-  in complete contrast to the use case for non-blocking IO which is massively
-  scaled connections to sockets that are arbitrarily slow and/or sleepy.
+The proof of concept at https://gist.github.com/zzzeek/4e89ce6226826e7a8df13e1b573ad354
+illustrates how to write an asyncio application that makes use of a pure asyncio
+driver (asyncpg), with part of the code **in between** remaining as sync code
+without the use of any await/async keywords.  The central technique involves
+minimal use of a greenlet (e.g. stackless Python) to perform the necessary
+context switches when an "await" occurs.   The approach has been vetted
+both with asyncio developers as well as greenlet developers, the latter
+of which contributed a great degree of simplification the already simple recipe
+such that can context switch async coroutines with no decrease in performance.
 
-* Nevertheless, lots of Python programmers like the asyncio approach and feel
-  more comfortable working with requests in the inherently "callback"
-  style of event-based programming.  SQLAlchemy has every desire for these
-  people to be happy.
+The proof of concept has then been expanded to work within SQLAlchemy Core
+and is presently in a Gerrit review.   A SQLAlchemy dialect for the asyncpg
+driver has been written and it passes most tests.
 
-* Making things complicated is that Python doesn't have a `spec for an asyncio
-  DBAPI <https://discuss.python.org/t/asynchronous-dbapi/2206/>`_ as of yet, which
-  makes it pretty tough for DBAPIs to exist without them all being dramatically
-  different in how they work and would be integrated.
+Example ORM use will look similar to the following; this example is already
+runnable with the in-review codebase::
 
-* There are however a few DBAPIs for PostgreSQL that are truly non-blocking,
-  as well as at least one for MySQL that works with non-blocking IO.  It's not
-  known if any such system exists for SQLite, Oracle, ODBC datasources, SQL
-  Server, etc.
+    import asyncio
 
-* There are (more than one?) extensions of SQLAlchemy right now which basically
-  pick and choose a few parts of the compilation APIs and then reimplement
-  their own engine implementation completely, such as `aiopg <https://github.com/aio-libs/aiopg/blob/master/aiopg/sa/connection.py>`_.
+    from sqlalchemy.asyncio import create_async_engine
+    from sqlalchemy.asyncio import AsyncSession
+    # ... other imports ...
 
-* These implementations appear to be useful for users however they aren't able
-  to keep up with SQLAlchemy's own capabilities and they likely don't really
-  work for lots of existing use cases either.
+    async def async_main():
+        engine = create_async_engine(
+            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+        )
 
-* Essentially, it is hoped that the re-architecting of :class:`_engine.Connection`
-  to no longer support things like "autocommit" and "connectionless"
-  execution, as well as the changes to how result fetching will work with the
-  ``Result`` which is hoped to be simpler in how it interacts with
-  the cursor, will make it **much easier** to build async versions of
-  SQLAlchemy's :class:`_engine.Connection`.  The simplified model of
-  ``Connection.execute()`` and ``Session.execute()`` as the single point of
-  invocation of queries should also make things easier.
 
-* SQLAlchemy has always remained `fully open
-  <https://github.com/sqlalchemy/sqlalchemy/issues/3414>`_ to having a real
-  asyncio extension present as part of SQLAlchemy itself.   However this would
-  require **dedicated, long term maintainers** in order for it to be a thing.
+        # assume a typical ORM model with classes A and B
 
-* It's probably better that such approaches remain third party, however it
-  is hoped that architectural changes in SQLAlchemy will make such approaches
-  more straightforward to implement and track SQLAlchemy's capabilities.
+        session = AsyncSession(engine)
+        session.add_all(
+            [
+                A(bs=[B(), B()], data="a1"),
+                A(bs=[B()], data="a2"),
+                A(bs=[B(), B()], data="a3"),
+            ]
+        )
+        await session.commit()
+        stmt = select(A).options(selectinload(A.bs))
+        result = await session.execute(stmt)
+        for a1 in result.scalars():
+            print(a1)
+            for b1 in a1.bs:
+                print(b1)
 
+        result = await session.execute(select(A).order_by(A.id))
+
+        a1 = result.scalars().first()
+        a1.data = "new data"
+        await session.commit()
+
+    asyncio.run(async_main())
+
+The "controversial" feature, if provided, would include that the "greenlet"
+context would be supplied as front-facing API.  This would allow an asyncio
+application to spawn a greenlet that contains sync-code, which could use the
+Core and ORM in a fully traditional manner including that lazy loading
+for columns and relationships would be present.  This mode of use is
+somewhat similar to running an application under an event-based
+programming library such as gevent or eventlet, however the underyling
+network calls would be within a pure asyncio context, i.e. like that of the
+asyncpg driver.   An example of this use, which is also runnable with
+the in-review codebase::
+
+    import asyncio
+
+    from sqlalchemy.asyncio import greenlet_spawn
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+    # ... other imports ...
+
+    def main():
+        # standard "sync" engine with the "async" driver.
+        engine = create_engine(
+            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+        )
+
+        # assume a typical ORM model with classes A and B
+
+        session = Session(engine)
+        session.add_all(
+            [
+                A(bs=[B(), B()], data="a1"),
+                A(bs=[B()], data="a2"),
+                A(bs=[B(), B()], data="a3"),
+            ]
+        )
+        session.commit()
+        for a1 in session.query(A).all():
+            print("a: %s" % a1)
+            print("bs: %s" % (a1.bs))  # emits a lazyload.
+
+    asyncio.run(greenlet_spawn(main))
+
+
+Above, we see a ``main()`` function that contains within it a 100% normal
+looking Python program using the SQLAlchemy ORM, using plain ORM imports and
+basically absolutely nothing out of the ordinary.  It just happens to be called
+from inside of an ``asyncio.run()`` call rather than directly, and it uses a
+DBAPI that is only compatible with asyncio.   There is no "monkeypatching" or
+anything else like that involved.    Any asyncio program can opt
+to place it's database-related business methods into the above pattern,
+if preferred, rather than using the asyncio SQLAlchemy API directly.  Or not.
+The greenlet technique, which is also being ported to other frameworks
+suich as Flask, has now made it so that it **no longer matters**.
 

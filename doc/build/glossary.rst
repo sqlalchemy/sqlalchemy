@@ -16,7 +16,7 @@ Glossary
         These terms are new in SQLAlchemy 1.4 and refer to the SQLAlchemy 1.4->
         2.0 transition plan, described at :ref:`migration_20_toplevel`.  The
         term "1.x style" refers to an API used in the way it's been documented
-        throughout the 1.x series of SQLAlhcemy and earlier (e.g. 1.3, 1.2, etc)
+        throughout the 1.x series of SQLAlchemy and earlier (e.g. 1.3, 1.2, etc)
         and the term "2.0 style" refers to the way an API will look in version
         2.0.   Version 1.4 implements nearly all of 2.0's API in so-called
         "transition mode".
@@ -24,6 +24,52 @@ Glossary
         .. seealso::
 
             :ref:`migration_20_toplevel`
+
+        **Enabling 2.0 style usage**
+
+        When using code from a documentation example that indicates
+        :term:`2.0-style`, the :class:`_engine.Engine` as well as the
+        :class:`_orm.Session` in use should make use of "future" mode,
+        via the :paramref:`_sa.create_engine.future` and
+        :paramref:`_orm.Session.future` flags::
+
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+
+
+            engine = create_engine("mysql://user:pass:host/dbname", future=True)
+            Session = sessionmaker(bind=engine, future=True)
+
+        **ORM Queries in 2.0 style**
+
+        Besides the above changes to :class:`_engine.Engine` and
+        :class:`_orm.Session`, probably the most major API change implied by
+        1.x->2.0 is the migration from using the :class:`_orm.Query` object for
+        ORM SELECT statements and instead using the :func:`_sql.select`
+        construct in conjunction with the :meth:`_orm.Session.execute` method.
+        The general change looks like the following.  Given a
+        :class:`_orm.Session` and a :class:`_orm.Query` against that
+        :class:`_orm.Session`::
+
+            list_of_users = session.query(User).join(User.addresses).all()
+
+        The new style constructs the query separately from the
+        :class:`_orm.Session` using the :func:`_sql.select` construct; when
+        populated with ORM entities like the ``User`` class from the :ref:`ORM
+        Tutorial <ormtutorial_toplevel>`, the resulting :class:`_sql.Select`
+        construct receives additional "plugin" state that allows it to work
+        like the :class:`_orm.Query`::
+
+
+            from sqlalchemy import select
+
+            stmt = select(User).join(User.addresses)
+
+            session = Session()  # make sure future=True is used for 1.4
+
+            result = session.execute(stmt)
+
+            list_of_users = result.scalars().all()
 
     relational
     relational algebra

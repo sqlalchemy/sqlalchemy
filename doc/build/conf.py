@@ -37,7 +37,7 @@ extensions = [
     "changelog",
     "sphinx_paramlinks",
 ]
-needs_extensions = {"zzzeeksphinx": "1.1.5"}
+needs_extensions = {"zzzeeksphinx": "1.1.6"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -130,6 +130,7 @@ zzzeeksphinx_module_prefixes = {
     "_types": "sqlalchemy.types",
     "_expression": "sqlalchemy.sql.expression",
     "_sql": "sqlalchemy.sql.expression",
+    "_dml": "sqlalchemy.sql.expression",
     "_functions": "sqlalchemy.sql.functions",
     "_pool": "sqlalchemy.pool",
     "_event": "sqlalchemy.event",
@@ -137,7 +138,7 @@ zzzeeksphinx_module_prefixes = {
     "_exc": "sqlalchemy.exc",
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
-    "_query": "sqlalchemy.orm.query",
+    "_query": "sqlalchemy.orm",
     "_ormevent": "sqlalchemy.orm.event",
     "_ormexc": "sqlalchemy.orm.exc",
     "_baked": "sqlalchemy.ext.baked",

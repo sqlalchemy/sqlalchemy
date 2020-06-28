@@ -13,7 +13,6 @@
 
         :ref:`loader_option_criteria`
 
-        :func:`_orm.with_loader_criteria`
+        :ref:`do_orm_execute_global_criteria`
 
-    .. TODO: add links to new examples section and session-related
-       documentation involving do_orm_execute event when merged
+        :func:`_orm.with_loader_criteria`
