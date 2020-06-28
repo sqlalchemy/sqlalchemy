@@ -9,6 +9,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -91,15 +92,29 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
             s.bulk_save_objects(objects, return_defaults=True)
 
         asserter.assert_(
-            CompiledSQL(
-                "INSERT INTO users (name) VALUES (:name)", [{"name": "u1"}]
-            ),
-            CompiledSQL(
-                "INSERT INTO users (name) VALUES (:name)", [{"name": "u2"}]
-            ),
-            CompiledSQL(
-                "INSERT INTO users (name) VALUES (:name)", [{"name": "u3"}]
-            ),
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "u1"}, {"name": "u2"}, {"name": "u3"}],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "u1"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "u2"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "u3"}],
+                    ),
+                ],
+            )
         )
         eq_(objects[0].__dict__["id"], 1)
 
@@ -612,13 +627,30 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
                 "VALUES (:person_id, :status, :manager_name)",
                 [{"person_id": 1, "status": "s1", "manager_name": "mn1"}],
             ),
-            CompiledSQL(
-                "INSERT INTO people (name, type) VALUES (:name, :type)",
-                [{"type": "engineer", "name": "e1"}],
-            ),
-            CompiledSQL(
-                "INSERT INTO people (name, type) VALUES (:name, :type)",
-                [{"type": "engineer", "name": "e2"}],
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO people (name, type) "
+                        "VALUES (:name, :type)",
+                        [
+                            {"type": "engineer", "name": "e1"},
+                            {"type": "engineer", "name": "e2"},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO people (name, type) "
+                        "VALUES (:name, :type)",
+                        [{"type": "engineer", "name": "e1"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO people (name, type) "
+                        "VALUES (:name, :type)",
+                        [{"type": "engineer", "name": "e2"}],
+                    ),
+                ],
             ),
             CompiledSQL(
                 "INSERT INTO engineers (person_id, status, primary_language) "
@@ -762,14 +794,28 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
             )
 
         asserter.assert_(
-            CompiledSQL(
-                "INSERT INTO people (name) VALUES (:name)", [{"name": "b1"}]
-            ),
-            CompiledSQL(
-                "INSERT INTO people (name) VALUES (:name)", [{"name": "b2"}]
-            ),
-            CompiledSQL(
-                "INSERT INTO people (name) VALUES (:name)", [{"name": "b3"}]
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO people (name) VALUES (:name)",
+                        [{"name": "b1"}, {"name": "b2"}, {"name": "b3"}],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO people (name) VALUES (:name)",
+                        [{"name": "b1"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO people (name) VALUES (:name)",
+                        [{"name": "b2"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO people (name) VALUES (:name)",
+                        [{"name": "b3"}],
+                    ),
+                ],
             ),
             CompiledSQL(
                 "INSERT INTO managers (person_id, status, manager_name) "

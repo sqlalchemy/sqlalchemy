@@ -11,6 +11,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -229,38 +230,57 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
             eq_(t1.bar, 5 + 42)
             eq_(t2.bar, 10 + 42)
 
-        if eager and testing.db.dialect.implicit_returning:
-            asserter.assert_(
-                CompiledSQL(
-                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
-                    "RETURNING test.bar",
-                    [{"foo": 5, "id": 1}],
-                    dialect="postgresql",
-                ),
-                CompiledSQL(
-                    "INSERT INTO test (id, foo) VALUES (%(id)s, %(foo)s) "
-                    "RETURNING test.bar",
-                    [{"foo": 10, "id": 2}],
-                    dialect="postgresql",
-                ),
+        asserter.assert_(
+            Conditional(
+                eager and testing.db.dialect.implicit_returning,
+                [
+                    Conditional(
+                        testing.db.dialect.insert_executemany_returning,
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (id, foo) "
+                                "VALUES (%(id)s, %(foo)s) "
+                                "RETURNING test.bar",
+                                [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (id, foo) "
+                                "VALUES (%(id)s, %(foo)s) "
+                                "RETURNING test.bar",
+                                [{"foo": 5, "id": 1}],
+                                dialect="postgresql",
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test (id, foo) "
+                                "VALUES (%(id)s, %(foo)s) "
+                                "RETURNING test.bar",
+                                [{"foo": 10, "id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                    )
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id, foo) VALUES (:id, :foo)",
+                        [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test.bar AS test_bar FROM test "
+                        "WHERE test.id = :param_1",
+                        [{"param_1": 1}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test.bar AS test_bar FROM test "
+                        "WHERE test.id = :param_1",
+                        [{"param_1": 2}],
+                    ),
+                ],
             )
-        else:
-            asserter.assert_(
-                CompiledSQL(
-                    "INSERT INTO test (id, foo) VALUES (:id, :foo)",
-                    [{"foo": 5, "id": 1}, {"foo": 10, "id": 2}],
-                ),
-                CompiledSQL(
-                    "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 1}],
-                ),
-                CompiledSQL(
-                    "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 2}],
-                ),
-            )
+        )
 
     @testing.combinations(
         (

@@ -343,6 +343,7 @@ class AssertsCompiledSQL(object):
         result,
         params=None,
         checkparams=None,
+        for_executemany=False,
         check_literal_execute=None,
         check_post_param=None,
         dialect=None,
@@ -390,6 +391,9 @@ class AssertsCompiledSQL(object):
 
         if render_postcompile:
             compile_kwargs["render_postcompile"] = True
+
+        if for_executemany:
+            kw["for_executemany"] = True
 
         if render_schema_translate:
             kw["render_schema_translate"] = True

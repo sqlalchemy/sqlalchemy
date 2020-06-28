@@ -824,7 +824,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.isinsert or self.isupdate or self.isdelete:
             self.is_crud = True
             self._is_explicit_returning = bool(compiled.statement._returning)
-            self._is_implicit_returning = (
+            self._is_implicit_returning = bool(
                 compiled.returning and not compiled.statement._returning
             )
 
@@ -1291,11 +1291,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         result.out_parameters = out_parameters
 
     def _setup_dml_or_text_result(self):
-        if self.isinsert and not self.executemany:
+        if self.isinsert:
             if (
                 not self._is_implicit_returning
                 and not self.compiled.inline
                 and self.dialect.postfetch_lastrowid
+                and not self.executemany
             ):
 
                 self._setup_ins_pk_from_lastrowid()
@@ -1375,7 +1376,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         getter = self.compiled._inserted_primary_key_from_lastrowid_getter
 
         self.inserted_primary_key_rows = [
-            getter(None, self.compiled_parameters[0])
+            getter(None, param) for param in self.compiled_parameters
         ]
 
     def _setup_ins_pk_from_implicit_returning(self, result, rows):

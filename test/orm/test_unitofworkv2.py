@@ -27,6 +27,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
@@ -82,15 +83,30 @@ class RudimentaryFlushTest(UOWTest):
             CompiledSQL(
                 "INSERT INTO users (name) VALUES (:name)", {"name": "u1"}
             ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                lambda ctx: {"email_address": "a1", "user_id": u1.id},
-            ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                lambda ctx: {"email_address": "a2", "user_id": u1.id},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: [
+                            {"email_address": "a1", "user_id": u1.id},
+                            {"email_address": "a2", "user_id": u1.id},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: {"email_address": "a1", "user_id": u1.id},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: {"email_address": "a2", "user_id": u1.id},
+                    ),
+                ],
             ),
         )
 
@@ -183,15 +199,30 @@ class RudimentaryFlushTest(UOWTest):
             CompiledSQL(
                 "INSERT INTO users (name) VALUES (:name)", {"name": "u1"}
             ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                lambda ctx: {"email_address": "a1", "user_id": u1.id},
-            ),
-            CompiledSQL(
-                "INSERT INTO addresses (user_id, email_address) "
-                "VALUES (:user_id, :email_address)",
-                lambda ctx: {"email_address": "a2", "user_id": u1.id},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: [
+                            {"email_address": "a1", "user_id": u1.id},
+                            {"email_address": "a2", "user_id": u1.id},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: {"email_address": "a1", "user_id": u1.id},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO addresses (user_id, email_address) "
+                        "VALUES (:user_id, :email_address)",
+                        lambda ctx: {"email_address": "a2", "user_id": u1.id},
+                    ),
+                ],
             ),
         )
 
@@ -767,17 +798,32 @@ class SingleCycleTest(UOWTest):
                 "(:parent_id, :data)",
                 {"parent_id": None, "data": "n1"},
             ),
-            AllOf(
-                CompiledSQL(
-                    "INSERT INTO nodes (parent_id, data) VALUES "
-                    "(:parent_id, :data)",
-                    lambda ctx: {"parent_id": n1.id, "data": "n2"},
-                ),
-                CompiledSQL(
-                    "INSERT INTO nodes (parent_id, data) VALUES "
-                    "(:parent_id, :data)",
-                    lambda ctx: {"parent_id": n1.id, "data": "n3"},
-                ),
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: [
+                            {"parent_id": n1.id, "data": "n2"},
+                            {"parent_id": n1.id, "data": "n3"},
+                        ],
+                    ),
+                ],
+                [
+                    AllOf(
+                        CompiledSQL(
+                            "INSERT INTO nodes (parent_id, data) VALUES "
+                            "(:parent_id, :data)",
+                            lambda ctx: {"parent_id": n1.id, "data": "n2"},
+                        ),
+                        CompiledSQL(
+                            "INSERT INTO nodes (parent_id, data) VALUES "
+                            "(:parent_id, :data)",
+                            lambda ctx: {"parent_id": n1.id, "data": "n3"},
+                        ),
+                    ),
+                ],
             ),
         )
 
@@ -864,17 +910,32 @@ class SingleCycleTest(UOWTest):
                 "(:parent_id, :data)",
                 {"parent_id": None, "data": "n1"},
             ),
-            AllOf(
-                CompiledSQL(
-                    "INSERT INTO nodes (parent_id, data) VALUES "
-                    "(:parent_id, :data)",
-                    lambda ctx: {"parent_id": n1.id, "data": "n2"},
-                ),
-                CompiledSQL(
-                    "INSERT INTO nodes (parent_id, data) VALUES "
-                    "(:parent_id, :data)",
-                    lambda ctx: {"parent_id": n1.id, "data": "n3"},
-                ),
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: [
+                            {"parent_id": n1.id, "data": "n2"},
+                            {"parent_id": n1.id, "data": "n3"},
+                        ],
+                    ),
+                ],
+                [
+                    AllOf(
+                        CompiledSQL(
+                            "INSERT INTO nodes (parent_id, data) VALUES "
+                            "(:parent_id, :data)",
+                            lambda ctx: {"parent_id": n1.id, "data": "n2"},
+                        ),
+                        CompiledSQL(
+                            "INSERT INTO nodes (parent_id, data) VALUES "
+                            "(:parent_id, :data)",
+                            lambda ctx: {"parent_id": n1.id, "data": "n3"},
+                        ),
+                    ),
+                ],
             ),
         )
 
@@ -1009,35 +1070,67 @@ class SingleCycleTest(UOWTest):
                 "(:parent_id, :data)",
                 lambda ctx: {"parent_id": None, "data": "n1"},
             ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n1.id, "data": "n11"},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: [
+                            {"parent_id": n1.id, "data": "n11"},
+                            {"parent_id": n1.id, "data": "n12"},
+                            {"parent_id": n1.id, "data": "n13"},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n1.id, "data": "n11"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n1.id, "data": "n12"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n1.id, "data": "n13"},
+                    ),
+                ],
             ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n1.id, "data": "n12"},
-            ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n1.id, "data": "n13"},
-            ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n12.id, "data": "n121"},
-            ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n12.id, "data": "n122"},
-            ),
-            CompiledSQL(
-                "INSERT INTO nodes (parent_id, data) VALUES "
-                "(:parent_id, :data)",
-                lambda ctx: {"parent_id": n12.id, "data": "n123"},
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: [
+                            {"parent_id": n12.id, "data": "n121"},
+                            {"parent_id": n12.id, "data": "n122"},
+                            {"parent_id": n12.id, "data": "n123"},
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n12.id, "data": "n121"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n12.id, "data": "n122"},
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO nodes (parent_id, data) VALUES "
+                        "(:parent_id, :data)",
+                        lambda ctx: {"parent_id": n12.id, "data": "n123"},
+                    ),
+                ],
             ),
         )
 
@@ -1907,8 +2000,23 @@ class BatchInsertsTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            CompiledSQL("INSERT INTO t (data) VALUES (:data)", {"data": "t1"}),
-            CompiledSQL("INSERT INTO t (data) VALUES (:data)", {"data": "t2"}),
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO t (data) VALUES (:data)",
+                        [{"data": "t1"}, {"data": "t2"}],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO t (data) VALUES (:data)", {"data": "t1"}
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO t (data) VALUES (:data)", {"data": "t2"}
+                    ),
+                ],
+            ),
             CompiledSQL(
                 "INSERT INTO t (id, data) VALUES (:id, :data)",
                 [
@@ -2256,40 +2364,56 @@ class EagerDefaultsTest(fixtures.MappedTest):
 
         s.add_all([t1, t2])
 
-        if testing.db.dialect.implicit_returning:
-            self.assert_sql_execution(
-                testing.db,
-                s.commit,
-                CompiledSQL(
-                    "INSERT INTO test (id) VALUES (%(id)s) RETURNING test.foo",
-                    [{"id": 1}],
-                    dialect="postgresql",
-                ),
-                CompiledSQL(
-                    "INSERT INTO test (id) VALUES (%(id)s) RETURNING test.foo",
-                    [{"id": 2}],
-                    dialect="postgresql",
-                ),
-            )
-        else:
-            self.assert_sql_execution(
-                testing.db,
-                s.commit,
-                CompiledSQL(
-                    "INSERT INTO test (id) VALUES (:id)",
-                    [{"id": 1}, {"id": 2}],
-                ),
-                CompiledSQL(
-                    "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 1}],
-                ),
-                CompiledSQL(
-                    "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 2}],
-                ),
-            )
+        self.assert_sql_execution(
+            testing.db,
+            s.commit,
+            Conditional(
+                testing.db.dialect.implicit_returning,
+                [
+                    Conditional(
+                        testing.db.dialect.insert_executemany_returning,
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (id) VALUES (%(id)s) "
+                                "RETURNING test.foo",
+                                [{"id": 1}, {"id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                        [
+                            CompiledSQL(
+                                "INSERT INTO test (id) VALUES (%(id)s) "
+                                "RETURNING test.foo",
+                                [{"id": 1}],
+                                dialect="postgresql",
+                            ),
+                            CompiledSQL(
+                                "INSERT INTO test (id) VALUES (%(id)s) "
+                                "RETURNING test.foo",
+                                [{"id": 2}],
+                                dialect="postgresql",
+                            ),
+                        ],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO test (id) VALUES (:id)",
+                        [{"id": 1}, {"id": 2}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test.foo AS test_foo FROM test "
+                        "WHERE test.id = :param_1",
+                        [{"param_1": 1}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test.foo AS test_foo FROM test "
+                        "WHERE test.id = :param_1",
+                        [{"param_1": 2}],
+                    ),
+                ],
+            ),
+        )
 
     def test_update_defaults_nonpresent(self):
         Thing2 = self.classes.Thing2
@@ -2312,70 +2436,71 @@ class EagerDefaultsTest(fixtures.MappedTest):
         t4.foo = 8
         t4.bar = 12
 
-        if testing.db.dialect.implicit_returning:
-            self.assert_sql_execution(
-                testing.db,
-                s.flush,
-                CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s "
-                    "WHERE test2.id = %(test2_id)s "
-                    "RETURNING test2.bar",
-                    [{"foo": 5, "test2_id": 1}],
-                    dialect="postgresql",
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
-                    "WHERE test2.id = %(test2_id)s",
-                    [{"foo": 6, "bar": 10, "test2_id": 2}],
-                    dialect="postgresql",
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s "
-                    "WHERE test2.id = %(test2_id)s "
-                    "RETURNING test2.bar",
-                    [{"foo": 7, "test2_id": 3}],
-                    dialect="postgresql",
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
-                    "WHERE test2.id = %(test2_id)s",
-                    [{"foo": 8, "bar": 12, "test2_id": 4}],
-                    dialect="postgresql",
-                ),
-            )
-        else:
-            self.assert_sql_execution(
-                testing.db,
-                s.flush,
-                CompiledSQL(
-                    "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
-                    [{"foo": 5, "test2_id": 1}],
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=:foo, bar=:bar "
-                    "WHERE test2.id = :test2_id",
-                    [{"foo": 6, "bar": 10, "test2_id": 2}],
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
-                    [{"foo": 7, "test2_id": 3}],
-                ),
-                CompiledSQL(
-                    "UPDATE test2 SET foo=:foo, bar=:bar "
-                    "WHERE test2.id = :test2_id",
-                    [{"foo": 8, "bar": 12, "test2_id": 4}],
-                ),
-                CompiledSQL(
-                    "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :param_1",
-                    [{"param_1": 1}],
-                ),
-                CompiledSQL(
-                    "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :param_1",
-                    [{"param_1": 3}],
-                ),
-            )
+        self.assert_sql_execution(
+            testing.db,
+            s.flush,
+            Conditional(
+                testing.db.dialect.implicit_returning,
+                [
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=%(foo)s "
+                        "WHERE test2.id = %(test2_id)s "
+                        "RETURNING test2.bar",
+                        [{"foo": 5, "test2_id": 1}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
+                        "WHERE test2.id = %(test2_id)s",
+                        [{"foo": 6, "bar": 10, "test2_id": 2}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=%(foo)s "
+                        "WHERE test2.id = %(test2_id)s "
+                        "RETURNING test2.bar",
+                        [{"foo": 7, "test2_id": 3}],
+                        dialect="postgresql",
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=%(foo)s, bar=%(bar)s "
+                        "WHERE test2.id = %(test2_id)s",
+                        [{"foo": 8, "bar": 12, "test2_id": 4}],
+                        dialect="postgresql",
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                        [{"foo": 5, "test2_id": 1}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=:foo, bar=:bar "
+                        "WHERE test2.id = :test2_id",
+                        [{"foo": 6, "bar": 10, "test2_id": 2}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=:foo WHERE test2.id = :test2_id",
+                        [{"foo": 7, "test2_id": 3}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE test2 SET foo=:foo, bar=:bar "
+                        "WHERE test2.id = :test2_id",
+                        [{"foo": 8, "bar": 12, "test2_id": 4}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test2.bar AS test2_bar FROM test2 "
+                        "WHERE test2.id = :param_1",
+                        [{"param_1": 1}],
+                    ),
+                    CompiledSQL(
+                        "SELECT test2.bar AS test2_bar FROM test2 "
+                        "WHERE test2.id = :param_1",
+                        [{"param_1": 3}],
+                    ),
+                ],
+            ),
+        )
 
         def go():
             eq_(t1.bar, 2)

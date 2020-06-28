@@ -643,7 +643,7 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
 
 
-EXECUTEMANY_DEFAULT = util.symbol("executemany_default", canonical=0)
+EXECUTEMANY_PLAIN = util.symbol("executemany_plain", canonical=0)
 EXECUTEMANY_BATCH = util.symbol("executemany_batch", canonical=1)
 EXECUTEMANY_VALUES = util.symbol("executemany_values", canonical=2)
 EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
@@ -655,6 +655,12 @@ EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
 class PGDialect_psycopg2(PGDialect):
     driver = "psycopg2"
     if util.py2k:
+        # turn off supports_unicode_statements for Python 2. psycopg2 supports
+        # unicode statements in Py2K. But!  it does not support unicode *bound
+        # parameter names* because it uses the Python "%" operator to
+        # interpolate these into the string, and this fails.   So for Py2K, we
+        # have to use full-on encoding for statements and parameters before
+        # passing to cursor.execute().
         supports_unicode_statements = False
 
     supports_server_side_cursors = True
@@ -714,7 +720,7 @@ class PGDialect_psycopg2(PGDialect):
         self.executemany_mode = util.symbol.parse_user_argument(
             executemany_mode,
             {
-                EXECUTEMANY_DEFAULT: [None],
+                EXECUTEMANY_PLAIN: [None],
                 EXECUTEMANY_BATCH: ["batch"],
                 EXECUTEMANY_VALUES: ["values_only"],
                 EXECUTEMANY_VALUES_PLUS_BATCH: ["values_plus_batch", "values"],
@@ -747,7 +753,12 @@ class PGDialect_psycopg2(PGDialect):
             and self._hstore_oids(connection.connection) is not None
         )
 
-        # http://initd.org/psycopg/docs/news.html#what-s-new-in-psycopg-2-0-9
+        # PGDialect.initialize() checks server version for <= 8.2 and sets
+        # this flag to False if so
+        if not self.full_returning:
+            self.insert_executemany_returning = False
+            self.executemany_mode = EXECUTEMANY_PLAIN
+
         self.supports_sane_multi_rowcount = not (
             self.executemany_mode & EXECUTEMANY_BATCH
         )
@@ -876,6 +887,9 @@ class PGDialect_psycopg2(PGDialect):
             executemany_values = (
                 "(%s)" % context.compiled.insert_single_values_expr
             )
+            if not self.supports_unicode_statements:
+                executemany_values = executemany_values.encode(self.encoding)
+
             # guard for statement that was altered via event hook or similar
             if executemany_values not in statement:
                 executemany_values = None
@@ -883,10 +897,6 @@ class PGDialect_psycopg2(PGDialect):
             executemany_values = None
 
         if executemany_values:
-            # Currently, SQLAlchemy does not pass "RETURNING" statements
-            # into executemany(), since no DBAPI has ever supported that
-            # until the introduction of psycopg2's executemany_values, so
-            # we are not yet using the fetch=True flag.
             statement = statement.replace(executemany_values, "%s")
             if self.executemany_values_page_size:
                 kwargs = {"page_size": self.executemany_values_page_size}
