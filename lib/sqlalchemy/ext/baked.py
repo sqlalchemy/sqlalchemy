@@ -194,18 +194,13 @@ class BakedQuery(object):
         if not cache_path:
             cache_path = effective_path
 
-        if cache_path.path[0].is_aliased_class:
-            # paths that are against an AliasedClass are unsafe to cache
-            # with since the AliasedClass is an ad-hoc object.
-            self.spoil(full=True)
-        else:
-            for opt in options:
-                if opt._is_legacy_option or opt._is_compile_state:
-                    cache_key = opt._generate_path_cache_key(cache_path)
-                    if cache_key is False:
-                        self.spoil(full=True)
-                    elif cache_key is not None:
-                        key += cache_key
+        for opt in options:
+            if opt._is_legacy_option or opt._is_compile_state:
+                ck = opt._generate_cache_key()
+                if ck is None:
+                    self.spoil(full=True)
+                else:
+                    key += ck[0]
 
         self.add_criteria(
             lambda q: q._with_current_path(effective_path).options(*options),

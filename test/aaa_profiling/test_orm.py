@@ -1,6 +1,5 @@
 from sqlalchemy import and_
 from sqlalchemy import ForeignKey
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import String
@@ -1103,46 +1102,6 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
         mapper(G, g)
 
         configure_mappers()
-
-    def test_generate_path_cache_key_unbound_branching(self):
-        A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
-
-        base = joinedload(A.bs)
-        opts = [
-            base.joinedload(B.cs),
-            base.joinedload(B.ds),
-            base.joinedload(B.es),
-            base.joinedload(B.fs),
-        ]
-
-        cache_path = inspect(A)._path_registry
-
-        @profiling.function_call_count(warmup=1)
-        def go():
-            for opt in opts:
-                opt._generate_path_cache_key(cache_path)
-
-        go()
-
-    def test_generate_path_cache_key_bound_branching(self):
-        A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
-
-        base = Load(A).joinedload(A.bs)
-        opts = [
-            base.joinedload(B.cs),
-            base.joinedload(B.ds),
-            base.joinedload(B.es),
-            base.joinedload(B.fs),
-        ]
-
-        cache_path = inspect(A)._path_registry
-
-        @profiling.function_call_count(warmup=1)
-        def go():
-            for opt in opts:
-                opt._generate_path_cache_key(cache_path)
-
-        go()
 
     def test_query_opts_unbound_branching(self):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
