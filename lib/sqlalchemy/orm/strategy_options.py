@@ -114,76 +114,6 @@ class Load(Generative, LoaderOption):
             serialized.append(loader_path + (obj,))
         return serialized
 
-    def _generate_path_cache_key(self, path):
-        if path.path[0].is_aliased_class:
-            return False
-
-        serialized = []
-        for (key, loader_path), obj in self.context.items():
-            if key != "loader":
-                continue
-
-            for local_elem, obj_elem in zip(self.path.path, loader_path):
-                if local_elem is not obj_elem:
-                    break
-            else:
-                endpoint = obj._of_type or obj.path.path[-1]
-                chopped = self._chop_path(loader_path, path)
-
-                if (
-                    # means loader_path and path are unrelated,
-                    # this does not need to be part of a cache key
-                    chopped
-                    is None
-                ) or (
-                    # means no additional path with loader_path + path
-                    # and the endpoint isn't using of_type so isn't modified
-                    # into an alias or other unsafe entity
-                    not chopped
-                    and not obj._of_type
-                ):
-                    continue
-
-                serialized_path = []
-
-                for token in chopped:
-                    if isinstance(token, util.string_types):
-                        serialized_path.append(token)
-                    elif token.is_aliased_class:
-                        return False
-                    elif token.is_property:
-                        serialized_path.append(token.key)
-                    else:
-                        assert token.is_mapper
-                        serialized_path.append(token.class_)
-
-                if not serialized_path or endpoint != serialized_path[-1]:
-                    if endpoint.is_mapper:
-                        serialized_path.append(endpoint.class_)
-                    elif endpoint.is_aliased_class:
-                        return False
-
-                serialized.append(
-                    (
-                        tuple(serialized_path)
-                        + (obj.strategy or ())
-                        + (
-                            tuple(
-                                [
-                                    (key, obj.local_opts[key])
-                                    for key in sorted(obj.local_opts)
-                                ]
-                            )
-                            if obj.local_opts
-                            else ()
-                        )
-                    )
-                )
-        if not serialized:
-            return None
-        else:
-            return tuple(serialized)
-
     def _generate(self):
         cloned = super(Load, self)._generate()
         cloned.local_opts = {}
@@ -587,25 +517,6 @@ class _UnboundLoad(Load):
     ]
 
     _is_chain_link = False
-
-    def _generate_path_cache_key(self, path):
-        serialized = ()
-        for val in self._to_bind:
-            for local_elem, val_elem in zip(self.path, val.path):
-                if local_elem is not val_elem:
-                    break
-            else:
-                opt = val._bind_loader([path.path[0]], None, None, False)
-                if opt:
-                    c_key = opt._generate_path_cache_key(path)
-                    if c_key is False:
-                        return False
-                    elif c_key:
-                        serialized += c_key
-        if not serialized:
-            return None
-        else:
-            return serialized
 
     def _set_path_strategy(self):
         self._to_bind.append(self)

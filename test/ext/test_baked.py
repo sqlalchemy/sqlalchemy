@@ -1179,7 +1179,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
         u1.addresses
         eq_(m1.mock_calls, [mock.call(User), mock.call(Address)])
 
-    def test_unsafe_unbound_option_cancels_bake(self):
+    def test_aliased_unbound_are_now_safe_to_cache(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
 
         class SubDingaling(Dingaling):
@@ -1206,9 +1206,9 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 ad.dingalings
         l2 = len(lru)
         eq_(l1, 0)
-        eq_(l2, 0)
+        eq_(l2, 2)
 
-    def test_unsafe_bound_option_cancels_bake(self):
+    def test_aliased_bound_are_now_safe_to_cache(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
 
         class SubDingaling(Dingaling):
@@ -1237,7 +1237,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
                 ad.dingalings
         l2 = len(lru)
         eq_(l1, 0)
-        eq_(l2, 0)
+        eq_(l2, 2)
 
     def test_safe_unbound_option_allows_bake(self):
         User, Address, Dingaling = self._o2m_twolevel_fixture(lazy="joined")
@@ -1307,6 +1307,7 @@ class LazyLoaderTest(testing.AssertsCompiledSQL, BakedTest):
             propagate_to_loaders=True,
             _gen_cache_key=lambda *args: ("hi",),
             _generate_path_cache_key=lambda path: ("hi",),
+            _generate_cache_key=lambda *args: (("hi",), []),
         )
 
         u1 = sess.query(User).options(mock_opt).first()
