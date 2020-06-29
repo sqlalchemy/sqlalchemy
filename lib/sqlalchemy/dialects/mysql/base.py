@@ -670,8 +670,8 @@ with the ``unique=True`` setting present in the :attr:`_schema.Table.indexes`
 collection.
 
 
-TIMESTAMP issues
------------------
+TIMESTAMP / DATETIME issues
+---------------------------
 
 .. _mysql_timestamp_onupdate:
 
@@ -690,7 +690,8 @@ MySQL 5.6 introduced a new flag `explicit_defaults_for_timestamp
 #sysvar_explicit_defaults_for_timestamp>`_ which disables the above behavior,
 and in MySQL 8 this flag defaults to true, meaning in order to get a MySQL
 "on update timestamp" without changing this flag, the above DDL must be
-rendered explicitly.
+rendered explicitly.   Additionally, the same DDL is valid for use of the
+``DATETIME`` datatype as well.
 
 SQLAlchemy's MySQL dialect does not yet have an option to generate
 MySQL's "ON UPDATE CURRENT_TIMESTAMP" clause, noting that this is not a general
@@ -717,6 +718,24 @@ parameter and pass a textual clause that also includes the ON UPDATE clause::
             server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
         )
     )
+
+The same instructions apply to use of the :class:`_types.DateTime` and
+:class:`_types.DATETIME` datatypes::
+
+    from sqlalchemy import DateTime
+
+    mytable = Table(
+        "mytable",
+        metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', String(50)),
+        Column(
+            'last_updated',
+            DateTime,
+            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+        )
+    )
+
 
 Even though the :paramref:`_schema.Column.server_onupdate` feature does not
 generate this DDL, it still may be desirable to signal to the ORM that this
