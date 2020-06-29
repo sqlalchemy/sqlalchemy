@@ -607,6 +607,19 @@ class UpdateDeleteTest(fixtures.MappedTest):
         in_(jill, sess)
         not_in_(jane, sess)
 
+    def test_update_with_filter_statement(self):
+        """test for [ticket:4556] """
+
+        User = self.classes.User
+
+        sess = Session()
+        assert_raises(
+            exc.ArgumentError,
+            lambda: sess.query(User.name == "filter").update(
+                {"name": "update"}
+            ),
+        )
+
     def test_update_without_load(self):
         User = self.classes.User
 
