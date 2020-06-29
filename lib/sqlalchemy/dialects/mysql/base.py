@@ -670,10 +670,76 @@ with the ``unique=True`` setting present in the :attr:`_schema.Table.indexes`
 collection.
 
 
+TIMESTAMP issues
+-----------------
+
+.. _mysql_timestamp_onupdate:
+
+Rendering ON UPDATE CURRENT TIMESTAMP for MySQL's explicit_defaults_for_timestamp
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+MySQL has historically expanded the DDL for the :class:`_types.TIMESTAMP`
+datatype into the phrase "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE
+CURRENT_TIMESTAMP", which includes non-standard SQL that automatically updates
+the column with the current timestamp when an UPDATE occurs, eliminating the
+usual need to use a trigger in such a case where server-side update changes are
+desired.
+
+MySQL 5.6 introduced a new flag `explicit_defaults_for_timestamp
+<http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
+#sysvar_explicit_defaults_for_timestamp>`_ which disables the above behavior,
+and in MySQL 8 this flag defaults to true, meaning in order to get a MySQL
+"on update timestamp" without changing this flag, the above DDL must be
+rendered explicitly.
+
+SQLAlchemy's MySQL dialect does not yet have an option to generate
+MySQL's "ON UPDATE CURRENT_TIMESTAMP" clause, noting that this is not a general
+purpose "ON UPDATE" as there is no such syntax in standard SQL.  SQLAlchemy's
+:paramref:`_schema.Column.server_onupdate` parameter is currently not related
+to this special MySQL behavior.
+
+To generate this DDL, make use of the :paramref:`_schema.Column.server_default`
+parameter and pass a textual clause that also includes the ON UPDATE clause::
+
+    from sqlalchemy import Table, MetaData, Column, Integer, String, TIMESTAMP
+    from sqlalchemy import text
+
+    metadata = MetaData()
+
+    mytable = Table(
+        "mytable",
+        metadata,
+        Column('id', Integer, primary_key=True),
+        Column('data', String(50)),
+        Column(
+            'last_updated',
+            TIMESTAMP,
+            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+        )
+    )
+
+Even though the :paramref:`_schema.Column.server_onupdate` feature does not
+generate this DDL, it still may be desirable to signal to the ORM that this
+updated value should be fetched.  This syntax looks like the following::
+
+    from sqlalchemy.schema import FetchedValue
+
+    class MyClass(Base):
+        __tablename__ = 'mytable'
+
+        id = Column(Integer, primary_key=True)
+        data = Column(String(50))
+        last_updated = Column(
+            TIMESTAMP,
+            server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
+            server_onupdate=FetchedValue()
+        )
+
+
 .. _mysql_timestamp_null:
 
 TIMESTAMP Columns and NULL
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 MySQL historically enforces that a column which specifies the
 TIMESTAMP datatype implicitly includes a default value of
