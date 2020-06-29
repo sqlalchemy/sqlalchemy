@@ -292,6 +292,8 @@ behaviors such as seen with TIMESTAMP columns on some platforms, as well as
 custom triggers that invoke upon INSERT or UPDATE to generate a new value,
 may be called out using :class:`.FetchedValue` as a marker::
 
+    from sqlalchemy.schema import FetchedValue
+
     t = Table('test', meta,
         Column('id', Integer, primary_key=True),
         Column('abc', TIMESTAMP, server_default=FetchedValue()),
@@ -311,6 +313,13 @@ returned.
 
 For details on using :class:`.FetchedValue` with the ORM, see
 :ref:`orm_server_defaults`.
+
+.. warning:: The :paramref:`_schema.Column.server_onupdate` directive
+    **does not** currently produce MySQL's
+    "ON UPDATE CURRENT_TIMESTAMP()" clause.  See
+    :ref:`mysql_timestamp_onupdate` for background on how to produce
+    this clause.
+
 
 .. seealso::
 

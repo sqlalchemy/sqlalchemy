@@ -1330,6 +1330,12 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             implement any kind of generation function within the database,
             which instead must be specified separately.
 
+
+            .. warning:: This directive **does not** currently produce MySQL's
+               "ON UPDATE CURRENT_TIMESTAMP()" clause.  See
+               :ref:`mysql_timestamp_onupdate` for background on how to
+               produce this clause.
+
             .. seealso::
 
                 :ref:`triggered_columns`
