@@ -4929,7 +4929,15 @@ class Exists(UnaryExpression):
 
             # use on an existing select()
             s = select([table.c.col1]).where(table.c.col2==5)
-            s = exists(s)
+            s_e = exists(s)
+
+            # an exists is usually used in a where of another select
+            # to produce a WHERE EXISTS (SELECT ... )
+            select([table.c.col1]).where(s_e)
+
+            # but can also be used in a select to produce a
+            # SELECT EXISTS (SELECT ... ) query
+            select([s_e])
 
             # construct a select() at once
             exists(['*'], **select_arguments).where(criterion)
