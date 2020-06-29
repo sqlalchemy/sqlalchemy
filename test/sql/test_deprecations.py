@@ -44,6 +44,19 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
+class ToMetaDataTest(fixtures.TestBase):
+    def test_deprecate_tometadata(self):
+        m1 = MetaData()
+        t1 = Table("t", m1, Column("q", Integer))
+
+        with testing.expect_deprecated(
+            r"Table.tometadata\(\) is renamed to Table.to_metadata\(\)"
+        ):
+            m2 = MetaData()
+            t2 = t1.tometadata(m2)
+            eq_(t2.name, "t")
+
+
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
 

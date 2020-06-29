@@ -144,6 +144,10 @@ def decorator(target):
             raise Exception("not a decoratable function")
 
         spec = compat.inspect_getfullargspec(fn)
+        env = {}
+
+        spec = _update_argspec_defaults_into_env(spec, env)
+
         names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
         targ_name, fn_name = _unique_symbols(names, "target", "fn")
 
@@ -157,14 +161,35 @@ def %(name)s(%(args)s):
 """
             % metadata
         )
-        decorated = _exec_code_in_env(
-            code, {targ_name: target, fn_name: fn}, fn.__name__
-        )
+        env.update({targ_name: target, fn_name: fn})
+
+        decorated = _exec_code_in_env(code, env, fn.__name__)
         decorated.__defaults__ = getattr(fn, "im_func", fn).__defaults__
         decorated.__wrapped__ = fn
         return update_wrapper(decorated, fn)
 
     return update_wrapper(decorate, target)
+
+
+def _update_argspec_defaults_into_env(spec, env):
+    """given a FullArgSpec, convert defaults to be symbol names in an env."""
+
+    if spec.defaults:
+        new_defaults = []
+        i = 0
+        for arg in spec.defaults:
+            if type(arg).__module__ not in ("builtins", "__builtin__"):
+                name = "x%d" % i
+                env[name] = arg
+                new_defaults.append(name)
+                i += 1
+            else:
+                new_defaults.append(arg)
+        elem = list(spec)
+        elem[3] = tuple(new_defaults)
+        return compat.FullArgSpec(*elem)
+    else:
+        return spec
 
 
 def _exec_code_in_env(code, env, fn_name):

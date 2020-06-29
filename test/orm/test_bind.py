@@ -40,8 +40,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         # ensure tables are unbound
         m2 = sa.MetaData()
-        users_unbound = users.tometadata(m2)
-        addresses_unbound = addresses.tometadata(m2)
+        users_unbound = users.to_metadata(m2)
+        addresses_unbound = addresses.to_metadata(m2)
 
         mapper(Address, addresses_unbound)
         mapper(
@@ -97,8 +97,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         # ensure tables are unbound
         m2 = sa.MetaData()
-        users_unbound = users.tometadata(m2)
-        addresses_unbound = addresses.tometadata(m2)
+        users_unbound = users.to_metadata(m2)
+        addresses_unbound = addresses.to_metadata(m2)
 
         mapper(Address, addresses_unbound)
         mapper(
@@ -491,7 +491,7 @@ class SessionBindTest(fixtures.MappedTest):
         test_table, Foo = cls.tables.test_table, cls.classes.Foo
 
         meta = MetaData()
-        test_table.tometadata(meta)
+        test_table.to_metadata(meta)
 
         assert meta.tables["test_table"].bind is None
         mapper(Foo, meta.tables["test_table"])

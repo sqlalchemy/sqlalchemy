@@ -1391,7 +1391,7 @@ class Enum(Emulated, String, SchemaType):
            will be copied to the "schema" attribute of this
            :class:`.Enum`, replacing whatever value was passed for the
            ``schema`` attribute.   This also takes effect when using the
-           :meth:`_schema.Table.tometadata` operation.
+           :meth:`_schema.Table.to_metadata` operation.
 
         :param validate_strings: when True, string values that are being
            passed to the database in a SQL statement will be checked

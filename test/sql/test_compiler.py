@@ -4213,7 +4213,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t), "CREATE TABLE t (x INTEGER, z INTEGER)"
         )
         m2 = MetaData()
-        t2 = t.tometadata(m2)
+        t2 = t.to_metadata(m2)
         self.assert_compile(
             schema.CreateTable(t2), "CREATE TABLE t (x INTEGER, z INTEGER)"
         )
