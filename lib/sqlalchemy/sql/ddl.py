@@ -903,7 +903,7 @@ class SchemaDropper(DDLBase):
                 util.warn(
                     "Can't sort tables for DROP; an "
                     "unresolvable foreign key "
-                    "dependency exists between tables: %s, and backend does "
+                    "dependency exists between tables: %s; and backend does "
                     "not support ALTER.  To restore at least a partial sort, "
                     "apply use_alter=True to ForeignKey and "
                     "ForeignKeyConstraint "
