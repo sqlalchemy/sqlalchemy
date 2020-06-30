@@ -11,6 +11,8 @@ elements are themselves :class:`_expression.ColumnElement` subclasses).
 
 .. autofunction:: alias
 
+.. autofunction:: cte
+
 .. autofunction:: except_
 
 .. autofunction:: except_all
@@ -52,6 +54,9 @@ elements are themselves :class:`_expression.ColumnElement` subclasses).
    :inherited-members:
 
 .. autoclass:: Executable
+   :members:
+
+.. autoclass:: Exists
    :members:
 
 .. autoclass:: FromClause
