@@ -9,7 +9,16 @@ assignees: ''
 
 **Describe your question**
 
-**Example (if applicable)**
+**Example - please use the [Minimal, Complete, and Verifiable](http://stackoverflow.com/help/mcve) guidelines if possible**
+
+**Complete stack tracel if applicable**
+
+**Versions**
+ - OS:
+ - Python:
+ - SQLAlchemy:
+ - Database:
+ - DBAPI:
 
 **Additional context**
 Add any other context or screenshots about the feature request here.
