@@ -11,7 +11,7 @@ assignees: ''
 
 **Example - please use the [Minimal, Complete, and Verifiable](http://stackoverflow.com/help/mcve) guidelines if possible**
 
-**Complete stack tracel if applicable**
+**Complete stack trace, if applicable**
 
 **Versions**
  - OS:
