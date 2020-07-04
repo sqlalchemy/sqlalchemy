@@ -1110,6 +1110,9 @@ def load_only(loadopt, *attrs):
                     Load(Address).load_only("email_address")
                 )
 
+     .. note:: This method will still load a :class:`_schema.Column` even
+        if the column property is defined with ``deferred=True``
+        for the :func:`.column_property` function.
 
     .. versionadded:: 0.9.0
 
