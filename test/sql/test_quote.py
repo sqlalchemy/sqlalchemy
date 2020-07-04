@@ -729,7 +729,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             '"NEEDS QUOTES_") AS anon_1',
         )
 
-    def test_literal_column_label_alias_samename_explcit_quote(self):
+    def test_literal_column_label_alias_samename_explicit_quote(self):
         col = sql.literal_column("NEEDS QUOTES").label(
             quoted_name("NEEDS QUOTES", True)
         )
@@ -740,7 +740,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
         )
 
-    def test_literal_column_label_alias_diffname_explcit_quote(self):
+    def test_literal_column_label_alias_diffname_explicit_quote(self):
         col = sql.literal_column("NEEDS QUOTES").label(
             quoted_name("NEEDS QUOTES_", True)
         )
