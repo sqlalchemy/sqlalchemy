@@ -2316,6 +2316,22 @@ class JSON(Indexable, TypeEngine):
 
         """
 
+    class JSONIntIndexType(JSONIndexType):
+        """Placeholder for the datatype of a JSON index value.
+
+        This allows execution-time processing of JSON index values
+        for special syntaxes.
+
+        """
+
+    class JSONStrIndexType(JSONIndexType):
+        """Placeholder for the datatype of a JSON index value.
+
+        This allows execution-time processing of JSON index values
+        for special syntaxes.
+
+        """
+
     class JSONPathType(JSONElementType):
         """Placeholder type for JSON path operations.
 
@@ -2346,7 +2362,9 @@ class JSON(Indexable, TypeEngine):
                     index,
                     expr=self.expr,
                     operator=operators.json_getitem_op,
-                    bindparam_type=JSON.JSONIndexType,
+                    bindparam_type=JSON.JSONIntIndexType
+                    if isinstance(index, int)
+                    else JSON.JSONStrIndexType,
                 )
                 operator = operators.json_getitem_op
 

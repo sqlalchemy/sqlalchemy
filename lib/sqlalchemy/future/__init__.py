@@ -14,4 +14,5 @@ from .engine import Engine  # noqa
 from ..sql.selectable import Select  # noqa
 from ..util.langhelpers import public_factory
 
+
 select = public_factory(Select._create_future_select, ".future.select")

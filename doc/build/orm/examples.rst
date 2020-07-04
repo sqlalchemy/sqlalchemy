@@ -30,6 +30,13 @@ Associations
 
 .. automodule:: examples.association
 
+.. _examples_asyncio:
+
+Asyncio Integration
+-------------------
+
+.. automodule:: examples.asyncio
+
 Directed Graphs
 ---------------
 

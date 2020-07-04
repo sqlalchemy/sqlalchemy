@@ -89,6 +89,7 @@ class Connection(Connectable):
                 if connection is not None
                 else engine.raw_connection()
             )
+
             self._transaction = self._nested_transaction = None
             self.__savepoint_seq = 0
             self.__in_begin = False
@@ -622,6 +623,9 @@ class Connection(Connectable):
         """
 
         self._dbapi_connection.detach()
+
+    def _autobegin(self):
+        self.begin()
 
     def begin(self):
         """Begin a transaction and return a transaction handle.
@@ -1433,7 +1437,7 @@ class Connection(Connectable):
             self._invalid_transaction()
 
         if self._is_future and self._transaction is None:
-            self.begin()
+            self._autobegin()
 
         context.pre_exec()
 
@@ -2592,6 +2596,7 @@ class Engine(Connectable, log.Identified):
             return self.conn
 
         def __exit__(self, type_, value, traceback):
+
             if type_ is not None:
                 self.transaction.rollback()
             else:

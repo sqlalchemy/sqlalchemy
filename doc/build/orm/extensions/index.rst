@@ -15,6 +15,7 @@ behavior.   In particular the "Horizontal Sharding", "Hybrid Attributes", and
 .. toctree::
     :maxdepth: 1
 
+    asyncio
     associationproxy
     automap
     baked

@@ -1211,7 +1211,6 @@ def _emit_insert_statements(
                     has_all_pks,
                     has_all_defaults,
                 ) in records:
-
                     if value_params:
                         result = connection.execute(
                             statement.values(value_params), params

@@ -948,7 +948,7 @@ class PKDefaultTest(fixtures.TablesTest):
             metadata,
             Column(
                 "date_id",
-                DateTime,
+                DateTime(timezone=True),
                 default=text("current_timestamp"),
                 primary_key=True,
             ),

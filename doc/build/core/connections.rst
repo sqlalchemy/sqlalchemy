@@ -1225,16 +1225,7 @@ The above will respond to ``create_engine("mysql+foodialect://")`` and load the
 Connection / Engine API
 =======================
 
-.. autoclass:: BaseCursorResult
-    :members:
-
-.. autoclass:: ChunkedIteratorResult
-    :members:
-
 .. autoclass:: Connection
-   :members:
-
-.. autoclass:: Connectable
    :members:
 
 .. autoclass:: CreateEnginePlugin
@@ -1246,6 +1237,25 @@ Connection / Engine API
 .. autoclass:: ExceptionContext
    :members:
 
+.. autoclass:: NestedTransaction
+    :members:
+
+.. autoclass:: Transaction
+    :members:
+
+.. autoclass:: TwoPhaseTransaction
+    :members:
+
+
+Result Set  API
+=================
+
+.. autoclass:: BaseCursorResult
+    :members:
+
+.. autoclass:: ChunkedIteratorResult
+    :members:
+
 .. autoclass:: FrozenResult
     :members:
 
@@ -1256,9 +1266,6 @@ Connection / Engine API
     :members:
 
 .. autoclass:: MergedResult
-    :members:
-
-.. autoclass:: NestedTransaction
     :members:
 
 .. autoclass:: Result
@@ -1289,11 +1296,5 @@ Connection / Engine API
     :private-members: _fields, _mapping
 
 .. autoclass:: RowMapping
-    :members:
-
-.. autoclass:: Transaction
-    :members:
-
-.. autoclass:: TwoPhaseTransaction
     :members:
 

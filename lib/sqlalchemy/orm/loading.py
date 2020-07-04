@@ -125,8 +125,21 @@ def instances(cursor, context):
             if not yield_per:
                 break
 
+    if context.execution_options.get("prebuffer_rows", False):
+        # this is a bit of a hack at the moment.
+        # I would rather have some option in the result to pre-buffer
+        # internally.
+        _prebuffered = list(chunks(None))
+
+        def chunks(size):
+            return iter(_prebuffered)
+
     result = ChunkedIteratorResult(
-        row_metadata, chunks, source_supports_scalars=single_entity, raw=cursor
+        row_metadata,
+        chunks,
+        source_supports_scalars=single_entity,
+        raw=cursor,
+        dynamic_yield_per=cursor.context._is_server_side,
     )
 
     result._attributes = result._attributes.union(

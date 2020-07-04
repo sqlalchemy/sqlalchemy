@@ -461,11 +461,8 @@ class TransactionTest(fixtures.TestBase):
         assert not savepoint.is_active
 
         if util.py3k:
-            # driver error
-            assert exc_.__cause__
-
-            # and that's it, no other context
-            assert not exc_.__cause__.__context__
+            # ensure cause comes from the DBAPI
+            assert isinstance(exc_.__cause__, testing.db.dialect.dbapi.Error)
 
     def test_retains_through_options(self, local_connection):
         connection = local_connection

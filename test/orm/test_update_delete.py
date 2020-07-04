@@ -1421,6 +1421,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         # this would work with Firebird if you do literal_column('1')
         # instead
         case_stmt = case([(Document.title.in_(subq), True)], else_=False)
+
         s.query(Document).update(
             {"flag": case_stmt}, synchronize_session=False
         )

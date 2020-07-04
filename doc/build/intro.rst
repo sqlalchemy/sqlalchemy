@@ -146,7 +146,6 @@ mechanism::
    setuptools.
 
 
-
 Installing a Database API
 ----------------------------------
 

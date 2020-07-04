@@ -317,6 +317,9 @@ class DefaultDialect(interfaces.Dialect):
     def get_pool_class(cls, url):
         return getattr(cls, "poolclass", pool.QueuePool)
 
+    def get_dialect_pool_class(self, url):
+        return self.get_pool_class(url)
+
     @classmethod
     def load_provisioning(cls):
         package = ".".join(cls.__module__.split(".")[0:-1])

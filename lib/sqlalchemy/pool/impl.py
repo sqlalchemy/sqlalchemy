@@ -33,6 +33,8 @@ class QueuePool(Pool):
 
     """
 
+    _queue_class = sqla_queue.Queue
+
     def __init__(
         self,
         creator,
@@ -95,7 +97,7 @@ class QueuePool(Pool):
 
         """
         Pool.__init__(self, creator, **kw)
-        self._pool = sqla_queue.Queue(pool_size, use_lifo=use_lifo)
+        self._pool = self._queue_class(pool_size, use_lifo=use_lifo)
         self._overflow = 0 - pool_size
         self._max_overflow = max_overflow
         self._timeout = timeout
@@ -213,6 +215,10 @@ class QueuePool(Pool):
 
     def checkedout(self):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
+
+
+class AsyncAdaptedQueuePool(QueuePool):
+    _queue_class = sqla_queue.AsyncAdaptedQueue
 
 
 class NullPool(Pool):

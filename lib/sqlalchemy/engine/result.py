@@ -20,6 +20,7 @@ from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
 from ..util import collections_abc
+from ..util import py2k
 
 if util.TYPE_CHECKING:
     from typing import Any
@@ -616,6 +617,16 @@ class ResultInternal(InPlaceGenerative):
         else:
             return row
 
+    def _iter_impl(self):
+        return self._iterator_getter(self)
+
+    def _next_impl(self):
+        row = self._onerow_getter(self)
+        if row is _NO_ROW:
+            raise StopIteration()
+        else:
+            return row
+
     @_generative
     def _column_slices(self, indexes):
         real_result = self._real_result if self._real_result else self
@@ -892,16 +903,15 @@ class Result(ResultInternal):
         raise NotImplementedError()
 
     def __iter__(self):
-        return self._iterator_getter(self)
+        return self._iter_impl()
 
     def __next__(self):
-        row = self._onerow_getter(self)
-        if row is _NO_ROW:
-            raise StopIteration()
-        else:
-            return row
+        return self._next_impl()
 
-    next = __next__
+    if py2k:
+
+        def next(self):  # noqa
+            return self._next_impl()
 
     def partitions(self, size=None):
         # type: (Optional[Int]) -> Iterator[List[Row]]
@@ -1015,12 +1025,10 @@ class Result(ResultInternal):
            column of the first row, use the :meth:`.Result.scalar` method,
            or combine :meth:`.Result.scalars` and :meth:`.Result.first`.
 
-        .. comment: A warning is emitted if additional rows remain.
-
         :return: a :class:`.Row` object, or None
          if no rows remain.
 
-         .. seealso::
+        .. seealso::
 
             :meth:`_result.Result.scalar`
 
@@ -1186,18 +1194,6 @@ class FilterResult(ResultInternal):
     def _attributes(self):
         return self._real_result._attributes
 
-    def __iter__(self):
-        return self._iterator_getter(self)
-
-    def __next__(self):
-        row = self._onerow_getter(self)
-        if row is _NO_ROW:
-            raise StopIteration()
-        else:
-            return row
-
-    next = __next__
-
     def _fetchiter_impl(self):
         return self._real_result._fetchiter_impl()
 
@@ -1298,6 +1294,17 @@ class ScalarResult(FilterResult):
 
         """
         return self._allrows()
+
+    def __iter__(self):
+        return self._iter_impl()
+
+    def __next__(self):
+        return self._next_impl()
+
+    if py2k:
+
+        def next(self):  # noqa
+            return self._next_impl()
 
     def first(self):
         # type: () -> Optional[Any]
@@ -1409,7 +1416,7 @@ class MappingResult(FilterResult):
 
     def fetchall(self):
         # type: () -> List[Mapping]
-        """A synonym for the :meth:`_engine.ScalarResult.all` method."""
+        """A synonym for the :meth:`_engine.MappingResult.all` method."""
 
         return self._allrows()
 
@@ -1452,6 +1459,17 @@ class MappingResult(FilterResult):
         """
 
         return self._allrows()
+
+    def __iter__(self):
+        return self._iter_impl()
+
+    def __next__(self):
+        return self._next_impl()
+
+    if py2k:
+
+        def next(self):  # noqa
+            return self._next_impl()
 
     def first(self):
         # type: () -> Optional[Mapping]
@@ -1519,13 +1537,11 @@ class FrozenResult(object):
 
     .. seealso::
 
-        .. seealso::
+        :ref:`do_orm_execute_re_executing` - example usage within the
+        ORM to implement a result-set cache.
 
-            :ref:`do_orm_execute_re_executing` - example usage within the
-            ORM to implement a result-set cache.
-
-            :func:`_orm.loading.merge_frozen_result` - ORM function to merge
-            a frozen result back into a :class:`_orm.Session`.
+        :func:`_orm.loading.merge_frozen_result` - ORM function to merge
+        a frozen result back into a :class:`_orm.Session`.
 
     """
 
@@ -1624,20 +1640,35 @@ class ChunkedIteratorResult(IteratorResult):
     """
 
     def __init__(
-        self, cursor_metadata, chunks, source_supports_scalars=False, raw=None
+        self,
+        cursor_metadata,
+        chunks,
+        source_supports_scalars=False,
+        raw=None,
+        dynamic_yield_per=False,
     ):
         self._metadata = cursor_metadata
         self.chunks = chunks
         self._source_supports_scalars = source_supports_scalars
         self.raw = raw
         self.iterator = itertools.chain.from_iterable(self.chunks(None))
+        self.dynamic_yield_per = dynamic_yield_per
 
     @_generative
     def yield_per(self, num):
+        # TODO: this throws away the iterator which may be holding
+        # onto a chunk.   the yield_per cannot be changed once any
+        # rows have been fetched.   either find a way to enforce this,
+        # or we can't use itertools.chain and will instead have to
+        # keep track.
+
         self._yield_per = num
-        # TODO: this should raise if the iterator has already been started.
-        # we can't change the yield mid-stream like this
         self.iterator = itertools.chain.from_iterable(self.chunks(num))
+
+    def _fetchmany_impl(self, size=None):
+        if self.dynamic_yield_per:
+            self.iterator = itertools.chain.from_iterable(self.chunks(size))
+        return super(ChunkedIteratorResult, self)._fetchmany_impl(size=size)
 
 
 class MergedResult(IteratorResult):
@@ -1677,6 +1708,5 @@ class MergedResult(IteratorResult):
     def _soft_close(self, hard=False):
         for r in self._results:
             r._soft_close(hard=hard)
-
         if hard:
             self.closed = True

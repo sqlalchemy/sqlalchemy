@@ -61,6 +61,7 @@ class TestBase(object):
     @config.fixture()
     def connection(self):
         eng = getattr(self, "bind", config.db)
+
         conn = eng.connect()
         trans = conn.begin()
         try:

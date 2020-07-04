@@ -48,7 +48,6 @@ testing = None
 util = None
 file_config = None
 
-
 logging = None
 include_tags = set()
 exclude_tags = set()
@@ -192,6 +191,12 @@ def setup_options(make_option):
         dest="force_write_profiles",
         default=False,
         help="Unconditionally write/update profiling data.",
+    )
+    make_option(
+        "--dump-pyannotate",
+        type=str,
+        dest="dump_pyannotate",
+        help="Run pyannotate and dump json info to given file",
     )
 
 
@@ -378,7 +383,6 @@ def _engine_uri(options, file_config):
         cfg = provision.setup_config(
             db_url, options, file_config, provision.FOLLOWER_IDENT
         )
-
         if not config._current:
             cfg.set_as_current(cfg, testing)
 

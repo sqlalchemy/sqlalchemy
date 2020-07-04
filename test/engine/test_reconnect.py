@@ -1356,7 +1356,14 @@ class InvalidateDuringResultTest(fixtures.TestBase):
         "cx_oracle 6 doesn't allow a close like this due to open cursors",
     )
     @testing.fails_if(
-        ["+mysqlconnector", "+mysqldb", "+cymysql", "+pymysql", "+pg8000"],
+        [
+            "+mysqlconnector",
+            "+mysqldb",
+            "+cymysql",
+            "+pymysql",
+            "+pg8000",
+            "+asyncpg",
+        ],
         "Buffers the result set and doesn't check for connection close",
     )
     def test_invalidate_on_results(self):
@@ -1365,5 +1372,8 @@ class InvalidateDuringResultTest(fixtures.TestBase):
         for x in range(20):
             result.fetchone()
         self.engine.test_shutdown()
-        _assert_invalidated(result.fetchone)
-        assert conn.invalidated
+        try:
+            _assert_invalidated(result.fetchone)
+            assert conn.invalidated
+        finally:
+            conn.invalidate()

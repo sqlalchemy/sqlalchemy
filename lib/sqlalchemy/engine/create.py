@@ -553,7 +553,7 @@ def create_engine(url, **kwargs):
 
         poolclass = pop_kwarg("poolclass", None)
         if poolclass is None:
-            poolclass = dialect_cls.get_pool_class(u)
+            poolclass = dialect.get_dialect_pool_class(u)
         pool_args = {"dialect": dialect}
 
         # consume pool arguments from kwargs, translating a few of

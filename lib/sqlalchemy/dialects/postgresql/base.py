@@ -1299,6 +1299,14 @@ class UUID(sqltypes.TypeEngine):
          """
         self.as_uuid = as_uuid
 
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
+
+        if isinstance(value, util.string_types):
+            return self
+        else:
+            return super(UUID, self).coerce_compared_value(op, value)
+
     def bind_processor(self, dialect):
         if self.as_uuid:
 

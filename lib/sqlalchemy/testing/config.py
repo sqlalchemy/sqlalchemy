@@ -178,3 +178,7 @@ class Config(object):
 
 def skip_test(msg):
     raise _fixture_functions.skip_test_exception(msg)
+
+
+def async_test(fn):
+    return _fixture_functions.async_test(fn)

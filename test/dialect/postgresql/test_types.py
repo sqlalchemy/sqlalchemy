@@ -27,6 +27,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import text
+from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
@@ -774,7 +775,12 @@ class RegClassTest(fixtures.TestBase):
         regclass = cast("pg_class", postgresql.REGCLASS)
         oid = self._scalar(cast(regclass, postgresql.OID))
         assert isinstance(oid, int)
-        eq_(self._scalar(cast(oid, postgresql.REGCLASS)), "pg_class")
+        eq_(
+            self._scalar(
+                cast(type_coerce(oid, postgresql.OID), postgresql.REGCLASS)
+            ),
+            "pg_class",
+        )
 
     def test_cast_whereclause(self):
         pga = Table(
@@ -1801,10 +1807,13 @@ class ArrayEnum(fixtures.TestBase):
             testing.db,
         )
 
-    @testing.combinations(
-        sqltypes.ARRAY, postgresql.ARRAY, _ArrayOfEnum, argnames="array_cls"
-    )
     @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
+    @testing.combinations(
+        sqltypes.ARRAY,
+        postgresql.ARRAY,
+        (_ArrayOfEnum, testing.only_on("postgresql+psycopg2")),
+        argnames="array_cls",
+    )
     @testing.provide_metadata
     def test_array_of_enums(self, array_cls, enum_cls, connection):
         tbl = Table(
@@ -1844,6 +1853,8 @@ class ArrayEnum(fixtures.TestBase):
             connection.execute(tbl.insert(), {"pyenum_col": [MyEnum.a]})
             sel = select(tbl.c.pyenum_col).order_by(tbl.c.id.desc())
             eq_(connection.scalar(sel), [MyEnum.a])
+
+        self.metadata.drop_all(connection)
 
 
 class ArrayJSON(fixtures.TestBase):

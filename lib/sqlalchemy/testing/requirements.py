@@ -1194,6 +1194,12 @@ class SuiteRequirements(Requirements):
             return False
 
     @property
+    def async_dialect(self):
+        """dialect makes use of await_() to invoke operations on the DBAPI."""
+
+        return exclusions.closed()
+
+    @property
     def computed_columns(self):
         "Supports computed columns"
         return exclusions.closed()

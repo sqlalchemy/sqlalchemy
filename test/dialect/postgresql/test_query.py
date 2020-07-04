@@ -738,17 +738,14 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     def teardown_class(cls):
         metadata.drop_all()
 
-    @testing.fails_on("postgresql+pg8000", "uses positional")
+    @testing.requires.pyformat_paramstyle
     def test_expression_pyformat(self):
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "matchtable.title @@ to_tsquery(%(title_1)s" ")",
         )
 
-    @testing.fails_on("postgresql+psycopg2", "uses pyformat")
-    @testing.fails_on("postgresql+pypostgresql", "uses pyformat")
-    @testing.fails_on("postgresql+pygresql", "uses pyformat")
-    @testing.fails_on("postgresql+psycopg2cffi", "uses pyformat")
+    @testing.requires.format_paramstyle
     def test_expression_positional(self):
         self.assert_compile(
             matchtable.c.title.match("somstr"),

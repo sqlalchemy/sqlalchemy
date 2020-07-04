@@ -35,6 +35,7 @@ from ... import Text
 from ... import Time
 from ... import TIMESTAMP
 from ... import type_coerce
+from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
 from ... import util
@@ -282,6 +283,9 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @classmethod
     def define_tables(cls, metadata):
+        class Decorated(TypeDecorator):
+            impl = cls.datatype
+
         Table(
             "date_table",
             metadata,
@@ -289,6 +293,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("date_data", cls.datatype),
+            Column("decorated_date_data", Decorated),
         )
 
     def test_round_trip(self, connection):
@@ -297,6 +302,21 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         connection.execute(date_table.insert(), {"date_data": self.data})
 
         row = connection.execute(select(date_table.c.date_data)).first()
+
+        compare = self.compare or self.data
+        eq_(row, (compare,))
+        assert isinstance(row[0], type(compare))
+
+    def test_round_trip_decorated(self, connection):
+        date_table = self.tables.date_table
+
+        connection.execute(
+            date_table.insert(), {"decorated_date_data": self.data}
+        )
+
+        row = connection.execute(
+            select(date_table.c.decorated_date_data)
+        ).first()
 
         compare = self.compare or self.data
         eq_(row, (compare,))
@@ -526,6 +546,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             Float(precision=8, asdecimal=True),
             [15.7563, decimal.Decimal("15.7563"), None],
             [decimal.Decimal("15.7563"), None],
+            filter_=lambda n: n is not None and round(n, 4) or None,
         )
 
     def test_float_as_float(self):
@@ -777,6 +798,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             #        ("json", {"foo": "bar"}),
             id_="sa",
         )(fn)
+
         return fn
 
     @_index_fixtures
@@ -1139,7 +1161,15 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             and_(name == "r6", cast(col["b"], String) == '"some value"'), "r6"
         )
 
-    def test_crit_against_string_coerce_type(self):
+    def test_crit_against_int_basic(self):
+        name = self.tables.data_table.c.name
+        col = self.tables.data_table.c["data"]
+
+        self._test_index_criteria(
+            and_(name == "r6", cast(col["a"], String) == "5"), "r6"
+        )
+
+    def _dont_test_crit_against_string_coerce_type(self):
         name = self.tables.data_table.c.name
         col = self.tables.data_table.c["data"]
 
@@ -1152,15 +1182,7 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             test_literal=False,
         )
 
-    def test_crit_against_int_basic(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["a"], String) == "5"), "r6"
-        )
-
-    def test_crit_against_int_coerce_type(self):
+    def _dont_test_crit_against_int_coerce_type(self):
         name = self.tables.data_table.c.name
         col = self.tables.data_table.c["data"]
 

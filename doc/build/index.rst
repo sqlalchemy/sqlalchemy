@@ -44,7 +44,8 @@ of Python objects, proceed first to the tutorial.
 
 * **ORM Usage:**
   :doc:`Session Usage and Guidelines <orm/session>` |
-  :doc:`Loading Objects <orm/loading_objects>`
+  :doc:`Loading Objects <orm/loading_objects>` |
+  :doc:`AsyncIO Support <orm/extensions/asyncio>`
 
 * **Extending the ORM:**
   :doc:`ORM Events and Internals <orm/extending>`
@@ -68,6 +69,7 @@ are documented here.  In contrast to the ORM's domain-centric mode of usage, the
 * **Engines, Connections, Pools:**
   :doc:`Engine Configuration <core/engines>` |
   :doc:`Connections, Transactions <core/connections>` |
+  :doc:`AsyncIO Support <orm/extensions/asyncio>` |
   :doc:`Connection Pooling <core/pooling>`
 
 * **Schema Definition:**
