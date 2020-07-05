@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, py3k
+    :tickets: #5357
+
+    Added a ``**kw`` argument to the :meth:`.DeclarativeMeta.__init__` method.
+    This allows a class to support the :pep:`487` metaclass hook
+    ``__init_subclass__``.  Pull request courtesy Ewen Gillies.
+
