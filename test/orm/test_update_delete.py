@@ -1,11 +1,13 @@
 from sqlalchemy import Boolean
 from sqlalchemy import case
 from sqlalchemy import column
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import lambda_stmt
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
@@ -485,6 +487,62 @@ class UpdateDeleteTest(fixtures.MappedTest):
             list(zip([15, 27, 19, 27])),
         )
 
+    def test_update_future_lambda(self):
+        User, users = self.classes.User, self.tables.users
+
+        sess = Session()
+
+        john, jack, jill, jane = (
+            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+        )
+
+        sess.execute(
+            lambda_stmt(
+                lambda: update(User)
+                .where(User.age > 29)
+                .values({"age": User.age - 10})
+                .execution_options(synchronize_session="evaluate")
+            ),
+        )
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+        eq_(
+            sess.execute(future_select(User.age).order_by(User.id)).all(),
+            list(zip([25, 37, 29, 27])),
+        )
+
+        sess.execute(
+            lambda_stmt(
+                lambda: update(User)
+                .where(User.age > 29)
+                .values({User.age: User.age - 10})
+                .execution_options(synchronize_session="evaluate")
+            )
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 27, 29, 27])),
+        )
+
+        sess.query(User).filter(User.age > 27).update(
+            {users.c.age_int: User.age - 10}, synchronize_session="evaluate"
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 19, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([25, 27, 19, 27])),
+        )
+
+        sess.query(User).filter(User.age == 25).update(
+            {User.age: User.age - 10}, synchronize_session="fetch"
+        )
+        eq_([john.age, jack.age, jill.age, jane.age], [15, 27, 19, 27])
+        eq_(
+            sess.query(User.age).order_by(User.id).all(),
+            list(zip([15, 27, 19, 27])),
+        )
+
     def test_update_against_table_col(self):
         User, users = self.classes.User, self.tables.users
 
@@ -565,6 +623,52 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 ),
             )
 
+    def test_update_fetch_returning_lambda(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = (
+            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = lambda_stmt(
+                lambda: update(User)
+                .where(User.age > 29)
+                .values({"age": User.age - 10})
+            )
+            sess.execute(
+                stmt, execution_options={"synchronize_session": "fetch"}
+            )
+
+            # these are simple values, these are now evaluated even with
+            # the "fetch" strategy, new in 1.4, so there is no expiry
+            eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+
+        if testing.db.dialect.full_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
+                    "WHERE users.age_int > %(age_int_2)s RETURNING users.id",
+                    [{"age_int_1": 10, "age_int_2": 29}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users "
+                    "WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int - :age_int_1) "
+                    "WHERE users.age_int > :age_int_2",
+                    [{"age_int_1": 10, "age_int_2": 29}],
+                ),
+            )
+
     def test_delete_fetch_returning(self):
         User = self.classes.User
 
@@ -578,6 +682,51 @@ class UpdateDeleteTest(fixtures.MappedTest):
         with self.sql_execution_asserter() as asserter:
             sess.query(User).filter(User.age > 29).delete(
                 synchronize_session="fetch"
+            )
+
+        if testing.db.dialect.full_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
+                    "RETURNING users.id",
+                    [{"age_int_1": 29}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users "
+                    "WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+                CompiledSQL(
+                    "DELETE FROM users WHERE users.age_int > :age_int_1",
+                    [{"age_int_1": 29}],
+                ),
+            )
+
+        in_(john, sess)
+        not_in_(jack, sess)
+        in_(jill, sess)
+        not_in_(jane, sess)
+
+    def test_delete_fetch_returning_lambda(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = (
+            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+        )
+
+        in_(john, sess)
+        in_(jack, sess)
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = lambda_stmt(lambda: delete(User).where(User.age > 29))
+            sess.execute(
+                stmt, execution_options={"synchronize_session": "fetch"}
             )
 
         if testing.db.dialect.full_returning:

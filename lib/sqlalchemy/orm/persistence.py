@@ -1888,8 +1888,18 @@ class BulkUDCompileState(CompileState):
                 from_=err,
             )
 
-        if statement.__visit_name__ == "update":
-            resolved_values = cls._get_resolved_values(mapper, statement)
+        if statement.__visit_name__ == "lambda_element":
+            # ._resolved is called on every LambdaElement in order to
+            # generate the cache key, so this access does not add
+            # additional expense
+            effective_statement = statement._resolved
+        else:
+            effective_statement = statement
+
+        if effective_statement.__visit_name__ == "update":
+            resolved_values = cls._get_resolved_values(
+                mapper, effective_statement
+            )
             value_evaluators = {}
             resolved_keys_as_propnames = cls._resolved_keys_as_propnames(
                 mapper, resolved_values
@@ -2012,10 +2022,20 @@ class BulkUDCompileState(CompileState):
 
         value_evaluators = _EMPTY_DICT
 
-        if statement.__visit_name__ == "update":
+        if statement.__visit_name__ == "lambda_element":
+            # ._resolved is called on every LambdaElement in order to
+            # generate the cache key, so this access does not add
+            # additional expense
+            effective_statement = statement._resolved
+        else:
+            effective_statement = statement
+
+        if effective_statement.__visit_name__ == "update":
             target_cls = mapper.class_
             evaluator_compiler = evaluator.EvaluatorCompiler(target_cls)
-            resolved_values = cls._get_resolved_values(mapper, statement)
+            resolved_values = cls._get_resolved_values(
+                mapper, effective_statement
+            )
             resolved_keys_as_propnames = cls._resolved_keys_as_propnames(
                 mapper, resolved_values
             )
@@ -2073,8 +2093,12 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
         elif statement._values:
             new_stmt._values = self._resolved_values
 
+        # if we are against a lambda statement we might not be the
+        # topmost object that received per-execute annotations
+        top_level_stmt = compiler.statement
         if (
-            statement._annotations.get("synchronize_session", None) == "fetch"
+            top_level_stmt._annotations.get("synchronize_session", None)
+            == "fetch"
             and compiler.dialect.full_returning
         ):
             new_stmt = new_stmt.returning(*mapper.primary_key)
@@ -2187,9 +2211,10 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
             "parentmapper", None
         )
 
+        top_level_stmt = compiler.statement
         if (
             mapper
-            and statement._annotations.get("synchronize_session", None)
+            and top_level_stmt._annotations.get("synchronize_session", None)
             == "fetch"
             and compiler.dialect.full_returning
         ):
