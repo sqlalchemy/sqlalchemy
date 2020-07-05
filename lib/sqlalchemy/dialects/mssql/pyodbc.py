@@ -70,6 +70,32 @@ illustrated below using ``urllib.parse.quote_plus``::
 
     engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
 
+Pyodbc Pooling / connection close behavior
+------------------------------------------
+
+PyODBC uses internal `pooling
+<https://github.com/mkleehammer/pyodbc/wiki/The-pyodbc-Module#pooling>`_ by
+default, which means connections will be longer lived than they are within
+SQLAlchemy itself.  As SQLAlchemy has its own pooling behavior, it is often
+preferable to disable this behavior.  This behavior can only be disabled
+globally at the PyODBC module level, **before** any connections are made::
+
+    import pyodbc
+
+    pyodbc.pooling = False
+
+    # don't use the engine before pooling is set to False
+    engine = create_engine("mssql+pyodbc://user:pass@dsn")
+
+If this variable is left at its default value of ``True``, **the application
+will continue to maintain active database connections**, even when the
+SQLAlchemy engine itself fully discards a connection or if the engine is
+disposed.
+
+.. seealso::
+
+    `pooling <https://github.com/mkleehammer/pyodbc/wiki/The-pyodbc-Module#pooling>`_ -
+    in the PyODBC documentation.
 
 Driver / Unicode Support
 -------------------------
