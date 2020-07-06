@@ -80,26 +80,10 @@ Disabling pooling using :class:`.NullPool`::
 Using a Custom Connection Function
 ----------------------------------
 
-All :class:`_pool.Pool` classes accept an argument ``creator`` which is
-a callable that creates a new connection.  :func:`_sa.create_engine`
-accepts this function to pass onto the pool via an argument of
-the same name::
+See the section :ref:`custom_dbapi_args` for a rundown of the various
+connection customization routines.
 
-    import sqlalchemy.pool as pool
-    import psycopg2
 
-    def getconn():
-        c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
-        # do things with 'c' to set up
-        return c
-
-    engine = create_engine('postgresql+psycopg2://', creator=getconn)
-
-For most "initialize on connection" routines, it's more convenient
-to use the :class:`_events.PoolEvents` event hooks, so that the usual URL argument to
-:func:`_sa.create_engine` is still usable.  ``creator`` is there as
-a last resort for when a DBAPI has some form of ``connect``
-that is not at all supported by SQLAlchemy.
 
 Constructing a Pool
 -------------------

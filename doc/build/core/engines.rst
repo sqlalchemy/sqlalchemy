@@ -222,54 +222,97 @@ For more information on connection pooling, see :ref:`pooling_toplevel`.
 
 .. _custom_dbapi_args:
 
-Custom DBAPI connect() arguments
-================================
+Custom DBAPI connect() arguments / on-connect routines
+=======================================================
 
-Custom arguments used when issuing the ``connect()`` call to the underlying
-DBAPI may be issued in three distinct ways. String-based arguments can be
-passed directly from the URL string as query arguments:
+For cases where special connection methods are needed, in the vast majority
+of cases, it is most appropriate to use one of several hooks at the
+:func:`_sa.create_engine` level in order to customize this process. These
+are described in the following sub-sections.
 
-.. sourcecode:: python+sql
+Special Keyword Arguments Passed to dbapi.connect()
+---------------------------------------------------
 
-    db = create_engine('postgresql://scott:tiger@localhost/test?argument1=foo&argument2=bar')
+For special arguments that must be passed to the DBAPI for which the
+SQLAlchemy dialect does not parse from the query string correctly,
+the :paramref:`_sa.create_engine.connect_args` dictionary can be used.
+This is often when special sub-structures or objects must be passed to
+the DBAPI, or sometimes it's just that a particular flag must be sent as
+the ``True`` symbol and the SQLAlchemy dialect is not aware of this keyword
+argument.  Below illustrates the use of a psycopg2 "connection factory"
+that replaces the underlying implementation the connection::
 
-If SQLAlchemy's database connector is aware of a particular query argument, it
-may convert its type from string to its proper type.
 
-:func:`~sqlalchemy.create_engine` also takes an argument ``connect_args`` which is an additional dictionary that will be passed to ``connect()``.  This can be used when arguments of a type other than string are required, and SQLAlchemy's database connector has no type conversion logic present for that parameter:
+    engine = create_engine(
+        "postgresql://user:pass@hostname/dbname",
+        connect_args={"connection_factory": MyConnectionFactory}
+    )
 
-.. sourcecode:: python+sql
 
-    db = create_engine('postgresql://scott:tiger@localhost/test', connect_args = {'argument1':17, 'argument2':'bar'})
+Controlling how parameters are passed to the DBAPI connect() function
+---------------------------------------------------------------------
 
-The two methods that are the most customizable include using the
-:paramref:`_sa.create_engine.creator` parameter, which specifies a callable that returns a
-DBAPI connection:
-
-.. sourcecode:: python+sql
-
-    def connect():
-        return psycopg.connect(user='scott', host='localhost')
-
-    db = create_engine('postgresql://', creator=connect)
-
-Alternatively, the :meth:`_events.DialectEvents.do_connect` hook may be
-used on an existing engine which allows full replacement of the connection
-approach, given connection arguments::
-
+At the next level, we can customize how the DBAPI ``connect()`` function
+itself is called using the :meth:`.DialectEvents.do_connect` event hook.
+This hook is passed the full ``*args, **kwargs`` that the dialect would
+send to ``connect()``.  These collections can then be modified in place
+to alter how they are used::
 
     from sqlalchemy import event
 
-    db = create_engine('postgresql://scott:tiger@localhost/test')
+    engine = create_engine("postgresql://user:pass@hostname/dbname")
 
-    @event.listens_for(db, "do_connect")
+    @event.listens_for(engine, "do_connect")
     def receive_do_connect(dialect, conn_rec, cargs, cparams):
-        # cargs and cparams can be modified in place...
-        cparams['password'] = 'new password'
+        cparams['connection_factory'] = MyConnectionFactory
 
-        # alternatively, return the new DBAPI connection
+Modifying the DBAPI connection after connect, or running commands after connect
+-------------------------------------------------------------------------------
+
+For a DBAPI connection that SQLAlchemy creates without issue, but where we
+would like to modify the completed connection before it's actually used, such
+as for setting special flags or running certain commands, the
+:meth:`.PoolEvents.connect` event hook is the most appropriate hook.  This
+hook is called for every new connection created, before it is used by
+SQLAlchemy::
+
+    from sqlalchemy import event
+
+    engine = create_engine(
+        "postgresql://user:pass@hostname/dbname"
+    )
+
+    @event.listens_for(engine, "connect")
+    def connect(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET some session variables")
+        cursor.close()
+
+
+Fully Replacing the DBAPI ``connect()`` function
+------------------------------------------------
+
+Finally, the :meth:`.DialectEvents.do_connect` event hook can also allow us to take
+over the connection process entirely by establishing the connection
+and returning it::
+
+    from sqlalchemy import event
+
+    engine = create_engine(
+        "postgresql://user:pass@hostname/dbname"
+    )
+
+    @event.listens_for(engine, "do_connect")
+    def receive_do_connect(dialect, conn_rec, cargs, cparams):
+        # return the new DBAPI connection with whatever we'd like to
+        # do
         return psycopg2.connect(*cargs, **cparams)
 
+The :meth:`.DialectEvents.do_connect` hook supersedes the previous
+:paramref:`_sa.create_engine.creator` hook, which remains available.
+:meth:`.DialectEvents.do_connect` has the distinct advantage that the
+complete arguments parsed from the URL are also passed to the user-defined
+function which is not the case with :paramref:`_sa.create_engine.creator`.
 
 .. _dbengine_logging:
 
