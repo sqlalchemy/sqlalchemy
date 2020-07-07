@@ -70,7 +70,7 @@ def has_inherited_table(cls):
 
 
 class DeclarativeMeta(type):
-    def __init__(cls, classname, bases, dict_):
+    def __init__(cls, classname, bases, dict_, **kw):
         if "_decl_class_registry" not in cls.__dict__:
             _as_declarative(cls, classname, cls.__dict__)
         type.__init__(cls, classname, bases, dict_)

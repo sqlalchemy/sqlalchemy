@@ -13,6 +13,7 @@ from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
 from sqlalchemy.ext import declarative as decl
+from sqlalchemy.ext.declarative import DeclarativeMeta
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.declarative import synonym_for
 from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
@@ -2126,6 +2127,33 @@ class DeclarativeTest(DeclarativeTestBase):
         assert "data_hybrid" not in Foo.__mapper__.all_orm_descriptors.keys()
 
         assert not hasattr(Foo, "data_hybrid")
+
+    @testing.requires.python3
+    def test_kw_support_in_declarative_meta_init(self):
+        # This will not fail if DeclarativeMeta __init__ supports **kw
+
+        class BaseUser(Base):
+            __tablename__ = "base"
+            id_ = Column(Integer, primary_key=True)
+
+            @classmethod
+            def __init_subclass__(cls, random_keyword=False, **kw):
+                super().__init_subclass__(**kw)
+                cls._set_random_keyword_used_here = random_keyword
+
+        class User(BaseUser):
+            __tablename__ = "user"
+            id_ = Column(Integer, ForeignKey("base.id_"), primary_key=True)
+
+        # Check the default option
+        eq_(User._set_random_keyword_used_here, False)
+
+        # Build the metaclass with a keyword!
+        bases = (BaseUser,)
+        UserType = DeclarativeMeta("UserType", bases, {}, random_keyword=True)
+
+        # Check to see if __init_subclass__ works in supported versions
+        eq_(UserType._set_random_keyword_used_here, True)
 
 
 def _produce_test(inline, stringbased):
