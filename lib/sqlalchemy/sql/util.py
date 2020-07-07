@@ -27,6 +27,7 @@ from .elements import _textual_label_reference
 from .elements import BindParameter
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import Label
 from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
@@ -279,14 +280,31 @@ def unwrap_order_by(clause):
     cols = util.column_set()
     result = []
     stack = deque([clause])
+
+    # examples
+    # column -> ASC/DESC == column
+    # column -> ASC/DESC -> label == column
+    # column -> label -> ASC/DESC -> label == column
+    # scalar_select -> label -> ASC/DESC == scalar_select -> label
+
     while stack:
         t = stack.popleft()
         if isinstance(t, ColumnElement) and (
             not isinstance(t, UnaryExpression)
             or not operators.is_ordering_modifier(t.modifier)
         ):
-            if isinstance(t, _label_reference):
+            if isinstance(t, Label) and not isinstance(
+                t.element, ScalarSelect
+            ):
                 t = t.element
+
+                stack.append(t)
+                continue
+            elif isinstance(t, _label_reference):
+                t = t.element
+
+                stack.append(t)
+                continue
             if isinstance(t, (_textual_label_reference)):
                 continue
             if t not in cols:
