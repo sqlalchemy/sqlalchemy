@@ -1597,6 +1597,21 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
         ):
             eq_([User(id=7), User(id=9), User(id=8)], q.all())
 
+    def test_columns_augmented_roundtrip_two(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        q = (
+            sess.query(User)
+            .join("addresses")
+            .distinct()
+            .order_by(desc(Address.email_address).label("foo"))
+        )
+        with testing.expect_deprecated(
+            "ORDER BY columns added implicitly due to "
+        ):
+            eq_([User(id=7), User(id=9), User(id=8)], q.all())
+
     def test_columns_augmented_roundtrip_three(self):
         User, Address = self.classes.User, self.classes.Address
 

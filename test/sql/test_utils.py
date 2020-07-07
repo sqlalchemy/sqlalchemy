@@ -4,9 +4,14 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.sql import base as sql_base
+from sqlalchemy.sql import coercions
+from sqlalchemy.sql import column
+from sqlalchemy.sql import ColumnElement
+from sqlalchemy.sql import roles
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -89,3 +94,28 @@ class MiscTest(fixtures.TestBase):
         eq_(o4.bat, "hi")
 
         assert_raises(TypeError, opt2.safe_merge, o4)
+
+    @testing.combinations(
+        (column("q"), [column("q")]),
+        (column("q").desc(), [column("q")]),
+        (column("q").desc().label(None), [column("q")]),
+        (column("q").label(None).desc(), [column("q")]),
+        (column("q").label(None).desc().label(None), [column("q")]),
+        ("foo", []),  # textual label reference
+        (
+            select([column("q")]).scalar_subquery().label(None),
+            [select([column("q")]).scalar_subquery().label(None)],
+        ),
+        (
+            select([column("q")]).scalar_subquery().label(None).desc(),
+            [select([column("q")]).scalar_subquery().label(None)],
+        ),
+    )
+    def test_unwrap_order_by(self, expr, expected):
+
+        expr = coercions.expect(roles.OrderByRole, expr)
+
+        unwrapped = sql_util.unwrap_order_by(expr)
+
+        for a, b in util.zip_longest(unwrapped, expected):
+            assert a is not None and a.compare(b)
