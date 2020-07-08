@@ -487,10 +487,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_future_lambda(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = Session(future=True)
 
         john, jack, jill, jane = (
-            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+            sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
         sess.execute(
@@ -504,7 +504,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(
-            sess.execute(future_select(User.age).order_by(User.id)).all(),
+            sess.execute(select(User.age).order_by(User.id)).all(),
             list(zip([25, 37, 29, 27])),
         )
 
@@ -623,10 +623,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session()
+        sess = Session(future=True)
 
         john, jack, jill, jane = (
-            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+            sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
         with self.sql_execution_asserter() as asserter:
@@ -711,10 +711,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_delete_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session()
+        sess = Session(future=True)
 
         john, jack, jill, jane = (
-            sess.execute(future_select(User).order_by(User.id)).scalars().all()
+            sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
         in_(john, sess)
