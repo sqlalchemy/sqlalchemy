@@ -191,7 +191,8 @@ class TransactionTest(fixtures.TestBase):
         cls.users.create(testing.db)
 
     def teardown(self):
-        testing.db.execute(self.users.delete()).close()
+        with testing.db.connect() as conn:
+            conn.execute(self.users.delete())
 
     @classmethod
     def teardown_class(cls):
@@ -350,15 +351,15 @@ class DeprecatedEngineFeatureTest(fixtures.TablesTest):
         return go
 
     def _assert_no_data(self):
-        eq_(
-            testing.db.scalar(
-                select([func.count("*")]).select_from(self.table)
-            ),
-            0,
-        )
+        with testing.db.connect() as conn:
+            eq_(
+                conn.scalar(select(func.count("*")).select_from(self.table)),
+                0,
+            )
 
     def _assert_fn(self, x, value=None):
-        eq_(testing.db.execute(self.table.select()).fetchall(), [(x, value)])
+        with testing.db.connect() as conn:
+            eq_(conn.execute(self.table.select()).fetchall(), [(x, value)])
 
     def test_transaction_engine_fn_commit(self):
         fn = self._trans_fn()
@@ -590,11 +591,12 @@ class RawExecuteTest(fixtures.TablesTest):
             ).default_from()
         )
 
-        result = (
-            connection.execution_options(no_parameters=True)
-            .execute(stmt)
-            .scalar()
-        )
+        with _string_deprecation_expect():
+            result = (
+                connection.execution_options(no_parameters=True)
+                .execute(stmt)
+                .scalar()
+            )
         eq_(result, "%")
 
     @testing.requires.qmark_paramstyle

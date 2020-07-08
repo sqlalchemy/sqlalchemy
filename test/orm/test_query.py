@@ -35,7 +35,6 @@ from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -175,9 +174,9 @@ class RowTupleTest(QueryTest):
         (lambda s, users: s.query(users),),
         (lambda s, User: s.query(User.id, User.name),),
         (lambda s, users: s.query(users.c.id, users.c.name),),
-        (lambda s, users: future_select(users),),
-        (lambda s, User: future_select(User.id, User.name),),
-        (lambda s, users: future_select(users.c.id, users.c.name),),
+        (lambda s, users: select(users),),
+        (lambda s, User: select(User.id, User.name),),
+        (lambda s, users: select(users.c.id, users.c.name),),
     )
     def test_modern_tuple_future(self, test_case):
         # check we are not getting a LegacyRow back
@@ -186,7 +185,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session()
+        s = Session(future=True)
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -194,9 +193,9 @@ class RowTupleTest(QueryTest):
         assert "jack" in row
 
     @testing.combinations(
-        (lambda s, users: select([users]),),
-        (lambda s, User: select([User.id, User.name]),),
-        (lambda s, users: select([users.c.id, users.c.name]),),
+        (lambda s, users: select(users),),
+        (lambda s, User: select(User.id, User.name),),
+        (lambda s, users: select(users.c.id, users.c.name),),
     )
     def test_legacy_tuple_old_select(self, test_case):
 
@@ -209,7 +208,15 @@ class RowTupleTest(QueryTest):
         q = testing.resolve_lambda(test_case, **locals())
 
         row = s.execute(q.order_by(User.id)).first()
+
+        # old style row
         assert "jack" not in row
+        assert "jack" in tuple(row)
+
+        row = s.execute(q.order_by(User.id), future=True).first()
+
+        # new style row - not sure what to do here w/ future yet
+        assert "jack" in row
         assert "jack" in tuple(row)
 
     def test_entity_mapping_access(self):
@@ -1574,7 +1581,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             return "max(id)"
 
         # assert that there is no "AS max_" or any label of any kind.
-        eq_(str(select([not_named_max()])), "SELECT max(id)")
+        eq_(str(select(not_named_max())), "SELECT max(id)")
 
         # ColumnElement still handles it by applying label()
         q = sess.query(not_named_max()).select_from(users)
@@ -1793,7 +1800,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         q1 = s.query(User).filter(User.name == "ed")
 
         self.assert_compile(
-            select([q1.with_labels().subquery()]),
+            select(q1.with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name "
@@ -1827,7 +1834,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q1 = s.query(User.id, User.name).group_by(User.name)
         self.assert_compile(
-            select([q1.with_labels().subquery()]),
+            select(q1.with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users GROUP BY users.name) "
@@ -1842,7 +1849,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test append something to group_by
         self.assert_compile(
-            select([q1.group_by(User.id).with_labels().subquery()]),
+            select(q1.group_by(User.id).with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users "
@@ -1857,7 +1864,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         # test cancellation by using None, replacement with something else
         self.assert_compile(
             select(
-                [q1.group_by(None).group_by(User.id).with_labels().subquery()]
+                q1.group_by(None).group_by(User.id).with_labels().subquery()
             ),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
@@ -1866,7 +1873,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select([q1.group_by(None).with_labels().subquery()]),
+            select(q1.group_by(None).with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users) AS anon_1",
@@ -1886,7 +1893,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q1 = s.query(User.id, User.name).order_by(User.name)
         self.assert_compile(
-            select([q1.with_labels().subquery()]),
+            select(q1.with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users ORDER BY users.name) "
@@ -1901,7 +1908,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test append something to order_by
         self.assert_compile(
-            select([q1.order_by(User.id).with_labels().subquery()]),
+            select(q1.order_by(User.id).with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users "
@@ -1916,7 +1923,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         # test cancellation by using None, replacement with something else
         self.assert_compile(
             select(
-                [q1.order_by(None).order_by(User.id).with_labels().subquery()]
+                q1.order_by(None).order_by(User.id).with_labels().subquery()
             ),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
@@ -1925,7 +1932,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select([q1.order_by(None).with_labels().subquery()]),
+            select(q1.order_by(None).with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users) AS anon_1",
@@ -1939,7 +1946,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         # test cancellation by using None, replacement with something else
         self.assert_compile(
             select(
-                [q1.order_by(False).order_by(User.id).with_labels().subquery()]
+                q1.order_by(False).order_by(User.id).with_labels().subquery()
             ),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
@@ -1948,7 +1955,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select([q1.order_by(False).with_labels().subquery()]),
+            select(q1.order_by(False).with_labels().subquery()),
             "SELECT anon_1.users_id, anon_1.users_name FROM "
             "(SELECT users.id AS users_id, "
             "users.name AS users_name FROM users) AS anon_1",
@@ -1979,7 +1986,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
         stmt = (
-            select([func.max(addresses.c.email_address)])
+            select(func.max(addresses.c.email_address))
             .where(addresses.c.user_id == users.c.id)
             .correlate(users)
         )
@@ -3557,13 +3564,12 @@ class CountTest(QueryTest):
         s = create_session()
 
         eq_(
-            s.execute(future_select(func.count()).select_from(User)).scalar(),
-            4,
+            s.execute(select(func.count()).select_from(User)).scalar(), 4,
         )
 
         eq_(
             s.execute(
-                future_select(func.count()).filter(User.name.endswith("ed"))
+                select(func.count()).filter(User.name.endswith("ed"))
             ).scalar(),
             2,
         )
@@ -3601,14 +3607,14 @@ class CountTest(QueryTest):
 
         s = create_session()
 
-        stmt = future_select(User, Address).join(Address, true())
+        stmt = select(User, Address).join(Address, true())
 
-        stmt = future_select(func.count()).select_from(stmt.subquery())
+        stmt = select(func.count()).select_from(stmt.subquery())
         eq_(s.scalar(stmt), 20)  # cartesian product
 
-        stmt = future_select(User, Address).join(Address)
+        stmt = select(User, Address).join(Address)
 
-        stmt = future_select(func.count()).select_from(stmt.subquery())
+        stmt = select(func.count()).select_from(stmt.subquery())
         eq_(s.scalar(stmt), 5)
 
     def test_nested(self):
@@ -3629,22 +3635,19 @@ class CountTest(QueryTest):
 
         s = create_session()
 
-        stmt = future_select(User, Address).join(Address, true()).limit(2)
+        stmt = select(User, Address).join(Address, true()).limit(2)
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            2,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 2,
         )
 
-        stmt = future_select(User, Address).join(Address, true()).limit(100)
+        stmt = select(User, Address).join(Address, true()).limit(100)
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            20,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 20,
         )
 
-        stmt = future_select(User, Address).join(Address).limit(100)
+        stmt = select(User, Address).join(Address).limit(100)
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            5,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 5,
         )
 
     def test_cols(self):
@@ -3676,41 +3679,35 @@ class CountTest(QueryTest):
 
         s = create_session()
 
-        stmt = future_select(func.count(distinct(User.name)))
+        stmt = select(func.count(distinct(User.name)))
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            1,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 1,
         )
 
-        stmt = future_select(func.count(distinct(User.name))).distinct()
+        stmt = select(func.count(distinct(User.name))).distinct()
 
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            1,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 1,
         )
 
-        stmt = future_select(User.name)
+        stmt = select(User.name)
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            4,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 4,
         )
 
-        stmt = future_select(User.name, Address).join(Address, true())
+        stmt = select(User.name, Address).join(Address, true())
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            20,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 20,
         )
 
-        stmt = future_select(Address.user_id)
+        stmt = select(Address.user_id)
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            5,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 5,
         )
 
         stmt = stmt.distinct()
         eq_(
-            s.scalar(future_select(func.count()).select_from(stmt.subquery())),
-            3,
+            s.scalar(select(func.count()).select_from(stmt.subquery())), 3,
         )
 
 
@@ -4561,7 +4558,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         eq_(
             s.query(User)
             .from_statement(
-                select([column("id"), column("name")])
+                select(column("id"), column("name"))
                 .select_from(table("users"))
                 .order_by("id")
             )
@@ -6086,7 +6083,7 @@ class SessionBindTest(QueryTest):
         mapper.add_property(
             "score",
             column_property(
-                select([func.sum(Address.id)])
+                select(func.sum(Address.id))
                 .where(Address.user_id == User.id)
                 .scalar_subquery()
             ),

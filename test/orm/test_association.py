@@ -223,9 +223,9 @@ class AssociationTest(fixtures.MappedTest):
         )
         sess.add_all((item1, item2))
         sess.flush()
-        eq_(select([func.count("*")]).select_from(item_keywords).scalar(), 3)
+        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 3)
 
         sess.delete(item1)
         sess.delete(item2)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(item_keywords).scalar(), 0)
+        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 0)

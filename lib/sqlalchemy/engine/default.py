@@ -393,9 +393,7 @@ class DefaultDialect(interfaces.Dialect):
             parameters = {}
 
         def check_unicode(test):
-            statement = cast_to(
-                expression.select([test]).compile(dialect=self)
-            )
+            statement = cast_to(expression.select(test).compile(dialect=self))
             try:
                 cursor = connection.connection.cursor()
                 connection._cursor_execute(cursor, statement, parameters)
@@ -453,7 +451,7 @@ class DefaultDialect(interfaces.Dialect):
             cursor.execute(
                 cast_to(
                     expression.select(
-                        [expression.literal_column("'x'").label("some_label")]
+                        expression.literal_column("'x'").label("some_label")
                     ).compile(dialect=self)
                 )
             )

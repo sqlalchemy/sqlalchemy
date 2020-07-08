@@ -290,7 +290,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_alias(self):
         t = table("sometable", column("col1"), column("col2"))
-        s = select([t.alias()])
+        s = select(t.alias())
         self.assert_compile(
             s,
             "SELECT sometable_1.col1, sometable_1.col2 "
@@ -340,7 +340,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "sometable", m, Column("col1", Integer), Column("col2", Integer)
         )
         self.assert_compile(
-            select([func.max(t.c.col1)]),
+            select(func.max(t.c.col1)),
             "SELECT max(sometable.col1) AS max_1 FROM " "sometable",
         )
 

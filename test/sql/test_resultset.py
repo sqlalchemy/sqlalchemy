@@ -29,7 +29,6 @@ from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.future import select as future_select
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.selectable import TextualSelect
@@ -1087,6 +1086,15 @@ class CursorResultTest(fixtures.TablesTest):
         # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
         eq_(dict(row), {"user_id": 1, "user_name": "foo"})
         eq_(row.keys(), ["user_id", "user_name"])
+
+    def test_row_namedtuple_legacy_ok(self, connection):
+        users = self.tables.users
+
+        connection.execute(users.insert(), user_id=1, user_name="foo")
+        result = connection.execute(users.select())
+        row = result.first()
+        eq_(row.user_id, 1)
+        eq_(row.user_name, "foo")
 
     def test_keys_anon_labels(self, connection):
         """test [ticket:3483]"""
@@ -2575,9 +2583,7 @@ class GenerativeResultTest(fixtures.TablesTest):
             ],
         )
 
-        result = connection.execute(
-            future_select(users).order_by(users.c.user_id)
-        )
+        result = connection.execute(select(users).order_by(users.c.user_id))
         eq_(
             result.all(),
             [(7, "jack", 1, 2), (8, "ed", 2, 3), (9, "fred", 15, 20)],
@@ -2600,9 +2606,7 @@ class GenerativeResultTest(fixtures.TablesTest):
             ],
         )
 
-        result = connection.execute(
-            future_select(users).order_by(users.c.user_id)
-        )
+        result = connection.execute(select(users).order_by(users.c.user_id))
 
         all_ = result.columns(*columns).all()
         eq_(all_, expected)
@@ -2617,9 +2621,7 @@ class GenerativeResultTest(fixtures.TablesTest):
             [{"user_id": 7, "user_name": "jack", "x": 1, "y": 2}],
         )
 
-        result = connection.execute(
-            future_select(users).order_by(users.c.user_id)
-        )
+        result = connection.execute(select(users).order_by(users.c.user_id))
 
         all_ = (
             result.columns("x", "y", "user_name", "user_id")
@@ -2638,9 +2640,7 @@ class GenerativeResultTest(fixtures.TablesTest):
             [{"user_id": 7, "user_name": "jack", "x": 1, "y": 2}],
         )
 
-        result = connection.execute(
-            future_select(users).order_by(users.c.user_id)
-        )
+        result = connection.execute(select(users).order_by(users.c.user_id))
 
         result = result.columns("x", "y", "user_name")
         getter = result._metadata._getter("y")
@@ -2662,9 +2662,7 @@ class GenerativeResultTest(fixtures.TablesTest):
             ],
         )
 
-        result = connection.execute(
-            future_select(users).order_by(users.c.user_id)
-        )
+        result = connection.execute(select(users).order_by(users.c.user_id))
 
         start = 0
         for partition in result.columns(0, 1).partitions(20):

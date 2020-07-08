@@ -386,7 +386,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         # connection works
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
 
         # create a second connection within the pool, which we'll ensure
         # also goes away
@@ -401,7 +401,7 @@ class MockReconnectTest(fixtures.TestBase):
         # set it to fail
 
         self.dbapi.shutdown()
-        assert_raises(tsa.exc.DBAPIError, conn.execute, select([1]))
+        assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
         # assert was invalidated
 
@@ -425,7 +425,7 @@ class MockReconnectTest(fixtures.TestBase):
             [[call()], [call()], []],
         )
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
         conn.close()
 
         eq_(
@@ -438,7 +438,7 @@ class MockReconnectTest(fixtures.TestBase):
         trans = conn.begin()
         self.dbapi.shutdown()
 
-        assert_raises(tsa.exc.DBAPIError, conn.execute, select([1]))
+        assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
         eq_([c.close.mock_calls for c in self.dbapi.connections], [[call()]])
         assert not conn.closed
@@ -448,7 +448,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert trans.is_active
 
@@ -466,7 +466,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert not trans.is_active
 
@@ -479,7 +479,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         trans.rollback()
         assert not trans.is_active
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
         eq_(
             [c.close.mock_calls for c in self.dbapi.connections],
@@ -502,7 +502,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert not trans.is_active
 
@@ -518,13 +518,13 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert not trans.is_active
 
         trans.rollback()
         assert not trans.is_active
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
     def test_commit_fails_contextmanager(self):
@@ -559,7 +559,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "This connection is on an inactive transaction.  Please rollback",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert not trans.is_active
 
@@ -575,13 +575,13 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "This connection is on an inactive transaction.  Please rollback",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert not trans.is_active
 
         trans.rollback()
         assert not trans.is_active
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
     def test_invalidate_dont_call_finalizer(self):
@@ -595,13 +595,13 @@ class MockReconnectTest(fixtures.TestBase):
     def test_conn_reusable(self):
         conn = self.db.connect()
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
 
         eq_(self.dbapi.connect.mock_calls, [self.mock_connect])
 
         self.dbapi.shutdown()
 
-        assert_raises(tsa.exc.DBAPIError, conn.execute, select([1]))
+        assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
         assert not conn.closed
         assert conn.invalidated
@@ -609,7 +609,7 @@ class MockReconnectTest(fixtures.TestBase):
         eq_([c.close.mock_calls for c in self.dbapi.connections], [[call()]])
 
         # test reconnects
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
         eq_(
@@ -622,7 +622,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         self.dbapi.shutdown()
 
-        assert_raises(tsa.exc.DBAPIError, conn.execute, select([1]))
+        assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
         conn.close()
         assert conn.closed
@@ -631,7 +631,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
     def test_noreconnect_execute_plus_closewresult(self):
@@ -644,7 +644,7 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.DBAPIError,
             "something broke on execute but we didn't lose the connection",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
         assert conn.closed
@@ -666,7 +666,7 @@ class MockReconnectTest(fixtures.TestBase):
                 "something broke on rollback but we didn't "
                 "lose the connection",
                 conn.execute,
-                select([1]),
+                select(1),
             )
 
         assert conn.closed
@@ -676,13 +676,13 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
     def test_reconnect_on_reentrant(self):
         conn = self.db.connect()
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
 
         assert len(self.dbapi.connections) == 1
 
@@ -698,7 +698,7 @@ class MockReconnectTest(fixtures.TestBase):
                 tsa.exc.DBAPIError,
                 "Lost the DB connection on rollback",
                 conn.execute,
-                select([1]),
+                select(1),
             )
 
         assert not conn.closed
@@ -719,7 +719,7 @@ class MockReconnectTest(fixtures.TestBase):
                 tsa.exc.DBAPIError,
                 "Lost the DB connection on rollback",
                 conn.execute,
-                select([1]),
+                select(1),
             )
 
         assert conn.closed
@@ -729,12 +729,12 @@ class MockReconnectTest(fixtures.TestBase):
             tsa.exc.ResourceClosedError,
             "This Connection is closed",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
     def test_check_disconnect_no_cursor(self):
         conn = self.db.connect()
-        result = conn.execute(select([1]))
+        result = conn.execute(select(1))
         result.cursor.close()
         conn.close()
 
@@ -841,7 +841,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         def go():
             with conn.begin():
-                conn.execute(select([1]))
+                conn.execute(select(1))
 
         assert_raises(MockExitIsh, go)
 
@@ -849,7 +849,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         eq_(pool._invalidate_time, 0)  # pool not invalidated
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
     def test_invalidate_conn_interrupt_nodisconnect_workaround(self):
@@ -866,7 +866,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         def go():
             with conn.begin():
-                conn.execute(select([1]))
+                conn.execute(select(1))
 
         assert_raises(MockExitIsh, go)
 
@@ -874,7 +874,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         eq_(pool._invalidate_time, 0)  # pool not invalidated
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
     def test_invalidate_conn_w_contextmanager_disconnect(self):
@@ -887,7 +887,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         def go():
             with conn.begin():
-                conn.execute(select([1]))
+                conn.execute(select(1))
 
         assert_raises(exc.DBAPIError, go)  # wraps a MockDisconnect
 
@@ -895,7 +895,7 @@ class MockReconnectTest(fixtures.TestBase):
 
         ne_(pool._invalidate_time, 0)  # pool is invalidated
 
-        conn.execute(select([1]))
+        conn.execute(select(1))
         assert not conn.invalidated
 
 
@@ -1006,26 +1006,26 @@ class RealReconnectTest(fixtures.TestBase):
     def test_reconnect(self):
         conn = self.engine.connect()
 
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.closed
 
         self.engine.test_shutdown()
 
-        _assert_invalidated(conn.execute, select([1]))
+        _assert_invalidated(conn.execute, select(1))
 
         assert not conn.closed
         assert conn.invalidated
 
         assert conn.invalidated
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.invalidated
 
         # one more time
         self.engine.test_shutdown()
-        _assert_invalidated(conn.execute, select([1]))
+        _assert_invalidated(conn.execute, select(1))
 
         assert conn.invalidated
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.invalidated
 
         conn.close()
@@ -1035,15 +1035,15 @@ class RealReconnectTest(fixtures.TestBase):
         c1 = self.engine.connect()
         c2 = self.engine.connect()
 
-        eq_(c1.execute(select([1])).scalar(), 1)
+        eq_(c1.execute(select(1)).scalar(), 1)
 
         self.engine.test_shutdown()
 
-        _assert_invalidated(c1.execute, select([1]))
+        _assert_invalidated(c1.execute, select(1))
 
         p2 = self.engine.pool
 
-        _assert_invalidated(c2.execute, select([1]))
+        _assert_invalidated(c2.execute, select(1))
 
         # pool isn't replaced
         assert self.engine.pool is p2
@@ -1053,11 +1053,11 @@ class RealReconnectTest(fixtures.TestBase):
 
         with patch.object(self.engine.pool, "logger") as logger:
             c1_branch = c1.connect()
-            eq_(c1_branch.execute(select([1])).scalar(), 1)
+            eq_(c1_branch.execute(select(1)).scalar(), 1)
 
             self.engine.test_shutdown()
 
-            _assert_invalidated(c1_branch.execute, select([1]))
+            _assert_invalidated(c1_branch.execute, select(1))
             assert c1.invalidated
             assert c1_branch.invalidated
 
@@ -1071,11 +1071,11 @@ class RealReconnectTest(fixtures.TestBase):
         c1 = self.engine.connect()
 
         c1_branch = c1.connect()
-        eq_(c1_branch.execute(select([1])).scalar(), 1)
+        eq_(c1_branch.execute(select(1)).scalar(), 1)
 
         self.engine.test_shutdown()
 
-        _assert_invalidated(c1.execute, select([1]))
+        _assert_invalidated(c1.execute, select(1))
         assert c1.invalidated
         assert c1_branch.invalidated
 
@@ -1088,11 +1088,11 @@ class RealReconnectTest(fixtures.TestBase):
 
         c1_branch = c1.connect()
 
-        eq_(c1_branch.execute(select([1])).scalar(), 1)
+        eq_(c1_branch.execute(select(1)).scalar(), 1)
 
         self.engine.test_shutdown()
 
-        _assert_invalidated(c1_branch.execute, select([1]))
+        _assert_invalidated(c1_branch.execute, select(1))
         assert not c1_branch.closed
         assert not c1_branch._still_open_and_dbapi_connection_is_valid
 
@@ -1110,7 +1110,7 @@ class RealReconnectTest(fixtures.TestBase):
         with expect_warnings(
             "An exception has occurred during handling .*", py2konly=True
         ):
-            assert_raises(tsa.exc.DBAPIError, conn.execute, select([1]))
+            assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
     def test_rollback_on_invalid_plain(self):
         conn = self.engine.connect()
@@ -1176,36 +1176,36 @@ class RealReconnectTest(fixtures.TestBase):
             options=dict(poolclass=pool.NullPool)
         )
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.closed
         engine.test_shutdown()
-        _assert_invalidated(conn.execute, select([1]))
+        _assert_invalidated(conn.execute, select(1))
         assert not conn.closed
         assert conn.invalidated
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.invalidated
 
     def test_close(self):
         conn = self.engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.closed
 
         self.engine.test_shutdown()
 
-        _assert_invalidated(conn.execute, select([1]))
+        _assert_invalidated(conn.execute, select(1))
 
         conn.close()
         conn = self.engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
 
     def test_with_transaction(self):
         conn = self.engine.connect()
         trans = conn.begin()
         assert trans.is_valid
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.closed
         self.engine.test_shutdown()
-        _assert_invalidated(conn.execute, select([1]))
+        _assert_invalidated(conn.execute, select(1))
         assert not conn.closed
         assert conn.invalidated
         assert trans.is_active
@@ -1215,7 +1215,7 @@ class RealReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
         assert trans.is_active
         assert not trans.is_valid
@@ -1235,7 +1235,7 @@ class RealReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
         # still asks us..
@@ -1250,7 +1250,7 @@ class RealReconnectTest(fixtures.TestBase):
             tsa.exc.PendingRollbackError,
             "Can't reconnect until invalid transaction is rolled back",
             conn.execute,
-            select([1]),
+            select(1),
         )
 
         #  OK!
@@ -1260,7 +1260,7 @@ class RealReconnectTest(fixtures.TestBase):
 
         # conn still invalid but we can reconnect
         assert conn.invalidated
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         assert not conn.invalidated
 
 
@@ -1271,7 +1271,7 @@ class RecycleTest(fixtures.TestBase):
         engine = engines.reconnecting_engine()
 
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
         # set the pool recycle down to 1.
@@ -1290,7 +1290,7 @@ class RecycleTest(fixtures.TestBase):
 
         # can connect, no exception
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
 
@@ -1301,7 +1301,7 @@ class PrePingRealTest(fixtures.TestBase):
         engine = engines.reconnecting_engine(options={"pool_pre_ping": True})
 
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         stale_connection = conn.connection.connection
         conn.close()
 
@@ -1309,7 +1309,7 @@ class PrePingRealTest(fixtures.TestBase):
         engine.test_restart()
 
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
         def exercise_stale_connection():
@@ -1322,7 +1322,7 @@ class PrePingRealTest(fixtures.TestBase):
         engine = engines.reconnecting_engine(options={"pool_pre_ping": True})
 
         conn = engine.connect()
-        eq_(conn.execute(select([1])).scalar(), 1)
+        eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
         engine.test_shutdown(stop=True)

@@ -468,13 +468,13 @@ class ForeignPKTest(fixtures.MappedTest):
         session.flush()
 
         p_count = (
-            select([func.count("*")])
+            select(func.count("*"))
             .where(people.c.person == "im the key")
             .scalar()
         )
         eq_(p_count, 1)
         eq_(
-            select([func.count("*")])
+            select(func.count("*"))
             .where(peoplesites.c.person == "im the key")
             .scalar(),
             1,
@@ -580,7 +580,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
     def test_insert(self):
         User = self.classes.User
 
-        u = User(name="test", counter=sa.select([5]).scalar_subquery())
+        u = User(name="test", counter=sa.select(5).scalar_subquery())
 
         session = create_session()
         session.add(u)
@@ -717,13 +717,13 @@ class PassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 4)
+        eq_(select(func.count("*")).select_from(myothertable).scalar(), 4)
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
         session.flush()
 
-        eq_(select([func.count("*")]).select_from(mytable).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 0)
+        eq_(select(func.count("*")).select_from(mytable).scalar(), 0)
+        eq_(select(func.count("*")).select_from(myothertable).scalar(), 0)
 
     @testing.emits_warning(
         r".*'passive_deletes' is normally configured on one-to-many"
@@ -761,16 +761,22 @@ class PassiveDeletesTest(fixtures.MappedTest):
         session.add(mco)
         session.flush()
 
-        eq_(select([func.count("*")]).select_from(mytable).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 1)
+        eq_(session.scalar(select(func.count("*")).select_from(mytable)), 1)
+        eq_(
+            session.scalar(select(func.count("*")).select_from(myothertable)),
+            1,
+        )
 
         session.expire(mco, ["myclass"])
         session.delete(mco)
         session.flush()
 
         # mytable wasn't deleted, is the point.
-        eq_(select([func.count("*")]).select_from(mytable).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 0)
+        eq_(session.scalar(select(func.count("*")).select_from(mytable)), 1)
+        eq_(
+            session.scalar(select(func.count("*")).select_from(myothertable)),
+            0,
+        )
 
     def test_aaa_m2o_emits_warning(self):
         myothertable, MyClass, MyOtherClass, mytable = (
@@ -886,7 +892,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 4)
+        eq_(select(func.count("*")).select_from(myothertable).scalar(), 4)
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
         assert_raises(sa.exc.DBAPIError, session.flush)
@@ -917,7 +923,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        eq_(select([func.count("*")]).select_from(myothertable).scalar(), 1)
+        eq_(select(func.count("*")).select_from(myothertable).scalar(), 1)
 
         mc = session.query(MyClass).get(mc.id)
         session.delete(mc)
@@ -2120,8 +2126,8 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(u.id)
         session.delete(u)
         session.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(addresses).scalar(), 0)
+        eq_(select(func.count("*")).select_from(users).scalar(), 0)
+        eq_(select(func.count("*")).select_from(addresses).scalar(), 0)
 
     def test_batch_mode(self):
         """The 'batch=False' flag on mapper()"""
@@ -2595,10 +2601,10 @@ class ManyToManyTest(_fixtures.FixtureTest):
         session.add(i)
         session.flush()
 
-        eq_(select([func.count("*")]).select_from(item_keywords).scalar(), 2)
+        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 2)
         i.keywords = []
         session.flush()
-        eq_(select([func.count("*")]).select_from(item_keywords).scalar(), 0)
+        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 0)
 
     def test_scalar(self):
         """sa.dependency won't delete an m2m relationship referencing None."""
@@ -2904,10 +2910,10 @@ class SaveTest3(fixtures.MappedTest):
         session.add(i)
         session.flush()
 
-        eq_(select([func.count("*")]).select_from(assoc).scalar(), 2)
+        eq_(select(func.count("*")).select_from(assoc).scalar(), 2)
         i.keywords = []
         session.flush()
-        eq_(select([func.count("*")]).select_from(assoc).scalar(), 0)
+        eq_(select(func.count("*")).select_from(assoc).scalar(), 0)
 
 
 class BooleanColTest(fixtures.MappedTest):

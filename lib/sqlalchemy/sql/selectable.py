@@ -24,6 +24,7 @@ from .annotation import SupportsCloneAnnotations
 from .base import _clone
 from .base import _cloned_difference
 from .base import _cloned_intersection
+from .base import _entity_namespace_key
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
@@ -83,7 +84,7 @@ def subquery(alias, *args, **kwargs):
      :func:`_expression.select` function.
 
     """
-    return Select(*args, **kwargs).subquery(alias)
+    return Select.create_legacy_select(*args, **kwargs).subquery(alias)
 
 
 class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
@@ -468,8 +469,38 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     _use_schema_map = False
 
-    def select(self, whereclause=None, **params):
-        """Return a SELECT of this :class:`_expression.FromClause`.
+    @util.deprecated_params(
+        whereclause=(
+            "2.0",
+            "The :paramref:`_sql.FromClause.select().whereclause` parameter "
+            "is deprecated and will be removed in version 2.0.  "
+            "Please make use of "
+            "the :meth:`.Select.where` "
+            "method to add WHERE criteria to the SELECT statement.",
+        ),
+        kwargs=(
+            "2.0",
+            "The :meth:`_sql.FromClause.select` method will no longer accept "
+            "keyword arguments in version 2.0.  Please use generative methods "
+            "from the "
+            ":class:`_sql.Select` construct in order to apply additional "
+            "modifications.",
+        ),
+    )
+    def select(self, whereclause=None, **kwargs):
+        r"""Return a SELECT of this :class:`_expression.FromClause`.
+
+
+        e.g.::
+
+            stmt = some_table.select().where(some_table.c.id == 5)
+
+        :param whereclause: a WHERE clause, equivalent to calling the
+         :meth:`_sql.Select.where` method.
+
+        :param \**kwargs: additional keyword arguments are passed to the
+         legacy constructor for :class:`_sql.Select` described at
+         :meth:`_sql.Select.create_legacy_select`.
 
         .. seealso::
 
@@ -477,8 +508,9 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             method which allows for arbitrary column lists.
 
         """
-
-        return Select([self], whereclause, **params)
+        if whereclause is not None:
+            kwargs["whereclause"] = whereclause
+        return Select._create_select_from_fromclause(self, [self], **kwargs)
 
     def join(self, right, onclause=None, isouter=False, full=False):
         """Return a :class:`_expression.Join` from this
@@ -1138,24 +1170,45 @@ class Join(roles.DMLTableRole, FromClause):
                 "join explicitly." % (a.description, b.description)
             )
 
+    @util.deprecated_params(
+        whereclause=(
+            "2.0",
+            "The :paramref:`_sql.Join.select().whereclause` parameter "
+            "is deprecated and will be removed in version 2.0.  "
+            "Please make use of "
+            "the :meth:`.Select.where` "
+            "method to add WHERE criteria to the SELECT statement.",
+        ),
+        kwargs=(
+            "2.0",
+            "The :meth:`_sql.Join.select` method will no longer accept "
+            "keyword arguments in version 2.0.  Please use generative "
+            "methods from the "
+            ":class:`_sql.Select` construct in order to apply additional "
+            "modifications.",
+        ),
+    )
     def select(self, whereclause=None, **kwargs):
         r"""Create a :class:`_expression.Select` from this
         :class:`_expression.Join`.
 
-        The equivalent long-hand form, given a :class:`_expression.Join`
-        object
-        ``j``, is::
+        E.g.::
 
-            from sqlalchemy import select
-            j = select([j.left, j.right], **kw).\
-                        where(whereclause).\
-                        select_from(j)
+            stmt = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
 
-        :param whereclause: the WHERE criterion that will be sent to
-          the :func:`select()` function
+            stmt = stmt.select()
 
-        :param \**kwargs: all other kwargs are sent to the
-          underlying :func:`select()` function.
+        The above will produce a SQL string resembling::
+
+            SELECT table_a.id, table_a.col, table_b.id, table_b.a_id
+            FROM table_a JOIN table_b ON table_a.id = table_b.a_id
+
+        :param whereclause: WHERE criteria, same as calling
+          :meth:`_sql.Select.where` on the resulting statement
+
+        :param \**kwargs: additional keyword arguments are passed to the
+         legacy constructor for :class:`_sql.Select` described at
+         :meth:`_sql.Select.create_legacy_select`.
 
         """
         collist = [self.left, self.right]
@@ -2444,30 +2497,6 @@ class SelectBase(
     def select(self, *arg, **kw):
         return self._implicit_subquery.select(*arg, **kw)
 
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.SelectBase.join` method is deprecated "
-        "and will be removed in a future release; this method implicitly "
-        "creates a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then can be selected.",
-    )
-    def join(self, *arg, **kw):
-        return self._implicit_subquery.join(*arg, **kw)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.SelectBase.outerjoin` method is deprecated "
-        "and will be removed in a future release; this method implicitly "
-        "creates a subquery that should be explicit.  "
-        "Please call :meth:`_expression.SelectBase.subquery` "
-        "first in order to create "
-        "a subquery, which then can be selected.",
-    )
-    def outerjoin(self, *arg, **kw):
-        return self._implicit_subquery.outerjoin(*arg, **kw)
-
     @HasMemoized.memoized_attribute
     def _implicit_subquery(self):
         return self.subquery()
@@ -3102,6 +3131,16 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
             )
             for s in selects
         ]
+
+        if kwargs and util.SQLALCHEMY_WARN_20:
+            util.warn_deprecated_20(
+                "Set functions such as union(), union_all(), extract(), etc. "
+                "in SQLAlchemy 2.0 will accept a "
+                "series of SELECT statements only. "
+                "Please use generative methods such as order_by() for "
+                "additional modifications to this CompoundSelect.",
+                stacklevel=4,
+            )
 
         GenerativeSelect.__init__(self, **kwargs)
 
@@ -3770,7 +3809,6 @@ class Select(
 
     __visit_name__ = "select"
 
-    _is_future = False
     _setup_joins = ()
     _legacy_setup_joins = ()
 
@@ -3817,38 +3855,21 @@ class Select(
     ]
 
     @classmethod
-    def _create_select(cls, *entities):
-        r"""Construct an old style :class:`_expression.Select` using the
-        the 2.x style constructor.
-
-        """
-
-        self = cls.__new__(cls)
-        self._raw_columns = [
-            coercions.expect(roles.ColumnsClauseRole, ent) for ent in entities
-        ]
-
-        GenerativeSelect.__init__(self)
-
-        return self
-
-    @classmethod
     def _create_select_from_fromclause(cls, target, entities, *arg, **kw):
         if arg or kw:
-            if util.SQLALCHEMY_WARN_20:
-                util.warn_deprecated_20(
-                    "Passing arguments to %s.select() is deprecated and "
-                    "will be removed in SQLAlchemy 2.0.  "
-                    "Please use generative "
-                    "methods such as select().where(), etc."
-                    % (target.__class__.__name__,)
-                )
-            return Select(entities, *arg, **kw)
+            return Select.create_legacy_select(entities, *arg, **kw)
         else:
             return Select._create_select(*entities)
 
-    def __init__(
-        self,
+    @classmethod
+    @util.deprecated(
+        "2.0",
+        "The legacy calling style of :func:`_sql.select` is deprecated and "
+        "will be removed in SQLAlchemy 2.0.  Please use the new calling "
+        "style described at :func:`_sql.select`.",
+    )
+    def create_legacy_select(
+        cls,
         columns=None,
         whereclause=None,
         from_obj=None,
@@ -3859,18 +3880,25 @@ class Select(
         suffixes=None,
         **kwargs
     ):
-        """Construct a new :class:`_expression.Select` using the 1.x style
-        API.
+        """Construct a new :class:`_expression.Select` using the 1.x style API.
+
+        This method is called implicitly when the :func:`_expression.select`
+        construct is used and the first argument is a Python list or other
+        plain sequence object, which is taken to refer to the columns
+        collection.
+
+        .. versionchanged:: 1.4 Added the :meth:`.Select.create_legacy_select`
+           constructor which documents the calling style in use when the
+           :func:`.select` construct is invoked using 1.x-style arguments.
 
         Similar functionality is also available via the
         :meth:`_expression.FromClause.select` method on any
         :class:`_expression.FromClause`.
 
-        All arguments which accept :class:`_expression.ClauseElement`
-        arguments also
-        accept string arguments, which will be converted as appropriate into
-        either :func:`_expression.text` or
-        :func:`_expression.literal_column` constructs.
+        All arguments which accept :class:`_expression.ClauseElement` arguments
+        also accept string arguments, which will be converted as appropriate
+        into either :func:`_expression.text()` or
+        :func:`_expression.literal_column()` constructs.
 
         .. seealso::
 
@@ -4054,14 +4082,7 @@ class Select(
             :meth:`_expression.Select.apply_labels`
 
         """
-        if util.SQLALCHEMY_WARN_20:
-            util.warn_deprecated_20(
-                "The select() function in SQLAlchemy 2.0 will accept a "
-                "series of columns / tables and other entities only, "
-                "passed positionally. For forwards compatibility, use the "
-                "sqlalchemy.future.select() construct.",
-                stacklevel=4,
-            )
+        self = cls.__new__(cls)
 
         self._auto_correlate = correlate
 
@@ -4079,8 +4100,10 @@ class Select(
         except TypeError as err:
             util.raise_(
                 exc.ArgumentError(
-                    "columns argument to select() must "
-                    "be a Python list or other iterable"
+                    "select() construct created in legacy mode, i.e. with "
+                    "keyword arguments, must provide the columns argument as "
+                    "a Python list or other iterable.",
+                    code="c9ae",
                 ),
                 from_=err,
             )
@@ -4108,11 +4131,246 @@ class Select(
             self._setup_suffixes(suffixes)
 
         GenerativeSelect.__init__(self, **kwargs)
+        return self
+
+    @classmethod
+    def _create_future_select(cls, *entities):
+        r"""Construct a new :class:`_expression.Select` using the 2.
+        x style API.
+
+        .. versionadded:: 1.4 - The :func:`_sql.select` function now accepts
+           column arguments positionally.   The top-level :func:`_sql.select`
+           function will automatically use the 1.x or 2.x style API based on
+           the incoming argumnents; using :func:`_future.select` from the
+           ``sqlalchemy.future`` module will enforce that only the 2.x style
+           constructor is used.
+
+        Similar functionality is also available via the
+        :meth:`_expression.FromClause.select` method on any
+        :class:`_expression.FromClause`.
+
+        .. seealso::
+
+            :ref:`coretutorial_selecting` - Core Tutorial description of
+            :func:`_expression.select`.
+
+        :param \*entities:
+          Entities to SELECT from.  For Core usage, this is typically a series
+          of :class:`_expression.ColumnElement` and / or
+          :class:`_expression.FromClause`
+          objects which will form the columns clause of the resulting
+          statement.   For those objects that are instances of
+          :class:`_expression.FromClause` (typically :class:`_schema.Table`
+          or :class:`_expression.Alias`
+          objects), the :attr:`_expression.FromClause.c`
+          collection is extracted
+          to form a collection of :class:`_expression.ColumnElement` objects.
+
+          This parameter will also accept :class:`_expression.TextClause`
+          constructs as
+          given, as well as ORM-mapped classes.
+
+        """
+
+        self = cls.__new__(cls)
+        self._raw_columns = [
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
+            for ent in entities
+        ]
+
+        GenerativeSelect.__init__(self)
+
+        return self
+
+    _create_select = _create_future_select
+
+    @classmethod
+    def _create(cls, *args, **kw):
+        r"""Create a :class:`.Select` using either the 1.x or 2.0 constructor
+        style.
+
+        For the legacy calling style, see :meth:`.Select.create_legacy_select`.
+        If the first argument passed is a Python sequence or if keyword
+        arguments are present, this style is used.
+
+        .. versionadded:: 2.0 - the :func:`_future.select` construct is
+           the same construct as the one returned by
+           :func:`_expression.select`, except that the function only
+           accepts the "columns clause" entities up front; the rest of the
+           state of the SELECT should be built up using generative methods.
+
+        Similar functionality is also available via the
+        :meth:`_expression.FromClause.select` method on any
+        :class:`_expression.FromClause`.
+
+        .. seealso::
+
+            :ref:`coretutorial_selecting` - Core Tutorial description of
+            :func:`_expression.select`.
+
+        :param \*entities:
+          Entities to SELECT from.  For Core usage, this is typically a series
+          of :class:`_expression.ColumnElement` and / or
+          :class:`_expression.FromClause`
+          objects which will form the columns clause of the resulting
+          statement.   For those objects that are instances of
+          :class:`_expression.FromClause` (typically :class:`_schema.Table`
+          or :class:`_expression.Alias`
+          objects), the :attr:`_expression.FromClause.c`
+          collection is extracted
+          to form a collection of :class:`_expression.ColumnElement` objects.
+
+          This parameter will also accept :class:`_expression.TextClause`
+          constructs as given, as well as ORM-mapped classes.
+
+        """
+        if (args and isinstance(args[0], list)) or kw:
+            return cls.create_legacy_select(*args, **kw)
+        else:
+            return cls._create_future_select(*args)
+
+    def __init__(self,):
+        raise NotImplementedError()
 
     def _scalar_type(self):
         elem = self._raw_columns[0]
         cols = list(elem._select_iterable)
         return cols[0].type
+
+    def filter(self, *criteria):
+        """A synonym for the :meth:`_future.Select.where` method."""
+
+        return self.where(*criteria)
+
+    def _filter_by_zero(self):
+        if self._setup_joins:
+            meth = SelectState.get_plugin_class(
+                self
+            ).determine_last_joined_entity
+            _last_joined_entity = meth(self)
+            if _last_joined_entity is not None:
+                return _last_joined_entity
+
+        if self._from_obj:
+            return self._from_obj[0]
+
+        return self._raw_columns[0]
+
+    def filter_by(self, **kwargs):
+        r"""apply the given filtering criterion as a WHERE clause
+        to this select.
+
+        """
+        from_entity = self._filter_by_zero()
+
+        clauses = [
+            _entity_namespace_key(from_entity, key) == value
+            for key, value in kwargs.items()
+        ]
+        return self.filter(*clauses)
+
+    @property
+    def column_descriptions(self):
+        """Return a 'column descriptions' structure which may be
+        plugin-specific.
+
+        """
+        meth = SelectState.get_plugin_class(self).get_column_descriptions
+        return meth(self)
+
+    @_generative
+    def join(self, target, onclause=None, isouter=False, full=False):
+        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        object's criterion
+        and apply generatively, returning the newly resulting
+        :class:`_expression.Select`.
+
+        .. versionchanged:: 1.4 :meth:`_expression.Select.join` now modifies
+           the FROM list of the :class:`.Select` object in place, rather than
+           implicitly producing a subquery.
+
+        :param target: target table to join towards
+
+        :param onclause: ON clause of the join.
+
+        :param isouter: if True, generate LEFT OUTER join.  Same as
+         :meth:`_expression.Select.outerjoin`.
+
+        :param full: if True, generate FULL OUTER join.
+
+        .. seealso::
+
+            :meth:`_expression.Select.join_from`
+
+        """
+        target = coercions.expect(
+            roles.JoinTargetRole, target, apply_propagate_attrs=self
+        )
+        if onclause is not None:
+            onclause = coercions.expect(roles.OnClauseRole, onclause)
+        self._setup_joins += (
+            (target, onclause, None, {"isouter": isouter, "full": full}),
+        )
+
+    @_generative
+    def join_from(
+        self, from_, target, onclause=None, isouter=False, full=False
+    ):
+        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        object's criterion
+        and apply generatively, returning the newly resulting
+        :class:`_expression.Select`.
+
+        .. versionadded:: 1.4
+
+        :param from\_: the left side of the join, will be rendered in the
+         FROM clause and is roughly equivalent to using the
+         :meth:`.Select.select_from` method.
+
+        :param target: target table to join towards
+
+        :param onclause: ON clause of the join.
+
+        :param isouter: if True, generate LEFT OUTER join.  Same as
+         :meth:`_expression.Select.outerjoin`.
+
+        :param full: if True, generate FULL OUTER join.
+
+        .. seealso::
+
+            :meth:`_expression.Select.join`
+
+        """
+        # note the order of parsing from vs. target is important here, as we
+        # are also deriving the source of the plugin (i.e. the subject mapper
+        # in an ORM query) which should favor the "from_" over the "target"
+
+        from_ = coercions.expect(
+            roles.FromClauseRole, from_, apply_propagate_attrs=self
+        )
+        target = coercions.expect(
+            roles.JoinTargetRole, target, apply_propagate_attrs=self
+        )
+        if onclause is not None:
+            onclause = coercions.expect(roles.OnClauseRole, onclause)
+
+        self._setup_joins += (
+            (target, onclause, from_, {"isouter": isouter, "full": full}),
+        )
+
+    def outerjoin(self, target, onclause=None, full=False):
+        """Create a left outer join.
+
+        Parameters are the same as that of :meth:`_expression.Select.join`.
+
+        .. versionchanged:: 1.4 :meth:`_expression.Select.outerjoin` now
+           modifies the FROM list of the :class:`.Select` object in place,
+           rather than implicitly producing a subquery.
+
+        """
+        return self.join(target, onclause=onclause, isouter=True, full=full,)
 
     @property
     def froms(self):
@@ -4642,8 +4900,12 @@ class Select(
 
         return ColumnCollection(collection).as_immutable()
 
+    # def _exported_columns_iterator(self):
+    #    return _select_iterables(self._raw_columns)
+
     def _exported_columns_iterator(self):
-        return _select_iterables(self._raw_columns)
+        meth = SelectState.get_plugin_class(self).exported_columns_iterator
+        return meth(self)
 
     def _ensure_disambiguated_names(self):
         if self._label_style is LABEL_STYLE_NONE:
@@ -4922,37 +5184,30 @@ class Exists(UnaryExpression):
     inherit_cache = True
 
     def __init__(self, *args, **kwargs):
-        """Construct a new :class:`_expression.Exists` against an existing
-        :class:`_expression.Select` object.
+        """Construct a new :class:`_expression.Exists` construct.
 
-        Calling styles are of the following forms::
+        The modern form of :func:`.exists` is to invoke with no arguments,
+        which will produce an ``"EXISTS *"`` construct.   A WHERE clause
+        is then added using the :meth:`.Exists.where` method::
 
-            # use on an existing select()
-            s = select([table.c.col1]).where(table.c.col2==5)
-            s_e = exists(s)
+            exists_criteria = exists().where(table1.c.col1 == table2.c.col2)
 
-            # an exists is usually used in a where of another select
-            # to produce a WHERE EXISTS (SELECT ... )
-            select([table.c.col1]).where(s_e)
+        The EXISTS criteria is then used inside of an enclosing SELECT::
 
-            # but can also be used in a select to produce a
-            # SELECT EXISTS (SELECT ... ) query
-            select([s_e])
+            stmt = select(table1.c.col1).where(exists_criteria)
 
-            # construct a select() at once
-            exists(['*'], **select_arguments).where(criterion)
+        The above statement will then be of the form::
 
-            # columns argument is optional, generates "EXISTS (SELECT *)"
-            # by default.
-            exists().where(table.c.col2==5)
+            SELECT col1 FROM table1 WHERE EXISTS
+            (SELECT * FROM table2 WHERE table2.col2 = table1.col1)
 
         """
         if args and isinstance(args[0], (SelectBase, ScalarSelect)):
             s = args[0]
         else:
             if not args:
-                args = ([literal_column("*")],)
-            s = Select(*args, **kwargs).scalar_subquery()
+                args = (literal_column("*"),)
+            s = Select._create(*args, **kwargs).scalar_subquery()
 
         UnaryExpression.__init__(
             self,
@@ -4967,10 +5222,52 @@ class Exists(UnaryExpression):
         element = fn(element)
         return element.self_group(against=operators.exists)
 
-    def select(self, whereclause=None, **params):
+    @util.deprecated_params(
+        whereclause=(
+            "2.0",
+            "The :paramref:`_sql.Exists.select().whereclause` parameter "
+            "is deprecated and will be removed in version 2.0.  "
+            "Please make use "
+            "of the :meth:`.Select.where` "
+            "method to add WHERE criteria to the SELECT statement.",
+        ),
+        kwargs=(
+            "2.0",
+            "The :meth:`_sql.Exists.select` method will no longer accept "
+            "keyword arguments in version 2.0.  "
+            "Please use generative methods from the "
+            ":class:`_sql.Select` construct in order to apply additional "
+            "modifications.",
+        ),
+    )
+    def select(self, whereclause=None, **kwargs):
+        r"""Return a SELECT of this :class:`_expression.Exists`.
+
+        e.g.::
+
+            stmt = exists(some_table.c.id).where(some_table.c.id == 5).select()
+
+        This will produce a statement resembling::
+
+            SELECT EXISTS (SELECT id FROM some_table WHERE some_table = :param) AS anon_1
+
+        :param whereclause: a WHERE clause, equivalent to calling the
+         :meth:`_sql.Select.where` method.
+
+        :param **kwargs: additional keyword arguments are passed to the
+         legacy constructor for :class:`_sql.Select` described at
+         :meth:`_sql.Select.create_legacy_select`.
+
+        .. seealso::
+
+            :func:`_expression.select` - general purpose
+            method which allows for arbitrary column lists.
+
+        """  # noqa
+
         if whereclause is not None:
-            params["whereclause"] = whereclause
-        return Select._create_select_from_fromclause(self, [self], **params)
+            kwargs["whereclause"] = whereclause
+        return Select._create_select_from_fromclause(self, [self], **kwargs)
 
     def correlate(self, *fromclause):
         e = self._clone()
@@ -4986,7 +5283,7 @@ class Exists(UnaryExpression):
         )
         return e
 
-    def select_from(self, clause):
+    def select_from(self, *froms):
         """Return a new :class:`_expression.Exists` construct,
         applying the given
         expression to the :meth:`_expression.Select.select_from`
@@ -4995,7 +5292,7 @@ class Exists(UnaryExpression):
 
         """
         e = self._clone()
-        e.element = self._regroup(lambda element: element.select_from(clause))
+        e.element = self._regroup(lambda element: element.select_from(*froms))
         return e
 
     def where(self, clause):

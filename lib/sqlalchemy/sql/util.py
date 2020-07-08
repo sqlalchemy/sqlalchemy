@@ -977,25 +977,3 @@ class ColumnAdapter(ClauseAdapter):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.columns = util.WeakPopulateDict(self._locate_col)
-
-
-def _entity_namespace_key(entity, key):
-    """Return an entry from an entity_namespace.
-
-
-    Raises :class:`_exc.InvalidRequestError` rather than attribute error
-    on not found.
-
-    """
-
-    ns = entity.entity_namespace
-    try:
-        return getattr(ns, key)
-    except AttributeError as err:
-        util.raise_(
-            exc.InvalidRequestError(
-                'Entity namespace for "%s" has no property "%s"'
-                % (entity, key)
-            ),
-            replace_context=err,
-        )

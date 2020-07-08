@@ -3,9 +3,9 @@ from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.future import select as future_select
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
@@ -44,10 +44,48 @@ child = Table(
 class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_join_nofrom_implicit_left_side_explicit_onclause(self):
-        stmt = future_select(table1).join(
-            table2, table1.c.myid == table2.c.otherid
+    def test_legacy_calling_style_kw_only(self):
+        stmt = select(
+            whereclause=table1.c.myid == table2.c.otherid
+        ).add_columns(table1.c.myid)
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
         )
+
+    def test_legacy_calling_style_col_seq_only(self):
+        stmt = select([table1.c.myid]).where(table1.c.myid == table2.c.otherid)
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        )
+
+    def test_new_calling_style(self):
+        stmt = select(table1.c.myid).where(table1.c.myid == table2.c.otherid)
+
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable, myothertable "
+            "WHERE mytable.myid = myothertable.otherid",
+        )
+
+    def test_kw_triggers_old_style(self):
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"select\(\) construct created in legacy mode, "
+            "i.e. with keyword arguments",
+            select,
+            table1.c.myid,
+            whereclause=table1.c.myid == table2.c.otherid,
+        )
+
+    def test_join_nofrom_implicit_left_side_explicit_onclause(self):
+        stmt = select(table1).join(table2, table1.c.myid == table2.c.otherid)
 
         self.assert_compile(
             stmt,
@@ -57,7 +95,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_join_nofrom_explicit_left_side_explicit_onclause(self):
-        stmt = future_select(table1).join_from(
+        stmt = select(table1).join_from(
             table1, table2, table1.c.myid == table2.c.otherid
         )
 
@@ -69,7 +107,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_join_nofrom_implicit_left_side_implicit_onclause(self):
-        stmt = future_select(parent).join(child)
+        stmt = select(parent).join(child)
 
         self.assert_compile(
             stmt,
@@ -78,7 +116,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_join_nofrom_explicit_left_side_implicit_onclause(self):
-        stmt = future_select(parent).join_from(parent, child)
+        stmt = select(parent).join_from(parent, child)
 
         self.assert_compile(
             stmt,
@@ -88,7 +126,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_froms_implicit_left_side_explicit_onclause(self):
         stmt = (
-            future_select(table1)
+            select(table1)
             .select_from(table1)
             .join(table2, table1.c.myid == table2.c.otherid)
         )
@@ -102,7 +140,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_froms_explicit_left_side_explicit_onclause(self):
         stmt = (
-            future_select(table1)
+            select(table1)
             .select_from(table1)
             .join_from(table1, table2, table1.c.myid == table2.c.otherid)
         )
@@ -115,7 +153,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_join_froms_implicit_left_side_implicit_onclause(self):
-        stmt = future_select(parent).select_from(parent).join(child)
+        stmt = select(parent).select_from(parent).join(child)
 
         self.assert_compile(
             stmt,
@@ -124,9 +162,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_join_froms_explicit_left_side_implicit_onclause(self):
-        stmt = (
-            future_select(parent).select_from(parent).join_from(parent, child)
-        )
+        stmt = select(parent).select_from(parent).join_from(parent, child)
 
         self.assert_compile(
             stmt,
@@ -136,7 +172,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_joins_w_filter_by(self):
         stmt = (
-            future_select(parent)
+            select(parent)
             .filter_by(data="p1")
             .join(child)
             .filter_by(data="c1")
@@ -158,6 +194,6 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.InvalidRequestError,
             'Entity namespace for "mytable" has no property "foo"',
-            future_select(table1).filter_by,
+            select(table1).filter_by,
             foo="bar",
         )

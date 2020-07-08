@@ -418,8 +418,8 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
 
         sess.delete(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 0)
+        eq_(select(func.count("*")).select_from(users).scalar(), 0)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 0)
 
     def test_delete_unloaded_collections(self):
         """Unloaded collections are still included in a delete-cascade
@@ -443,16 +443,16 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         sess.add(u)
         sess.flush()
         sess.expunge_all()
-        eq_(select([func.count("*")]).select_from(addresses).scalar(), 2)
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(addresses).scalar(), 2)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
 
         u = sess.query(User).get(u.id)
 
         assert "addresses" not in u.__dict__
         sess.delete(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(addresses).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(users).scalar(), 0)
+        eq_(select(func.count("*")).select_from(addresses).scalar(), 0)
+        eq_(select(func.count("*")).select_from(users).scalar(), 0)
 
     def test_cascades_onlycollection(self):
         """Cascade only reaches instances that are still part of the
@@ -487,8 +487,8 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         sess.add(u2)
         sess.flush()
         sess.expunge_all()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 1)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 1)
         eq_(
             sess.query(User).all(),
             [User(name="newuser", orders=[Order(description="someorder")])],
@@ -544,14 +544,14 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         )
         sess.add(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 2)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 2)
 
         del u.orders[0]
         sess.delete(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 0)
+        eq_(select(func.count("*")).select_from(users).scalar(), 0)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 0)
 
     def test_collection_orphans(self):
         User, users, orders, Order = (
@@ -572,15 +572,15 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
         sess.add(u)
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 2)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 2)
 
         u.orders[:] = []
 
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 0)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 0)
 
 
 class O2MCascadeTest(fixtures.MappedTest):
@@ -725,14 +725,14 @@ class O2MCascadeDeleteNoOrphanTest(fixtures.MappedTest):
         )
         sess.add(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 2)
+        eq_(select(func.count("*")).select_from(users).scalar(), 1)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 2)
 
         del u.orders[0]
         sess.delete(u)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(users).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(orders).scalar(), 1)
+        eq_(select(func.count("*")).select_from(users).scalar(), 0)
+        eq_(select(func.count("*")).select_from(orders).scalar(), 1)
 
 
 class O2OSingleParentTest(_fixtures.FixtureTest):
@@ -1599,13 +1599,13 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         )
 
         sess = create_session()
-        eq_(select([func.count("*")]).select_from(prefs).scalar(), 3)
-        eq_(select([func.count("*")]).select_from(extra).scalar(), 3)
+        eq_(select(func.count("*")).select_from(prefs).scalar(), 3)
+        eq_(select(func.count("*")).select_from(extra).scalar(), 3)
         jack = sess.query(User).filter_by(name="jack").one()
         jack.pref = None
         sess.flush()
-        eq_(select([func.count("*")]).select_from(prefs).scalar(), 2)
-        eq_(select([func.count("*")]).select_from(extra).scalar(), 2)
+        eq_(select(func.count("*")).select_from(prefs).scalar(), 2)
+        eq_(select(func.count("*")).select_from(extra).scalar(), 2)
 
     def test_cascade_on_deleted(self):
         """test a bug introduced by r6711"""
@@ -1670,8 +1670,8 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         assert p in sess
         assert e in sess
         sess.flush()
-        eq_(select([func.count("*")]).select_from(prefs).scalar(), 2)
-        eq_(select([func.count("*")]).select_from(extra).scalar(), 2)
+        eq_(select(func.count("*")).select_from(prefs).scalar(), 2)
+        eq_(select(func.count("*")).select_from(extra).scalar(), 2)
 
     def test_pending_expunge(self):
         Pref, User = self.classes.Pref, self.classes.User
@@ -2105,9 +2105,9 @@ class M2MCascadeTest(fixtures.MappedTest):
 
         a1.bs.remove(b1)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(atob).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(b).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(a).scalar(), 1)
+        eq_(select(func.count("*")).select_from(atob).scalar(), 0)
+        eq_(select(func.count("*")).select_from(b).scalar(), 0)
+        eq_(select(func.count("*")).select_from(a).scalar(), 1)
 
     def test_delete_orphan_dynamic(self):
         a, A, B, b, atob = (
@@ -2143,9 +2143,9 @@ class M2MCascadeTest(fixtures.MappedTest):
 
         a1.bs.remove(b1)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(atob).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(b).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(a).scalar(), 1)
+        eq_(select(func.count("*")).select_from(atob).scalar(), 0)
+        eq_(select(func.count("*")).select_from(b).scalar(), 0)
+        eq_(select(func.count("*")).select_from(a).scalar(), 1)
 
     def test_delete_orphan_cascades(self):
         a, A, c, b, C, B, atob = (
@@ -2187,10 +2187,10 @@ class M2MCascadeTest(fixtures.MappedTest):
 
         a1.bs.remove(b1)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(atob).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(b).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(a).scalar(), 1)
-        eq_(select([func.count("*")]).select_from(c).scalar(), 0)
+        eq_(select(func.count("*")).select_from(atob).scalar(), 0)
+        eq_(select(func.count("*")).select_from(b).scalar(), 0)
+        eq_(select(func.count("*")).select_from(a).scalar(), 1)
+        eq_(select(func.count("*")).select_from(c).scalar(), 0)
 
     def test_cascade_delete(self):
         a, A, B, b, atob = (
@@ -2222,9 +2222,9 @@ class M2MCascadeTest(fixtures.MappedTest):
 
         sess.delete(a1)
         sess.flush()
-        eq_(select([func.count("*")]).select_from(atob).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(b).scalar(), 0)
-        eq_(select([func.count("*")]).select_from(a).scalar(), 0)
+        eq_(select(func.count("*")).select_from(atob).scalar(), 0)
+        eq_(select(func.count("*")).select_from(b).scalar(), 0)
+        eq_(select(func.count("*")).select_from(a).scalar(), 0)
 
     def test_single_parent_error(self):
         a, A, B, b, atob = (

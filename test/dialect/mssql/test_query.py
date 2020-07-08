@@ -110,9 +110,9 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_union_schema_to_non(self):
         t1, t2 = self.t1, self.t2
         s = (
-            select([t2.c.a, t2.c.b])
+            select(t2.c.a, t2.c.b)
             .apply_labels()
-            .union(select([t1.c.a, t1.c.b]).apply_labels())
+            .union(select(t1.c.a, t1.c.b).apply_labels())
             .alias()
             .select()
         )
@@ -130,7 +130,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_column_subquery_to_alias(self):
         a1 = self.t2.alias("a1")
-        s = select([self.t2, select([a1.c.a]).scalar_subquery()])
+        s = select([self.t2, select(a1.c.a).scalar_subquery()])
         self._assert_sql(
             s,
             "SELECT t2_1.a, t2_1.b, t2_1.c, "
@@ -214,27 +214,27 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_insert_plain_param(self):
         with testing.db.connect() as conn:
             conn.execute(cattable.insert(), id=5)
-            eq_(conn.scalar(select([cattable.c.id])), 5)
+            eq_(conn.scalar(select(cattable.c.id)), 5)
 
     def test_insert_values_key_plain(self):
         with testing.db.connect() as conn:
             conn.execute(cattable.insert().values(id=5))
-            eq_(conn.scalar(select([cattable.c.id])), 5)
+            eq_(conn.scalar(select(cattable.c.id)), 5)
 
     def test_insert_values_key_expression(self):
         with testing.db.connect() as conn:
             conn.execute(cattable.insert().values(id=literal(5)))
-            eq_(conn.scalar(select([cattable.c.id])), 5)
+            eq_(conn.scalar(select(cattable.c.id)), 5)
 
     def test_insert_values_col_plain(self):
         with testing.db.connect() as conn:
             conn.execute(cattable.insert().values({cattable.c.id: 5}))
-            eq_(conn.scalar(select([cattable.c.id])), 5)
+            eq_(conn.scalar(select(cattable.c.id)), 5)
 
     def test_insert_values_col_expression(self):
         with testing.db.connect() as conn:
             conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
-            eq_(conn.scalar(select([cattable.c.id])), 5)
+            eq_(conn.scalar(select(cattable.c.id)), 5)
 
 
 class QueryUnicodeTest(fixtures.TestBase):

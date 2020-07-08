@@ -114,9 +114,7 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
 
         connection.execute(unicode_table.insert(), {"unicode_data": self.data})
 
-        row = connection.execute(
-            select([unicode_table.c.unicode_data])
-        ).first()
+        row = connection.execute(select(unicode_table.c.unicode_data)).first()
 
         eq_(row, (self.data,))
         assert isinstance(row[0], util.text_type)
@@ -130,7 +128,7 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         )
 
         rows = connection.execute(
-            select([unicode_table.c.unicode_data])
+            select(unicode_table.c.unicode_data)
         ).fetchall()
         eq_(rows, [(self.data,) for i in range(3)])
         for row in rows:
@@ -140,18 +138,14 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         unicode_table = self.tables.unicode_table
 
         connection.execute(unicode_table.insert(), {"unicode_data": None})
-        row = connection.execute(
-            select([unicode_table.c.unicode_data])
-        ).first()
+        row = connection.execute(select(unicode_table.c.unicode_data)).first()
         eq_(row, (None,))
 
     def _test_empty_strings(self, connection):
         unicode_table = self.tables.unicode_table
 
         connection.execute(unicode_table.insert(), {"unicode_data": u("")})
-        row = connection.execute(
-            select([unicode_table.c.unicode_data])
-        ).first()
+        row = connection.execute(select(unicode_table.c.unicode_data)).first()
         eq_(row, (u(""),))
 
     def test_literal(self):
@@ -214,7 +208,7 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         text_table = self.tables.text_table
 
         connection.execute(text_table.insert(), {"text_data": "some text"})
-        row = connection.execute(select([text_table.c.text_data])).first()
+        row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, ("some text",))
 
     @testing.requires.empty_strings_text
@@ -222,14 +216,14 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         text_table = self.tables.text_table
 
         connection.execute(text_table.insert(), {"text_data": ""})
-        row = connection.execute(select([text_table.c.text_data])).first()
+        row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, ("",))
 
     def test_text_null_strings(self, connection):
         text_table = self.tables.text_table
 
         connection.execute(text_table.insert(), {"text_data": None})
-        row = connection.execute(select([text_table.c.text_data])).first()
+        row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, (None,))
 
     def test_literal(self):
@@ -302,7 +296,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
 
         connection.execute(date_table.insert(), {"date_data": self.data})
 
-        row = connection.execute(select([date_table.c.date_data])).first()
+        row = connection.execute(select(date_table.c.date_data)).first()
 
         compare = self.compare or self.data
         eq_(row, (compare,))
@@ -313,7 +307,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
 
         connection.execute(date_table.insert(), {"date_data": None})
 
-        row = connection.execute(select([date_table.c.date_data])).first()
+        row = connection.execute(select(date_table.c.date_data)).first()
         eq_(row, (None,))
 
     @testing.requires.datetime_literals
@@ -332,7 +326,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
                 date_table.insert(), {"date_data": self.data}
             )
             id_ = result.inserted_primary_key[0]
-            stmt = select([date_table.c.id]).where(
+            stmt = select(date_table.c.id).where(
                 case(
                     [
                         (
@@ -438,7 +432,7 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
         connection.execute(int_table.insert(), {"integer_data": data})
 
-        row = connection.execute(select([int_table.c.integer_data])).first()
+        row = connection.execute(select(int_table.c.integer_data)).first()
 
         eq_(row, (data,))
 
@@ -545,7 +539,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_float_coerce_round_trip(self, connection):
         expr = 15.7563
 
-        val = connection.scalar(select([literal(expr)]))
+        val = connection.scalar(select(literal(expr)))
         eq_(val, expr)
 
     # this does not work in MySQL, see #4036, however we choose not
@@ -556,14 +550,14 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_decimal_coerce_round_trip(self, connection):
         expr = decimal.Decimal("15.7563")
 
-        val = connection.scalar(select([literal(expr)]))
+        val = connection.scalar(select(literal(expr)))
         eq_(val, expr)
 
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_decimal_coerce_round_trip_w_cast(self, connection):
         expr = decimal.Decimal("15.7563")
 
-        val = connection.scalar(select([cast(expr, Numeric(10, 4))]))
+        val = connection.scalar(select(cast(expr, Numeric(10, 4))))
         eq_(val, expr)
 
     @testing.requires.precision_numerics_general
@@ -665,9 +659,7 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
         row = connection.execute(
-            select(
-                [boolean_table.c.value, boolean_table.c.unconstrained_value]
-            )
+            select(boolean_table.c.value, boolean_table.c.unconstrained_value)
         ).first()
 
         eq_(row, (True, False))
@@ -683,9 +675,7 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
         row = connection.execute(
-            select(
-                [boolean_table.c.value, boolean_table.c.unconstrained_value]
-            )
+            select(boolean_table.c.value, boolean_table.c.unconstrained_value)
         ).first()
 
         eq_(row, (None, None))
@@ -705,13 +695,13 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(
                 conn.scalar(
-                    select([boolean_table.c.id]).where(boolean_table.c.value)
+                    select(boolean_table.c.id).where(boolean_table.c.value)
                 ),
                 1,
             )
             eq_(
                 conn.scalar(
-                    select([boolean_table.c.id]).where(
+                    select(boolean_table.c.id).where(
                         boolean_table.c.unconstrained_value
                     )
                 ),
@@ -719,13 +709,13 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
             eq_(
                 conn.scalar(
-                    select([boolean_table.c.id]).where(~boolean_table.c.value)
+                    select(boolean_table.c.id).where(~boolean_table.c.value)
                 ),
                 2,
             )
             eq_(
                 conn.scalar(
-                    select([boolean_table.c.id]).where(
+                    select(boolean_table.c.id).where(
                         ~boolean_table.c.unconstrained_value
                     )
                 ),
@@ -760,7 +750,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             data_table.insert(), {"name": "row1", "data": data_element}
         )
 
-        row = connection.execute(select([data_table.c.data])).first()
+        row = connection.execute(select(data_table.c.data)).first()
 
         eq_(row, (data_element,))
 
@@ -806,7 +796,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             expr = data_table.c.data["key1"]
             expr = getattr(expr, "as_%s" % datatype)()
 
-            roundtrip = conn.scalar(select([expr]))
+            roundtrip = conn.scalar(select(expr))
             eq_(roundtrip, value)
             if util.py3k:  # skip py2k to avoid comparing unicode to str etc.
                 is_(type(roundtrip), type(value))
@@ -828,7 +818,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             expr = data_table.c.data["key1"]
             expr = getattr(expr, "as_%s" % datatype)()
 
-            row = conn.execute(select([expr]).where(expr == value)).first()
+            row = conn.execute(select(expr).where(expr == value)).first()
 
             # make sure we get a row even if value is None
             eq_(row, (value,))
@@ -850,7 +840,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             expr = data_table.c.data[("key1", "subkey1")]
             expr = getattr(expr, "as_%s" % datatype)()
 
-            row = conn.execute(select([expr]).where(expr == value)).first()
+            row = conn.execute(select(expr).where(expr == value)).first()
 
             # make sure we get a row even if value is None
             eq_(row, (value,))
@@ -882,7 +872,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
             row = conn.execute(
-                select([data_table.c.data, data_table.c.nulldata])
+                select(data_table.c.data, data_table.c.nulldata)
             ).first()
 
             eq_(row, (data_element, data_element))
@@ -903,7 +893,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             conn.execute(
                 data_table.insert(), {"name": "row1", "data": data_element}
             )
-            row = conn.execute(select([data_table.c.data])).first()
+            row = conn.execute(select(data_table.c.data)).first()
 
             eq_(row, (data_element,))
             eq_(js.mock_calls, [mock.call(data_element)])
@@ -919,12 +909,12 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         eq_(
             conn.scalar(
-                select([self.tables.data_table.c.name]).where(col.is_(null()))
+                select(self.tables.data_table.c.name).where(col.is_(null()))
             ),
             "r1",
         )
 
-        eq_(conn.scalar(select([col])), None)
+        eq_(conn.scalar(select(col)), None)
 
     def test_round_trip_json_null_as_json_null(self, connection):
         col = self.tables.data_table.c["data"]
@@ -936,14 +926,14 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         eq_(
             conn.scalar(
-                select([self.tables.data_table.c.name]).where(
+                select(self.tables.data_table.c.name).where(
                     cast(col, String) == "null"
                 )
             ),
             "r1",
         )
 
-        eq_(conn.scalar(select([col])), None)
+        eq_(conn.scalar(select(col)), None)
 
     def test_round_trip_none_as_json_null(self):
         col = self.tables.data_table.c["data"]
@@ -955,14 +945,14 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(
                 conn.scalar(
-                    select([self.tables.data_table.c.name]).where(
+                    select(self.tables.data_table.c.name).where(
                         cast(col, String) == "null"
                     )
                 ),
                 "r1",
             )
 
-            eq_(conn.scalar(select([col])), None)
+            eq_(conn.scalar(select(col)), None)
 
     def test_unicode_round_trip(self):
         # note we include Unicode supplementary characters as well
@@ -979,7 +969,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
             eq_(
-                conn.scalar(select([self.tables.data_table.c.data])),
+                conn.scalar(select(self.tables.data_table.c.data)),
                 {
                     util.u("réve🐍 illé"): util.u("réve🐍 illé"),
                     "data": {"k1": util.u("drôl🐍e")},
@@ -1087,7 +1077,7 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def _test_index_criteria(self, crit, expected, test_literal=True):
         self._criteria_fixture()
         with config.db.connect() as conn:
-            stmt = select([self.tables.data_table.c.name]).where(crit)
+            stmt = select(self.tables.data_table.c.name).where(crit)
 
             eq_(conn.scalar(stmt), expected)
 

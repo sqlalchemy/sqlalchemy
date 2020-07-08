@@ -7,6 +7,7 @@ from sqlalchemy import CHAR
 from sqlalchemy import column
 from sqlalchemy import create_engine
 from sqlalchemy import exc
+from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import INT
@@ -180,7 +181,7 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
     )
 
     def test_select_of_select(self):
-        stmt = select([self.table1.c.myid])
+        stmt = select(self.table1.c.myid)
 
         with testing.expect_deprecated(
             r"The SelectBase.select\(\) method is deprecated and will be "
@@ -192,63 +193,16 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
                 "FROM mytable) AS anon_1",
             )
 
-    def test_join_of_select(self):
-        stmt = select([self.table1.c.myid])
-
-        with testing.expect_deprecated(
-            r"The SelectBase.join\(\) method is deprecated and will be "
-            "removed"
-        ):
-            self.assert_compile(
-                stmt.join(
-                    self.table2, self.table2.c.otherid == self.table1.c.myid
-                ),
-                # note the SQL is wrong here as the subquery now has a name.
-                # however, even SQLite which accepts unnamed subqueries in a
-                # JOIN cannot actually join with how SQLAlchemy 1.3 and
-                # earlier would render:
-                # sqlite> select myid, otherid from (select myid from mytable)
-                # join myothertable on mytable.myid=myothertable.otherid;
-                # Error: no such column: mytable.myid
-                # if using stmt.c.col, that fails often as well if there are
-                # any naming overlaps:
-                # sqlalchemy.exc.OperationalError: (sqlite3.OperationalError)
-                # ambiguous column name: id
-                # [SQL: SELECT id, data
-                # FROM (SELECT a.id AS id, a.data AS data
-                # FROM a) JOIN b ON b.a_id = id]
-                # so that shows that nobody is using this anyway
-                "(SELECT mytable.myid AS myid FROM mytable) AS anon_1 "
-                "JOIN myothertable ON myothertable.otherid = mytable.myid",
-            )
-
-    def test_outerjoin_of_select(self):
-        stmt = select([self.table1.c.myid])
-
-        with testing.expect_deprecated(
-            r"The SelectBase.outerjoin\(\) method is deprecated and will be "
-            "removed"
-        ):
-            self.assert_compile(
-                stmt.outerjoin(
-                    self.table2, self.table2.c.otherid == self.table1.c.myid
-                ),
-                # note the SQL is wrong here as the subquery now has a name
-                "(SELECT mytable.myid AS myid FROM mytable) AS anon_1 "
-                "LEFT OUTER JOIN myothertable "
-                "ON myothertable.otherid = mytable.myid",
-            )
-
     def test_standalone_alias(self):
         with testing.expect_deprecated(
             "Implicit coercion of SELECT and textual SELECT constructs"
         ):
-            stmt = alias(select([self.table1.c.myid]), "foo")
+            stmt = alias(select(self.table1.c.myid), "foo")
 
         self.assert_compile(stmt, "SELECT mytable.myid FROM mytable")
 
         is_true(
-            stmt.compare(select([self.table1.c.myid]).subquery().alias("foo"))
+            stmt.compare(select(self.table1.c.myid).subquery().alias("foo"))
         )
 
     def test_as_scalar(self):
@@ -256,21 +210,21 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The SelectBase.as_scalar\(\) method is deprecated and "
             "will be removed in a future release."
         ):
-            stmt = select([self.table1.c.myid]).as_scalar()
+            stmt = select(self.table1.c.myid).as_scalar()
 
-        is_true(stmt.compare(select([self.table1.c.myid]).scalar_subquery()))
+        is_true(stmt.compare(select(self.table1.c.myid).scalar_subquery()))
 
     def test_as_scalar_from_subquery(self):
         with testing.expect_deprecated(
             r"The Subquery.as_scalar\(\) method, which was previously "
             r"``Alias.as_scalar\(\)`` prior to version 1.4"
         ):
-            stmt = select([self.table1.c.myid]).subquery().as_scalar()
+            stmt = select(self.table1.c.myid).subquery().as_scalar()
 
-        is_true(stmt.compare(select([self.table1.c.myid]).scalar_subquery()))
+        is_true(stmt.compare(select(self.table1.c.myid).scalar_subquery()))
 
     def test_fromclause_subquery(self):
-        stmt = select([self.table1.c.myid])
+        stmt = select(self.table1.c.myid)
         with testing.expect_deprecated(
             "Implicit coercion of SELECT and textual SELECT constructs "
             "into FROM clauses is deprecated"
@@ -288,11 +242,11 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             element = coercions.expect(
                 roles.FromClauseRole,
-                SelectStatementGrouping(select([self.table1])),
+                SelectStatementGrouping(select(self.table1)),
             )
             is_true(
                 element.compare(
-                    SelectStatementGrouping(select([self.table1])).subquery()
+                    SelectStatementGrouping(select(self.table1)).subquery()
                 )
             )
 
@@ -302,7 +256,7 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
             "Implicit coercion of SELECT and textual SELECT constructs "
             "into FROM clauses is deprecated"
         ):
-            stmt = select(["*"]).select_from(expr.select())
+            stmt = select("*").select_from(expr.select())
         self.assert_compile(
             stmt, "SELECT * FROM (SELECT rows(:rows_2) AS rows_1) AS anon_1"
         )
@@ -311,11 +265,8 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
         users = table(
             "users", column("id"), column("name"), column("fullname")
         )
-        calculate = select(
-            [column("q"), column("z"), column("r")],
-            from_obj=[
-                func.calculate(bindparam("x", None), bindparam("y", None))
-            ],
+        calculate = select(column("q"), column("z"), column("r")).select_from(
+            func.calculate(bindparam("x", None), bindparam("y", None))
         )
 
         with testing.expect_deprecated(
@@ -323,7 +274,7 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
             "deprecated and will be removed"
         ):
             self.assert_compile(
-                select([users], users.c.id > calculate.c.z),
+                select(users).where(users.c.id > calculate.c.z),
                 "SELECT users.id, users.name, users.fullname "
                 "FROM users, (SELECT q, z, r "
                 "FROM calculate(:x, :y)) AS anon_1 "
@@ -397,6 +348,129 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "deprecated"
         )
 
+    def test_select_list_argument(self):
+
+        with testing.expect_deprecated_20(
+            r"The legacy calling style of select\(\) is deprecated "
+            "and will be removed in SQLAlchemy 2.0"
+        ):
+            stmt = select([column("q")])
+        self.assert_compile(stmt, "SELECT q")
+
+    def test_select_kw_argument(self):
+
+        with testing.expect_deprecated_20(
+            r"The legacy calling style of select\(\) is deprecated "
+            "and will be removed in SQLAlchemy 2.0"
+        ):
+            stmt = select(whereclause=column("q") == 5).add_columns(
+                column("q")
+            )
+        self.assert_compile(stmt, "SELECT q WHERE q = :q_1")
+
+    @testing.combinations(
+        (
+            lambda table1: table1.select(table1.c.col1 == 5),
+            "FromClause",
+            "whereclause",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
+            "FROM table1 WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1: table1.select(whereclause=table1.c.col1 == 5),
+            "FromClause",
+            "whereclause",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
+            "FROM table1 WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1: table1.select(order_by=table1.c.col1),
+            "FromClause",
+            "kwargs",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
+            "FROM table1 ORDER BY table1.col1",
+        ),
+        (
+            lambda table1: exists().select(table1.c.col1 == 5),
+            "Exists",
+            "whereclause",
+            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
+            "WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1: exists().select(whereclause=table1.c.col1 == 5),
+            "Exists",
+            "whereclause",
+            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
+            "WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1: exists().select(
+                order_by=table1.c.col1, from_obj=table1
+            ),
+            "Exists",
+            "kwargs",
+            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
+            "ORDER BY table1.col1",
+        ),
+        (
+            lambda table1, table2: table1.join(table2).select(
+                table1.c.col1 == 5
+            ),
+            "Join",
+            "whereclause",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
+            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 "
+            "WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1, table2: table1.join(table2).select(
+                whereclause=table1.c.col1 == 5
+            ),
+            "Join",
+            "whereclause",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
+            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 "
+            "WHERE table1.col1 = :col1_1",
+        ),
+        (
+            lambda table1, table2: table1.join(table2).select(
+                order_by=table1.c.col1
+            ),
+            "Join",
+            "kwargs",
+            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
+            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 "
+            "ORDER BY table1.col1",
+        ),
+    )
+    def test_select_method_parameters(
+        self, stmt, clsname, paramname, expected_sql
+    ):
+        if paramname == "whereclause":
+            warning_txt = (
+                r"The %s.select\(\).whereclause parameter is deprecated "
+                "and will be removed in version 2.0" % clsname
+            )
+        else:
+            warning_txt = (
+                r"The %s.select\(\) method will no longer accept "
+                "keyword arguments in version 2.0. " % clsname
+            )
+        with testing.expect_deprecated_20(
+            warning_txt,
+            r"The legacy calling style of select\(\) is deprecated "
+            "and will be removed in SQLAlchemy 2.0",
+        ):
+            stmt = testing.resolve_lambda(
+                stmt, table1=self.table1, table2=self.table2
+            )
+
+        self.assert_compile(stmt, expected_sql)
+
     def test_deprecated_subquery_standalone(self):
         from sqlalchemy import subquery
 
@@ -410,12 +484,12 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
         self.assert_compile(
-            select([stmt]),
+            select(stmt),
             "SELECT anon_1.a FROM (SELECT 1 AS a ORDER BY 1) AS anon_1",
         )
 
     def test_column(self):
-        stmt = select([column("x")])
+        stmt = select(column("x"))
         with testing.expect_deprecated(
             r"The Select.column\(\) method is deprecated and will be "
             "removed in a future release."
@@ -425,13 +499,13 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(stmt, "SELECT x, q")
 
     def test_append_column_after_replace_selectable(self):
-        basesel = select([literal_column("1").label("a")])
+        basesel = select(literal_column("1").label("a"))
         tojoin = select(
-            [literal_column("1").label("a"), literal_column("2").label("b")]
+            literal_column("1").label("a"), literal_column("2").label("b")
         )
         basefrom = basesel.alias("basefrom")
         joinfrom = tojoin.alias("joinfrom")
-        sel = select([basefrom.c.a])
+        sel = select(basefrom.c.a)
 
         with testing.expect_deprecated(
             r"The Selectable.replace_selectable\(\) " "method is deprecated"
@@ -460,7 +534,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         # test that corresponding column digs across
         # clone boundaries with anonymous labeled elements
         col = func.count().label("foo")
-        sel = select([col])
+        sel = select(col)
 
         sel2 = visitors.ReplacingCloningVisitor().traverse(sel)
         with testing.expect_deprecated("The SelectBase.c"):
@@ -480,29 +554,25 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
 
         u = (
             select(
-                [
-                    self.table1.c.col1,
-                    self.table1.c.col2,
-                    self.table1.c.col3,
-                    self.table1.c.colx,
-                    null().label("coly"),
-                ]
+                self.table1.c.col1,
+                self.table1.c.col2,
+                self.table1.c.col3,
+                self.table1.c.colx,
+                null().label("coly"),
             )
             .union(
                 select(
-                    [
-                        self.table2.c.col1,
-                        self.table2.c.col2,
-                        self.table2.c.col3,
-                        null().label("colx"),
-                        self.table2.c.coly,
-                    ]
+                    self.table2.c.col1,
+                    self.table2.c.col2,
+                    self.table2.c.col3,
+                    null().label("colx"),
+                    self.table2.c.coly,
                 )
             )
             .alias("analias")
         )
-        s1 = self.table1.select(use_labels=True)
-        s2 = self.table2.select(use_labels=True)
+        s1 = self.table1.select().apply_labels()
+        s2 = self.table2.select().apply_labels()
         with self._c_deprecated():
             assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
             assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
@@ -510,7 +580,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             assert s2.c.corresponding_column(u.c.coly) is s2.c.table2_coly
 
     def test_join_against_self_implicit_subquery(self):
-        jj = select([self.table1.c.col1.label("bar_col1")])
+        jj = select(self.table1.c.col1.label("bar_col1"))
         with testing.expect_deprecated(
             "The SelectBase.c and SelectBase.columns attributes are "
             "deprecated and will be removed",
@@ -536,7 +606,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         assert j2.corresponding_column(self.table1.c.col1) is j2.c.table1_col1
 
     def test_select_labels(self):
-        a = self.table1.select(use_labels=True)
+        a = self.table1.select().apply_labels()
         j = join(a._implicit_subquery, self.table2)
 
         criterion = a._implicit_subquery.c.table1_col1 == self.table2.c.col2
@@ -555,7 +625,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The SelectBase.select\(\) method is deprecated"
         ):
             self.assert_compile(
-                select([col]).select(),
+                select(col).select(),
                 'SELECT anon_1."NEEDS QUOTES" FROM '
                 '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
             )
@@ -676,7 +746,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_append_whereclause(self):
         t = table("t", column("q"))
-        stmt = select([t])
+        stmt = select(t)
 
         with self._expect_deprecated("Select", "whereclause", "where"):
             stmt.append_whereclause(t.c.q == 5)
@@ -685,7 +755,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_append_having(self):
         t = table("t", column("q"))
-        stmt = select([t]).group_by(t.c.q)
+        stmt = select(t).group_by(t.c.q)
 
         with self._expect_deprecated("Select", "having", "having"):
             stmt.append_having(t.c.q == 5)
@@ -696,7 +766,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_append_order_by(self):
         t = table("t", column("q"), column("x"))
-        stmt = select([t]).where(t.c.q == 5)
+        stmt = select(t).where(t.c.q == 5)
 
         with self._expect_deprecated(
             "GenerativeSelect", "order_by", "order_by"
@@ -709,7 +779,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_append_group_by(self):
         t = table("t", column("q"))
-        stmt = select([t])
+        stmt = select(t)
 
         with self._expect_deprecated(
             "GenerativeSelect", "group_by", "group_by"
@@ -726,11 +796,11 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t1", column("q"))
         t2 = table("t2", column("q"), column("p"))
 
-        inner = select([t2.c.p]).where(t2.c.q == t1.c.q)
+        inner = select(t2.c.p).where(t2.c.q == t1.c.q)
 
         with self._expect_deprecated("Select", "correlation", "correlate"):
             inner.append_correlation(t1)
-        stmt = select([t1]).where(t1.c.q == inner.scalar_subquery())
+        stmt = select(t1).where(t1.c.q == inner.scalar_subquery())
 
         self.assert_compile(
             stmt,
@@ -740,14 +810,14 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_append_column(self):
         t1 = table("t1", column("q"), column("p"))
-        stmt = select([t1.c.q])
+        stmt = select(t1.c.q)
         with self._expect_deprecated("Select", "column", "column"):
             stmt.append_column(t1.c.p)
         self.assert_compile(stmt, "SELECT t1.q, t1.p FROM t1")
 
     def test_append_prefix(self):
         t1 = table("t1", column("q"), column("p"))
-        stmt = select([t1.c.q])
+        stmt = select(t1.c.q)
         with self._expect_deprecated("Select", "prefix", "prefix_with"):
             stmt.append_prefix("FOO BAR")
         self.assert_compile(stmt, "SELECT FOO BAR t1.q FROM t1")
@@ -756,7 +826,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t1", column("q"))
         t2 = table("t2", column("q"))
 
-        stmt = select([t1])
+        stmt = select(t1)
         with self._expect_deprecated("Select", "from", "select_from"):
             stmt.append_from(t1.join(t2, t1.c.q == t2.c.q))
         self.assert_compile(stmt, "SELECT t1.q FROM t1 JOIN t2 ON t1.q = t2.q")
@@ -808,7 +878,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_column_label_overlap_fallback(self, connection):
         content, bar = self.tables.content, self.tables.bar
         row = connection.execute(
-            select([content.c.type.label("content_type")])
+            select(content.c.type.label("content_type"))
         ).first()
 
         not_in_(content.c.type, row)
@@ -821,7 +891,7 @@ class KeyTargetingTest(fixtures.TablesTest):
             in_(sql.column("content_type"), row)
 
         row = connection.execute(
-            select([func.now().label("content_type")])
+            select(func.now().label("content_type"))
         ).first()
         not_in_(content.c.type, row)
         not_in_(bar.c.content_type, row)
@@ -839,7 +909,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         # columns which the statement is against to be lightweight
         # cols, which results in a more liberal comparison scheme
         a, b = sql.column("a"), sql.column("b")
-        stmt = select([a, b]).select_from(table("keyed2"))
+        stmt = select(a, b).select_from(table("keyed2"))
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
@@ -857,7 +927,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         a, b = sql.column("a"), sql.column("b")
-        stmt = select([keyed2.c.a, keyed2.c.b])
+        stmt = select(keyed2.c.a, keyed2.c.b)
         row = connection.execute(stmt).first()
 
         with testing.expect_deprecated(
@@ -1040,7 +1110,7 @@ class CursorResultTest(fixtures.TablesTest):
             # this will create column() objects inside
             # the select(), these need to match on name anyway
             r = connection.execute(
-                select([column("user_id"), column("user_name")])
+                select(column("user_id"), column("user_name"))
                 .select_from(table("users"))
                 .where(text("user_id=2"))
             ).first()
@@ -1104,7 +1174,7 @@ class CursorResultTest(fixtures.TablesTest):
         self.metadata.create_all(testing.db)
         connection.execute(content.insert().values(type="t1"))
 
-        row = connection.execute(content.select(use_labels=True)).first()
+        row = connection.execute(content.select().apply_labels()).first()
         in_(content.c.type, row._mapping)
         not_in_(bar.c.content_type, row)
         with testing.expect_deprecated(
@@ -1114,7 +1184,7 @@ class CursorResultTest(fixtures.TablesTest):
             in_(sql.column("content_type"), row)
 
         row = connection.execute(
-            select([content.c.type.label("content_type")])
+            select(content.c.type.label("content_type"))
         ).first()
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
@@ -1131,7 +1201,7 @@ class CursorResultTest(fixtures.TablesTest):
             in_(sql.column("content_type"), row)
 
         row = connection.execute(
-            select([func.now().label("content_type")])
+            select(func.now().label("content_type"))
         ).first()
 
         not_in_(content.c.type, row)
@@ -1158,10 +1228,12 @@ class CursorResultTest(fixtures.TablesTest):
 
             for pickle in False, True:
                 for use_labels in False, True:
+                    stmt = users.select()
+                    if use_labels:
+                        stmt = stmt.apply_labels()
+
                     result = conn.execute(
-                        users.select(use_labels=use_labels).order_by(
-                            users.c.user_id
-                        )
+                        stmt.order_by(users.c.user_id)
                     ).fetchall()
 
                     if pickle:
@@ -1241,10 +1313,8 @@ class CursorResultTest(fixtures.TablesTest):
         with eng.connect() as conn:
             row = conn.execute(
                 select(
-                    [
-                        literal_column("1").label("SOMECOL"),
-                        literal_column("1").label("SOMECOL"),
-                    ]
+                    literal_column("1").label("SOMECOL"),
+                    literal_column("1").label("SOMECOL"),
                 )
             ).first()
 
@@ -1261,7 +1331,7 @@ class CursorResultTest(fixtures.TablesTest):
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0;"
         ):
-            row = connection.execute(select([col])).first()
+            row = connection.execute(select(col)).first()
             eq_(row["foo"], 1)
 
         eq_(row._mapping["foo"], 1)
@@ -1273,7 +1343,7 @@ class CursorResultTest(fixtures.TablesTest):
             "Using non-integer/slice indices on Row is deprecated "
             "and will be removed in version 2.0;"
         ):
-            row = connection.execute(select([col])).first()
+            row = connection.execute(select(col)).first()
             eq_(row[col], 1)
 
         eq_(row._mapping[col], 1)
@@ -1471,7 +1541,7 @@ class DefaultTest(fixtures.TestBase):
         def mydefault_using_connection(ctx):
             conn = ctx.connection
             try:
-                return conn.execute(select([text("12")])).scalar()
+                return conn.execute(select(text("12"))).scalar()
             finally:
                 # ensure a "close()" on this connection does nothing,
                 # since its a "branched" connection
@@ -1493,7 +1563,7 @@ class DefaultTest(fixtures.TestBase):
             ):
                 conn.execute(table.insert().values(x=5))
 
-            eq_(conn.execute(select([table])).first(), (5, 12))
+            eq_(conn.execute(select(table)).first(), (5, 12))
 
 
 class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1510,7 +1580,7 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             Column(
                 "col2",
                 Integer,
-                default=select([func.coalesce(func.max(foo.c.id))]),
+                default=select(func.coalesce(func.max(foo.c.id))),
             ),
         )
 
@@ -1564,7 +1634,7 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
             Column(
                 "col2",
                 Integer,
-                onupdate=select([func.coalesce(func.max(foo.c.id))]),
+                onupdate=select(func.coalesce(func.max(foo.c.id))),
             ),
             Column("col3", String(30)),
         )

@@ -122,7 +122,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         b1 = Bundle("b1", Data.d1, Data.d2)
 
         self.assert_compile(
-            select([b1.c.d1, b1.c.d2]), "SELECT data.d1, data.d2 FROM data"
+            select(b1.c.d1, b1.c.d2), "SELECT data.d1, data.d2 FROM data"
         )
 
     def test_result(self):

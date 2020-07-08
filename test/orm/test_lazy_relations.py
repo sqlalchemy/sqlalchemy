@@ -573,10 +573,10 @@ class LazyTest(_fixtures.FixtureTest):
         mapper(Item, items)
 
         open_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 1).alias()
+            Order, select(orders).where(orders.c.isopen == 1).alias()
         )
         closed_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 0).alias()
+            Order, select(orders).where(orders.c.isopen == 0).alias()
         )
 
         mapper(
@@ -1279,7 +1279,7 @@ class CorrelatedTest(fixtures.MappedTest):
         mapper(Stuff, stuff)
 
         stuff_view = (
-            sa.select([stuff.c.id])
+            sa.select(stuff.c.id)
             .where(stuff.c.user_id == user_t.c.id)
             .correlate(user_t)
             .order_by(sa.desc(stuff.c.date))

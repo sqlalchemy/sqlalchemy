@@ -1352,12 +1352,18 @@ class RelationshipProperty(StrategizedProperty):
             crit = j & sql.True_._ifnone(criterion)
 
             if secondary is not None:
-                ex = sql.exists(
-                    [1], crit, from_obj=[dest, secondary]
-                ).correlate_except(dest, secondary)
+                ex = (
+                    sql.exists(1)
+                    .where(crit)
+                    .select_from(dest, secondary)
+                    .correlate_except(dest, secondary)
+                )
             else:
-                ex = sql.exists([1], crit, from_obj=dest).correlate_except(
-                    dest
+                ex = (
+                    sql.exists(1)
+                    .where(crit)
+                    .select_from(dest)
+                    .correlate_except(dest)
                 )
             return ex
 

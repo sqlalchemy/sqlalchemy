@@ -2612,7 +2612,7 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, dbname, owner, schema):
         tables = ischema.tables
 
-        s = sql.select([tables.c.table_name]).where(
+        s = sql.select(tables.c.table_name).where(
             sql.and_(
                 tables.c.table_type == "BASE TABLE",
                 tables.c.table_name == tablename,
@@ -2630,7 +2630,7 @@ class MSDialect(default.DefaultDialect):
     def has_sequence(self, connection, sequencename, dbname, owner, schema):
         sequences = ischema.sequences
 
-        s = sql.select([sequences.c.sequence_name]).where(
+        s = sql.select(sequences.c.sequence_name).where(
             sequences.c.sequence_name == sequencename
         )
 
@@ -2646,7 +2646,7 @@ class MSDialect(default.DefaultDialect):
     def get_sequence_names(self, connection, dbname, owner, schema, **kw):
         sequences = ischema.sequences
 
-        s = sql.select([sequences.c.sequence_name])
+        s = sql.select(sequences.c.sequence_name)
         if owner:
             s = s.where(sequences.c.sequence_schema == owner)
 
@@ -2668,7 +2668,7 @@ class MSDialect(default.DefaultDialect):
     def get_table_names(self, connection, dbname, owner, schema, **kw):
         tables = ischema.tables
         s = (
-            sql.select([tables.c.table_name])
+            sql.select(tables.c.table_name)
             .where(
                 sql.and_(
                     tables.c.table_schema == owner,
@@ -2684,12 +2684,15 @@ class MSDialect(default.DefaultDialect):
     @_db_plus_owner_listing
     def get_view_names(self, connection, dbname, owner, schema, **kw):
         tables = ischema.tables
-        s = sql.select(
-            [tables.c.table_name],
-            sql.and_(
-                tables.c.table_schema == owner, tables.c.table_type == "VIEW"
-            ),
-            order_by=[tables.c.table_name],
+        s = (
+            sql.select(tables.c.table_name)
+            .where(
+                sql.and_(
+                    tables.c.table_schema == owner,
+                    tables.c.table_type == "VIEW",
+                )
+            )
+            .order_by(tables.c.table_name)
         )
         view_names = [r[0] for r in connection.execute(s)]
         return view_names
@@ -2807,11 +2810,13 @@ class MSDialect(default.DefaultDialect):
                 computed_cols.c.definition, NVARCHAR(4000)
             )
 
-        s = sql.select(
-            [columns, computed_definition, computed_cols.c.is_persisted],
-            whereclause,
-            from_obj=join,
-            order_by=[columns.c.ordinal_position],
+        s = (
+            sql.select(
+                columns, computed_definition, computed_cols.c.is_persisted
+            )
+            .where(whereclause)
+            .select_from(join)
+            .order_by(columns.c.ordinal_position)
         )
 
         c = connection.execution_options(future_result=True).execute(s)
@@ -2930,7 +2935,8 @@ class MSDialect(default.DefaultDialect):
 
         # Primary key constraints
         s = sql.select(
-            [C.c.column_name, TC.c.constraint_type, C.c.constraint_name],
+            C.c.column_name, TC.c.constraint_type, C.c.constraint_name
+        ).where(
             sql.and_(
                 TC.c.constraint_name == C.c.constraint_name,
                 TC.c.table_schema == C.c.table_schema,
@@ -2957,8 +2963,8 @@ class MSDialect(default.DefaultDialect):
         R = ischema.key_constraints.alias("R")
 
         # Foreign key constraints
-        s = sql.select(
-            [
+        s = (
+            sql.select(
                 C.c.column_name,
                 R.c.table_schema,
                 R.c.table_name,
@@ -2967,17 +2973,19 @@ class MSDialect(default.DefaultDialect):
                 RR.c.match_option,
                 RR.c.update_rule,
                 RR.c.delete_rule,
-            ],
-            sql.and_(
-                C.c.table_name == tablename,
-                C.c.table_schema == owner,
-                RR.c.constraint_schema == C.c.table_schema,
-                C.c.constraint_name == RR.c.constraint_name,
-                R.c.constraint_name == RR.c.unique_constraint_name,
-                R.c.constraint_schema == RR.c.unique_constraint_schema,
-                C.c.ordinal_position == R.c.ordinal_position,
-            ),
-            order_by=[RR.c.constraint_name, R.c.ordinal_position],
+            )
+            .where(
+                sql.and_(
+                    C.c.table_name == tablename,
+                    C.c.table_schema == owner,
+                    RR.c.constraint_schema == C.c.table_schema,
+                    C.c.constraint_name == RR.c.constraint_name,
+                    R.c.constraint_name == RR.c.unique_constraint_name,
+                    R.c.constraint_schema == RR.c.unique_constraint_schema,
+                    C.c.ordinal_position == R.c.ordinal_position,
+                )
+            )
+            .order_by(RR.c.constraint_name, R.c.ordinal_position)
         )
 
         # group rows by constraint ID, to handle multi-column FKs

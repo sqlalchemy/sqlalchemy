@@ -118,6 +118,7 @@ class ORMExecuteState(util.MemoizedSlots):
         "_compile_state_cls",
         "_starting_event_idx",
         "_events_todo",
+        "_future",
     )
 
     def __init__(
@@ -129,6 +130,7 @@ class ORMExecuteState(util.MemoizedSlots):
         bind_arguments,
         compile_state_cls,
         events_todo,
+        future,
     ):
         self.session = session
         self.statement = statement
@@ -137,6 +139,7 @@ class ORMExecuteState(util.MemoizedSlots):
         self.bind_arguments = bind_arguments
         self._compile_state_cls = compile_state_cls
         self._events_todo = list(events_todo)
+        self._future = future
 
     def _remaining_events(self):
         return self._events_todo[self._starting_event_idx + 1 :]
@@ -212,6 +215,7 @@ class ORMExecuteState(util.MemoizedSlots):
             _execution_options,
             _bind_arguments,
             _parent_execute_state=self,
+            future=self._future,
         )
 
     @property
@@ -924,6 +928,7 @@ class Session(_SessionClassMethods):
         self,
         bind=None,
         autoflush=True,
+        future=False,
         expire_on_commit=True,
         autocommit=False,
         twophase=False,
@@ -1039,6 +1044,26 @@ class Session(_SessionClassMethods):
            so that all attribute/object access subsequent to a completed
            transaction will load from the most recent database state.
 
+        :param future: if True, use 2.0 style behavior for the
+          :meth:`_orm.Session.execute` method.  This includes that the
+          :class:`_engine.Result` object returned will return new-style
+          tuple rows, as well as that Core constructs such as
+          :class:`_sql.Select`,
+          :class:`_sql.Update` and :class:`_sql.Delete` will be interpreted
+          in an ORM context if they are made against ORM entities rather than
+          plain :class:`.Table` metadata objects.
+
+          The "future" flag is also available on a per-execution basis
+          using the :paramref:`_orm.Session.execute.future` flag.
+
+          .. versionadded:: 1.4
+
+          .. seealso::
+
+            :ref:`migration_20_toplevel`
+
+            :ref:`migration_20_result_rows`
+
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
            :attr:`.Session.info` attribute.  Note the dictionary is copied at
@@ -1071,6 +1096,7 @@ class Session(_SessionClassMethods):
         self._flushing = False
         self._warn_on_events = False
         self._transaction = None
+        self.future = future
         self.hash_key = _new_sessionid()
         self.autoflush = autoflush
         self.autocommit = autocommit
@@ -1387,6 +1413,7 @@ class Session(_SessionClassMethods):
         params=None,
         execution_options=util.immutabledict(),
         bind_arguments=None,
+        future=False,
         _parent_execute_state=None,
         _add_event=None,
         **kw
@@ -1493,6 +1520,14 @@ class Session(_SessionClassMethods):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
+        :param future:
+            Use future style execution for this statement.  This is
+            the same effect as the :paramref:`_orm.Session.future` flag,
+            except at the level of this single statement execution.  See
+            that flag for details.
+
+            .. versionadded:: 1.4
+
         :param mapper:
           deprecated; use the bind_arguments dictionary
 
@@ -1518,15 +1553,18 @@ class Session(_SessionClassMethods):
         """
         statement = coercions.expect(roles.CoerceTextStatementRole, statement)
 
+        future = future or self.future
+
         if not bind_arguments:
             bind_arguments = kw
         elif kw:
             bind_arguments.update(kw)
 
-        if (
+        if future and (
             statement._propagate_attrs.get("compile_state_plugin", None)
             == "orm"
         ):
+            # note that even without "future" mode, we need
             compile_state_cls = CompileState._get_plugin_class_for_plugin(
                 statement, "orm"
             )
@@ -1547,7 +1585,7 @@ class Session(_SessionClassMethods):
             )
         else:
             bind_arguments.setdefault("clause", statement)
-            if statement._is_future:
+            if future:
                 execution_options = util.immutabledict().merge_with(
                     execution_options, {"future_result": True}
                 )
@@ -1568,6 +1606,7 @@ class Session(_SessionClassMethods):
                 bind_arguments,
                 compile_state_cls,
                 events_todo,
+                future,
             )
             for idx, fn in enumerate(events_todo):
                 orm_exec_state._starting_event_idx = idx

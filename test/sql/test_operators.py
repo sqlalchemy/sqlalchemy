@@ -2896,7 +2896,7 @@ class InSelectableTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             r"Coercing CTE object into a select\(\) for use in "
             r"IN\(\); please pass a select\(\) construct explicitly",
         ):
-            s2 = select([column("q").in_(stmt)])
+            s2 = select(column("q").in_(stmt))
 
         self.assert_compile(
             s2,

@@ -4,10 +4,10 @@ from sqlalchemy import BIGINT
 from sqlalchemy import Column
 from sqlalchemy import DECIMAL
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.future import select
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 

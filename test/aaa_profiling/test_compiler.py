@@ -77,7 +77,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         s = select([t1], t1.c.c2 == t2.c.c1)
         s.compile(dialect=self.dialect)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.15, warmup=1)
         def go():
             s = select([t1], t1.c.c2 == t2.c.c1)
             s.compile(dialect=self.dialect)
@@ -90,7 +90,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
         s = select([t1], t1.c.c2 == t2.c.c1).apply_labels()
         s.compile(dialect=self.dialect)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.15, warmup=1)
         def go():
             s = select([t1], t1.c.c2 == t2.c.c1).apply_labels()
             s.compile(dialect=self.dialect)

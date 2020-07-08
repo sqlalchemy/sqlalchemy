@@ -4,7 +4,6 @@ from sqlalchemy import func
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import true
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
@@ -149,7 +148,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 3)
 
         eq_(
-            select([func.count("*")])
+            select(func.count("*"))
             .select_from(
                 sess.query(Person)
                 .with_polymorphic("*")
@@ -231,12 +230,12 @@ class _PolymorphicTestBase(object):
         )
 
     def test_multi_join_future(self):
-        sess = create_session()
+        sess = create_session(future=True)
         e = aliased(Person)
         c = aliased(Company)
 
         q = (
-            future_select(Company, Person, c, e)
+            select(Company, Person, c, e)
             .join(Person, Company.employees)
             .join(e, c.employees)
             .filter(Person.person_id != e.person_id)
@@ -246,7 +245,7 @@ class _PolymorphicTestBase(object):
 
         eq_(
             sess.execute(
-                future_select(func.count()).select_from(q.subquery())
+                select(func.count()).select_from(q.subquery())
             ).scalar(),
             1,
         )
@@ -284,10 +283,9 @@ class _PolymorphicTestBase(object):
         eq_(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
 
     def test_filter_on_subclass_one_future(self):
-        sess = create_session()
+        sess = create_session(future=True)
         eq_(
-            sess.execute(future_select(Engineer)).scalar(),
-            Engineer(name="dilbert"),
+            sess.execute(select(Engineer)).scalar(), Engineer(name="dilbert"),
         )
 
     def test_filter_on_subclass_two(self):
@@ -339,10 +337,10 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_nonaliased_one_future(self):
-        sess = create_session()
+        sess = create_session(future=True)
         eq_(
             sess.execute(
-                future_select(Person)
+                select(Person)
                 .join(Person.paperwork)
                 .filter(Paperwork.description.like("%review%"))
             )
@@ -398,12 +396,12 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_flag_aliased_one_future(self):
-        sess = create_session()
+        sess = create_session(future=True)
 
         pa = aliased(Paperwork)
         eq_(
             sess.execute(
-                future_select(Person)
+                select(Person)
                 .order_by(Person.person_id)
                 .join(Person.paperwork.of_type(pa))
                 .filter(pa.description.like("%review%"))
@@ -498,12 +496,12 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_with_polymorphic_nonaliased_one_future(self):
-        sess = create_session()
+        sess = create_session(future=True)
 
         pm = with_polymorphic(Person, [Manager])
         eq_(
             sess.execute(
-                future_select(pm)
+                select(pm)
                 .order_by(pm.person_id)
                 .join(pm.paperwork)
                 .filter(Paperwork.description.like("%review%"))
@@ -1542,17 +1540,17 @@ class _PolymorphicTestBase(object):
             expected,
         )
 
-    def test_self_referential_two_newstyle(self):
+    def test_self_referential_two_future(self):
         # TODO: this is the first test *EVER* of an aliased class of
         # an aliased class.  we should add many more tests for this.
         # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
-        sess = create_session()
+        sess = create_session(future=True)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
         p1 = aliased(Person)
         p2 = aliased(Person)
         stmt = (
-            future_select(p1, p2)
+            select(p1, p2)
             .filter(p1.company_id == p2.company_id)
             .filter(p1.name == "dogbert")
             .filter(p1.person_id > p2.person_id)
@@ -1562,7 +1560,7 @@ class _PolymorphicTestBase(object):
         pa1 = aliased(p1, subq)
         pa2 = aliased(p2, subq)
 
-        stmt = future_select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
+        stmt = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
 
         eq_(
             sess.execute(stmt).unique().all(), expected,

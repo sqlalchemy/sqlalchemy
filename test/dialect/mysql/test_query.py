@@ -26,19 +26,19 @@ class IdiosyncrasyTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.emits_warning()
-    def test_is_boolean_symbols_despite_no_native(self):
+    def test_is_boolean_symbols_despite_no_native(self, connection):
+
         is_(
-            testing.db.scalar(select([cast(true().is_(true()), Boolean)])),
-            True,
+            connection.scalar(select(cast(true().is_(true()), Boolean))), True,
         )
 
         is_(
-            testing.db.scalar(select([cast(true().isnot(true()), Boolean)])),
+            connection.scalar(select(cast(true().isnot(true()), Boolean))),
             False,
         )
 
         is_(
-            testing.db.scalar(select([cast(false().is_(false()), Boolean)])),
+            connection.scalar(select(cast(false().is_(false()), Boolean))),
             True,
         )
 
@@ -134,13 +134,11 @@ class MatchTest(fixtures.TestBase):
         # test [ticket:3263]
         result = connection.execute(
             select(
-                [
-                    matchtable.c.title.match("Agile Ruby Programming").label(
-                        "ruby"
-                    ),
-                    matchtable.c.title.match("Dive Python").label("python"),
-                    matchtable.c.title,
-                ]
+                matchtable.c.title.match("Agile Ruby Programming").label(
+                    "ruby"
+                ),
+                matchtable.c.title.match("Dive Python").label("python"),
+                matchtable.c.title,
             ).order_by(matchtable.c.id)
         ).fetchall()
         eq_(
@@ -246,22 +244,22 @@ class AnyAllTest(fixtures.TablesTest):
 
     def test_any_w_comparator(self, connection):
         stuff = self.tables.stuff
-        stmt = select([stuff.c.id]).where(
-            stuff.c.value > any_(select([stuff.c.value]).scalar_subquery())
+        stmt = select(stuff.c.id).where(
+            stuff.c.value > any_(select(stuff.c.value).scalar_subquery())
         )
 
         eq_(connection.execute(stmt).fetchall(), [(2,), (3,), (4,), (5,)])
 
     def test_all_w_comparator(self, connection):
         stuff = self.tables.stuff
-        stmt = select([stuff.c.id]).where(
-            stuff.c.value >= all_(select([stuff.c.value]).scalar_subquery())
+        stmt = select(stuff.c.id).where(
+            stuff.c.value >= all_(select(stuff.c.value).scalar_subquery())
         )
 
         eq_(connection.execute(stmt).fetchall(), [(5,)])
 
     def test_any_literal(self, connection):
         stuff = self.tables.stuff
-        stmt = select([4 == any_(select([stuff.c.value]).scalar_subquery())])
+        stmt = select([4 == any_(select(stuff.c.value).scalar_subquery())])
 
         is_(connection.execute(stmt).scalar(), True)

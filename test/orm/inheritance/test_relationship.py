@@ -778,12 +778,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         C1 = aliased(Child1, flat=True)
 
-        # figure out all the things we need to do in Core to make
-        # the identical query that the ORM renders.
+        # this was "figure out all the things we need to do in Core to make
+        # the identical query that the ORM renders.", however as of
+        # I765a0b912b3dcd0e995426427d8bb7997cbffd51 this is using the ORM
+        # to create the query in any case
 
         salias = secondary.alias()
         stmt = (
-            select([Child2])
+            select(Child2)
             .select_from(
                 join(
                     Child2,
@@ -796,8 +798,8 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt.apply_labels(),
-            "SELECT parent.id AS parent_id, "
-            "parent.cls AS parent_cls, child2.id AS child2_id "
+            "SELECT child2.id AS child2_id, parent.id AS parent_id, "
+            "parent.cls AS parent_cls "
             "FROM secondary AS secondary_1, "
             "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
             "secondary_2 ON parent.id = secondary_2.left_id JOIN "
@@ -836,7 +838,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # another way to check
         eq_(
-            select([func.count("*")])
+            select(func.count("*"))
             .select_from(q.limit(1).with_labels().subquery())
             .scalar(),
             1,

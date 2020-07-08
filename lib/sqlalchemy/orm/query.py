@@ -45,12 +45,13 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
-from ..future.selectable import Select as FutureSelect
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
+from ..sql import Select
 from ..sql import util as sql_util
 from ..sql.annotation import SupportsCloneAnnotations
+from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
 from ..sql.base import Executable
 from ..sql.selectable import _SelectFromElements
@@ -61,7 +62,6 @@ from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectStatementGrouping
-from ..sql.util import _entity_namespace_key
 from ..sql.visitors import InternalTraversal
 from ..util import collections_abc
 
@@ -419,7 +419,7 @@ class Query(
             stmt._propagate_attrs = self._propagate_attrs
         else:
             # Query / select() internal attributes are 99% cross-compatible
-            stmt = FutureSelect.__new__(FutureSelect)
+            stmt = Select.__new__(Select)
             stmt.__dict__.update(self.__dict__)
             stmt.__dict__.update(
                 _label_style=self._label_style,
@@ -2836,6 +2836,7 @@ class Query(
             statement,
             params,
             execution_options={"_sa_orm_load_options": self.load_options},
+            future=True,
         )
 
         # legacy: automatically set scalars, unique
@@ -3209,6 +3210,7 @@ class Query(
             delete_,
             self.load_options._params,
             execution_options={"synchronize_session": synchronize_session},
+            future=True,
         )
         bulk_del.result = result
         self.session.dispatch.after_bulk_delete(bulk_del)
@@ -3363,6 +3365,7 @@ class Query(
             upd,
             self.load_options._params,
             execution_options={"synchronize_session": synchronize_session},
+            future=True,
         )
         bulk_ud.result = result
         self.session.dispatch.after_bulk_update(bulk_ud)

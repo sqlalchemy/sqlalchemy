@@ -10,6 +10,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -17,7 +18,6 @@ from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.ext.horizontal_shard import ShardedSession
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
@@ -179,7 +179,7 @@ class ShardTest(object):
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
         quito.reports.append(Report(85))
-        sess = create_session()
+        sess = create_session(future=True)
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
             sess.add(c)
         sess.flush()
@@ -219,7 +219,7 @@ class ShardTest(object):
     def test_query_explicit_shard_via_bind_opts(self):
         sess = self._fixture_data()
 
-        stmt = future_select(WeatherLocation).filter(WeatherLocation.id == 1)
+        stmt = select(WeatherLocation).filter(WeatherLocation.id == 1)
 
         tokyo = (
             sess.execute(stmt, bind_arguments={"shard_id": "asia"})
@@ -257,16 +257,14 @@ class ShardTest(object):
         sess = self._fixture_data()
 
         tokyo = (
-            sess.execute(
-                future_select(WeatherLocation).filter_by(city="Tokyo")
-            )
+            sess.execute(select(WeatherLocation).filter_by(city="Tokyo"))
             .scalars()
             .one()
         )
         eq_(tokyo.city, "Tokyo")
 
         asia_and_europe = sess.execute(
-            future_select(WeatherLocation).filter(
+            select(WeatherLocation).filter(
                 WeatherLocation.continent.in_(["Europe", "Asia"])
             )
         ).scalars()
@@ -536,12 +534,12 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {80.0, 75.0, 85.0},
         )
 
-        temps = sess.execute(future_select(Report)).scalars().all()
+        temps = sess.execute(select(Report)).scalars().all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
         sess.execute(
@@ -554,7 +552,7 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {86.0, 75.0, 91.0},
         )
@@ -568,12 +566,12 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {80.0, 75.0, 85.0},
         )
 
-        temps = sess.execute(future_select(Report)).scalars().all()
+        temps = sess.execute(select(Report)).scalars().all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
         # MARKMARK
@@ -588,7 +586,7 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {86.0, 81.0, 91.0},
         )
@@ -599,7 +597,7 @@ class ShardTest(object):
     def test_bulk_delete_future_synchronize_evaluate(self):
         sess = self._fixture_data()
 
-        temps = sess.execute(future_select(Report)).scalars().all()
+        temps = sess.execute(select(Report)).scalars().all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
         sess.execute(
@@ -611,7 +609,7 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {75.0},
         )
@@ -623,7 +621,7 @@ class ShardTest(object):
     def test_bulk_delete_future_synchronize_fetch(self):
         sess = self._fixture_data()
 
-        temps = sess.execute(future_select(Report)).scalars().all()
+        temps = sess.execute(select(Report)).scalars().all()
         eq_(set(t.temperature for t in temps), {80.0, 75.0, 85.0})
 
         sess.execute(
@@ -635,7 +633,7 @@ class ShardTest(object):
         eq_(
             set(
                 row.temperature
-                for row in sess.execute(future_select(Report.temperature))
+                for row in sess.execute(select(Report.temperature))
             ),
             {75.0},
         )

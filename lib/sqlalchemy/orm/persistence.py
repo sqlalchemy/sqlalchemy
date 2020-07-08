@@ -29,17 +29,17 @@ from .. import future
 from .. import sql
 from .. import util
 from ..engine import result as _result
-from ..future import select as future_select
 from ..sql import coercions
 from ..sql import expression
 from ..sql import operators
 from ..sql import roles
+from ..sql import select
+from ..sql.base import _entity_namespace_key
 from ..sql.base import CompileState
 from ..sql.base import Options
 from ..sql.dml import DeleteDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
-from ..sql.util import _entity_namespace_key
 
 
 def _bulk_insert(
@@ -887,7 +887,7 @@ def _emit_update_statements(
                 )
             )
 
-        stmt = table.update(clauses)
+        stmt = table.update().where(clauses)
         return stmt
 
     cached_stmt = base_mapper._memo(("update", table), update_stmt)
@@ -1280,7 +1280,7 @@ def _emit_post_update_statements(
                 )
             )
 
-        stmt = table.update(clauses)
+        stmt = table.update().where(clauses)
 
         if mapper.version_id_col is not None:
             stmt = stmt.return_defaults(mapper.version_id_col)
@@ -1394,7 +1394,7 @@ def _emit_delete_statements(
                 )
             )
 
-        return table.delete(clauses)
+        return table.delete().where(clauses)
 
     statement = base_mapper._memo(("delete", table), delete_stmt)
     for connection, recs in groupby(delete, lambda rec: rec[1]):  # connection
@@ -1950,7 +1950,7 @@ class BulkUDCompileState(CompileState):
             for k, v in iterator:
                 if mapper:
                     if isinstance(k, util.string_types):
-                        desc = sql.util._entity_namespace_key(mapper, k)
+                        desc = _entity_namespace_key(mapper, k)
                         values.extend(desc._bulk_update_tuples(v))
                     elif "entity_namespace" in k._annotations:
                         k_anno = k._annotations
@@ -1999,7 +1999,7 @@ class BulkUDCompileState(CompileState):
     ):
         mapper = update_options._subject_mapper
 
-        select_stmt = future_select(
+        select_stmt = select(
             *(mapper.primary_key + (mapper.select_identity_token,))
         )
         select_stmt._where_criteria = statement._where_criteria
@@ -2017,6 +2017,7 @@ class BulkUDCompileState(CompileState):
             execution_options,
             bind_arguments,
             _add_event=skip_for_full_returning,
+            future=True,
         )
         matched_rows = result.fetchall()
 

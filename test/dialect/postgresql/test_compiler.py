@@ -1192,7 +1192,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("col1", Integer),
             Column("variadic", Integer),
         )
-        x = select([table.c.col1, table.c.variadic])
+        x = select(table.c.col1, table.c.variadic)
 
         self.assert_compile(
             x, """SELECT pg_table.col1, pg_table."variadic" FROM pg_table"""
@@ -1453,19 +1453,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expected = "SELECT foo.id FROM ONLY testtbl1 AS foo"
         self.assert_compile(stmt, expected)
 
-        stmt = select([tbl1, tbl2]).with_hint(tbl1, "ONLY", "postgresql")
+        stmt = select(tbl1, tbl2).with_hint(tbl1, "ONLY", "postgresql")
         expected = (
             "SELECT testtbl1.id, testtbl2.id FROM ONLY testtbl1, " "testtbl2"
         )
         self.assert_compile(stmt, expected)
 
-        stmt = select([tbl1, tbl2]).with_hint(tbl2, "ONLY", "postgresql")
+        stmt = select(tbl1, tbl2).with_hint(tbl2, "ONLY", "postgresql")
         expected = (
             "SELECT testtbl1.id, testtbl2.id FROM testtbl1, ONLY " "testtbl2"
         )
         self.assert_compile(stmt, expected)
 
-        stmt = select([tbl1, tbl2])
+        stmt = select(tbl1, tbl2)
         stmt = stmt.with_hint(tbl1, "ONLY", "postgresql")
         stmt = stmt.with_hint(tbl2, "ONLY", "postgresql")
         expected = (
@@ -1502,7 +1502,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         table = Table("table1", m, Column("a", Integer), Column("b", Integer))
         expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
-        stmt = select([expr])
+        stmt = select(expr)
 
         # note this tests that the object exports FROM objects
         # correctly
@@ -1518,7 +1518,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = func.string_agg(
             table.c.a, aggregate_order_by(literal_column("','"), table.c.a)
         )
-        stmt = select([expr])
+        stmt = select(expr)
 
         self.assert_compile(
             stmt,
@@ -1535,7 +1535,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 literal_column("','"), table.c.a, table.c.b.desc()
             ),
         )
-        stmt = select([expr])
+        stmt = select(expr)
 
         self.assert_compile(
             stmt,
@@ -1593,7 +1593,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         table = Table("table1", m, Column("a", Integer), Column("b", Integer))
         expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
-        stmt = select([expr])
+        stmt = select(expr)
 
         a1 = table.alias("foo")
         stmt2 = sql_util.ClauseAdapter(a1).traverse(stmt)
@@ -2005,7 +2005,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             .cte("i_upsert")
         )
 
-        stmt = select([i])
+        stmt = select(i)
 
         self.assert_compile(
             stmt,
@@ -2070,19 +2070,19 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_plain_generative(self):
         self.assert_compile(
-            select([self.table]).distinct(),
+            select(self.table).distinct(),
             "SELECT DISTINCT t.id, t.a, t.b FROM t",
         )
 
     def test_on_columns_generative(self):
         self.assert_compile(
-            select([self.table]).distinct(self.table.c.a),
+            select(self.table).distinct(self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
         )
 
     def test_on_columns_generative_multi_call(self):
         self.assert_compile(
-            select([self.table])
+            select(self.table)
             .distinct(self.table.c.a)
             .distinct(self.table.c.b),
             "SELECT DISTINCT ON (t.a, t.b) t.id, t.a, t.b FROM t",
@@ -2111,7 +2111,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_literal_binds(self):
         self.assert_compile(
-            select([self.table]).distinct(self.table.c.a == 10),
+            select(self.table).distinct(self.table.c.a == 10),
             "SELECT DISTINCT ON (t.a = 10) t.id, t.a, t.b FROM t",
             literal_binds=True,
         )
@@ -2172,9 +2172,9 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_distinct_on_subquery_anon(self):
 
-        sq = select([self.table]).alias()
+        sq = select(self.table).alias()
         q = (
-            select([self.table.c.id, sq.c.id])
+            select(self.table.c.id, sq.c.id)
             .distinct(sq.c.id)
             .where(self.table.c.id == sq.c.id)
         )
@@ -2187,9 +2187,9 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_distinct_on_subquery_named(self):
-        sq = select([self.table]).alias("sq")
+        sq = select(self.table).alias("sq")
         q = (
-            select([self.table.c.id, sq.c.id])
+            select(self.table.c.id, sq.c.id)
             .distinct(sq.c.id)
             .where(self.table.c.id == sq.c.id)
         )
@@ -2232,7 +2232,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         raise ValueError(c)
 
     def test_match_basic(self):
-        s = select([self.table_alt.c.id]).where(
+        s = select(self.table_alt.c.id).where(
             self.table_alt.c.title.match("somestring")
         )
         self.assert_compile(
@@ -2243,7 +2243,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_match_regconfig(self):
-        s = select([self.table_alt.c.id]).where(
+        s = select(self.table_alt.c.id).where(
             self.table_alt.c.title.match(
                 "somestring", postgresql_regconfig="english"
             )
@@ -2256,7 +2256,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_match_tsvector(self):
-        s = select([self.table_alt.c.id]).where(
+        s = select(self.table_alt.c.id).where(
             func.to_tsvector(self.table_alt.c.title).match("somestring")
         )
         self.assert_compile(
@@ -2268,7 +2268,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_match_tsvectorconfig(self):
-        s = select([self.table_alt.c.id]).where(
+        s = select(self.table_alt.c.id).where(
             func.to_tsvector("english", self.table_alt.c.title).match(
                 "somestring"
             )
@@ -2282,7 +2282,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_match_tsvectorconfig_regconfig(self):
-        s = select([self.table_alt.c.id]).where(
+        s = select(self.table_alt.c.id).where(
             func.to_tsvector("english", self.table_alt.c.title).match(
                 "somestring", postgresql_regconfig="english"
             )

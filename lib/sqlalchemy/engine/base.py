@@ -1511,7 +1511,6 @@ class Connection(Connectable):
                 # legacy stuff.
                 if should_close_with_result and context._soft_closed:
                     assert not self._is_future
-                    assert not context._is_future_result
 
                     # CursorResult already exhausted rows / has no rows.
                     # close us now

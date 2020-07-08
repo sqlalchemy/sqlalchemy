@@ -36,9 +36,58 @@ most common runtime errors as well as programming time errors.
 Legacy API Features
 ===================
 
+.. _error_c9ae:
+
+select() construct created in "legacy" mode; keyword arguments, etc.
+--------------------------------------------------------------------
+
+The :func:`_expression.select` construct has been updated as of SQLAlchemy
+1.4 to support the newer calling style that will be standard in
+:ref:`SQLAlchemy 2.0 <error_b8d9>`.   For backwards compatibility in the
+interm, the construct accepts arguments in both the "legacy" style as well
+as the "new" style.
+
+The "new" style features that column and table expressions are passed
+positionally to the :func:`_expression.select` construct only; any other
+modifiers to the object must be passed using subsequent method chaining::
+
+    # this is the way to do it going forward
+    stmt = select(table1.c.myid).where(table1.c.myid == table2.c.otherid)
+
+For comparison, a :func:`_expression.select` in legacy forms of SQLAlchemy,
+before methods like :meth:`.Select.where` were even added, would like::
+
+    # this is how it was documented in original SQLAlchemy versions
+    # many years ago
+    stmt = select([table1.c.myid], whereclause=table1.c.myid == table2.c.otherid)
+
+Or even that the "whereclause" would be passed positionally::
+
+    # this is also how it was documented in original SQLAlchemy versions
+    # many years ago
+    stmt = select([table1.c.myid], table1.c.myid == table2.c.otherid)
+
+For some years now, the additional "whereclause" and other arguments that are
+accepted have been removed from most narrative documentation, leading to a
+calling style that is most familiar as the list of column arguments passed
+as a list, but no further arguments::
+
+    # this is how it's been documented since around version 1.0 or so
+    stmt = select([table1.c.myid]).where(table1.c.myid == table2.c.otherid)
+
+.. seealso::
+
+    :ref:`error_b8d9`
+
+    :ref:`change_5284`
+
+    :ref:`migration_20_toplevel`
+
+
+
 .. _error_b8d9:
 
-The <some function> in SQLAlchemy 2.0 will no longer <something>; use the "future" construct
+The <some function> in SQLAlchemy 2.0 will no longer <something>
 --------------------------------------------------------------------------------------------
 
 SQLAlchemy 2.0 is expected to be a major shift for a wide variety of key

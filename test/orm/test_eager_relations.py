@@ -827,10 +827,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         mapper(Item, items)
 
         open_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 1).alias()
+            Order, select(orders).where(orders.c.isopen == 1).alias()
         )
         closed_mapper = aliased(
-            Order, select([orders]).where(orders.c.isopen == 0).alias()
+            Order, select(orders).where(orders.c.isopen == 0).alias()
         )
 
         mapper(
@@ -3295,7 +3295,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_column_property(self):
         A = self.classes.A
         b_table, a_table = self.tables.b, self.tables.a
-        cp = select([func.sum(b_table.c.value)]).where(
+        cp = select(func.sum(b_table.c.value)).where(
             b_table.c.a_id == a_table.c.id
         )
 
@@ -3318,7 +3318,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_column_property_desc(self):
         A = self.classes.A
         b_table, a_table = self.tables.b, self.tables.a
-        cp = select([func.sum(b_table.c.value)]).where(
+        cp = select(func.sum(b_table.c.value)).where(
             b_table.c.a_id == a_table.c.id
         )
 
@@ -3342,7 +3342,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         A = self.classes.A
         b_table, a_table = self.tables.b, self.tables.a
         cp = (
-            select([func.sum(b_table.c.value)])
+            select(func.sum(b_table.c.value))
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
         )
@@ -3368,7 +3368,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         b_table, a_table = self.tables.b, self.tables.a
         self._fixture({})
         cp = (
-            select([func.sum(b_table.c.value)])
+            select(func.sum(b_table.c.value))
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
             .scalar_subquery()
@@ -3398,7 +3398,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         b_table, a_table = self.tables.b, self.tables.a
         self._fixture({})
         cp = (
-            select([func.sum(b_table.c.value)])
+            select(func.sum(b_table.c.value))
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
             .scalar_subquery()
@@ -3425,7 +3425,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         b_table, a_table = self.tables.b, self.tables.a
         self._fixture({})
         cp = (
-            select([func.sum(b_table.c.value)])
+            select(func.sum(b_table.c.value))
             .where(b_table.c.a_id == a_table.c.id)
             .correlate(a_table)
             .scalar_subquery()
@@ -4927,7 +4927,7 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
         if ondate:
             # the more 'relational' way to do this, join on the max date
             stuff_view = (
-                select([func.max(salias.c.date).label("max_date")])
+                select(func.max(salias.c.date).label("max_date"))
                 .where(salias.c.user_id == users.c.id)
                 .correlate(users)
             )
@@ -4936,7 +4936,7 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             # perform better in some
             # cases - subquery does a limit with order by DESC, join on the id
             stuff_view = (
-                select([salias.c.id])
+                select(salias.c.id)
                 .where(salias.c.user_id == users.c.id)
                 .correlate(users)
                 .order_by(salias.c.date.desc())

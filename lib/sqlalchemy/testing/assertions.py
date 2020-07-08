@@ -170,7 +170,11 @@ def _expect_warnings(
 
     with mock.patch("warnings.warn", our_warn), mock.patch(
         "sqlalchemy.util.SQLALCHEMY_WARN_20", True
-    ), mock.patch("sqlalchemy.engine.row.LegacyRow._default_key_style", 2):
+    ), mock.patch(
+        "sqlalchemy.util.deprecations.SQLALCHEMY_WARN_20", True
+    ), mock.patch(
+        "sqlalchemy.engine.row.LegacyRow._default_key_style", 2
+    ):
         yield
 
     if assert_ and (not py2konly or not compat.py3k):

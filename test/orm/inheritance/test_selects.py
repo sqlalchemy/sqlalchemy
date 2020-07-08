@@ -116,7 +116,7 @@ class JoinFromSelectPersistenceTest(fixtures.MappedTest):
         Base, Child = self.classes.Base, self.classes.Child
         base, child = self.tables.base, self.tables.child
 
-        base_select = select([base]).alias()
+        base_select = select(base).alias()
         mapper(
             Base,
             base_select,

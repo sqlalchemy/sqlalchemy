@@ -1675,7 +1675,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         eq_(
             sess.query(User)
             .select_entity_from(
-                select([users]).order_by(User.id).offset(2).alias()
+                select(users).order_by(User.id).offset(2).alias()
             )
             .join(Order, User.id == Order.user_id)
             .all(),
@@ -2825,7 +2825,7 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
         mp = mapper(Parent, parent)
         mapper(Child, child)
 
-        derived = select([child]).alias()
+        derived = select(child).alias()
         npc = aliased(Child, derived)
         cls.npc = npc
         cls.derived = derived
@@ -4005,7 +4005,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
         stmt = s.query(Person).subquery()
 
         subq = (
-            select([Book.book_id])
+            select(Book.book_id)
             .where(Person.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
@@ -4038,7 +4038,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
         stmt = s.query(Person).subquery()
 
         subq = (
-            select([Book.book_id])
+            select(Book.book_id)
             .correlate(Person)
             .where(Person.people_id == Book.book_owner_id)
             .subquery()

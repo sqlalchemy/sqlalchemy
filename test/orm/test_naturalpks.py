@@ -1086,7 +1086,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         a1 = u1.addresses[0]
 
         eq_(
-            sa.select([addresses.c.username]).execute().fetchall(),
+            sa.select(addresses.c.username).execute().fetchall(),
             [("jack",), ("jack",)],
         )
 
@@ -1096,7 +1096,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         sess.flush()
         assert u1.addresses[0].username == "ed"
         eq_(
-            sa.select([addresses.c.username]).execute().fetchall(),
+            sa.select(addresses.c.username).execute().fetchall(),
             [("ed",), ("ed",)],
         )
 
@@ -1135,7 +1135,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         eq_(a1.username, None)
 
         eq_(
-            sa.select([addresses.c.username]).execute().fetchall(),
+            sa.select(addresses.c.username).execute().fetchall(),
             [(None,), (None,)],
         )
 
@@ -1448,7 +1448,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(a1.username, "ed")
         eq_(a2.username, "ed")
         eq_(
-            sa.select([addresses.c.username]).execute().fetchall(),
+            sa.select(addresses.c.username).execute().fetchall(),
             [("ed",), ("ed",)],
         )
 
@@ -1459,7 +1459,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(a1.username, "jack")
         eq_(a2.username, "jack")
         eq_(
-            sa.select([addresses.c.username]).execute().fetchall(),
+            sa.select(addresses.c.username).execute().fetchall(),
             [("jack",), ("jack",)],
         )
 

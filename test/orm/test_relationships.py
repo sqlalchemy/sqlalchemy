@@ -2734,12 +2734,12 @@ class TypedAssociationTable(fixtures.MappedTest):
         sess.add(a)
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(t3).scalar(), 2)
+        eq_(select(func.count("*")).select_from(t3).scalar(), 2)
 
         a.t2s.remove(c)
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(t3).scalar(), 1)
+        eq_(select(func.count("*")).select_from(t3).scalar(), 1)
 
 
 class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
@@ -5808,7 +5808,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
         a, b = cls.tables("a", "b")
 
         secondary = (
-            select([a.c.id.label("aid"), b])
+            select(a.c.id.label("aid"), b)
             .select_from(a.join(b, a.c.b_ids.like("%" + b.c.id + "%")))
             .alias()
         )

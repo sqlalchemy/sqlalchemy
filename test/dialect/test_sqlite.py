@@ -117,7 +117,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         assert_raises(
             exc.StatementError,
             connection.execute,
-            select([1]).where(bindparam("date", type_=Date)),
+            select(1).where(bindparam("date", type_=Date)),
             date=str(datetime.date(2007, 10, 30)),
         )
 
@@ -196,7 +196,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("2004-05-21T00:00:00",), ("2010-10-15T12:37:00",)],
         )
         eq_(
-            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select(t.c.d).order_by(t.c.d)).fetchall(),
             [
                 (datetime.datetime(2004, 5, 21, 0, 0),),
                 (datetime.datetime(2010, 10, 15, 12, 37),),
@@ -221,7 +221,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("20040521000000",), ("20101015123700",)],
         )
         eq_(
-            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select(t.c.d).order_by(t.c.d)).fetchall(),
             [
                 (datetime.datetime(2004, 5, 21, 0, 0),),
                 (datetime.datetime(2010, 10, 15, 12, 37),),
@@ -243,7 +243,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("20040521",), ("20101015",)],
         )
         eq_(
-            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select(t.c.d).order_by(t.c.d)).fetchall(),
             [(datetime.date(2004, 5, 21),), (datetime.date(2010, 10, 15),)],
         )
 
@@ -263,7 +263,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             [("2004|05|21",), ("2010|10|15",)],
         )
         eq_(
-            connection.execute(select([t.c.d]).order_by(t.c.d)).fetchall(),
+            connection.execute(select(t.c.d).order_by(t.c.d)).fetchall(),
             [(datetime.date(2004, 5, 21),), (datetime.date(2010, 10, 15),)],
         )
 
@@ -315,7 +315,7 @@ class JSONTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.execute(sqlite_json.insert(), foo=value)
 
-            eq_(conn.scalar(select([sqlite_json.c.foo])), value)
+            eq_(conn.scalar(select(sqlite_json.c.foo)), value)
 
     @testing.provide_metadata
     def test_extract_subobject(self):
@@ -358,7 +358,7 @@ class JSONTest(fixtures.TestBase):
         with engine.begin() as conn:
             conn.execute(sqlite_json.insert(), {"foo": data_element})
 
-            row = conn.execute(select([sqlite_json.c.foo])).first()
+            row = conn.execute(select(sqlite_json.c.foo)).first()
 
             eq_(row, (data_element,))
             eq_(js.mock_calls, [mock.call(data_element)])
@@ -575,7 +575,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             conn.execute(t.insert())
             conn.execute(t.insert().values(x=today))
             eq_(
-                conn.execute(select([t.c.x]).order_by(t.c.id)).fetchall(),
+                conn.execute(select(t.c.x).order_by(t.c.id)).fetchall(),
                 [(now,), (today,)],
             )
 
@@ -592,7 +592,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             conn.execute(t.insert())
             conn.execute(t.insert().values(x=35))
             eq_(
-                conn.execute(select([t.c.x]).order_by(t.c.id)).fetchall(),
+                conn.execute(select(t.c.x).order_by(t.c.id)).fetchall(),
                 [(22,), (35,)],
             )
 
@@ -980,7 +980,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         }
         for field, subst in mapping.items():
             self.assert_compile(
-                select([extract(field, t.c.col1)]),
+                select(extract(field, t.c.col1)),
                 "SELECT CAST(STRFTIME('%s', t.col1) AS "
                 "INTEGER) AS anon_1 FROM t" % subst,
             )
@@ -1349,31 +1349,25 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
 
-    # empty insert (i.e. INSERT INTO table DEFAULT VALUES) fails on
-    # 3.3.7 and before
+    # empty insert was added as of sqlite 3.3.8.
 
-    def _test_empty_insert(self, table, expect=1):
+    def _test_empty_insert(self, connection, table, expect=1):
         try:
-            table.create()
+            table.create(connection)
             for wanted in expect, expect * 2:
-                table.insert().execute()
-                rows = table.select().execute().fetchall()
+                connection.execute(table.insert())
+                rows = connection.execute(table.select()).fetchall()
                 eq_(len(rows), wanted)
         finally:
-            table.drop()
+            table.drop(connection)
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk1(self):
+    def test_empty_insert_pk1(self, connection):
         self._test_empty_insert(
-            Table(
-                "a",
-                MetaData(testing.db),
-                Column("id", Integer, primary_key=True),
-            )
+            connection,
+            Table("a", MetaData(), Column("id", Integer, primary_key=True),),
         )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk2(self):
+    def test_empty_insert_pk2(self, connection):
         # now warns due to [ticket:3216]
 
         with expect_warnings(
@@ -1385,22 +1379,23 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             assert_raises(
                 exc.IntegrityError,
                 self._test_empty_insert,
+                connection,
                 Table(
                     "b",
-                    MetaData(testing.db),
+                    MetaData(),
                     Column("x", Integer, primary_key=True),
                     Column("y", Integer, primary_key=True),
                 ),
             )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk2_fv(self):
+    def test_empty_insert_pk2_fv(self, connection):
         assert_raises(
             exc.DBAPIError,
             self._test_empty_insert,
+            connection,
             Table(
                 "b",
-                MetaData(testing.db),
+                MetaData(),
                 Column(
                     "x",
                     Integer,
@@ -1416,8 +1411,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk3(self):
+    def test_empty_insert_pk3(self, connection):
         # now warns due to [ticket:3216]
         with expect_warnings(
             "Column 'c.x' is marked as a member of the primary key for table"
@@ -1425,9 +1419,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             assert_raises(
                 exc.IntegrityError,
                 self._test_empty_insert,
+                connection,
                 Table(
                     "c",
-                    MetaData(testing.db),
+                    MetaData(),
                     Column("x", Integer, primary_key=True),
                     Column(
                         "y", Integer, DefaultClause("123"), primary_key=True
@@ -1435,14 +1430,14 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 ),
             )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk3_fv(self):
+    def test_empty_insert_pk3_fv(self, connection):
         assert_raises(
             exc.DBAPIError,
             self._test_empty_insert,
+            connection,
             Table(
                 "c",
-                MetaData(testing.db),
+                MetaData(),
                 Column(
                     "x",
                     Integer,
@@ -1453,49 +1448,46 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_pk4(self):
+    def test_empty_insert_pk4(self, connection):
         self._test_empty_insert(
+            connection,
             Table(
                 "d",
-                MetaData(testing.db),
+                MetaData(),
                 Column("x", Integer, primary_key=True),
                 Column("y", Integer, DefaultClause("123")),
-            )
+            ),
         )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_nopk1(self):
+    def test_empty_insert_nopk1(self, connection):
         self._test_empty_insert(
-            Table("e", MetaData(testing.db), Column("id", Integer))
+            connection, Table("e", MetaData(), Column("id", Integer))
         )
 
-    @testing.exclude("sqlite", "<", (3, 3, 8), "no database support")
-    def test_empty_insert_nopk2(self):
+    def test_empty_insert_nopk2(self, connection):
         self._test_empty_insert(
+            connection,
             Table(
-                "f",
-                MetaData(testing.db),
-                Column("x", Integer),
-                Column("y", Integer),
-            )
+                "f", MetaData(), Column("x", Integer), Column("y", Integer),
+            ),
         )
 
-    def test_inserts_with_spaces(self):
+    @testing.provide_metadata
+    def test_inserts_with_spaces(self, connection):
         tbl = Table(
             "tbl",
-            MetaData("sqlite:///"),
+            self.metadata,
             Column("with space", Integer),
             Column("without", Integer),
         )
-        tbl.create()
-        try:
-            tbl.insert().execute({"without": 123})
-            assert list(tbl.select().execute()) == [(None, 123)]
-            tbl.insert().execute({"with space": 456})
-            assert list(tbl.select().execute()) == [(None, 123), (456, None)]
-        finally:
-            tbl.drop()
+        tbl.create(connection)
+        connection.execute(tbl.insert(), {"without": 123})
+        eq_(connection.execute(tbl.select()).fetchall(), [(None, 123)])
+        connection.execute(tbl.insert(), {"with space": 456})
+        eq_(
+            connection.execute(tbl.select()).fetchall(),
+            [(None, 123), (456, None)],
+        )
 
 
 def full_text_search_missing():
@@ -2417,7 +2409,7 @@ class SavepointTest(fixtures.TablesTest):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (3,)],
         )
@@ -2435,7 +2427,7 @@ class SavepointTest(fixtures.TablesTest):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (2,), (3,)],
         )
@@ -2457,7 +2449,7 @@ class SavepointTest(fixtures.TablesTest):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (4,)],
         )

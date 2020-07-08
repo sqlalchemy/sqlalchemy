@@ -505,7 +505,8 @@ BaseRow_getattro(BaseRow *self, PyObject *name)
     else
         return tmp;
 
-    tmp = BaseRow_subscript_mapping(self, name);
+    tmp = BaseRow_subscript_impl(self, name, 1);
+
     if (tmp == NULL && PyErr_ExceptionMatches(PyExc_KeyError)) {
 
 #if PY_MAJOR_VERSION >= 3

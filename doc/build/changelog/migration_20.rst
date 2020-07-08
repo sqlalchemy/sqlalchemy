@@ -91,20 +91,24 @@ The steps to achieve this are as follows:
   an application can gradually adjust all of its 1.4-style code to work fully
   against 2.0 as well.
 
-* APIs which are explicitly incompatible with SQLAlchemy 1.x style will be
-  available in two new packages ``sqlalchemy.future`` and
-  ``sqlalchemy.future.orm``.  The most prominent objects in these new packages
-  will be the :func:`sqlalchemy.future.select` object, which now features
-  a refined constructor, and additionally will be compatible with ORM
-  querying, as well as the new declarative base construct in
-  ``sqlalchemy.future.orm``.
+* Currently, the main API which is explicitly incompatible with SQLAlchemy 1.x
+  style is the behavior of the :class:`_engine.Engine` and
+  :class:`_engine.Connection` objects in terms connectionless execution as well
+  as "autocommit", in that the future API no longer has these behaviors, and
+  two new methods :meth:`_future.Connection.commit` and
+  :meth:`_future.Connection.rollback` are added in order to accommodate for
+  commit-as-you-go use.  These new objects are currently in a separate package
+  ``sqlalchemy.future``; in order to access the future versions of these, pass
+  the parameter :paramref:`_engine.create_engine.future` to the
+  :func:`_engine.create_engine` function.
 
-* SQLAlchemy 2.0 will include the same ``sqlalchemy.future`` and
-  ``sqlalchemy.future.orm`` packages; once an application only needs to run on
-  SQLAlchemy 2.0 (as well as Python 3 only of course :) ), the "future" imports
-  can be changed to refer to the canonical import, for example ``from
-  sqlalchemy.future import select`` becomes ``from sqlalchemy import select``.
-
+* The :class:`_orm.Session` object also has a newer behavior when using the
+  :meth:`_orm.Session.execute` method, in that incoming statements are
+  interpreted in an ORM context if applicable, as well as that the
+  :class:`_engine.Result` object returned uses new-style tuples
+  (see :ref:`migration_20_result_rows`).    Within 1.4 this newer style
+  is enabled by passing :paramref:`_orm.Session.future` to the session
+  constructor or :class:`_orm.sessionmaker` object.
 
 Python 3 Only
 =============
@@ -590,6 +594,8 @@ equally::
         # index access and slices ?
         result[0].all()  # same as result.scalars().all()
         result[2:5].all()  # same as result.columns('c', 'd', 'e').all()
+
+.. _migration_20_result_rows:
 
 Result rows unified between Core and ORM on named-tuple interface
 ==================================================================

@@ -1464,7 +1464,7 @@ class FlushTest(fixtures.MappedTest):
         sess.add(a)
         sess.flush()
 
-        eq_(select([func.count("*")]).select_from(user_roles).scalar(), 1)
+        eq_(select(func.count("*")).select_from(user_roles).scalar(), 1)
 
     def test_two(self):
         admins, users, roles, user_roles = (
@@ -1514,7 +1514,7 @@ class FlushTest(fixtures.MappedTest):
 
         a.password = "sadmin"
         sess.flush()
-        eq_(select([func.count("*")]).select_from(user_roles).scalar(), 1)
+        eq_(select(func.count("*")).select_from(user_roles).scalar(), 1)
 
 
 class PassiveDeletesTest(fixtures.MappedTest):
@@ -3529,9 +3529,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
 
         s = Session()
 
-        q = s.query(ASingleSubA).select_entity_from(
-            select([ASingle]).subquery()
-        )
+        q = s.query(ASingleSubA).select_entity_from(select(ASingle).subquery())
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -3547,9 +3545,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
 
         s = Session()
 
-        q = s.query(AJoinedSubA).select_entity_from(
-            select([AJoined]).subquery()
-        )
+        q = s.query(AJoinedSubA).select_entity_from(select(AJoined).subquery())
 
         assert_raises_message(
             sa_exc.InvalidRequestError,

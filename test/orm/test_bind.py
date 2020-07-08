@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
-from sqlalchemy.future import select as future_select
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
@@ -153,6 +152,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         session = create_session()
+
         session.execute(users.insert(), dict(name="Johnny"))
 
         assert len(session.query(User).filter_by(name="Johnny").all()) == 1
@@ -175,41 +175,36 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         ),
         (lambda Address: {"mapper": Address}, "e2"),
         (lambda Address: {"clause": Query([Address])._statement_20()}, "e2"),
-        (lambda addresses: {"clause": select([addresses])}, "e2"),
+        (lambda addresses: {"clause": select(addresses)}, "e2"),
         (
             lambda User, addresses: {
                 "mapper": User,
-                "clause": select([addresses]),
+                "clause": select(addresses),
             },
             "e1",
         ),
         (
             lambda e2, User, addresses: {
                 "mapper": User,
-                "clause": select([addresses]),
+                "clause": select(addresses),
                 "bind": e2,
             },
             "e2",
         ),
         (
             lambda User, Address: {
-                "clause": future_select(1).join_from(User, Address)
+                "clause": select(1).join_from(User, Address)
             },
             "e1",
         ),
         (
             lambda User, Address: {
-                "clause": future_select(1).join_from(Address, User)
+                "clause": select(1).join_from(Address, User)
             },
             "e2",
         ),
-        (
-            lambda User: {
-                "clause": future_select(1).where(User.name == "ed"),
-            },
-            "e1",
-        ),
-        (lambda: {"clause": future_select(1)}, "e3"),
+        (lambda User: {"clause": select(1).where(User.name == "ed")}, "e1",),
+        (lambda: {"clause": select(1)}, "e3"),
         (lambda User: {"clause": Query([User])._statement_20()}, "e1"),
         (lambda: {"clause": Query([1])._statement_20()}, "e3"),
         (
@@ -240,9 +235,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         ),
         (
             lambda User: {
-                "clause": future_select(1)
-                .select_from(User)
-                .join(User.addresses)
+                "clause": select(1).select_from(User).join(User.addresses)
             },
             "e1",
         ),
@@ -288,32 +281,30 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             lambda Address: {"mapper": inspect(Address), "clause": mock.ANY},
             "e2",
         ),
-        (lambda: future_select(1), lambda: {"clause": mock.ANY}, "e3"),
+        (lambda: select(1), lambda: {"clause": mock.ANY}, "e3"),
         (
-            lambda User, Address: future_select(1).join_from(User, Address),
+            lambda User, Address: select(1).join_from(User, Address),
             lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
         (
-            lambda User, Address: future_select(1).join_from(Address, User),
+            lambda User, Address: select(1).join_from(Address, User),
             lambda Address: {"clause": mock.ANY, "mapper": inspect(Address)},
             "e2",
         ),
         (
-            lambda User: future_select(1).where(User.name == "ed"),
+            lambda User: select(1).where(User.name == "ed"),
             # no mapper for this one because the plugin is not "orm"
             lambda User: {"clause": mock.ANY},
             "e1",
         ),
         (
-            lambda User: future_select(1)
-            .select_from(User)
-            .where(User.name == "ed"),
+            lambda User: select(1).select_from(User).where(User.name == "ed"),
             lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
         (
-            lambda User: future_select(User.id),
+            lambda User: select(User.id),
             lambda User: {"clause": mock.ANY, "mapper": inspect(User)},
             "e1",
         ),
@@ -346,7 +337,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
                 canary.get_bind(**kw)
                 return Session.get_bind(self, **kw)
 
-        sess = GetBindSession(e3)
+        sess = GetBindSession(e3, future=True)
         sess.bind_mapper(User, e1)
         sess.bind_mapper(Address, e2)
 
@@ -718,7 +709,7 @@ class GetBindTest(fixtures.MappedTest):
     def test_bind_selectable_union(self, two_table_fixture):
         session, base_class_bind, concrete_sub_bind = two_table_fixture
 
-        stmt = select([self.tables.base_table]).union(
-            select([self.tables.concrete_sub_table])
+        stmt = select(self.tables.base_table).union(
+            select(self.tables.concrete_sub_table)
         )
         is_(session.get_bind(clause=stmt), base_class_bind)

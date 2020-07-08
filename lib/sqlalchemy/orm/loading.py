@@ -431,6 +431,7 @@ def load_on_pk_identity(
             params=load_options._params,
             execution_options={"_sa_orm_load_options": load_options},
             bind_arguments=bind_arguments,
+            future=True,
         )
         .unique()
         .scalars()

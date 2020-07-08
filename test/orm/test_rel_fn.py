@@ -1120,14 +1120,14 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_o2m_selfref(self):
         joincond = self._join_fixture_o2m_selfref()
-        left = select([joincond.parent_persist_selectable]).alias("pj")
+        left = select(joincond.parent_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             left, joincond.child_persist_selectable, True
         )
         self.assert_compile(pj, "pj.id = selfref.sid")
         self.assert_compile(pj, "pj.id = selfref.sid")
 
-        right = select([joincond.child_persist_selectable]).alias("pj")
+        right = select(joincond.child_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             joincond.parent_persist_selectable, right, True
         )
@@ -1146,7 +1146,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_o2m_left_aliased(self):
         joincond = self._join_fixture_o2m()
-        left = select([joincond.parent_persist_selectable]).alias("pj")
+        left = select(joincond.parent_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             left, joincond.child_persist_selectable, True
         )
@@ -1155,7 +1155,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_o2m_right_aliased(self):
         joincond = self._join_fixture_o2m()
-        right = select([joincond.child_persist_selectable]).alias("pj")
+        right = select(joincond.child_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             joincond.parent_persist_selectable, right, True
         )
@@ -1164,7 +1164,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_o2m_composite_selfref(self):
         joincond = self._join_fixture_o2m_composite_selfref()
-        right = select([joincond.child_persist_selectable]).alias("pj")
+        right = select(joincond.child_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             joincond.parent_persist_selectable, right, True
         )
@@ -1176,7 +1176,7 @@ class AdaptedJoinTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
     def test_join_targets_m2o_composite_selfref(self):
         joincond = self._join_fixture_m2o_composite_selfref()
-        right = select([joincond.child_persist_selectable]).alias("pj")
+        right = select(joincond.child_persist_selectable).alias("pj")
         pj, sj, sec, adapter, ds = joincond.join_targets(
             joincond.parent_persist_selectable, right, True
         )

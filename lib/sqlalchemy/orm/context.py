@@ -25,6 +25,7 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.base import _entity_namespace_key
 from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
@@ -241,8 +242,6 @@ class ORMCompileState(CompileState):
         # were passed to session.execute:
         # session.execute(legacy_select([User.id, User.name]))
         # see test_query->test_legacy_tuple_old_select
-        if not statement._is_future:
-            return result
 
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
@@ -399,15 +398,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     compound_eager_adapter = None
 
     correlate = None
+    correlate_except = None
     _where_criteria = ()
     _having_criteria = ()
 
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         """compiler hook, we arrive here from compiler.visit_select() only."""
-
-        if not statement._is_future:
-            return SelectState(statement, compiler, **kw)
 
         if compiler is not None:
             toplevel = not compiler.stack
@@ -590,6 +587,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 util.flatten_iterator(
                     sql_util.surface_selectables(s) if s is not None else None
                     for s in query._correlate
+                )
+            )
+        elif query._correlate_except:
+            self.correlate_except = tuple(
+                util.flatten_iterator(
+                    sql_util.surface_selectables(s) if s is not None else None
+                    for s in query._correlate_except
                 )
             )
         elif not query._auto_correlate:
@@ -827,6 +831,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             hints=self.select_statement._hints,
             statement_hints=self.select_statement._statement_hints,
             correlate=self.correlate,
+            correlate_except=self.correlate_except,
             **self._select_args
         )
 
@@ -902,6 +907,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             hints=self.select_statement._hints,
             statement_hints=self.select_statement._statement_hints,
             correlate=self.correlate,
+            correlate_except=self.correlate_except,
             **self._select_args
         )
 
@@ -921,6 +927,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         hints,
         statement_hints,
         correlate,
+        correlate_except,
         limit_clause,
         offset_clause,
         distinct,
@@ -971,6 +978,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         if correlate:
             statement.correlate.non_generative(statement, *correlate)
+
+        if correlate_except:
+            statement.correlate_except.non_generative(
+                statement, *correlate_except
+            )
 
         return statement
 
@@ -1222,7 +1234,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 # string given, e.g. query(Foo).join("bar").
                 # we look to the left entity or what we last joined
                 # towards
-                onclause = sql.util._entity_namespace_key(
+                onclause = _entity_namespace_key(
                     inspect(self._joinpoint_zero()), onclause
                 )
 
@@ -1243,9 +1255,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 info = inspect(jp0)
 
                 if getattr(info, "mapper", None) is onclause._parententity:
-                    onclause = sql.util._entity_namespace_key(
-                        info, onclause.key
-                    )
+                    onclause = _entity_namespace_key(info, onclause.key)
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             if isinstance(onclause, interfaces.PropComparator):
