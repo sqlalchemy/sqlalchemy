@@ -2132,7 +2132,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert not hasattr(Foo, "data_hybrid")
 
-    @testing.requires.python3
+    @testing.requires.python36
     def test_kw_support_in_declarative_meta_init(self):
         # This will not fail if DeclarativeMeta __init__ supports **kw
 

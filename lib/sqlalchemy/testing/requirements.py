@@ -1098,6 +1098,13 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def python36(self):
+        return exclusions.skip_if(
+            lambda: sys.version_info < (3, 6),
+            "Python version 3.6 or greater is required.",
+        )
+
+    @property
     def python37(self):
         return exclusions.skip_if(
             lambda: sys.version_info < (3, 7),
