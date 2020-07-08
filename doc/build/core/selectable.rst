@@ -80,16 +80,22 @@ elements are themselves :class:`_expression.ColumnElement` subclasses).
 .. autoclass:: Lateral
    :members:
 
+.. autoclass:: ReturnsRows
+   :members:
+   :inherited-members: ClauseElement
+
 .. autoclass:: ScalarSelect
    :members:
 
 .. autoclass:: Select
    :members:
    :inherited-members:  ClauseElement
-   :exclude-members: memoized_attribute, memoized_instancemethod
+   :exclude-members: memoized_attribute, memoized_instancemethod, append_correlation, append_column, append_prefix, append_whereclause, append_having, append_from, append_order_by, append_group_by
+
 
 .. autoclass:: Selectable
    :members:
+   :inherited-members: ClauseElement
 
 .. autoclass:: SelectBase
    :members:

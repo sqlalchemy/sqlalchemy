@@ -402,31 +402,30 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         @profile_memory()
         def go():
-            sess = create_session()
-            a1 = A(col2="a1")
-            a2 = A(col2="a2")
-            a3 = A(col2="a3")
-            a1.bs.append(B(col2="b1"))
-            a1.bs.append(B(col2="b2"))
-            a3.bs.append(B(col2="b3"))
-            for x in [a1, a2, a3]:
-                sess.add(x)
-            sess.flush()
-            sess.expunge_all()
+            with Session() as sess:
+                a1 = A(col2="a1")
+                a2 = A(col2="a2")
+                a3 = A(col2="a3")
+                a1.bs.append(B(col2="b1"))
+                a1.bs.append(B(col2="b2"))
+                a3.bs.append(B(col2="b3"))
+                for x in [a1, a2, a3]:
+                    sess.add(x)
+                sess.commit()
 
-            alist = sess.query(A).order_by(A.col1).all()
-            eq_(
-                [
-                    A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
-                    A(col2="a2", bs=[]),
-                    A(col2="a3", bs=[B(col2="b3")]),
-                ],
-                alist,
-            )
+                alist = sess.query(A).order_by(A.col1).all()
+                eq_(
+                    [
+                        A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
+                        A(col2="a2", bs=[]),
+                        A(col2="a3", bs=[B(col2="b3")]),
+                    ],
+                    alist,
+                )
 
-            for a in alist:
-                sess.delete(a)
-            sess.flush()
+                for a in alist:
+                    sess.delete(a)
+                sess.commit()
 
         go()
 
@@ -501,33 +500,31 @@ class MemUsageWBackendTest(EnsureZeroed):
                     "use_reaper": False,
                 }
             )
-            sess = create_session(bind=engine)
+            with Session(engine) as sess:
+                a1 = A(col2="a1")
+                a2 = A(col2="a2")
+                a3 = A(col2="a3")
+                a1.bs.append(B(col2="b1"))
+                a1.bs.append(B(col2="b2"))
+                a3.bs.append(B(col2="b3"))
+                for x in [a1, a2, a3]:
+                    sess.add(x)
+                sess.commit()
 
-            a1 = A(col2="a1")
-            a2 = A(col2="a2")
-            a3 = A(col2="a3")
-            a1.bs.append(B(col2="b1"))
-            a1.bs.append(B(col2="b2"))
-            a3.bs.append(B(col2="b3"))
-            for x in [a1, a2, a3]:
-                sess.add(x)
-            sess.flush()
-            sess.expunge_all()
+                alist = sess.query(A).order_by(A.col1).all()
+                eq_(
+                    [
+                        A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
+                        A(col2="a2", bs=[]),
+                        A(col2="a3", bs=[B(col2="b3")]),
+                    ],
+                    alist,
+                )
 
-            alist = sess.query(A).order_by(A.col1).all()
-            eq_(
-                [
-                    A(col2="a1", bs=[B(col2="b1"), B(col2="b2")]),
-                    A(col2="a2", bs=[]),
-                    A(col2="a3", bs=[B(col2="b3")]),
-                ],
-                alist,
-            )
+                for a in alist:
+                    sess.delete(a)
+                sess.commit()
 
-            for a in alist:
-                sess.delete(a)
-            sess.flush()
-            sess.close()
             engine.dispose()
 
         go()
@@ -555,29 +552,27 @@ class MemUsageWBackendTest(EnsureZeroed):
         mapper(Wide, wide_table, _compiled_cache_size=10)
 
         metadata.create_all()
-        session = create_session()
-        w1 = Wide()
-        session.add(w1)
-        session.flush()
-        session.close()
+        with Session() as session:
+            w1 = Wide()
+            session.add(w1)
+            session.commit()
         del session
         counter = [1]
 
         @profile_memory()
         def go():
-            session = create_session()
-            w1 = session.query(Wide).first()
-            x = counter[0]
-            dec = 10
-            while dec > 0:
-                # trying to count in binary here,
-                # works enough to trip the test case
-                if pow(2, dec) < x:
-                    setattr(w1, "col%d" % dec, counter[0])
-                    x -= pow(2, dec)
-                dec -= 1
-            session.flush()
-            session.close()
+            with Session() as session:
+                w1 = session.query(Wide).first()
+                x = counter[0]
+                dec = 10
+                while dec > 0:
+                    # trying to count in binary here,
+                    # works enough to trip the test case
+                    if pow(2, dec) < x:
+                        setattr(w1, "col%d" % dec, counter[0])
+                        x -= pow(2, dec)
+                    dec -= 1
+                session.commit()
             counter[0] += 1
 
         try:

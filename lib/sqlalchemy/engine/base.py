@@ -759,6 +759,40 @@ class Connection(Connectable):
 
         return self._transaction is not None and self._transaction.is_active
 
+    def in_nested_transaction(self):
+        """Return True if a transaction is in progress."""
+        if self.__branch_from is not None:
+            return self.__branch_from.in_nested_transaction()
+
+        return (
+            self._nested_transaction is not None
+            and self._nested_transaction.is_active
+        )
+
+    def get_transaction(self):
+        """Return the current root transaction in progress, if any.
+
+        .. versionadded:: 1.4
+
+        """
+
+        if self.__branch_from is not None:
+            return self.__branch_from.get_transaction()
+
+        return self._transaction
+
+    def get_nested_transaction(self):
+        """Return the current nested transaction in progress, if any.
+
+        .. versionadded:: 1.4
+
+        """
+        if self.__branch_from is not None:
+
+            return self.__branch_from.get_nested_transaction()
+
+        return self._nested_transaction
+
     def _begin_impl(self, transaction):
         assert not self.__branch_from
 

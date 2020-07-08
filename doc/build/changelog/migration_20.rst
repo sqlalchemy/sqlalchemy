@@ -738,6 +738,7 @@ In 2.0, an application that still wishes to use a separate :class:`_schema.Table
 does not want to use Declarative with ``__table__``, can instead use the above
 pattern which basically does the same thing.
 
+.. _migration_20_unify_select:
 
 ORM Query Unified with Core Select
 ==================================

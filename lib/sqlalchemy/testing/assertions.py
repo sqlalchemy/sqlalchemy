@@ -404,6 +404,9 @@ class AssertsCompiledSQL(object):
 
         from sqlalchemy import orm
 
+        if isinstance(clause, orm.dynamic.AppenderQuery):
+            clause = clause._statement
+
         if isinstance(clause, orm.Query):
             compile_state = clause._compile_state()
             compile_state.statement._label_style = (

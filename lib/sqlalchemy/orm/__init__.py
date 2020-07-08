@@ -90,8 +90,13 @@ def create_session(bind=None, **kwargs):
     create_session().
 
     """
+
+    if kwargs.get("future", False):
+        kwargs.setdefault("autocommit", False)
+    else:
+        kwargs.setdefault("autocommit", True)
+
     kwargs.setdefault("autoflush", False)
-    kwargs.setdefault("autocommit", True)
     kwargs.setdefault("expire_on_commit", False)
     return Session(bind=bind, **kwargs)
 
@@ -267,11 +272,14 @@ contains_alias = public_factory(AliasOption, ".orm.contains_alias")
 
 def __go(lcls):
     global __all__
+    global AppenderQuery
     from .. import util as sa_util  # noqa
     from . import dynamic  # noqa
     from . import events  # noqa
     from . import loading  # noqa
     import inspect as _inspect
+
+    from .dynamic import AppenderQuery
 
     __all__ = sorted(
         name

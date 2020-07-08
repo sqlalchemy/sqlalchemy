@@ -320,20 +320,15 @@ class CoreFixtures(object):
             ClauseList(table_a.c.a == 5, table_a.c.b == table_a.c.a),
         ),
         lambda: (
-            case(whens=[(table_a.c.a == 5, 10), (table_a.c.a == 10, 20)]),
-            case(whens=[(table_a.c.a == 18, 10), (table_a.c.a == 10, 20)]),
-            case(whens=[(table_a.c.a == 5, 10), (table_a.c.b == 10, 20)]),
+            case((table_a.c.a == 5, 10), (table_a.c.a == 10, 20)),
+            case((table_a.c.a == 18, 10), (table_a.c.a == 10, 20)),
+            case((table_a.c.a == 5, 10), (table_a.c.b == 10, 20)),
             case(
-                whens=[
-                    (table_a.c.a == 5, 10),
-                    (table_a.c.b == 10, 20),
-                    (table_a.c.a == 9, 12),
-                ]
+                (table_a.c.a == 5, 10),
+                (table_a.c.b == 10, 20),
+                (table_a.c.a == 9, 12),
             ),
-            case(
-                whens=[(table_a.c.a == 5, 10), (table_a.c.a == 10, 20)],
-                else_=30,
-            ),
+            case((table_a.c.a == 5, 10), (table_a.c.a == 10, 20), else_=30,),
             case({"wendy": "W", "jack": "J"}, value=table_a.c.a, else_="E"),
             case({"wendy": "W", "jack": "J"}, value=table_a.c.b, else_="E"),
             case({"wendy_w": "W", "jack": "J"}, value=table_a.c.a, else_="E"),

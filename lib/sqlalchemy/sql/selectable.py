@@ -2225,6 +2225,17 @@ class ForUpdateArg(ClauseElement):
         ("skip_locked", InternalTraversal.dp_boolean),
     ]
 
+    @classmethod
+    def _from_argument(cls, with_for_update):
+        if isinstance(with_for_update, ForUpdateArg):
+            return with_for_update
+        elif with_for_update in (None, False):
+            return None
+        elif with_for_update is True:
+            return ForUpdateArg()
+        else:
+            return ForUpdateArg(**with_for_update)
+
     def __eq__(self, other):
         return (
             isinstance(other, ForUpdateArg)
@@ -2699,6 +2710,12 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
 
 class DeprecatedSelectBaseGenerations(object):
+    """A collection of methods available on :class:`_sql.Select` and
+    :class:`_sql.CompoundSelect`, these are all **deprecated** methods as they
+    modify the object in-place.
+
+    """
+
     @util.deprecated(
         "1.4",
         "The :meth:`_expression.GenerativeSelect.append_order_by` "
@@ -2740,9 +2757,6 @@ class DeprecatedSelectBaseGenerations(object):
         as it
         provides standard :term:`method chaining`.
 
-        .. seealso::
-
-            :meth:`_expression.GenerativeSelect.group_by`
 
         """
         self.group_by.non_generative(self, *clauses)
@@ -3353,6 +3367,12 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
 
 
 class DeprecatedSelectGenerations(object):
+    """A collection of methods available on :class:`_sql.Select`, these
+    are all **deprecated** methods as they modify the :class:`_sql.Select`
+    object in -place.
+
+    """
+
     @util.deprecated(
         "1.4",
         "The :meth:`_expression.Select.append_correlation` "
@@ -3377,7 +3397,7 @@ class DeprecatedSelectGenerations(object):
         "1.4",
         "The :meth:`_expression.Select.append_column` method is deprecated "
         "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.column`.",
+        "method :meth:`_expression.Select.add_columns`.",
     )
     def append_column(self, column):
         """Append the given column expression to the columns clause of this
@@ -3388,13 +3408,9 @@ class DeprecatedSelectGenerations(object):
             my_select.append_column(some_table.c.new_column)
 
         This is an **in-place** mutation method; the
-        :meth:`_expression.Select.column` method is preferred,
+        :meth:`_expression.Select.add_columns` method is preferred,
         as it provides standard
         :term:`method chaining`.
-
-        See the documentation for :meth:`_expression.Select.with_only_columns`
-        for guidelines on adding /replacing the columns of a
-        :class:`_expression.Select` object.
 
         """
         self.add_columns.non_generative(self, column)
@@ -3500,6 +3516,21 @@ class SelectState(util.MemoizedSlots, CompileState):
         self.froms = self._get_froms(statement)
 
         self.columns_plus_names = statement._generate_columns_plus_names(True)
+
+    @classmethod
+    def _plugin_not_implemented(cls):
+        raise NotImplementedError(
+            "The default SELECT construct without plugins does not "
+            "implement this method."
+        )
+
+    @classmethod
+    def get_column_descriptions(cls, statement):
+        cls._plugin_not_implemented()
+
+    @classmethod
+    def from_statement(cls, statement, from_statement):
+        cls._plugin_not_implemented()
 
     def _get_froms(self, statement):
         seen = set()
@@ -3805,6 +3836,15 @@ class Select(
 ):
     """Represents a ``SELECT`` statement.
 
+    The :class:`_sql.Select` object is normally constructed using the
+    :func:`_sql.select` function.  See that function for details.
+
+    .. seealso::
+
+        :func:`_sql.select`
+
+        :ref:`coretutorial_selecting` - in the Core tutorial
+
     """
 
     __visit_name__ = "select"
@@ -3821,7 +3861,7 @@ class Select(
     _from_obj = ()
     _auto_correlate = True
 
-    compile_options = SelectState.default_select_compile_options
+    _compile_options = SelectState.default_select_compile_options
 
     _traverse_internals = (
         [
@@ -3851,7 +3891,7 @@ class Select(
     )
 
     _cache_key_traversal = _traverse_internals + [
-        ("compile_options", InternalTraversal.dp_has_cache_key)
+        ("_compile_options", InternalTraversal.dp_has_cache_key)
     ]
 
     @classmethod
@@ -4274,11 +4314,34 @@ class Select(
     @property
     def column_descriptions(self):
         """Return a 'column descriptions' structure which may be
-        plugin-specific.
+        :term:`plugin-specific`.
 
         """
         meth = SelectState.get_plugin_class(self).get_column_descriptions
         return meth(self)
+
+    def from_statement(self, statement):
+        """Apply the columns which this :class:`.Select` would select
+        onto another statement.
+
+        This operation is :term:`plugin-specific` and will raise a not
+        supported exception if this :class:`_sql.Select` does not select from
+        plugin-enabled entities.
+
+
+        The statement is typically either a :func:`_expression.text` or
+        :func:`_expression.select` construct, and should return the set of
+        columns appropriate to the entities represented by this
+        :class:`.Select`.
+
+        .. seealso::
+
+            :ref:`orm_tutorial_literal_sql` - usage examples in the
+            ORM tutorial
+
+        """
+        meth = SelectState.get_plugin_class(self).from_statement
+        return meth(self, statement)
 
     @_generative
     def join(self, target, onclause=None, isouter=False, full=False):
@@ -4550,7 +4613,7 @@ class Select(
         )
 
     @_generative
-    def with_only_columns(self, columns):
+    def with_only_columns(self, *columns):
         r"""Return a new :func:`_expression.select` construct with its columns
         clause replaced with the given columns.
 
@@ -4558,65 +4621,26 @@ class Select(
         :func:`_expression.select` had been called with the given columns
         clause.   I.e. a statement::
 
-            s = select([table1.c.a, table1.c.b])
-            s = s.with_only_columns([table1.c.b])
+            s = select(table1.c.a, table1.c.b)
+            s = s.with_only_columns(table1.c.b)
 
         should be exactly equivalent to::
 
-            s = select([table1.c.b])
+            s = select(table1.c.b)
 
-        This means that FROM clauses which are only derived
-        from the column list will be discarded if the new column
-        list no longer contains that FROM::
+        Note that this will also dynamically alter the FROM clause of the
+        statement if it is not explicitly stated.  To maintain the FROM
+        clause, ensure the :meth:`_sql.Select.select_from` method is
+        used appropriately::
 
-            >>> table1 = table('t1', column('a'), column('b'))
-            >>> table2 = table('t2', column('a'), column('b'))
-            >>> s1 = select([table1.c.a, table2.c.b])
-            >>> print(s1)
-            SELECT t1.a, t2.b FROM t1, t2
-            >>> s2 = s1.with_only_columns([table2.c.b])
-            >>> print(s2)
-            SELECT t2.b FROM t1
+            s = select(table1.c.a, table2.c.b)
+            s = s.select_from(table2.c.b).with_only_columns(table1.c.a)
 
-        The preferred way to maintain a specific FROM clause
-        in the construct, assuming it won't be represented anywhere
-        else (i.e. not in the WHERE clause, etc.) is to set it using
-        :meth:`_expression.Select.select_from`::
+        :param \*columns: column expressions to be used.
 
-            >>> s1 = select([table1.c.a, table2.c.b]).\
-            ...         select_from(table1.join(table2,
-            ...                 table1.c.a==table2.c.a))
-            >>> s2 = s1.with_only_columns([table2.c.b])
-            >>> print(s2)
-            SELECT t2.b FROM t1 JOIN t2 ON t1.a=t2.a
-
-        Care should also be taken to use the correct set of column objects
-        passed to :meth:`_expression.Select.with_only_columns`.
-        Since the method is
-        essentially equivalent to calling the :func:`_expression.select`
-        construct in the first place with the given columns, the columns passed
-        to :meth:`_expression.Select.with_only_columns`
-        should usually be a subset of
-        those which were passed to the :func:`_expression.select`
-        construct, not those which are available from the ``.c`` collection of
-        that :func:`_expression.select`.  That is::
-
-            s = select([table1.c.a, table1.c.b]).select_from(table1)
-            s = s.with_only_columns([table1.c.b])
-
-        and **not**::
-
-            # usually incorrect
-            s = s.with_only_columns([s.c.b])
-
-        The latter would produce the SQL::
-
-            SELECT b
-            FROM (SELECT t1.a AS a, t1.b AS b
-            FROM t1), t1
-
-        Since the :func:`_expression.select` construct is essentially
-        being asked to select both from ``table1`` as well as itself.
+         .. versionchanged:: 1.4 the :meth:`_sql.Select.with_only_columns`
+            method accepts the list of column expressions positionally;
+            passing the expressions as a list is deprecateed.
 
         """
 
@@ -4626,7 +4650,9 @@ class Select(
         self._assert_no_memoizations()
 
         rc = []
-        for c in columns:
+        for c in coercions._expression_collection_was_a_list(
+            "columns", "Select.with_only_columns", columns
+        ):
             c = coercions.expect(roles.ColumnsClauseRole, c,)
             # TODO: why are we doing this here?
             if isinstance(c, ScalarSelect):

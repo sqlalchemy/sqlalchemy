@@ -3,6 +3,7 @@ from sqlalchemy import and_
 from sqlalchemy import cast
 from sqlalchemy import desc
 from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
@@ -35,6 +36,8 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.util import polymorphic_union
+from sqlalchemy.sql import elements
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -51,6 +54,7 @@ from .inheritance import _poly_fixtures
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_query import QueryTest
+from .test_transaction import _LocalFixture
 
 
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -508,6 +512,127 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "AND order_items.item_id = items.id",
                 use_default_dialect=True,
             )
+
+
+class SessionTest(fixtures.RemovesEvents, _LocalFixture):
+    def test_subtransactions_deprecated(self):
+        s1 = Session(testing.db)
+        s1.begin()
+
+        with testing.expect_deprecated_20(
+            "The Session.begin.subtransactions flag is deprecated "
+            "and will be removed in SQLAlchemy version 2.0."
+        ):
+            s1.begin(subtransactions=True)
+
+        s1.close()
+
+    def test_autocommit_deprecated(Self):
+        with testing.expect_deprecated_20(
+            "The Session.autocommit parameter is deprecated "
+            "and will be removed in SQLAlchemy version 2.0."
+        ):
+            Session(autocommit=True)
+
+    @testing.requires.independent_connections
+    @testing.emits_warning(".*previous exception")
+    def test_failed_rollback_deactivates_transaction_ctx_integration(self):
+        # test #4050 in the same context as that of oslo.db
+
+        User = self.classes.User
+
+        with testing.expect_deprecated_20(
+            "The Session.autocommit parameter is deprecated"
+        ):
+            session = Session(bind=testing.db, autocommit=True)
+
+        evented_exceptions = []
+        caught_exceptions = []
+
+        def canary(context):
+            evented_exceptions.append(context.original_exception)
+
+        rollback_error = testing.db.dialect.dbapi.InterfaceError(
+            "Can't roll back to savepoint"
+        )
+
+        def prevent_savepoint_rollback(
+            cursor, statement, parameters, context=None
+        ):
+            if (
+                context is not None
+                and context.compiled
+                and isinstance(
+                    context.compiled.statement,
+                    elements.RollbackToSavepointClause,
+                )
+            ):
+                raise rollback_error
+
+        self.event_listen(testing.db, "handle_error", canary, retval=True)
+        self.event_listen(
+            testing.db.dialect, "do_execute", prevent_savepoint_rollback
+        )
+
+        with session.begin():
+            session.add(User(id=1, name="x"))
+
+        try:
+            with session.begin():
+                try:
+                    with session.begin_nested():
+                        # raises IntegrityError on flush
+                        session.add(User(id=1, name="x"))
+
+                # outermost is the failed SAVEPOINT rollback
+                # from the "with session.begin_nested()"
+                except sa_exc.DBAPIError as dbe_inner:
+                    caught_exceptions.append(dbe_inner.orig)
+                    raise
+        except sa_exc.DBAPIError as dbe_outer:
+            caught_exceptions.append(dbe_outer.orig)
+
+        is_true(
+            isinstance(
+                evented_exceptions[0], testing.db.dialect.dbapi.IntegrityError
+            )
+        )
+        eq_(evented_exceptions[1], rollback_error)
+        eq_(len(evented_exceptions), 2)
+        eq_(caught_exceptions, [rollback_error, rollback_error])
+
+    def test_contextmanager_commit(self):
+        User = self.classes.User
+
+        with testing.expect_deprecated_20(
+            "The Session.autocommit parameter is deprecated"
+        ):
+            sess = Session(autocommit=True)
+        with sess.begin():
+            sess.add(User(name="u1"))
+
+        sess.rollback()
+        eq_(sess.query(User).count(), 1)
+
+    def test_contextmanager_rollback(self):
+        User = self.classes.User
+
+        with testing.expect_deprecated_20(
+            "The Session.autocommit parameter is deprecated"
+        ):
+            sess = Session(autocommit=True)
+
+        def go():
+            with sess.begin():
+                sess.add(User())  # name can't be null
+
+        assert_raises(sa_exc.DBAPIError, go)
+
+        eq_(sess.query(User).count(), 0)
+
+        with sess.begin():
+            sess.add(User(name="u1"))
+        eq_(sess.query(User).count(), 1)
 
 
 class DeprecatedInhTest(_poly_fixtures._Polymorphic):

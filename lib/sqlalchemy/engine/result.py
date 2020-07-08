@@ -282,7 +282,8 @@ class Result(InPlaceGenerative):
        updated usage model and calling facade for SQLAlchemy Core and
        SQLAlchemy ORM.   In Core, it forms the basis of the
        :class:`.CursorResult` object which replaces the previous
-       :class:`.ResultProxy` interface.
+       :class:`.ResultProxy` interface.   When using the ORM, a higher level
+       object called :class:`.ChunkedIteratorResult` is normally used.
 
     """
 

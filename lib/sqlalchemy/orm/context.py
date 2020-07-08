@@ -188,7 +188,7 @@ class ORMCompileState(CompileState):
         raise NotImplementedError()
 
     @classmethod
-    def get_column_descriptions(self, statement):
+    def get_column_descriptions(cls, statement):
         return _column_descriptions(statement)
 
     @classmethod
@@ -204,8 +204,14 @@ class ORMCompileState(CompileState):
         if is_reentrant_invoke:
             return statement, execution_options
 
-        load_options = execution_options.get(
-            "_sa_orm_load_options", QueryContext.default_load_options
+        (
+            load_options,
+            execution_options,
+        ) = QueryContext.default_load_options.from_execution_options(
+            "_sa_orm_load_options",
+            {"populate_existing", "autoflush", "yield_per"},
+            execution_options,
+            statement._execution_options,
         )
 
         bind_arguments["clause"] = statement
@@ -246,6 +252,7 @@ class ORMCompileState(CompileState):
         load_options = execution_options.get(
             "_sa_orm_load_options", QueryContext.default_load_options
         )
+
         querycontext = QueryContext(
             compile_state,
             statement,
@@ -304,7 +311,7 @@ class ORMFromStatementCompileState(ORMCompileState):
         self._primary_entity = None
 
         self.use_legacy_query_style = (
-            statement_container.compile_options._use_legacy_query_style
+            statement_container._compile_options._use_legacy_query_style
         )
         self.statement_container = self.select_statement = statement_container
         self.requested_statement = statement = statement_container.element
@@ -315,9 +322,9 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         _QueryEntity.to_compile_state(self, statement_container._raw_columns)
 
-        self.compile_options = statement_container.compile_options
+        self.compile_options = statement_container._compile_options
 
-        self.current_path = statement_container.compile_options._current_path
+        self.current_path = statement_container._compile_options._current_path
 
         if toplevel and statement_container._with_options:
             self.attributes = {"_unbound_load_dedupes": set()}
@@ -416,8 +423,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         # if we are a select() that was never a legacy Query, we won't
         # have ORM level compile options.
-        statement.compile_options = cls.default_compile_options.safe_merge(
-            statement.compile_options
+        statement._compile_options = cls.default_compile_options.safe_merge(
+            statement._compile_options
         )
 
         self = cls.__new__(cls)
@@ -434,20 +441,20 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # indicates this select() came from Query.statement
         self.for_statement = (
             for_statement
-        ) = select_statement.compile_options._for_statement
+        ) = select_statement._compile_options._for_statement
 
         if not for_statement and not toplevel:
             # for subqueries, turn off eagerloads.
             # if "for_statement" mode is set, Query.subquery()
             # would have set this flag to False already if that's what's
             # desired
-            select_statement.compile_options += {
+            select_statement._compile_options += {
                 "_enable_eagerloads": False,
             }
 
         # generally if we are from Query or directly from a select()
         self.use_legacy_query_style = (
-            select_statement.compile_options._use_legacy_query_style
+            select_statement._compile_options._use_legacy_query_style
         )
 
         self._entities = []
@@ -457,15 +464,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self._no_yield_pers = set()
 
         # legacy: only for query.with_polymorphic()
-        if select_statement.compile_options._with_polymorphic_adapt_map:
+        if select_statement._compile_options._with_polymorphic_adapt_map:
             self._with_polymorphic_adapt_map = dict(
-                select_statement.compile_options._with_polymorphic_adapt_map
+                select_statement._compile_options._with_polymorphic_adapt_map
             )
             self._setup_with_polymorphics()
 
         _QueryEntity.to_compile_state(self, select_statement._raw_columns)
 
-        self.compile_options = select_statement.compile_options
+        self.compile_options = select_statement._compile_options
 
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
@@ -479,7 +486,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         else:
             self.label_style = self.select_statement._label_style
 
-        self.current_path = select_statement.compile_options._current_path
+        self.current_path = select_statement._compile_options._current_path
 
         self.eager_order_by = ()
 
@@ -668,7 +675,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self._polymorphic_adapters = {}
 
         compile_options = cls.default_compile_options.safe_merge(
-            query.compile_options
+            query._compile_options
         )
         # legacy: only for query.with_polymorphic()
         if compile_options._with_polymorphic_adapt_map:
@@ -710,6 +717,26 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             else:
                 for elem in _select_iterables([element]):
                     yield elem
+
+    @classmethod
+    @util.preload_module("sqlalchemy.orm.query")
+    def from_statement(cls, statement, from_statement):
+        query = util.preloaded.orm_query
+
+        from_statement = coercions.expect(
+            roles.SelectStatementRole,
+            from_statement,
+            apply_propagate_attrs=statement,
+        )
+
+        stmt = query.FromStatement(statement._raw_columns, from_statement)
+        stmt.__dict__.update(
+            _with_options=statement._with_options,
+            _with_context_options=statement._with_context_options,
+            _execution_options=statement._execution_options,
+            _propagate_attrs=statement._propagate_attrs,
+        )
+        return stmt
 
     def _setup_with_polymorphics(self):
         # legacy: only for query.with_polymorphic()

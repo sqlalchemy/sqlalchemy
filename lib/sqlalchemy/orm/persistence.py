@@ -1762,24 +1762,23 @@ class BulkUDCompileState(CompileState):
         if is_reentrant_invoke:
             return statement, execution_options
 
-        sync = execution_options.get("synchronize_session", None)
-        if sync is None:
-            sync = statement._execution_options.get(
-                "synchronize_session", None
-            )
-
-        update_options = execution_options.get(
+        (
+            update_options,
+            execution_options,
+        ) = BulkUDCompileState.default_update_options.from_execution_options(
             "_sa_orm_update_options",
-            BulkUDCompileState.default_update_options,
+            {"synchronize_session"},
+            execution_options,
+            statement._execution_options,
         )
 
+        sync = update_options._synchronize_session
         if sync is not None:
             if sync not in ("evaluate", "fetch", False):
                 raise sa_exc.ArgumentError(
                     "Valid strategies for session synchronization "
                     "are 'evaluate', 'fetch', False"
                 )
-            update_options += {"_synchronize_session": sync}
 
         bind_arguments["clause"] = statement
         try:

@@ -30,6 +30,7 @@ from .unitofwork import UOWTransaction
 from .. import engine
 from .. import exc as sa_exc
 from .. import future
+from .. import sql
 from .. import util
 from ..inspection import inspect
 from ..sql import coercions
@@ -288,7 +289,7 @@ class ORMExecuteState(util.MemoizedSlots):
         return self.statement._execution_options.union(self._execution_options)
 
     def _orm_compile_options(self):
-        opts = self.statement.compile_options
+        opts = self.statement._compile_options
         if isinstance(opts, context.ORMCompileState.default_compile_options):
             return opts
         else:
@@ -367,134 +368,53 @@ class ORMExecuteState(util.MemoizedSlots):
 class SessionTransaction(object):
     """A :class:`.Session`-level transaction.
 
-    :class:`.SessionTransaction` is a mostly behind-the-scenes object
-    not normally referenced directly by application code.   It coordinates
-    among multiple :class:`_engine.Connection` objects, maintaining a database
-    transaction for each one individually, committing or rolling them
-    back all at once.   It also provides optional two-phase commit behavior
-    which can augment this coordination operation.
+    :class:`.SessionTransaction` is produced from the
+    :meth:`_orm.Session.begin`
+    and :meth:`_orm.Session.begin_nested` methods.   It's largely an internal
+    object that in modern use provides a context manager for session
+    transactions.
 
-    The :attr:`.Session.transaction` attribute of :class:`.Session`
-    refers to the current :class:`.SessionTransaction` object in use, if any.
-    The :attr:`.SessionTransaction.parent` attribute refers to the parent
-    :class:`.SessionTransaction` in the stack of :class:`.SessionTransaction`
-    objects.  If this attribute is ``None``, then this is the top of the stack.
-    If non-``None``, then this :class:`.SessionTransaction` refers either
-    to a so-called "subtransaction" or a "nested" transaction.  A
-    "subtransaction" is a scoping concept that demarcates an inner portion
-    of the outermost "real" transaction.  A nested transaction, which
-    is indicated when the :attr:`.SessionTransaction.nested`
-    attribute is also True, indicates that this :class:`.SessionTransaction`
-    corresponds to a SAVEPOINT.
+    Documentation on interacting with :class:`_orm.SessionTransaction` is
+    at: :ref:`unitofwork_transaction`.
 
-    **Life Cycle**
 
-    A :class:`.SessionTransaction` is associated with a :class:`.Session` in
-    its default mode of ``autocommit=False`` whenever the "autobegin" process
-    takes place, associated with no database connections.  As the
-    :class:`.Session` is called upon to emit SQL on behalf of various
-    :class:`_engine.Engine` or :class:`_engine.Connection` objects,
-    a corresponding
-    :class:`_engine.Connection` and associated :class:`.Transaction`
-    is added to a
-    collection within the :class:`.SessionTransaction` object, becoming one of
-    the connection/transaction pairs maintained by the
-    :class:`.SessionTransaction`.  The start of a :class:`.SessionTransaction`
-    can be tracked using the :meth:`.SessionEvents.after_transaction_create`
-    event.
-
-    The lifespan of the :class:`.SessionTransaction` ends when the
-    :meth:`.Session.commit`, :meth:`.Session.rollback` or
-    :meth:`.Session.close` methods are called.  At this point, the
-    :class:`.SessionTransaction` removes its association with its parent
-    :class:`.Session`.   A :class:`.Session` that is in ``autocommit=False``
-    mode will create a new :class:`.SessionTransaction` to replace it when the
-    next "autobegin" event occurs, whereas a :class:`.Session` that's in
-    ``autocommit=True`` mode will remain without a :class:`.SessionTransaction`
-    until the :meth:`.Session.begin` method is called.  The end of a
-    :class:`.SessionTransaction` can be tracked using the
-    :meth:`.SessionEvents.after_transaction_end` event.
-
-    .. versionchanged:: 1.4 the :class:`.SessionTransaction` is not created
-       immediately within a :class:`.Session` when constructed or when the
-       previous transaction is removed, it instead is created when the
-       :class:`.Session` is next used.
-
-    **Nesting and Subtransactions**
-
-    Another detail of :class:`.SessionTransaction` behavior is that it is
-    capable of "nesting".  This means that the :meth:`.Session.begin` method
-    can be called while an existing :class:`.SessionTransaction` is already
-    present, producing a new :class:`.SessionTransaction` that temporarily
-    replaces the parent :class:`.SessionTransaction`.   When a
-    :class:`.SessionTransaction` is produced as nested, it assigns itself to
-    the :attr:`.Session.transaction` attribute, and it additionally will assign
-    the previous :class:`.SessionTransaction` to its :attr:`.Session.parent`
-    attribute.  The behavior is effectively a
-    stack, where :attr:`.Session.transaction` refers to the current head of
-    the stack, and the :attr:`.SessionTransaction.parent` attribute allows
-    traversal up the stack until :attr:`.SessionTransaction.parent` is
-    ``None``, indicating the top of the stack.
-
-    When the scope of :class:`.SessionTransaction` is ended via
-    :meth:`.Session.commit` or :meth:`.Session.rollback`, it restores its
-    parent :class:`.SessionTransaction` back onto the
-    :attr:`.Session.transaction` attribute.
-
-    The purpose of this stack is to allow nesting of
-    :meth:`.Session.rollback` or :meth:`.Session.commit` calls in context
-    with various flavors of :meth:`.Session.begin`. This nesting behavior
-    applies to when :meth:`.Session.begin_nested` is used to emit a
-    SAVEPOINT transaction, and is also used to produce a so-called
-    "subtransaction" which allows a block of code to use a
-    begin/rollback/commit sequence regardless of whether or not its enclosing
-    code block has begun a transaction.  The :meth:`.flush` method, whether
-    called explicitly or via autoflush, is the primary consumer of the
-    "subtransaction" feature, in that it wishes to guarantee that it works
-    within in a transaction block regardless of whether or not the
-    :class:`.Session` is in transactional mode when the method is called.
-
-    Note that the flush process that occurs within the "autoflush" feature
-    as well as when the :meth:`.Session.flush` method is used **always**
-    creates a :class:`.SessionTransaction` object.   This object is normally
-    a subtransaction, unless the :class:`.Session` is in autocommit mode
-    and no transaction exists at all, in which case it's the outermost
-    transaction.   Any event-handling logic or other inspection logic
-    needs to take into account whether a :class:`.SessionTransaction`
-    is the outermost transaction, a subtransaction, or a "nested" / SAVEPOINT
-    transaction.
+    .. versionchanged:: 1.4  The scoping and API methods to work with the
+       :class:`_orm.SessionTransaction` object directly have been simplified.
 
     .. seealso::
 
-        :meth:`.Session.rollback`
-
-        :meth:`.Session.commit`
+        :ref:`unitofwork_transaction`
 
         :meth:`.Session.begin`
 
         :meth:`.Session.begin_nested`
 
-        :attr:`.Session.is_active`
+        :meth:`.Session.rollback`
 
-        :meth:`.SessionEvents.after_transaction_create`
+        :meth:`.Session.commit`
 
-        :meth:`.SessionEvents.after_transaction_end`
+        :meth:`.Session.in_transaction`
 
-        :meth:`.SessionEvents.after_commit`
+        :meth:`.Session.in_nested_transaction`
 
-        :meth:`.SessionEvents.after_rollback`
+        :meth:`.Session.get_transaction`
 
-        :meth:`.SessionEvents.after_soft_rollback`
+        :meth:`.Session.get_nested_transaction`
+
 
     """
 
     _rollback_exception = None
 
-    def __init__(self, session, parent=None, nested=False, autobegin=False):
+    def __init__(
+        self, session, parent=None, nested=False, autobegin=False,
+    ):
         self.session = session
         self._connections = {}
         self._parent = parent
         self.nested = nested
+        if nested:
+            self._previous_nested_transaction = session._nested_transaction
         self._state = ACTIVE
         if not parent and nested:
             raise sa_exc.InvalidRequestError(
@@ -688,6 +608,8 @@ class SessionTransaction(object):
             return self._connections[bind][0]
 
         local_connect = False
+        should_commit = True
+
         if self._parent:
             conn = self._parent._connection_for_bind(bind, execution_options)
             if not self.nested:
@@ -712,11 +634,16 @@ class SessionTransaction(object):
                 transaction = conn.begin_twophase()
             elif self.nested:
                 transaction = conn.begin_nested()
-            else:
-                if conn._is_future and conn.in_transaction():
-                    transaction = conn._transaction
+            elif conn.in_transaction():
+                # if given a future connection already in a transaction, don't
+                # commit that transaction unless it is a savepoint
+                if conn.in_nested_transaction():
+                    transaction = conn.get_nested_transaction()
                 else:
-                    transaction = conn.begin()
+                    transaction = conn.get_transaction()
+                    should_commit = False
+            else:
+                transaction = conn.begin()
         except:
             # connection will not not be associated with this Session;
             # close it immediately so that it isn't closed under GC
@@ -729,7 +656,7 @@ class SessionTransaction(object):
             self._connections[conn] = self._connections[conn.engine] = (
                 conn,
                 transaction,
-                not bind_is_connection or not conn._is_future,
+                should_commit,
                 not bind_is_connection,
             )
             self.session.dispatch.after_begin(self.session, self, conn)
@@ -748,7 +675,7 @@ class SessionTransaction(object):
         if self._parent is None or self.nested:
             self.session.dispatch.before_commit(self.session)
 
-        stx = self.session.transaction
+        stx = self.session._transaction
         if stx is not self:
             for subtransaction in stx._iterate_self_and_parents(upto=self):
                 subtransaction.commit()
@@ -775,7 +702,7 @@ class SessionTransaction(object):
 
         self._state = PREPARED
 
-    def commit(self):
+    def commit(self, _to_root=False):
         self._assert_active(prepared_ok=True)
         if self._state is not PREPARED:
             self._prepare_impl()
@@ -793,12 +720,16 @@ class SessionTransaction(object):
             self._remove_snapshot()
 
         self.close()
+
+        if _to_root and self._parent:
+            return self._parent.commit(_to_root=True)
+
         return self._parent
 
-    def rollback(self, _capture_exception=False):
+    def rollback(self, _capture_exception=False, _to_root=False):
         self._assert_active(prepared_ok=True, rollback_ok=True)
 
-        stx = self.session.transaction
+        stx = self.session._transaction
         if stx is not self:
             for subtransaction in stx._iterate_self_and_parents(upto=self):
                 subtransaction.close()
@@ -849,20 +780,28 @@ class SessionTransaction(object):
 
         sess.dispatch.after_soft_rollback(sess, self)
 
+        if _to_root and self._parent:
+            return self._parent.rollback(_to_root=True)
         return self._parent
 
     def close(self, invalidate=False):
+        if self.nested:
+            self.session._nested_transaction = (
+                self._previous_nested_transaction
+            )
+
         self.session._transaction = self._parent
+
         if self._parent is None:
             for connection, transaction, should_commit, autoclose in set(
                 self._connections.values()
             ):
                 if invalidate:
                     connection.invalidate()
+                if should_commit and transaction.is_active:
+                    transaction.close()
                 if autoclose:
                     connection.close()
-                else:
-                    transaction.close()
 
         self._state = CLOSED
         self.session.dispatch.after_transaction_end(self.session, self)
@@ -924,6 +863,15 @@ class Session(_SessionClassMethods):
         "scalar",
     )
 
+    @util.deprecated_params(
+        autocommit=(
+            "2.0",
+            "The :paramref:`.Session.autocommit` parameter is deprecated "
+            "and will be removed in SQLAlchemy version 2.0.  Please use the "
+            ":paramref:`.Session.autobegin` parameter set to False to support "
+            "explicit use of the :meth:`.Session.begin` method.",
+        ),
+    )
     def __init__(
         self,
         bind=None,
@@ -1071,8 +1019,6 @@ class Session(_SessionClassMethods):
            :class:`.Session` dictionary will be local to that
            :class:`.Session`.
 
-           .. versionadded:: 0.9.0
-
         :param query_cls:  Class which should be used to create new Query
           objects, as returned by the :meth:`~.Session.query` method.
           Defaults to :class:`_query.Query`.
@@ -1096,12 +1042,22 @@ class Session(_SessionClassMethods):
         self._flushing = False
         self._warn_on_events = False
         self._transaction = None
+        self._nested_transaction = None
         self.future = future
         self.hash_key = _new_sessionid()
         self.autoflush = autoflush
-        self.autocommit = autocommit
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
+
+        if autocommit:
+            if future:
+                raise sa_exc.ArgumentError(
+                    "Cannot use autocommit mode with future=True.  "
+                    "use the autobegin flag."
+                )
+            self.autocommit = True
+        else:
+            self.autocommit = False
 
         self.twophase = twophase
         self._query_cls = query_cls if query_cls else query.Query
@@ -1116,20 +1072,76 @@ class Session(_SessionClassMethods):
 
     connection_callable = None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type_, value, traceback):
+        self.close()
+
     @property
+    @util.deprecated_20(
+        "The :attr:`_orm.Session.transaction` accessor is deprecated and "
+        "will be removed in SQLAlchemy version 2.0.  "
+        "For context manager use, use :meth:`_orm.Session.begin`.  To access "
+        "the current root transaction, use "
+        ":meth:`_orm.Session.get_transaction()"
+    )
     def transaction(self):
         """The current active or inactive :class:`.SessionTransaction`.
 
-        If this session is in "autobegin" mode and the transaction was not
-        begun, this accessor will implicitly begin the transaction.
+        May be None if no transaction has begun yet.
 
         .. versionchanged:: 1.4  the :attr:`.Session.transaction` attribute
-           is now a read-only descriptor that will automatically start a
-           transaction in "autobegin" mode if one is not present.
+           is now a read-only descriptor that also may return None if no
+           transaction has begun yet.
+
 
         """
-        self._autobegin()
+        if not self.future:
+            self._autobegin()
         return self._transaction
+
+    def in_transaction(self):
+        """Return True if this :class:`_orm.Session` has begun a transaction.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :attr:`_orm.Session.is_active`
+
+
+        """
+        return self._transaction is not None
+
+    def in_nested_transaction(self):
+        """Return True if this :class:`_orm.Session` has begun a nested
+        transaction, e.g. SAVEPOINT.
+
+        .. versionadded:: 1.4
+
+        """
+        return self._nested_transaction is not None
+
+    def get_transaction(self):
+        """Return the current root transaction in progress, if any.
+
+        .. versionadded:: 1.4
+
+        """
+        trans = self._transaction
+        while trans is not None and trans._parent is not None:
+            trans = trans._parent
+        return trans
+
+    def get_nested_transaction(self):
+        """Return the current nested transaction in progress, if any.
+
+        .. versionadded:: 1.4
+
+        """
+
+        return self._nested_transaction
 
     @util.memoized_property
     def info(self):
@@ -1141,8 +1153,6 @@ class Session(_SessionClassMethods):
         here is always local to this :class:`.Session` and can be modified
         independently of all other :class:`.Session` objects.
 
-        .. versionadded:: 0.9.0
-
         """
         return {}
 
@@ -1153,7 +1163,17 @@ class Session(_SessionClassMethods):
 
         return False
 
-    def begin(self, subtransactions=False, nested=False):
+    @util.deprecated_params(
+        subtransactions=(
+            "2.0",
+            "The :paramref:`_orm.Session.begin.subtransactions` flag is "
+            "deprecated and "
+            "will be removed in SQLAlchemy version 2.0.  The "
+            ":attr:`_orm.Session.transaction` flag may "
+            "be checked for None before invoking :meth:`_orm.Session.begin`.",
+        )
+    )
+    def begin(self, subtransactions=False, nested=False, _subtrans=False):
         """Begin a transaction on this :class:`.Session`.
 
         .. warning::
@@ -1206,17 +1226,24 @@ class Session(_SessionClassMethods):
 
         """
 
+        if subtransactions and self.future:
+            raise NotImplementedError(
+                "subtransactions are not implemented in future "
+                "Session objects."
+            )
         if self._autobegin():
             if not subtransactions and not nested:
-                return
+                return self._transaction
 
         if self._transaction is not None:
-            if subtransactions or nested:
-                self._transaction = self._transaction._begin(nested=nested)
+            if subtransactions or _subtrans or nested:
+                trans = self._transaction._begin(nested=nested)
+                self._transaction = trans
+                if nested:
+                    self._nested_transaction = trans
             else:
                 raise sa_exc.InvalidRequestError(
-                    "A transaction is already begun.  Use "
-                    "subtransactions=True to allow subtransactions."
+                    "A transaction is already begun on this Session."
                 )
         else:
             self._transaction = SessionTransaction(self, nested=nested)
@@ -1265,7 +1292,7 @@ class Session(_SessionClassMethods):
         if self._transaction is None:
             pass
         else:
-            self._transaction.rollback()
+            self._transaction.rollback(_to_root=self.future)
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
@@ -1299,7 +1326,7 @@ class Session(_SessionClassMethods):
             if not self._autobegin():
                 raise sa_exc.InvalidRequestError("No transaction is begun.")
 
-        self._transaction.commit()
+        self._transaction.commit(_to_root=self.future)
 
     def prepare(self):
         """Prepare the current transaction in progress for two phase commit.
@@ -1371,8 +1398,6 @@ class Session(_SessionClassMethods):
          present within the :class:`.Session`, a warning is emitted and
          the arguments are ignored.
 
-         .. versionadded:: 0.9.9
-
          .. seealso::
 
             :ref:`session_transaction_isolation`
@@ -1402,6 +1427,7 @@ class Session(_SessionClassMethods):
             )
 
         assert self._transaction is None
+        assert self.autocommit
         conn = engine.connect(**kw)
         if execution_options:
             conn = conn.execution_options(**execution_options)
@@ -1663,12 +1689,19 @@ class Session(_SessionClassMethods):
 
         This is a variant of :meth:`.Session.close` that will additionally
         ensure that the :meth:`_engine.Connection.invalidate`
-        method will be called
-        on all :class:`_engine.Connection` objects.  This can be called when
-        the database is known to be in a state where the connections are
-        no longer safe to be used.
+        method will be called on each :class:`_engine.Connection` object
+        that is currently in use for a transaction (typically there is only
+        one connection unless the :class:`_orm.Session` is used with
+        multiple engines).
 
-        E.g.::
+        This can be called when the database is known to be in a state where
+        the connections are no longer safe to be used.
+
+        Below illustrates a scenario when using `gevent
+        <http://www.gevent.org/>`_, which can produce ``Timeout`` exceptions
+        that may mean the underlying connection should be discarded::
+
+            import gevent
 
             try:
                 sess = Session()
@@ -1681,13 +1714,8 @@ class Session(_SessionClassMethods):
                 sess.rollback()
                 raise
 
-        This clears all items and ends any transaction in progress.
-
-        If this session were created with ``autocommit=False``, a new
-        transaction is immediately begun.  Note that this new transaction does
-        not use any connection resources until they are first needed.
-
-        .. versionadded:: 0.9.9
+        The method additionally does everything that :meth:`_orm.Session.close`
+        does, including that all ORM objects are expunged.
 
         """
         self._close_impl(invalidate=True)
@@ -2118,13 +2146,7 @@ class Session(_SessionClassMethods):
                 "A blank dictionary is ambiguous."
             )
 
-        if with_for_update is not None:
-            if with_for_update is True:
-                with_for_update = query.ForUpdateArg()
-            elif with_for_update:
-                with_for_update = query.ForUpdateArg(**with_for_update)
-            else:
-                with_for_update = None
+        with_for_update = query.ForUpdateArg._from_argument(with_for_update)
 
         stmt = future.select(object_mapper(instance))
         if (
@@ -2482,6 +2504,200 @@ class Session(_SessionClassMethods):
             for o, m, st_, dct_ in cascade_states:
                 self._delete_impl(st_, o, False)
 
+    def get(
+        self,
+        entity,
+        ident,
+        options=None,
+        populate_existing=False,
+        with_for_update=None,
+        identity_token=None,
+    ):
+        """Return an instance based on the given primary key identifier,
+        or ``None`` if not found.
+
+        E.g.::
+
+            my_user = session.get(User, 5)
+
+            some_object = session.get(VersionedFoo, (5, 10))
+
+            some_object = session.get(
+                VersionedFoo,
+                {"id": 5, "version_id": 10}
+            )
+
+        .. versionadded:: 1.4 Added :meth:`_orm.Session.get`, which is moved
+           from the now deprecated :meth:`_orm.Query.get` method.
+
+        :meth:`_orm.Session.get` is special in that it provides direct
+        access to the identity map of the :class:`.Session`.
+        If the given primary key identifier is present
+        in the local identity map, the object is returned
+        directly from this collection and no SQL is emitted,
+        unless the object has been marked fully expired.
+        If not present,
+        a SELECT is performed in order to locate the object.
+
+        :meth:`_orm.Session.get` also will perform a check if
+        the object is present in the identity map and
+        marked as expired - a SELECT
+        is emitted to refresh the object as well as to
+        ensure that the row is still present.
+        If not, :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is raised.
+
+        :param entity: a mapped class or :class:`.Mapper` indicating the
+         type of entity to be loaded.
+
+        :param ident: A scalar, tuple, or dictionary representing the
+         primary key.  For a composite (e.g. multiple column) primary key,
+         a tuple or dictionary should be passed.
+
+         For a single-column primary key, the scalar calling form is typically
+         the most expedient.  If the primary key of a row is the value "5",
+         the call looks like::
+
+            my_object = session.get(SomeClass, 5)
+
+         The tuple form contains primary key values typically in
+         the order in which they correspond to the mapped
+         :class:`_schema.Table`
+         object's primary key columns, or if the
+         :paramref:`_orm.Mapper.primary_key` configuration parameter were
+         used, in
+         the order used for that parameter. For example, if the primary key
+         of a row is represented by the integer
+         digits "5, 10" the call would look like::
+
+             my_object = session.get(SomeClass, (5, 10))
+
+         The dictionary form should include as keys the mapped attribute names
+         corresponding to each element of the primary key.  If the mapped class
+         has the attributes ``id``, ``version_id`` as the attributes which
+         store the object's primary key value, the call would look like::
+
+            my_object = session.get(SomeClass, {"id": 5, "version_id": 10})
+
+        :param options: optional sequence of loader options which will be
+         applied to the query, if one is emitted.
+
+        :param populate_existing: causes the method to unconditionally emit
+         a SQL query and refresh the object with the newly loaded data,
+         regardless of whether or not the object is already present.
+
+        :param with_for_update: optional boolean ``True`` indicating FOR UPDATE
+          should be used, or may be a dictionary containing flags to
+          indicate a more specific set of FOR UPDATE flags for the SELECT;
+          flags should match the parameters of
+          :meth:`_query.Query.with_for_update`.
+          Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
+
+        :return: The object instance, or ``None``.
+
+        """
+        return self._get_impl(
+            entity,
+            ident,
+            loading.load_on_pk_identity,
+            options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+        )
+
+    def _get_impl(
+        self,
+        entity,
+        primary_key_identity,
+        db_load_fn,
+        options=None,
+        populate_existing=False,
+        with_for_update=None,
+        identity_token=None,
+        execution_options=None,
+    ):
+
+        # convert composite types to individual args
+        if hasattr(primary_key_identity, "__composite_values__"):
+            primary_key_identity = primary_key_identity.__composite_values__()
+
+        mapper = inspect(entity)
+
+        is_dict = isinstance(primary_key_identity, dict)
+        if not is_dict:
+            primary_key_identity = util.to_list(
+                primary_key_identity, default=(None,)
+            )
+
+        if len(primary_key_identity) != len(mapper.primary_key):
+            raise sa_exc.InvalidRequestError(
+                "Incorrect number of values in identifier to formulate "
+                "primary key for query.get(); primary key columns are %s"
+                % ",".join("'%s'" % c for c in mapper.primary_key)
+            )
+
+        if is_dict:
+            try:
+                primary_key_identity = list(
+                    primary_key_identity[prop.key]
+                    for prop in mapper._identity_key_props
+                )
+
+            except KeyError as err:
+                util.raise_(
+                    sa_exc.InvalidRequestError(
+                        "Incorrect names of values in identifier to formulate "
+                        "primary key for query.get(); primary key attribute "
+                        "names are %s"
+                        % ",".join(
+                            "'%s'" % prop.key
+                            for prop in mapper._identity_key_props
+                        )
+                    ),
+                    replace_context=err,
+                )
+
+        if (
+            not populate_existing
+            and not mapper.always_refresh
+            and with_for_update is None
+        ):
+
+            instance = self._identity_lookup(
+                mapper, primary_key_identity, identity_token=identity_token
+            )
+
+            if instance is not None:
+                # reject calls for id in identity map but class
+                # mismatch.
+                if not issubclass(instance.__class__, mapper.class_):
+                    return None
+                return instance
+            elif instance is attributes.PASSIVE_CLASS_MISMATCH:
+                return None
+
+        # apply_labels() not strictly necessary, however this will ensure that
+        # tablename_colname style is used which at the moment is asserted
+        # in a lot of unit tests :)
+
+        load_options = context.QueryContext.default_load_options
+
+        if populate_existing:
+            load_options += {"_populate_existing": populate_existing}
+        statement = sql.select(mapper).apply_labels()
+        if with_for_update is not None:
+            statement._for_update_arg = query.ForUpdateArg._from_argument(
+                with_for_update
+            )
+
+        if options:
+            statement = statement.options(*options)
+        if execution_options:
+            statement = statement.execution_options(**execution_options)
+        return db_load_fn(
+            self, statement, primary_key_identity, load_options=load_options,
+        )
+
     def merge(self, instance, load=True):
         """Copy the state of a given instance into a corresponding instance
         within this :class:`.Session`.
@@ -2629,7 +2845,7 @@ class Session(_SessionClassMethods):
                 new_instance = True
 
             elif key_is_persistent:
-                merged = self.query(mapper.class_).get(key[1])
+                merged = self.get(mapper.class_, key[1], identity_token=key[2])
 
         if merged is None:
             merged = mapper.class_manager.new_instance()
@@ -3021,9 +3237,7 @@ class Session(_SessionClassMethods):
         if not flush_context.has_work:
             return
 
-        flush_context.transaction = transaction = self.begin(
-            subtransactions=True
-        )
+        flush_context.transaction = transaction = self.begin(_subtrans=True)
         try:
             self._warn_on_events = True
             try:
@@ -3338,7 +3552,7 @@ class Session(_SessionClassMethods):
         mapper = _class_to_mapper(mapper)
         self._flushing = True
 
-        transaction = self.begin(subtransactions=True)
+        transaction = self.begin(_subtrans=True)
         try:
             if isupdate:
                 persistence._bulk_update(
@@ -3441,62 +3655,38 @@ class Session(_SessionClassMethods):
 
     @property
     def is_active(self):
-        """True if this :class:`.Session` is in "transaction mode" and
-        is not in "partial rollback" state.
+        """True if this :class:`.Session` not in "partial rollback" state.
 
-        The :class:`.Session` in its default mode of ``autocommit=False``
-        is essentially always in "transaction mode", in that a
-        :class:`.SessionTransaction` is associated with it as soon as
-        it is instantiated.  This :class:`.SessionTransaction` is immediately
-        replaced with a new one as soon as it is ended, due to a rollback,
-        commit, or close operation.
+        .. versionchanged:: 1.4 The :class:`_orm.Session` no longer begins
+           a new transaction immediately, so this attribute will be False
+           when the :class:`_orm.Session` is first instantiated.
 
-        "Transaction mode" does *not* indicate whether
-        or not actual database connection resources are in use;  the
-        :class:`.SessionTransaction` object coordinates among zero or more
-        actual database transactions, and starts out with none, accumulating
-        individual DBAPI connections as different data sources are used
-        within its scope.   The best way to track when a particular
-        :class:`.Session` has actually begun to use DBAPI resources is to
-        implement a listener using the :meth:`.SessionEvents.after_begin`
-        method, which will deliver both the :class:`.Session` as well as the
-        target :class:`_engine.Connection` to a user-defined event listener.
+        "partial rollback" state typically indicates that the flush process
+        of the :class:`_orm.Session` has failed, and that the
+        :meth:`_orm.Session.rollback` method must be emitted in order to
+        fully roll back the transaction.
 
-        The "partial rollback" state refers to when an "inner" transaction,
-        typically used during a flush, encounters an error and emits a
-        rollback of the DBAPI connection.  At this point, the
-        :class:`.Session` is in "partial rollback" and awaits for the user to
-        call :meth:`.Session.rollback`, in order to close out the
-        transaction stack.  It is in this "partial rollback" period that the
-        :attr:`.is_active` flag returns False.  After the call to
-        :meth:`.Session.rollback`, the :class:`.SessionTransaction` is
-        replaced with a new one and :attr:`.is_active` returns ``True`` again.
+        If this :class:`_orm.Session` is not in a transaction at all, the
+        :class:`_orm.Session` will autobegin when it is first used, so in this
+        case :attr:`_orm.Session.is_active` will return True.
 
-        When a :class:`.Session` is used in ``autocommit=True`` mode, the
-        :class:`.SessionTransaction` is only instantiated within the scope
-        of a flush call, or when :meth:`.Session.begin` is called.  So
-        :attr:`.is_active` will always be ``False`` outside of a flush or
-        :meth:`.Session.begin` block in this mode, and will be ``True``
-        within the :meth:`.Session.begin` block as long as it doesn't enter
-        "partial rollback" state.
+        Otherwise, if this :class:`_orm.Session` is within a transaction,
+        and that transaction has not been rolled back internally, the
+        :attr:`_orm.Session.is_active` will also return True.
 
-        From all the above, it follows that the only purpose to this flag is
-        for application frameworks that wish to detect if a "rollback" is
-        necessary within a generic error handling routine, for
-        :class:`.Session` objects that would otherwise be in
-        "partial rollback" mode.  In a typical integration case, this is also
-        not necessary as it is standard practice to emit
-        :meth:`.Session.rollback` unconditionally within the outermost
-        exception catch.
+        .. seealso::
 
-        To track the transactional state of a :class:`.Session` fully,
-        use event listeners, primarily the :meth:`.SessionEvents.after_begin`,
-        :meth:`.SessionEvents.after_commit`,
-        :meth:`.SessionEvents.after_rollback` and related events.
+            :ref:`faq_session_rollback`
+
+            :meth:`_orm.Session.in_transaction`
 
         """
-        self._autobegin()
-        return self._transaction and self._transaction.is_active
+        if self.autocommit:
+            return (
+                self._transaction is not None and self._transaction.is_active
+            )
+        else:
+            return self._transaction is None or self._transaction.is_active
 
     identity_map = None
     """A mapping of object identities to objects themselves.
@@ -3576,36 +3766,84 @@ class sessionmaker(_SessionClassMethods):
 
     e.g.::
 
-        # global scope
-        Session = sessionmaker(autoflush=False)
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
 
-        # later, in a local scope, create and use a session:
-        sess = Session()
+        # an Engine, which the Session will use for connection
+        # resources
+        engine = create_engine('postgresql://scott:tiger@localhost/')
 
-    Any keyword arguments sent to the constructor itself will override the
-    "configured" keywords::
+        Session = sessionmaker(engine)
 
-        Session = sessionmaker()
+        with Session() as session:
+            session.add(some_object)
+            session.add(some_other_object)
+            session.commit()
+
+    Context manager use is optional; otherwise, the returned
+    :class:`_orm.Session` object may be closed explicitly via the
+    :meth:`_orm.Session.close` method.   Using a
+    ``try:/finally:`` block is optional, however will ensure that the close
+    takes place even if there are database errors::
+
+        session = Session()
+        try:
+            session.add(some_object)
+            session.add(some_other_object)
+            session.commit()
+        finally:
+            session.close()
+
+    :class:`.sessionmaker` acts as a factory for :class:`_orm.Session`
+    objects in the same way as an :class:`_engine.Engine` acts as a factory
+    for :class:`_engine.Connection` objects.  In this way it also includes
+    a :meth:`_orm.sessionmaker.begin` method, that provides a context
+    manager which both begins and commits a transaction, as well as closes
+    out the :class:`_orm.Session` when complete, rolling back the transaction
+    if any errors occur::
+
+        Session = sessionmaker(engine)
+
+        wih Session.begin() as session:
+            session.add(some_object)
+            session.add(some_other_object)
+        # commits transaction, closes session
+
+    .. versionadded:: 1.4
+
+    When calling upon :class:`_orm.sessionmaker` to construct a
+    :class:`_orm.Session`, keyword arguments may also be passed to the
+    method; these arguments will override that of the globally configured
+    parameters.  Below we use a :class:`_orm.sessionmaker` bound to a certain
+    :class:`_engine.Engine` to produce a :class:`_orm.Session` that is instead
+    bound to a specific :class:`_engine.Connection` procured from that engine::
+
+        Session = sessionmaker(engine)
 
         # bind an individual session to a connection
-        sess = Session(bind=connection)
 
-    The class also includes a method :meth:`.configure`, which can
-    be used to specify additional keyword arguments to the factory, which
-    will take effect for subsequent :class:`.Session` objects generated.
-    This is usually used to associate one or more :class:`_engine.Engine`
-    objects
-    with an existing :class:`.sessionmaker` factory before it is first
-    used::
+        with engine.connect() as connection:
+            with Session(bind=connection) as session:
+                # work with session
 
-        # application starts
+    The class also includes a method :meth:`_orm.sessionmaker.configure`, which
+    can be used to specify additional keyword arguments to the factory, which
+    will take effect for subsequent :class:`.Session` objects generated. This
+    is usually used to associate one or more :class:`_engine.Engine` objects
+    with an existing
+    :class:`.sessionmaker` factory before it is first used::
+
+        # application starts, sessionmaker does not have
+        # an engine bound yet
         Session = sessionmaker()
 
-        # ... later
+        # ... later, when an engine URL is read from a configuration
+        # file or other events allow the engine to be created
         engine = create_engine('sqlite:///foo.db')
         Session.configure(bind=engine)
 
         sess = Session()
+        # work with session
 
     .. seealso::
 
@@ -3646,8 +3884,6 @@ class sessionmaker(_SessionClassMethods):
          replaced, when the ``info`` parameter is specified to the specific
          :class:`.Session` construction operation.
 
-         .. versionadded:: 0.9.0
-
         :param \**kw: all other keyword arguments are passed to the
          constructor of newly created :class:`.Session` objects.
 
@@ -3662,6 +3898,29 @@ class sessionmaker(_SessionClassMethods):
         # make our own subclass of the given class, so that
         # events can be associated with it specifically.
         self.class_ = type(class_.__name__, (class_,), {})
+
+    @util.contextmanager
+    def begin(self):
+        """Produce a context manager that both provides a new
+        :class:`_orm.Session` as well as a transaction that commits.
+
+
+        e.g.::
+
+            Session = sessionmaker(some_engine)
+
+            with Session.begin() as session:
+                session.add(some_object)
+
+            # commits transaction, closes session
+
+        .. versionadded:: 1.4
+
+
+        """
+        with self() as session:
+            with session.begin():
+                yield session
 
     def __call__(self, **local_kw):
         """Produce a new :class:`.Session` object using the configuration
@@ -3805,8 +4064,6 @@ def make_transient_to_detached(instance):
     This is a special use case function that differs from a normal
     call to :meth:`.Session.merge` in that a given persistent state
     can be manufactured without any SQL calls.
-
-    .. versionadded:: 0.9.5
 
     .. seealso::
 

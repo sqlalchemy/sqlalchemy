@@ -1913,33 +1913,32 @@ class VersioningTest(fixtures.MappedTest):
         )
         mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
 
-        sess = create_session()
+        sess = Session(autoflush=False)
 
         b1 = Base(value="b1")
         s1 = Sub(value="sub1", subdata="some subdata")
         sess.add(b1)
         sess.add(s1)
 
-        sess.flush()
+        sess.commit()
 
-        sess2 = create_session()
-        s2 = sess2.query(Base).get(s1.id)
+        sess2 = Session(autoflush=False)
+        s2 = sess2.get(Base, s1.id)
         s2.subdata = "sess2 subdata"
 
         s1.subdata = "sess1 subdata"
 
-        sess.flush()
+        sess.commit()
 
         assert_raises(
             orm_exc.StaleDataError,
-            sess2.query(Base).with_for_update(read=True).get,
+            sess2.get,
+            Base,
             s1.id,
+            with_for_update=dict(read=True),
         )
 
-        if not testing.db.dialect.supports_sane_rowcount:
-            sess2.flush()
-        else:
-            assert_raises(orm_exc.StaleDataError, sess2.flush)
+        sess2.rollback()
 
         sess2.refresh(s2)
         if testing.db.dialect.supports_sane_rowcount:
@@ -1967,7 +1966,7 @@ class VersioningTest(fixtures.MappedTest):
         )
         mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
 
-        sess = create_session()
+        sess = Session(autoflush=False, expire_on_commit=False)
 
         b1 = Base(value="b1")
         s1 = Sub(value="sub1", subdata="some subdata")
@@ -1976,21 +1975,21 @@ class VersioningTest(fixtures.MappedTest):
         sess.add(s1)
         sess.add(s2)
 
-        sess.flush()
+        sess.commit()
 
-        sess2 = create_session()
-        s3 = sess2.query(Base).get(s1.id)
+        sess2 = Session(autoflush=False, expire_on_commit=False)
+        s3 = sess2.get(Base, s1.id)
         sess2.delete(s3)
-        sess2.flush()
+        sess2.commit()
 
         s2.subdata = "some new subdata"
-        sess.flush()
+        sess.commit()
 
         s1.subdata = "some new subdata"
         if testing.db.dialect.supports_sane_rowcount:
-            assert_raises(orm_exc.StaleDataError, sess.flush)
+            assert_raises(orm_exc.StaleDataError, sess.commit)
         else:
-            sess.flush()
+            sess.commit()
 
 
 class DistinctPKTest(fixtures.MappedTest):

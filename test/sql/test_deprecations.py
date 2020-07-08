@@ -3,6 +3,7 @@
 from sqlalchemy import alias
 from sqlalchemy import and_
 from sqlalchemy import bindparam
+from sqlalchemy import case
 from sqlalchemy import CHAR
 from sqlalchemy import column
 from sqlalchemy import create_engine
@@ -488,6 +489,111 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT anon_1.a FROM (SELECT 1 AS a ORDER BY 1) AS anon_1",
         )
 
+    def test_case_list_legacy(self):
+        t1 = table("t", column("q"))
+
+        with testing.expect_deprecated(
+            r"The \"whens\" argument to case\(\) is now passed"
+        ):
+            stmt = select(t1).where(
+                case(
+                    [(t1.c.q == 5, "foo"), (t1.c.q == 10, "bar")], else_="bat"
+                )
+                != "bat"
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.q FROM t WHERE CASE WHEN (t.q = :q_1) "
+            "THEN :param_1 WHEN (t.q = :q_2) THEN :param_2 "
+            "ELSE :param_3 END != :param_4",
+        )
+
+    def test_case_whens_kw(self):
+        t1 = table("t", column("q"))
+
+        with testing.expect_deprecated(
+            r"The \"whens\" argument to case\(\) is now passed"
+        ):
+            stmt = select(t1).where(
+                case(
+                    whens=[(t1.c.q == 5, "foo"), (t1.c.q == 10, "bar")],
+                    else_="bat",
+                )
+                != "bat"
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.q FROM t WHERE CASE WHEN (t.q = :q_1) "
+            "THEN :param_1 WHEN (t.q = :q_2) THEN :param_2 "
+            "ELSE :param_3 END != :param_4",
+        )
+
+    def test_case_whens_dict_kw(self):
+        t1 = table("t", column("q"))
+
+        with testing.expect_deprecated(
+            r"The \"whens\" argument to case\(\) is now passed"
+        ):
+            stmt = select(t1).where(
+                case(whens={t1.c.q == 5: "foo"}, else_="bat",) != "bat"
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t.q FROM t WHERE CASE WHEN (t.q = :q_1) THEN "
+            ":param_1 ELSE :param_2 END != :param_3",
+        )
+
+    def test_case_kw_arg_detection(self):
+        # because we support py2k, case() has to parse **kw for now
+
+        assert_raises_message(
+            TypeError,
+            "unknown arguments: bat, foo",
+            case,
+            (column("x") == 10, 5),
+            else_=15,
+            foo="bar",
+            bat="hoho",
+        )
+
+    def test_with_only_generative(self):
+        table1 = table(
+            "table1",
+            column("col1"),
+            column("col2"),
+            column("col3"),
+            column("colx"),
+        )
+        s1 = table1.select().scalar_subquery()
+
+        with testing.expect_deprecated(
+            r"The \"columns\" argument to "
+            r"Select.with_only_columns\(\) is now passed"
+        ):
+            stmt = s1.with_only_columns([s1])
+        self.assert_compile(
+            stmt,
+            "SELECT (SELECT table1.col1, table1.col2, "
+            "table1.col3, table1.colx FROM table1) AS anon_1",
+        )
+
+    def test_from_list_with_columns(self):
+        table1 = table("t1", column("a"))
+        table2 = table("t2", column("b"))
+        s1 = select(table1.c.a, table2.c.b)
+        self.assert_compile(s1, "SELECT t1.a, t2.b FROM t1, t2")
+
+        with testing.expect_deprecated(
+            r"The \"columns\" argument to "
+            r"Select.with_only_columns\(\) is now passed"
+        ):
+            s2 = s1.with_only_columns([table2.c.b])
+
+        self.assert_compile(s2, "SELECT t2.b FROM t2")
+
     def test_column(self):
         stmt = select(column("x"))
         with testing.expect_deprecated(
@@ -815,7 +921,7 @@ class DeprecatedAppendMethTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_append_column(self):
         t1 = table("t1", column("q"), column("p"))
         stmt = select(t1.c.q)
-        with self._expect_deprecated("Select", "column", "column"):
+        with self._expect_deprecated("Select", "column", "add_columns"):
             stmt.append_column(t1.c.p)
         self.assert_compile(stmt, "SELECT t1.q, t1.p FROM t1")
 

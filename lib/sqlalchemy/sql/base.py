@@ -571,6 +571,26 @@ class Options(util.with_metaclass(_MetaOptions)):
         o1.__dict__.update(other)
         return o1
 
+    def __eq__(self, other):
+        # TODO: very inefficient.  This is used only in test suites
+        # right now.
+        for a, b in util.zip_longest(self._cache_attrs, other._cache_attrs):
+            if getattr(self, a) != getattr(other, b):
+                return False
+        return True
+
+    def __repr__(self):
+        # TODO: fairly inefficient, used only in debugging right now.
+
+        return "%s(%s)" % (
+            self.__class__.__name__,
+            ", ".join(
+                "%s=%r" % (k, self.__dict__[k])
+                for k in self._cache_attrs
+                if k in self.__dict__
+            ),
+        )
+
     @hybridmethod
     def add_to_element(self, name, value):
         return self + {name: getattr(self, name) + value}
@@ -609,6 +629,60 @@ class Options(util.with_metaclass(_MetaOptions)):
                 )
             )
         return cls + d
+
+    @classmethod
+    def from_execution_options(
+        cls, key, attrs, exec_options, statement_exec_options
+    ):
+        """"process Options argument in terms of execution options.
+
+
+        e.g.::
+
+            (
+                load_options,
+                execution_options,
+            ) = QueryContext.default_load_options.from_execution_options(
+                "_sa_orm_load_options",
+                {
+                    "populate_existing",
+                    "autoflush",
+                    "yield_per"
+                },
+                execution_options,
+                statement._execution_options,
+            )
+
+        get back the Options and refresh "_sa_orm_load_options" in the
+        exec options dict w/ the Options as well
+
+        """
+
+        # common case is that no options we are looking for are
+        # in either dictionary, so cancel for that first
+        check_argnames = attrs.intersection(
+            set(exec_options).union(statement_exec_options)
+        )
+
+        existing_options = exec_options.get(key, cls)
+
+        if check_argnames:
+            result = {}
+            for argname in check_argnames:
+                local = "_" + argname
+                if argname in exec_options:
+                    result[local] = exec_options[argname]
+                elif argname in statement_exec_options:
+                    result[local] = statement_exec_options[argname]
+
+            new_options = existing_options + result
+            exec_options = util.immutabledict().merge_with(
+                exec_options, {key: new_options}
+            )
+            return new_options, exec_options
+
+        else:
+            return existing_options, exec_options
 
 
 class CacheableOptions(Options, HasCacheKey):

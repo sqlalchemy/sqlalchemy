@@ -174,8 +174,7 @@ class TransScopingTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "A transaction is already begun.  Use "
-            "subtransactions=True to allow subtransactions.",
+            "A transaction is already begun on this Session.",
             s.begin,
         )
 
@@ -625,13 +624,44 @@ class SessionStateTest(_fixtures.FixtureTest):
         session.flush()
         session.commit()
 
-    def test_active_flag(self):
+    def test_active_flag_autocommit(self):
         sess = create_session(bind=config.db, autocommit=True)
         assert not sess.is_active
         sess.begin()
         assert sess.is_active
         sess.rollback()
         assert not sess.is_active
+
+    def test_active_flag_autobegin(self):
+        sess = create_session(bind=config.db, autocommit=False)
+        assert sess.is_active
+        assert not sess.in_transaction()
+        sess.begin()
+        assert sess.is_active
+        sess.rollback()
+        assert sess.is_active
+
+    def test_active_flag_autobegin_future(self):
+        sess = create_session(bind=config.db, future=True)
+        assert sess.is_active
+        assert not sess.in_transaction()
+        sess.begin()
+        assert sess.is_active
+        sess.rollback()
+        assert sess.is_active
+
+    def test_active_flag_partial_rollback(self):
+        sess = create_session(bind=config.db, autocommit=False)
+        assert sess.is_active
+        assert not sess.in_transaction()
+        sess.begin()
+        assert sess.is_active
+        sess.begin(_subtrans=True)
+        sess.rollback()
+        assert not sess.is_active
+
+        sess.rollback()
+        assert sess.is_active
 
     @engines.close_open_connections
     def test_add_delete(self):

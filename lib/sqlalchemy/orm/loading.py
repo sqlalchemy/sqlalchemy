@@ -346,7 +346,7 @@ def load_on_pk_identity(
         load_options = QueryContext.default_load_options
 
     compile_options = ORMCompileState.default_compile_options.safe_merge(
-        q.compile_options
+        q._compile_options
     )
 
     if primary_key_identity is not None:
@@ -411,7 +411,7 @@ def load_on_pk_identity(
     # TODO: most of the compile_options that are not legacy only involve this
     # function, so try to see if handling of them can mostly be local to here
 
-    q.compile_options, load_options = _set_get_options(
+    q._compile_options, load_options = _set_get_options(
         compile_options,
         load_options,
         populate_existing=bool(refresh_state),

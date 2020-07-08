@@ -1345,19 +1345,13 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         e1 = sess.query(Employee).filter_by(name="emp1").one()
         e5 = sess.query(Employee).filter_by(name="emp5").one()
 
-        test_e1 = sess.query(Employee).get([c1.company_id, e1.emp_id])
+        test_e1 = sess.get(Employee, [c1.company_id, e1.emp_id])
         assert test_e1.name == "emp1", test_e1.name
-        test_e5 = sess.query(Employee).get([c2.company_id, e5.emp_id])
+        test_e5 = sess.get(Employee, [c2.company_id, e5.emp_id])
         assert test_e5.name == "emp5", test_e5.name
         assert [x.name for x in test_e1.employees] == ["emp2", "emp3"]
-        assert (
-            sess.query(Employee).get([c1.company_id, 3]).reports_to.name
-            == "emp1"
-        )
-        assert (
-            sess.query(Employee).get([c2.company_id, 3]).reports_to.name
-            == "emp5"
-        )
+        assert sess.get(Employee, [c1.company_id, 3]).reports_to.name == "emp1"
+        assert sess.get(Employee, [c2.company_id, 3]).reports_to.name == "emp5"
 
     def _test_join_aliasing(self, sess):
         Employee = self.classes.Employee

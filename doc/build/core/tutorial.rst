@@ -716,7 +716,112 @@ will ensure that the return type of the expression is handled as boolean::
 
     somecolumn.bool_op('-->')('some value')
 
-.. versionadded:: 1.2.0b3  Added the :meth:`.Operators.bool_op` method.
+
+Commonly Used Operators
+-------------------------
+
+
+Here's a rundown of some of the most common operators used in both the
+Core expression language as well as in the ORM.  Here we see expressions
+that are most commonly present when using the :meth:`_sql.Select.where` method,
+but can be used in other scenarios as well.
+
+A listing of all the column-level operations common to all column-like
+objects is at :class:`.ColumnOperators`.
+
+
+* :meth:`equals <.ColumnOperators.__eq__>`::
+
+    statement.where(users.c.name == 'ed')
+
+* :meth:`not equals <.ColumnOperators.__ne__>`::
+
+    statement.where(users.c.name != 'ed')
+
+* :meth:`LIKE <.ColumnOperators.like>`::
+
+    statement.where(users.c.name.like('%ed%'))
+
+ .. note:: :meth:`.ColumnOperators.like` renders the LIKE operator, which
+    is case insensitive on some backends, and case sensitive
+    on others.  For guaranteed case-insensitive comparisons, use
+    :meth:`.ColumnOperators.ilike`.
+
+* :meth:`ILIKE <.ColumnOperators.ilike>` (case-insensitive LIKE)::
+
+    statement.where(users.c.name.ilike('%ed%'))
+
+ .. note:: most backends don't support ILIKE directly.  For those,
+    the :meth:`.ColumnOperators.ilike` operator renders an expression
+    combining LIKE with the LOWER SQL function applied to each operand.
+
+* :meth:`IN <.ColumnOperators.in_>`::
+
+    statement.where(users.c..name.in_(['ed', 'wendy', 'jack']))
+
+    # works with Select objects too:
+    statement.where.filter(users.c.name.in_(
+        select(users.c.name).where(users.c.name.like('%ed%'))
+    ))
+
+    # use tuple_() for composite (multi-column) queries
+    from sqlalchemy import tuple_
+    statement.where(
+        tuple_(users.c.name, users.c.nickname).\
+        in_([('ed', 'edsnickname'), ('wendy', 'windy')])
+    )
+
+* :meth:`NOT IN <.ColumnOperators.notin_>`::
+
+    statement.where(~users.c.name.in_(['ed', 'wendy', 'jack']))
+
+* :meth:`IS NULL <.ColumnOperators.is_>`::
+
+    statement.where(users.c. == None)
+
+    # alternatively, if pep8/linters are a concern
+    statement.where(users.c.name.is_(None))
+
+* :meth:`IS NOT NULL <.ColumnOperators.isnot>`::
+
+    statement.where(users.c.name != None)
+
+    # alternatively, if pep8/linters are a concern
+    statement.where(users.c.name.isnot(None))
+
+* :func:`AND <.sql.expression.and_>`::
+
+    # use and_()
+    from sqlalchemy import and_
+    statement.where(and_(users.c.name == 'ed', users.c.fullname == 'Ed Jones'))
+
+    # or send multiple expressions to .where()
+    statement.where(users.c.name == 'ed', users.c.fullname == 'Ed Jones')
+
+    # or chain multiple where() calls
+    statement.where(users.c.name == 'ed').where(users.c.fullname == 'Ed Jones')
+
+ .. note::  Make sure you use :func:`.and_` and **not** the
+    Python ``and`` operator!
+
+* :func:`OR <.sql.expression.or_>`::
+
+    from sqlalchemy import or_
+    statement.where(or_(users.c.name == 'ed', users.c.name == 'wendy'))
+
+ .. note::  Make sure you use :func:`.or_` and **not** the
+    Python ``or`` operator!
+
+* :meth:`MATCH <.ColumnOperators.match>`::
+
+    statement.where(users.c.name.match('wendy'))
+
+ .. note::
+
+    :meth:`~.ColumnOperators.match` uses a database-specific ``MATCH``
+    or ``CONTAINS`` function; its behavior will vary by backend and is not
+    available on some backends such as SQLite.
+
 
 Operator Customization
 ----------------------
