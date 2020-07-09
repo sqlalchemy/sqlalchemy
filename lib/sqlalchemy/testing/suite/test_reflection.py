@@ -1171,12 +1171,11 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
     def test_computed_col_default_not_set(self):
         insp = inspect(config.db)
 
-        cols = insp.get_columns("computed_column_table")
-        for col in cols:
-            if col["name"] == "with_default":
-                is_true("42" in col["default"])
-            elif not col["autoincrement"]:
-                is_(col["default"], None)
+        cols = insp.get_columns("computed_default_table")
+        col_data = {c["name"]: c for c in cols}
+        is_true("42" in col_data["with_default"]["default"])
+        is_(col_data["normal"]["default"], None)
+        is_(col_data["computed_col"]["default"], None)
 
     def test_get_column_returns_computed(self):
         insp = inspect(config.db)
