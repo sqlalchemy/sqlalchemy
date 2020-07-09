@@ -12,6 +12,7 @@ from sqlalchemy import collate
 from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import distinct
+from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
@@ -5819,6 +5820,23 @@ class ExecutionOptionsTest(QueryTest):
         )
         q1 = sess.query(User).execution_options(**execution_options)
         q1.all()
+
+    def test_options_before_compile(self):
+        @event.listens_for(Query, "before_compile", retval=True)
+        def _before_compile(query):
+            return query.execution_options(my_option=True)
+
+        opts = {}
+
+        @event.listens_for(testing.db, "before_cursor_execute")
+        def _before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            opts.update(context.execution_options)
+
+        sess = create_session(bind=testing.db, autocommit=False)
+        sess.query(column("1")).all()
+        eq_(opts["my_option"], True)
 
 
 class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
