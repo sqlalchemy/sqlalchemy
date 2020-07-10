@@ -5822,6 +5822,8 @@ class ExecutionOptionsTest(QueryTest):
         q1.all()
 
     def test_options_before_compile(self):
+        User = self.classes.User
+
         @event.listens_for(Query, "before_compile", retval=True)
         def _before_compile(query):
             return query.execution_options(my_option=True)
@@ -5835,7 +5837,7 @@ class ExecutionOptionsTest(QueryTest):
             opts.update(context.execution_options)
 
         sess = create_session(bind=testing.db, autocommit=False)
-        sess.query(column("1")).all()
+        sess.query(User).first()
         eq_(opts["my_option"], True)
 
 
