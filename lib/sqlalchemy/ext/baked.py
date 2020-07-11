@@ -234,7 +234,7 @@ class BakedQuery(object):
         # used by the Connection, which in itself is more expensive to
         # generate than what BakedQuery was able to provide in 1.3 and prior
 
-        if statement.compile_options._bake_ok:
+        if statement._compile_options._bake_ok:
             self._bakery[self._effective_key(session)] = (
                 query,
                 statement,

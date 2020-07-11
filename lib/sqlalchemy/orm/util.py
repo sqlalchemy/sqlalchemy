@@ -1621,3 +1621,108 @@ def randomize_unitofwork():
     topological.set = (
         unitofwork.set
     ) = session.set = mapper.set = dependency.set = RandomSet
+
+
+def _offset_or_limit_clause(element, name=None, type_=None):
+    """Convert the given value to an "offset or limit" clause.
+
+    This handles incoming integers and converts to an expression; if
+    an expression is already given, it is passed through.
+
+    """
+    return coercions.expect(
+        roles.LimitOffsetRole, element, name=name, type_=type_
+    )
+
+
+def _offset_or_limit_clause_asint_if_possible(clause):
+    """Return the offset or limit clause as a simple integer if possible,
+    else return the clause.
+
+    """
+    if clause is None:
+        return None
+    if hasattr(clause, "_limit_offset_value"):
+        value = clause._limit_offset_value
+        return util.asint(value)
+    else:
+        return clause
+
+
+def _make_slice(limit_clause, offset_clause, start, stop):
+    """Compute LIMIT/OFFSET in terms of slice start/end
+    """
+
+    # for calculated limit/offset, try to do the addition of
+    # values to offset in Python, however if a SQL clause is present
+    # then the addition has to be on the SQL side.
+    if start is not None and stop is not None:
+        offset_clause = _offset_or_limit_clause_asint_if_possible(
+            offset_clause
+        )
+        if offset_clause is None:
+            offset_clause = 0
+
+        if start != 0:
+            offset_clause = offset_clause + start
+
+        if offset_clause == 0:
+            offset_clause = None
+        else:
+            offset_clause = _offset_or_limit_clause(offset_clause)
+
+        limit_clause = _offset_or_limit_clause(stop - start)
+
+    elif start is None and stop is not None:
+        limit_clause = _offset_or_limit_clause(stop)
+    elif start is not None and stop is None:
+        offset_clause = _offset_or_limit_clause_asint_if_possible(
+            offset_clause
+        )
+        if offset_clause is None:
+            offset_clause = 0
+
+        if start != 0:
+            offset_clause = offset_clause + start
+
+        if offset_clause == 0:
+            offset_clause = None
+        else:
+            offset_clause = _offset_or_limit_clause(offset_clause)
+
+    return limit_clause, offset_clause
+
+
+def _getitem(iterable_query, item):
+    """calculate __getitem__ in terms of an iterable query object
+    that also has a slice() method.
+
+    """
+
+    if isinstance(item, slice):
+        start, stop, step = util.decode_slice(item)
+
+        if (
+            isinstance(stop, int)
+            and isinstance(start, int)
+            and stop - start <= 0
+        ):
+            return []
+
+        # perhaps we should execute a count() here so that we
+        # can still use LIMIT/OFFSET ?
+        elif (isinstance(start, int) and start < 0) or (
+            isinstance(stop, int) and stop < 0
+        ):
+            return list(iterable_query)[item]
+
+        res = iterable_query.slice(start, stop)
+        if step is not None:
+            return list(res)[None : None : item.step]
+        else:
+            return list(res)
+    else:
+        if item == -1:
+            return list(iterable_query)[-1]
+        else:
+            return list(iterable_query[item : item + 1])[0]

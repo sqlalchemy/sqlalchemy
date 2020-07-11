@@ -57,13 +57,8 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         inner = select(
             [
                 case(
-                    [
-                        [info_table.c.pk < 3, "lessthan3"],
-                        [
-                            and_(info_table.c.pk >= 3, info_table.c.pk < 7),
-                            "gt3",
-                        ],
-                    ]
+                    (info_table.c.pk < 3, "lessthan3"),
+                    (and_(info_table.c.pk >= 3, info_table.c.pk < 7), "gt3"),
                 ).label("x"),
                 info_table.c.pk,
                 info_table.c.info,
@@ -80,14 +75,17 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         # gt3 4 pk_4_data
         # gt3 5 pk_5_data
         # gt3 6 pk_6_data
-        assert inner_result == [
-            ("lessthan3", 1, "pk_1_data"),
-            ("lessthan3", 2, "pk_2_data"),
-            ("gt3", 3, "pk_3_data"),
-            ("gt3", 4, "pk_4_data"),
-            ("gt3", 5, "pk_5_data"),
-            ("gt3", 6, "pk_6_data"),
-        ]
+        eq_(
+            inner_result,
+            [
+                ("lessthan3", 1, "pk_1_data"),
+                ("lessthan3", 2, "pk_2_data"),
+                ("gt3", 3, "pk_3_data"),
+                ("gt3", 4, "pk_4_data"),
+                ("gt3", 5, "pk_5_data"),
+                ("gt3", 6, "pk_6_data"),
+            ],
+        )
 
         outer = select([inner.alias("q_inner")])
 
@@ -105,10 +103,8 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         w_else = select(
             [
                 case(
-                    [
-                        [info_table.c.pk < 3, cast(3, Integer)],
-                        [and_(info_table.c.pk >= 3, info_table.c.pk < 6), 6],
-                    ],
+                    [info_table.c.pk < 3, cast(3, Integer)],
+                    [and_(info_table.c.pk >= 3, info_table.c.pk < 6), 6],
                     else_=0,
                 ).label("x"),
                 info_table.c.pk,
@@ -119,21 +115,24 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         else_result = w_else.execute().fetchall()
 
-        assert else_result == [
-            (3, 1, "pk_1_data"),
-            (3, 2, "pk_2_data"),
-            (6, 3, "pk_3_data"),
-            (6, 4, "pk_4_data"),
-            (6, 5, "pk_5_data"),
-            (0, 6, "pk_6_data"),
-        ]
+        eq_(
+            else_result,
+            [
+                (3, 1, "pk_1_data"),
+                (3, 2, "pk_2_data"),
+                (6, 3, "pk_3_data"),
+                (6, 4, "pk_4_data"),
+                (6, 5, "pk_5_data"),
+                (0, 6, "pk_6_data"),
+            ],
+        )
 
     def test_literal_interpretation_ambiguous(self):
         assert_raises_message(
             exc.ArgumentError,
             r"Column expression expected, got 'x'",
             case,
-            [("x", "y")],
+            ("x", "y"),
         )
 
     def test_literal_interpretation_ambiguous_tuple(self):
@@ -141,18 +140,18 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             exc.ArgumentError,
             r"Column expression expected, got \('x', 'y'\)",
             case,
-            [(("x", "y"), "z")],
+            (("x", "y"), "z"),
         )
 
     def test_literal_interpretation(self):
         t = table("test", column("col1"))
 
         self.assert_compile(
-            case([("x", "y")], value=t.c.col1),
+            case(("x", "y"), value=t.c.col1),
             "CASE test.col1 WHEN :param_1 THEN :param_2 END",
         )
         self.assert_compile(
-            case([(t.c.col1 == 7, "y")], else_="z"),
+            case((t.c.col1 == 7, "y"), else_="z"),
             "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END",
         )
 
@@ -162,7 +161,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             select(
                 [
                     case(
-                        [(info_table.c.info == "pk_4_data", text("'yes'"))],
+                        (info_table.c.info == "pk_4_data", text("'yes'")),
                         else_=text("'no'"),
                     )
                 ]
@@ -170,36 +169,20 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             select(
                 [
                     case(
-                        [
-                            (
-                                info_table.c.info == "pk_4_data",
-                                literal_column("'yes'"),
-                            )
-                        ],
+                        (
+                            info_table.c.info == "pk_4_data",
+                            literal_column("'yes'"),
+                        ),
                         else_=literal_column("'no'"),
                     )
                 ]
             ).order_by(info_table.c.info),
         ]:
-            if testing.against("firebird"):
-                eq_(
-                    s.execute().fetchall(),
-                    [
-                        ("no ",),
-                        ("no ",),
-                        ("no ",),
-                        ("yes",),
-                        ("no ",),
-                        ("no ",),
-                    ],
-                )
-            else:
-                eq_(
-                    s.execute().fetchall(),
-                    [("no",), ("no",), ("no",), ("yes",), ("no",), ("no",)],
-                )
+            eq_(
+                s.execute().fetchall(),
+                [("no",), ("no",), ("no",), ("yes",), ("no",), ("no",)],
+            )
 
-    @testing.fails_on("firebird", "FIXME: unknown")
     def testcase_with_dict(self):
         query = select(
             [
@@ -215,24 +198,27 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ],
             from_obj=[info_table],
         )
-        assert query.execute().fetchall() == [
-            ("lessthan3", 1, "pk_1_data"),
-            ("lessthan3", 2, "pk_2_data"),
-            ("gt3", 3, "pk_3_data"),
-            ("gt3", 4, "pk_4_data"),
-            ("gt3", 5, "pk_5_data"),
-            ("gt3", 6, "pk_6_data"),
-        ]
-
-        simple_query = select(
+        eq_(
+            query.execute().fetchall(),
             [
+                ("lessthan3", 1, "pk_1_data"),
+                ("lessthan3", 2, "pk_2_data"),
+                ("gt3", 3, "pk_3_data"),
+                ("gt3", 4, "pk_4_data"),
+                ("gt3", 5, "pk_5_data"),
+                ("gt3", 6, "pk_6_data"),
+            ],
+        )
+
+        simple_query = (
+            select(
                 case(
                     {1: "one", 2: "two"}, value=info_table.c.pk, else_="other"
                 ),
                 info_table.c.pk,
-            ],
-            whereclause=info_table.c.pk < 4,
-            from_obj=[info_table],
+            )
+            .where(info_table.c.pk < 4)
+            .select_from(info_table)
         )
 
         assert simple_query.execute().fetchall() == [

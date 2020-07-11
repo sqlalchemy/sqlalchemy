@@ -12,10 +12,8 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -67,6 +65,62 @@ class _DynamicFixture(object):
         mapper(Item, items)
         return Order, Item
 
+    def _user_order_item_fixture(self):
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            item_keywords,
+            Item,
+            User,
+            keywords,
+            Order,
+            orders,
+        ) = (
+            self.tables.users,
+            self.classes.Keyword,
+            self.tables.items,
+            self.tables.order_items,
+            self.tables.item_keywords,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.keywords,
+            self.classes.Order,
+            self.tables.orders,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "orders": relationship(
+                    Order, order_by=orders.c.id, lazy="dynamic"
+                )
+            },
+        )
+        mapper(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                ),
+            },
+        )
+        mapper(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords
+                )  # m2m
+            },
+        )
+        mapper(Keyword, keywords)
+
+        return User, Order, Item, Keyword
+
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
     def test_basic(self):
@@ -117,11 +171,10 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         sess = create_session()
         u = sess.query(User).get(8)
         sess.expunge(u)
-        assert_raises(
-            orm_exc.DetachedInstanceError,
-            u.addresses.filter_by,
-            email_address="e",
-        )
+
+        q = u.addresses.filter_by(email_address="e")
+
+        assert_raises(orm_exc.DetachedInstanceError, q.first)
 
     def test_no_uselist_false(self):
         User, Address = self._user_address_fixture(
@@ -450,6 +503,12 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
+    @testing.combinations(
+        # lambda
+    )
+    def test_join_syntaxes(self, expr):
+        User, Order, Item, Keyword = self._user_order_item_fixture()
+
     def test_transient_count(self):
         User, Address = self._user_address_fixture()
         u1 = User()
@@ -461,67 +520,6 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         u1 = User()
         u1.addresses.append(Address())
         eq_(u1.addresses[0], Address())
-
-    def test_custom_query(self):
-        class MyQuery(Query):
-            pass
-
-        User, Address = self._user_address_fixture(
-            addresses_args={"query_class": MyQuery}
-        )
-
-        sess = create_session()
-        u = User()
-        sess.add(u)
-
-        col = u.addresses
-        assert isinstance(col, Query)
-        assert isinstance(col, MyQuery)
-        assert hasattr(col, "append")
-        eq_(type(col).__name__, "AppenderMyQuery")
-
-        q = col.limit(1)
-        assert isinstance(q, Query)
-        assert isinstance(q, MyQuery)
-        assert not hasattr(q, "append")
-        eq_(type(q).__name__, "MyQuery")
-
-    def test_custom_query_with_custom_mixin(self):
-        class MyAppenderMixin(AppenderMixin):
-            def add(self, items):
-                if isinstance(items, list):
-                    for item in items:
-                        self.append(item)
-                else:
-                    self.append(items)
-
-        class MyQuery(Query):
-            pass
-
-        class MyAppenderQuery(MyAppenderMixin, MyQuery):
-            query_class = MyQuery
-
-        User, Address = self._user_address_fixture(
-            addresses_args={"query_class": MyAppenderQuery}
-        )
-
-        sess = create_session()
-        u = User()
-        sess.add(u)
-
-        col = u.addresses
-        assert isinstance(col, Query)
-        assert isinstance(col, MyQuery)
-        assert hasattr(col, "append")
-        assert hasattr(col, "add")
-        eq_(type(col).__name__, "MyAppenderQuery")
-
-        q = col.limit(1)
-        assert isinstance(q, Query)
-        assert isinstance(q, MyQuery)
-        assert not hasattr(q, "append")
-        assert not hasattr(q, "add")
-        eq_(type(q).__name__, "MyQuery")
 
 
 class UOWTest(

@@ -2573,10 +2573,8 @@ class Case(ColumnElement):
         stmt = select([users_table]).\
                     where(
                         case(
-                            [
-                                (users_table.c.name == 'wendy', 'W'),
-                                (users_table.c.name == 'jack', 'J')
-                            ],
+                            (users_table.c.name == 'wendy', 'W'),
+                            (users_table.c.name == 'jack', 'J'),
                             else_='E'
                         )
                     )
@@ -2597,7 +2595,10 @@ class Case(ColumnElement):
         ("else_", InternalTraversal.dp_clauseelement),
     ]
 
-    def __init__(self, whens, value=None, else_=None):
+    # TODO: for Py2k removal, this will be:
+    # def __init__(self, *whens, value=None, else_=None):
+
+    def __init__(self, *whens, **kw):
         r"""Produce a ``CASE`` expression.
 
         The ``CASE`` construct in SQL is a conditional object that
@@ -2612,10 +2613,8 @@ class Case(ColumnElement):
             stmt = select([users_table]).\
                         where(
                             case(
-                                [
-                                    (users_table.c.name == 'wendy', 'W'),
-                                    (users_table.c.name == 'jack', 'J')
-                                ],
+                                (users_table.c.name == 'wendy', 'W'),
+                                (users_table.c.name == 'jack', 'J'),
                                 else_='E'
                             )
                         )
@@ -2660,16 +2659,14 @@ class Case(ColumnElement):
             from sqlalchemy import case, literal_column
 
             case(
-                [
-                    (
-                        orderline.c.qty > 100,
-                        literal_column("'greaterthan100'")
-                    ),
-                    (
-                        orderline.c.qty > 10,
-                        literal_column("'greaterthan10'")
-                    )
-                ],
+                (
+                    orderline.c.qty > 100,
+                    literal_column("'greaterthan100'")
+                ),
+                (
+                    orderline.c.qty > 10,
+                    literal_column("'greaterthan10'")
+                ),
                 else_=literal_column("'lessthan10'")
             )
 
@@ -2683,19 +2680,23 @@ class Case(ColumnElement):
                 ELSE 'lessthan10'
             END
 
-        :param whens: The criteria to be compared against,
+        :param \*whens: The criteria to be compared against,
          :paramref:`.case.whens` accepts two different forms, based on
          whether or not :paramref:`.case.value` is used.
+
+         .. versionchanged:: 1.4 the :func:`_sql.case`
+            function now accepts the series of WHEN conditions positionally;
+            passing the expressions within a list is deprecated.
 
          In the first form, it accepts a list of 2-tuples; each 2-tuple
          consists of ``(<sql expression>, <value>)``, where the SQL
          expression is a boolean expression and "value" is a resulting value,
          e.g.::
 
-            case([
+            case(
                 (users_table.c.name == 'wendy', 'W'),
                 (users_table.c.name == 'jack', 'J')
-            ])
+            )
 
          In the second form, it accepts a Python dictionary of comparison
          values mapped to a resulting value; this form requires
@@ -2720,11 +2721,23 @@ class Case(ColumnElement):
 
         """
 
+        if "whens" in kw:
+            util.warn_deprecated_20(
+                'The "whens" argument to case() is now passed as a series of '
+                "positional "
+                "elements, rather than as a list. "
+            )
+            whens = kw.pop("whens")
+        else:
+            whens = coercions._expression_collection_was_a_list(
+                "whens", "case", whens
+            )
         try:
             whens = util.dictlike_iteritems(whens)
         except TypeError:
             pass
 
+        value = kw.pop("value", None)
         if value is not None:
             whenlist = [
                 (
@@ -2760,10 +2773,15 @@ class Case(ColumnElement):
 
         self.type = type_
         self.whens = whenlist
+
+        else_ = kw.pop("else_", None)
         if else_ is not None:
             self.else_ = coercions.expect(roles.ExpressionElementRole, else_)
         else:
             self.else_ = None
+
+        if kw:
+            raise TypeError("unknown arguments: %s" % (", ".join(sorted(kw))))
 
     @property
     def _from_objects(self):

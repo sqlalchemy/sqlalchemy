@@ -12,6 +12,7 @@ from sqlalchemy import collate
 from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import distinct
+from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
@@ -52,6 +53,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm.context import QueryContext
 from sqlalchemy.orm.util import join
 from sqlalchemy.orm.util import with_parent
 from sqlalchemy.sql import expression
@@ -560,6 +562,22 @@ class BindSensitiveStringifyTest(fixtures.TestBase):
 
 
 class GetTest(QueryTest):
+    def test_loader_options(self):
+        User = self.classes.User
+
+        s = Session()
+
+        u1 = s.query(User).options(joinedload(User.addresses)).get(8)
+        eq_(len(u1.__dict__["addresses"]), 3)
+
+    def test_loader_options_future(self):
+        User = self.classes.User
+
+        s = Session()
+
+        u1 = s.get(User, 8, options=[joinedload(User.addresses)])
+        eq_(len(u1.__dict__["addresses"]), 3)
+
     def test_get_composite_pk_keyword_based_no_result(self):
         CompositePk = self.classes.CompositePk
 
@@ -608,6 +626,18 @@ class GetTest(QueryTest):
         assert u is u2
         s.expunge_all()
         u2 = s.query(User).get(7)
+        assert u is not u2
+
+    def test_get_future(self):
+        User = self.classes.User
+
+        s = create_session()
+        assert s.get(User, 19) is None
+        u = s.get(User, 7)
+        u2 = s.get(User, 7)
+        assert u is u2
+        s.expunge_all()
+        u2 = s.get(User, 7)
         assert u is not u2
 
     def test_get_composite_pk_no_result(self):
@@ -842,6 +872,73 @@ class GetTest(QueryTest):
         ).populate_existing().all()
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
+
+    def test_populate_existing_future(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        s = Session(future=True, autoflush=False)
+
+        userlist = s.query(User).all()
+
+        u = userlist[0]
+        u.name = "foo"
+        a = Address(name="ed")
+        u.addresses.append(a)
+
+        self.assert_(a in u.addresses)
+
+        stmt = select(User).execution_options(populate_existing=True)
+
+        s.execute(stmt,).scalars().all()
+
+        self.assert_(u not in s.dirty)
+
+        self.assert_(u.name == "jack")
+
+        self.assert_(a not in u.addresses)
+
+        u.addresses[0].email_address = "lala"
+        u.orders[1].items[2].description = "item 12"
+        # test that lazy load doesn't change child items
+        s.query(User).populate_existing().all()
+        assert u.addresses[0].email_address == "lala"
+        assert u.orders[1].items[2].description == "item 12"
+
+        # eager load does
+
+        stmt = (
+            select(User)
+            .options(
+                joinedload("addresses"),
+                joinedload("orders").joinedload("items"),
+            )
+            .execution_options(populate_existing=True)
+        )
+
+        s.execute(stmt).scalars().all()
+
+        assert u.addresses[0].email_address == "jack@bean.com"
+        assert u.orders[1].items[2].description == "item 5"
+
+    def test_option_transfer_future(self):
+        User = self.classes.User
+        stmt = select(User).execution_options(
+            populate_existing=True, autoflush=False, yield_per=10
+        )
+        s = Session(testing.db, future=True)
+
+        m1 = mock.Mock()
+
+        event.listen(s, "do_orm_execute", m1)
+
+        s.execute(stmt)
+
+        eq_(
+            m1.mock_calls[0].args[0].load_options,
+            QueryContext.default_load_options(
+                _autoflush=False, _populate_existing=True, _yield_per=10
+            ),
+        )
 
 
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
@@ -4339,6 +4436,31 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             None,
         )
 
+    def test_select_star_future(self):
+        User = self.classes.User
+
+        sess = Session(future=True)
+        eq_(
+            sess.execute(
+                select(User).from_statement(
+                    text("select * from users order by id")
+                )
+            )
+            .scalars()
+            .first(),
+            User(id=7),
+        )
+        eq_(
+            sess.execute(
+                select(User).from_statement(
+                    text("select * from users where name='nonexistent'")
+                )
+            )
+            .scalars()
+            .first(),
+            None,
+        )
+
     def test_columns_mismatched(self):
         # test that columns using column._label match, as well as that
         # ordering doesn't matter
@@ -4352,6 +4474,27 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         )
         eq_(
             q.all(),
+            [
+                User(id=7, name="jack"),
+                User(id=8, name="ed"),
+                User(id=9, name="fred"),
+                User(id=10, name="chuck"),
+            ],
+        )
+
+    def test_columns_mismatched_future(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter
+        User = self.classes.User
+
+        s = create_session(future=True)
+        q = select(User).from_statement(
+            text(
+                "select name, 27 as foo, id as users_id from users order by id"
+            )
+        )
+        eq_(
+            s.execute(q).scalars().all(),
             [
                 User(id=7, name="jack"),
                 User(id=8, name="ed"),
@@ -4385,6 +4528,31 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             ],
         )
 
+    def test_columns_multi_table_uselabels_future(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session(future=True)
+        q = select(User, Address).from_statement(
+            text(
+                "select users.name AS users_name, users.id AS users_id, "
+                "addresses.id AS addresses_id FROM users JOIN addresses "
+                "ON users.id = addresses.user_id WHERE users.id=8 "
+                "ORDER BY addresses.id"
+            )
+        )
+
+        eq_(
+            s.execute(q).all(),
+            [
+                (User(id=8), Address(id=2)),
+                (User(id=8), Address(id=3)),
+                (User(id=8), Address(id=4)),
+            ],
+        )
+
     def test_columns_multi_table_uselabels_contains_eager(self):
         # test that columns using column._label match, as well as that
         # ordering doesn't matter.
@@ -4411,6 +4579,32 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_columns_multi_table_uselabels_contains_eager_future(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session(future=True)
+        q = (
+            select(User)
+            .from_statement(
+                text(
+                    "select users.name AS users_name, users.id AS users_id, "
+                    "addresses.id AS addresses_id FROM users JOIN addresses "
+                    "ON users.id = addresses.user_id WHERE users.id=8 "
+                    "ORDER BY addresses.id"
+                )
+            )
+            .options(contains_eager(User.addresses))
+        )
+
+        def go():
+            r = s.execute(q).unique().scalars().all()
+            eq_(r[0].addresses, [Address(id=2), Address(id=3), Address(id=4)])
+
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_columns_multi_table_uselabels_cols_contains_eager(self):
         # test that columns using column._label match, as well as that
         # ordering doesn't matter.
@@ -4433,6 +4627,32 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             r = q.all()
+            eq_(r[0].addresses, [Address(id=2), Address(id=3), Address(id=4)])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_columns_multi_table_uselabels_cols_contains_eager_future(self):
+        # test that columns using column._label match, as well as that
+        # ordering doesn't matter.
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session(future=True)
+        q = (
+            select(User)
+            .from_statement(
+                text(
+                    "select users.name AS users_name, users.id AS users_id, "
+                    "addresses.id AS addresses_id FROM users JOIN addresses "
+                    "ON users.id = addresses.user_id WHERE users.id=8 "
+                    "ORDER BY addresses.id"
+                ).columns(User.name, User.id, Address.id)
+            )
+            .options(contains_eager(User.addresses))
+        )
+
+        def go():
+            r = s.execute(q).unique().scalars().all()
             eq_(r[0].addresses, [Address(id=2), Address(id=3), Address(id=4)])
 
         self.assert_sql_count(testing.db, go, 1)
@@ -4517,6 +4737,34 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             .query(User)
             .filter(text("name='fred'"))
             .filter(User.id == 9)
+            .all(),
+            [User(id=9)],
+        )
+
+    def test_whereclause_future(self):
+        User = self.classes.User
+
+        s = create_session(future=True)
+        eq_(
+            s.execute(select(User).filter(text("id in (8, 9)")))
+            .scalars()
+            .all(),
+            [User(id=8), User(id=9)],
+        )
+
+        eq_(
+            s.execute(
+                select(User).filter(text("name='fred'")).filter(text("id=9"))
+            )
+            .scalars()
+            .all(),
+            [User(id=9)],
+        )
+        eq_(
+            s.execute(
+                select(User).filter(text("name='fred'")).filter(User.id == 9)
+            )
+            .scalars()
             .all(),
             [User(id=9)],
         )

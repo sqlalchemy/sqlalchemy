@@ -1212,6 +1212,38 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_contains_eager_four_future(self):
+        users, addresses, User = (
+            self.tables.users,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        sess = create_session(future=True)
+
+        selectquery = users.outerjoin(addresses).select(
+            users.c.id < 10,
+            use_labels=True,
+            order_by=[users.c.id, addresses.c.id],
+        )
+
+        q = select(User)
+
+        def go():
+            result = (
+                sess.execute(
+                    q.options(contains_eager("addresses")).from_statement(
+                        selectquery
+                    )
+                )
+                .scalars()
+                .unique()
+                .all()
+            )
+            assert self.static.user_address_result[0:3] == result
+
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_contains_eager_aliased(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -2122,14 +2154,17 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             (user10, None),
         ]
 
-        sess = create_session()
+        sess = create_session(future=True)
 
         selectquery = users.outerjoin(addresses).select(
             use_labels=True, order_by=[users.c.id, addresses.c.id]
         )
+
+        result = sess.execute(
+            select(User, Address).from_statement(selectquery)
+        )
         eq_(
-            list(sess.query(User, Address).from_statement(selectquery)),
-            expected,
+            list(result), expected,
         )
         sess.expunge_all()
 

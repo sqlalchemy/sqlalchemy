@@ -754,12 +754,12 @@ class PassiveDeletesTest(fixtures.MappedTest):
         )
         mapper(MyClass, mytable)
 
-        session = create_session()
+        session = Session()
         mc = MyClass()
         mco = MyOtherClass()
         mco.myclass = mc
         session.add(mco)
-        session.flush()
+        session.commit()
 
         eq_(session.scalar(select(func.count("*")).select_from(mytable)), 1)
         eq_(
@@ -769,7 +769,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
         session.expire(mco, ["myclass"])
         session.delete(mco)
-        session.flush()
+        session.commit()
 
         # mytable wasn't deleted, is the point.
         eq_(session.scalar(select(func.count("*")).select_from(mytable)), 1)

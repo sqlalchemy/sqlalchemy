@@ -479,7 +479,7 @@ class SelectableTest(
     def test_with_only_generative(self):
         s1 = table1.select().scalar_subquery()
         self.assert_compile(
-            s1.with_only_columns([s1]),
+            s1.with_only_columns(s1),
             "SELECT (SELECT table1.col1, table1.col2, "
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
@@ -1165,12 +1165,12 @@ class SelectableTest(
         table2 = table("t2", column("b"))
         s1 = select(table1.c.a, table2.c.b)
         self.assert_compile(s1, "SELECT t1.a, t2.b FROM t1, t2")
-        s2 = s1.with_only_columns([table2.c.b])
+        s2 = s1.with_only_columns(table2.c.b)
         self.assert_compile(s2, "SELECT t2.b FROM t2")
 
         s3 = sql_util.ClauseAdapter(table1).traverse(s1)
         self.assert_compile(s3, "SELECT t1.a, t2.b FROM t1, t2")
-        s4 = s3.with_only_columns([table2.c.b])
+        s4 = s3.with_only_columns(table2.c.b)
         self.assert_compile(s4, "SELECT t2.b FROM t2")
 
     def test_from_list_against_existing_one(self):

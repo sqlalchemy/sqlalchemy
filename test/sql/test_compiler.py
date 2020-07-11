@@ -4050,7 +4050,7 @@ class KwargPropagationTest(fixtures.TestBase):
         self._do_test(s)
 
     def test_case(self):
-        c = case([(self.criterion, self.column)], else_=self.column)
+        c = case((self.criterion, self.column), else_=self.column)
         self._do_test(c)
 
     def test_cast(self):

@@ -9,6 +9,22 @@ Glossary
 .. glossary::
     :sorted:
 
+    1.x style
+    2.0 style
+    1.x-style
+    2.0-style
+        These terms are new in SQLAlchemy 1.4 and refer to the SQLAlchemy 1.4->
+        2.0 transition plan, described at :ref:`migration_20_toplevel`.  The
+        term "1.x style" refers to an API used in the way it's been documented
+        throughout the 1.x series of SQLAlhcemy and earlier (e.g. 1.3, 1.2, etc)
+        and the term "2.0 style" refers to the way an API will look in version
+        2.0.   Version 1.4 implements nearly all of 2.0's API in so-called
+        "transition mode".
+
+        .. seealso::
+
+            :ref:`migration_20_toplevel`
+
     relational
     relational algebra
 
@@ -48,6 +64,25 @@ Glossary
         of a relationship where the column in some cases needs to be expressed
         in terms of one particular table alias or another, based on its position
         within the join expression.
+
+    plugin
+    plugin-specific
+        "plugin-specific" generally indicates a function or method in
+        SQLAlchemy Core which will behave differently when used in an ORM
+        context.
+
+        SQLAlchemy allows Core consrtucts such as :class:`_sql.Select` objects
+        to participate in a "plugin" system, which can inject additional
+        behaviors and features into the object that are not present by default.
+
+        Specifically, the primary "plugin" is the "orm" plugin, which is
+        at the base of the system that the SQLAlchemy ORM makes use of
+        Core constructs in order to compose and execute SQL queries that
+        return ORM results.
+
+        .. seealso::
+
+            :ref:`migration_20_unify_select`
 
     crud
     CRUD

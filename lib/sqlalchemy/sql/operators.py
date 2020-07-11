@@ -169,9 +169,6 @@ class Operators(object):
           :class:`.Boolean`, and those that do not will be of the same
           type as the left-hand operand.
 
-          .. versionadded:: 1.2.0b3 - added the
-             :paramref:`.Operators.op.return_type` argument.
-
         .. seealso::
 
             :ref:`types_operators`
@@ -193,8 +190,6 @@ class Operators(object):
         :meth:`.Operators.op` and passing the
         :paramref:`.Operators.op.is_comparison`
         flag with True.
-
-        .. versionadded:: 1.2.0b3
 
         .. seealso::
 
@@ -723,15 +718,6 @@ class ColumnOperators(Operators):
 
           With the value of ``:param`` as ``"foo/%bar"``.
 
-          .. versionadded:: 1.2
-
-          .. versionchanged:: 1.2.0 The
-            :paramref:`.ColumnOperators.startswith.autoescape` parameter is
-             now a simple boolean rather than a character; the escape
-             character itself is also escaped, and defaults to a forwards
-             slash, which itself can be customized using the
-             :paramref:`.ColumnOperators.startswith.escape` parameter.
-
         :param escape: a character which when given will render with the
           ``ESCAPE`` keyword to establish that character as the escape
           character.  This character can then be placed preceding occurrences
@@ -811,15 +797,6 @@ class ColumnOperators(Operators):
 
           With the value of ``:param`` as ``"foo/%bar"``.
 
-          .. versionadded:: 1.2
-
-          .. versionchanged:: 1.2.0 The
-            :paramref:`.ColumnOperators.endswith.autoescape` parameter is
-             now a simple boolean rather than a character; the escape
-             character itself is also escaped, and defaults to a forwards
-             slash, which itself can be customized using the
-             :paramref:`.ColumnOperators.endswith.escape` parameter.
-
         :param escape: a character which when given will render with the
           ``ESCAPE`` keyword to establish that character as the escape
           character.  This character can then be placed preceding occurrences
@@ -898,15 +875,6 @@ class ColumnOperators(Operators):
             somecolumn LIKE '%' || :param || '%' ESCAPE '/'
 
           With the value of ``:param`` as ``"foo/%bar"``.
-
-          .. versionadded:: 1.2
-
-          .. versionchanged:: 1.2.0 The
-            :paramref:`.ColumnOperators.contains.autoescape` parameter is
-             now a simple boolean rather than a character; the escape
-             character itself is also escaped, and defaults to a forwards
-             slash, which itself can be customized using the
-             :paramref:`.ColumnOperators.contains.escape` parameter.
 
         :param escape: a character which when given will render with the
           ``ESCAPE`` keyword to establish that character as the escape

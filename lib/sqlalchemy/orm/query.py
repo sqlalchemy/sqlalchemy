@@ -22,10 +22,10 @@ import itertools
 import operator
 import types
 
-from . import attributes
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
+from . import util as orm_util
 from .base import _assertions
 from .context import _column_descriptions
 from .context import _legacy_determine_last_joined_entity
@@ -121,7 +121,7 @@ class Query(
     _legacy_setup_joins = ()
     _label_style = LABEL_STYLE_NONE
 
-    compile_options = ORMCompileState.default_compile_options
+    _compile_options = ORMCompileState.default_compile_options
 
     load_options = QueryContext.default_load_options
 
@@ -215,7 +215,7 @@ class Query(
             for elem in obj
         ]
 
-        self.compile_options += {"_set_base_alias": set_base_alias}
+        self._compile_options += {"_set_base_alias": set_base_alias}
         self._from_obj = tuple(fa)
 
     @_generative
@@ -254,7 +254,7 @@ class Query(
 
         self._from_obj = self._legacy_setup_joins = ()
         if self._statement is not None:
-            self.compile_options += {"_statement": None}
+            self._compile_options += {"_statement": None}
         self._where_criteria = ()
         self._distinct = False
 
@@ -320,7 +320,7 @@ class Query(
         if load_options:
             self.load_options += load_options
         if compile_options:
-            self.compile_options += compile_options
+            self._compile_options += compile_options
 
         return self
 
@@ -357,8 +357,8 @@ class Query(
         # passed into the execute process and wont generate its own cache
         # key; this will all occur in terms of the ORM-enabled Select.
         if (
-            not self.compile_options._set_base_alias
-            and not self.compile_options._with_polymorphic_adapt_map
+            not self._compile_options._set_base_alias
+            and not self._compile_options._with_polymorphic_adapt_map
         ):
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
@@ -400,9 +400,9 @@ class Query(
                 if new_query is not None and new_query is not self:
                     self = new_query
                     if not fn._bake_ok:
-                        self.compile_options += {"_bake_ok": False}
+                        self._compile_options += {"_bake_ok": False}
 
-        compile_options = self.compile_options
+        compile_options = self._compile_options
         compile_options += {
             "_for_statement": for_statement,
             "_use_legacy_query_style": use_legacy_query_style,
@@ -413,21 +413,21 @@ class Query(
             stmt.__dict__.update(
                 _with_options=self._with_options,
                 _with_context_options=self._with_context_options,
-                compile_options=compile_options,
+                _compile_options=compile_options,
                 _execution_options=self._execution_options,
+                _propagate_attrs=self._propagate_attrs,
             )
-            stmt._propagate_attrs = self._propagate_attrs
         else:
             # Query / select() internal attributes are 99% cross-compatible
             stmt = Select.__new__(Select)
             stmt.__dict__.update(self.__dict__)
             stmt.__dict__.update(
                 _label_style=self._label_style,
-                compile_options=compile_options,
+                _compile_options=compile_options,
+                _propagate_attrs=self._propagate_attrs,
             )
             stmt.__dict__.pop("session", None)
 
-        stmt._propagate_attrs = self._propagate_attrs
         return stmt
 
     def subquery(
@@ -629,7 +629,7 @@ class Query(
         selectable, or when using :meth:`_query.Query.yield_per`.
 
         """
-        self.compile_options += {"_enable_eagerloads": value}
+        self._compile_options += {"_enable_eagerloads": value}
 
     @_generative
     def with_labels(self):
@@ -710,7 +710,7 @@ class Query(
         query intended for the deferred load.
 
         """
-        self.compile_options += {"_current_path": path}
+        self._compile_options += {"_current_path": path}
 
     # TODO: removed in 2.0
     @_generative
@@ -744,7 +744,7 @@ class Query(
             polymorphic_on=polymorphic_on,
         )
 
-        self.compile_options = self.compile_options.add_to_element(
+        self._compile_options = self._compile_options.add_to_element(
             "_with_polymorphic_adapt_map", ((entity, inspect(wp)),)
         )
 
@@ -818,6 +818,10 @@ class Query(
             {"stream_results": True, "max_row_buffer": count}
         )
 
+    @util.deprecated_20(
+        ":meth:`_orm.Query.get`",
+        alternative="The method is now available as :meth:`_orm.Session.get`",
+    )
     def get(self, ident):
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
@@ -858,14 +862,6 @@ class Query(
         however, and will be used if the object is not
         yet locally present.
 
-        A lazy-loading, many-to-one attribute configured
-        by :func:`_orm.relationship`, using a simple
-        foreign-key-to-primary-key criterion, will also use an
-        operation equivalent to :meth:`_query.Query.get` in order to retrieve
-        the target value from the local identity map
-        before querying the database.  See :doc:`/orm/loading_relationships`
-        for further details on relationship loading.
-
         :param ident: A scalar, tuple, or dictionary representing the
          primary key.  For a composite (e.g. multiple column) primary key,
          a tuple or dictionary should be passed.
@@ -905,80 +901,22 @@ class Query(
 
         """
         self._no_criterion_assertion("get", order_by=False, distinct=False)
+
+        # we still implement _get_impl() so that baked query can override
+        # it
         return self._get_impl(ident, loading.load_on_pk_identity)
 
     def _get_impl(self, primary_key_identity, db_load_fn, identity_token=None):
-
-        # convert composite types to individual args
-        if hasattr(primary_key_identity, "__composite_values__"):
-            primary_key_identity = primary_key_identity.__composite_values__()
-
         mapper = self._only_full_mapper_zero("get")
-
-        is_dict = isinstance(primary_key_identity, dict)
-        if not is_dict:
-            primary_key_identity = util.to_list(
-                primary_key_identity, default=(None,)
-            )
-
-        if len(primary_key_identity) != len(mapper.primary_key):
-            raise sa_exc.InvalidRequestError(
-                "Incorrect number of values in identifier to formulate "
-                "primary key for query.get(); primary key columns are %s"
-                % ",".join("'%s'" % c for c in mapper.primary_key)
-            )
-
-        if is_dict:
-            try:
-                primary_key_identity = list(
-                    primary_key_identity[prop.key]
-                    for prop in mapper._identity_key_props
-                )
-
-            except KeyError as err:
-                util.raise_(
-                    sa_exc.InvalidRequestError(
-                        "Incorrect names of values in identifier to formulate "
-                        "primary key for query.get(); primary key attribute "
-                        "names are %s"
-                        % ",".join(
-                            "'%s'" % prop.key
-                            for prop in mapper._identity_key_props
-                        )
-                    ),
-                    replace_context=err,
-                )
-
-        if (
-            not self.load_options._populate_existing
-            and not mapper.always_refresh
-            and self._for_update_arg is None
-        ):
-
-            instance = self.session._identity_lookup(
-                mapper, primary_key_identity, identity_token=identity_token
-            )
-
-            if instance is not None:
-                self._get_existing_condition()
-                # reject calls for id in identity map but class
-                # mismatch.
-                if not issubclass(instance.__class__, mapper.class_):
-                    return None
-                return instance
-            elif instance is attributes.PASSIVE_CLASS_MISMATCH:
-                return None
-
-        # apply_labels() not strictly necessary, however this will ensure that
-        # tablename_colname style is used which at the moment is asserted
-        # in a lot of unit tests :)
-
-        statement = self._statement_20().apply_labels()
-        return db_load_fn(
-            self.session,
-            statement,
+        return self.session._get_impl(
+            mapper,
             primary_key_identity,
-            load_options=self.load_options,
+            db_load_fn,
+            populate_existing=self.load_options._populate_existing,
+            with_for_update=self._for_update_arg,
+            options=self._with_options,
+            identity_token=identity_token,
+            execution_options=self._execution_options,
         )
 
     @property
@@ -1000,7 +938,7 @@ class Query(
 
     @property
     def _current_path(self):
-        return self.compile_options._current_path
+        return self._compile_options._current_path
 
     @_generative
     def correlate(self, *fromclauses):
@@ -1375,7 +1313,7 @@ class Query(
 
     @_generative
     def _set_enable_single_crit(self, val):
-        self.compile_options += {"_enable_single_crit": val}
+        self._compile_options += {"_enable_single_crit": val}
 
     @_generative
     def _from_selectable(self, fromclause, set_entity_from=True):
@@ -1394,7 +1332,7 @@ class Query(
         ):
             self.__dict__.pop(attr, None)
         self._set_select_from([fromclause], set_entity_from)
-        self.compile_options += {
+        self._compile_options += {
             "_enable_single_crit": False,
             "_statement": None,
         }
@@ -1404,7 +1342,7 @@ class Query(
         # legacy.  see test/orm/test_froms.py for various
         # "oldstyle" tests that rely on this and the correspoinding
         # "newtyle" that do not.
-        self.compile_options += {"_orm_only_from_obj_alias": False}
+        self._compile_options += {"_orm_only_from_obj_alias": False}
 
     @util.deprecated(
         "1.4",
@@ -1517,7 +1455,7 @@ class Query(
         """
 
         opts = tuple(util.flatten_iterator(args))
-        if self.compile_options._current_path:
+        if self._compile_options._current_path:
             for opt in opts:
                 if opt._is_legacy_option:
                     opt.process_query_conditionally(self)
@@ -1640,6 +1578,14 @@ class Query(
             )
         params = self.load_options._params.union(kwargs)
         self.load_options += {"_params": params}
+
+    def where(self, *criterion):
+        """A synonym for :meth:`.Query.filter`.
+
+        .. versionadded:: 1.4
+
+        """
+        return self.filter(*criterion)
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
@@ -2204,6 +2150,7 @@ class Query(
             SQLAlchemy versions was the primary ORM-level joining interface.
 
         """
+
         aliased, from_joinpoint, isouter, full = (
             kwargs.pop("aliased", False),
             kwargs.pop("from_joinpoint", False),
@@ -2496,36 +2443,10 @@ class Query(
         """
 
         self._set_select_from([from_obj], True)
-        self.compile_options += {"_enable_single_crit": False}
+        self._compile_options += {"_enable_single_crit": False}
 
     def __getitem__(self, item):
-        if isinstance(item, slice):
-            start, stop, step = util.decode_slice(item)
-
-            if (
-                isinstance(stop, int)
-                and isinstance(start, int)
-                and stop - start <= 0
-            ):
-                return []
-
-            # perhaps we should execute a count() here so that we
-            # can still use LIMIT/OFFSET ?
-            elif (isinstance(start, int) and start < 0) or (
-                isinstance(stop, int) and stop < 0
-            ):
-                return list(self)[item]
-
-            res = self.slice(start, stop)
-            if step is not None:
-                return list(res)[None : None : item.step]
-            else:
-                return list(res)
-        else:
-            if item == -1:
-                return list(self)[-1]
-            else:
-                return list(self[item : item + 1])[0]
+        return orm_util._getitem(self, item)
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2559,46 +2480,10 @@ class Query(
            :meth:`_query.Query.offset`
 
         """
-        # for calculated limit/offset, try to do the addition of
-        # values to offset in Python, howver if a SQL clause is present
-        # then the addition has to be on the SQL side.
-        if start is not None and stop is not None:
-            offset_clause = self._offset_or_limit_clause_asint_if_possible(
-                self._offset_clause
-            )
-            if offset_clause is None:
-                offset_clause = 0
 
-            if start != 0:
-                offset_clause = offset_clause + start
-
-            if offset_clause == 0:
-                self._offset_clause = None
-            else:
-                self._offset_clause = self._offset_or_limit_clause(
-                    offset_clause
-                )
-
-            self._limit_clause = self._offset_or_limit_clause(stop - start)
-
-        elif start is None and stop is not None:
-            self._limit_clause = self._offset_or_limit_clause(stop)
-        elif start is not None and stop is None:
-            offset_clause = self._offset_or_limit_clause_asint_if_possible(
-                self._offset_clause
-            )
-            if offset_clause is None:
-                offset_clause = 0
-
-            if start != 0:
-                offset_clause = offset_clause + start
-
-            if offset_clause == 0:
-                self._offset_clause = None
-            else:
-                self._offset_clause = self._offset_or_limit_clause(
-                    offset_clause
-                )
+        self._limit_clause, self._offset_clause = orm_util._make_slice(
+            self._limit_clause, self._offset_clause, start, stop
+        )
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2607,7 +2492,7 @@ class Query(
         ``Query``.
 
         """
-        self._limit_clause = self._offset_or_limit_clause(limit)
+        self._limit_clause = orm_util._offset_or_limit_clause(limit)
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2616,31 +2501,7 @@ class Query(
         ``Query``.
 
         """
-        self._offset_clause = self._offset_or_limit_clause(offset)
-
-    def _offset_or_limit_clause(self, element, name=None, type_=None):
-        """Convert the given value to an "offset or limit" clause.
-
-        This handles incoming integers and converts to an expression; if
-        an expression is already given, it is passed through.
-
-        """
-        return coercions.expect(
-            roles.LimitOffsetRole, element, name=name, type_=type_
-        )
-
-    def _offset_or_limit_clause_asint_if_possible(self, clause):
-        """Return the offset or limit clause as a simple integer if possible,
-        else return the clause.
-
-        """
-        if clause is None:
-            return None
-        if hasattr(clause, "_limit_offset_value"):
-            value = clause._limit_offset_value
-            return util.asint(value)
-        else:
-            return clause
+        self._offset_clause = orm_util._offset_or_limit_clause(offset)
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2723,7 +2584,7 @@ class Query(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
         )
         self._statement = statement
-        self.compile_options += {"_statement": statement}
+        self._compile_options += {"_statement": statement}
 
     def first(self):
         """Return the first result of this ``Query`` or
@@ -3088,110 +2949,22 @@ class Query(
             sess.query(User).filter(User.age == 25).\
                 delete(synchronize_session='evaluate')
 
-        .. warning:: The :meth:`_query.Query.delete`
-           method is a "bulk" operation,
-           which bypasses ORM unit-of-work automation in favor of greater
-           performance.  **Please read all caveats and warnings below.**
+        .. warning::
 
-        :param synchronize_session: chooses the strategy for the removal of
-            matched objects from the session. Valid values are:
+            See the section :ref:`bulk_update_delete` for important caveats
+            and warnings, including limitations when using bulk UPDATE
+            and DELETE with mapper inheritance configurations.
 
-            ``False`` - don't synchronize the session. This option is the most
-            efficient and is reliable once the session is expired, which
-            typically occurs after a commit(), or explicitly using
-            expire_all(). Before the expiration, objects may still remain in
-            the session which were in fact deleted which can lead to confusing
-            results if they are accessed via get() or already loaded
-            collections.
-
-            ``'fetch'`` - performs a select query before the delete to find
-            objects that are matched by the delete query and need to be
-            removed from the session. Matched objects are removed from the
-            session.
-
-            ``'evaluate'`` - Evaluate the query's criteria in Python straight
-            on the objects in the session. If evaluation of the criteria isn't
-            implemented, an error is raised.
-
-            The expression evaluator currently doesn't account for differing
-            string collations between the database and Python.
+        :param synchronize_session: chooses the strategy to update the
+         attributes on objects in the session.   See the section
+         :ref:`bulk_update_delete` for a discussion of these strategies.
 
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
-        .. warning:: **Additional Caveats for bulk query deletes**
-
-            * This method does **not work for joined
-              inheritance mappings**, since the **multiple table
-              deletes are not supported by SQL** as well as that the
-              **join condition of an inheritance mapper is not
-              automatically rendered**.  Care must be taken in any
-              multiple-table delete to first accommodate via some other means
-              how the related table will be deleted, as well as to
-              explicitly include the joining
-              condition between those tables, even in mappings where
-              this is normally automatic. E.g. if a class ``Engineer``
-              subclasses ``Employee``, a DELETE against the ``Employee``
-              table would look like::
-
-                    session.query(Engineer).\
-                        filter(Engineer.id == Employee.id).\
-                        filter(Employee.name == 'dilbert').\
-                        delete()
-
-              However the above SQL will not delete from the Engineer table,
-              unless an ON DELETE CASCADE rule is established in the database
-              to handle it.
-
-              Short story, **do not use this method for joined inheritance
-              mappings unless you have taken the additional steps to make
-              this feasible**.
-
-            * The polymorphic identity WHERE criteria is **not** included
-              for single- or
-              joined- table updates - this must be added **manually** even
-              for single table inheritance.
-
-            * The method does **not** offer in-Python cascading of
-              relationships - it is assumed that ON DELETE CASCADE/SET
-              NULL/etc. is configured for any foreign key references
-              which require it, otherwise the database may emit an
-              integrity violation if foreign key references are being
-              enforced.
-
-              After the DELETE, dependent objects in the
-              :class:`.Session` which were impacted by an ON DELETE
-              may not contain the current state, or may have been
-              deleted. This issue is resolved once the
-              :class:`.Session` is expired, which normally occurs upon
-              :meth:`.Session.commit` or can be forced by using
-              :meth:`.Session.expire_all`.  Accessing an expired
-              object whose row has been deleted will invoke a SELECT
-              to locate the row; when the row is not found, an
-              :class:`~sqlalchemy.orm.exc.ObjectDeletedError` is
-              raised.
-
-            * The ``'fetch'`` strategy results in an additional
-              SELECT statement emitted and will significantly reduce
-              performance.
-
-            * The ``'evaluate'`` strategy performs a scan of
-              all matching objects within the :class:`.Session`; if the
-              contents of the :class:`.Session` are expired, such as
-              via a proceeding :meth:`.Session.commit` call, **this will
-              result in SELECT queries emitted for every matching object**.
-
-            * The :meth:`.MapperEvents.before_delete` and
-              :meth:`.MapperEvents.after_delete`
-              events **are not invoked** from this method.  Instead, the
-              :meth:`.SessionEvents.after_bulk_delete` method is provided to
-              act upon a mass DELETE of entity rows.
-
         .. seealso::
 
-            :meth:`_query.Query.update`
-
-            :ref:`inserts_and_updates` - Core SQL tutorial
+            :ref:`bulk_update_delete`
 
         """
 
@@ -3231,12 +3004,11 @@ class Query(
             sess.query(User).filter(User.age == 25).\
                 update({"age": User.age - 10}, synchronize_session='evaluate')
 
+        .. warning::
 
-        .. warning:: The :meth:`_query.Query.update`
-           method is a "bulk" operation,
-           which bypasses ORM unit-of-work automation in favor of greater
-           performance.  **Please read all caveats and warnings below.**
-
+            See the section :ref:`bulk_update_delete` for important caveats
+            and warnings, including limitations when using bulk UPDATE
+            and DELETE with mapper inheritance configurations.
 
         :param values: a dictionary with attributes names, or alternatively
          mapped attributes or SQL expressions, as keys, and literal
@@ -3248,31 +3020,9 @@ class Query(
          flag is passed to the :paramref:`.Query.update.update_args` dictionary
          as well.
 
-          .. versionchanged:: 1.0.0 - string names in the values dictionary
-             are now resolved against the mapped entity; previously, these
-             strings were passed as literal column names with no mapper-level
-             translation.
-
         :param synchronize_session: chooses the strategy to update the
-         attributes on objects in the session. Valid values are:
-
-            ``False`` - don't synchronize the session. This option is the most
-            efficient and is reliable once the session is expired, which
-            typically occurs after a commit(), or explicitly using
-            expire_all(). Before the expiration, updated objects may still
-            remain in the session with stale values on their attributes, which
-            can lead to confusing results.
-
-            ``'fetch'`` - performs a select query before the update to find
-            objects that are matched by the update query. The updated
-            attributes are expired on matched objects.
-
-            ``'evaluate'`` - Evaluate the Query's criteria in Python straight
-            on the objects in the session. If evaluation of the criteria isn't
-            implemented, an exception is raised.
-
-            The expression evaluator currently doesn't account for differing
-            string collations between the database and Python.
+         attributes on objects in the session.   See the section
+         :ref:`bulk_update_delete` for a discussion of these strategies.
 
         :param update_args: Optional dictionary, if present will be passed
          to the underlying :func:`_expression.update`
@@ -3281,70 +3031,14 @@ class Query(
          as ``mysql_limit``, as well as other special arguments such as
          :paramref:`~sqlalchemy.sql.expression.update.preserve_parameter_order`.
 
-         .. versionadded:: 1.0.0
-
         :return: the count of rows matched as returned by the database's
          "row count" feature.
 
-        .. warning:: **Additional Caveats for bulk query updates**
-
-            * The method does **not** offer in-Python cascading of
-              relationships - it is assumed that ON UPDATE CASCADE is
-              configured for any foreign key references which require
-              it, otherwise the database may emit an integrity
-              violation if foreign key references are being enforced.
-
-              After the UPDATE, dependent objects in the
-              :class:`.Session` which were impacted by an ON UPDATE
-              CASCADE may not contain the current state; this issue is
-              resolved once the :class:`.Session` is expired, which
-              normally occurs upon :meth:`.Session.commit` or can be
-              forced by using :meth:`.Session.expire_all`.
-
-            * The ``'fetch'`` strategy results in an additional
-              SELECT statement emitted and will significantly reduce
-              performance.
-
-            * The ``'evaluate'`` strategy performs a scan of
-              all matching objects within the :class:`.Session`; if the
-              contents of the :class:`.Session` are expired, such as
-              via a proceeding :meth:`.Session.commit` call, **this will
-              result in SELECT queries emitted for every matching object**.
-
-            * The method supports multiple table updates, as detailed
-              in :ref:`multi_table_updates`, and this behavior does
-              extend to support updates of joined-inheritance and
-              other multiple table mappings.  However, the **join
-              condition of an inheritance mapper is not
-              automatically rendered**. Care must be taken in any
-              multiple-table update to explicitly include the joining
-              condition between those tables, even in mappings where
-              this is normally automatic. E.g. if a class ``Engineer``
-              subclasses ``Employee``, an UPDATE of the ``Engineer``
-              local table using criteria against the ``Employee``
-              local table might look like::
-
-                    session.query(Engineer).\
-                        filter(Engineer.id == Employee.id).\
-                        filter(Employee.name == 'dilbert').\
-                        update({"engineer_type": "programmer"})
-
-            * The polymorphic identity WHERE criteria is **not** included
-              for single- or
-              joined- table updates - this must be added **manually**, even
-              for single table inheritance.
-
-            * The :meth:`.MapperEvents.before_update` and
-              :meth:`.MapperEvents.after_update`
-              events **are not invoked from this method**.  Instead, the
-              :meth:`.SessionEvents.after_bulk_update` method is provided to
-              act upon a mass UPDATE of entity rows.
 
         .. seealso::
 
-            :meth:`_query.Query.delete`
+            :ref:`bulk_update_delete`
 
-            :ref:`inserts_and_updates` - Core SQL tutorial
 
         """
 
@@ -3390,7 +3084,7 @@ class Query(
         """
 
         stmt = self._statement_20(for_statement=for_statement, **kw)
-        assert for_statement == stmt.compile_options._for_statement
+        assert for_statement == stmt._compile_options._for_statement
 
         # this chooses between ORMFromStatementCompileState and
         # ORMSelectCompileState.  We could also base this on
@@ -3422,7 +3116,7 @@ class FromStatement(SelectStatementGrouping, Executable):
 
     __visit_name__ = "orm_from_statement"
 
-    compile_options = ORMFromStatementCompileState.default_compile_options
+    _compile_options = ORMFromStatementCompileState.default_compile_options
 
     _compile_state_factory = ORMFromStatementCompileState.create_for_statement
 

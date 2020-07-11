@@ -85,7 +85,7 @@ class PathTest(object):
                         ent.entity_zero
                         for ent in q._compile_state()._mapper_entities
                     ],
-                    q.compile_options._current_path,
+                    q._compile_options._current_path,
                     attr,
                     False,
                 )
@@ -1432,7 +1432,7 @@ class PickleTest(PathTest, QueryTest):
                 ent.entity_zero
                 for ent in query._compile_state()._mapper_entities
             ],
-            query.compile_options._current_path,
+            query._compile_options._current_path,
             attr,
             False,
         )
@@ -1469,7 +1469,7 @@ class PickleTest(PathTest, QueryTest):
                 ent.entity_zero
                 for ent in query._compile_state()._mapper_entities
             ],
-            query.compile_options._current_path,
+            query._compile_options._current_path,
             attr,
             False,
         )
@@ -1514,7 +1514,7 @@ class LocalOptsTest(PathTest, QueryTest):
                 for tb in opt._to_bind:
                     tb._bind_loader(
                         [ent.entity_zero for ent in ctx._mapper_entities],
-                        query.compile_options._current_path,
+                        query._compile_options._current_path,
                         attr,
                         False,
                     )
@@ -1608,7 +1608,7 @@ class SubOptionsTest(PathTest, QueryTest):
                     ent.entity_zero
                     for ent in q._compile_state()._mapper_entities
                 ],
-                q.compile_options._current_path,
+                q._compile_options._current_path,
                 attr_a,
                 False,
             )
@@ -1622,7 +1622,7 @@ class SubOptionsTest(PathTest, QueryTest):
                         ent.entity_zero
                         for ent in q._compile_state()._mapper_entities
                     ],
-                    q.compile_options._current_path,
+                    q._compile_options._current_path,
                     attr_b,
                     False,
                 )

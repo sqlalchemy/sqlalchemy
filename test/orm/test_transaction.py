@@ -1,8 +1,12 @@
+import contextlib
+
 from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -27,7 +31,6 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not_
-from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
@@ -107,11 +110,11 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             sess.add(u1)
             sess.flush()
 
-            sess.begin_nested()
+            savepoint = sess.begin_nested()
             u2 = User(name="u2")
             sess.add(u2)
             sess.flush()
-            sess.rollback()
+            savepoint.rollback()
 
             trans.commit()
             assert len(sess.query(User).all()) == 1
@@ -259,7 +262,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         users = self.tables.users
 
         engine = Engine._future_facade(testing.db)
-        session = create_session(engine)
+        session = create_session(engine, autocommit=False)
 
         session.begin()
         session.connection().execute(users.insert().values(name="user1"))
@@ -313,6 +316,34 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert attributes.instance_state(u1) in nt1._dirty
 
         s.rollback()
+        assert attributes.instance_state(u1).expired
+        eq_(u1.name, "u1")
+
+    @testing.requires.savepoints
+    def test_dirty_state_transferred_deep_nesting_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(testing.db, future=True)
+        u1 = User(name="u1")
+        s.add(u1)
+        s.commit()
+
+        nt1 = s.begin_nested()
+        nt2 = s.begin_nested()
+        u1.name = "u2"
+        assert attributes.instance_state(u1) not in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+        s.flush()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) not in nt1._dirty
+
+        nt2.commit()
+        assert attributes.instance_state(u1) in nt2._dirty
+        assert attributes.instance_state(u1) in nt1._dirty
+
+        nt1.rollback()
         assert attributes.instance_state(u1).expired
         eq_(u1.name, "u1")
 
@@ -441,10 +472,32 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.add(u2)
         sess.flush()
 
-        sess.rollback()
+        sess.rollback()  # rolls back nested only
 
         sess.commit()
         assert len(sess.query(User).all()) == 1
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_nested_autotrans_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = create_session(autocommit=False, future=True)
+        u = User(name="u1")
+        sess.add(u)
+        sess.flush()
+
+        sess.begin_nested()  # nested transaction
+
+        u2 = User(name="u2")
+        sess.add(u2)
+        sess.flush()
+
+        sess.rollback()  # rolls back the whole trans
+
+        sess.commit()
+        assert len(sess.query(User).all()) == 0
         sess.close()
 
     @testing.requires.savepoints
@@ -726,7 +779,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             testing.db.dialect, "do_execute", prevent_savepoint_rollback
         )
 
-        with session.transaction:
+        with session.begin():
             session.add(User(id=1, name="x"))
 
         session.begin_nested()
@@ -739,13 +792,15 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
         # rollback succeeds, because the Session is deactivated
-        eq_(session.transaction._state, _session.DEACTIVE)
+        eq_(session._transaction._state, _session.DEACTIVE)
+        eq_(session.is_active, False)
         session.rollback()
 
         # back to normal
-        eq_(session.transaction._state, _session.ACTIVE)
+        eq_(session._transaction._state, _session.ACTIVE)
+        eq_(session.is_active, True)
 
-        trans = session.transaction
+        trans = session._transaction
 
         # leave the outermost trans
         session.rollback()
@@ -754,75 +809,10 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(trans._state, _session.CLOSED)
 
         # outermost transaction is new
-        is_not_(session.transaction, trans)
+        is_not_(session._transaction, trans)
 
-        # outermost is active
-        eq_(session.transaction._state, _session.ACTIVE)
-
-    @testing.requires.independent_connections
-    @testing.emits_warning(".*previous exception")
-    def test_failed_rollback_deactivates_transaction_ctx_integration(self):
-        # test #4050 in the same context as that of oslo.db
-
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-        session = Session(bind=testing.db, autocommit=True)
-
-        evented_exceptions = []
-        caught_exceptions = []
-
-        def canary(context):
-            evented_exceptions.append(context.original_exception)
-
-        rollback_error = testing.db.dialect.dbapi.InterfaceError(
-            "Can't roll back to savepoint"
-        )
-
-        def prevent_savepoint_rollback(
-            cursor, statement, parameters, context=None
-        ):
-            if (
-                context is not None
-                and context.compiled
-                and isinstance(
-                    context.compiled.statement,
-                    elements.RollbackToSavepointClause,
-                )
-            ):
-                raise rollback_error
-
-        self.event_listen(testing.db, "handle_error", canary, retval=True)
-        self.event_listen(
-            testing.db.dialect, "do_execute", prevent_savepoint_rollback
-        )
-
-        with session.begin():
-            session.add(User(id=1, name="x"))
-
-        try:
-            with session.begin():
-                try:
-                    with session.begin_nested():
-                        # raises IntegrityError on flush
-                        session.add(User(id=1, name="x"))
-
-                # outermost is the failed SAVEPOINT rollback
-                # from the "with session.begin_nested()"
-                except sa_exc.DBAPIError as dbe_inner:
-                    caught_exceptions.append(dbe_inner.orig)
-                    raise
-        except sa_exc.DBAPIError as dbe_outer:
-            caught_exceptions.append(dbe_outer.orig)
-
-        is_true(
-            isinstance(
-                evented_exceptions[0], testing.db.dialect.dbapi.IntegrityError
-            )
-        )
-        eq_(evented_exceptions[1], rollback_error)
-        eq_(len(evented_exceptions), 2)
-        eq_(caught_exceptions, [rollback_error, rollback_error])
+        is_(session._transaction, None)
+        eq_(session.is_active, True)
 
     def test_no_prepare_wo_twophase(self):
         sess = create_session(bind=testing.db, autocommit=False)
@@ -905,6 +895,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
                 )
             )
         )
+
         sess = Session(bind=bind)
         c1 = sess.connection(execution_options={"isolation_level": "FOO"})
         eq_(bind.mock_calls, [mock.call.connect()])
@@ -912,7 +903,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             bind.connect().mock_calls,
             [mock.call.execution_options(isolation_level="FOO")],
         )
-        eq_(bind.connect().execution_options().mock_calls, [mock.call.begin()])
+
         eq_(c1, bind.connect().execution_options())
 
     def test_execution_options_ignored_mid_transaction(self):
@@ -1034,9 +1025,19 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         session = create_session(autocommit=False)
         session.add(User(name="ed"))
         session.transaction.commit()
-        assert (
-            session.transaction is not None
-        ), "autocommit=False should start a new transaction"
+
+        is_not_(session.transaction, None)
+
+    def test_no_autocommit_with_explicit_commit_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        session = create_session(autocommit=False, future=True)
+        session.add(User(name="ed"))
+        session.transaction.commit()
+
+        # new in 1.4
+        is_(session.transaction, None)
 
     @testing.requires.python2
     @testing.requires.savepoints_w_release
@@ -1088,6 +1089,205 @@ class _LocalFixture(FixtureTest):
         mapper(Address, addresses)
 
 
+class SubtransactionRecipeTest(FixtureTest):
+    run_inserts = None
+    __backend__ = True
+
+    future = False
+
+    @testing.fixture
+    def subtransaction_recipe(self):
+        @contextlib.contextmanager
+        def transaction(session):
+
+            if session.in_transaction():
+                outermost = False
+            else:
+                outermost = True
+                session.begin()
+
+            try:
+                yield
+            except:
+                if session.in_transaction():
+                    session.rollback()
+                raise
+            else:
+                if outermost and session.in_transaction():
+                    session.commit()
+
+        return transaction
+
+    @testing.requires.savepoints
+    def test_recipe_heavy_nesting(self, subtransaction_recipe):
+        users = self.tables.users
+
+        session = Session(testing.db, future=self.future)
+
+        with subtransaction_recipe(session):
+            session.connection().execute(users.insert().values(name="user1"))
+            with subtransaction_recipe(session):
+                savepoint = session.begin_nested()
+                session.connection().execute(
+                    users.insert().values(name="user2")
+                )
+                assert (
+                    session.connection()
+                    .exec_driver_sql("select count(1) from users")
+                    .scalar()
+                    == 2
+                )
+                savepoint.rollback()
+
+            with subtransaction_recipe(session):
+                assert (
+                    session.connection()
+                    .exec_driver_sql("select count(1) from users")
+                    .scalar()
+                    == 1
+                )
+                session.connection().execute(
+                    users.insert().values(name="user3")
+                )
+            assert (
+                session.connection()
+                .exec_driver_sql("select count(1) from users")
+                .scalar()
+                == 2
+            )
+
+    @engines.close_open_connections
+    def test_recipe_subtransaction_on_external_subtrans(
+        self, subtransaction_recipe
+    ):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        conn = testing.db.connect()
+        trans = conn.begin()
+        sess = Session(conn, future=self.future)
+
+        with subtransaction_recipe(sess):
+            u = User(name="ed")
+            sess.add(u)
+            sess.flush()
+            # commit does nothing
+        trans.rollback()  # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    def test_recipe_commit_one(self, subtransaction_recipe):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = Session(testing.db, future=self.future)
+
+        with subtransaction_recipe(sess):
+            u = User(name="u1")
+            sess.add(u)
+        sess.close()
+        assert len(sess.query(User).all()) == 1
+
+    def test_recipe_subtransaction_on_noautocommit(
+        self, subtransaction_recipe
+    ):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        sess = Session(testing.db, future=self.future)
+
+        sess.begin()
+        with subtransaction_recipe(sess):
+            u = User(name="u1")
+            sess.add(u)
+            sess.flush()
+        sess.rollback()  # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_recipe_mixed_transaction_control(self, subtransaction_recipe):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session(testing.db, future=self.future)
+
+        sess.begin()
+        sess.begin_nested()
+
+        with subtransaction_recipe(sess):
+
+            sess.add(User(name="u1"))
+
+        sess.commit()
+        sess.commit()
+
+        eq_(len(sess.query(User).all()), 1)
+        sess.close()
+
+        t1 = sess.begin()
+        t2 = sess.begin_nested()
+
+        sess.add(User(name="u2"))
+
+        t2.commit()
+        assert sess.transaction is t1
+
+        sess.close()
+
+    def test_recipe_error_on_using_inactive_session_commands(
+        self, subtransaction_recipe
+    ):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+        sess = Session(testing.db, future=self.future)
+        sess.begin()
+
+        try:
+            with subtransaction_recipe(sess):
+                sess.add(User(name="u1"))
+                sess.flush()
+                raise Exception("force rollback")
+        except:
+            pass
+
+        # that was a real rollback, so no transaction
+        is_(sess.get_transaction(), None)
+
+        sess.close()
+
+    def test_recipe_multi_nesting(self, subtransaction_recipe):
+        sess = Session(testing.db, future=self.future)
+
+        with subtransaction_recipe(sess):
+            assert sess.in_transaction()
+
+            try:
+                with subtransaction_recipe(sess):
+                    assert sess.transaction
+                    raise Exception("force rollback")
+            except:
+                pass
+
+            assert not sess.in_transaction()
+
+    def test_recipe_deactive_status_check(self, subtransaction_recipe):
+        sess = Session(testing.db, future=self.future)
+        sess.begin()
+
+        with subtransaction_recipe(sess):
+            sess.rollback()
+
+        assert not sess.in_transaction()
+        sess.commit()  # no error
+
+
+class FutureSubtransactionRecipeTest(SubtransactionRecipeTest):
+    future = True
+
+
 class FixtureDataTest(_LocalFixture):
     run_inserts = "each"
     __backend__ = True
@@ -1135,23 +1335,31 @@ class CleanSavepointTest(FixtureTest):
     run_inserts = None
     __backend__ = True
 
-    def _run_test(self, update_fn):
+    def _run_test(self, update_fn, future=False):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
 
-        s = Session(bind=testing.db)
+        s = Session(bind=testing.db, future=future)
         u1 = User(name="u1")
         u2 = User(name="u2")
         s.add_all([u1, u2])
         s.commit()
         u1.name
         u2.name
+        trans = s._transaction
+        assert trans is not None
         s.begin_nested()
         update_fn(s, u2)
         eq_(u2.name, "u2modified")
         s.rollback()
-        eq_(u1.__dict__["name"], "u1")
+
+        if future:
+            assert s._transaction is None
+            assert "name" not in u1.__dict__
+        else:
+            assert s._transaction is trans
+            eq_(u1.__dict__["name"], "u1")
         assert "name" not in u2.__dict__
         eq_(u2.name, "u2")
 
@@ -1183,64 +1391,6 @@ class CleanSavepointTest(FixtureTest):
             )
 
         self._run_test(update_fn)
-
-
-class ContextManagerTest(FixtureTest):
-    run_inserts = None
-    __backend__ = True
-
-    @testing.requires.savepoints
-    @engines.close_open_connections
-    def test_contextmanager_nested_rollback(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        sess = Session()
-
-        def go():
-            with sess.begin_nested():
-                sess.add(User())  # name can't be null
-                sess.flush()
-
-        # and not InvalidRequestError
-        assert_raises(sa_exc.DBAPIError, go)
-
-        with sess.begin_nested():
-            sess.add(User(name="u1"))
-
-        eq_(sess.query(User).count(), 1)
-
-    def test_contextmanager_commit(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        sess = Session(autocommit=True)
-        with sess.begin():
-            sess.add(User(name="u1"))
-
-        sess.rollback()
-        eq_(sess.query(User).count(), 1)
-
-    def test_contextmanager_rollback(self):
-        users, User = self.tables.users, self.classes.User
-
-        mapper(User, users)
-
-        sess = Session(autocommit=True)
-
-        def go():
-            with sess.begin():
-                sess.add(User())  # name can't be null
-
-        assert_raises(sa_exc.DBAPIError, go)
-
-        eq_(sess.query(User).count(), 0)
-
-        with sess.begin():
-            sess.add(User(name="u1"))
-        eq_(sess.query(User).count(), 1)
 
 
 class AutoExpireTest(_LocalFixture):
@@ -1855,6 +2005,442 @@ class AutoCommitTest(_LocalFixture):
         eq_(u1.id, 3)
 
 
+class ContextManagerPlusFutureTest(FixtureTest):
+    run_inserts = None
+    __backend__ = True
+
+    @testing.requires.savepoints
+    @engines.close_open_connections
+    def test_contextmanager_nested_rollback(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        def go():
+            with sess.begin_nested():
+                sess.add(User())  # name can't be null
+                sess.flush()
+
+        # and not InvalidRequestError
+        assert_raises(sa_exc.DBAPIError, go)
+
+        with sess.begin_nested():
+            sess.add(User(name="u1"))
+
+        eq_(sess.query(User).count(), 1)
+
+    def test_contextmanager_commit(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+        with sess.begin():
+            sess.add(User(name="u1"))
+
+        sess.rollback()
+        eq_(sess.query(User).count(), 1)
+
+    def test_contextmanager_rollback(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        sess = Session()
+
+        def go():
+            with sess.begin():
+                sess.add(User())  # name can't be null
+
+        assert_raises(sa_exc.DBAPIError, go)
+
+        eq_(sess.query(User).count(), 0)
+        sess.close()
+
+        with sess.begin():
+            sess.add(User(name="u1"))
+        eq_(sess.query(User).count(), 1)
+
+    def test_explicit_begin(self):
+        s1 = Session(testing.db)
+        with s1.begin() as trans:
+            is_(trans, s1.transaction)
+            s1.connection()
+
+        is_(s1._transaction, None)
+
+    def test_no_double_begin_explicit(self):
+        s1 = Session(testing.db)
+        s1.begin()
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "A transaction is already begun on this Session.",
+            s1.begin,
+        )
+
+    @testing.requires.savepoints
+    def test_future_rollback_is_global(self):
+        users = self.tables.users
+
+        s1 = Session(testing.db, future=True)
+
+        s1.begin()
+
+        s1.connection().execute(users.insert(), [{"id": 1, "name": "n1"}])
+
+        s1.begin_nested()
+
+        s1.connection().execute(
+            users.insert(), [{"id": 2, "name": "n2"}, {"id": 3, "name": "n3"}]
+        )
+
+        eq_(s1.connection().scalar(select(func.count()).select_from(users)), 3)
+
+        # rolls back the whole transaction
+        s1.rollback()
+        is_(s1.transaction, None)
+
+        eq_(s1.connection().scalar(select(func.count()).select_from(users)), 0)
+
+        s1.commit()
+        is_(s1.transaction, None)
+
+    @testing.requires.savepoints
+    def test_old_rollback_is_local(self):
+        users = self.tables.users
+
+        s1 = Session(testing.db)
+
+        t1 = s1.begin()
+
+        s1.connection().execute(users.insert(), [{"id": 1, "name": "n1"}])
+
+        s1.begin_nested()
+
+        s1.connection().execute(
+            users.insert(), [{"id": 2, "name": "n2"}, {"id": 3, "name": "n3"}]
+        )
+
+        eq_(s1.connection().scalar(select(func.count()).select_from(users)), 3)
+
+        # rolls back only the savepoint
+        s1.rollback()
+
+        is_(s1.transaction, t1)
+
+        eq_(s1.connection().scalar(select(func.count()).select_from(users)), 1)
+
+        s1.commit()
+        eq_(s1.connection().scalar(select(func.count()).select_from(users)), 1)
+        is_not_(s1.transaction, None)
+
+    def test_session_as_ctx_manager_one(self):
+        users = self.tables.users
+
+        with Session(testing.db) as sess:
+            is_not_(sess.transaction, None)
+
+            sess.connection().execute(
+                users.insert().values(id=1, name="user1")
+            )
+
+            eq_(
+                sess.connection().execute(users.select()).all(), [(1, "user1")]
+            )
+
+            is_not_(sess.transaction, None)
+
+        is_not_(sess.transaction, None)
+
+        # did not commit
+        eq_(sess.connection().execute(users.select()).all(), [])
+
+    def test_session_as_ctx_manager_future_one(self):
+        users = self.tables.users
+
+        with Session(testing.db, future=True) as sess:
+            is_(sess.transaction, None)
+
+            sess.connection().execute(
+                users.insert().values(id=1, name="user1")
+            )
+
+            eq_(
+                sess.connection().execute(users.select()).all(), [(1, "user1")]
+            )
+
+            is_not_(sess.transaction, None)
+
+        is_(sess.transaction, None)
+
+        # did not commit
+        eq_(sess.connection().execute(users.select()).all(), [])
+
+    def test_session_as_ctx_manager_two(self):
+        users = self.tables.users
+
+        try:
+            with Session(testing.db) as sess:
+                is_not_(sess.transaction, None)
+
+                sess.connection().execute(
+                    users.insert().values(id=1, name="user1")
+                )
+
+                raise Exception("force rollback")
+        except:
+            pass
+        is_not_(sess.transaction, None)
+
+    def test_session_as_ctx_manager_two_future(self):
+        users = self.tables.users
+
+        try:
+            with Session(testing.db, future=True) as sess:
+                is_(sess.transaction, None)
+
+                sess.connection().execute(
+                    users.insert().values(id=1, name="user1")
+                )
+
+                raise Exception("force rollback")
+        except:
+            pass
+        is_(sess.transaction, None)
+
+    def test_begin_context_manager(self):
+        users = self.tables.users
+
+        with Session(testing.db) as sess:
+            with sess.begin():
+                sess.connection().execute(
+                    users.insert().values(id=1, name="user1")
+                )
+
+                eq_(
+                    sess.connection().execute(users.select()).all(),
+                    [(1, "user1")],
+                )
+
+        # committed
+        eq_(sess.connection().execute(users.select()).all(), [(1, "user1")])
+
+    def test_sessionmaker_begin_context_manager(self):
+        users = self.tables.users
+
+        session = sessionmaker(testing.db)
+
+        with session.begin() as sess:
+            sess.connection().execute(
+                users.insert().values(id=1, name="user1")
+            )
+
+            eq_(
+                sess.connection().execute(users.select()).all(),
+                [(1, "user1")],
+            )
+
+        # committed
+        eq_(sess.connection().execute(users.select()).all(), [(1, "user1")])
+
+    def test_begin_context_manager_rollback_trans(self):
+        users = self.tables.users
+
+        try:
+            with Session(testing.db) as sess:
+                with sess.begin():
+                    sess.connection().execute(
+                        users.insert().values(id=1, name="user1")
+                    )
+
+                    eq_(
+                        sess.connection().execute(users.select()).all(),
+                        [(1, "user1")],
+                    )
+
+                    raise Exception("force rollback")
+        except:
+            pass
+
+        # rolled back
+        eq_(sess.connection().execute(users.select()).all(), [])
+
+    def test_begin_context_manager_rollback_outer(self):
+        users = self.tables.users
+
+        try:
+            with Session(testing.db) as sess:
+                with sess.begin():
+                    sess.connection().execute(
+                        users.insert().values(id=1, name="user1")
+                    )
+
+                    eq_(
+                        sess.connection().execute(users.select()).all(),
+                        [(1, "user1")],
+                    )
+
+                raise Exception("force rollback")
+        except:
+            pass
+
+        # committed
+        eq_(sess.connection().execute(users.select()).all(), [(1, "user1")])
+
+    def test_sessionmaker_begin_context_manager_rollback_trans(self):
+        users = self.tables.users
+
+        session = sessionmaker(testing.db)
+
+        try:
+            with session.begin() as sess:
+                sess.connection().execute(
+                    users.insert().values(id=1, name="user1")
+                )
+
+                eq_(
+                    sess.connection().execute(users.select()).all(),
+                    [(1, "user1")],
+                )
+
+                raise Exception("force rollback")
+        except:
+            pass
+
+        # rolled back
+        eq_(sess.connection().execute(users.select()).all(), [])
+
+    def test_sessionmaker_begin_context_manager_rollback_outer(self):
+        users = self.tables.users
+
+        session = sessionmaker(testing.db)
+
+        try:
+            with session.begin() as sess:
+                sess.connection().execute(
+                    users.insert().values(id=1, name="user1")
+                )
+
+                eq_(
+                    sess.connection().execute(users.select()).all(),
+                    [(1, "user1")],
+                )
+
+            raise Exception("force rollback")
+        except:
+            pass
+
+        # committed
+        eq_(sess.connection().execute(users.select()).all(), [(1, "user1")])
+
+
+class TransactionFlagsTest(fixtures.TestBase):
+    def test_in_transaction(self):
+        s1 = Session(testing.db)
+
+        eq_(s1.in_transaction(), False)
+
+        trans = s1.begin()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1.get_transaction(), trans)
+
+        n1 = s1.begin_nested()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1.get_transaction(), trans)
+        is_(s1.get_nested_transaction(), n1)
+
+        n1.rollback()
+
+        is_(s1.get_nested_transaction(), None)
+        is_(s1.get_transaction(), trans)
+
+        eq_(s1.in_transaction(), True)
+
+        s1.commit()
+
+        eq_(s1.in_transaction(), False)
+        is_(s1.get_transaction(), None)
+
+    def test_in_transaction_subtransactions(self):
+        """we'd like to do away with subtransactions for future sessions
+        entirely.  at the moment we are still using them internally.
+        it might be difficult to keep the internals working in exactly
+        the same way if remove this concept, so for now just test that
+        the external API works.
+
+        """
+        s1 = Session(testing.db)
+
+        eq_(s1.in_transaction(), False)
+
+        trans = s1.begin()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1.get_transaction(), trans)
+
+        subtrans = s1.begin(_subtrans=True)
+        is_(s1.get_transaction(), trans)
+        eq_(s1.in_transaction(), True)
+
+        is_(s1._transaction, subtrans)
+
+        s1.rollback()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1._transaction, trans)
+
+        s1.rollback()
+
+        eq_(s1.in_transaction(), False)
+        is_(s1._transaction, None)
+
+    def test_in_transaction_nesting(self):
+        s1 = Session(testing.db)
+
+        eq_(s1.in_transaction(), False)
+
+        trans = s1.begin()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1.get_transaction(), trans)
+
+        sp1 = s1.begin_nested()
+
+        eq_(s1.in_transaction(), True)
+        is_(s1.get_transaction(), trans)
+        is_(s1.get_nested_transaction(), sp1)
+
+        sp2 = s1.begin_nested()
+
+        eq_(s1.in_transaction(), True)
+        eq_(s1.in_nested_transaction(), True)
+        is_(s1.get_transaction(), trans)
+        is_(s1.get_nested_transaction(), sp2)
+
+        sp2.rollback()
+
+        eq_(s1.in_transaction(), True)
+        eq_(s1.in_nested_transaction(), True)
+        is_(s1.get_transaction(), trans)
+        is_(s1.get_nested_transaction(), sp1)
+
+        sp1.rollback()
+
+        is_(s1.get_nested_transaction(), None)
+        eq_(s1.in_transaction(), True)
+        eq_(s1.in_nested_transaction(), False)
+        is_(s1.get_transaction(), trans)
+
+        s1.rollback()
+
+        eq_(s1.in_transaction(), False)
+        is_(s1.get_transaction(), None)
+
+
 class NaturalPKRollbackTest(fixtures.MappedTest):
     __backend__ = True
 
@@ -2031,3 +2617,199 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert u2 not in s
 
         assert s.identity_map[identity_key(User, ("u1",))] is u1
+
+
+class JoinIntoAnExternalTransactionFixture(object):
+    """Test the "join into an external transaction" examples"""
+
+    def setup(self):
+        self.connection = testing.db.connect()
+
+        self.metadata = MetaData()
+        self.table = Table(
+            "t1", self.metadata, Column("id", Integer, primary_key=True)
+        )
+        with self.connection.begin():
+            self.table.create(self.connection, checkfirst=True)
+
+        self.setup_session()
+
+    def test_something(self):
+        A = self.A
+
+        a1 = A()
+        self.session.add(a1)
+        self.session.commit()
+
+        self._assert_count(1)
+
+    @testing.requires.savepoints
+    def test_something_with_rollback(self):
+        A = self.A
+
+        a1 = A()
+        self.session.add(a1)
+        self.session.flush()
+
+        self._assert_count(1)
+        self.session.rollback()
+        self._assert_count(0)
+
+        a1 = A()
+        self.session.add(a1)
+        self.session.commit()
+        self._assert_count(1)
+
+        a2 = A()
+
+        self.session.add(a2)
+        self.session.flush()
+        self._assert_count(2)
+
+        self.session.rollback()
+        self._assert_count(1)
+
+    def _assert_count(self, count):
+        result = self.connection.scalar(
+            select(func.count()).select_from(self.table)
+        )
+        eq_(result, count)
+
+    def teardown(self):
+        self.teardown_session()
+
+        with self.connection.begin():
+            self._assert_count(0)
+
+        with self.connection.begin():
+            self.table.drop(self.connection)
+
+        # return connection to the Engine
+        self.connection.close()
+
+
+class NewStyleJoinIntoAnExternalTransactionTest(
+    JoinIntoAnExternalTransactionFixture
+):
+    """A new recipe for "join into an external transaction" that works
+    for both legacy and future engines/sessions
+
+    """
+
+    def setup_session(self):
+        # begin a non-ORM transaction
+        self.trans = self.connection.begin()
+
+        class A(object):
+            pass
+
+        mapper(A, self.table)
+        self.A = A
+
+        # bind an individual Session to the connection
+        self.session = Session(bind=self.connection, future=True)
+
+        if testing.requires.savepoints.enabled:
+            self.nested = self.connection.begin_nested()
+
+            @event.listens_for(self.session, "after_transaction_end")
+            def end_savepoint(session, transaction):
+                if not self.nested.is_active:
+                    self.nested = self.connection.begin_nested()
+
+    def teardown_session(self):
+        self.session.close()
+
+        # rollback - everything that happened with the
+        # Session above (including calls to commit())
+        # is rolled back.
+        self.trans.rollback()
+
+
+class FutureJoinIntoAnExternalTransactionTest(
+    NewStyleJoinIntoAnExternalTransactionTest,
+    fixtures.FutureEngineMixin,
+    fixtures.TestBase,
+):
+    pass
+
+
+class NonFutureJoinIntoAnExternalTransactionTest(
+    NewStyleJoinIntoAnExternalTransactionTest, fixtures.TestBase,
+):
+    pass
+
+
+class LegacyJoinIntoAnExternalTransactionTest(
+    JoinIntoAnExternalTransactionFixture, fixtures.TestBase,
+):
+    def setup_session(self):
+        # begin a non-ORM transaction
+        self.trans = self.connection.begin()
+
+        class A(object):
+            pass
+
+        mapper(A, self.table)
+        self.A = A
+
+        # bind an individual Session to the connection
+        self.session = Session(bind=self.connection)
+
+        if testing.requires.savepoints.enabled:
+            # start the session in a SAVEPOINT...
+            self.session.begin_nested()
+
+            # then each time that SAVEPOINT ends, reopen it
+            @event.listens_for(self.session, "after_transaction_end")
+            def restart_savepoint(session, transaction):
+                if transaction.nested and not transaction._parent.nested:
+
+                    # ensure that state is expired the way
+                    # session.commit() at the top level normally does
+                    # (optional step)
+                    session.expire_all()
+
+                    session.begin_nested()
+
+    def teardown_session(self):
+        self.session.close()
+
+        # rollback - everything that happened with the
+        # Session above (including calls to commit())
+        # is rolled back.
+        self.trans.rollback()
+
+
+class LegacyBranchedJoinIntoAnExternalTransactionTest(
+    LegacyJoinIntoAnExternalTransactionTest
+):
+    def setup_session(self):
+        # begin a non-ORM transaction
+        self.trans = self.connection.begin()
+
+        class A(object):
+            pass
+
+        mapper(A, self.table)
+        self.A = A
+
+        # neutron is doing this inside of a migration
+        # 1df244e556f5_add_unique_ha_router_agent_port_bindings.py
+        self.session = Session(bind=self.connection.connect())
+
+        if testing.requires.savepoints.enabled:
+            # start the session in a SAVEPOINT...
+            self.session.begin_nested()
+
+            # then each time that SAVEPOINT ends, reopen it
+            @event.listens_for(self.session, "after_transaction_end")
+            def restart_savepoint(session, transaction):
+                if transaction.nested and not transaction._parent.nested:
+
+                    # ensure that state is expired the way
+                    # session.commit() at the top level normally does
+                    # (optional step)
+                    session.expire_all()
+
+                    session.begin_nested()

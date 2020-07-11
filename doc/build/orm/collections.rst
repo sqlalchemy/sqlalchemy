@@ -32,11 +32,12 @@ loading of child items both at load time as well as deletion time.
 Dynamic Relationship Loaders
 ----------------------------
 
-A key feature to enable management of a large collection is the so-called "dynamic"
-relationship.  This is an optional form of :func:`~sqlalchemy.orm.relationship` which
-returns a :class:`~sqlalchemy.orm.query.Query` object in place of a collection
-when accessed. :func:`~sqlalchemy.orm.query.Query.filter` criterion may be
-applied as well as limits and offsets, either explicitly or via array slices::
+A key feature to enable management of a large collection is the so-called
+"dynamic" relationship.  This is an optional form of
+:func:`_orm.relationship` which returns a
+:class:`_orm.AppenderQuery` object in place of a collection
+when accessed. Filtering criterion may be applied as well as limits and
+offsets, either explicitly or via array slices::
 
     class User(Base):
         __tablename__ = 'user'
@@ -52,7 +53,7 @@ applied as well as limits and offsets, either explicitly or via array slices::
     posts = jack.posts[5:20]
 
 The dynamic relationship supports limited write operations, via the
-``append()`` and ``remove()`` methods::
+:meth:`_orm.AppenderQuery.append` and :meth:`_orm.AppenderQuery.remove` methods::
 
     oldpost = jack.posts.filter(Post.headline=='old post').one()
     jack.posts.remove(oldpost)
@@ -77,6 +78,9 @@ function in conjunction with ``lazy='dynamic'``::
                 )
 
 Note that eager/lazy loading options cannot be used in conjunction dynamic relationships at this time.
+
+.. autoclass:: sqlalchemy.orm.AppenderQuery
+    :members:
 
 .. note::
 
