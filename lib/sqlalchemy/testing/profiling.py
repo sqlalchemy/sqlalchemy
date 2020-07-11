@@ -21,6 +21,7 @@ import sys
 from . import config
 from .util import gc_collect
 from ..util import jython
+from ..util import osx
 from ..util import pypy
 from ..util import update_wrapper
 from ..util import win32
@@ -84,6 +85,8 @@ class ProfileStatsFile(object):
             platform_tokens.append("pypy")
         if win32:
             platform_tokens.append("win")
+        if osx:
+            platform_tokens.append("osx")
         platform_tokens.append(
             "nativeunicode"
             if config.db.dialect.convert_unicode

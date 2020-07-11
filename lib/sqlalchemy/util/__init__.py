@@ -62,6 +62,7 @@ from .compat import jython  # noqa
 from .compat import namedtuple  # noqa
 from .compat import nested  # noqa
 from .compat import next  # noqa
+from .compat import osx  # noqa
 from .compat import parse_qsl  # noqa
 from .compat import pickle  # noqa
 from .compat import print_  # noqa

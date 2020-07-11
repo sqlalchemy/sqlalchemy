@@ -25,6 +25,7 @@ jython = sys.platform.startswith("java")
 pypy = hasattr(sys, "pypy_version_info")
 
 win32 = sys.platform.startswith("win")
+osx = sys.platform.startswith("darwin")
 cpython = not pypy and not jython  # TODO: something better for this ?
 
 contextmanager = contextlib.contextmanager
