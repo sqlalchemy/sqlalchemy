@@ -867,9 +867,11 @@ class Session(_SessionClassMethods):
         autocommit=(
             "2.0",
             "The :paramref:`.Session.autocommit` parameter is deprecated "
-            "and will be removed in SQLAlchemy version 2.0.  Please use the "
-            ":paramref:`.Session.autobegin` parameter set to False to support "
-            "explicit use of the :meth:`.Session.begin` method.",
+            "and will be removed in SQLAlchemy version 2.0.  The "
+            ':class:`_orm.Session` now features "autobegin" behavior '
+            "such that the :meth:`.Session.begin` method may be called "
+            "if a transaction has not yet been started yet.  See the section "
+            ":ref:`session_explicit_begin` for background.",
         ),
     )
     def __init__(
@@ -892,28 +894,15 @@ class Session(_SessionClassMethods):
         set of arguments.
 
         :param autocommit:
-
-          .. warning::
-
-             The autocommit flag is **not for general use**, and if it is
-             used, queries should only be invoked within the span of a
-             :meth:`.Session.begin` / :meth:`.Session.commit` pair.  Executing
-             queries outside of a demarcated transaction is a legacy mode
-             of usage, and can in some cases lead to concurrent connection
-             checkouts.
-
           Defaults to ``False``. When ``True``, the
-          :class:`.Session` does not keep a persistent transaction running,
-          and will acquire connections from the engine on an as-needed basis,
-          returning them immediately after their use. Flushes will begin and
-          commit (or possibly rollback) their own transaction if no
-          transaction is present. When using this mode, the
-          :meth:`.Session.begin` method is used to explicitly start
-          transactions.
-
-          .. seealso::
-
-            :ref:`session_autocommit`
+          :class:`.Session` does not automatically begin transactions for
+          individual statement exections, will acquire connections from the
+          engine on an as-needed basis, releasing to the connection pool
+          after each statement. Flushes will begin and commit (or possibly
+          rollback) their own transaction if no transaction is present.
+          When using this mode, the
+          :meth:`.Session.begin` method may be used to explicitly start
+          transactions, but the usual "autobegin" behavior is not present.
 
         :param autoflush: When ``True``, all query operations will issue a
            :meth:`~.Session.flush` call to this ``Session`` before proceeding.
@@ -1084,7 +1073,7 @@ class Session(_SessionClassMethods):
         "will be removed in SQLAlchemy version 2.0.  "
         "For context manager use, use :meth:`_orm.Session.begin`.  To access "
         "the current root transaction, use "
-        ":meth:`_orm.Session.get_transaction()"
+        ":meth:`_orm.Session.get_transaction`"
     )
     def transaction(self):
         """The current active or inactive :class:`.SessionTransaction`.
@@ -1168,48 +1157,25 @@ class Session(_SessionClassMethods):
             "2.0",
             "The :paramref:`_orm.Session.begin.subtransactions` flag is "
             "deprecated and "
-            "will be removed in SQLAlchemy version 2.0.  The "
-            ":attr:`_orm.Session.transaction` flag may "
-            "be checked for None before invoking :meth:`_orm.Session.begin`.",
+            "will be removed in SQLAlchemy version 2.0.  See "
+            "the documentation at :ref:`session_subtransactions` for "
+            "background on a compatible alternative pattern.",
         )
     )
     def begin(self, subtransactions=False, nested=False, _subtrans=False):
-        """Begin a transaction on this :class:`.Session`.
+        """Begin a transaction, or nested transaction,
+        on this :class:`.Session`.
 
-        .. warning::
-
-            The :meth:`.Session.begin` method is part of a larger pattern
-            of use with the :class:`.Session` known as **autocommit mode**.
-            This is essentially a **legacy mode of use** and is
-            not necessary for new applications.    The :class:`.Session`
-            normally handles the work of "begin" transparently, which in
-            turn relies upon the Python DBAPI to transparently "begin"
-            transactions; there is **no need to explicitly begin transactions**
-            when using modern :class:`.Session` programming patterns.
-            In its default mode of ``autocommit=False``, the
-            :class:`.Session` does all of its work within
-            the context of a transaction, so as soon as you call
-            :meth:`.Session.commit`, the next transaction is implicitly
-            started when the next database operation is invoked.  See
-            :ref:`session_autocommit` for further background.
-
-        The method will raise an error if this :class:`.Session` is already
-        inside of a transaction, unless
-        :paramref:`~.Session.begin.subtransactions` or
-        :paramref:`~.Session.begin.nested` are specified.  A "subtransaction"
-        is essentially a code embedding pattern that does not affect the
-        transactional state of the database connection unless a rollback is
-        emitted, in which case the whole transaction is rolled back.  For
-        documentation on subtransactions, please see
-        :ref:`session_subtransactions`.
-
-        :param subtransactions: if True, indicates that this
-         :meth:`~.Session.begin` can create a "subtransaction".
+        When used to begin the outermost transaction, an error is raised
+        if this :class:`.Session` is already inside of a transaction.
 
         :param nested: if True, begins a SAVEPOINT transaction and is
          equivalent to calling :meth:`~.Session.begin_nested`. For
          documentation on SAVEPOINT transactions, please see
          :ref:`session_begin_nested`.
+
+        :param subtransactions: if True, indicates that this
+         :meth:`~.Session.begin` can create a "subtransaction".
 
         :return: the :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction`
@@ -1219,7 +1185,7 @@ class Session(_SessionClassMethods):
 
         .. seealso::
 
-            :ref:`session_autocommit`
+            :ref:`unitofwork_transaction`
 
             :meth:`.Session.begin_nested`
 
@@ -1279,14 +1245,21 @@ class Session(_SessionClassMethods):
 
         If no transaction is in progress, this method is a pass-through.
 
-        This method rolls back the current transaction or nested transaction
-        regardless of subtransactions being in effect.  All subtransactions up
-        to the first real transaction are closed.  Subtransactions occur when
-        :meth:`.begin` is called multiple times.
+        In :term:`1.x-style` use, this method rolls back the topmost
+        database transaction if no nested transactions are in effect, or
+        to the current nested transaction if one is in effect.
+
+        When
+        :term:`2.0-style` use is in effect via the
+        :paramref:`_orm.Session.future` flag, the method always rolls back
+        the topmost database transaction, discarding any nested
+        transactions that may be in progress.
 
         .. seealso::
 
             :ref:`session_rollback`
+
+            :ref:`unitofwork_transaction`
 
         """
         if self._transaction is None:
@@ -1297,29 +1270,31 @@ class Session(_SessionClassMethods):
     def commit(self):
         """Flush pending changes and commit the current transaction.
 
-        If no transaction is in progress, this method raises an
-        :exc:`~sqlalchemy.exc.InvalidRequestError`.
+        If no transaction is in progress, the method will first
+        "autobegin" a new transaction and commit.
 
-        By default, the :class:`.Session` also expires all database
-        loaded state on all ORM-managed attributes after transaction commit.
-        This so that subsequent operations load the most recent
-        data from the database.   This behavior can be disabled using
-        the ``expire_on_commit=False`` option to :class:`.sessionmaker` or
-        the :class:`.Session` constructor.
+        If :term:`1.x-style` use is in effect and there are currently
+        SAVEPOINTs in progress via :meth:`_orm.Session.begin_nested`,
+        the operation will release the current SAVEPOINT but not commit
+        the outermost database transaction.
 
-        If a subtransaction is in effect (which occurs when begin() is called
-        multiple times), the subtransaction will be closed, and the next call
-        to ``commit()`` will operate on the enclosing transaction.
+        If :term:`2.x-style` use is in effect via the
+        :paramref:`_orm.Session.future` flag, the outermost database
+        transaction is committed unconditionally, automatically releasing any
+        SAVEPOINTs in effect.
 
-        When using the :class:`.Session` in its default mode of
-        ``autocommit=False``, a new transaction will
-        be begun immediately after the commit, but note that the newly begun
-        transaction does *not* use any connection resources until the first
-        SQL is actually emitted.
+        When using legacy "autocommit" mode, this method is only
+        valid to call if a transaction is actually in progress, else
+        an error is raised.   Similarly, when using legacy "subtransactions",
+        the method will instead close out the current "subtransaction",
+        rather than the actual database transaction, if a transaction
+        is in progress.
 
         .. seealso::
 
             :ref:`session_committing`
+
+            :ref:`unitofwork_transaction`
 
         """
         if self._transaction is None:
