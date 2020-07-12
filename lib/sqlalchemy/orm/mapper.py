@@ -21,6 +21,7 @@ from itertools import chain
 import sys
 import types
 import weakref
+import copy
 
 from . import attributes
 from . import exc as orm_exc
@@ -3222,7 +3223,7 @@ class Mapper(
         if key in self._memoized_values:
             return self._memoized_values[key]
         else:
-            self._memoized_values[key] = value = callable_()
+            self._memoized_values[copy.deepcopy(key)] = value = callable_()
             return value
 
     @util.memoized_property
