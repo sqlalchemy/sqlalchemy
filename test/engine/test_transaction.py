@@ -1110,6 +1110,17 @@ class IsolationLevelTest(fixtures.TestBase):
             self._non_default_isolation_level(),
         )
 
+    def test_per_option_engine(self):
+        eng = create_engine(testing.db.url).execution_options(
+            isolation_level=self._non_default_isolation_level()
+        )
+
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+
     def test_isolation_level_accessors_connection_default(self):
         eng = create_engine(testing.db.url)
         with eng.connect() as conn:
