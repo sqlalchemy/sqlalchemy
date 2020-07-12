@@ -934,7 +934,7 @@ class GetTest(QueryTest):
         s.execute(stmt)
 
         eq_(
-            m1.mock_calls[0].args[0].load_options,
+            m1.mock_calls[0][1][0].load_options,
             QueryContext.default_load_options(
                 _autoflush=False, _populate_existing=True, _yield_per=10
             ),
