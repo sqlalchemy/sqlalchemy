@@ -1292,7 +1292,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     if of_type:
                         right = of_type
                     else:
-                        right = onclause.property.entity
+                        right = onclause.property
+
+                        try:
+                            right = right.entity
+                        except AttributeError as err:
+                            raise sa_exc.ArgumentError(
+                                "Join target %s does not refer to a "
+                                "mapped entity" % right
+                            ) from err
 
                 left = onclause._parententity
 
