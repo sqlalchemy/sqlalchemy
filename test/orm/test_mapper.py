@@ -90,6 +90,31 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             [("name1foo",)],
         )
 
+    def test_insert_schema_memoizations(self):
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users, properties={"foobar": users.c.name})
+
+        User.__table__.schema = 'public'
+        users.insert().values({User.foobar: "name1"}).execute()
+        eq_(
+            sa.select(User.foobar)
+            .where(User.foobar == "name1")
+            .execute()
+            .fetchall(),
+            [("name1",)],
+        )
+
+        User.__table__.schema = 'someschema'
+        users.insert().values({User.foobar: "name1"}).execute()
+        eq_(
+            sa.select(User.foobar)
+            .where(User.foobar == "name1")
+            .execute()
+            .fetchall(),
+            [("name1",)],
+        )
+        
     def test_utils(self):
         users = self.tables.users
         addresses = self.tables.addresses
