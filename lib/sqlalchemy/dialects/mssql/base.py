@@ -342,10 +342,11 @@ Valid values for ``isolation_level`` include:
 * ``SERIALIZABLE``
 * ``SNAPSHOT`` - specific to SQL Server
 
-.. versionadded:: 1.1 support for isolation level setting on Microsoft
-   SQL Server.
-
 .. versionadded:: 1.2 added AUTOCOMMIT isolation level setting
+
+.. seealso::
+
+    :ref:`dbapi_autocommit`
 
 Nullability
 -----------

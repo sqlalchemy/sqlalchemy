@@ -312,6 +312,10 @@ The above code is already available in current SQLAlchemy releases.   Driver
 support is available for PostgreSQL, MySQL, SQL Server, and as of SQLAlchemy
 1.3.16 Oracle and SQLite as well.
 
+.. seealso::
+
+    :ref:`dbapi_autocommit`
+
 .. _migration_20_implicit_execution:
 
 "Implicit" and "Connectionless" execution, "bound metadata" removed
