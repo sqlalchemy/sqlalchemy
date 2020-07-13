@@ -23,6 +23,7 @@ import sys
 from . import config
 from .util import gc_collect
 from ..util import cpython
+from ..util import osx
 from ..util import win32
 
 
@@ -106,6 +107,8 @@ class ProfileStatsFile(object):
 
         if win32:
             platform_tokens.append("win")
+        if osx:
+            platform_tokens.append("osx")
         platform_tokens.append(
             "nativeunicode"
             if config.db.dialect.convert_unicode
