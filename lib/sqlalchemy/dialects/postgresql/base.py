@@ -117,6 +117,8 @@ Valid values for ``isolation_level`` include:
 
 .. seealso::
 
+    :ref:`dbapi_autocommit`
+
     :ref:`psycopg2_isolation_level`
 
     :ref:`pg8000_isolation_level`

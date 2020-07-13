@@ -211,16 +211,14 @@ class Connection(Connectable):
         :param autocommit: Available on: Connection, statement.
           When True, a COMMIT will be invoked after execution
           when executed in 'autocommit' mode, i.e. when an explicit
-          transaction is not begun on the connection. Note that DBAPI
-          connections by default are always in a transaction - SQLAlchemy uses
-          rules applied to different kinds of statements to determine if
-          COMMIT will be invoked in order to provide its "autocommit" feature.
-          Typically, all INSERT/UPDATE/DELETE statements as well as
-          CREATE/DROP statements have autocommit behavior enabled; SELECT
-          constructs do not. Use this option when invoking a SELECT or other
-          specific SQL construct where COMMIT is desired (typically when
-          calling stored procedures and such), and an explicit
-          transaction is not in progress.
+          transaction is not begun on the connection.   Note that this
+          is **library level, not DBAPI level autocommit**.  The DBAPI
+          connection will remain in a real transaction unless the
+          "AUTOCOMMIT" isolation level is used.
+
+          .. deprecated:: 1.4  The library-level "autocommit" feature is being
+             removed in favor of database driver "autocommit" which is
+             now widely available.  See the section :ref:`dbapi_autocommit`.
 
         :param compiled_cache: Available on: Connection.
           A dictionary where :class:`.Compiled` objects
