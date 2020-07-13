@@ -2888,9 +2888,12 @@ class MSDialect(default.DefaultDialect):
         for col in cols:
             colmap[col["name"]] = col
         # We also run an sp_columns to check for identity columns:
-        cursor = connection.exec_driver_sql(
-            "sp_columns @table_name = '%s', "
-            "@table_owner = '%s'" % (tablename, owner)
+        cursor = connection.execute(
+            sql.text(
+                "sp_columns @table_name = :table_name, "
+                "@table_owner = :table_owner",
+            ),
+            {"table_name": tablename, "table_owner": owner},
         )
         ic = None
         while True:

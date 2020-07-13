@@ -1668,27 +1668,26 @@ class SQLiteDialect(default.DefaultDialect):
         if schema is not None:
             qschema = self.identifier_preparer.quote_identifier(schema)
             master = "%s.sqlite_master" % qschema
-            s = ("SELECT sql FROM %s WHERE name = '%s'" "AND type='view'") % (
+            s = ("SELECT sql FROM %s WHERE name = ? AND type='view'") % (
                 master,
-                view_name,
             )
-            rs = connection.exec_driver_sql(s)
+            rs = connection.exec_driver_sql(s, (view_name,))
         else:
             try:
                 s = (
                     "SELECT sql FROM "
                     " (SELECT * FROM sqlite_master UNION ALL "
                     "  SELECT * FROM sqlite_temp_master) "
-                    "WHERE name = '%s' "
+                    "WHERE name = ? "
                     "AND type='view'"
-                ) % view_name
-                rs = connection.exec_driver_sql(s)
+                )
+                rs = connection.exec_driver_sql(s, (view_name,))
             except exc.DBAPIError:
                 s = (
-                    "SELECT sql FROM sqlite_master WHERE name = '%s' "
+                    "SELECT sql FROM sqlite_master WHERE name = ? "
                     "AND type='view'"
-                ) % view_name
-                rs = connection.exec_driver_sql(s)
+                )
+                rs = connection.exec_driver_sql(s, (view_name,))
 
         result = rs.fetchall()
         if result:
@@ -2136,19 +2135,17 @@ class SQLiteDialect(default.DefaultDialect):
                 "SELECT sql FROM "
                 " (SELECT * FROM %(schema)ssqlite_master UNION ALL "
                 "  SELECT * FROM %(schema)ssqlite_temp_master) "
-                "WHERE name = '%(table)s' "
-                "AND type = 'table'"
-                % {"schema": schema_expr, "table": table_name}
+                "WHERE name = ? "
+                "AND type = 'table'" % {"schema": schema_expr}
             )
-            rs = connection.exec_driver_sql(s)
+            rs = connection.exec_driver_sql(s, (table_name,))
         except exc.DBAPIError:
             s = (
                 "SELECT sql FROM %(schema)ssqlite_master "
-                "WHERE name = '%(table)s' "
-                "AND type = 'table'"
-                % {"schema": schema_expr, "table": table_name}
+                "WHERE name = ? "
+                "AND type = 'table'" % {"schema": schema_expr}
             )
-            rs = connection.exec_driver_sql(s)
+            rs = connection.exec_driver_sql(s, (table_name,))
         return rs.scalar()
 
     def _get_table_pragma(self, connection, pragma, table_name, schema=None):
