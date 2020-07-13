@@ -562,6 +562,13 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def symbol_names_w_double_quote(self):
+        """Target driver can create tables with a name like 'some " table'
+
+        """
+        return exclusions.open()
+
+    @property
     def datetime_literals(self):
         """target dialect supports rendering of a date, time, or datetime as a
         literal string, e.g. via the TypeEngine.literal_processor() method.

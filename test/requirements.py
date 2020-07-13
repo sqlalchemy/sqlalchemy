@@ -799,6 +799,16 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def symbol_names_w_double_quote(self):
+        """Target driver can create tables with a name like 'some " table'
+
+        """
+
+        return skip_if(
+            [no_support("oracle", "ORA-03001: unimplemented feature")]
+        )
+
+    @property
     def emulated_lastrowid(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
