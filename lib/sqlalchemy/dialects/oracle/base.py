@@ -68,6 +68,10 @@ Valid values for ``isolation_level`` include:
    as well as the notion of a default isolation level, currently harcoded
    to "READ COMMITTED".
 
+.. seealso::
+
+    :ref:`dbapi_autocommit`
+
 Identifier Casing
 -----------------
 

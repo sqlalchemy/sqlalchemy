@@ -173,12 +173,18 @@ one exists.
 
 .. _autocommit:
 
-Understanding Autocommit
-========================
+Library Level (e.g. emulated) Autocommit
+==========================================
 
-.. deprecated:: 2.0  The "autocommit" feature of SQLAlchemy Core is deprecated
-   and will not be present in version 2.0 of SQLAlchemy.
-   See :ref:`migration_20_autocommit` for background.
+.. deprecated:: 1.4  The "autocommit" feature of SQLAlchemy Core is deprecated
+   and will not be present in version 2.0 of SQLAlchemy.   DBAPI-level
+   AUTOCOMMIT is now widely available which offers superior performance
+   and occurs transparently.  See :ref:`migration_20_autocommit` for background.
+
+.. note:: This section discusses the feature within SQLAlchemy that automatically
+   invokes the ``.commit()`` method on a DBAPI connection, however this is against
+   a DBAPI connection that **is itself transactional**.  For true AUTOCOMMIT,
+   see the next section :ref:`dbapi_autocommit`.
 
 The previous transaction example illustrates how to use :class:`.Transaction`
 so that several executions can take part in the same transaction. What happens
@@ -217,6 +223,108 @@ it so that a SELECT statement will issue a COMMIT::
 
     with engine.connect().execution_options(autocommit=True) as conn:
         conn.execute(text("SELECT my_mutating_procedure()"))
+
+.. _dbapi_autocommit:
+
+Setting Transaction Isolation Levels including DBAPI Autocommit
+=================================================================
+
+Most DBAPIs support the concept of configurable transaction :term:`isolation` levels.
+These are traditionally the four levels "READ UNCOMMITTED", "READ COMMITTED",
+"REPEATABLE READ" and "SERIALIZABLE".  These are usually applied to a
+DBAPI connection before it begins a new transaction, noting that most
+DBAPIs will begin this transaction implicitly when SQL statements are first
+emitted.
+
+DBAPIs that support isolation levels also usually support the concept of true
+"autocommit", which means that the DBAPI connection itself will be placed into
+a non-transactional autocommit mode.   This usually means that the typical
+DBAPI behavior of emitting "BEGIN" to the database automatically no longer
+occurs, but it may also include other directives.   When using this mode,
+**the DBAPI does not use a transaction under any circumstances**.  SQLAlchemy
+methods like ``.begin()``, ``.commit()`` and ``.rollback()`` pass silently
+and have no effect.
+
+Instead, each statement invoked upon the connection will commit any changes
+automatically; it sometimes also means that the connection itself will use
+fewer server-side database resources. For this reason and others, "autocommit"
+mode is often desirable for non-tranasctional applications that need to read
+individual tables or rows in isolation of a true ACID transaction.
+
+SQLAlchemy dialects can support these isolation levels as well as autocommit to
+as great a degree as possible.   The levels are set via family of
+"execution_options" parameters and methods that are throughout the Core, such
+as the :meth:`_engine.Connection.execution_options` method.   The parameter is
+known as :paramref:`_engine.Connection.execution_options.isolation_level` and
+the values are strings which are typically a subset of the following names::
+
+    # possible values for Connection.execution_options(isolation_level="<value>")
+
+    "AUTOCOMMIT"
+    "READ COMMITTED"
+    "READ UNCOMMITTED"
+    "REPEATABLE READ"
+    "SERIALIZABLE"
+
+Not every DBAPI supports every value; if an unsupported value is used for a
+certain backend, an error is raised.
+
+For example, to force REPEATABLE READ on a specific connection::
+
+  with engine.connect().execution_options(isolation_level="REPEATBLE READ") as connection:
+      connection.execute(<statement>)
+
+The :paramref:`_engine.Connection.execution_options.isolation_level` option
+may also be set engine wide, as is often preferable.   It can be set either
+within :func:`_sa.create_engine` directly via the :paramref:`_sa.create_engine.execution_options`
+parameter::
+
+
+    from sqlalchemy import create_engine
+
+    eng = create_engine(
+        "postgresql://scott:tiger@localhost/test",
+        isolation_level='REPEATABLE READ'
+    )
+
+Or for an application that chooses between multiple levels, as may be the case
+for the use of "AUTOCOMMIT" to switch between "transactional" and "read-only"
+engines, the :meth:`_engine.Engine.execution_options` method will provide a shallow
+copy of the :class:`_engine.Engine` that will apply the given isolation
+level to all connections::
+
+
+    from sqlalchemy import create_engine
+
+    eng = create_engine("postgresql://scott:tiger@localhost/test")
+
+    autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
+
+
+Above, both ``eng`` and ``autocommit_engine`` share the same dialect
+and connection pool.  However the "AUTOCOMMIT" mode will be set upon connections
+when they are acquired from the ``autocommit_engine``.
+
+The isolation level setting, regardless of which one it is, is unconditionally
+reverted when a connection is returned to the connection pool.
+
+
+.. note:: The :paramref:`_engine.Connection.execution_options.isolation_level`
+   parameter necessarily does not apply to statement level options, such as
+   that of :meth:`_sql.Executable.execution_options`.  This because the option
+   must be set on a DBAPI connection on a per-transaction basis.
+
+.. seealso::
+
+      :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
+
+      :ref:`PostgreSQL Transaction Isolation <postgresql_isolation_level>`
+
+      :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
+
+      :ref:`SQL Server Transaction Isolation <mssql_isolation_level>`
+
+      :ref:`session_transaction_isolation` - for the ORM
 
 .. _dbengine_implicit:
 

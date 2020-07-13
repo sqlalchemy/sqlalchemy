@@ -491,14 +491,23 @@ transactions set the flag ``twophase=True`` on the session::
 
 .. _session_transaction_isolation:
 
-Setting Transaction Isolation Levels
-------------------------------------
+Setting Transaction Isolation Levels / DBAPI AUTOCOMMIT
+-------------------------------------------------------
 
-:term:`Isolation` refers to the behavior of the transaction at the database
-level in relation to other transactions occurring concurrently.  There
-are four well-known modes of isolation, and typically the Python DBAPI
-allows these to be set on a per-connection basis, either through explicit
-APIs or via database-specific calls.
+Most DBAPIs support the concept of configurable transaction :term:`isolation` levels.
+These are traditionally the four levels "READ UNCOMMITTED", "READ COMMITTED",
+"REPEATABLE READ" and "SERIALIZABLE".  These are usually applied to a
+DBAPI connection before it begins a new transaction, noting that most
+DBAPIs will begin this transaction implicitly when SQL statements are first
+emitted.
+
+DBAPIs that support isolation levels also usually support the concept of true
+"autocommit", which means that the DBAPI connection itself will be placed into
+a non-transactional autocommit mode.   This usually means that the typical
+DBAPI behavior of emitting "BEGIN" to the database automatically no longer
+occurs, but it may also include other directives.   When using this mode,
+**the DBAPI does not use a transaction under any circumstances**.  SQLAlchemy
+methods like ``.begin()``, ``.commit()`` and ``.rollback()`` pass silently.
 
 SQLAlchemy's dialects support settable isolation modes on a per-:class:`_engine.Engine`
 or per-:class:`_engine.Connection` basis, using flags at both the
@@ -510,33 +519,65 @@ connections, but does not expose transaction isolation directly.  So in
 order to affect transaction isolation level, we need to act upon the
 :class:`_engine.Engine` or :class:`_engine.Connection` as appropriate.
 
-.. seealso::
-
-    :paramref:`_sa.create_engine.isolation_level`
-
-    :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
-
-    :ref:`PostgreSQL Isolation Level <postgresql_isolation_level>`
-
-    :ref:`MySQL Isolation Level <mysql_isolation_level>`
-
-Setting Isolation Engine-Wide
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Setting Isolation For A Sessionmaker / Engine Wide
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To set up a :class:`.Session` or :class:`.sessionmaker` with a specific
-isolation level globally, use the :paramref:`_sa.create_engine.isolation_level`
-parameter::
+isolation level globally, the first technique is that an
+:class:`_engine.Engine` can be constructed against a specific isolation level
+in all cases, which is then used as the source of connectivity for a
+:class:`_orm.Session` and/or :class:`_orm.sessionmaker`::
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     eng = create_engine(
         "postgresql://scott:tiger@localhost/test",
-        isolation_level='REPEATABLE_READ')
+        isolation_level='REPEATABLE READ'
+    )
 
-    maker = sessionmaker(bind=eng)
+    Session = sessionmaker(eng)
 
-    session = maker()
+
+Another option, useful if there are to be two engines with different isolation
+levels at once, is to use the :meth:`_engine.Engine.execution_options` method,
+which will produce a shallow copy of the original :class:`_engine.Engine` which
+shares the same connection pool as the parent engine.  This is often preferable
+when operations will be separated into "transactional" and "autocommit"
+operations::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    eng = create_engine("postgresql://scott:tiger@localhost/test")
+
+    autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
+
+    transactional_session = sessionmaker(eng)
+    autocommit_session = sessionmaker(autocommit_engine)
+
+
+Above, both "``eng``" and ``"autocommit_engine"`` share the same dialect and
+connection pool.  However the "AUTOCOMMIT" mode will be set upon connections
+when they are acquired from the ``autocommit_engine``.  The two
+:class:`_orm.sessionmaker` objects "``transactional_session``" and "``autocommit_session"``
+then inherit these characteristics when they work with database connections.
+
+
+The "``autocommit_session``" **continues to have transactional semantics**,
+including that
+:meth:`_orm.Session.commit` and :meth:`_orm.Session.rollback` still consider
+themselves to be "committing" and "rolling back" objects, however the
+transaction will be silently absent.  For this reason, **it is typical,
+though not strictly required, that a Session with AUTOCOMMIT isolation be
+used in a read-only fashion**, that is::
+
+
+    with autocommit_session() as session:
+        some_objects = session.execute(<statement>)
+        some_other_objects = session.execute(<statement>)
+
+    # closes connection
 
 
 Setting Isolation for Individual Sessions
@@ -545,12 +586,11 @@ Setting Isolation for Individual Sessions
 When we make a new :class:`.Session`, either using the constructor directly
 or when we call upon the callable produced by a :class:`.sessionmaker`,
 we can pass the ``bind`` argument directly, overriding the pre-existing bind.
-We can combine this with the :meth:`_engine.Engine.execution_options` method
-in order to produce a copy of the original :class:`_engine.Engine` that will
-add this option::
+We can for example create our :class:`_orm.Session` from the
+"``transactional_session``" and pass the "``autocommit_engine``"::
 
-    session = maker(
-        bind=engine.execution_options(isolation_level='SERIALIZABLE'))
+    with transactional_session(bind=autocommit_engine) as session:
+        # work with session
 
 For the case where the :class:`.Session` or :class:`.sessionmaker` is
 configured with multiple "binds", we can either re-specify the ``binds``
@@ -559,8 +599,7 @@ can use the :meth:`.Session.bind_mapper` or :meth:`.Session.bind_table`
 methods::
 
     session = maker()
-    session.bind_mapper(
-        User, user_engine.execution_options(isolation_level='SERIALIZABLE'))
+    session.bind_mapper(User, autocommit_engine)
 
 We can also use the individual transaction method that follows.
 
@@ -571,49 +610,27 @@ A key caveat regarding isolation level is that the setting cannot be
 safely modified on a :class:`_engine.Connection` where a transaction has already
 started.  Databases cannot change the isolation level of a transaction
 in progress, and some DBAPIs and SQLAlchemy dialects
-have inconsistent behaviors in this area.  Some may implicitly emit a
-ROLLBACK and some may implicitly emit a COMMIT, others may ignore the setting
-until the next transaction.  Therefore SQLAlchemy emits a warning if this
-option is set when a transaction is already in play.  The :class:`.Session`
-object does not provide for us a :class:`_engine.Connection` for use in a transaction
-where the transaction is not already begun.  So here, we need to pass
-execution options to the :class:`.Session` at the start of a transaction
-by passing :paramref:`.Session.connection.execution_options`
-provided by the :meth:`.Session.connection` method::
+have inconsistent behaviors in this area.
+
+Therefore it is preferable to use a :class:`_orm.Session` that is up front
+bound to an engine with the desired isolation level.  However, the isolation
+level on a per-connection basis can be affected by using the
+:meth:`_orm.Session.connection` method at the start of a transaction::
 
     from sqlalchemy.orm import Session
 
     sess = Session(bind=engine)
-    sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
+    with sess.begin():
+        sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
-    # work with session
-
-    # commit transaction.  the connection is released
+    # commits transaction.  the connection is released
     # and reverted to its previous isolation level.
-    sess.commit()
 
 Above, we first produce a :class:`.Session` using either the constructor
 or a :class:`.sessionmaker`.   Then we explicitly set up the start of
 a transaction by calling upon :meth:`.Session.connection`, which provides
 for execution options that will be passed to the connection before the
-transaction is begun.   If we are working with a :class:`.Session` that
-has multiple binds or some other custom scheme for :meth:`.Session.get_bind`,
-we can pass additional arguments to :meth:`.Session.connection` in order to
-affect how the bind is procured::
-
-    sess = my_sessionmaker()
-
-    # set up a transaction for the bind associated with
-    # the User mapper
-    sess.connection(
-        mapper=User,
-        execution_options={'isolation_level': 'SERIALIZABLE'})
-
-    # work with session
-
-    # commit transaction.  the connection is released
-    # and reverted to its previous isolation level.
-    sess.commit()
+transaction is begun.
 
 
 Tracking Transaction State with Events

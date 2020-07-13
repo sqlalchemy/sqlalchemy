@@ -158,7 +158,9 @@ MySQLdb, MySQL-Client, MySQL-Connector Python, and PyMySQL.   Using it,
 the MySQL connection will return true for the value of
 ``SELECT @@autocommit;``.
 
-.. versionadded:: 1.1 - added support for the AUTOCOMMIT isolation level.
+.. seealso::
+
+    :ref:`dbapi_autocommit`
 
 AUTO_INCREMENT Behavior
 -----------------------

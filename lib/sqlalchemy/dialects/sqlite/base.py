@@ -212,6 +212,10 @@ by *not even emitting BEGIN* until the first write operation.
     degree than is often feasible. See the section :ref:`pysqlite_serializable`
     for techniques to work around this behavior.
 
+.. seealso::
+
+    :ref:`dbapi_autocommit`
+
 SAVEPOINT Support
 ----------------------------
 
