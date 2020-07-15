@@ -173,6 +173,7 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
         insp.get_table_options(name)
 
     @quote_fixtures
+    @testing.requires.view_column_reflection
     def test_get_view_definition(self, name):
         insp = inspect(testing.db)
         assert insp.get_view_definition("view %s" % name)
