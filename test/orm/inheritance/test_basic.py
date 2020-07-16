@@ -1938,6 +1938,11 @@ class VersioningTest(fixtures.MappedTest):
             with_for_update=dict(read=True),
         )
 
+        if not testing.db.dialect.supports_sane_rowcount:
+            sess2.flush()
+        else:
+            assert_raises(orm_exc.StaleDataError, sess2.flush)
+
         sess2.rollback()
 
         sess2.refresh(s2)
