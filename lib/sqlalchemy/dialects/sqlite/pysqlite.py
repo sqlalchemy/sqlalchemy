@@ -120,6 +120,46 @@ that creates a Python sqlite3 driver level connection directly.
     `Uniform Resource Identifiers <https://www.sqlite.org/uri.html>`_ - in
     the SQLite documentation
 
+.. _pysqlite_regexp:
+
+Regular Expression Support
+---------------------------
+
+.. versionadded:: 1.4
+
+Support for the :meth:`_sql.ColumnOperators.regexp_match` operator is provided
+using Python's re.match_ function.  SQLite itself does not include a working
+regular expression operator; instead, it includes a non-implemented placeholder
+operator ``REGEXP`` that calls a user-defined function that must be provided.
+
+SQLAlchemy's implementation makes use of the pysqlite create_function_ hook
+as follows::
+
+
+    def regexp(a, b):
+        return bool(re.match(a, b))
+
+    sqlite_connection.create_function(
+        "regexp", 2, regexp,
+    )
+
+There is currently no support for regular expression flags as a separate
+argument, as these are not supported by SQLite's REGEXP operator, however these
+may be included inline within the regular expression string.  See `Python regular expressions`_ for
+details.
+
+.. seealso::
+
+    `Python regular expressions`_: Documentation for Python's regular expression syntax.
+
+.. _create_function: https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.create_function
+
+.. _re.match: https://docs.python.org/3/library/re.html#re.match
+
+.. _Python regular expressions: https://docs.python.org/3/library/re.html#re.match
+
+
+
 Compatibility with sqlite3 "native" date and datetime types
 -----------------------------------------------------------
 
@@ -362,6 +402,7 @@ by adding the desired locking mode to our ``"BEGIN"``::
 """  # noqa
 
 import os
+import re
 
 from .base import DATE
 from .base import DATETIME
@@ -460,6 +501,37 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             return super(SQLiteDialect_pysqlite, self).set_isolation_level(
                 connection, level
             )
+
+    def on_connect(self):
+        connect = super(SQLiteDialect_pysqlite, self).on_connect()
+
+        def regexp(a, b):
+            return bool(re.match(a, b))
+
+        def set_regexp(connection):
+            if hasattr(connection, "connection"):
+                dbapi_connection = connection.connection
+            else:
+                dbapi_connection = connection
+
+            dbapi_connection.create_function(
+                "regexp", 2, regexp,
+            )
+
+        fns = [set_regexp]
+
+        if self.isolation_level is not None:
+
+            def iso_level(conn):
+                self.set_isolation_level(conn, self.isolation_level)
+
+            fns.append(iso_level)
+
+        def connect(conn):
+            for fn in fns:
+                fn(conn)
+
+        return connect
 
     def create_connect_args(self, url):
         if url.username or url.password or url.host or url.port:

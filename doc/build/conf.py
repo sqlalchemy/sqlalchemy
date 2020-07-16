@@ -101,6 +101,7 @@ autodocmods_convert_modname = {
     "sqlalchemy.sql.dml": "sqlalchemy.sql.expression",
     "sqlalchemy.sql.ddl": "sqlalchemy.schema",
     "sqlalchemy.sql.base": "sqlalchemy.sql.expression",
+    "sqlalchemy.sql.operators": "sqlalchemy.sql.expression",
     "sqlalchemy.event.base": "sqlalchemy.event",
     "sqlalchemy.engine.base": "sqlalchemy.engine",
     "sqlalchemy.engine.url": "sqlalchemy.engine",

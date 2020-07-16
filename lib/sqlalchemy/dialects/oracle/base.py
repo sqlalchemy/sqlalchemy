@@ -23,7 +23,7 @@ available, which are the use of IDENTITY columns (Oracle 12 and above only)
 or the association of a SEQUENCE with the column.
 
 Specifying GENERATED AS IDENTITY (Oracle 12 and above)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Starting from version 12 Oracle can make use of identity columns using
 the :class:`_sql.Identity` to specify the autoincrementing behavior::
@@ -53,7 +53,7 @@ setting :paramref:`_schema.Identity.on_null` to ``True`` to specify ON NULL
 in conjunction with a 'BY DEFAULT' identity column.
 
 Using a SEQUENCE (all Oracle versions)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Older version of Oracle had no "autoincrement"
 feature, SQLAlchemy relies upon sequences to produce these values.   With the
@@ -1210,6 +1210,43 @@ class OracleCompiler(compiler.SQLCompiler):
             self.process(binary.left),
             self.process(binary.right),
         )
+
+    def _get_regexp_args(self, binary, kw):
+        string = self.process(binary.left, **kw)
+        pattern = self.process(binary.right, **kw)
+        flags = binary.modifiers["flags"]
+        if flags is not None:
+            flags = self.process(flags, **kw)
+        return string, pattern, flags
+
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
+        string, pattern, flags = self._get_regexp_args(binary, kw)
+        if flags is None:
+            return "REGEXP_LIKE(%s, %s)" % (string, pattern)
+        else:
+            return "REGEXP_LIKE(%s, %s, %s)" % (string, pattern, flags)
+
+    def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
+        return "NOT %s" % self.visit_regexp_match_op_binary(
+            binary, operator, **kw
+        )
+
+    def visit_regexp_replace_op_binary(self, binary, operator, **kw):
+        string, pattern, flags = self._get_regexp_args(binary, kw)
+        replacement = self.process(binary.modifiers["replacement"], **kw)
+        if flags is None:
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
+                string,
+                pattern,
+                replacement,
+            )
+        else:
+            return "REGEXP_REPLACE(%s, %s, %s, %s)" % (
+                string,
+                pattern,
+                replacement,
+                flags,
+            )
 
 
 class OracleDDLCompiler(compiler.DDLCompiler):

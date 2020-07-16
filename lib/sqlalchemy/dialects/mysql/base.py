@@ -1759,6 +1759,62 @@ class MySQLCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
+    def _mariadb_regexp_flags(self, flags, pattern, **kw):
+        return "CONCAT('(?', %s, ')', %s)" % (
+            self.process(flags, **kw),
+            self.process(pattern, **kw),
+        )
+
+    def _regexp_match(self, op_string, binary, operator, **kw):
+        flags = binary.modifiers["flags"]
+        if flags is None:
+            return self._generate_generic_binary(binary, op_string, **kw)
+        elif self.dialect.is_mariadb:
+            return "%s%s%s" % (
+                self.process(binary.left, **kw),
+                op_string,
+                self._mariadb_regexp_flags(flags, binary.right),
+            )
+        else:
+            text = "REGEXP_LIKE(%s, %s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+                self.process(flags, **kw),
+            )
+            if op_string == " NOT REGEXP ":
+                return "NOT %s" % text
+            else:
+                return text
+
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._regexp_match(" REGEXP ", binary, operator, **kw)
+
+    def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._regexp_match(" NOT REGEXP ", binary, operator, **kw)
+
+    def visit_regexp_replace_op_binary(self, binary, operator, **kw):
+        flags = binary.modifiers["flags"]
+        replacement = binary.modifiers["replacement"]
+        if flags is None:
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+                self.process(replacement, **kw),
+            )
+        elif self.dialect.is_mariadb:
+            return "REGEXP_REPLACE(%s, %s, %s)" % (
+                self.process(binary.left, **kw),
+                self._mariadb_regexp_flags(flags, binary.right),
+                self.process(replacement, **kw),
+            )
+        else:
+            return "REGEXP_REPLACE(%s, %s, %s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+                self.process(replacement, **kw),
+                self.process(flags, **kw),
+            )
+
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kw):

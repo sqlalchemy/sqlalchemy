@@ -1004,6 +1004,23 @@ class LikeFunctionsTest(fixtures.TablesTest):
         self._test(col.contains("b%cd", autoescape=True, escape="#"), {3})
         self._test(col.contains("b#cd", autoescape=True, escape="#"), {7})
 
+    @testing.requires.regexp_match
+    def test_regexp_match(self):
+        col = self.tables.some_table.c.data
+        self._test(col.regexp_match("a.cde"), {1, 5, 6, 9})
+
+    @testing.requires.regexp_match
+    def test_not_regexp_match(self):
+        col = self.tables.some_table.c.data
+        self._test(~col.regexp_match("a.cde"), {2, 3, 4, 7, 8, 10})
+
+    @testing.requires.regexp_replace
+    def test_regexp_replace(self):
+        col = self.tables.some_table.c.data
+        self._test(
+            col.regexp_replace("a.cde", "FOO").contains("FOO"), {1, 5, 6, 9}
+        )
+
 
 class ComputedColumnTest(fixtures.TablesTest):
     __backend__ = True

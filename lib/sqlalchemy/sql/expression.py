@@ -44,6 +44,7 @@ __all__ = [
     "case",
     "cast",
     "column",
+    "custom_op",
     "cte",
     "delete",
     "desc",
@@ -81,6 +82,7 @@ __all__ = [
     "union",
     "union_all",
     "update",
+    "quoted_name",
     "within_group",
     "Subquery",
     "TableSample",
@@ -141,6 +143,9 @@ from .functions import modifier  # noqa
 from .lambdas import lambda_stmt  # noqa
 from .lambdas import LambdaElement  # noqa
 from .lambdas import StatementLambdaElement  # noqa
+from .operators import ColumnOperators  # noqa
+from .operators import custom_op  # noqa
+from .operators import Operators  # noqa
 from .selectable import Alias  # noqa
 from .selectable import AliasedReturnsRows  # noqa
 from .selectable import CompoundSelect  # noqa

@@ -12,6 +12,7 @@ from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import schema
@@ -2345,4 +2346,150 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable "
             "WHERE to_tsvector(%(to_tsvector_1)s, mytable.title) @@ "
             """to_tsquery('english', %(to_tsvector_2)s)""",
+        )
+
+
+class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "postgresql"
+
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid ~ %(myid_1)s",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_match_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid ~ mytable.name",
+            checkparams={},
+        )
+
+    def test_regexp_match_str(self):
+        self.assert_compile(
+            literal("string").regexp_match(self.table.c.name),
+            "%(param_1)s ~ mytable.name",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid ~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
+            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+        )
+
+    def test_regexp_match_flags_ignorecase(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="i"),
+            "mytable.myid ~* %(myid_1)s",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_match_flags_col(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags=self.table.c.name),
+            "mytable.myid ~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid !~ %(myid_1)s",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match_column(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid !~ mytable.name",
+            checkparams={},
+        )
+
+    def test_not_regexp_match_str(self):
+        self.assert_compile(
+            ~literal("string").regexp_match(self.table.c.name),
+            "%(param_1)s !~ mytable.name",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid !~ CONCAT('(?', %(myid_1)s, ')', %(myid_2)s)",
+            checkparams={"myid_2": "pattern", "myid_1": "ig"},
+        )
+
+    def test_not_regexp_match_flags_ignorecase(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="i"),
+            "mytable.myid !~* %(myid_1)s",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match_flags_col(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(
+                "pattern", flags=self.table.c.name
+            ),
+            "mytable.myid !~ CONCAT('(?', mytable.name, ')', %(myid_1)s)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_replace(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", "replacement"),
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_2)s)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )
+
+    def test_regexp_replace_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, mytable.name)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_replace_column2(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(self.table.c.name, "replacement"),
+            "REGEXP_REPLACE(mytable.myid, mytable.name, %(myid_1)s)",
+            checkparams={"myid_1": "replacement"},
+        )
+
+    def test_regexp_replace_string(self):
+        self.assert_compile(
+            literal("string").regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(%(param_1)s, %(param_2)s, mytable.name)",
+            checkparams={"param_2": "pattern", "param_1": "string"},
+        )
+
+    def test_regexp_replace_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="ig"
+            ),
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s, %(myid_3)s, %(myid_2)s)",
+            checkparams={
+                "myid_1": "pattern",
+                "myid_3": "replacement",
+                "myid_2": "ig",
+            },
+        )
+
+    def test_regexp_replace_flags_col(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags=self.table.c.name
+            ),
+            "REGEXP_REPLACE(mytable.myid, %(myid_1)s,"
+            " %(myid_2)s, mytable.name)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
         )

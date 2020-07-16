@@ -2109,6 +2109,24 @@ class SQLCompiler(Compiled):
             **kw
         )
 
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError(
+            "%s dialect does not support regular expressions"
+            % self.dialect.name
+        )
+
+    def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError(
+            "%s dialect does not support regular expressions"
+            % self.dialect.name
+        )
+
+    def visit_regexp_replace_op_binary(self, binary, operator, **kw):
+        raise exc.CompileError(
+            "%s dialect does not support regular expression replacements"
+            % self.dialect.name
+        )
+
     def visit_bindparam(
         self,
         bindparam,
@@ -3670,6 +3688,20 @@ class StrSQLCompiler(SQLCompiler):
 
     def get_from_hint_text(self, table, text):
         return "[%s]" % text
+
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(binary, " <regexp> ", **kw)
+
+    def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(binary, " <not regexp> ", **kw)
+
+    def visit_regexp_replace_op_binary(self, binary, operator, **kw):
+        replacement = binary.modifiers["replacement"]
+        return "<regexp replace>(%s, %s, %s)" % (
+            binary.left._compiler_dispatch(self, **kw),
+            binary.right._compiler_dispatch(self, **kw),
+            replacement._compiler_dispatch(self, **kw),
+        )
 
 
 class DDLCompiler(Compiled):

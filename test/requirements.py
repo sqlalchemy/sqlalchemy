@@ -1651,6 +1651,14 @@ class DefaultRequirements(SuiteRequirements):
         return self.computed_columns + skip_if("oracle")
 
     @property
+    def regexp_match(self):
+        return only_on(["postgresql", "mysql", "mariadb", "oracle", "sqlite"])
+
+    @property
+    def regexp_replace(self):
+        return only_on(["postgresql", "mysql>=8", "mariadb", "oracle"])
+
+    @property
     def supports_distinct_on(self):
         """If a backend supports the DISTINCT ON in a select"""
         return only_if(["postgresql"])

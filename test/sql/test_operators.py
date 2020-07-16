@@ -2365,6 +2365,181 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
+class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        assert_raises_message(
+            exc.CompileError,
+            "default dialect does not support regular expressions",
+            self.table.c.myid.regexp_match("pattern").compile,
+            dialect=default.DefaultDialect(),
+        )
+
+    def test_not_regexp_match(self):
+        assert_raises_message(
+            exc.CompileError,
+            "default dialect does not support regular expressions",
+            (~self.table.c.myid.regexp_match("pattern")).compile,
+            dialect=default.DefaultDialect(),
+        )
+
+    def test_regexp_replace(self):
+        assert_raises_message(
+            exc.CompileError,
+            "default dialect does not support regular expression replacements",
+            self.table.c.myid.regexp_replace("pattern", "rep").compile,
+            dialect=default.DefaultDialect(),
+        )
+
+
+class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default_enhanced"
+
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid <regexp> :myid_1",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_match_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid <regexp> mytable.name",
+            checkparams={},
+        )
+
+    def test_regexp_match_str(self):
+        self.assert_compile(
+            literal("string").regexp_match(self.table.c.name),
+            ":param_1 <regexp> mytable.name",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid <regexp> :myid_1",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid <not regexp> :myid_1",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match_column(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid <not regexp> mytable.name",
+            checkparams={},
+        )
+
+    def test_not_regexp_match_str(self):
+        self.assert_compile(
+            ~literal("string").regexp_match(self.table.c.name),
+            ":param_1 <not regexp> mytable.name",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid <not regexp> :myid_1",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_replace(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", "replacement"),
+            "<regexp replace>(mytable.myid, :myid_1, :myid_2)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )
+
+    def test_regexp_replace_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", self.table.c.name),
+            "<regexp replace>(mytable.myid, :myid_1, mytable.name)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_replace_column2(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(self.table.c.name, "replacement"),
+            "<regexp replace>(mytable.myid, mytable.name, :myid_1)",
+            checkparams={"myid_1": "replacement"},
+        )
+
+    def test_regexp_replace_string(self):
+        self.assert_compile(
+            literal("string").regexp_replace("pattern", self.table.c.name),
+            "<regexp replace>(:param_1, :param_2, mytable.name)",
+            checkparams={"param_2": "pattern", "param_1": "string"},
+        )
+
+    def test_regexp_replace_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="ig"
+            ),
+            "<regexp replace>(mytable.myid, :myid_1, :myid_2)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )
+
+    def test_regexp_precedence_1(self):
+        self.assert_compile(
+            and_(
+                self.table.c.myid.match("foo"),
+                self.table.c.myid.regexp_match("xx"),
+            ),
+            "mytable.myid MATCH :myid_1 AND " "mytable.myid <regexp> :myid_2",
+        )
+        self.assert_compile(
+            and_(
+                self.table.c.myid.match("foo"),
+                ~self.table.c.myid.regexp_match("xx"),
+            ),
+            "mytable.myid MATCH :myid_1 AND "
+            "mytable.myid <not regexp> :myid_2",
+        )
+        self.assert_compile(
+            and_(
+                self.table.c.myid.match("foo"),
+                self.table.c.myid.regexp_replace("xx", "yy"),
+            ),
+            "mytable.myid MATCH :myid_1 AND "
+            "<regexp replace>(mytable.myid, :myid_2, :myid_3)",
+        )
+
+    def test_regexp_precedence_2(self):
+        self.assert_compile(
+            self.table.c.myid + self.table.c.myid.regexp_match("xx"),
+            "mytable.myid + (mytable.myid <regexp> :myid_1)",
+        )
+        self.assert_compile(
+            self.table.c.myid + ~self.table.c.myid.regexp_match("xx"),
+            "mytable.myid + (mytable.myid <not regexp> :myid_1)",
+        )
+        self.assert_compile(
+            self.table.c.myid + self.table.c.myid.regexp_replace("xx", "yy"),
+            "mytable.myid + ("
+            "<regexp replace>(mytable.myid, :myid_1, :myid_2))",
+        )
+
+
 class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
