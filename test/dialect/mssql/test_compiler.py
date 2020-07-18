@@ -40,10 +40,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(sql.false(), "0")
         self.assert_compile(sql.true(), "1")
 
-    def test_select(self):
-        t = table("sometable", column("somecolumn"))
+    @testing.combinations(
+        ("plain", "sometable", "sometable"),
+        ("matched_square_brackets", "colo[u]r", "[colo[u]]r]"),
+        ("unmatched_left_square_bracket", "colo[ur", "[colo[ur]"),
+        ("unmatched_right_square_bracket", "colou]r", "[colou]]r]"),
+        ("double quotes", 'Edwin "Buzz" Aldrin', '[Edwin "Buzz" Aldrin]'),
+        ("dash", "Dash-8", "[Dash-8]"),
+        ("slash", "tl/dr", "[tl/dr]"),
+        ("space", "Red Deer", "[Red Deer]"),
+        ("question mark", "OK?", "[OK?]"),
+        ("percent", "GST%", "[GST%]"),
+        id_="iaa",
+    )
+    def test_identifier_rendering(self, table_name, rendered_name):
+        t = table(table_name, column("somecolumn"))
         self.assert_compile(
-            t.select(), "SELECT sometable.somecolumn FROM sometable"
+            t.select(), "SELECT {0}.somecolumn FROM {0}".format(rendered_name)
         )
 
     def test_select_with_nolock(self):
