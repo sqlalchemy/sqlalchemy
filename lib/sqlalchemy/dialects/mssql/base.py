@@ -2142,7 +2142,10 @@ class MSIdentifierPreparer(compiler.IdentifierPreparer):
         )
 
     def _escape_identifier(self, value):
-        return value
+        return value.replace("]", "]]")
+
+    def _unescape_identifier(self, value):
+        return value.replace("]]", "]")
 
     def quote_schema(self, schema, force=None):
         """Prepare a quoted table and schema name."""
