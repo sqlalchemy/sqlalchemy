@@ -1297,10 +1297,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                         try:
                             right = right.entity
                         except AttributeError as err:
-                            raise sa_exc.ArgumentError(
-                                "Join target %s does not refer to a "
-                                "mapped entity" % right
-                            ) from err
+                            util.raise_(
+                                sa_exc.ArgumentError(
+                                    "Join target %s does not refer to a "
+                                    "mapped entity" % right
+                                ),
+                                replace_context=err,
+                            )
 
                 left = onclause._parententity
 
