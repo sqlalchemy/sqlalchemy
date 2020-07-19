@@ -957,6 +957,68 @@ class SQLCompiler(Compiled):
                     pd[name] = value_param.value
             return pd
 
+    @util.memoized_instancemethod
+    def _get_set_input_sizes_lookup(
+        self, translate=None, include_types=None, exclude_types=None
+    ):
+        if not hasattr(self, "bind_names"):
+            return None
+
+        dialect = self.dialect
+        dbapi = self.dialect.dbapi
+
+        # _unwrapped_dialect_impl() is necessary so that we get the
+        # correct dialect type for a custom TypeDecorator, or a Variant,
+        # which is also a TypeDecorator.   Special types like Interval,
+        # that use TypeDecorator but also might be mapped directly
+        # for a dialect impl, also subclass Emulated first which overrides
+        # this behavior in those cases to behave like the default.
+
+        if not include_types and not exclude_types:
+
+            def _lookup_type(typ):
+                dialect_impl = typ._unwrapped_dialect_impl(dialect)
+                return dialect_impl.get_dbapi_type(dbapi)
+
+        else:
+
+            def _lookup_type(typ):
+                dialect_impl = typ._unwrapped_dialect_impl(dialect)
+                dbtype = dialect_impl.get_dbapi_type(dbapi)
+
+                if (
+                    dbtype is not None
+                    and (
+                        not exclude_types
+                        or dbtype not in exclude_types
+                        and type(dialect_impl) not in exclude_types
+                    )
+                    and (
+                        not include_types
+                        or dbtype in include_types
+                        or type(dialect_impl) in include_types
+                    )
+                ):
+                    return dbtype
+                else:
+                    return None
+
+        inputsizes = {}
+        literal_execute_params = self.literal_execute_params
+
+        for bindparam in self.bind_names:
+            if bindparam in literal_execute_params:
+                continue
+
+            if bindparam._expanding_in_types:
+                inputsizes[bindparam] = [
+                    _lookup_type(typ) for typ in bindparam._expanding_in_types
+                ]
+            else:
+                inputsizes[bindparam] = _lookup_type(bindparam.type)
+
+        return inputsizes
+
     @property
     def params(self):
         """Return the bind param dictionary embedded into this
@@ -4546,6 +4608,7 @@ class IdentifierPreparer(object):
 
         if name is None:
             name = table.name
+
         result = self.quote(name)
 
         effective_schema = self.schema_for_object(table)

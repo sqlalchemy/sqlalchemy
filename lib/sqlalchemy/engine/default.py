@@ -1406,37 +1406,19 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         currently cx_oracle.
 
         """
+        if self.isddl:
+            return None
 
-        if not hasattr(self.compiled, "bind_names"):
+        inputsizes = self.compiled._get_set_input_sizes_lookup(
+            translate=translate,
+            include_types=include_types,
+            exclude_types=exclude_types,
+        )
+        if inputsizes is None:
             return
 
-        inputsizes = {}
-        for bindparam in self.compiled.bind_names:
-            if bindparam in self.compiled.literal_execute_params:
-                continue
-
-            dialect_impl = bindparam.type._unwrapped_dialect_impl(self.dialect)
-            dialect_impl_cls = type(dialect_impl)
-            dbtype = dialect_impl.get_dbapi_type(self.dialect.dbapi)
-
-            if (
-                dbtype is not None
-                and (
-                    not exclude_types
-                    or dbtype not in exclude_types
-                    and dialect_impl_cls not in exclude_types
-                )
-                and (
-                    not include_types
-                    or dbtype in include_types
-                    or dialect_impl_cls in include_types
-                )
-            ):
-                inputsizes[bindparam] = dbtype
-            else:
-                inputsizes[bindparam] = None
-
         if self.dialect._has_events:
+            inputsizes = dict(inputsizes)
             self.dialect.dispatch.do_setinputsizes(
                 inputsizes, self.cursor, self.statement, self.parameters, self
             )
@@ -1445,14 +1427,29 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             positional_inputsizes = []
             for key in self.compiled.positiontup:
                 bindparam = self.compiled.binds[key]
-                dbtype = inputsizes.get(bindparam, None)
-                if dbtype is not None:
-                    if key in self._expanded_parameters:
+                if bindparam in self.compiled.literal_execute_params:
+                    continue
+
+                if key in self._expanded_parameters:
+                    if bindparam._expanding_in_types:
+                        num = len(bindparam._expanding_in_types)
+                        dbtypes = inputsizes[bindparam]
                         positional_inputsizes.extend(
-                            [dbtype] * len(self._expanded_parameters[key])
+                            [
+                                dbtypes[idx % num]
+                                for idx, key in enumerate(
+                                    self._expanded_parameters[key]
+                                )
+                            ]
                         )
                     else:
-                        positional_inputsizes.append(dbtype)
+                        dbtype = inputsizes.get(bindparam, None)
+                        positional_inputsizes.extend(
+                            dbtype for dbtype in self._expanded_parameters[key]
+                        )
+                else:
+                    dbtype = inputsizes[bindparam]
+                    positional_inputsizes.append(dbtype)
             try:
                 self.cursor.setinputsizes(*positional_inputsizes)
             except BaseException as e:
@@ -1462,21 +1459,40 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         else:
             keyword_inputsizes = {}
             for bindparam, key in self.compiled.bind_names.items():
-                dbtype = inputsizes.get(bindparam, None)
-                if dbtype is not None:
-                    if translate:
-                        # TODO: this part won't work w/ the
-                        # expanded_parameters feature, e.g. for cx_oracle
-                        # quoted bound names
-                        key = translate.get(key, key)
-                    if not self.dialect.supports_unicode_binds:
-                        key = self.dialect._encoder(key)[0]
-                    if key in self._expanded_parameters:
+                if bindparam in self.compiled.literal_execute_params:
+                    continue
+
+                if key in self._expanded_parameters:
+                    if bindparam._expanding_in_types:
+                        num = len(bindparam._expanding_in_types)
+                        dbtypes = inputsizes[bindparam]
                         keyword_inputsizes.update(
-                            (expand_key, dbtype)
-                            for expand_key in self._expanded_parameters[key]
+                            [
+                                (key, dbtypes[idx % num])
+                                for idx, key in enumerate(
+                                    self._expanded_parameters[key]
+                                )
+                            ]
                         )
                     else:
+                        dbtype = inputsizes.get(bindparam, None)
+                        if dbtype is not None:
+                            keyword_inputsizes.update(
+                                (expand_key, dbtype)
+                                for expand_key in self._expanded_parameters[
+                                    key
+                                ]
+                            )
+                else:
+                    dbtype = inputsizes.get(bindparam, None)
+                    if dbtype is not None:
+                        if translate:
+                            # TODO: this part won't work w/ the
+                            # expanded_parameters feature, e.g. for cx_oracle
+                            # quoted bound names
+                            key = translate.get(key, key)
+                        if not self.dialect.supports_unicode_binds:
+                            key = self.dialect._encoder(key)[0]
                         keyword_inputsizes[key] = dbtype
             try:
                 self.cursor.setinputsizes(**keyword_inputsizes)
