@@ -1326,6 +1326,7 @@ class Query(
             "_last_joined_entity",
             "_legacy_setup_joins",
             "_distinct",
+            "_distinct_on",
             "_having_criteria",
             "_prefixes",
             "_suffixes",

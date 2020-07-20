@@ -4016,6 +4016,66 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             ") AS anon_1",
         )
 
+    def test_columns_augmented_sql_union_one(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+                Address.email_address,
+            )
+            .distinct()
+            .order_by(User.id, User.name, Address.email_address)
+        )
+        q2 = sess.query(
+            User.id, User.name.label("foo"), Address.id, Address.email_address,
+        )
+
+        self.assert_compile(
+            q.union(q2),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
+            "anon_1_addresses_id, anon_1.addresses_email_address AS "
+            "anon_1_addresses_email_address FROM "
+            "((SELECT DISTINCT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id, addresses.email_address "
+            "AS addresses_email_address FROM users, addresses "
+            "ORDER BY users.id, users.name, addresses.email_address) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id, addresses.email_address AS "
+            "addresses_email_address FROM users, addresses) AS anon_1",
+        )
+
+    def test_columns_augmented_sql_union_two(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(User.id, User.name.label("foo"), Address.id,)
+            .distinct(Address.email_address)
+            .order_by(User.id, User.name)
+        )
+        q2 = sess.query(User.id, User.name.label("foo"), Address.id)
+
+        self.assert_compile(
+            q.union(q2),
+            "SELECT anon_1.users_id AS anon_1_users_id, "
+            "anon_1.foo AS anon_1_foo, anon_1.addresses_id AS "
+            "anon_1_addresses_id FROM "
+            "((SELECT DISTINCT ON (addresses.email_address) users.id "
+            "AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses "
+            "ORDER BY users.id, users.name) "
+            "UNION SELECT users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id FROM users, addresses) AS anon_1",
+            dialect="postgresql",
+        )
+
     def test_columns_augmented_sql_two(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -4069,6 +4129,40 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "SELECT DISTINCT ON (users.name) users.id AS users_id, "
             "users.name AS foo, addresses.id AS addresses_id FROM users, "
             "addresses ORDER BY users.id, users.name, addresses.email_address",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_distinct_on(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        q = (
+            sess.query(
+                User.id,
+                User.name.label("foo"),
+                Address.id,
+                Address.email_address,
+            )
+            .distinct(Address.email_address)
+            .order_by(User.id, User.name, Address.email_address)
+            .from_self(User.id, User.name.label("foo"), Address.id)
+        )
+
+        # Address.email_address is added because of DISTINCT,
+        # however User.id, User.name are not b.c. they're already there,
+        # even though User.name is labeled
+        self.assert_compile(
+            q,
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.foo AS foo, "
+            "anon_1.addresses_id AS anon_1_addresses_id "
+            "FROM ("
+            "SELECT DISTINCT ON (addresses.email_address) "
+            "users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id, addresses.email_address AS "
+            "addresses_email_address FROM users, addresses ORDER BY "
+            "users.id, users.name, addresses.email_address"
+            ") AS anon_1",
             dialect="postgresql",
         )
 
