@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, fairly easy, orm
+    :tags: bug, orm
     :tickets: 4428
 
     An :class:`.ArgumentError` with more detail is now raised if the target
