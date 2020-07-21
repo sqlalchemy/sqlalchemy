@@ -15,6 +15,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import util
@@ -708,6 +709,25 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT mytable_1.myid AS mytable_1_myid "
             "FROM mytable AS mytable_1 ORDER BY mytable_1.name",
+        )
+
+    @testing.combinations(
+        ((column("q") + 5).label("a"), "a", ()),
+        (column("q").op("+")(5).label("a"), "a", ()),
+        ((column("q") + 5).label("a"), "a DESC", (desc,)),
+        (column("q").op("+")(5).label("a"), "a DESC", (desc,)),
+    )
+    def test_order_by_expr(self, case, expected, modifiers):
+
+        order_by = case
+        for mod in modifiers:
+            order_by = mod(order_by)
+
+        stmt = select([case]).order_by(order_by)
+
+        col_expr = str(case)
+        self.assert_compile(
+            stmt, "SELECT %s AS a ORDER BY %s" % (col_expr, expected)
         )
 
     def test_order_by_named_label_from_anon_label(self):

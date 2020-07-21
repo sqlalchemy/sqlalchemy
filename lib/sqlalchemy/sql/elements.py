@@ -3714,6 +3714,13 @@ class Grouping(GroupedElement, ColumnElement):
         return getattr(self.element, "_label", None) or self.anon_label
 
     @property
+    def _proxies(self):
+        if isinstance(self.element, ColumnElement):
+            return [self.element]
+        else:
+            return []
+
+    @property
     def _from_objects(self):
         return self.element._from_objects
 
