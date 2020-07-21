@@ -3388,6 +3388,13 @@ class Grouping(ColumnElement):
         return (self.element,)
 
     @property
+    def _proxies(self):
+        if isinstance(self.element, ColumnElement):
+            return [self.element]
+        else:
+            return []
+
+    @property
     def _from_objects(self):
         return self.element._from_objects
 
