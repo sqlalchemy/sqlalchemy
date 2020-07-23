@@ -745,20 +745,20 @@ class Emulated(object):
 
     def adapt(self, impltype, **kw):
         if hasattr(impltype, "adapt_emulated_to_native"):
-
             if self.native:
                 # native support requested, dialect gave us a native
                 # implementor, pass control over to it
                 return impltype.adapt_emulated_to_native(self, **kw)
             else:
-                # impltype adapts to native, and we are not native,
-                # so reject the impltype in favor of "us"
-                impltype = self.__class__
-
-        if issubclass(impltype, self.__class__):
-            return self.adapt_to_emulated(impltype, **kw)
+                # non-native support, let the native implementor
+                # decide also, at the moment this is just to help debugging
+                # as only the default logic is implemented.
+                return impltype.adapt_native_to_emulated(self, **kw)
         else:
-            return super(Emulated, self).adapt(impltype, **kw)
+            if issubclass(impltype, self.__class__):
+                return self.adapt_to_emulated(impltype, **kw)
+            else:
+                return super(Emulated, self).adapt(impltype, **kw)
 
 
 class NativeForEmulated(object):
@@ -767,6 +767,16 @@ class NativeForEmulated(object):
     .. versionadded:: 1.2.0b3
 
     """
+
+    @classmethod
+    def adapt_native_to_emulated(cls, impl, **kw):
+        """Given an impl, adapt this type's class to the impl assuming
+        "emulated".
+
+
+        """
+        impltype = impl.__class__
+        return impl.adapt(impltype, **kw)
 
     @classmethod
     def adapt_emulated_to_native(cls, impl, **kw):
@@ -974,7 +984,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         # otherwise adapt the impl type, link
         # to a copy of this TypeDecorator and return
         # that.
-        typedesc = self._unwrapped_dialect_impl(dialect)
+        typedesc = self.load_dialect_impl(dialect).dialect_impl(dialect)
         tt = self.copy()
         if not isinstance(tt, self.__class__):
             raise AssertionError(
@@ -1045,16 +1055,21 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     def _unwrapped_dialect_impl(self, dialect):
         """Return the 'unwrapped' dialect impl for this type.
 
-        For a type that applies wrapping logic (e.g. TypeDecorator), give
-        us the real, actual dialect-level type that is used.
-
-        This is used by TypeDecorator itself as well at least one case where
-        dialects need to check that a particular specific dialect-level
-        type is in use, within the :meth:`.DefaultDialect.set_input_sizes`
+        This is used by the :meth:`.DefaultDialect.set_input_sizes`
         method.
 
         """
-        return self.load_dialect_impl(dialect).dialect_impl(dialect)
+
+        # some dialects have a lookup for a TypeDecorator subclass directly.
+        # postgresql.INTERVAL being the main example
+        typ = self.dialect_impl(dialect)
+
+        # if we are still a type decorator, load the per-dialect switch
+        # (such as what Variant uses), then get the dialect impl for that.
+        if isinstance(typ, self.__class__):
+            return typ.load_dialect_impl(dialect).dialect_impl(dialect)
+        else:
+            return typ
 
     def __getattr__(self, key):
         """Proxy all other undefined accessors to the underlying
