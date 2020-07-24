@@ -13,8 +13,8 @@ from ... import types as sqltypes
 class JSON(sqltypes.JSON):
     """MySQL JSON type.
 
-    MySQL supports JSON as of version 5.7.  Note that MariaDB does **not**
-    support JSON at the time of this writing.
+    MySQL supports JSON as of version 5.7.
+    MariaDB supports JSON (as an alias for LONGTEXT) as of version 10.2.
 
     The :class:`.mysql.JSON` type supports persistence of JSON values
     as well as the core index operations provided by :class:`_types.JSON`
