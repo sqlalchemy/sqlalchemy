@@ -120,9 +120,6 @@ class PyODBCConnector(Connector):
         else:
             return False
 
-    # def initialize(self, connection):
-    #   super(PyODBCConnector, self).initialize(connection)
-
     def _dbapi_version(self):
         if not self.dbapi:
             return ()
