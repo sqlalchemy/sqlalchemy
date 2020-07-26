@@ -57,6 +57,24 @@ on a single :func:`_orm.relationship` instead of using
         id = Column(Integer, primary_key=True)
         children = relationship("Child", backref="parent")
 
+Configuring Delete Behavior for One to Many
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is often the case that all ``Child`` objects should be deleted
+when their owning ``Parent`` is deleted.  To configure this behavior,
+the ``delete`` cascade option described at :ref:`cascade_delete` is used.
+An additional option is that a ``Child`` object can itself be deleted when
+it is deassociated from its parent.  This behavior is described at
+:ref:`cascade_delete_orphan`.
+
+.. seealso::
+
+    :ref:`cascade_delete`
+
+    :ref:`passive_deletes`
+
+    :ref:`cascade_delete_orphan`
+
 
 Many To One
 ~~~~~~~~~~~
@@ -153,9 +171,10 @@ Many To Many
 
 Many to Many adds an association table between two classes. The association
 table is indicated by the :paramref:`_orm.relationship.secondary` argument to
-:func:`_orm.relationship`.  Usually, the :class:`_schema.Table` uses the :class:`_schema.MetaData`
-object associated with the declarative base class, so that the :class:`_schema.ForeignKey`
-directives can locate the remote tables with which to link::
+:func:`_orm.relationship`.  Usually, the :class:`_schema.Table` uses the
+:class:`_schema.MetaData` object associated with the declarative base
+class, so that the :class:`_schema.ForeignKey` directives can locate the
+remote tables with which to link::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -198,8 +217,9 @@ for each :func:`_orm.relationship` specify the common association table::
             back_populates="children")
 
 When using the :paramref:`_orm.relationship.backref` parameter instead of
-:paramref:`_orm.relationship.back_populates`, the backref will automatically use
-the same :paramref:`_orm.relationship.secondary` argument for the reverse relationship::
+:paramref:`_orm.relationship.back_populates`, the backref will automatically
+use the same :paramref:`_orm.relationship.secondary` argument for the
+reverse relationship::
 
     association_table = Table('association', Base.metadata,
         Column('left_id', Integer, ForeignKey('left.id')),
@@ -217,11 +237,11 @@ the same :paramref:`_orm.relationship.secondary` argument for the reverse relati
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
-The :paramref:`_orm.relationship.secondary` argument of :func:`_orm.relationship` also accepts a callable
-that returns the ultimate argument, which is evaluated only when mappers are
-first used.   Using this, we can define the ``association_table`` at a later
-point, as long as it's available to the callable after all module initialization
-is complete::
+The :paramref:`_orm.relationship.secondary` argument of
+:func:`_orm.relationship` also accepts a callable that returns the ultimate
+argument, which is evaluated only when mappers are first used.   Using this, we
+can define the ``association_table`` at a later point, as long as it's
+available to the callable after all module initialization is complete::
 
     class Parent(Base):
         __tablename__ = 'left'
@@ -252,11 +272,12 @@ is accepted as well, matching the name of the table as stored in ``Base.metadata
 Deleting Rows from the Many to Many Table
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A behavior which is unique to the :paramref:`_orm.relationship.secondary` argument to :func:`_orm.relationship`
-is that the :class:`_schema.Table` which is specified here is automatically subject
-to INSERT and DELETE statements, as objects are added or removed from the collection.
-There is **no need to delete from this table manually**.   The act of removing a
-record from the collection will have the effect of the row being deleted on flush::
+A behavior which is unique to the :paramref:`_orm.relationship.secondary`
+argument to :func:`_orm.relationship` is that the :class:`_schema.Table` which
+is specified here is automatically subject to INSERT and DELETE statements, as
+objects are added or removed from the collection. There is **no need to delete
+from this table manually**.   The act of removing a record from the collection
+will have the effect of the row being deleted on flush::
 
     # row will be deleted from the "secondary" table
     # automatically
@@ -290,12 +311,19 @@ There are several possibilities here:
   directive on :func:`_orm.relationship`; see :ref:`passive_deletes` for more details
   on this.
 
-Note again, these behaviors are *only* relevant to the :paramref:`_orm.relationship.secondary` option
-used with :func:`_orm.relationship`.   If dealing with association tables that
-are mapped explicitly and are *not* present in the :paramref:`_orm.relationship.secondary` option
-of a relevant :func:`_orm.relationship`, cascade rules can be used instead
-to automatically delete entities in reaction to a related entity being
+Note again, these behaviors are *only* relevant to the
+:paramref:`_orm.relationship.secondary` option used with
+:func:`_orm.relationship`.   If dealing with association tables that are mapped
+explicitly and are *not* present in the :paramref:`_orm.relationship.secondary`
+option of a relevant :func:`_orm.relationship`, cascade rules can be used
+instead to automatically delete entities in reaction to a related entity being
 deleted - see :ref:`unitofwork_cascades` for information on this feature.
+
+.. seealso::
+
+    :ref:`cascade_delete_many_to_many`
+
+    :ref:`passive_deletes_many_to_many`
 
 
 .. _association_pattern:
