@@ -141,47 +141,8 @@ loader option.
 Using Passive Deletes
 ---------------------
 
-Use :paramref:`_orm.relationship.passive_deletes` to disable child object loading on a DELETE
-operation, in conjunction with "ON DELETE (CASCADE|SET NULL)" on your database
-to automatically cascade deletes to child objects::
+See :ref:`passive_deletes` for this section.
 
-    class MyClass(Base):
-        __tablename__ = 'mytable'
-        id = Column(Integer, primary_key=True)
-        children = relationship("MyOtherClass",
-                        cascade="all, delete-orphan",
-                        passive_deletes=True)
-
-    class MyOtherClass(Base):
-        __tablename__ = 'myothertable'
-        id = Column(Integer, primary_key=True)
-        parent_id = Column(Integer,
-                    ForeignKey('mytable.id', ondelete='CASCADE')
-                        )
-
-
-.. note::
-
-    To use "ON DELETE CASCADE", the underlying database engine must
-    support foreign keys.
-
-    * When using MySQL, an appropriate storage engine must be
-      selected.  See :ref:`mysql_storage_engines` for details.
-
-    * When using SQLite, foreign key support must be enabled explicitly.
-      See :ref:`sqlite_foreign_keys` for details.
-
-When :paramref:`_orm.relationship.passive_deletes` is applied, the ``children`` relationship will not be
-loaded into memory when an instance of ``MyClass`` is marked for deletion. The
-``cascade="all, delete-orphan"`` *will* take effect for instances of
-``MyOtherClass`` which are currently present in the session; however for
-instances of ``MyOtherClass`` which are not loaded, SQLAlchemy assumes that
-"ON DELETE CASCADE" rules will ensure that those rows are deleted by the
-database.
-
-.. seealso::
-
-    :paramref:`.orm.mapper.passive_deletes` - similar feature on :func:`.mapper`
 
 .. currentmodule:: sqlalchemy.orm.collections
 

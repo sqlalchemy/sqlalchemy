@@ -303,6 +303,14 @@ arguments. The value is any string which will be output after the appropriate
 Note that these clauses require ``InnoDB`` tables when used with MySQL.
 They may also not be supported on other databases.
 
+.. seealso::
+
+    For background on integration of ``ON DELETE CASCADE`` with
+    ORM :func:`_orm.relationship` constructs, see the following sections:
+
+    :ref:`passive_deletes`
+
+    :ref:`passive_deletes_many_to_many`
 
 UNIQUE Constraint
 -----------------
