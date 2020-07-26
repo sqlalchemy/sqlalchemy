@@ -325,7 +325,14 @@ class InstrumentedAttribute(QueryableAttribute):
         if self._supports_population and self.key in dict_:
             return dict_[self.key]
         else:
-            return self.impl.get(instance_state(instance), dict_)
+            try:
+                state = instance_state(instance)
+            except AttributeError as err:
+                util.raise_(
+                    orm_exc.UnmappedInstanceError(instance),
+                    replace_context=err,
+                )
+            return self.impl.get(state, dict_)
 
 
 HasEntityNamespace = util.namedtuple(

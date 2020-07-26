@@ -361,6 +361,26 @@ class AttributesTest(fixtures.ORMTest):
             lambda: Foo().bars.append(Bar()),
         )
 
+    def test_unmapped_instance_raises(self):
+        class User(object):
+            pass
+
+        instrumentation.register_class(User)
+        attributes.register_attribute(
+            User, "user_name", uselist=False, useobject=False
+        )
+
+        class Blog(object):
+            name = User.user_name
+
+        def go():
+            b = Blog()
+            return b.name
+
+        assert_raises(
+            orm_exc.UnmappedInstanceError, go,
+        )
+
     def test_del_scalar_nonobject(self):
         class Foo(object):
             pass
