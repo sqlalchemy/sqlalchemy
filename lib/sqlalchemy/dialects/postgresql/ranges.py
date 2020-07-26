@@ -36,32 +36,32 @@ class RangeOperators(object):
                     other
                 )
             else:
-                return self.expr.op("<>")(other)
+                return self.expr.op("<>", is_comparison=True)(other)
 
         def contains(self, other, **kw):
             """Boolean expression. Returns true if the right hand operand,
             which can be an element or a range, is contained within the
             column.
             """
-            return self.expr.op("@>")(other)
+            return self.expr.op("@>", is_comparison=True)(other)
 
         def contained_by(self, other):
             """Boolean expression. Returns true if the column is contained
             within the right hand operand.
             """
-            return self.expr.op("<@")(other)
+            return self.expr.op("<@", is_comparison=True)(other)
 
         def overlaps(self, other):
             """Boolean expression. Returns true if the column overlaps
             (has points in common with) the right hand operand.
             """
-            return self.expr.op("&&")(other)
+            return self.expr.op("&&", is_comparison=True)(other)
 
         def strictly_left_of(self, other):
             """Boolean expression. Returns true if the column is strictly
             left of the right hand operand.
             """
-            return self.expr.op("<<")(other)
+            return self.expr.op("<<", is_comparison=True)(other)
 
         __lshift__ = strictly_left_of
 
@@ -69,7 +69,7 @@ class RangeOperators(object):
             """Boolean expression. Returns true if the column is strictly
             right of the right hand operand.
             """
-            return self.expr.op(">>")(other)
+            return self.expr.op(">>", is_comparison=True)(other)
 
         __rshift__ = strictly_right_of
 
@@ -77,19 +77,19 @@ class RangeOperators(object):
             """Boolean expression. Returns true if the range in the column
             does not extend right of the range in the operand.
             """
-            return self.expr.op("&<")(other)
+            return self.expr.op("&<", is_comparison=True)(other)
 
         def not_extend_left_of(self, other):
             """Boolean expression. Returns true if the range in the column
             does not extend left of the range in the operand.
             """
-            return self.expr.op("&>")(other)
+            return self.expr.op("&>", is_comparison=True)(other)
 
         def adjacent_to(self, other):
             """Boolean expression. Returns true if the range in the column
             is adjacent to the range in the operand.
             """
-            return self.expr.op("-|-")(other)
+            return self.expr.op("-|-", is_comparison=True)(other)
 
         def __add__(self, other):
             """Range expression. Returns the union of the two ranges.
