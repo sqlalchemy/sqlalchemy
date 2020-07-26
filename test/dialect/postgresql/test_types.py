@@ -2628,112 +2628,149 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
         )
         cls.col = table.c.range
 
-    def _test_clause(self, colclause, expected):
+    def _test_clause(self, colclause, expected, type_):
         self.assert_compile(colclause, expected)
+        is_(colclause.type._type_affinity, type_._type_affinity)
 
     def test_where_equal(self):
         self._test_clause(
-            self.col == self._data_str, "data_table.range = %(range_1)s"
+            self.col == self._data_str,
+            "data_table.range = %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_where_not_equal(self):
         self._test_clause(
-            self.col != self._data_str, "data_table.range <> %(range_1)s"
+            self.col != self._data_str,
+            "data_table.range <> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_where_is_null(self):
-        self._test_clause(self.col == None, "data_table.range IS NULL")
+        self._test_clause(
+            self.col == None, "data_table.range IS NULL", sqltypes.BOOLEANTYPE
+        )
 
     def test_where_is_not_null(self):
-        self._test_clause(self.col != None, "data_table.range IS NOT NULL")
+        self._test_clause(
+            self.col != None,
+            "data_table.range IS NOT NULL",
+            sqltypes.BOOLEANTYPE,
+        )
 
     def test_where_less_than(self):
         self._test_clause(
-            self.col < self._data_str, "data_table.range < %(range_1)s"
+            self.col < self._data_str,
+            "data_table.range < %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than(self):
         self._test_clause(
-            self.col > self._data_str, "data_table.range > %(range_1)s"
+            self.col > self._data_str,
+            "data_table.range > %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_where_less_than_or_equal(self):
         self._test_clause(
-            self.col <= self._data_str, "data_table.range <= %(range_1)s"
+            self.col <= self._data_str,
+            "data_table.range <= %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than_or_equal(self):
         self._test_clause(
-            self.col >= self._data_str, "data_table.range >= %(range_1)s"
+            self.col >= self._data_str,
+            "data_table.range >= %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_contains(self):
         self._test_clause(
             self.col.contains(self._data_str),
             "data_table.range @> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_contained_by(self):
         self._test_clause(
             self.col.contained_by(self._data_str),
             "data_table.range <@ %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_overlaps(self):
         self._test_clause(
             self.col.overlaps(self._data_str),
             "data_table.range && %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_left_of(self):
         self._test_clause(
-            self.col << self._data_str, "data_table.range << %(range_1)s"
+            self.col << self._data_str,
+            "data_table.range << %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
             self.col.strictly_left_of(self._data_str),
             "data_table.range << %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_right_of(self):
         self._test_clause(
-            self.col >> self._data_str, "data_table.range >> %(range_1)s"
+            self.col >> self._data_str,
+            "data_table.range >> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
             self.col.strictly_right_of(self._data_str),
             "data_table.range >> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_right_of(self):
         self._test_clause(
             self.col.not_extend_right_of(self._data_str),
             "data_table.range &< %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_left_of(self):
         self._test_clause(
             self.col.not_extend_left_of(self._data_str),
             "data_table.range &> %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_adjacent_to(self):
         self._test_clause(
             self.col.adjacent_to(self._data_str),
             "data_table.range -|- %(range_1)s",
+            sqltypes.BOOLEANTYPE,
         )
 
     def test_union(self):
         self._test_clause(
-            self.col + self.col, "data_table.range + data_table.range"
+            self.col + self.col,
+            "data_table.range + data_table.range",
+            self.col.type,
         )
 
     def test_intersection(self):
         self._test_clause(
-            self.col * self.col, "data_table.range * data_table.range"
+            self.col * self.col,
+            "data_table.range * data_table.range",
+            self.col.type,
         )
 
     def test_different(self):
         self._test_clause(
-            self.col - self.col, "data_table.range - data_table.range"
+            self.col - self.col,
+            "data_table.range - data_table.range",
+            self.col.type,
         )
 
 

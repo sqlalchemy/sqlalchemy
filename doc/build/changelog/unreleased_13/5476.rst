@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5476
+
+    Fixed issue where the return type for the various RANGE comparison
+    operators would itself be the same RANGE type rather than BOOLEAN, which
+    would cause an undesirable result in the case that a
+    :class:`.TypeDecorator` that defined result-processing behavior were in
+    use.  Pull request courtesy Jim Bosch.
+
+
