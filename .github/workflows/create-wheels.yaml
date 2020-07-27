@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
           architecture: ${{ matrix.architecture }}
@@ -72,7 +72,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip --version
-          pip install setuptools wheel
+          pip install setuptools>=44 wheel>=0.34
           pip wheel -w dist --no-use-pep517 -v --no-deps .
 
       - name: Install wheel
@@ -116,7 +116,7 @@ jobs:
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: "3.8"
 
@@ -161,7 +161,7 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-      
+
       - name: Get python version
         id: linux-py-version
         env:
@@ -174,9 +174,9 @@ jobs:
           echo "::set-output name=python-version::$version"
 
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
-          python-version: ${{  steps.linux-py-version.outputs.python-version }}
+          python-version: ${{ steps.linux-py-version.outputs.python-version }}
           architecture: ${{ matrix.architecture }}
 
       - name: Remove tag_build from setup.cfg
@@ -196,17 +196,16 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        # NOTE: the output folder is "wheelhouse", not the classic "dist"
-        uses: RalfG/python-wheels-manylinux-build@v0.2.2-manylinux2010_x86_64
-        # this action generates 3 wheels in wheelhouse/. linux, manylinux1 and manylinux2010
+        uses: RalfG/python-wheels-manylinux-build@v0.3-manylinux2010_x86_64
+        # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
           python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools wheel"
+          build-requirements: "setuptools>=44 wheel>=0.34"
           # Create the wheel using --no-use-pep517 since locally we have pyproject
           # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "--no-use-pep517 -v --no-deps"
+          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
 
       - name: Check created wheel
         # check that the wheel is compatible with the current installation.
@@ -220,7 +219,7 @@ jobs:
           echo Wheel tag ${{ matrix.python-version }}. Installed version $version.
           if [[ "${{ matrix.python-version }}" = "$version" ]]
           then
-            pip install -f wheelhouse --no-index sqlalchemy
+            pip install -f dist --no-index sqlalchemy
             python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
             pip install pytest pytest-xdist ${{ matrix.extra-requires }}
             pytest -n2 -q test -k 'not MockReconnectTest' --nomemory
@@ -234,7 +233,7 @@ jobs:
         # the wheel creation step generates 3 wheels: linux, manylinux1 and manylinux2010
         # Pypi accepts only the manylinux versions
         run: |
-          cd wheelhouse
+          cd dist
           echo ::set-output name=wheel1::`ls *manylinux1*`
           echo ::set-output name=wheel2010::`ls *manylinux2010*`
 
@@ -247,7 +246,7 @@ jobs:
           # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
           # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: wheelhouse/${{ steps.wheel-name.outputs.wheel1 }}
+          asset_path: dist/${{ steps.wheel-name.outputs.wheel1 }}
           asset_name: ${{ steps.wheel-name.outputs.wheel1 }}
           asset_content_type: application/zip # application/octet-stream
 
@@ -260,13 +259,13 @@ jobs:
           # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
           # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: wheelhouse/${{ steps.wheel-name.outputs.wheel2010 }}
+          asset_path: dist/${{ steps.wheel-name.outputs.wheel2010 }}
           asset_name: ${{ steps.wheel-name.outputs.wheel2010 }}
           asset_content_type: application/zip # application/octet-stream
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: "3.8"
 
@@ -283,4 +282,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.pypi_token }}
         run: |
           pip install -U twine
-          twine upload --skip-existing wheelhouse/*manylinux*
+          twine upload --skip-existing dist/*manylinux*
