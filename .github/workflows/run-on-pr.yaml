@@ -14,7 +14,7 @@ env:
   TOX_WORKERS: -n2
 
 jobs:
-  run-test:
+  run-test-amd64:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -51,3 +51,30 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+
+  run-test-arm64:
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.8"
+        build-type:
+          - "cext"
+          - "nocext"
+      fail-fast: true
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Enable qemu
+        run: |
+          docker run --rm --privileged hypriot/qemu-register
+
+      - name: Run tests
+        uses: docker://arm64v8/python:3.8-buster
+        with:
+          args: |
+                bash -c "pip install -U pip setuptools tox;
+                tox -e github-${{ matrix.build-type }} -- -q --nomemory;" 

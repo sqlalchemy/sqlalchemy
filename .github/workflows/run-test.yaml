@@ -87,3 +87,36 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+
+  run-test-arm64:
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.6"
+          - "3.7"
+          - "3.8"
+        build-type:
+          - "cext"
+          - "nocext"
+
+      fail-fast: false
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Enable qemu
+        run: |
+            docker run --rm --privileged hypriot/qemu-register
+
+      - name: Run tests 
+        uses: docker://arm64v8/ubuntu:bionic
+        with:
+         args: |
+               bash -c "pyver=python${{ matrix.python-version }};
+               apt-get update -qq;
+               apt-get install -qq coreutils $pyver python3-pip lib$pyver-dev;
+               $pyver -m pip install -U pip setuptools tox;
+               $pyver -m tox -e github-${{ matrix.build-type }} -- -q --nomemory;"
