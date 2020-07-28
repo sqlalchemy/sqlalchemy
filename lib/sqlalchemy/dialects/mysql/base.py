@@ -1314,6 +1314,18 @@ class MySQLCompiler(compiler.SQLCompiler):
     extract_map = compiler.SQLCompiler.extract_map.copy()
     extract_map.update({"milliseconds": "millisecond"})
 
+    def default_from(self):
+        """Called when a ``SELECT`` statement has no froms,
+        and no ``FROM`` clause is to be appended.
+
+        """
+        if self.stack:
+            stmt = self.stack[-1]["selectable"]
+            if stmt._where_criteria:
+                return " FROM DUAL"
+
+        return ""
+
     def visit_random_func(self, fn, **kw):
         return "rand%s" % self.function_argspec(fn)
 
