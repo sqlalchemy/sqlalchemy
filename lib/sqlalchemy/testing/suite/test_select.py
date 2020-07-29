@@ -7,9 +7,11 @@ from ..schema import Table
 from ... import bindparam
 from ... import case
 from ... import Computed
+from ... import exists
 from ... import false
 from ... import func
 from ... import Integer
+from ... import literal
 from ... import literal_column
 from ... import null
 from ... import select
@@ -701,6 +703,53 @@ class ComputedColumnTest(fixtures.TablesTest):
                 .order_by(self.tables.square.c.id)
             ).fetchall()
             eq_(res, [(100, 40), (1764, 168)])
+
+
+class ExistsTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "stuff",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(50)),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.stuff.insert(),
+            [
+                {"id": 1, "data": "some data"},
+                {"id": 2, "data": "some data"},
+                {"id": 3, "data": "some data"},
+                {"id": 4, "data": "some other data"},
+            ],
+        )
+
+    def test_select_exists(self, connection):
+        stuff = self.tables.stuff
+        eq_(
+            connection.execute(
+                select([literal(1)]).where(
+                    exists().where(stuff.c.data == "some data")
+                )
+            ).fetchall(),
+            [(1,)],
+        )
+
+    def test_select_exists_false(self, connection):
+        stuff = self.tables.stuff
+        eq_(
+            connection.execute(
+                select([literal(1)]).where(
+                    exists().where(stuff.c.data == "no data")
+                )
+            ).fetchall(),
+            [],
+        )
 
 
 class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
