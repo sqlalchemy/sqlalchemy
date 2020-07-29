@@ -271,24 +271,27 @@ Using foreign key ON DELETE cascade with ORM relationships
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The behavior of SQLAlchemy's "delete" cascade overlaps with the
-``ON DELETE`` feature of a database foreign key constraint.
-Database level ``ON DELETE`` cascades are specific to the
-"FOREIGN KEY" construct of the relational database; SQLAlchemy allows
-configuration of these schema-level constructs at the :term:`DDL` level
-using options on :class:`_schema.ForeignKeyConstraint` which are described
-at :ref:`on_update_on_delete`.
+``ON DELETE`` feature of a database ``FOREIGN KEY`` constraint.
+SQLAlchemy allows configuration of these schema-level :term:`DDL` behaviors
+using the :class:`_schema.ForeignKey` and :class:`_schema.ForeignKeyConstraint`
+constructs; usage of these objects in conjunction with :class:`_schema.Table`
+metadata is described at :ref:`on_update_on_delete`.
 
-In order to use ``ON DELETE`` foreign key cascades that are configured in
-the database itself, in conjunction with
-:func:`_orm.relationship`, the :paramref:`_orm.relationship.cascade` setting
-is still used, so that the ORM can distinguish between whether or not
-related items should also be deleted when the parent row is deleted, or if
-their foreign key columns should be set to NULL.   There is then an additional
-option controlled by the :paramref:`_orm.relationship.passive_deletes`
-parameter which indicates the degree to which the ORM should try to run
-DELETE/UPDATE operations on related rows itself, vs. how much it should rely
-upon expecting the database-side FOREIGN KEY constraint cascade to handle
-the task.
+In order to use ``ON DELETE`` foreign key cascades in conjunction with
+:func:`_orm.relationship`, it's important to note first and foremost that the
+:paramref:`_orm.relationship.cascade` setting must still be configured to
+match the desired "delete" or "set null" behavior (using ``delete`` cascade
+or leaving it omitted), so that whether the ORM or the database
+level constraints will handle the task of actually modifying the data in the
+database, the ORM will still be able to appropriately track the state of
+locally present objects that may be affected.
+
+There is then an additional option on :func:`_orm.relationship` which which
+indicates the degree to which the ORM should try to run DELETE/UPDATE
+operations on related rows itself, vs. how much it should rely upon expecting
+the database-side FOREIGN KEY constraint cascade to handle the task; this is
+the :paramref:`_orm.relationship.passive_deletes` parameter and it accepts
+options ``False`` (the default), ``True`` and ``"all"``.
 
 The most typical example is that where child rows are to be deleted when
 parent rows are deleted, and that ``ON DELETE CASCADE`` is configured
@@ -328,7 +331,10 @@ is as follows:
 
 4. A ``DELETE`` statement is then emitted for the ``my_parent`` row itself.
 
-5. The ``Parent`` instance referred to by ``my_parent``, as well as all
+5. The database-level ``ON DELETE CASCADE`` setting ensures that all rows in
+   ``child`` which refer to the affected row in ``parent`` are also deleted.
+
+6. The ``Parent`` instance referred to by ``my_parent``, as well as all
    instances of ``Child`` that were related to this object and were
    **loaded** (i.e. step 2 above took place), are de-associated from the
    :class:`._orm.Session`.
@@ -358,58 +364,60 @@ is as follows:
       ``delete-orphan`` cascade are configured on the **one-to-many**
       side.
 
-    * Database level foreign keys with no ``ON DELETE`` setting
-      are often used to **prevent** a parent
-      row from being removed, as it would necessarily leave an unhandled
-      related row present.  If this behavior is desired in a one-to-many
-      relationship, SQLAlchemy's default behavior of setting a foreign key
-      to ``NULL`` can be caught in one of two ways:
+    * Database level foreign keys with no ``ON DELETE`` setting are often used
+      to **prevent** a parent row from being removed, as it would necessarily
+      leave an unhandled related row present.  If this behavior is desired in a
+      one-to-many relationship, SQLAlchemy's default behavior of setting a
+      foreign key to ``NULL`` can be caught in one of two ways:
 
-        * The easiest and most common is just to set the
-          foreign-key-holding column to ``NOT NULL`` at the database schema
-          level.  An attempt by SQLAlchemy to set the column to NULL will
-          fail with a simple NOT NULL constraint exception.
+        * The easiest and most common is just to set the foreign-key-holding
+          column to ``NOT NULL`` at the database schema level.  An attempt by
+          SQLAlchemy to set the column to NULL will fail with a simple NOT NULL
+          constraint exception.
 
         * The other, more special case way is to set the
           :paramref:`_orm.relationship.passive_deletes` flag to the string
-          ``"all"``.  This has the effect of entirely disabling SQLAlchemy's
-          behavior of setting the foreign key column to NULL, and a DELETE will
-          be emitted for the parent row without any affect on the child row,
-          even if the child row is present in memory. This may be desirable in
-          the case when database-level foreign key triggers, either special
-          ``ON DELETE`` settings or otherwise, need to be activated in all
-          cases when a parent row is deleted.
+          ``"all"``.  This has the effect of entirely disabling
+          SQLAlchemy's behavior of setting the foreign key column to NULL,
+          and a DELETE will be emitted for the parent row without any
+          affect on the child row, even if the child row is present in
+          memory. This may be desirable in the case when database-level
+          foreign key triggers, either special ``ON DELETE`` settings or
+          otherwise, need to be activated in all cases when a parent row is
+          deleted.
 
     * Database level ``ON DELETE`` cascade is generally much more efficient
-      than that of SQLAlchemy.  The database can chain a series of cascade
-      operations across many relationships at once; e.g. if row A is deleted,
-      all the related rows in table B can be deleted, and all the C rows related
-      to each of those B rows, and on and on, all within the scope of a single
-      DELETE statement.  SQLAlchemy on the other hand, in order to support
-      the cascading delete operation fully, has to individually load each
-      related collection in order to target all rows that then may have further
-      related collections.  That is, SQLAlchemy isn't sophisticated enough
-      to emit a DELETE for all those related rows at once within this context.
+      than relying upon the "cascade" delete feature of SQLAlchemy.  The
+      database can chain a series of cascade operations across many
+      relationships at once; e.g. if row A is deleted, all the related rows in
+      table B can be deleted, and all the C rows related to each of those B
+      rows, and on and on, all within the scope of a single DELETE statement.
+      SQLAlchemy on the other hand, in order to support the cascading delete
+      operation fully, has to individually load each related collection in
+      order to target all rows that then may have further related collections.
+      That is, SQLAlchemy isn't sophisticated enough to emit a DELETE for all
+      those related rows at once within this context.
 
-    * SQLAlchemy doesn't **need** to be this sophisticated, as we instead provide
-      smooth integration with the database's own ``ON DELETE`` functionality,
-      by using the :paramref:`_orm.relationship.passive_deletes` option in conjunction
-      with properly configured foreign key constraints.   Under this behavior,
-      SQLAlchemy only emits DELETE for those rows that are already locally
-      present in the :class:`.Session`; for any collections that are unloaded,
-      it leaves them to the database to handle, rather than emitting a SELECT
-      for them.  The section :ref:`passive_deletes` provides an example of this use.
+    * SQLAlchemy doesn't **need** to be this sophisticated, as we instead
+      provide smooth integration with the database's own ``ON DELETE``
+      functionality, by using the :paramref:`_orm.relationship.passive_deletes`
+      option in conjunction with properly configured foreign key constraints.
+      Under this behavior, SQLAlchemy only emits DELETE for those rows that are
+      already locally present in the :class:`.Session`; for any collections
+      that are unloaded, it leaves them to the database to handle, rather than
+      emitting a SELECT for them.  The section :ref:`passive_deletes` provides
+      an example of this use.
 
     * While database-level ``ON DELETE`` functionality works only on the "many"
-      side of a relationship, SQLAlchemy's "delete" cascade
-      has **limited** ability to operate in the *reverse* direction as well,
-      meaning it can be configured on the "many" side to delete an object
-      on the "one" side when the reference on the "many" side is deleted.  However
-      this can easily result in constraint violations if there are other objects
-      referring to this "one" side from the "many", so it typically is only
-      useful when a relationship is in fact a "one to one".  The
-      :paramref:`_orm.relationship.single_parent` flag should be used to establish
-      an in-Python assertion for this case.
+      side of a relationship, SQLAlchemy's "delete" cascade has **limited**
+      ability to operate in the *reverse* direction as well, meaning it can be
+      configured on the "many" side to delete an object on the "one" side when
+      the reference on the "many" side is deleted.  However this can easily
+      result in constraint violations if there are other objects referring to
+      this "one" side from the "many", so it typically is only useful when a
+      relationship is in fact a "one to one".  The
+      :paramref:`_orm.relationship.single_parent` flag should be used to
+      establish an in-Python assertion for this case.
 
 .. _passive_deletes_many_to_many:
 
