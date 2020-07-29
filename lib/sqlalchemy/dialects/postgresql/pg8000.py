@@ -69,6 +69,7 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 """  # noqa
 import decimal
 import re
+from uuid import UUID as _python_UUID
 
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -84,12 +85,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...sql.elements import quoted_name
-
-
-try:
-    from uuid import UUID as _python_UUID  # noqa
-except ImportError:
-    _python_UUID = None
 
 
 class _PGNumeric(sqltypes.Numeric):

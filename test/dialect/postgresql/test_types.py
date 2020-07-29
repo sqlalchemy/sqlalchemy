@@ -33,7 +33,6 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import array
-from sqlalchemy.dialects.postgresql import base
 from sqlalchemy.dialects.postgresql import DATERANGE
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import hstore
@@ -2134,14 +2133,6 @@ class UUIDTest(fixtures.TestBase):
     @testing.fails_on("postgresql+pg8000", "No support for UUID with ARRAY")
     def test_uuid_array(self, datatype, value1, value2, connection):
         self.test_round_trip(datatype, value1, value2, connection)
-
-    def test_no_uuid_available(self):
-        uuid_type = base._python_UUID
-        base._python_UUID = None
-        try:
-            assert_raises(NotImplementedError, postgresql.UUID, as_uuid=True)
-        finally:
-            base._python_UUID = uuid_type
 
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):

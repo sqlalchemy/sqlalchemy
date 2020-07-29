@@ -992,6 +992,7 @@ E.g.::
 from collections import defaultdict
 import datetime as dt
 import re
+from uuid import UUID as _python_UUID
 
 from . import array as _array
 from . import hstore as _hstore
@@ -1021,12 +1022,6 @@ from ...types import REAL
 from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
-
-
-try:
-    from uuid import UUID as _python_UUID  # noqa
-except ImportError:
-    _python_UUID = None
 
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
@@ -1302,11 +1297,6 @@ class UUID(sqltypes.TypeEngine):
          DBAPI.
 
          """
-        if as_uuid and _python_UUID is None:
-            raise NotImplementedError(
-                "This version of Python does not support "
-                "the native UUID type."
-            )
         self.as_uuid = as_uuid
 
     def bind_processor(self, dialect):
