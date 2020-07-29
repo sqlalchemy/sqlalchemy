@@ -136,8 +136,6 @@ loader option.
 
     :ref:`prevent_lazy_with_raiseload`
 
-.. _passive_deletes:
-
 Using Passive Deletes
 ---------------------
 
