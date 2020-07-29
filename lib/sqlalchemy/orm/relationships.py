@@ -920,17 +920,14 @@ class RelationshipProperty(StrategizedProperty):
           collection from resulting in persistence operations.
 
           When using the :paramref:`_orm.relationship.viewonly` flag in
-          conjunction with backrefs, the
-          :paramref:`_orm.relationship.sync_backref` should be set to False;
-          this indicates that the backref should not actually populate this
-          relationship with data when changes occur on the other side; as this
-          is a viewonly relationship, it cannot accommodate changes in state
-          correctly as these will not be persisted.
+          conjunction with backrefs, the originating relationship for a
+          particular state change will not produce state changes within the
+          viewonly relationship.   This is the behavior implied by
+          :paramref:`_orm.relationship.sync_backref` being set to False.
 
-          .. versionadded:: 1.3.17 - the
-             :paramref:`_orm.relationship.sync_backref`
-             flag set to False is required when using viewonly in conjunction
-             with backrefs. A warning is emitted when this flag is not set.
+          .. versionchanged:: 1.3.17 - the
+             :paramref:`_orm.relationship.sync_backref` flag is set to False
+                 when using viewonly in conjunction with backrefs.
 
           .. seealso::
 
@@ -945,11 +942,14 @@ class RelationshipProperty(StrategizedProperty):
           Defaults to ``None``, which indicates that an automatic value should
           be selected based on the value of the
           :paramref:`_orm.relationship.viewonly` flag.  When left at its
-          default, changes in state for writable relationships will be
-          back-populated normally.  For viewonly relationships, a warning is
-          emitted unless the flag is set to ``False``.
+          default, changes in state will be back-populated only if neither
+          sides of a relationship is viewonly.
 
           .. versionadded:: 1.3.17
+
+          .. versionchanged:: 1.4 - A relationship that specifies
+             :paramref:`_orm.relationship.viewonly` automatically implies
+             that :paramref:`_orm.relationship.sync_backref` is ``False``.
 
           .. seealso::
 
@@ -1998,7 +1998,10 @@ class RelationshipProperty(StrategizedProperty):
 
     @property
     def _effective_sync_backref(self):
-        return self.sync_backref is not False
+        if self.viewonly:
+            return False
+        else:
+            return self.sync_backref is not False
 
     @staticmethod
     def _check_sync_backref(rel_a, rel_b):
@@ -2007,13 +2010,12 @@ class RelationshipProperty(StrategizedProperty):
                 "Relationship %s cannot specify sync_backref=True since %s "
                 "includes viewonly=True." % (rel_b, rel_a)
             )
-        if rel_a.viewonly and rel_b.sync_backref is not False:
-            util.warn_limited(
-                "Setting backref / back_populates on relationship %s to refer "
-                "to viewonly relationship %s should include "
-                "sync_backref=False set on the %s relationship. ",
-                (rel_b, rel_a, rel_b),
-            )
+        if (
+            rel_a.viewonly
+            and not rel_b.viewonly
+            and rel_b.sync_backref is not False
+        ):
+            rel_b.sync_backref = False
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
