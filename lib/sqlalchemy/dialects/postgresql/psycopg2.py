@@ -466,6 +466,7 @@ from __future__ import absolute_import
 import decimal
 import logging
 import re
+from uuid import UUID as _python_UUID
 
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
@@ -485,11 +486,6 @@ from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 from ...util import collections_abc
-
-try:
-    from uuid import UUID as _python_UUID  # noqa
-except ImportError:
-    _python_UUID = None
 
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
