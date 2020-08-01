@@ -21,6 +21,7 @@ from .base import DECIMAL
 from .base import FLOAT
 from .base import IMAGE
 from .base import INTEGER
+from .base import JSON
 from .base import MONEY
 from .base import NCHAR
 from .base import NTEXT
@@ -47,6 +48,7 @@ base.dialect = dialect = pyodbc.dialect
 
 
 __all__ = (
+    "JSON",
     "INTEGER",
     "BIGINT",
     "SMALLINT",

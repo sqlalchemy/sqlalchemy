@@ -2034,11 +2034,17 @@ class JSON(Indexable, TypeEngine):
        JSON types.  Since it supports JSON SQL operations, it only
        works on backends that have an actual JSON type, currently:
 
-       * PostgreSQL
+       * PostgreSQL - see :class:`_postgresql.JSON` and
+         :class:`_postgresql.JSONB` for backend-specific notes
 
-       * MySQL as of version 5.7 (MariaDB as of the 10.2 series does not)
+       * MySQL as of version 5.7 (MariaDB as of the 10.2 series does not) - see
+         :class:`_mysql.JSON` for backend-specific notes
 
-       * SQLite as of version 3.9
+       * SQLite as of version 3.9 - see :class:`_sqlite.JSON` for
+         backend-specific notes
+
+       * Microsoft SQL Server 2016 and later - see :class:`_mssql.JSON` for
+         backend-specific notes
 
     :class:`_types.JSON` is part of the Core in support of the growing
     popularity of native JSON datatypes.
@@ -2452,7 +2458,14 @@ class JSON(Indexable, TypeEngine):
         def as_json(self):
             """Cast an indexed value as JSON.
 
-            This is the default behavior of indexed elements in any case.
+            e.g.::
+
+                stmt = select([
+                    mytable.c.json_column['some_data'].as_json()
+                ])
+
+            This is typically the default behavior of indexed elements in any
+            case.
 
             Note that comparison of full JSON structures may not be
             supported by all backends.

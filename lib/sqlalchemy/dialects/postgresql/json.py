@@ -97,12 +97,18 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
 class JSON(sqltypes.JSON):
     """Represent the PostgreSQL JSON type.
 
-    This type is a specialization of the Core-level :class:`_types.JSON`
-    type.   Be sure to read the documentation for :class:`_types.JSON` for
-    important tips regarding treatment of NULL values and ORM use.
+    :class:`_postgresql.JSON` is used automatically whenever the base
+    :class:`_types.JSON` datatype is used against a PostgreSQL backend,
+    however base :class:`_types.JSON` datatype does not provide Python
+    accessors for PostgreSQL-specific comparison methods such as
+    :meth:`_postgresql.JSON.Comparator.astext`; additionally, to use
+    PostgreSQL ``JSONB``, the :class:`_postgresql.JSONB` datatype should
+    be used explicitly.
 
-    .. versionchanged:: 1.1 :class:`_postgresql.JSON` is now a PostgreSQL-
-       specific specialization of the new :class:`_types.JSON` type.
+    .. seealso::
+
+        :class:`_types.JSON` - main documenation for the generic
+        cross-platform JSON datatype.
 
     The operators provided by the PostgreSQL version of :class:`_types.JSON`
     include:
@@ -166,6 +172,9 @@ class JSON(sqltypes.JSON):
         :class:`_types.JSON` - Core level JSON type
 
         :class:`_postgresql.JSONB`
+
+    .. versionchanged:: 1.1 :class:`_postgresql.JSON` is now a PostgreSQL-
+       specific specialization of the new :class:`_types.JSON` type.
 
     """  # noqa
 

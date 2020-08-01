@@ -963,6 +963,7 @@ class DefaultRequirements(SuiteRequirements):
                 "mariadb>=10.2.7",
                 "postgresql >= 9.3",
                 self._sqlite_json,
+                "mssql",
             ]
         )
 
@@ -976,6 +977,18 @@ class DefaultRequirements(SuiteRequirements):
                 "mariadb",
                 "sqlite",
             ]
+        )
+
+    @property
+    def legacy_unconditional_json_extract(self):
+        """Backend has a JSON_EXTRACT or similar function that returns a
+        valid JSON string in all cases.
+
+        Used to test a legacy feature and is not needed.
+
+        """
+        return self.json_type + only_on(
+            ["postgresql", "mysql", "mariadb", "sqlite"]
         )
 
     def _sqlite_file_db(self, config):

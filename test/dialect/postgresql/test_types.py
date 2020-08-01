@@ -3389,7 +3389,7 @@ class JSONBSuiteTest(suite.JSONTest):
     datatype = JSONB
 
 
-class JSONBCastSuiteTest(suite.JSONStringCastIndexTest):
+class JSONBCastSuiteTest(suite.JSONLegacyStringCastIndexTest):
     __requires__ = ("postgresql_jsonb",)
 
     datatype = JSONB

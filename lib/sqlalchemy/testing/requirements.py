@@ -804,6 +804,16 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def legacy_unconditional_json_extract(self):
+        """Backend has a JSON_EXTRACT or similar function that returns a
+        valid JSON string in all cases.
+
+        Used to test a legacy feature and is not needed.
+
+        """
+        return exclusions.closed()
+
+    @property
     def precision_numerics_general(self):
         """target backend has general support for moderately high-precision
         numerics."""

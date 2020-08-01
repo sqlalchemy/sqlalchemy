@@ -716,6 +716,9 @@ import operator
 import re
 
 from . import information_schema as ischema
+from .json import JSON
+from .json import JSONIndexType
+from .json import JSONPathType
 from ... import exc
 from ... import schema as sa_schema
 from ... import Sequence
@@ -1453,6 +1456,11 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BIT(self, type_, **kw):
         return "BIT"
 
+    def visit_JSON(self, type_, **kw):
+        # this is a bit of a break with SQLAlchemy's convention of
+        # "UPPERCASE name goes to UPPERCASE type name with no modification"
+        return self._extend("NVARCHAR", type_, length="max")
+
     def visit_MONEY(self, type_, **kw):
         return "MONEY"
 
@@ -2010,6 +2018,65 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
+    def _render_json_extract_from_binary(self, binary, operator, **kw):
+        # note we are intentionally calling upon the process() calls in the
+        # order in which they appear in the SQL String as this is used
+        # by positional parameter rendering
+
+        if binary.type._type_affinity is sqltypes.JSON:
+            return "JSON_QUERY(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+
+        # as with other dialects, start with an explicit test for NULL
+        case_expression = "CASE JSON_VALUE(%s, %s) WHEN NULL THEN NULL" % (
+            self.process(binary.left, **kw),
+            self.process(binary.right, **kw),
+        )
+
+        if binary.type._type_affinity is sqltypes.Integer:
+            type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS INTEGER)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        elif binary.type._type_affinity is sqltypes.Numeric:
+            type_expression = (
+                "ELSE CAST(JSON_VALUE(%s, %s) AS DECIMAL(10, 6))"
+                % (
+                    self.process(binary.left, **kw),
+                    self.process(binary.right, **kw),
+                )
+            )
+        elif binary.type._type_affinity is sqltypes.Boolean:
+            # the NULL handling is particularly weird with boolean, so
+            # explicitly return numeric (BIT) constants
+            type_expression = (
+                "WHEN 'true' THEN 1 WHEN 'false' THEN 0 ELSE NULL"
+            )
+        elif binary.type._type_affinity is sqltypes.String:
+            # TODO: does this comment (from mysql) apply to here, too?
+            #       this fails with a JSON value that's a four byte unicode
+            #       string.  SQLite has the same problem at the moment
+            type_expression = "ELSE JSON_VALUE(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+        else:
+            # other affinity....this is not expected right now
+            type_expression = "ELSE JSON_QUERY(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
+
+        return case_expression + " " + type_expression + " END"
+
+    def visit_json_getitem_op_binary(self, binary, operator, **kw):
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
+    def visit_json_path_getitem_op_binary(self, binary, operator, **kw):
+        return self._render_json_extract_from_binary(binary, operator, **kw)
+
     def visit_sequence(self, seq, **kw):
         return "NEXT VALUE FOR %s" % self.preparer.format_sequence(seq)
 
@@ -2412,6 +2479,9 @@ class MSDialect(default.DefaultDialect):
     colspecs = {
         sqltypes.DateTime: _MSDateTime,
         sqltypes.Date: _MSDate,
+        sqltypes.JSON: JSON,
+        sqltypes.JSON.JSONIndexType: JSONIndexType,
+        sqltypes.JSON.JSONPathType: JSONPathType,
         sqltypes.Time: TIME,
         sqltypes.Unicode: _MSUnicode,
         sqltypes.UnicodeText: _MSUnicodeText,
@@ -2458,6 +2528,8 @@ class MSDialect(default.DefaultDialect):
         isolation_level=None,
         deprecate_large_types=None,
         legacy_schema_aliasing=False,
+        json_serializer=None,
+        json_deserializer=None,
         **opts
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2470,6 +2542,8 @@ class MSDialect(default.DefaultDialect):
         super(MSDialect, self).__init__(**opts)
 
         self.isolation_level = isolation_level
+        self._json_serializer = json_serializer
+        self._json_deserializer = json_deserializer
 
     def do_savepoint(self, connection, name):
         # give the DBAPI a push

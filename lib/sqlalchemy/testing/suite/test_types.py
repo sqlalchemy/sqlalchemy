@@ -774,8 +774,21 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         eq_(row, (data_element,))
 
-    def _index_fixtures(fn):
-        fn = testing.combinations(
+    def _index_fixtures(include_comparison):
+
+        if include_comparison:
+            # basically SQL Server and MariaDB can kind of do json
+            # comparison, MySQL, PG and SQLite can't.  not worth it.
+            json_elements = []
+        else:
+            json_elements = [
+                ("json", {"foo": "bar"}),
+                ("json", ["one", "two", "three"]),
+                (None, {"foo": "bar"}),
+                (None, ["one", "two", "three"]),
+            ]
+
+        elements = [
             ("boolean", True),
             ("boolean", False),
             ("boolean", None),
@@ -793,14 +806,16 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             ("integer", None),
             ("float", 28.5),
             ("float", None),
-            # TODO: how to test for comaprison
-            #        ("json", {"foo": "bar"}),
-            id_="sa",
-        )(fn)
+        ] + json_elements
 
-        return fn
+        def decorate(fn):
+            fn = testing.combinations(id_="sa", *elements)(fn)
 
-    @_index_fixtures
+            return fn
+
+        return decorate
+
+    @_index_fixtures(False)
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -815,14 +830,16 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
             expr = data_table.c.data["key1"]
-            expr = getattr(expr, "as_%s" % datatype)()
+
+            if datatype:
+                expr = getattr(expr, "as_%s" % datatype)()
 
             roundtrip = conn.scalar(select(expr))
             eq_(roundtrip, value)
             if util.py3k:  # skip py2k to avoid comparing unicode to str etc.
                 is_(type(roundtrip), type(value))
 
-    @_index_fixtures
+    @_index_fixtures(True)
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -837,14 +854,15 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
             expr = data_table.c.data["key1"]
-            expr = getattr(expr, "as_%s" % datatype)()
+            if datatype:
+                expr = getattr(expr, "as_%s" % datatype)()
 
             row = conn.execute(select(expr).where(expr == value)).first()
 
             # make sure we get a row even if value is None
             eq_(row, (value,))
 
-    @_index_fixtures
+    @_index_fixtures(True)
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
@@ -859,7 +877,9 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             )
 
             expr = data_table.c.data[("key1", "subkey1")]
-            expr = getattr(expr, "as_%s" % datatype)()
+
+            if datatype:
+                expr = getattr(expr, "as_%s" % datatype)()
 
             row = conn.execute(select(expr).where(expr == value)).first()
 
@@ -1033,14 +1053,17 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         )
 
 
-class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+class JSONLegacyStringCastIndexTest(
+    _LiteralRoundTripFixture, fixtures.TablesTest
+):
     """test JSON index access with "cast to string", which we have documented
     for a long time as how to compare JSON values, but is ultimately not
-    reliable in all cases.
+    reliable in all cases.   The "as_XYZ()" comparators should be used
+    instead.
 
     """
 
-    __requires__ = ("json_type",)
+    __requires__ = ("json_type", "legacy_unconditional_json_extract")
     __backend__ = True
 
     datatype = JSON
@@ -1135,13 +1158,13 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         # "cannot extract array element from a non-array", which is
         # fixed in 9.4 but may exist in 9.3
         self._test_index_criteria(
-            and_(name == "r4", cast(col[1], String) == '"two"'), "r4"
+            and_(name == "r4", cast(col[1], String) == '"two"',), "r4",
         )
 
     def test_string_cast_crit_mixed_path(self):
         col = self.tables.data_table.c["data"]
         self._test_index_criteria(
-            cast(col[("key3", 1, "six")], String) == '"seven"', "r3"
+            cast(col[("key3", 1, "six")], String) == '"seven"', "r3",
         )
 
     def test_string_cast_crit_string_path(self):
@@ -1157,7 +1180,8 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         col = self.tables.data_table.c["data"]
 
         self._test_index_criteria(
-            and_(name == "r6", cast(col["b"], String) == '"some value"'), "r6"
+            and_(name == "r6", cast(col["b"], String) == '"some value"',),
+            "r6",
         )
 
 
@@ -1165,7 +1189,7 @@ __all__ = (
     "UnicodeVarcharTest",
     "UnicodeTextTest",
     "JSONTest",
-    "JSONStringCastIndexTest",
+    "JSONLegacyStringCastIndexTest",
     "DateTest",
     "DateTimeTest",
     "TextTest",

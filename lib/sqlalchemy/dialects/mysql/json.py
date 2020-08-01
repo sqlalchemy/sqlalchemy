@@ -16,6 +16,14 @@ class JSON(sqltypes.JSON):
     MySQL supports JSON as of version 5.7.
     MariaDB supports JSON (as an alias for LONGTEXT) as of version 10.2.
 
+    :class:`_mysql.JSON` is used automatically whenever the base
+    :class:`_types.JSON` datatype is used against a MySQL or MariaDB backend.
+
+    .. seealso::
+
+        :class:`_types.JSON` - main documenation for the generic
+        cross-platform JSON datatype.
+
     The :class:`.mysql.JSON` type supports persistence of JSON values
     as well as the core index operations provided by :class:`_types.JSON`
     datatype, by adapting the operations to render the ``JSON_EXTRACT``
