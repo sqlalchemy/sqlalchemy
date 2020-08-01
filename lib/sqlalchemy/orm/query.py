@@ -1291,7 +1291,9 @@ class Query(
          those being selected.
 
         """
+        return self._from_self(*entities)
 
+    def _from_self(self, *entities):
         fromclause = (
             self.with_labels()
             .enable_eagerloads(False)
@@ -2935,7 +2937,7 @@ class Query(
 
         """
         col = sql.func.count(sql.literal_column("*"))
-        return self.from_self(col).scalar()
+        return self._from_self(col).scalar()
 
     def delete(self, synchronize_session="evaluate"):
         r"""Perform a bulk delete query.

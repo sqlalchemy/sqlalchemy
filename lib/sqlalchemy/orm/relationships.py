@@ -408,6 +408,10 @@ class RelationshipProperty(StrategizedProperty):
           will not cascade an incoming transient object into the session of a
           persistent parent, if the event is received via backref.
 
+          .. deprecated:: 1.4 The
+             :paramref:`_orm.relationship.cascade_backrefs`
+             flag will default to False in all cases in SQLAlchemy 2.0.
+
           .. seealso::
 
             :ref:`backref_cascade` - Full discussion and examples on how

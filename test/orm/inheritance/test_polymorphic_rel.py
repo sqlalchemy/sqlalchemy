@@ -230,7 +230,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_multi_join_future(self):
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
         e = aliased(Person)
         c = aliased(Company)
 
@@ -283,7 +283,7 @@ class _PolymorphicTestBase(object):
         eq_(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
 
     def test_filter_on_subclass_one_future(self):
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
         eq_(
             sess.execute(select(Engineer)).scalar(), Engineer(name="dilbert"),
         )
@@ -337,7 +337,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_nonaliased_one_future(self):
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
         eq_(
             sess.execute(
                 select(Person)
@@ -396,7 +396,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_flag_aliased_one_future(self):
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
 
         pa = aliased(Paperwork)
         eq_(
@@ -496,7 +496,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_with_polymorphic_nonaliased_one_future(self):
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
 
         pm = with_polymorphic(Person, [Manager])
         eq_(
@@ -1544,7 +1544,7 @@ class _PolymorphicTestBase(object):
         # TODO: this is the first test *EVER* of an aliased class of
         # an aliased class.  we should add many more tests for this.
         # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
         p1 = aliased(Person)

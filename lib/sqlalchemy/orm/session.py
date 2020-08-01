@@ -1937,16 +1937,34 @@ class Session(_SessionClassMethods):
 
         # now we are in legacy territory.  looking for "bind" on tables
         # that are via bound metadata.   this goes away in 2.0.
+
+        future_msg = ""
+        future_code = ""
+
         if mapper and clause is None:
             clause = mapper.persist_selectable
 
         if clause is not None:
             if clause.bind:
-                return clause.bind
+                if self.future:
+                    future_msg = (
+                        " A bind was located via legacy bound metadata, but "
+                        "since future=True is set on this Session, this "
+                        "bind is ignored."
+                    )
+                else:
+                    return clause.bind
 
         if mapper:
             if mapper.persist_selectable.bind:
-                return mapper.persist_selectable.bind
+                if self.future:
+                    future_msg = (
+                        " A bind was located via legacy bound metadata, but "
+                        "since future=True is set on this Session, this "
+                        "bind is ignored."
+                    )
+                else:
+                    return mapper.persist_selectable.bind
 
         context = []
         if mapper is not None:
@@ -1955,8 +1973,9 @@ class Session(_SessionClassMethods):
             context.append("SQL expression")
 
         raise sa_exc.UnboundExecutionError(
-            "Could not locate a bind configured on %s or this Session"
-            % (", ".join(context))
+            "Could not locate a bind configured on %s or this Session.%s"
+            % (", ".join(context), future_msg),
+            code=future_code,
         )
 
     def query(self, *entities, **kwargs):

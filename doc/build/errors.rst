@@ -118,6 +118,55 @@ are part of SQLAlchemy 1.4 and  are there to help migrate an application to the
     the 1.x series, as well as the current goals and progress of SQLAlchemy
     2.0.
 
+.. _error_c9bf:
+
+A bind was located via legacy bound metadata, but since future=True is set on this Session, this bind is ignored.
+-------------------------------------------------------------------------------------------------------------------
+
+The concept of "bound metadata" is being removed in SQLAlchemy 2.0.  This
+refers to the :paramref:`_schema.MetaData.bind` parameter on the
+:class:`_schema.MetaData` object that in turn allows objects like the ORM
+:class:`_orm.Session` to associate a particular mapped class with an
+:class:`_orm.Engine`.   In SQLAlchemy 2.0, the :class:`_orm.Session` must be
+linked to each :class:`_orm.Engine` directly. That is, instead of instantating
+the :class:`_orm.Session` or
+:class:`_orm.sessionmaker` without any arguments, and associating the
+:class:`_engine.Engine` with the :class:`_schema.MetaData`::
+
+    engine = create_engine("sqlite://")
+    Session = sessionmaker()
+    metadata = MetaData(bind=engine)
+    Base = declarative_base(metadata=metadata)
+
+    class MyClass(Base):
+        # ...
+
+
+    session = Session()
+    session.add(MyClass())
+    session.commit()
+
+The :class:`_engine.Engine` must instead be associated directly with the
+:class:`_orm.sessionmaker` or :class:`_orm.Session`.  The
+:class:`_schema.MetaData` object should no longer be associated with any
+engine::
+
+
+    engine = create_engine("sqlite://")
+    Session = sessionmaker(engine)
+    Base = declarative_base()
+
+    class MyClass(Base):
+        # ...
+
+
+    session = Session()
+    session.add(MyClass())
+    session.commit()
+
+In SQLAlchemy 1.4, this :term:`2.x style` behavior is enabled when the
+:paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
+or :class:`_orm.Session`.
 
 Connections and Transactions
 ============================

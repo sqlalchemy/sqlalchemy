@@ -1184,7 +1184,7 @@ class ManyToManyDP(DependencyProcessor):
 
         if secondary_delete:
             associationrow = secondary_delete[0]
-            statement = self.secondary.delete(
+            statement = self.secondary.delete().where(
                 sql.and_(
                     *[
                         c == sql.bindparam(c.key, type_=c.type)

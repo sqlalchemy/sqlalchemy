@@ -154,7 +154,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -179,7 +179,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         User = self.classes.User
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         jill = s.query(User).filter(User.name == "jill").one()
 
@@ -435,7 +435,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_future(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -487,7 +487,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_future_lambda(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -623,7 +623,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -711,7 +711,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_delete_fetch_returning_lambda(self):
         User = self.classes.User
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
 
         john, jack, jill, jane = (
             sess.execute(select(User).order_by(User.id)).scalars().all()
@@ -1068,7 +1068,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_update_multi_values_error_future(self):
         User = self.classes.User
-        session = Session(future=True)
+        session = Session(testing.db, future=True)
 
         # Do update using a tuple and check that order is preserved
 
@@ -1087,7 +1087,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
     def test_update_preserve_parameter_order_future(self):
         User = self.classes.User
-        session = Session(future=True)
+        session = Session(testing.db, future=True)
 
         # Do update using a tuple and check that order is preserved
 
@@ -1585,7 +1585,7 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         person = self.classes.Person.__table__
         engineer = self.classes.Engineer.__table__
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
         sess.query(person.join(engineer)).filter(person.c.name == "e2").update(
             {person.c.name: "updated", engineer.c.engineer_name: "e2a"},
         )

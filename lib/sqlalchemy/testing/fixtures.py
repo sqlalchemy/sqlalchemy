@@ -293,13 +293,14 @@ class TablesTest(TestBase):
                 continue
             if table not in headers:
                 continue
-            cls.bind.execute(
-                table.insert(),
-                [
-                    dict(zip(headers[table], column_values))
-                    for column_values in rows[table]
-                ],
-            )
+            with cls.bind.begin() as conn:
+                conn.execute(
+                    table.insert(),
+                    [
+                        dict(zip(headers[table], column_values))
+                        for column_values in rows[table]
+                    ],
+                )
 
 
 class RemovesEvents(object):

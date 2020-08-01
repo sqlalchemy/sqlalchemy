@@ -1219,7 +1219,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
 
         selectquery = users.outerjoin(addresses).select(
             users.c.id < 10,
@@ -2154,7 +2154,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             (user10, None),
         ]
 
-        sess = create_session(future=True)
+        sess = create_session(testing.db, future=True)
 
         selectquery = users.outerjoin(addresses).select(
             use_labels=True, order_by=[users.c.id, addresses.c.id]
