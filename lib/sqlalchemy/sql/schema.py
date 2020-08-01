@@ -1065,7 +1065,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
           :class:`_schema.Table`.  This is to support convenient
           usage within the :mod:`~sqlalchemy.ext.declarative` extension.
 
-        :param type\_: The column's type, indicated using an instance which
+        :param type_: The column's type, indicated using an instance which
           subclasses :class:`~sqlalchemy.types.TypeEngine`.  If no arguments
           are required for the type, the class of the type can be sent
           as well, e.g.::
