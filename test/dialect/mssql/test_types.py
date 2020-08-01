@@ -953,9 +953,14 @@ class TypeRoundTripTest(
         )
         for col, spec in zip(reflected_binary.c, columns):
             eq_(
-                str(col.type),
+                col.type.compile(dialect=mssql.dialect()),
                 spec[3],
-                "column %s %s != %s" % (col.key, str(col.type), spec[3]),
+                "column %s %s != %s"
+                % (
+                    col.key,
+                    col.type.compile(dialect=mssql.dialect()),
+                    spec[3],
+                ),
             )
             c1 = testing.db.dialect.type_descriptor(col.type).__class__
             c2 = testing.db.dialect.type_descriptor(

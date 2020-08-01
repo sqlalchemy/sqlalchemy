@@ -626,12 +626,7 @@ class TypeEngine(Traversible):
     @util.preload_module("sqlalchemy.engine.default")
     def _default_dialect(self):
         default = util.preloaded.engine_default
-        if self.__class__.__module__.startswith("sqlalchemy.dialects"):
-            tokens = self.__class__.__module__.split(".")[0:3]
-            mod = ".".join(tokens)
-            return getattr(__import__(mod).dialects, tokens[-1]).dialect()
-        else:
-            return default.DefaultDialect()
+        return default.StrCompileDialect()
 
     def __str__(self):
         if util.py2k:

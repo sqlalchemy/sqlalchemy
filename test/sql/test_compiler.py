@@ -3940,7 +3940,7 @@ class StringifySpecialTest(fixtures.TestBase):
 
         eq_ignore_whitespace(
             str(stmt),
-            "SELECT CAST(mytable.myid AS MyType) AS myid FROM mytable",
+            "SELECT CAST(mytable.myid AS MyType()) AS myid FROM mytable",
         )
 
     def test_within_group(self):

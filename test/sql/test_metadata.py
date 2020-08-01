@@ -3970,13 +3970,9 @@ class ColumnOptionsTest(fixtures.TestBase):
         assert Column(String, default=g2).default is g2
         assert Column(String, onupdate=g2).onupdate is g2
 
-    def _null_type_error(self, col):
-        t = Table("t", MetaData(), col)
-        assert_raises_message(
-            exc.CompileError,
-            r"\(in table 't', column 'foo'\): Can't generate DDL for NullType",
-            schema.CreateTable(t).compile,
-        )
+    def _null_type_no_error(self, col):
+        c_str = str(schema.CreateColumn(col).compile())
+        assert "NULL" in c_str
 
     def _no_name_error(self, col):
         assert_raises_message(
@@ -3997,13 +3993,13 @@ class ColumnOptionsTest(fixtures.TestBase):
 
     def test_argument_signatures(self):
         self._no_name_error(Column())
-        self._null_type_error(Column("foo"))
+        self._null_type_no_error(Column("foo"))
         self._no_name_error(Column(default="foo"))
 
         self._no_name_error(Column(Sequence("a")))
-        self._null_type_error(Column("foo", default="foo"))
+        self._null_type_no_error(Column("foo", default="foo"))
 
-        self._null_type_error(Column("foo", Sequence("a")))
+        self._null_type_no_error(Column("foo", Sequence("a")))
 
         self._no_name_error(Column(ForeignKey("bar.id")))
 
