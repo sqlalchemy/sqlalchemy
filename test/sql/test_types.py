@@ -294,6 +294,33 @@ class AdaptTest(fixtures.TestBase):
             t1 = typ()
         repr(t1)
 
+    @testing.uses_deprecated()
+    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
+    def test_str(self, typ):
+        if issubclass(typ, ARRAY):
+            t1 = typ(String)
+        else:
+            t1 = typ()
+        str(t1)
+
+    def test_str_third_party(self):
+        class TINYINT(types.TypeEngine):
+            __visit_name__ = "TINYINT"
+
+        eq_(str(TINYINT()), "TINYINT")
+
+    def test_str_third_party_uppercase_no_visit_name(self):
+        class TINYINT(types.TypeEngine):
+            pass
+
+        eq_(str(TINYINT()), "TINYINT")
+
+    def test_str_third_party_camelcase_no_visit_name(self):
+        class TinyInt(types.TypeEngine):
+            pass
+
+        eq_(str(TinyInt()), "TinyInt()")
+
     def test_adapt_constructor_copy_override_kw(self):
         """test that adapt() can accept kw args that override
         the state of the original object.
@@ -2878,8 +2905,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_default_compile_mysql_integer(self):
         self.assert_compile(
             dialects.mysql.INTEGER(display_width=5),
-            "INTEGER(5)",
+            "INTEGER",
             allow_dialect_select=True,
+        )
+
+        self.assert_compile(
+            dialects.mysql.INTEGER(display_width=5),
+            "INTEGER(5)",
+            dialect="mysql",
         )
 
     def test_numeric_plain(self):

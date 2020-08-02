@@ -4270,6 +4270,14 @@ class GenericTypeCompiler(TypeCompiler):
 
 
 class StrSQLTypeCompiler(GenericTypeCompiler):
+    def process(self, type_, **kw):
+        try:
+            _compiler_dispatch = type_._compiler_dispatch
+        except AttributeError:
+            return self._visit_unknown(type_, **kw)
+        else:
+            return _compiler_dispatch(self, **kw)
+
     def __getattr__(self, key):
         if key.startswith("visit_"):
             return self._visit_unknown
@@ -4277,7 +4285,21 @@ class StrSQLTypeCompiler(GenericTypeCompiler):
             raise AttributeError(key)
 
     def _visit_unknown(self, type_, **kw):
-        return "%s" % type_.__class__.__name__
+        if type_.__class__.__name__ == type_.__class__.__name__.upper():
+            return type_.__class__.__name__
+        else:
+            return repr(type_)
+
+    def visit_null(self, type_, **kw):
+        return "NULL"
+
+    def visit_user_defined(self, type_, **kw):
+        try:
+            get_col_spec = type_.get_col_spec
+        except AttributeError:
+            return repr(type_)
+        else:
+            return get_col_spec(**kw)
 
 
 class IdentifierPreparer(object):
