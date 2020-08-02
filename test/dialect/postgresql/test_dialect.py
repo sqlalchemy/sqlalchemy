@@ -982,7 +982,7 @@ $$ LANGUAGE plpgsql;
             t = Table("t", m, Column("c", type_, primary_key=True))
 
             if version:
-                dialect = postgresql.dialect()
+                dialect = testing.db.dialect.__class__()
                 dialect._get_server_version_info = mock.Mock(
                     return_value=version
                 )

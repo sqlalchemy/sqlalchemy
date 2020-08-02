@@ -9,13 +9,11 @@ r"""
     :name: pg8000
     :dbapi: pg8000
     :connectstring: postgresql+pg8000://user:password@host:port/dbname[?key=value&key=value...]
-    :url: https://pythonhosted.org/pg8000/
+    :url: https://pypi.org/project/pg8000/
 
-.. note::
-
-    The pg8000 dialect is **not tested as part of SQLAlchemy's continuous
-    integration** and may have unresolved issues.  The recommended PostgreSQL
-    dialect is psycopg2.
+.. versionchanged:: 1.4  The pg8000 dialect has been updated for version
+   1.16.5 and higher, and is again part of SQLAlchemy's continuous integration
+   with full feature support.
 
 .. _pg8000_unicode:
 
@@ -56,9 +54,6 @@ of the :ref:`psycopg2 <psycopg2_isolation_level>` dialect:
 * ``SERIALIZABLE``
 * ``AUTOCOMMIT``
 
-.. versionadded:: 0.9.5 support for AUTOCOMMIT isolation level when using
-   pg8000.
-
 .. seealso::
 
     :ref:`postgresql_isolation_level`
@@ -74,12 +69,16 @@ from uuid import UUID as _python_UUID
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
+from .base import ENUM
+from .base import INTERVAL
 from .base import PGCompiler
 from .base import PGDialect
 from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import UUID
 from .json import JSON
+from .json import JSONB
+from .json import JSONPathType
 from ... import exc
 from ... import processors
 from ... import types as sqltypes
@@ -125,6 +124,40 @@ class _PGJSON(JSON):
         else:
             return super(_PGJSON, self).result_processor(dialect, coltype)
 
+    def get_dbapi_type(self, dbapi):
+        return dbapi.JSON
+
+
+class _PGJSONB(JSONB):
+    def result_processor(self, dialect, coltype):
+        if dialect._dbapi_version > (1, 10, 1):
+            return None  # Has native JSON
+        else:
+            return super(_PGJSON, self).result_processor(dialect, coltype)
+
+    def get_dbapi_type(self, dbapi):
+        return dbapi.JSONB
+
+
+class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
+    def get_dbapi_type(self, dbapi):
+        raise NotImplementedError("should not be here")
+
+
+class _PGJSONIntIndexType(sqltypes.JSON.JSONIntIndexType):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.INTEGER
+
+
+class _PGJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.STRING
+
+
+class _PGJSONPathType(JSONPathType):
+    def get_dbapi_type(self, dbapi):
+        return 1009
+
 
 class _PGUUID(UUID):
     def bind_processor(self, dialect):
@@ -148,8 +181,67 @@ class _PGUUID(UUID):
             return process
 
 
+class _PGEnum(ENUM):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.UNKNOWN
+
+
+class _PGInterval(INTERVAL):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.INTERVAL
+
+    @classmethod
+    def adapt_emulated_to_native(cls, interval, **kw):
+        return _PGInterval(precision=interval.second_precision)
+
+
+class _PGTimeStamp(sqltypes.DateTime):
+    def get_dbapi_type(self, dbapi):
+        if self.timezone:
+            # TIMESTAMPTZOID
+            return 1184
+        else:
+            # TIMESTAMPOID
+            return 1114
+
+
+class _PGTime(sqltypes.Time):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.TIME
+
+
+class _PGInteger(sqltypes.Integer):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.INTEGER
+
+
+class _PGSmallInteger(sqltypes.SmallInteger):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.INTEGER
+
+
+class _PGNullType(sqltypes.NullType):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NULLTYPE
+
+
+class _PGBigInteger(sqltypes.BigInteger):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.BIGINTEGER
+
+
+class _PGBoolean(sqltypes.Boolean):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.BOOLEAN
+
+
 class PGExecutionContext_pg8000(PGExecutionContext):
-    pass
+    def pre_exec(self):
+        if not self.compiled:
+            return
+
+        if self.dialect._dbapi_version > (1, 16, 0):
+            self.set_input_sizes()
 
 
 class PGCompiler_pg8000(PGCompiler):
@@ -160,20 +252,11 @@ class PGCompiler_pg8000(PGCompiler):
             + self.process(binary.right, **kw)
         )
 
-    def post_process_text(self, text):
-        if "%%" in text:
-            util.warn(
-                "The SQLAlchemy postgresql dialect "
-                "now automatically escapes '%' in text() "
-                "expressions to '%%'."
-            )
-        return text.replace("%", "%%")
-
 
 class PGIdentifierPreparer_pg8000(PGIdentifierPreparer):
-    def _escape_identifier(self, value):
-        value = value.replace(self.escape_quote, self.escape_to_quote)
-        return value.replace("%", "%%")
+    def __init__(self, *args, **kwargs):
+        PGIdentifierPreparer.__init__(self, *args, **kwargs)
+        self._double_percents = False
 
 
 class PGDialect_pg8000(PGDialect):
@@ -195,9 +278,23 @@ class PGDialect_pg8000(PGDialect):
         {
             sqltypes.Numeric: _PGNumericNoBind,
             sqltypes.Float: _PGNumeric,
-            JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
+            sqltypes.Boolean: _PGBoolean,
+            sqltypes.NullType: _PGNullType,
+            JSONB: _PGJSONB,
+            sqltypes.JSON.JSONPathType: _PGJSONPathType,
+            sqltypes.JSON.JSONIndexType: _PGJSONIndexType,
+            sqltypes.JSON.JSONIntIndexType: _PGJSONIntIndexType,
+            sqltypes.JSON.JSONStrIndexType: _PGJSONStrIndexType,
             UUID: _PGUUID,
+            sqltypes.Interval: _PGInterval,
+            INTERVAL: _PGInterval,
+            sqltypes.DateTime: _PGTimeStamp,
+            sqltypes.Time: _PGTime,
+            sqltypes.Integer: _PGInteger,
+            sqltypes.SmallInteger: _PGSmallInteger,
+            sqltypes.BigInteger: _PGBigInteger,
+            sqltypes.Enum: _PGEnum,
         },
     )
 
@@ -310,6 +407,17 @@ class PGDialect_pg8000(PGDialect):
 
             def on_connect(conn):
                 self.set_isolation_level(conn, self.isolation_level)
+
+            fns.append(on_connect)
+
+        if self._dbapi_version > (1, 16, 0) and self._json_deserializer:
+
+            def on_connect(conn):
+                # json
+                conn.register_in_adapter(114, self._json_deserializer)
+
+                # jsonb
+                conn.register_in_adapter(3802, self._json_deserializer)
 
             fns.append(on_connect)
 

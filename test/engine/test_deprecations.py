@@ -579,10 +579,6 @@ class RawExecuteTest(fixtures.TablesTest):
             Column("user_name", VARCHAR(20)),
         )
 
-    @testing.fails_on(
-        "postgresql+pg8000",
-        "pg8000 still doesn't allow single paren without params",
-    )
     def test_no_params_option(self, connection):
         stmt = (
             "SELECT '%'"

@@ -17,6 +17,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1312,11 +1313,9 @@ class PrePingRealTest(fixtures.TestBase):
         eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
-        def exercise_stale_connection():
+        with expect_raises(engine.dialect.dbapi.Error, check_context=False):
             curs = stale_connection.cursor()
             curs.execute("select 1")
-
-        assert_raises(engine.dialect.dbapi.Error, exercise_stale_connection)
 
     def test_pre_ping_db_stays_shutdown(self):
         engine = engines.reconnecting_engine(options={"pool_pre_ping": True})

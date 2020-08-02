@@ -7,6 +7,7 @@ from . import engines
 from .. import exc
 from ..engine import url as sa_url
 from ..util import compat
+from ..util import parse_qsl
 
 log = logging.getLogger(__name__)
 
@@ -85,7 +86,7 @@ def generate_db_urls(db_urls, extra_drivers):
         --dburi postgresql://db1  \
         --dburi postgresql://db2  \
         --dburi postgresql://db2  \
-        --dbdriver=psycopg2 --dbdriver=asyncpg
+        --dbdriver=psycopg2 --dbdriver=asyncpg?async_fallback=true
 
     Noting that the default postgresql driver is psycopg2.  the output
     would be::
@@ -139,21 +140,34 @@ def _generate_driver_urls(url, extra_drivers):
     main_driver = url.get_driver_name()
     extra_drivers.discard(main_driver)
 
-    url = generate_driver_url(url, main_driver)
+    url = generate_driver_url(url, main_driver, {})
     yield str(url)
 
     for drv in list(extra_drivers):
-        new_url = generate_driver_url(url, drv)
+
+        if "?" in drv:
+
+            driver_only, query_str = drv.split("?", 1)
+
+            query = parse_qsl(query_str)
+        else:
+            driver_only = drv
+            query = {}
+
+        new_url = generate_driver_url(url, driver_only, query)
         if new_url:
             extra_drivers.remove(drv)
+
             yield str(new_url)
 
 
 @register.init
-def generate_driver_url(url, driver):
+def generate_driver_url(url, driver, query):
     backend = url.get_backend_name()
     new_url = copy.copy(url)
+    new_url.query = dict(new_url.query)
     new_url.drivername = "%s+%s" % (backend, driver)
+    new_url.query.update(query)
     try:
         new_url.get_dialect()
     except exc.NoSuchModuleError:
