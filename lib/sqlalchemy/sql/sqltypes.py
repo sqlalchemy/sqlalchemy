@@ -1557,8 +1557,12 @@ class Enum(Emulated, String, SchemaType):
                 util.raise_(
                     LookupError(
                         "'%s' is not among the defined enum values. "
-                        "Possible values: %s"
-                        % (elem, langhelpers._repr_tuple_names(self.enums))
+                        "Enum name: %s. Possible values: %s"
+                        % (
+                            elem,
+                            self.name,
+                            langhelpers._repr_tuple_names(self.enums),
+                        )
                     ),
                     replace_context=err,
                 )
@@ -1583,8 +1587,12 @@ class Enum(Emulated, String, SchemaType):
             util.raise_(
                 LookupError(
                     "'%s' is not among the defined enum values. "
-                    "Possible values: %s"
-                    % (elem, langhelpers._repr_tuple_names(self.enums))
+                    "Enum name: %s. Possible values: %s"
+                    % (
+                        elem,
+                        self.name,
+                        langhelpers._repr_tuple_names(self.enums),
+                    )
                 ),
                 replace_context=err,
             )

@@ -1452,7 +1452,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(bind_processor("foo"), "foo")
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: someenum. "
             "Possible values: one, two, three, ..., BMember",
             bind_processor,
             5,
@@ -1460,7 +1460,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: someenum. "
             "Possible values: one, two, three, ..., BMember",
             bind_processor_validates,
             "foo",
@@ -1471,7 +1471,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(result_processor("one"), self.one)
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: someenum. "
             "Possible values: one, two, three, ..., BMember",
             result_processor,
             "foo",
@@ -1487,7 +1487,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: someenum. "
             "Possible values: one, two, three, ..., BMember",
             literal_processor,
             5,
@@ -1495,7 +1495,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: someenum. "
             "Possible values: one, two, three, ..., BMember",
             validate_literal_processor,
             "foo",
@@ -1513,7 +1513,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(bind_processor("foo"), "foo")
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: None. "
             "Possible values: one, two",
             bind_processor,
             5,
@@ -1521,7 +1521,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: None. "
             "Possible values: one, two",
             bind_processor_validates,
             "foo",
@@ -1532,7 +1532,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(result_processor("one"), "one")
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: None. "
             "Possible values: one, two",
             result_processor,
             "foo",
@@ -1546,7 +1546,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(literal_processor("foo"), "'foo'")
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: None. "
             "Possible values: one, two",
             literal_processor,
             5,
@@ -1554,7 +1554,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'foo' is not among the defined enum values. "
+            "'foo' is not among the defined enum values. Enum name: None. "
             "Possible values: one, two",
             validate_literal_processor,
             "foo",
@@ -1567,7 +1567,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(bind_processor("one"), "one")
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: None. "
             "Possible values: one, twothreefou.., seven, eight",
             bind_processor,
             5,
@@ -1579,7 +1579,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         assert_raises_message(
             LookupError,
-            "'5' is not among the defined enum values. "
+            "'5' is not among the defined enum values. Enum name: None. "
             "Possible values: None",
             bind_processor,
             5,
@@ -1781,7 +1781,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             assert_raises_message(
                 LookupError,
                 "'four' is not among the defined enum values. "
-                "Possible values: one, two, three",
+                "Enum name: None. Possible values: one, two, three",
                 conn.scalar,
                 select([self.tables.non_native_enum_table.c.someotherenum]),
             )
