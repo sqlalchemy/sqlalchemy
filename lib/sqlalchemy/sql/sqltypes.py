@@ -1561,7 +1561,7 @@ class Enum(Emulated, String, SchemaType):
                         % (
                             elem,
                             self.name,
-                            langhelpers._repr_tuple_names(self.enums),
+                            langhelpers.repr_tuple_names(self.enums),
                         )
                     ),
                     replace_context=err,
@@ -1591,7 +1591,7 @@ class Enum(Emulated, String, SchemaType):
                     % (
                         elem,
                         self.name,
-                        langhelpers._repr_tuple_names(self.enums),
+                        langhelpers.repr_tuple_names(self.enums),
                     )
                 ),
                 replace_context=err,

@@ -1739,14 +1739,14 @@ def inject_param_text(doctext, inject_params):
     return "\n".join(lines)
 
 
-def _repr_tuple_names(names):
+def repr_tuple_names(names):
     """ Trims a list of strings from the middle and return a string of up to
-        four elements. Strings greater than 12 characters will be truncated"""
+        four elements. Strings greater than 11 characters will be truncated"""
     if len(names) == 0:
         return None
     flag = len(names) <= 4
     names = names[0:4] if flag else names[0:3] + names[-1:]
-    res = ["%s.." % name[:11] if len(name) > 12 else name for name in names]
+    res = ["%s.." % name[:11] if len(name) > 11 else name for name in names]
     if flag:
         return ", ".join(res)
     else:
