@@ -125,17 +125,21 @@ Fast Executemany Mode
 
 The Pyodbc driver has added support for a "fast executemany" mode of execution
 which greatly reduces round trips for a DBAPI ``executemany()`` call when using
-Microsoft ODBC drivers.  The feature is enabled by setting the flag
-``.fast_executemany`` on the DBAPI cursor when an executemany call is to be
-used.   The SQLAlchemy pyodbc SQL Server dialect supports setting this flag
-automatically when the ``.fast_executemany`` flag is passed to
-:func:`_sa.create_engine`
-; note that the ODBC driver must be the Microsoft driver
-in order to use this flag::
+Microsoft ODBC drivers, for **limited size batches that fit in memory**.  The
+feature is enabled by setting the flag ``.fast_executemany`` on the DBAPI
+cursor when an executemany call is to be used.   The SQLAlchemy pyodbc SQL
+Server dialect supports setting this flag automatically when the
+``.fast_executemany`` flag is passed to
+:func:`_sa.create_engine` ; note that the ODBC driver must be the Microsoft
+    driver in order to use this flag::
 
     engine = create_engine(
         "mssql+pyodbc://scott:tiger@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server",
         fast_executemany=True)
+
+.. warning:: The pyodbc fast_executemany mode **buffers all rows in memory** and is
+   not compatible with very large batches of data.    A future version of SQLAlchemy
+   may support this flag as a per-execution option instead.
 
 .. versionadded:: 1.3
 
