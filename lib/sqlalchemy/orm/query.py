@@ -125,6 +125,8 @@ class Query(
 
     load_options = QueryContext.default_load_options
 
+    _params = util.EMPTY_DICT
+
     # local Query builder state, not needed for
     # compilation or execution
     _aliased_generation = None
@@ -366,10 +368,8 @@ class Query(
         else:
             stmt = self._compile_state(for_statement=True).statement
 
-        if self.load_options._params:
-            # this is the search and replace thing.  this is kind of nuts
-            # to be doing here.
-            stmt = stmt.params(self.load_options._params)
+        if self._params:
+            stmt = stmt.params(self._params)
 
         return stmt
 
@@ -431,11 +431,7 @@ class Query(
         return stmt
 
     def subquery(
-        self,
-        name=None,
-        with_labels=False,
-        reduce_columns=False,
-        _legacy_core_statement=False,
+        self, name=None, with_labels=False, reduce_columns=False,
     ):
         """Return the full SELECT statement represented by
         this :class:`_query.Query`, embedded within an
@@ -463,10 +459,7 @@ class Query(
         if with_labels:
             q = q.with_labels()
 
-        if _legacy_core_statement:
-            q = q._compile_state(for_statement=True).statement
-        else:
-            q = q.statement
+        q = q.statement
 
         if reduce_columns:
             q = q.reduce_columns()
@@ -994,6 +987,13 @@ class Query(
         after rollback or commit handles object state automatically.
         This method is not intended for general use.
 
+        .. versionadded:: 1.4
+
+            The :meth:`.populate_existing` method is equivalent to passing the
+            ``populate_existing=True`` option to the
+            :meth:`_orm.Query.execution_options` method.
+
+
         """
         self.load_options += {"_populate_existing": True}
 
@@ -1298,16 +1298,11 @@ class Query(
             self.with_labels()
             .enable_eagerloads(False)
             .correlate(None)
-            .subquery(_legacy_core_statement=True)
+            .subquery()
             ._anonymous_fromclause()
         )
 
-        parententity = self._raw_columns[0]._annotations.get("parententity")
-        if parententity:
-            ac = aliased(parententity.mapper, alias=fromclause)
-            q = self._from_selectable(ac)
-        else:
-            q = self._from_selectable(fromclause)
+        q = self._from_selectable(fromclause)
 
         if entities:
             q._set_entities(entities)
@@ -1503,12 +1498,29 @@ class Query(
     def execution_options(self, **kwargs):
         """ Set non-SQL options which take effect during execution.
 
-        The options are the same as those accepted by
-        :meth:`_engine.Connection.execution_options`.
+        Options allowed here include all of those accepted by
+        :meth:`_engine.Connection.execution_options`, as well as a series
+        of ORM specific options:
+
+        ``populate_existing=True`` - equivalent to using
+        :meth:`_orm.Query.populate_existing`
+
+        ``autoflush=True|False`` - equivalent to using
+        :meth:`_orm.Query.autoflush`
+
+        ``yield_per=<value>`` - equivalent to using
+        :meth:`_orm.Query.yield_per`
 
         Note that the ``stream_results`` execution option is enabled
         automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
-        method is used.
+        method or execution option is used.
+
+        The execution options may also be specified on a per execution basis
+        when using :term:`2.0 style` queries via the
+        :paramref:`_orm.Session.execution_options` parameter.
+
+        .. versionadded:: 1.4 - added ORM options to
+           :meth:`_orm.Query.execution_options`
 
         .. seealso::
 
@@ -1579,8 +1591,7 @@ class Query(
                 "params() takes zero or one positional argument, "
                 "which is a dictionary."
             )
-        params = self.load_options._params.union(kwargs)
-        self.load_options += {"_params": params}
+        self._params = self._params.union(kwargs)
 
     def where(self, *criterion):
         """A synonym for :meth:`.Query.filter`.
@@ -2694,7 +2705,8 @@ class Query(
 
     def _iter(self):
         # new style execution.
-        params = self.load_options._params
+        params = self._params
+
         statement = self._statement_20()
         result = self.session.execute(
             statement,
@@ -2789,6 +2801,7 @@ class Query(
             context = QueryContext(
                 compile_state,
                 compile_state.statement,
+                self._params,
                 self.session,
                 self.load_options,
             )
@@ -2984,7 +2997,7 @@ class Query(
         delete_._where_criteria = self._where_criteria
         result = self.session.execute(
             delete_,
-            self.load_options._params,
+            self._params,
             execution_options={"synchronize_session": synchronize_session},
             future=True,
         )
@@ -3060,7 +3073,7 @@ class Query(
         upd._where_criteria = self._where_criteria
         result = self.session.execute(
             upd,
-            self.load_options._params,
+            self._params,
             execution_options={"synchronize_session": synchronize_session},
             future=True,
         )
@@ -3104,6 +3117,7 @@ class Query(
         context = QueryContext(
             compile_state,
             compile_state.statement,
+            self._params,
             self.session,
             self.load_options,
         )

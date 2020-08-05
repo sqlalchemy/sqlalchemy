@@ -38,6 +38,7 @@ from .. import util
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
+from ..sql.base import ExecutableOption
 from ..sql.traversals import HasCacheKey
 
 if util.TYPE_CHECKING:
@@ -675,7 +676,7 @@ class StrategizedProperty(MapperProperty):
         )
 
 
-class ORMOption(HasCacheKey):
+class ORMOption(ExecutableOption):
     """Base class for option objects that are passed to ORM queries.
 
     These options may be consumed by :meth:`.Query.options`,

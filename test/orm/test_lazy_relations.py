@@ -22,13 +22,11 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
-from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -404,73 +402,6 @@ class LazyTest(_fixtures.FixtureTest):
 
         fred = s.query(User).filter_by(name="fred").one()
         eq_(fred.addresses, [])  # fred is missing
-
-    def test_custom_bind(self):
-        Address, addresses, users, User = (
-            self.classes.Address,
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-
-        mapper(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(
-                    mapper(Address, addresses),
-                    lazy="select",
-                    primaryjoin=and_(
-                        users.c.id == addresses.c.user_id,
-                        users.c.name == bindparam("name"),
-                    ),
-                )
-            ),
-        )
-
-        canary = mock.Mock()
-
-        class MyOption(MapperOption):
-            propagate_to_loaders = True
-
-            def __init__(self, crit):
-                self.crit = crit
-
-            def process_query_conditionally(self, query):
-                """process query during a lazyload"""
-                canary()
-                query.params.non_generative(query, dict(name=self.crit))
-
-        s = Session()
-        ed = s.query(User).options(MyOption("ed")).filter_by(name="ed").one()
-        eq_(
-            ed.addresses,
-            [
-                Address(id=2, user_id=8),
-                Address(id=3, user_id=8),
-                Address(id=4, user_id=8),
-            ],
-        )
-        eq_(canary.mock_calls, [mock.call()])
-
-        fred = (
-            s.query(User).options(MyOption("ed")).filter_by(name="fred").one()
-        )
-        eq_(fred.addresses, [])  # fred is missing
-        eq_(canary.mock_calls, [mock.call(), mock.call()])
-
-        # the lazy query was not cached; the option is re-applied to the
-        # Fred object due to populate_existing()
-        fred = (
-            s.query(User)
-            .populate_existing()
-            .options(MyOption("fred"))
-            .filter_by(name="fred")
-            .one()
-        )
-        eq_(fred.addresses, [Address(id=5, user_id=9)])  # fred is there
-
-        eq_(canary.mock_calls, [mock.call(), mock.call(), mock.call()])
 
     def test_one_to_many_scalar(self):
         Address, addresses, users, User = (
@@ -1398,8 +1329,8 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
             go,
             CompiledSQL(
                 "SELECT person.id AS person_id, person.city_id AS "
-                "person_city_id FROM person "
-                "WHERE person.city_id = :param_1 AND :param_2 = 0",
+                "person_city_id FROM person WHERE person.city_id = :param_1 "
+                "AND :param_2 = 0",
                 {"param_1": 2, "param_2": 1},
             ),
         )
@@ -1585,9 +1516,9 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT pets.id AS pets_id, pets.person_id "
-                "AS pets_person_id FROM pets "
-                "WHERE pets.person_id = CAST(:param_1 AS INTEGER)",
+                "SELECT pets.id AS pets_id, pets.person_id AS "
+                "pets_person_id FROM pets WHERE pets.person_id = "
+                "CAST(:param_1 AS INTEGER)",
                 [{"param_1": 5}],
             )
         )

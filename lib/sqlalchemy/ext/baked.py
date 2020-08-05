@@ -200,6 +200,12 @@ class BakedQuery(object):
                 if ck is None:
                     self.spoil(full=True)
                 else:
+                    assert not ck[1], (
+                        "loader options with variable bound parameters "
+                        "not supported with baked queries.  Please "
+                        "use new-style select() statements for cached "
+                        "ORM queries."
+                    )
                     key += ck[0]
 
         self.add_criteria(
@@ -395,7 +401,7 @@ class Result(object):
         for fn in self._post_criteria:
             q = fn(q)
 
-        params = q.load_options._params
+        params = q._params
         execution_options = dict(q._execution_options)
         execution_options.update(
             {

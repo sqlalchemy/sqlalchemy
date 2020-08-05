@@ -16,6 +16,7 @@ import re
 
 from . import roles
 from .traversals import HasCacheKey  # noqa
+from .traversals import HasCopyInternals  # noqa
 from .traversals import MemoizedHasCacheKey  # noqa
 from .visitors import ClauseVisitor
 from .visitors import ExtendedInternalTraversal
@@ -699,6 +700,20 @@ class CacheableOptions(Options, HasCacheKey):
         return HasCacheKey._generate_cache_key_for_object(self)
 
 
+class ExecutableOption(HasCopyInternals, HasCacheKey):
+    _annotations = util.EMPTY_DICT
+
+    __visit_name__ = "executable_option"
+
+    def _clone(self):
+        """Create a shallow copy of this ExecutableOption.
+
+        """
+        c = self.__class__.__new__(self.__class__)
+        c.__dict__ = dict(self.__dict__)
+        return c
+
+
 class Executable(Generative):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
@@ -715,10 +730,17 @@ class Executable(Generative):
     _with_context_options = ()
 
     _executable_traverse_internals = [
-        ("_with_options", ExtendedInternalTraversal.dp_has_cache_key_list),
+        ("_with_options", InternalTraversal.dp_executable_options),
         ("_with_context_options", ExtendedInternalTraversal.dp_plain_obj),
         ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
+
+    is_select = False
+    is_update = False
+    is_insert = False
+    is_text = False
+    is_delete = False
+    is_dml = False
 
     @property
     def _effective_plugin_target(self):
@@ -757,6 +779,22 @@ class Executable(Generative):
         self._with_options += tuple(
             coercions.expect(roles.HasCacheKeyRole, opt) for opt in options
         )
+
+    @_generative
+    def _set_compile_options(self, compile_options):
+        """Assign the compile options to a new value.
+
+        :param compile_options: appropriate CacheableOptions structure
+
+        """
+
+        self._compile_options = compile_options
+
+    @_generative
+    def _update_compile_options(self, options):
+        """update the _compile_options with new keys."""
+
+        self._compile_options += options
 
     @_generative
     def _add_context_option(self, callable_, cache_args):

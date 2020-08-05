@@ -26,6 +26,7 @@ from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
 from .context import _column_descriptions
 from .context import ORMCompileState
+from .context import QueryContext
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
 from .session import _state_session
@@ -34,7 +35,6 @@ from .util import _none_set
 from .util import aliased
 from .. import event
 from .. import exc as sa_exc
-from .. import future
 from .. import inspect
 from .. import log
 from .. import sql
@@ -487,7 +487,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if (
             loading.load_on_ident(
                 session,
-                future.select(localparent).apply_labels(),
+                sql.select(localparent).apply_labels(),
                 state.key,
                 only_load_props=group,
                 refresh_state=state,
@@ -620,7 +620,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "_simple_lazy_clause",
         "_raise_always",
         "_raise_on_sql",
-        "_bakery",
+        "_query_cache",
     )
 
     def __init__(self, parent, strategy_key):
@@ -881,83 +881,68 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for pk in self.mapper.primary_key
         ]
 
-    @util.preload_module("sqlalchemy.ext.baked")
-    def _memoized_attr__bakery(self):
-        return util.preloaded.ext_baked.bakery(size=50)
+    def _memoized_attr__query_cache(self):
+        return util.LRUCache(30)
 
     @util.preload_module("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(self, session, state, primary_key_identity, passive):
-        # emit lazy load now using BakedQuery, to cut way down on the overhead
-        # of generating queries.
-        # there are two big things we are trying to guard against here:
-        #
-        # 1. two different lazy loads that need to have a different result,
-        #    being cached on the same key.  The results between two lazy loads
-        #    can be different due to the options passed to the query, which
-        #    take effect for descendant objects.  Therefore we have to make
-        #    sure paths and load options generate good cache keys, and if they
-        #    don't, we don't cache.
-        # 2. a lazy load that gets cached on a key that includes some
-        #    "throwaway" object, like a per-query AliasedClass, meaning
-        #    the cache key will never be seen again and the cache itself
-        #    will fill up.   (the cache is an LRU cache, so while we won't
-        #    run out of memory, it will perform terribly when it's full.  A
-        #    warning is emitted if this occurs.)   We must prevent the
-        #    generation of a cache key that is including a throwaway object
-        #    in the key.
-
         strategy_options = util.preloaded.orm_strategy_options
 
-        # note that "lazy='select'" and "lazy=True" make two separate
-        # lazy loaders.   Currently the LRU cache is local to the LazyLoader,
-        # however add ourselves to the initial cache key just to future
-        # proof in case it moves
-        q = self._bakery(lambda session: session.query(self.entity), self)
-
-        q.add_criteria(
-            lambda q: q._with_invoke_all_eagers(False), self.parent_property,
+        stmt = sql.lambda_stmt(
+            lambda: sql.select(self.entity)
+            .apply_labels()
+            ._set_compile_options(ORMCompileState.default_compile_options),
+            global_track_bound_values=False,
+            lambda_cache=self._query_cache,
+            track_on=(self,),
         )
 
         if not self.parent_property.bake_queries:
-            q.spoil(full=True)
+            stmt = stmt.spoil()
+
+        load_options = QueryContext.default_load_options
+
+        load_options += {
+            "_invoke_all_eagers": False,
+            "_lazy_loaded_from": state,
+        }
 
         if self.parent_property.secondary is not None:
-            q.add_criteria(
-                lambda q: q.select_from(
-                    self.mapper, self.parent_property.secondary
-                )
+            stmt += lambda stmt: stmt.select_from(
+                self.mapper, self.parent_property.secondary
             )
 
         pending = not state.key
 
         # don't autoflush on pending
         if pending or passive & attributes.NO_AUTOFLUSH:
-            q.add_criteria(lambda q: q.autoflush(False))
+            stmt += lambda stmt: stmt.execution_options(autoflush=False)
 
         if state.load_options:
-            # here, if any of the options cannot return a cache key,
-            # the BakedQuery "spoils" and caching will not occur.  a path
-            # that features Cls.attribute.of_type(some_alias) will cancel
-            # caching, for example, since "some_alias" is user-defined and
-            # is usually a throwaway object.
+
             effective_path = state.load_path[self.parent_property]
 
-            q._add_lazyload_options(state.load_options, effective_path)
+            opts = list(state.load_options)
+
+            stmt += lambda stmt: stmt.options(*opts)
+            stmt += lambda stmt: stmt._update_compile_options(
+                {"_current_path": effective_path}
+            )
 
         if self.use_get:
             if self._raise_on_sql:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
 
-            return (
-                q(session)
-                .with_post_criteria(lambda q: q._set_lazyload_from(state))
-                ._load_on_pk_identity(
-                    session, session.query(self.mapper), primary_key_identity
-                )
+            return loading.load_on_pk_identity(
+                session,
+                stmt,
+                primary_key_identity,
+                load_options=load_options,
+                execution_options={"compiled_cache": self._query_cache},
             )
 
         if self._order_by:
-            q.add_criteria(lambda q: q.order_by(*self._order_by))
+            stmt += lambda stmt: stmt.order_by(*self._order_by)
 
         def _lazyload_reverse(compile_context):
             for rev in self.parent_property._reverse_property:
@@ -974,13 +959,18 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         ]
                     ).lazyload(rev.key).process_compile_state(compile_context)
 
-        q.add_criteria(
-            lambda q: q._add_context_option(
-                _lazyload_reverse, self.parent_property
-            )
+        stmt += lambda stmt: stmt._add_context_option(
+            _lazyload_reverse, self.parent_property
         )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
+
+        execution_options = {
+            "_sa_orm_load_options": load_options,
+        }
+        if not self.parent_property.bake_queries:
+            execution_options["compiled_cache"] = None
+
         if self.key in state.dict:
             return attributes.ATTR_WAS_SET
 
@@ -994,21 +984,16 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if self._raise_on_sql:
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
-        q.add_criteria(lambda q: q.filter(lazy_clause))
-
-        # set parameters in the query such that we don't overwrite
-        # parameters that are already set within it
-        def set_default_params(q):
-            params.update(q.load_options._params)
-            q.load_options += {"_params": params}
-            return q
-
-        result = (
-            q(session)
-            .with_post_criteria(lambda q: q._set_lazyload_from(state))
-            .with_post_criteria(set_default_params)
-            .all()
+        stmt = stmt.add_criteria(
+            lambda stmt: stmt.where(lazy_clause), enable_tracking=False
         )
+
+        result = session.execute(
+            stmt, params, future=True, execution_options=execution_options
+        )
+
+        result = result.unique().scalars().all()
+
         if self.uselist:
             return result
         else:
@@ -1409,6 +1394,7 @@ class SubqueryLoader(PostLoader):
             "session",
             "execution_options",
             "load_options",
+            "params",
             "subq",
             "_data",
         )
@@ -1419,6 +1405,7 @@ class SubqueryLoader(PostLoader):
             self.session = context.session
             self.execution_options = context.execution_options
             self.load_options = context.load_options
+            self.params = context.params or {}
             self.subq = subq
             self._data = None
 
@@ -1443,7 +1430,7 @@ class SubqueryLoader(PostLoader):
             # to work with baked query, the parameters may have been
             # updated since this query was created, so take these into account
 
-            rows = list(q.params(self.load_options._params))
+            rows = list(q.params(self.params))
             for k, v in itertools.groupby(rows, lambda x: x[1:]):
                 self._data[k].extend(vv[0] for vv in v)
 
@@ -1519,19 +1506,16 @@ class SubqueryLoader(PostLoader):
             orig_query, "orm"
         )
 
-        # this would create the full blown compile state, which we don't
-        # need
-        # orig_compile_state = compile_state_cls.create_for_statement(
-        # orig_query, None)
-
         if orig_query._is_lambda_element:
-            util.warn(
-                'subqueryloader for "%s" must invoke lambda callable at %r in '
-                "order to produce a new query, decreasing the efficiency "
-                "of caching for this statement.  Consider using "
-                "selectinload() for more effective full-lambda caching"
-                % (self, orig_query)
-            )
+            if context.load_options._lazy_loaded_from is None:
+                util.warn(
+                    'subqueryloader for "%s" must invoke lambda callable '
+                    "at %r in "
+                    "order to produce a new query, decreasing the efficiency "
+                    "of caching for this statement.  Consider using "
+                    "selectinload() for more effective full-lambda caching"
+                    % (self, orig_query)
+                )
             orig_query = orig_query._resolved
 
         # this is the more "quick" version, however it's not clear how
@@ -2112,7 +2096,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         else:
             # all other cases are innerjoin=='nested' approach
             eagerjoin = self._splice_nested_inner_join(
-                path, towrap, clauses, onclause
+                path, towrap, clauses, onclause,
             )
 
         compile_state.eager_joins[query_entity_key] = eagerjoin
@@ -2153,7 +2137,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             assert isinstance(join_obj, orm_util._ORMJoin)
         elif isinstance(join_obj, sql.selectable.FromGrouping):
             return self._splice_nested_inner_join(
-                path, join_obj.element, clauses, onclause, splicing
+                path, join_obj.element, clauses, onclause, splicing,
             )
         elif not isinstance(join_obj, orm_util._ORMJoin):
             if path[-2] is splicing:
@@ -2170,12 +2154,12 @@ class JoinedLoader(AbstractRelationshipLoader):
                 return None
 
         target_join = self._splice_nested_inner_join(
-            path, join_obj.right, clauses, onclause, join_obj._right_memo
+            path, join_obj.right, clauses, onclause, join_obj._right_memo,
         )
         if target_join is None:
             right_splice = False
             target_join = self._splice_nested_inner_join(
-                path, join_obj.left, clauses, onclause, join_obj._left_memo
+                path, join_obj.left, clauses, onclause, join_obj._left_memo,
             )
             if target_join is None:
                 # should only return None when recursively called,
@@ -2401,7 +2385,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         "_parent_alias",
         "_query_info",
         "_fallback_query_info",
-        "_bakery",
+        "_query_cache",
     )
 
     query_info = collections.namedtuple(
@@ -2504,9 +2488,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    @util.preload_module("sqlalchemy.ext.baked")
-    def _memoized_attr__bakery(self):
-        return util.preloaded.ext_baked.bakery(size=50)
+    def _memoized_attr__query_cache(self):
+        return util.LRUCache(30)
 
     def create_row_processor(
         self,
@@ -2564,9 +2547,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         with_poly_entity = path_w_prop.get(
             context.attributes, "path_with_polymorphic", None
         )
-
         if with_poly_entity is not None:
-            effective_entity = with_poly_entity
+            effective_entity = inspect(with_poly_entity)
         else:
             effective_entity = self.entity
 
@@ -2645,18 +2627,23 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # we need to adapt our "pk_cols" and "in_expr" to that
             # entity.   in non-"omit join" mode, these are against the
             # parent entity and do not need adaption.
-            insp = inspect(effective_entity)
-            if insp.is_aliased_class:
-                pk_cols = [insp._adapt_element(col) for col in pk_cols]
-                in_expr = insp._adapt_element(in_expr)
-                pk_cols = [insp._adapt_element(col) for col in pk_cols]
+            if effective_entity.is_aliased_class:
+                pk_cols = [
+                    effective_entity._adapt_element(col) for col in pk_cols
+                ]
+                in_expr = effective_entity._adapt_element(in_expr)
 
-        q = self._bakery(
-            lambda session: session.query(
+        q = sql.lambda_stmt(
+            lambda: sql.select(
                 orm_util.Bundle("pk", *pk_cols), effective_entity
-            ),
-            self,
+            ).apply_labels(),
+            lambda_cache=self._query_cache,
+            global_track_bound_values=False,
+            track_on=(self, effective_entity,) + tuple(pk_cols),
         )
+
+        if not self.parent_property.bake_queries:
+            q = q.spoil()
 
         if not query_info.load_with_join:
             # the Bundle we have in the "omit_join" case is against raw, non
@@ -2664,13 +2651,13 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # entity, we add it explicitly.  If we made the Bundle against
             # annotated columns, we hit a performance issue in this specific
             # case, which is detailed in issue #4347.
-            q.add_criteria(lambda q: q.select_from(effective_entity))
+            q = q.add_criteria(lambda q: q.select_from(effective_entity))
         else:
             # in the non-omit_join case, the Bundle is against the annotated/
             # mapped column of the parent entity, but the #4347 issue does not
             # occur in this case.
             pa = self._parent_alias
-            q.add_criteria(
+            q = q.add_criteria(
                 lambda q: q.select_from(pa).join(
                     getattr(pa, self.parent_property.key).of_type(
                         effective_entity
@@ -2678,18 +2665,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 )
             )
 
-        if query_info.load_only_child:
-            q.add_criteria(
-                lambda q: q.filter(
-                    in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-                )
-            )
-        else:
-            q.add_criteria(
-                lambda q: q.filter(
-                    in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-                )
-            )
+        q = q.add_criteria(
+            lambda q: q.filter(in_expr.in_(sql.bindparam("primary_keys")))
+        )
 
         # a test which exercises what these comments talk about is
         # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
@@ -2715,31 +2693,39 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         # that query will be in terms of the effective entity we were just
         # handed.
         #
-        # But now the selectinload/ baked query we are running is *also*
+        # But now the selectinload query we are running is *also*
         # cached.  What if it's cached and running from some previous iteration
         # of that AliasedInsp?  Well in that case it will also use the previous
-        # iteration of the loader options.   If the baked query expires and
+        # iteration of the loader options.   If the query expires and
         # gets generated again, it will be handed the current effective_entity
         # and the current _with_options, again in terms of whatever
         # compile_state.select_statement happens to be right now, so the
         # query will still be internally consistent and loader callables
         # will be correctly invoked.
 
-        q._add_lazyload_options(
-            orig_query._with_options, path[self.parent_property]
+        effective_path = path[self.parent_property]
+
+        options = orig_query._with_options
+        q = q.add_criteria(
+            lambda q: q.options(*options)._update_compile_options(
+                {"_current_path": effective_path}
+            )
         )
 
         if context.populate_existing:
-            q.add_criteria(lambda q: q.populate_existing())
+            q = q.add_criteria(
+                lambda q: q.execution_options(populate_existing=True)
+            )
 
         if self.parent_property.order_by:
             if not query_info.load_with_join:
                 eager_order_by = self.parent_property.order_by
-                if insp.is_aliased_class:
+                if effective_entity.is_aliased_class:
                     eager_order_by = [
-                        insp._adapt_element(elem) for elem in eager_order_by
+                        effective_entity._adapt_element(elem)
+                        for elem in eager_order_by
                     ]
-                q.add_criteria(lambda q: q.order_by(*eager_order_by))
+                q = q.add_criteria(lambda q: q.order_by(*eager_order_by))
             else:
 
                 def _setup_outermost_orderby(compile_context):
@@ -2747,7 +2733,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                         util.to_list(self.parent_property.order_by)
                     )
 
-                q.add_criteria(
+                q = q.add_criteria(
                     lambda q: q._add_context_option(
                         _setup_outermost_orderby, self.parent_property
                     )
@@ -2770,11 +2756,16 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             our_keys = our_keys[self._chunksize :]
             data = {
                 k: v
-                for k, v in q(context.session).params(
-                    primary_keys=[
-                        key[0] if query_info.zero_idx else key for key in chunk
-                    ]
-                )
+                for k, v in context.session.execute(
+                    q,
+                    params={
+                        "primary_keys": [
+                            key[0] if query_info.zero_idx else key
+                            for key in chunk
+                        ]
+                    },
+                    future=True,
+                ).unique()
             }
 
             for key in chunk:
@@ -2817,7 +2808,9 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(
-                q(context.session).params(primary_keys=primary_keys),
+                context.session.execute(
+                    q, params={"primary_keys": primary_keys}, future=True
+                ).unique(),
                 lambda x: x[0],
             ):
                 data[k].extend(vv[1] for vv in v)

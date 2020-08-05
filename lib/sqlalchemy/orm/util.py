@@ -806,7 +806,7 @@ class AliasedInsp(
         return {}
 
     @util.memoized_property
-    def columns(self):
+    def _all_column_expressions(self):
         if self._is_with_polymorphic:
             cols_plus_keys = self.mapper._columns_plus_keys(
                 [ent.mapper for ent in self._with_polymorphic_entities]

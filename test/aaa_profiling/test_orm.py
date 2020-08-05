@@ -620,10 +620,13 @@ class QueryTest(NoCache, fixtures.MappedTest):
 
 
 class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
-    """basic test for selectin() loading, which uses a baked query.
+    """basic test for selectin() loading, which uses a lambda query.
 
-    if the baked query starts spoiling due to some bug in cache keys,
-    this callcount blows up.
+    For the previous "baked query" version of this, statement caching
+    was still taking effect as the selectinloader used its own baked
+    query cache.  in 1.4 we align the loader caches with the global
+    "cache_size" (tenatitively) so the callcount has gone up to accommodate
+    for 3x the compilations.
 
     """
 
@@ -888,7 +891,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
 
                 r.context.compiled.compile_state = compile_state
                 obj = ORMCompileState.orm_setup_cursor_result(
-                    sess, compile_state.statement, exec_opts, {}, r,
+                    sess, compile_state.statement, {}, exec_opts, {}, r,
                 )
                 list(obj)
                 sess.close()

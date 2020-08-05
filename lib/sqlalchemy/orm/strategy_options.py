@@ -352,7 +352,6 @@ class Load(Generative, LoaderOption):
         self, attr, strategy, propagate_to_loaders=True
     ):
         strategy = self._coerce_strat(strategy)
-
         self.propagate_to_loaders = propagate_to_loaders
         cloned = self._clone_for_bind_strategy(attr, strategy, "relationship")
         self.path = cloned.path
@@ -577,6 +576,7 @@ class _UnboundLoad(Load):
         if attr:
             path = path + (attr,)
         self.path = path
+
         return path
 
     def __getstate__(self):

@@ -194,6 +194,8 @@ class UpdateBase(
     _hints = util.immutabledict()
     named_with_column = False
 
+    is_dml = True
+
     @classmethod
     def _constructor_20_deprecations(cls, fn_name, clsname, names):
 
@@ -774,6 +776,8 @@ class Insert(ValuesBase):
     select = None
     include_insert_from_select_defaults = False
 
+    is_insert = True
+
     _traverse_internals = (
         [
             ("table", InternalTraversal.dp_clauseelement),
@@ -1001,6 +1005,8 @@ class Update(DMLWhereBase, ValuesBase):
     """
 
     __visit_name__ = "update"
+
+    is_update = True
 
     _traverse_internals = (
         [
@@ -1246,6 +1252,8 @@ class Delete(DMLWhereBase, UpdateBase):
     """
 
     __visit_name__ = "delete"
+
+    is_delete = True
 
     _traverse_internals = (
         [

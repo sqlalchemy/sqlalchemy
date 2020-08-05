@@ -187,6 +187,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
 @util.preload_module("sqlalchemy.orm.context")
 def merge_result(query, iterator, load=True):
     """Merge a result into this :class:`.Query` object's Session."""
+
     querycontext = util.preloaded.orm_context
 
     session = query.session
@@ -298,7 +299,8 @@ def load_on_ident(
     with_for_update=None,
     only_load_props=None,
     no_autoflush=False,
-    bind_arguments=util.immutabledict(),
+    bind_arguments=util.EMPTY_DICT,
+    execution_options=util.EMPTY_DICT,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -318,6 +320,7 @@ def load_on_ident(
         identity_token=identity_token,
         no_autoflush=no_autoflush,
         bind_arguments=bind_arguments,
+        execution_options=execution_options,
     )
 
 
@@ -331,7 +334,8 @@ def load_on_pk_identity(
     only_load_props=None,
     identity_token=None,
     no_autoflush=False,
-    bind_arguments=util.immutabledict(),
+    bind_arguments=util.EMPTY_DICT,
+    execution_options=util.EMPTY_DICT,
 ):
 
     """Load the given primary key identity from the database."""
@@ -339,21 +343,18 @@ def load_on_pk_identity(
     query = statement
     q = query._clone()
 
+    is_lambda = q._is_lambda_element
+
     # TODO: fix these imports ....
     from .context import QueryContext, ORMCompileState
 
     if load_options is None:
         load_options = QueryContext.default_load_options
 
-    compile_options = ORMCompileState.default_compile_options.safe_merge(
-        q._compile_options
-    )
+    compile_options = ORMCompileState.default_compile_options
 
     if primary_key_identity is not None:
-        # mapper = query._only_full_mapper_zero("load_on_pk_identity")
-
-        # TODO: error checking?
-        mapper = query._raw_columns[0]._annotations["parententity"]
+        mapper = query._propagate_attrs["plugin_subject"]
 
         (_get_clause, _get_params) = mapper._get_clause
 
@@ -379,10 +380,16 @@ def load_on_pk_identity(
                     "release."
                 )
 
-        # TODO: can mapper._get_clause be pre-adapted?
-        q._where_criteria = (
-            sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
-        )
+        if is_lambda:
+            q = q.add_criteria(
+                lambda q: q.where(
+                    sql_util._deep_annotate(_get_clause, {"_orm_adapt": True})
+                ),
+            )
+        else:
+            q._where_criteria = (
+                sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
+            )
 
         params = dict(
             [
@@ -392,44 +399,71 @@ def load_on_pk_identity(
                 )
             ]
         )
-
-        load_options += {"_params": params}
-
-    if with_for_update is not None:
-        version_check = True
-        q._for_update_arg = with_for_update
-    elif query._for_update_arg is not None:
-        version_check = True
-        q._for_update_arg = query._for_update_arg
     else:
+        params = None
+
+    if is_lambda:
+        if with_for_update is not None or refresh_state or only_load_props:
+            raise NotImplementedError(
+                "refresh operation not supported with lambda statement"
+            )
+
         version_check = False
 
-    if refresh_state and refresh_state.load_options:
-        compile_options += {"_current_path": refresh_state.load_path.parent}
-        q = q.options(*refresh_state.load_options)
+        _, load_options = _set_get_options(
+            compile_options,
+            load_options,
+            populate_existing=bool(refresh_state),
+            version_check=version_check,
+            only_load_props=only_load_props,
+            refresh_state=refresh_state,
+            identity_token=identity_token,
+        )
 
-    # TODO: most of the compile_options that are not legacy only involve this
-    # function, so try to see if handling of them can mostly be local to here
+        if no_autoflush:
+            load_options += {"_autoflush": False}
+    else:
+        if with_for_update is not None:
+            version_check = True
+            q._for_update_arg = with_for_update
+        elif query._for_update_arg is not None:
+            version_check = True
+            q._for_update_arg = query._for_update_arg
+        else:
+            version_check = False
 
-    q._compile_options, load_options = _set_get_options(
-        compile_options,
-        load_options,
-        populate_existing=bool(refresh_state),
-        version_check=version_check,
-        only_load_props=only_load_props,
-        refresh_state=refresh_state,
-        identity_token=identity_token,
+        if refresh_state and refresh_state.load_options:
+            compile_options += {
+                "_current_path": refresh_state.load_path.parent
+            }
+            q = q.options(*refresh_state.load_options)
+
+        # TODO: most of the compile_options that are not legacy only involve
+        # this function, so try to see if handling of them can mostly be local
+        # to here
+
+        q._compile_options, load_options = _set_get_options(
+            compile_options,
+            load_options,
+            populate_existing=bool(refresh_state),
+            version_check=version_check,
+            only_load_props=only_load_props,
+            refresh_state=refresh_state,
+            identity_token=identity_token,
+        )
+        q._order_by = None
+
+        if no_autoflush:
+            load_options += {"_autoflush": False}
+
+    execution_options = util.EMPTY_DICT.merge_with(
+        execution_options, {"_sa_orm_load_options": load_options}
     )
-    q._order_by = None
-
-    if no_autoflush:
-        load_options += {"_autoflush": False}
-
     result = (
         session.execute(
             q,
-            params=load_options._params,
-            execution_options={"_sa_orm_load_options": load_options},
+            params=params,
+            execution_options=execution_options,
             bind_arguments=bind_arguments,
             future=True,
         )

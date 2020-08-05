@@ -207,13 +207,10 @@ class ShardedSession(Session):
 
 
 def execute_and_instances(orm_context):
-    params = orm_context.parameters
 
     if orm_context.is_select:
         load_options = active_options = orm_context.load_options
         update_options = None
-        if params is None:
-            params = active_options._params
 
     else:
         load_options = None

@@ -36,7 +36,6 @@ from ..inspection import inspect
 from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
-from ..sql import selectable
 from ..sql import visitors
 from ..sql.base import CompileState
 
@@ -235,17 +234,22 @@ class ORMExecuteState(util.MemoizedSlots):
     @property
     def is_select(self):
         """return True if this is a SELECT operation."""
-        return isinstance(self.statement, selectable.Select)
+        return self.statement.is_select
+
+    @property
+    def is_insert(self):
+        """return True if this is an INSERT operation."""
+        return self.statement.is_dml and self.statement.is_insert
 
     @property
     def is_update(self):
         """return True if this is an UPDATE operation."""
-        return isinstance(self.statement, dml.Update)
+        return self.statement.is_dml and self.statement.is_update
 
     @property
     def is_delete(self):
         """return True if this is a DELETE operation."""
-        return isinstance(self.statement, dml.Delete)
+        return self.statement.is_dml and self.statement.is_delete
 
     @property
     def _is_crud(self):
@@ -1622,7 +1626,12 @@ class Session(_SessionClassMethods):
 
         if compile_state_cls:
             result = compile_state_cls.orm_setup_cursor_result(
-                self, statement, execution_options, bind_arguments, result
+                self,
+                statement,
+                params,
+                execution_options,
+                bind_arguments,
+                result,
             )
 
         return result

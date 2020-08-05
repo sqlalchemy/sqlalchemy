@@ -24,13 +24,7 @@ the caching of the SQL calls and result sets themselves is available in
    caching system that removes the need for the :class:`.BakedQuery` system.
    Caching is now transparently active for all Core and ORM queries with no
    action taken by the user, using the system described at :ref:`sql_caching`.
-   For background on using lambda-style construction for cacheable Core and ORM
-   SQL constructs, which is now an optional technique to provide additional
-   performance gains, see the section :ref:`engine_lambda_caching`.
 
-
-
-.. versionadded:: 1.0.0
 
 .. note::
 
@@ -450,9 +444,7 @@ causing all baked queries to not use the cache when used against that
 Like all session flags, it is also accepted by factory objects like
 :class:`.sessionmaker` and methods like :meth:`.sessionmaker.configure`.
 
-The immediate rationale for this flag is to reduce memory use in the case
-that the query baking used by relationship loaders and other loaders
-is not desirable.   It also can be used in the case that an application
+The immediate rationale for this flag is so that an application
 which is seeing issues potentially due to cache key conflicts from user-defined
 baked queries or other baked query issues can turn the behavior off, in
 order to identify or eliminate baked queries as the cause of an issue.
@@ -462,26 +454,10 @@ order to identify or eliminate baked queries as the cause of an issue.
 Lazy Loading Integration
 ------------------------
 
-The baked query system is integrated into SQLAlchemy's lazy loader feature
-as used by :func:`_orm.relationship`, and will cache queries for most lazy
-load conditions.   A small subset of
-"lazy loads" may not be cached; these involve query options in conjunction with ad-hoc
-:obj:`.aliased` structures that cannot produce a repeatable cache
-key.
+.. versionchanged:: 1.4 As of SQLAlchemy 1.4, the "baked query" system is no
+   longer part of the relationship loading system.
+   The :ref:`native caching <sql_caching>` system is used instead.
 
-.. versionchanged:: 1.2  "baked" queries are now the foundation of the
-   lazy-loader feature of :func:`_orm.relationship`.
-
-Opting out with the bake_queries flag
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The :func:`_orm.relationship` construct includes a flag
-:paramref:`_orm.relationship.bake_queries` which when set to False will cause
-that relationship to opt out of caching queries.  Additionally, the
-:paramref:`.Session.enable_baked_queries` setting can be used to disable
-all "baked query" use.   These flags can be useful to conserve memory,
-when memory conservation is more important than performance for a particular
-relationship or for the application overall.
 
 API Documentation
 -----------------

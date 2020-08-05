@@ -1832,7 +1832,13 @@ class BulkUDCompileState(CompileState):
 
     @classmethod
     def orm_setup_cursor_result(
-        cls, session, statement, execution_options, bind_arguments, result
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
     ):
 
         # this stage of the execution is called after the

@@ -353,6 +353,7 @@ class FromLinter(collections.namedtuple("FromLinter", ["froms", "edges"])):
                 message = template.format(
                     froms=froms_str, start=self.froms[start_with]
                 )
+
                 util.warn(message)
 
 
@@ -713,7 +714,10 @@ class SQLCompiler(Compiled):
         self.cache_key = cache_key
 
         if cache_key:
-            self._cache_key_bind_match = {b: b for b in cache_key[1]}
+            self._cache_key_bind_match = ckbm = {
+                b.key: b for b in cache_key[1]
+            }
+            ckbm.update({b: b for b in cache_key[1]})
 
         # compile INSERT/UPDATE defaults/sequences to expect executemany
         # style execution, which may mean no pre-execute of defaults,
@@ -2166,7 +2170,10 @@ class SQLCompiler(Compiled):
         # key was been generated.
         ckbm = self._cache_key_bind_match
         if ckbm:
-            ckbm.update({bp: bindparam for bp in bindparam._cloned_set})
+            for bp in bindparam._cloned_set:
+                if bp.key in ckbm:
+                    cb = ckbm[bp.key]
+                    ckbm[cb] = bindparam
 
         if bindparam.isoutparam:
             self.has_out_parameters = True
@@ -2186,6 +2193,7 @@ class SQLCompiler(Compiled):
             expanding=bindparam.expanding,
             **kwargs
         )
+
         if bindparam.expanding:
             ret = "(%s)" % ret
         return ret

@@ -1525,6 +1525,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_self_referential_two(self):
+
         sess = create_session()
         palias = aliased(Person)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
@@ -1540,13 +1541,62 @@ class _PolymorphicTestBase(object):
             expected,
         )
 
+    def test_self_referential_two_point_five(self):
+        """Using two aliases, the above case works.
+        """
+        sess = create_session()
+        palias = aliased(Person)
+        palias2 = aliased(Person)
+
+        expected = [(m1, e1), (m1, e2), (m1, b1)]
+
+        eq_(
+            sess.query(palias, palias2)
+            .filter(palias.company_id == palias2.company_id)
+            .filter(palias.name == "dogbert")
+            .filter(palias.person_id > palias2.person_id)
+            .from_self()
+            .order_by(palias.person_id, palias2.person_id)
+            .all(),
+            expected,
+        )
+
     def test_self_referential_two_future(self):
+        # TODO: this is the SECOND test *EVER* of an aliased class of
+        # an aliased class.
+        sess = create_session(testing.db, future=True)
+        expected = [(m1, e1), (m1, e2), (m1, b1)]
+
+        # not aliasing the first class
+        p1 = Person
+        p2 = aliased(Person)
+        stmt = (
+            select(p1, p2)
+            .filter(p1.company_id == p2.company_id)
+            .filter(p1.name == "dogbert")
+            .filter(p1.person_id > p2.person_id)
+        )
+
+        subq = stmt.subquery()
+
+        pa1 = aliased(p1, subq)
+        pa2 = aliased(p2, subq)
+
+        stmt2 = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
+
+        eq_(
+            sess.execute(stmt2).unique().all(), expected,
+        )
+
+    def test_self_referential_two_point_five_future(self):
+
         # TODO: this is the first test *EVER* of an aliased class of
         # an aliased class.  we should add many more tests for this.
         # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
         sess = create_session(testing.db, future=True)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
+        # aliasing the first class
         p1 = aliased(Person)
         p2 = aliased(Person)
         stmt = (
@@ -1560,10 +1610,10 @@ class _PolymorphicTestBase(object):
         pa1 = aliased(p1, subq)
         pa2 = aliased(p2, subq)
 
-        stmt = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
+        stmt2 = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
 
         eq_(
-            sess.execute(stmt).unique().all(), expected,
+            sess.execute(stmt2).unique().all(), expected,
         )
 
     def test_nesting_queries(self):

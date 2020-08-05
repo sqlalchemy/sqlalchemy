@@ -46,6 +46,7 @@ class QueryContext(object):
     __slots__ = (
         "compile_state",
         "query",
+        "params",
         "load_options",
         "bind_arguments",
         "execution_options",
@@ -83,6 +84,7 @@ class QueryContext(object):
         self,
         compile_state,
         statement,
+        params,
         session,
         load_options,
         execution_options=None,
@@ -96,6 +98,7 @@ class QueryContext(object):
         self.session = session
         self.loaders_require_buffering = False
         self.loaders_require_uniquing = False
+        self.params = params
 
         self.propagated_loader_options = {
             o for o in statement._with_options if o.propagate_to_loaders
@@ -239,7 +242,13 @@ class ORMCompileState(CompileState):
 
     @classmethod
     def orm_setup_cursor_result(
-        cls, session, statement, execution_options, bind_arguments, result
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
     ):
         execution_context = result.context
         compile_state = execution_context.compiled.compile_state
@@ -256,6 +265,7 @@ class ORMCompileState(CompileState):
         querycontext = QueryContext(
             compile_state,
             statement,
+            params,
             session,
             load_options,
             execution_options,
@@ -711,7 +721,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 and "entity_namespace" in element._annotations
             ):
                 for elem in _select_iterables(
-                    element._annotations["entity_namespace"].columns
+                    element._annotations[
+                        "entity_namespace"
+                    ]._all_column_expressions
                 ):
                     yield elem
             else:

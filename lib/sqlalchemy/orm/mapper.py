@@ -719,9 +719,8 @@ class Mapper(
         """
         return self
 
-    _cache_key_traversal = [
-        ("mapper", visitors.ExtendedInternalTraversal.dp_plain_obj),
-    ]
+    def _gen_cache_key(self, anon_map, bindparams):
+        return (self,)
 
     @property
     def entity(self):
@@ -2314,6 +2313,17 @@ class Mapper(
                 self._with_polymorphic_mappers
             )
         )
+
+    @property
+    def _all_column_expressions(self):
+        poly_properties = self._polymorphic_properties
+        adapter = self._polymorphic_adapter
+
+        return [
+            adapter.columns[prop.columns[0]] if adapter else prop.columns[0]
+            for prop in poly_properties
+            if isinstance(prop, properties.ColumnProperty)
+        ]
 
     def _columns_plus_keys(self, polymorphic_mappers=()):
         if polymorphic_mappers:
