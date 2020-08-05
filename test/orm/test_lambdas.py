@@ -92,7 +92,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_cols_round_trip(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         # note this does a traversal + _clone of the InstrumentedAttribute
         # for the first time ever
@@ -135,7 +135,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_entity_round_trip(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         def query(names):
             stmt = lambda_stmt(
@@ -182,7 +182,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_subqueryload_internal_lambda(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         def query(names):
             stmt = (
@@ -220,7 +220,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_subqueryload_external_lambda_caveats(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         def query(names):
             stmt = lambda_stmt(
@@ -263,7 +263,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_does_filter_aliasing_work(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         # aliased=True is to be deprecated, other filter lambdas
         # that go into effect include polymorphic filtering.
@@ -314,7 +314,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_join_entity_arg(self, plain_fixture, test_case):
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         stmt = testing.resolve_lambda(test_case, **locals())
         self.assert_compile(
@@ -411,7 +411,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_update(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         def go(ids, values):
             stmt = lambda_stmt(lambda: update(User).where(User.id.in_(ids)))

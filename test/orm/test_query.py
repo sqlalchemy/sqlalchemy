@@ -187,7 +187,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -876,7 +876,7 @@ class GetTest(QueryTest):
     def test_populate_existing_future(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session(future=True, autoflush=False)
+        s = Session(testing.db, future=True, autoflush=False)
 
         userlist = s.query(User).all()
 
@@ -4533,7 +4533,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_select_star_future(self):
         User = self.classes.User
 
-        sess = Session(future=True)
+        sess = Session(testing.db, future=True)
         eq_(
             sess.execute(
                 select(User).from_statement(
@@ -4581,7 +4581,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # ordering doesn't matter
         User = self.classes.User
 
-        s = create_session(future=True)
+        s = create_session(testing.db, future=True)
         q = select(User).from_statement(
             text(
                 "select name, 27 as foo, id as users_id from users order by id"
@@ -4628,7 +4628,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(future=True)
+        s = create_session(testing.db, future=True)
         q = select(User, Address).from_statement(
             text(
                 "select users.name AS users_name, users.id AS users_id, "
@@ -4679,7 +4679,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(future=True)
+        s = create_session(testing.db, future=True)
         q = (
             select(User)
             .from_statement(
@@ -4731,7 +4731,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(future=True)
+        s = create_session(testing.db, future=True)
         q = (
             select(User)
             .from_statement(
@@ -4838,7 +4838,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_whereclause_future(self):
         User = self.classes.User
 
-        s = create_session(future=True)
+        s = create_session(testing.db, future=True)
         eq_(
             s.execute(select(User).filter(text("id in (8, 9)")))
             .scalars()

@@ -559,9 +559,16 @@ operation should be propagated down to referred objects.
 Controlling Cascade on Backrefs
 -------------------------------
 
-The :ref:`cascade_save_update` cascade by default takes place on attribute change events
-emitted from backrefs.  This is probably a confusing statement more
-easily described through demonstration; it means that, given a mapping such as this::
+.. note:: This section applies to a behavior that is removed in SQLAlchemy 2.0.
+   By setting the :paramref:`_orm.Session.future` flag on a given
+   :class:`_orm.Session`, the 2.0 behavior will be achieved which is
+   essentially that the :paramref:`_orm.relationship.cascade_backrefs` flag is
+   ignored.   See the section :ref:`change_5150` for notes.
+
+In :term:`1.x style` ORM usage, the :ref:`cascade_save_update` cascade by
+default takes place on attribute change events emitted from backrefs.  This is
+probably a confusing statement more easily described through demonstration; it
+means that, given a mapping such as this::
 
     mapper(Order, order_table, properties={
         'items' : relationship(Item, backref='order')

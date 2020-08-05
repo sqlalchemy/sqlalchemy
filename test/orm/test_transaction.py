@@ -483,7 +483,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        sess = create_session(autocommit=False, future=True)
+        sess = create_session(testing.db, autocommit=False, future=True)
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -1032,7 +1032,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        session = create_session(autocommit=False, future=True)
+        session = create_session(testing.db, autocommit=False, future=True)
         session.add(User(name="ed"))
         session.transaction.commit()
 

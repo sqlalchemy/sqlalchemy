@@ -472,7 +472,7 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         # query.
         User, Address = plain_fixture
 
-        s = Session(future=True)
+        s = Session(testing.db, future=True)
 
         def query(names):
             stmt = (

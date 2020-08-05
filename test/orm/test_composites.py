@@ -95,7 +95,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.classes.Point,
         )
 
-        sess = Session(future=future)
+        sess = Session(testing.db, future=future)
         g = Graph(
             id=1,
             edges=[
