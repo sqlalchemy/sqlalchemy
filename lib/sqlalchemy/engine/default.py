@@ -39,6 +39,12 @@ AUTOCOMMIT_REGEXP = re.compile(
 SERVER_SIDE_CURSOR_RE = re.compile(r"\s*SELECT", re.I | re.UNICODE)
 
 
+CACHE_HIT = util.symbol("CACHE_HIT")
+CACHE_MISS = util.symbol("CACHE_MISS")
+CACHING_DISABLED = util.symbol("CACHING_DISABLED")
+NO_CACHE_KEY = util.symbol("NO_CACHE_KEY")
+
+
 class DefaultDialect(interfaces.Dialect):
     """Default implementation of Dialect"""
 
@@ -194,6 +200,11 @@ class DefaultDialect(interfaces.Dialect):
     .. versionadded:: 1.0.5
 
     """
+
+    CACHE_HIT = CACHE_HIT
+    CACHE_MISS = CACHE_MISS
+    CACHING_DISABLED = CACHING_DISABLED
+    NO_CACHE_KEY = NO_CACHE_KEY
 
     @util.deprecated_params(
         convert_unicode=(
@@ -725,6 +736,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     _expanded_parameters = util.immutabledict()
 
+    cache_hit = NO_CACHE_KEY
+
     @classmethod
     def _init_ddl(
         cls,
@@ -788,7 +801,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         parameters,
         invoked_statement,
         extracted_parameters,
-        cache_hit=False,
+        cache_hit=CACHING_DISABLED,
     ):
         """Initialize execution context for a Compiled construct."""
 
@@ -1026,12 +1039,19 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return "raw sql"
 
         now = util.perf_counter()
-        if self.compiled.cache_key is None:
+
+        ch = self.cache_hit
+
+        if ch is NO_CACHE_KEY:
             return "no key %.5fs" % (now - self.compiled._gen_time,)
-        elif self.cache_hit:
+        elif ch is CACHE_HIT:
             return "cached since %.4gs ago" % (now - self.compiled._gen_time,)
-        else:
+        elif ch is CACHE_MISS:
             return "generated in %.5fs" % (now - self.compiled._gen_time,)
+        elif ch is CACHING_DISABLED:
+            return "caching disabled %.5fs" % (now - self.compiled._gen_time,)
+        else:
+            return "unknown"
 
     @util.memoized_property
     def engine(self):

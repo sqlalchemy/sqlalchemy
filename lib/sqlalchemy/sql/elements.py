@@ -32,8 +32,8 @@ from .base import NO_ARG
 from .base import PARSE_AUTOCOMMIT
 from .base import SingletonConstant
 from .coercions import _document_text_coercion
-from .traversals import _copy_internals
 from .traversals import _get_children
+from .traversals import HasCopyInternals
 from .traversals import MemoizedHasCacheKey
 from .traversals import NO_CACHE
 from .visitors import cloned_traverse
@@ -182,6 +182,7 @@ class ClauseElement(
     roles.SQLRole,
     SupportsWrappingAnnotations,
     MemoizedHasCacheKey,
+    HasCopyInternals,
     Traversible,
 ):
     """Base class for elements of a programmatically constructed SQL
@@ -372,35 +373,6 @@ class ClauseElement(
         """
         return traversals.compare(self, other, **kw)
 
-    def _copy_internals(self, omit_attrs=(), **kw):
-        """Reassign internal elements to be clones of themselves.
-
-        Called during a copy-and-traverse operation on newly
-        shallow-copied elements to create a deep copy.
-
-        The given clone function should be used, which may be applying
-        additional transformations to the element (i.e. replacement
-        traversal, cloned traversal, annotations).
-
-        """
-
-        try:
-            traverse_internals = self._traverse_internals
-        except AttributeError:
-            # user-defined classes may not have a _traverse_internals
-            return
-
-        for attrname, obj, meth in _copy_internals.run_generated_dispatch(
-            self, traverse_internals, "_generated_copy_internals_traversal"
-        ):
-            if attrname in omit_attrs:
-                continue
-
-            if obj is not None:
-                result = meth(self, attrname, obj, **kw)
-                if result is not None:
-                    setattr(self, attrname, result)
-
     def get_children(self, omit_attrs=(), **kw):
         r"""Return immediate child :class:`.visitors.Traversible`
         elements of this :class:`.visitors.Traversible`.
@@ -535,8 +507,6 @@ class ClauseElement(
         else:
             elem_cache_key = None
 
-        cache_hit = False
-
         if elem_cache_key:
             cache_key, extracted_params = elem_cache_key
             key = (
@@ -549,6 +519,7 @@ class ClauseElement(
             compiled_sql = compiled_cache.get(key)
 
             if compiled_sql is None:
+                cache_hit = dialect.CACHE_MISS
                 compiled_sql = self._compiler(
                     dialect,
                     cache_key=elem_cache_key,
@@ -559,7 +530,7 @@ class ClauseElement(
                 )
                 compiled_cache[key] = compiled_sql
             else:
-                cache_hit = True
+                cache_hit = dialect.CACHE_HIT
         else:
             extracted_params = None
             compiled_sql = self._compiler(
@@ -569,6 +540,11 @@ class ClauseElement(
                 for_executemany=for_executemany,
                 schema_translate_map=schema_translate_map,
                 **kw
+            )
+            cache_hit = (
+                dialect.CACHING_DISABLED
+                if compiled_cache is None
+                else dialect.NO_CACHE_KEY
             )
 
         return compiled_sql, extracted_params, cache_hit
@@ -1343,10 +1319,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:
-            self._value_required_for_cache = False
             value = None
-        else:
-            self._value_required_for_cache = True
 
         if quote is not None:
             key = quoted_name(key, quote)
@@ -1412,6 +1385,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         """Return a copy of this :class:`.BindParameter` with the given value
         set.
         """
+
         cloned = self._clone(maintain_key=maintain_key)
         cloned.value = value
         cloned.callable = None
@@ -1465,7 +1439,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
             anon_map[idself] = id_ = str(anon_map.index)
             anon_map.index += 1
 
-        bindparams.append(self)
+        if bindparams is not None:
+            bindparams.append(self)
 
         return (
             id_,

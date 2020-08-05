@@ -230,7 +230,7 @@ def create_engine(url, **kwargs):
     :param future: Use the 2.0 style :class:`_future.Engine` and
         :class:`_future.Connection` API.
 
-        ..versionadded:: 1.4
+        .. versionadded:: 1.4
 
         .. seealso::
 

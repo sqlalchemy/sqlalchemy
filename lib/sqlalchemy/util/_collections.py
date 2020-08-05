@@ -49,13 +49,25 @@ def _immutabledict_py_fallback():
         def __reduce__(self):
             return _immutabledict_reconstructor, (dict(self),)
 
-        def union(self, d):
-            if not d:
+        def union(self, __d=None):
+            if not __d:
                 return self
 
             new = dict.__new__(self.__class__)
             dict.__init__(new, self)
-            dict.update(new, d)
+            dict.update(new, __d)
+            return new
+
+        def _union_w_kw(self, __d=None, **kw):
+            # not sure if C version works correctly w/ this yet
+            if not __d and not kw:
+                return self
+
+            new = dict.__new__(self.__class__)
+            dict.__init__(new, self)
+            if __d:
+                dict.update(new, __d)
+            dict.update(new, kw)
             return new
 
         def merge_with(self, *dicts):
@@ -88,6 +100,18 @@ except ImportError:
     def _immutabledict_reconstructor(*arg):
         """do the pickle dance"""
         return immutabledict(*arg)
+
+
+def coerce_to_immutabledict(d):
+    if not d:
+        return EMPTY_DICT
+    elif isinstance(d, immutabledict):
+        return d
+    else:
+        return immutabledict(d)
+
+
+EMPTY_DICT = immutabledict()
 
 
 class FacadeDict(ImmutableContainer, dict):

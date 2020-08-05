@@ -2426,6 +2426,7 @@ class SelectBase(
     """
 
     _is_select_statement = True
+    is_select = True
 
     def _generate_fromclause_column_proxies(self, fromclause):
         # type: (FromClause) -> None
@@ -3867,19 +3868,19 @@ class Select(
         [
             ("_raw_columns", InternalTraversal.dp_clauseelement_list),
             ("_from_obj", InternalTraversal.dp_clauseelement_list),
-            ("_where_criteria", InternalTraversal.dp_clauseelement_list),
-            ("_having_criteria", InternalTraversal.dp_clauseelement_list),
-            ("_order_by_clauses", InternalTraversal.dp_clauseelement_list,),
-            ("_group_by_clauses", InternalTraversal.dp_clauseelement_list,),
+            ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
+            ("_having_criteria", InternalTraversal.dp_clauseelement_tuple),
+            ("_order_by_clauses", InternalTraversal.dp_clauseelement_tuple,),
+            ("_group_by_clauses", InternalTraversal.dp_clauseelement_tuple,),
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple,),
             ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple,),
-            ("_correlate", InternalTraversal.dp_clauseelement_list),
-            ("_correlate_except", InternalTraversal.dp_clauseelement_list,),
+            ("_correlate", InternalTraversal.dp_clauseelement_tuple),
+            ("_correlate_except", InternalTraversal.dp_clauseelement_tuple,),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
             ("_offset_clause", InternalTraversal.dp_clauseelement),
             ("_for_update_arg", InternalTraversal.dp_clauseelement),
             ("_distinct", InternalTraversal.dp_boolean),
-            ("_distinct_on", InternalTraversal.dp_clauseelement_list),
+            ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
             ("_label_style", InternalTraversal.dp_plain_obj),
             ("_is_future", InternalTraversal.dp_boolean),
         ]
@@ -4345,7 +4346,7 @@ class Select(
 
     @_generative
     def join(self, target, onclause=None, isouter=False, full=False):
-        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
         and apply generatively, returning the newly resulting
         :class:`_expression.Select`.
@@ -4474,7 +4475,7 @@ class Select(
         # they've become.  This allows us to ensure the same cloned from
         # is used when other items such as columns are "cloned"
 
-        all_the_froms = list(
+        all_the_froms = set(
             itertools.chain(
                 _from_objects(*self._raw_columns),
                 _from_objects(*self._where_criteria),
@@ -4490,9 +4491,14 @@ class Select(
         new_froms = {f: clone(f, **kw) for f in all_the_froms}
 
         # 2. copy FROM collections, adding in joins that we've created.
-        self._from_obj = tuple(clone(f, **kw) for f in self._from_obj) + tuple(
-            f for f in new_froms.values() if isinstance(f, Join)
+        existing_from_obj = [clone(f, **kw) for f in self._from_obj]
+        add_froms = (
+            set(f for f in new_froms.values() if isinstance(f, Join))
+            .difference(all_the_froms)
+            .difference(existing_from_obj)
         )
+
+        self._from_obj = tuple(existing_from_obj) + tuple(add_froms)
 
         # 3. clone everything else, making sure we use columns
         # corresponding to the froms we just made.
@@ -4687,6 +4693,7 @@ class Select(
 
         """
 
+        assert isinstance(self._where_criteria, tuple)
         self._where_criteria += (
             coercions.expect(roles.WhereHavingRole, whereclause),
         )
@@ -5370,6 +5377,9 @@ class TextualSelect(SelectBase):
     ] + SupportsCloneAnnotations._clone_annotations_traverse_internals
 
     _is_textual = True
+
+    is_text = True
+    is_select = True
 
     def __init__(self, text, columns, positional=False):
         self.element = text

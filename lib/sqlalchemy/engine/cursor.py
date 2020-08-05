@@ -1247,7 +1247,7 @@ class BaseCursorResult(object):
             if (
                 compiled
                 and compiled._result_columns
-                and context.cache_hit
+                and context.cache_hit is context.dialect.CACHE_HIT
                 and not compiled._rewrites_selected_columns
                 and compiled.statement is not context.invoked_statement
             ):

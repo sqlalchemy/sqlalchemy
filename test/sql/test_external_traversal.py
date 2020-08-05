@@ -791,6 +791,90 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN table2 ON table1.col1 = table2.col2) AS anon_1",
         )
 
+    def test_this_thing_using_setup_joins_three(self):
+
+        j = t1.join(t2, t1.c.col1 == t2.c.col2)
+
+        s1 = select(j)
+
+        s2 = s1.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s2,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
+        vis = sql_util.ClauseAdapter(j)
+
+        s3 = vis.traverse(s1)
+
+        s4 = s3.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s4,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
+        s5 = vis.traverse(s3)
+
+        s6 = s5.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s6,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
+    def test_this_thing_using_setup_joins_four(self):
+
+        j = t1.join(t2, t1.c.col1 == t2.c.col2)
+
+        s1 = select(j)
+
+        assert not s1._from_obj
+
+        s2 = s1.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s2,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
+        s3 = visitors.replacement_traverse(s1, {}, lambda elem: None)
+
+        s4 = s3.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s4,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
+        s5 = visitors.replacement_traverse(s3, {}, lambda elem: None)
+
+        s6 = s5.join(t3, t1.c.col1 == t3.c.col1)
+
+        self.assert_compile(
+            s6,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
+            "ON table3.col1 = table1.col1",
+        )
+
     def test_select_fromtwice_one(self):
         t1a = t1.alias()
 

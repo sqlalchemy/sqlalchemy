@@ -7,10 +7,13 @@
 
 import numbers
 import re
+import types
 
 from . import operators
 from . import roles
 from . import visitors
+from .base import Options
+from .traversals import HasCacheKey
 from .visitors import Visitable
 from .. import exc
 from .. import inspection
@@ -33,9 +36,34 @@ def _is_literal(element):
     of a SQL expression construct.
 
     """
+
     return not isinstance(
-        element, (Visitable, schema.SchemaEventTarget)
+        element, (Visitable, schema.SchemaEventTarget),
     ) and not hasattr(element, "__clause_element__")
+
+
+def _deep_is_literal(element):
+    """Return whether or not the element is a "literal" in the context
+    of a SQL expression construct.
+
+    does a deeper more esoteric check than _is_literal.   is used
+    for lambda elements that have to distinguish values that would
+    be bound vs. not without any context.
+
+    """
+
+    return (
+        not isinstance(
+            element,
+            (Visitable, schema.SchemaEventTarget, HasCacheKey, Options,),
+        )
+        and not hasattr(element, "__clause_element__")
+        and (
+            not isinstance(element, type)
+            or not issubclass(element, HasCacheKey)
+        )
+        and not isinstance(element, types.FunctionType)
+    )
 
 
 def _document_text_coercion(paramname, meth_rst, param_rst):
@@ -711,9 +739,16 @@ class StatementImpl(_NoTextCoercion, RoleImpl):
 class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
 
-    def _literal_coercion(self, element, **kw):
+    def _dont_literal_coercion(self, element, **kw):
         if callable(element) and hasattr(element, "__code__"):
-            return lambdas.StatementLambdaElement(element, self._role_class)
+            return lambdas.StatementLambdaElement(
+                element,
+                self._role_class,
+                additional_cache_criteria=kw.get(
+                    "additional_cache_criteria", ()
+                ),
+                tracked=kw["tra"],
+            )
         else:
             return super(CoerceTextStatementImpl, self)._literal_coercion(
                 element, **kw

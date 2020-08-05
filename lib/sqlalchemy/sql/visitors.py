@@ -257,7 +257,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     """
 
-    dp_clauseelement_tuples = symbol("CT")
+    dp_clauseelement_tuples = symbol("CTS")
     """Visit a list of tuples which contain :class:`_expression.ClauseElement`
     objects.
 
@@ -267,6 +267,13 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """Visit a list of :class:`_expression.ClauseElement` objects.
 
     """
+
+    dp_clauseelement_tuple = symbol("CT")
+    """Visit a tuple of :class:`_expression.ClauseElement` objects.
+
+    """
+
+    dp_executable_options = symbol("EO")
 
     dp_fromclause_ordered_set = symbol("CO")
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
@@ -712,6 +719,9 @@ def cloned_traverse(obj, opts, visitors):
     cloned = {}
     stop_on = set(opts.get("stop_on", []))
 
+    def deferred_copy_internals(obj):
+        return cloned_traverse(obj, opts, visitors)
+
     def clone(elem, **kw):
         if elem in stop_on:
             return elem
@@ -732,7 +742,7 @@ def cloned_traverse(obj, opts, visitors):
             return cloned[id(elem)]
 
     if obj is not None:
-        obj = clone(obj)
+        obj = clone(obj, deferred_copy_internals=deferred_copy_internals)
     clone = None  # remove gc cycles
     return obj
 
@@ -764,6 +774,9 @@ def replacement_traverse(obj, opts, replace):
     cloned = {}
     stop_on = {id(x) for x in opts.get("stop_on", [])}
 
+    def deferred_copy_internals(obj):
+        return replacement_traverse(obj, opts, replace)
+
     def clone(elem, **kw):
         if (
             id(elem) in stop_on
@@ -776,19 +789,24 @@ def replacement_traverse(obj, opts, replace):
                 stop_on.add(id(newelem))
                 return newelem
             else:
-
-                if elem not in cloned:
+                # base "already seen" on id(), not hash, so that we don't
+                # replace an Annotated element with its non-annotated one, and
+                # vice versa
+                id_elem = id(elem)
+                if id_elem not in cloned:
                     if "replace" in kw:
                         newelem = kw["replace"](elem)
                         if newelem is not None:
-                            cloned[elem] = newelem
+                            cloned[id_elem] = newelem
                             return newelem
 
-                    cloned[elem] = newelem = elem._clone()
+                    cloned[id_elem] = newelem = elem._clone()
                     newelem._copy_internals(clone=clone, **kw)
-                return cloned[elem]
+                return cloned[id_elem]
 
     if obj is not None:
-        obj = clone(obj, **opts)
+        obj = clone(
+            obj, deferred_copy_internals=deferred_copy_internals, **opts
+        )
     clone = None  # remove gc cycles
     return obj

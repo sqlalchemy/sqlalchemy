@@ -131,6 +131,11 @@ class MyEntity(HasCacheKey):
     ]
 
 
+class Foo:
+    x = 10
+    y = 15
+
+
 dml.Insert.argument_for("sqlite", "foo", None)
 dml.Update.argument_for("sqlite", "foo", None)
 dml.Delete.argument_for("sqlite", "foo", None)
@@ -790,7 +795,7 @@ class CoreFixtures(object):
 
         def two():
             r = random.randint(1, 10)
-            q = 20
+            q = 408
             return LambdaElement(
                 lambda: table_a.c.a + q == r, roles.WhereHavingRole
             )
@@ -802,10 +807,6 @@ class CoreFixtures(object):
                 lambda: and_(table_a.c.a == some_value, table_a.c.b > y),
                 roles.WhereHavingRole,
             )
-
-        class Foo:
-            x = 10
-            y = 15
 
         def four():
             return LambdaElement(
@@ -833,6 +834,16 @@ class CoreFixtures(object):
                 lambda s: s.where(table_a.c.a == value)
             )
 
+        from sqlalchemy.sql import lambdas
+
+        def eight():
+            q = 5
+            return lambdas.DeferredLambdaElement(
+                lambda t: t.c.a > q,
+                roles.WhereHavingRole,
+                lambda_args=(table_a,),
+            )
+
         return [
             one(),
             two(),
@@ -841,6 +852,7 @@ class CoreFixtures(object):
             five(),
             six(),
             seven(),
+            eight(),
         ]
 
     dont_compare_values_fixtures.append(_lambda_fixtures)

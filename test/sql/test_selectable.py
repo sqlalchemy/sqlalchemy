@@ -29,6 +29,7 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.sql import Alias
+from sqlalchemy.sql import annotation
 from sqlalchemy.sql import base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
@@ -2351,6 +2352,33 @@ class AnnotationsTest(fixtures.TestBase):
         for obj in [s, s2]:
             annot = obj._annotate({})
             ne_(set([obj]), set([annot]))
+
+    def test_replacement_traverse_preserve(self):
+        """test that replacement traverse that hits an unannotated column
+        does not use it when replacing an annotated column.
+
+        this requires that replacement traverse store elements in the
+        "seen" hash based on id(), not hash.
+
+        """
+        t = table("t", column("x"))
+
+        stmt = select([t.c.x])
+
+        whereclause = annotation._deep_annotate(t.c.x == 5, {"foo": "bar"})
+
+        eq_(whereclause._annotations, {"foo": "bar"})
+        eq_(whereclause.left._annotations, {"foo": "bar"})
+        eq_(whereclause.right._annotations, {"foo": "bar"})
+
+        stmt = stmt.where(whereclause)
+
+        s2 = visitors.replacement_traverse(stmt, {}, lambda elem: None)
+
+        whereclause = s2._where_criteria[0]
+        eq_(whereclause._annotations, {"foo": "bar"})
+        eq_(whereclause.left._annotations, {"foo": "bar"})
+        eq_(whereclause.right._annotations, {"foo": "bar"})
 
     def test_proxy_set_iteration_includes_annotated(self):
         from sqlalchemy.schema import Column
