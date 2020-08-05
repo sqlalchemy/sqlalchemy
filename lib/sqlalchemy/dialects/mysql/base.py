@@ -2508,6 +2508,7 @@ class MySQLDialect(default.DefaultDialect):
             e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)
         ):
             return self._extract_error_code(e) in (
+                1927,
                 2006,
                 2013,
                 2014,

@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 5493
+
+    Added MariaDB code 1927 to the list of "disconnect" codes, as recent
+    MariaDB versions apparently use this code when the database server was
+    stopped.

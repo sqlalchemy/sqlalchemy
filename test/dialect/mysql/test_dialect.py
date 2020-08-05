@@ -28,6 +28,8 @@ class DialectTest(fixtures.TestBase):
         (None, "cONnection was kILLEd", "InternalError", "pymysql", True),
         (None, "cONnection aLREady closed", "InternalError", "pymysql", True),
         (None, "something broke", "InternalError", "pymysql", False),
+        (1927, "Connection was killed", "OperationalError", "pymysql", True),
+        (1927, "Connection was killed", "OperationalError", "mysqldb", True),
         (2006, "foo", "OperationalError", "mysqldb", True),
         (2006, "foo", "OperationalError", "pymysql", True),
         (2007, "foo", "OperationalError", "mysqldb", False),
