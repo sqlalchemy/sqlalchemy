@@ -1257,15 +1257,15 @@ Asyncio Support
   path to having lazy loading be available, for those willing to make use of
   some "controversial" patterns.
 
-There was an entire section here detailing how asyncio is a nice to have,
-but not really necessary, there are some approaches already, and maybe
-third parties can keep doing it.
+There was previously an entire section here detailing how asyncio is a nice to
+have, but not really necessary from a technical standpoint, there are some
+approaches already, and maybe third parties can keep doing it.
 
 What's changed is that there is now an approach to doing this in SQLAlchemy
-directly that does not impact the existing library nor does it imply an
-entirely separate version of everything be maintained.  What has *not* changed
-is that asyncio is not very necessary for relational databases but **that's
-fine, we will have asyncio, no more need to debate :) :) :)**.
+directly that does not impact the existing library internals nor does it imply
+an entirely separate version of everything be maintained, therefore this makes
+it feasible to deliver this feature to those users who prefer an all-async
+application style without impact on the traditional blocking archictecture.
 
 The proof of concept at https://gist.github.com/zzzeek/4e89ce6226826e7a8df13e1b573ad354
 illustrates how to write an asyncio application that makes use of a pure asyncio
@@ -1372,7 +1372,8 @@ from inside of an ``asyncio.run()`` call rather than directly, and it uses a
 DBAPI that is only compatible with asyncio.   There is no "monkeypatching" or
 anything else like that involved.    Any asyncio program can opt
 to place it's database-related business methods into the above pattern,
-if preferred, rather than using the asyncio SQLAlchemy API directly.  Or not.
-The greenlet technique, which is also being ported to other frameworks
-suich as Flask, has now made it so that it **no longer matters**.
+if preferred, rather than using the asyncio SQLAlchemy API directly.  This
+technique is also being adapted to other frameworks such as Flask and will
+hopefully lead to greater interoperability between blocking and non-blocking
+libraries and frameworks.
 
