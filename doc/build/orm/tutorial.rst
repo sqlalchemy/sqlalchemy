@@ -1375,9 +1375,10 @@ and ``Address`` because there's only one foreign key between them. If there
 were no foreign keys, or several, :meth:`_query.Query.join`
 works better when one of the following forms are used::
 
-    query.join(Address, User.id==Address.user_id)    # explicit condition
-    query.join(User.addresses)                       # specify relationship from left to right
-    query.join(Address, User.addresses)              # same, with explicit target
+    query.join(Address, User.id==Address.user_id)          # explicit condition
+    query.join(User.addresses)                             # specify relationship from left to right
+    query.join(Address, User.addresses)                    # same, with explicit target
+    query.join(User.addresses.and_(Address.name != 'foo')) # use relationship + additional ON criteria
 
 As you would expect, the same idea is used for "outer" joins, using the
 :meth:`_query.Query.outerjoin` function::

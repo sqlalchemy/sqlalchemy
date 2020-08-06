@@ -560,8 +560,8 @@ value as it uses bound parameters.  Subsequent invocations of the above
 within the scope of the ``connection.execute()`` call for enhanced performance.
 
 .. note:: it is important to note that the SQL compilation cache is caching
-   the **SQL string that is passed to the database only**, and **not** the
-   results returned by a query.   It is in no way a data cache and does not
+   the **SQL string that is passed to the database only**, and **not the data**
+   returned by a query.   It is in no way a data cache and does not
    impact the results returned for a particular SQL statement nor does it
    imply any memory use linked to fetching of result rows.
 
@@ -866,7 +866,7 @@ The cache can also be disabled with this argument by sending a value of
 Using Lambdas to add significant speed gains to statement production
 --------------------------------------------------------------------
 
-.. warning:: This technique is generally non-essential except in very performance
+.. deepalchemy:: This technique is generally non-essential except in very performance
    intensive scenarios, and intended for experienced Python programmers.
    While fairly straightforward, it involves metaprogramming concepts that are
    not appropriate for novice Python developers.  The lambda approach can be

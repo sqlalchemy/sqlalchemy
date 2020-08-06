@@ -649,6 +649,11 @@ class Result(InPlaceGenerative):
         it will produce a new :class:`_engine.Result` object each time
         against its stored set of rows.
 
+        .. seealso::
+
+            :ref:`do_orm_execute_re_executing` - example usage within the
+            ORM to implement a result-set cache.
+
         """
         return FrozenResult(self)
 
@@ -1173,11 +1178,27 @@ class FrozenResult(object):
 
         frozen = result.freeze()
 
-        r1 = frozen()
-        r2 = frozen()
+        unfrozen_result_one = frozen()
+
+        for row in unfrozen_result_one:
+            print(row)
+
+        unfrozen_result_two = frozen()
+        rows = unfrozen_result_two.all()
+
         # ... etc
 
     .. versionadded:: 1.4
+
+    .. seealso::
+
+        .. seealso::
+
+            :ref:`do_orm_execute_re_executing` - example usage within the
+            ORM to implement a result-set cache.
+
+            :func:`_orm.loading.merge_frozen_result` - ORM function to merge
+            a frozen result back into a :class:`_orm.Session`.
 
     """
 

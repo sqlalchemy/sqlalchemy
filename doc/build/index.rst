@@ -44,8 +44,7 @@ of Python objects, proceed first to the tutorial.
 
 * **ORM Usage:**
   :doc:`Session Usage and Guidelines <orm/session>` |
-  :doc:`Loading Objects <orm/loading_objects>` |
-  :doc:`Cached Query Extension <orm/extensions/baked>`
+  :doc:`Loading Objects <orm/loading_objects>`
 
 * **Extending the ORM:**
   :doc:`ORM Events and Internals <orm/extending>`

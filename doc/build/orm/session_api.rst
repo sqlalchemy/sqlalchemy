@@ -35,6 +35,21 @@ Session and sessionmaker()
         arguments that will assist in determining amongst a set of database
         connections which one should be used to invoke this statement.
 
+    .. attribute:: local_execution_options
+
+        Dictionary view of the execution options passed to the
+        :meth:`.Session.execute` method.  This does not include options
+        that may be associated with the statement being invoked.
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.execution_options`
+
+    .. attribute::  execution_options
+        The complete dictionary of current execution options.
+
+        This is a merge of the statement level options with the
+        locally passed execution options.
 
 .. autoclass:: Session
    :members:

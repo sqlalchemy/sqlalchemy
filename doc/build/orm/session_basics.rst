@@ -41,7 +41,6 @@ another :class:`.Session` when you want to work with them again, so that they
 can resume their normal task of representing database state.
 
 
-
 Basics of Using a Session
 =========================
 
@@ -49,8 +48,8 @@ The most basic :class:`.Session` use patterns are presented here.
 
 .. _session_getting:
 
-Instantiating
--------------
+Opening and Closing a Session
+-----------------------------
 
 The :class:`_orm.Session` may be constructed on its own or by using the
 :class:`_orm.sessionmaker` class.    It typically is passed a single
@@ -119,6 +118,8 @@ can be used by any number of functions and threads simultaenously.
 
     :class:`_orm.Session`
 
+.. _session_querying_1x:
+
 Querying (1.x Style)
 --------------------
 
@@ -159,6 +160,8 @@ The :class:`_query.Query` object is introduced in great detail in
 
     :ref:`query_api_toplevel`
 
+.. _session_querying_20:
+
 Querying (2.0 style)
 --------------------
 
@@ -166,7 +169,7 @@ Querying (2.0 style)
 
 SQLAlchemy 2.0 will standardize the production of SELECT statements across both
 Core and ORM by making direct use of the :class:`_sql.Select` object within the
-ORM, removing the need for there to be a separate :class:`_orm.query.Query`
+ORM, removing the need for there to be a separate :class:`_orm.Query`
 object.    This mode of operation is available in SQLAlchemy 1.4 right now to
 support applications that will be migrating to 2.0.   The :class:`_orm.Session`
 must be instantiated with the

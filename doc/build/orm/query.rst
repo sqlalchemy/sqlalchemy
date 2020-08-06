@@ -18,16 +18,16 @@ The Query Object
 
 Following is the full interface for the :class:`_query.Query` object.
 
-.. autoclass:: sqlalchemy.orm.query.Query
+.. autoclass:: sqlalchemy.orm.Query
    :members:
 
-   .. automethod:: sqlalchemy.orm.query.Query.prefix_with
+   .. automethod:: sqlalchemy.orm.Query.prefix_with
 
-   .. automethod:: sqlalchemy.orm.query.Query.suffix_with
+   .. automethod:: sqlalchemy.orm.Query.suffix_with
 
-   .. automethod:: sqlalchemy.orm.query.Query.with_hint
+   .. automethod:: sqlalchemy.orm.Query.with_hint
 
-   .. automethod:: sqlalchemy.orm.query.Query.with_statement_hint
+   .. automethod:: sqlalchemy.orm.Query.with_statement_hint
 
 ORM-Specific Query Constructs
 =============================

@@ -85,6 +85,10 @@ sections, are listed here.
 
 .. autodata:: sqlalchemy.orm.interfaces.NOT_EXTENSION
 
+.. autofunction:: sqlalchemy.orm.loading.merge_result
+
+.. autofunction:: sqlalchemy.orm.loading.merge_frozen_result
+
 
 .. autodata:: sqlalchemy.orm.interfaces.ONETOMANY
 

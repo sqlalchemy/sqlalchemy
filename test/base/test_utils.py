@@ -187,6 +187,15 @@ class ImmutableDictTest(fixtures.TestBase):
         eq_(d, {1: 2, 3: 4})
         eq_(d2, {1: 2, 3: 5, 7: 12})
 
+    def _dont_test_union_kw(self):
+        d = util.immutabledict({"a": "b", "c": "d"})
+
+        d2 = d.union(e="f", g="h")
+        assert isinstance(d2, util.immutabledict)
+
+        eq_(d, {"a": "b", "c": "d"})
+        eq_(d2, {"a": "b", "c": "d", "e": "f", "g": "h"})
+
     def test_union_tuples(self):
         d = util.immutabledict({1: 2, 3: 4})
 

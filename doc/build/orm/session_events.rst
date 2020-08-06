@@ -1,7 +1,7 @@
 .. _session_events_toplevel:
 
-Tracking Object and Session Changes with Events
-===============================================
+Tracking queries, object and Session Changes with Events
+=========================================================
 
 SQLAlchemy features an extensive :ref:`Event Listening <event_toplevel>`
 system used throughout the Core and ORM.   Within the ORM, there are a
@@ -11,6 +11,236 @@ grown over the years to include lots of very useful new events as well
 as some older events that aren't as relevant as they once were.  This
 section will attempt to introduce the major event hooks and when they
 might be used.
+
+.. _session_execute_events:
+
+Execute Events
+---------------
+
+.. versionadded:: 1.4  The :class:`_orm.Session` now features a single
+   comprehensive hook designed to intercept all SELECT statements made
+   on behalf of the ORM as well as bulk UPDATE and DELETE statements.
+   This hook supersedes the previous :meth:`_orm.QueryEvents.before_compile`
+   event as well :meth:`_orm.QueryEvents.before_compile_update` and
+   :meth:`_orm.QueryEvents.before_compile_delete`.
+
+:class:`_orm.Session` features a comprehensive system by which all queries
+invoked via the :meth:`_orm.Session.execute` method, which includes all
+SELECT statements emitted by :class:`_orm.Query` as well as all SELECT
+statements emitted on behalf of column and relationship loaders, may
+be intercepted and modified.   The system makes use of the
+:meth:`_orm.SessionEvents.do_orm_execute` event hook as well as the
+:class:`_orm.ORMExecuteState` object to represent the event state.
+
+
+Basic Query Interception
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:meth:`_orm.SessionEvents.do_orm_execute` is firstly useful for any kind of
+interception of a query, which includes those emitted by
+:class:`_orm.Query` with :term:`1.x style` as well as when an ORM-enabled
+:term:`2.0 style` :func:`_sql.select`,
+:func:`_sql.update` or :func:`_sql.delete` construct is delivered to
+:meth:`_orm.Session.execute`.   The :class:`_orm.ORMExecuteState` construct
+provides accessors to allow modifications to statements, parameters, and
+options::
+
+    Session = sessionmaker(engine, future=True)
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _do_orm_execute(orm_execute_state):
+        if orm_execute_state.is_select:
+            # add populate_existing for all SELECT statements
+
+            orm_execute_state.update_execution_options(populate_existing=True)
+
+            # check if the SELECT is against a certain entity and add an
+            # ORDER BY if so
+            col_descriptions = orm_execute_state.statement.column_descriptions
+
+            if col_descriptions[0]['entity'] is MyEntity:
+                orm_execute_state.statement = statement.order_by(MyEntity.name)
+
+The above example illustrates some simple modifications to SELECT statements.
+At this level, the :meth:`_orm.SessionEvents.do_orm_execute` event hook intends
+to replace the previous use of the :meth:`_orm.QueryEvents.before_compile` event,
+which was not fired off consistently for various kinds of loaders; additionally,
+the :meth:`_orm.QueryEvents.before_compile` only applies to :term:`1.x style`
+use with :class:`_orm.Query` and not with :term:`2.0 style` use of
+:meth:`_orm.Session.execute`.
+
+
+.. _do_orm_execute_global_criteria:
+
+Adding global WHERE / ON criteria
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+One of the most requested query-extension features is the ability to add WHERE
+criteria to all occurrences of an entity in all queries.   This is achievable
+by making use of the :func:`_orm.with_loader_criteria` query option, which
+may be used on its own, or is ideally suited to be used within the
+:meth:`_orm.SessionEvents.do_orm_execute` event::
+
+    from sqlalchemy.orm import with_loader_criteria
+
+    Session = sessionmaker(engine, future=True)
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _do_orm_execute(orm_execute_state):
+        if orm_execute_state.is_select:
+            orm_execute_state.statement = orm_execute_state.statement.options(
+                with_loader_criteria(MyEntity.public == True)
+            )
+
+Above, an option is added to all SELECT statements that will limit all queries
+against ``MyEntity`` to filter on ``public == True``.   The criteria
+will be applied to **all** loads of that class within the scope of the
+immediate query as well as subsequent relationship loads, which includes
+lazy loads, selectinloads, etc.
+
+For a series of classes that all feature some common column structure,
+if the classes are composed using a :ref:`declarative mixin <declarative_mixins>`,
+the mixin class itself may be used in conjunction with the :func:`_orm.with_loader_criteria`
+option by making use of a Python lambda.  The Python lambda will be invoked at
+query compilation time against the specific entities which match the criteria.
+Given a series of classes based on a mixin called ``HasTimestamp``::
+
+    import datetime
+
+    class HasTimestamp(object):
+        timestamp = Column(DateTime, default=datetime.datetime.now)
+
+
+    class SomeEntity(HasTimestamp, Base):
+        __tablename__ = "some_entity"
+        id = Column(Integer, primary_key=True)
+
+    class SomeOtherEntity(HasTimestamp, Base):
+        __tablename__ = "some_entity"
+        id = Column(Integer, primary_key=True)
+
+
+The above classes ``SomeEntity`` and ``SomeOtherEntity`` will each have a column
+``timestamp`` that defaults to the current date and time.   An event may be used
+to intercept all objects that extend from ``HasTimestamp`` and filter their
+``timestamp`` column on a date that is no older than one month ago::
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _do_orm_execute(orm_execute_state):
+        if orm_execute_state.is_select:
+            one_month_ago = datetime.datetime.today() - datetime.timedelta(months=1)
+
+            orm_execute_state.statement = orm_execute_state.statement.options(
+                with_loader_criteria(
+                    HasTimestamp,
+                    lambda cls: cls.timestamp >= one_month_ago,
+                    include_aliases=True
+                )
+            )
+
+.. seealso::
+
+    :ref:`examples_session_orm_events` - includes working examples of the
+    above :func:`_orm.with_loader_criteria` recipes.
+
+.. _do_orm_execute_re_executing:
+
+Re-Executing Statements
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. deepalchemy:: the statement re-execution feature involves a slightly
+   intricate recursive sequence, and is intended to solve the fairly hard
+   problem of being able to re-route the execution of a SQL statement into
+   various non-SQL contexts.    The twin examples of "dogpile caching" and
+   "horizontal sharding", linked below, should be used as a guide for when this
+   rather advanced feature is appropriate to be used.
+
+The :class:`_orm.ORMExecuteState` is capable of controlling the execution of
+the given statement; this includes the ability to either not invoke the
+statement at all, allowing a pre-constructed result set retrieved from a cache to
+be returned instead, as well as the ability to invoke the same statement
+repeatedly with different state, such as invoking it against multiple database
+connections and then merging the results together in memory.   Both of these
+advanced patterns are demonstrated in SQLAlchemy's example suite as detailed
+below.
+
+When inside the :meth:`_orm.SessionEvents.do_orm_execute` event hook, the
+:meth:`_orm.ORMExecuteState.invoke_statement` method may be used to invoke
+the statement using a new nested invocation of :meth:`_orm.Session.execute`,
+which will then preempt the subsequent handling of the current execution
+in progress and instead return the :class:`_engine.Result` returned by the
+inner execution.   The event handlers thus far invoked for the
+:meth:`_orm.SessionEvents.do_orm_execute` hook within this process will
+be skipped within this nested call as well.
+
+The :meth:`_orm.ORMExecuteState.invoke_statement` method returns a
+:class:`_engine.Result` object; this object then features the ability for it to
+be "frozen" into a cacheable format and "unfrozen" into a new
+:class:`_engine.Result` object, as well as for its data to be merged with
+that of other :class:`_engine.Result` objects.
+
+E.g., using :meth:`_orm.SessionEvents.do_orm_execute` to implement a cache::
+
+    from sqlalchemy.orm import loading
+
+    cache = {}
+
+    @event.listens_for(Session, "do_orm_execute")
+    def _do_orm_execute(orm_execute_state):
+        if "my_cache_key" in orm_execute_state.execution_options:
+            cache_key = orm_execute_state.execution_options["my_cache_key"]
+
+            if cache_key in cache:
+                frozen_result = cache[cache_key]
+            else:
+                frozen_result = orm_execute_state.invoke_statement().freeze()
+                cache[cache_key] = frozen_result
+
+            return loading.merge_frozen_result(
+                orm_execute_state.session,
+                orm_execute_state.statement,
+                frozen_result,
+                load=False,
+            )
+
+With the above hook in place, an example of using the cache would look like::
+
+    stmt = select(User).where(User.name == 'sandy').execution_options(my_cache_key="key_sandy")
+
+    result = session.execute(stmt)
+
+Above, a custom execution option is passed to
+:meth:`_sql.Select.execution_options` in order to establish a "cache key" that
+will then be intercepted by the :meth:`_orm.SessionEvents.do_orm_execute` hook.  This
+cache key is then matched to a :class:`_engine.FrozenResult` object that may be
+present in the cache, and if present, the object is re-used.  The recipe makes
+use of the :meth:`_engine.Result.freeze` method to "freeze" a
+:class:`_engine.Result` object, which above will contain ORM results, such that
+it can be stored in a cache and used multiple times. In order to return a live
+result from the "frozen" result, the :func:`_orm.loading.merge_frozen_result`
+function is used to merge the "frozen" data from the result object into the
+current session.
+
+The above example is implemented as a complete example in :ref:`examples_caching`.
+
+The :meth:`_orm.ORMExecuteState.invoke_statement` method may also be called
+multiple times, passing along different information to the
+:paramref:`_orm.ORMExecuteState.invoke_statement.bind_arguments` parameter such
+that the :class:`_orm.Session` will make use of different
+:class:`_engine.Engine` objects each time.  This will return a different
+:class:`_engine.Result` object each time; these results can be merged together
+using the :meth:`_engine.Result.merge` method.  This is the technique employed
+by the :ref:`horizontal_sharding_toplevel` extension; see the source code to
+familiarize.
+
+.. seealso::
+
+    :ref:`examples_caching`
+
+    :ref:`examples_sharding`
+
+
+
 
 .. _session_persistence_events:
 

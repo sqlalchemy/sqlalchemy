@@ -953,7 +953,7 @@ class CreateEnginePlugin(object):
         engine = create_engine(
           "mysql+pymysql://scott:tiger@localhost/test?plugin=myplugin")
 
-    Alternatively, the :paramref:`.create_engine.plugins" argument may be
+    Alternatively, the :paramref:`_sa.create_engine.plugins" argument may be
     passed as a list to :func:`_sa.create_engine`::
 
         engine = create_engine(

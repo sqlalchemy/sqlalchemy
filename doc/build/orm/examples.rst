@@ -147,6 +147,13 @@ Horizontal Sharding
 Extending the ORM
 =================
 
+.. _examples_session_orm_events:
+
+ORM Query Events
+-----------------
+
+.. automodule:: examples.extending_query
+
 .. _examples_caching:
 
 Dogpile Caching

@@ -141,6 +141,21 @@ def instances(cursor, context):
 
 @util.preload_module("sqlalchemy.orm.context")
 def merge_frozen_result(session, statement, frozen_result, load=True):
+    """Merge a :class:`_engine.FrozenResult` back into a :class:`_orm.Session`,
+    returning a new :class:`_engine.Result` object with :term:`persistent`
+    objects.
+
+    See the section :ref:`do_orm_execute_re_executing` for an example.
+
+    .. seealso::
+
+        :ref:`do_orm_execute_re_executing`
+
+        :meth:`_engine.Result.freeze`
+
+        :class:`_engine.FrozenResult`
+
+    """
     querycontext = util.preloaded.orm_context
 
     if load:
@@ -184,6 +199,11 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         session.autoflush = autoflush
 
 
+@util.deprecated(
+    "2.0",
+    "The :func:`_orm.merge_result` method is superseded by the "
+    ":func:`_orm.merge_frozen_result` function.",
+)
 @util.preload_module("sqlalchemy.orm.context")
 def merge_result(query, iterator, load=True):
     """Merge a result into this :class:`.Query` object's Session."""

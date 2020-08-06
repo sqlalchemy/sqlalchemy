@@ -1427,7 +1427,27 @@ class SessionEvents(event.Events):
 
         .. seealso::
 
-            :class:`.ORMExecuteState`
+            :ref:`session_execute_events` - top level documentation on how
+            to use :meth:`_orm.SessionEvents.do_orm_execute`
+
+            :class:`.ORMExecuteState` - the object passed to the
+            :meth:`_orm.SessionEvents.do_orm_execute` event which contains
+            all information about the statement to be invoked.  It also
+            provides an interface to extend the current statement, options,
+            and parameters as well as an option that allows programmatic
+            invocation of the statement at any point.
+
+            :ref:`examples_session_orm_events` - includes examples of using
+            :meth:`_orm.SessionEvents.do_orm_execute`
+
+            :ref:`examples_caching` - an example of how to integrate
+            Dogpile caching with the ORM :class:`_orm.Session` making use
+            of the :meth:`_orm.SessionEvents.do_orm_execute` event hook.
+
+            :ref:`examples_sharding` - the Horizontal Sharding example /
+            extension relies upon the
+            :meth:`_orm.SessionEvents.do_orm_execute` event hook to invoke a
+            SQL statement on multiple backends and return a merged result.
 
 
         .. versionadded:: 1.4
@@ -2585,12 +2605,8 @@ class QueryEvents(event.Events):
     """Represent events within the construction of a :class:`_query.Query`
     object.
 
-    The events here are intended to be used with an as-yet-unreleased
-    inspection system for :class:`_query.Query`.   Some very basic operations
-    are possible now, however the inspection system is intended to allow
-    complex query manipulations to be automated.
-
-    .. versionadded:: 1.0.0
+    The :class:`_orm.QueryEvents` hooks are now superseded by the
+    :meth:`_orm.SessionEvents.do_orm_execute` event hook.
 
     """
 
@@ -2601,6 +2617,17 @@ class QueryEvents(event.Events):
         """Receive the :class:`_query.Query`
         object before it is composed into a
         core :class:`_expression.Select` object.
+
+        .. deprecated:: 1.4  The :meth:`_orm.QueryEvents.before_compile` event
+           is superseded by the much more capable
+           :meth:`_orm.SessionEvents.do_orm_execute` hook.   In version 1.4,
+           the :meth:`_orm.QueryEvents.before_compile` event is **no longer
+           used** for ORM-level attribute loads, such as loads of deferred
+           or expired attributes as well as relationship loaders.   See the
+           new examples in :ref:`examples_session_orm_events` which
+           illustrate new ways of intercepting and modifying ORM queries
+           for the most common purpose of adding arbitrary filter criteria.
+
 
         This event is intended to allow changes to the query given::
 
@@ -2656,6 +2683,10 @@ class QueryEvents(event.Events):
         """Allow modifications to the :class:`_query.Query` object within
         :meth:`_query.Query.update`.
 
+        .. deprecated:: 1.4  The :meth:`_orm.QueryEvents.before_compile_update`
+           event is superseded by the much more capable
+           :meth:`_orm.SessionEvents.do_orm_execute` hook.
+
         Like the :meth:`.QueryEvents.before_compile` event, if the event
         is to be used to alter the :class:`_query.Query` object, it should
         be configured with ``retval=True``, and the modified
@@ -2701,6 +2732,10 @@ class QueryEvents(event.Events):
     def before_compile_delete(self, query, delete_context):
         """Allow modifications to the :class:`_query.Query` object within
         :meth:`_query.Query.delete`.
+
+        .. deprecated:: 1.4  The :meth:`_orm.QueryEvents.before_compile_delete`
+           event is superseded by the much more capable
+           :meth:`_orm.SessionEvents.do_orm_execute` hook.
 
         Like the :meth:`.QueryEvents.before_compile` event, this event
         should be configured with ``retval=True``, and the modified

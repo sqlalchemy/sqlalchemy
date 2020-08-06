@@ -1,3 +1,5 @@
+.. _mapping_attributes_toplevel:
+
 .. currentmodule:: sqlalchemy.orm
 
 Changing Attribute Behavior

@@ -1,3 +1,5 @@
+"""Illustrates sharding using distinct SQLite databases."""
+
 import datetime
 
 from sqlalchemy import Column
@@ -7,6 +9,7 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.ext.declarative import declarative_base
@@ -26,15 +29,15 @@ db4 = create_engine("sqlite://", echo=echo)
 
 # create session function.  this binds the shard ids
 # to databases within a ShardedSession and returns it.
-create_session = sessionmaker(class_=ShardedSession)
-
-create_session.configure(
+Session = sessionmaker(
+    class_=ShardedSession,
+    future=True,
     shards={
         "north_america": db1,
         "asia": db2,
         "europe": db3,
         "south_america": db4,
-    }
+    },
 )
 
 
@@ -54,7 +57,7 @@ ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 def id_generator(ctx):
     # in reality, might want to use a separate transaction for this.
     with db1.connect() as conn:
-        nextid = conn.scalar(ids.select(for_update=True))
+        nextid = conn.scalar(ids.select().with_for_update())
         conn.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
     return nextid
 
@@ -99,11 +102,11 @@ class Report(Base):
 
 # create tables
 for db in (db1, db2, db3, db4):
-    Base.metadata.drop_all(db)
     Base.metadata.create_all(db)
 
 # establish initial "id" in db1
-db1.execute(ids.insert(), nextid=1)
+with db1.begin() as conn:
+    conn.execute(ids.insert(), nextid=1)
 
 
 # step 5. define sharding functions.
@@ -199,18 +202,7 @@ def _get_query_comparisons(query):
     def visit_bindparam(bind):
         # visit a bind parameter.
 
-        # check in _params for it first
-        if bind.key in query._params:
-            value = query._params[bind.key]
-        elif bind.callable:
-            # some ORM functions (lazy loading)
-            # place the bind's value as a
-            # callable for deferred evaluation.
-            value = bind.callable()
-        else:
-            # just use .value
-            value = bind.value
-
+        value = bind.effective_value
         binds[bind] = value
 
     def visit_column(column):
@@ -230,9 +222,9 @@ def _get_query_comparisons(query):
     # here we will traverse through the query's criterion, searching
     # for SQL constructs.  We will place simple column comparisons
     # into a list.
-    if query._criterion is not None:
-        visitors.traverse_depthfirst(
-            query._criterion,
+    if query.whereclause is not None:
+        visitors.traverse(
+            query.whereclause,
             {},
             {
                 "bindparam": visit_bindparam,
@@ -244,7 +236,7 @@ def _get_query_comparisons(query):
 
 
 # further configure create_session to use these functions
-create_session.configure(
+Session.configure(
     shard_chooser=shard_chooser,
     id_chooser=id_chooser,
     query_chooser=query_chooser,
@@ -264,36 +256,47 @@ tokyo.reports.append(Report(80.0))
 newyork.reports.append(Report(75))
 quito.reports.append(Report(85))
 
-sess = create_session()
+with Session() as sess:
 
-sess.add_all([tokyo, newyork, toronto, london, dublin, brasilia, quito])
+    sess.add_all([tokyo, newyork, toronto, london, dublin, brasilia, quito])
 
-sess.commit()
+    sess.commit()
 
-t = sess.query(WeatherLocation).get(tokyo.id)
-assert t.city == tokyo.city
-assert t.reports[0].temperature == 80.0
+    t = sess.get(WeatherLocation, tokyo.id)
+    assert t.city == tokyo.city
+    assert t.reports[0].temperature == 80.0
 
-north_american_cities = sess.query(WeatherLocation).filter(
-    WeatherLocation.continent == "North America"
-)
-assert {c.city for c in north_american_cities} == {"New York", "Toronto"}
+    north_american_cities = sess.execute(
+        select(WeatherLocation).filter(
+            WeatherLocation.continent == "North America"
+        )
+    ).scalars()
 
-asia_and_europe = sess.query(WeatherLocation).filter(
-    WeatherLocation.continent.in_(["Europe", "Asia"])
-)
-assert {c.city for c in asia_and_europe} == {"Tokyo", "London", "Dublin"}
+    assert {c.city for c in north_american_cities} == {"New York", "Toronto"}
 
-# the Report class uses a simple integer primary key.  So across two databases,
-# a primary key will be repeated.  The "identity_token" tracks in memory
-# that these two identical primary keys are local to different databases.
-newyork_report = newyork.reports[0]
-tokyo_report = tokyo.reports[0]
+    asia_and_europe = sess.execute(
+        select(WeatherLocation).filter(
+            WeatherLocation.continent.in_(["Europe", "Asia"])
+        )
+    ).scalars()
 
-assert inspect(newyork_report).identity_key == (Report, (1,), "north_america")
-assert inspect(tokyo_report).identity_key == (Report, (1,), "asia")
+    assert {c.city for c in asia_and_europe} == {"Tokyo", "London", "Dublin"}
 
-# the token representing the originating shard is also available directly
+    # the Report class uses a simple integer primary key.  So across two
+    # databases, a primary key will be repeated.  The "identity_token" tracks
+    # in memory that these two identical primary keys are local to different
+    # databases.
+    newyork_report = newyork.reports[0]
+    tokyo_report = tokyo.reports[0]
 
-assert inspect(newyork_report).identity_token == "north_america"
-assert inspect(tokyo_report).identity_token == "asia"
+    assert inspect(newyork_report).identity_key == (
+        Report,
+        (1,),
+        "north_america",
+    )
+    assert inspect(tokyo_report).identity_key == (Report, (1,), "asia")
+
+    # the token representing the originating shard is also available directly
+
+    assert inspect(newyork_report).identity_token == "north_america"
+    assert inspect(tokyo_report).identity_token == "asia"

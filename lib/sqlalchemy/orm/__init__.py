@@ -272,6 +272,14 @@ def eagerload(*args, **kwargs):
 
 contains_alias = public_factory(AliasOption, ".orm.contains_alias")
 
+if True:
+    from .events import AttributeEvents  # noqa
+    from .events import MapperEvents  # noqa
+    from .events import InstanceEvents  # noqa
+    from .events import InstrumentationEvents  # noqa
+    from .events import QueryEvents  # noqa
+    from .events import SessionEvents  # noqa
+
 
 def __go(lcls):
     global __all__

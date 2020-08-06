@@ -107,6 +107,10 @@ class ORMExecuteState(util.MemoizedSlots):
 
     .. versionadded:: 1.4
 
+    .. seealso::
+
+        :ref:`session_execute_events` - top level documentation on how
+        to use :meth:`_orm.SessionEvents.do_orm_execute`
 
     """
 
@@ -158,14 +162,24 @@ class ORMExecuteState(util.MemoizedSlots):
         bind_arguments=None,
     ):
         """Execute the statement represented by this
-        :class:`.ORMExecuteState`, without re-invoking events.
+        :class:`.ORMExecuteState`, without re-invoking events that have
+        already proceeded.
 
-        This method essentially performs a re-entrant execution of the
-        current statement for which the :meth:`.SessionEvents.do_orm_execute`
-        event is being currently invoked.    The use case for this is
-        for event handlers that want to override how the ultimate results
-        object is returned, such as for schemes that retrieve results from
-        an offline cache or which concatenate results from multiple executions.
+        This method essentially performs a re-entrant execution of the current
+        statement for which the :meth:`.SessionEvents.do_orm_execute` event is
+        being currently invoked.    The use case for this is for event handlers
+        that want to override how the ultimate
+        :class:`_engine.Result` object is returned, such as for schemes that
+        retrieve results from an offline cache or which concatenate results
+        from multiple executions.
+
+        When the :class:`_engine.Result` object is returned by the actual
+        handler function within :meth:`_orm.SessionEvents.do_orm_execute` and
+        is propagated to the calling
+        :meth:`_orm.Session.execute` method, the remainder of the
+        :meth:`_orm.Session.execute` method is preempted and the
+        :class:`_engine.Result` object is returned to the caller of
+        :meth:`_orm.Session.execute` immediately.
 
         :param statement: optional statement to be invoked, in place of the
          statement currently represented by :attr:`.ORMExecuteState.statement`.
@@ -970,13 +984,30 @@ class Session(_SessionClassMethods):
            transaction will load from the most recent database state.
 
         :param future: if True, use 2.0 style behavior for the
-          :meth:`_orm.Session.execute` method.  This includes that the
-          :class:`_engine.Result` object returned will return new-style
-          tuple rows, as well as that Core constructs such as
-          :class:`_sql.Select`,
-          :class:`_sql.Update` and :class:`_sql.Delete` will be interpreted
-          in an ORM context if they are made against ORM entities rather than
-          plain :class:`.Table` metadata objects.
+          :meth:`_orm.Session.execute` method.   Future mode includes the
+          following behaviors:
+
+          * The :class:`_engine.Result` object returned by the
+            :meth:`_orm.Session.execute` method will return new-style tuple
+            :class:`_engine.Row` objects
+
+          * The :meth:`_orm.Session.execute` method will invoke ORM style
+            queries given objects like :class:`_sql.Select`,
+            :class:`_sql.Update` and :class:`_sql.Delete` against ORM entities
+
+          * The :class:`_orm.Session` will not use "bound" metadata in order
+            to locate an :class:`_engine.Engine`; the engine or engines in use
+            must be specified to the constructor of :class:`_orm.Session` or
+            otherwise be configured against the :class:`_orm.sessionmaker`
+            in use
+
+          * The "subtransactions" feature of :meth:`_orm.Session.begin` is
+            removed in version 2.0 and is disabled when the future flag is
+            set.
+
+          * The behavior of the :paramref:`_orm.relationship.cascade_backrefs`
+            flag on a :func:`_orm.relationship` will always assume
+            "False" behavior.
 
           The "future" flag is also available on a per-execution basis
           using the :paramref:`_orm.Session.execute.future` flag.
