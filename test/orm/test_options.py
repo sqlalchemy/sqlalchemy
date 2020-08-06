@@ -1391,6 +1391,7 @@ class PickleTest(PathTest, QueryTest):
                 "propagate_to_loaders": True,
                 "_of_type": None,
                 "_to_bind": to_bind,
+                "_extra_criteria": (),
             },
         )
 

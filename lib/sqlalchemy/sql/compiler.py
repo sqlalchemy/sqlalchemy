@@ -792,6 +792,10 @@ class SQLCompiler(Compiled):
     def prefetch(self):
         return list(self.insert_prefetch + self.update_prefetch)
 
+    @util.memoized_property
+    def _global_attributes(self):
+        return {}
+
     @util.memoized_instancemethod
     def _init_cte_state(self):
         """Initialize collections related to CTEs only if

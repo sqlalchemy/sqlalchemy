@@ -44,6 +44,8 @@ ORM-Specific Query Constructs
 .. autoclass:: sqlalchemy.orm.strategy_options.Load
     :members:
 
+.. autofunction:: sqlalchemy.orm.with_loader_criteria
+
 .. autofunction:: join
 
 .. autofunction:: outerjoin

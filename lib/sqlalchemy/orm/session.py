@@ -102,9 +102,11 @@ CLOSED = util.symbol("CLOSED")
 
 
 class ORMExecuteState(util.MemoizedSlots):
-    """Stateful object used for the :meth:`.SessionEvents.do_orm_execute`
+    """Represents a call to the :meth:`_orm.Session.execute` method, as passed
+    to the :meth:`.SessionEvents.do_orm_execute` event hook.
 
     .. versionadded:: 1.4
+
 
     """
 
@@ -112,13 +114,14 @@ class ORMExecuteState(util.MemoizedSlots):
         "session",
         "statement",
         "parameters",
-        "_execution_options",
-        "_merged_execution_options",
+        "execution_options",
+        "local_execution_options",
         "bind_arguments",
         "_compile_state_cls",
         "_starting_event_idx",
         "_events_todo",
         "_future",
+        "_update_execution_options",
     )
 
     def __init__(
@@ -135,7 +138,10 @@ class ORMExecuteState(util.MemoizedSlots):
         self.session = session
         self.statement = statement
         self.parameters = parameters
-        self._execution_options = execution_options
+        self.local_execution_options = execution_options
+        self.execution_options = statement._execution_options.union(
+            execution_options
+        )
         self.bind_arguments = bind_arguments
         self._compile_state_cls = compile_state_cls
         self._events_todo = list(events_todo)
@@ -182,9 +188,8 @@ class ORMExecuteState(util.MemoizedSlots):
 
         .. seealso::
 
-            :ref:`examples_caching` - includes example use of the
-            :meth:`.SessionEvents.do_orm_execute` hook as well as the
-            :meth:`.ORMExecuteState.invoke_query` method.
+            :ref:`do_orm_execute_re_executing` - background and examples on the
+            appropriate usage of :meth:`_orm.ORMExecuteState.invoke_statement`.
 
 
         """
@@ -203,11 +208,9 @@ class ORMExecuteState(util.MemoizedSlots):
         else:
             _params = self.parameters
 
+        _execution_options = self.local_execution_options
         if execution_options:
-            _execution_options = dict(self._execution_options)
-            _execution_options.update(execution_options)
-        else:
-            _execution_options = self._execution_options
+            _execution_options = _execution_options.union(execution_options)
 
         return self.session.execute(
             statement,
@@ -255,42 +258,9 @@ class ORMExecuteState(util.MemoizedSlots):
     def _is_crud(self):
         return isinstance(self.statement, (dml.Update, dml.Delete))
 
-    @property
-    def execution_options(self):
-        """Placeholder for execution options.
-
-        Raises an informative message, as there are local options
-        vs. merged options that can be viewed, via the
-        :attr:`.ORMExecuteState.local_execution_options` and
-        :attr:`.ORMExecuteState.merged_execution_options` methods.
-
-
-        """
-        raise AttributeError(
-            "Please use .local_execution_options or "
-            ".merged_execution_options"
-        )
-
-    @property
-    def local_execution_options(self):
-        """Dictionary view of the execution options passed to the
-        :meth:`.Session.execute` method.  This does not include options
-        that may be associated with the statement being invoked.
-
-        """
-        return util.immutabledict(self._execution_options)
-
-    @property
-    def merged_execution_options(self):
-        """Dictionary view of all execution options merged together;
-        this includes those of the statement as well as those passed to
-        :meth:`.Session.execute`, with the local options taking precedence.
-
-        """
-        return self._merged_execution_options
-
-    def _memoized_attr__merged_execution_options(self):
-        return self.statement._execution_options.union(self._execution_options)
+    def update_execution_options(self, **opts):
+        # TODO: no coverage
+        self.local_execution_options = self.local_execution_options.union(opts)
 
     def _orm_compile_options(self):
         opts = self.statement._compile_options
@@ -329,6 +299,20 @@ class ORMExecuteState(util.MemoizedSlots):
             return None
 
     @property
+    def is_relationship_load(self):
+        """Return True if this load is loading objects on behalf of a
+        relationship.
+
+        This means, the loader in effect is either a LazyLoader,
+        SelectInLoader, SubqueryLoader, or similar, and the entire
+        SELECT statement being emitted is on behalf of a relationship
+        load.
+
+        """
+        path = self.loader_strategy_path
+        return path is not None and not path.is_root
+
+    @property
     def load_options(self):
         """Return the load_options that will be used for this execution."""
 
@@ -337,7 +321,7 @@ class ORMExecuteState(util.MemoizedSlots):
                 "This ORM execution is not against a SELECT statement "
                 "so there are no load options."
             )
-        return self._execution_options.get(
+        return self.execution_options.get(
             "_sa_orm_load_options", context.QueryContext.default_load_options
         )
 
@@ -351,7 +335,7 @@ class ORMExecuteState(util.MemoizedSlots):
                 "This ORM execution is not against an UPDATE or DELETE "
                 "statement so there are no update options."
             )
-        return self._execution_options.get(
+        return self.execution_options.get(
             "_sa_orm_update_options",
             persistence.BulkUDCompileState.default_update_options,
         )
@@ -1003,8 +987,6 @@ class Session(_SessionClassMethods):
 
             :ref:`migration_20_toplevel`
 
-            :ref:`migration_20_result_rows`
-
         :param info: optional dictionary of arbitrary data to be associated
            with this :class:`.Session`.  Is available via the
            :attr:`.Session.info` attribute.  Note the dictionary is copied at
@@ -1282,7 +1264,7 @@ class Session(_SessionClassMethods):
         the operation will release the current SAVEPOINT but not commit
         the outermost database transaction.
 
-        If :term:`2.x-style` use is in effect via the
+        If :term:`2.0-style` use is in effect via the
         :paramref:`_orm.Session.future` flag, the outermost database
         transaction is committed unconditionally, automatically releasing any
         SAVEPOINTs in effect.
@@ -1416,7 +1398,7 @@ class Session(_SessionClassMethods):
         self,
         statement,
         params=None,
-        execution_options=util.immutabledict(),
+        execution_options=util.EMPTY_DICT,
         bind_arguments=None,
         future=False,
         _parent_execute_state=None,
@@ -1576,6 +1558,8 @@ class Session(_SessionClassMethods):
         else:
             compile_state_cls = None
 
+        execution_options = util.coerce_to_immutabledict(execution_options)
+
         if compile_state_cls is not None:
             (
                 statement,
@@ -1591,8 +1575,11 @@ class Session(_SessionClassMethods):
         else:
             bind_arguments.setdefault("clause", statement)
             if future:
-                execution_options = util.immutabledict().merge_with(
-                    execution_options, {"future_result": True}
+                # not sure if immutabledict is working w/ this syntax
+                # execution_options =
+                # execution_options.union(future_result=True)
+                execution_options = execution_options.union(
+                    {"future_result": True}
                 )
 
         if _parent_execute_state:
@@ -1618,6 +1605,10 @@ class Session(_SessionClassMethods):
                 result = fn(orm_exec_state)
                 if result:
                     return result
+
+            # TODO: coverage for this pattern
+            statement = orm_exec_state.statement
+            execution_options = orm_exec_state.local_execution_options
 
         bind = self.get_bind(**bind_arguments)
 

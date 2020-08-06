@@ -1975,6 +1975,7 @@ class JoinedLoader(AbstractRelationshipLoader):
                 clauses,
                 innerjoin,
                 chained_from_outerjoin,
+                loadopt._extra_criteria if loadopt else (),
             )
         )
 
@@ -1993,6 +1994,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         clauses,
         innerjoin,
         chained_from_outerjoin,
+        extra_criteria,
     ):
         if parentmapper is None:
             localparent = query_entity.mapper
@@ -2081,6 +2083,17 @@ class JoinedLoader(AbstractRelationshipLoader):
             or query_entity.entity_zero.represents_outer_join
         )
 
+        extra_join_criteria = extra_criteria
+        additional_entity_criteria = compile_state.global_attributes.get(
+            ("additional_entity_criteria", self.mapper), ()
+        )
+        if additional_entity_criteria:
+            extra_join_criteria += tuple(
+                ae._resolve_where_criteria(self.mapper)
+                for ae in additional_entity_criteria
+                if ae.propagate_to_loaders
+            )
+
         if attach_on_outside:
             # this is the "classic" eager join case.
             eagerjoin = orm_util._ORMJoin(
@@ -2092,11 +2105,12 @@ class JoinedLoader(AbstractRelationshipLoader):
                 or (chained_from_outerjoin and isinstance(towrap, sql.Join)),
                 _left_memo=self.parent,
                 _right_memo=self.mapper,
+                _extra_criteria=extra_join_criteria,
             )
         else:
             # all other cases are innerjoin=='nested' approach
             eagerjoin = self._splice_nested_inner_join(
-                path, towrap, clauses, onclause,
+                path, towrap, clauses, onclause, extra_join_criteria
             )
 
         compile_state.eager_joins[query_entity_key] = eagerjoin
@@ -2128,7 +2142,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             )
 
     def _splice_nested_inner_join(
-        self, path, join_obj, clauses, onclause, splicing=False
+        self, path, join_obj, clauses, onclause, extra_criteria, splicing=False
     ):
 
         if splicing is False:
@@ -2137,7 +2151,12 @@ class JoinedLoader(AbstractRelationshipLoader):
             assert isinstance(join_obj, orm_util._ORMJoin)
         elif isinstance(join_obj, sql.selectable.FromGrouping):
             return self._splice_nested_inner_join(
-                path, join_obj.element, clauses, onclause, splicing,
+                path,
+                join_obj.element,
+                clauses,
+                onclause,
+                extra_criteria,
+                splicing,
             )
         elif not isinstance(join_obj, orm_util._ORMJoin):
             if path[-2] is splicing:
@@ -2148,18 +2167,29 @@ class JoinedLoader(AbstractRelationshipLoader):
                     isouter=False,
                     _left_memo=splicing,
                     _right_memo=path[-1].mapper,
+                    _extra_criteria=extra_criteria,
                 )
             else:
                 # only here if splicing == True
                 return None
 
         target_join = self._splice_nested_inner_join(
-            path, join_obj.right, clauses, onclause, join_obj._right_memo,
+            path,
+            join_obj.right,
+            clauses,
+            onclause,
+            extra_criteria,
+            join_obj._right_memo,
         )
         if target_join is None:
             right_splice = False
             target_join = self._splice_nested_inner_join(
-                path, join_obj.left, clauses, onclause, join_obj._left_memo,
+                path,
+                join_obj.left,
+                clauses,
+                onclause,
+                extra_criteria,
+                join_obj._left_memo,
             )
             if target_join is None:
                 # should only return None when recursively called,

@@ -480,6 +480,32 @@ class PropComparator(operators.ColumnOperators):
 
         return self.operate(PropComparator.of_type_op, class_)
 
+    def and_(self, *criteria):
+        """Add additional criteria to the ON clause that's represented by this
+        relationship attribute.
+
+        E.g.::
+
+
+            stmt = select(User).join(
+                User.addresses.and_(Address.email_address != 'foo')
+            )
+
+            stmt = select(User).options(
+                joinedload(User.addresses.and_(Address.email_address != 'foo'))
+            )
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :ref:`loader_option_criteria`
+
+            :func:`.with_loader_criteria`
+
+        """
+        return self.operate(operators.and_, *criteria)
+
     def any(self, criterion=None, **kwargs):
         r"""Return true if this collection contains any member that meets the
         given criterion.

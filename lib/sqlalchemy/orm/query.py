@@ -1997,6 +1997,20 @@ class Query(
                     filter(a1.email_address == 'ed@foo.com').\
                     filter(a2.email_address == 'ed@bar.com')
 
+        **Augmenting Built-in ON Clauses**
+
+        As a substitute for providing a full custom ON condition for an
+        existing relationship, the :meth:`_orm.PropComparator.and_` function
+        may be applied to a relationship attribute to augment additional
+        criteria into the ON clause; the additional criteria will be combined
+        with the default criteria using AND::
+
+            q = session.query(User).join(
+                User.addresses.and_(Address.email_address != 'foo@bar.com')
+            )
+
+        .. versionadded:: 1.4
+
         **Joining to Tables and Subqueries**
 
 

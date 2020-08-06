@@ -1302,6 +1302,28 @@ class _PolymorphicTestBase(object):
             [e1, e3],
         )
 
+    def test_join_and_thru_polymorphic_nonaliased_one(self):
+        sess = create_session()
+        eq_(
+            sess.query(Company)
+            .join(Company.employees)
+            .join(Person.paperwork.and_(Paperwork.description.like("%#2%")))
+            .all(),
+            [c1],
+        )
+
+    def test_join_and_thru_polymorphic_aliased_one(self):
+        sess = create_session()
+        ea = aliased(Person)
+        pa = aliased(Paperwork)
+        eq_(
+            sess.query(Company)
+            .join(ea, Company.employees)
+            .join(pa, ea.paperwork.and_(pa.description.like("%#2%")))
+            .all(),
+            [c1],
+        )
+
     def test_join_through_polymorphic_nonaliased_one(self):
         sess = create_session()
         eq_(

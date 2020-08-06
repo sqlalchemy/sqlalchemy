@@ -2,6 +2,8 @@ import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.declarative import declarative_base
@@ -45,6 +47,170 @@ class _RemoveListeners(object):
         events.InstrumentationEvents._clear()
         events.QueryEvents._clear()
         super(_RemoveListeners, self).teardown()
+
+
+class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def _caching_session_fixture(self):
+
+        cache = {}
+
+        maker = sessionmaker(testing.db, future=True)
+
+        def get_value(cache_key, cache, createfunc):
+            if cache_key in cache:
+                return cache[cache_key]()
+            else:
+                cache[cache_key] = retval = createfunc().freeze()
+                return retval()
+
+        @event.listens_for(maker, "do_orm_execute", retval=True)
+        def do_orm_execute(orm_context):
+            ckey = None
+            for opt in orm_context.user_defined_options:
+                ckey = opt.get_cache_key(orm_context)
+                if ckey:
+                    break
+            else:
+                if "cache_key" in orm_context.execution_options:
+                    ckey = orm_context.execution_options["cache_key"]
+
+            if ckey is not None:
+                return get_value(ckey, cache, orm_context.invoke_statement,)
+
+        return maker()
+
+    def test_cache_option(self):
+        User, Address = self.classes("User", "Address")
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+
+            with self._caching_session_fixture() as session:
+                stmt = (
+                    select(User)
+                    .where(User.id == 7)
+                    .execution_options(cache_key="user7")
+                )
+
+                result = session.execute(stmt)
+
+                eq_(
+                    result.scalars().all(),
+                    [User(id=7, addresses=[Address(id=1)])],
+                )
+
+                result = session.execute(stmt)
+
+                eq_(
+                    result.scalars().all(),
+                    [User(id=7, addresses=[Address(id=1)])],
+                )
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users "
+                "WHERE users.id = :id_1",
+                [{"id_1": 7}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "ORDER BY addresses.id",
+                [{"param_1": 7}],
+            ),
+        )
+
+    def test_chained_events_one(self):
+
+        sess = Session(testing.db, future=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            ctx.update_execution_options(one=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def two(ctx):
+            ctx.update_execution_options(two=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def three(ctx):
+            ctx.update_execution_options(three=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def four(ctx):
+            ctx.update_execution_options(four=True)
+
+        result = sess.execute(select(literal_column("1")))
+
+        eq_(
+            result.context.execution_options,
+            {
+                "four": True,
+                "future_result": True,
+                "one": True,
+                "three": True,
+                "two": True,
+            },
+        )
+
+    def test_chained_events_two(self):
+
+        sess = Session(testing.db, future=True)
+
+        def added(ctx):
+            ctx.update_execution_options(added_evt=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def one(ctx):
+            ctx.update_execution_options(one=True)
+
+        @event.listens_for(sess, "do_orm_execute", retval=True)
+        def two(ctx):
+            ctx.update_execution_options(two=True)
+            return ctx.invoke_statement(
+                statement=ctx.statement.execution_options(statement_two=True)
+            )
+
+        @event.listens_for(sess, "do_orm_execute")
+        def three(ctx):
+            ctx.update_execution_options(three=True)
+
+        @event.listens_for(sess, "do_orm_execute")
+        def four(ctx):
+            ctx.update_execution_options(four=True)
+            return ctx.invoke_statement(
+                statement=ctx.statement.execution_options(statement_four=True)
+            )
+
+        @event.listens_for(sess, "do_orm_execute")
+        def five(ctx):
+            ctx.update_execution_options(five=True)
+
+        result = sess.execute(select(literal_column("1")), _add_event=added)
+
+        eq_(
+            result.context.execution_options,
+            {
+                "statement_two": True,
+                "statement_four": True,
+                "future_result": True,
+                "one": True,
+                "two": True,
+                "three": True,
+                "four": True,
+                "five": True,
+                "added_evt": True,
+            },
+        )
 
 
 class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):

@@ -78,6 +78,7 @@ class Load(Generative, LoaderOption):
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key),
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
         ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
+        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
         (
             "_context_cache_key",
             visitors.ExtendedInternalTraversal.dp_has_cache_key_tuples,
@@ -101,6 +102,7 @@ class Load(Generative, LoaderOption):
         load.context = {}
         load.local_opts = {}
         load._of_type = None
+        load._extra_criteria = ()
         return load
 
     @property
@@ -124,6 +126,7 @@ class Load(Generative, LoaderOption):
     strategy = None
     propagate_to_loaders = False
     _of_type = None
+    _extra_criteria = ()
 
     def process_compile_state(self, compile_state):
         if not compile_state.compile_options._enable_eagerloads:
@@ -248,6 +251,9 @@ class Load(Generative, LoaderOption):
                 else:
                     return None
 
+            if attr._extra_criteria:
+                self._extra_criteria = attr._extra_criteria
+
             if getattr(attr, "_of_type", None):
                 ac = attr._of_type
                 ext_info = of_type_info = inspect(ac)
@@ -356,6 +362,7 @@ class Load(Generative, LoaderOption):
         cloned = self._clone_for_bind_strategy(attr, strategy, "relationship")
         self.path = cloned.path
         self._of_type = cloned._of_type
+        self._extra_criteria = cloned._extra_criteria
         cloned.is_class_strategy = self.is_class_strategy = False
         self.propagate_to_loaders = cloned.propagate_to_loaders
 
@@ -413,6 +420,7 @@ class Load(Generative, LoaderOption):
             if existing:
                 if merge_opts:
                     existing.local_opts.update(self.local_opts)
+                    existing._extra_criteria += self._extra_criteria
             else:
                 path.set(context, "loader", self)
         else:
@@ -420,6 +428,7 @@ class Load(Generative, LoaderOption):
             path.set(context, "loader", self)
             if existing and existing.is_opts_only:
                 self.local_opts.update(existing.local_opts)
+                existing._extra_criteria += self._extra_criteria
 
     def _set_path_strategy(self):
         if not self.is_class_strategy and self.path.has_entity:
@@ -507,11 +516,13 @@ class _UnboundLoad(Load):
         self.path = ()
         self._to_bind = []
         self.local_opts = {}
+        self._extra_criteria = ()
 
     _cache_key_traversal = [
         ("path", visitors.ExtendedInternalTraversal.dp_multi_list),
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
         ("_to_bind", visitors.ExtendedInternalTraversal.dp_has_cache_key_list),
+        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
         ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
     ]
 
@@ -576,6 +587,7 @@ class _UnboundLoad(Load):
         if attr:
             path = path + (attr,)
         self.path = path
+        self._extra_criteria = getattr(attr, "_extra_criteria", ())
 
         return path
 

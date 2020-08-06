@@ -1512,3 +1512,23 @@ class CompareClausesTest(fixtures.TestBase):
         is_true(x_p_a.compare(x_p))
         is_true(x_p.compare(x_p_a))
         is_false(x_p_a.compare(x_a))
+
+
+class ExecutableFlagsTest(fixtures.TestBase):
+    @testing.combinations(
+        (select(column("a")),),
+        (table("q", column("a")).insert(),),
+        (table("q", column("a")).update(),),
+        (table("q", column("a")).delete(),),
+        (lambda_stmt(lambda: select(column("a"))),),
+    )
+    def test_is_select(self, case):
+        if isinstance(case, LambdaElement):
+            resolved_case = case._resolved
+        else:
+            resolved_case = case
+
+        if isinstance(resolved_case, Select):
+            is_true(case.is_select)
+        else:
+            is_false(case.is_select)
