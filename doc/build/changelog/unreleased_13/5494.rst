@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 5494
+
+    Adjusted the workings of the :meth:`_orm.Mapper.all_orm_descriptors`
+    accessor to represent the attributes in the order that they are located in
+    a deterministic way, assuming the use of Python 3.6 or higher which
+    maintains the sorting order of class attributes based on how they were
+    declared.   This sorting is not guaranteed to match the declared order of
+    attributes in all cases however; see the method documentation for the exact
+    scheme.
+
+

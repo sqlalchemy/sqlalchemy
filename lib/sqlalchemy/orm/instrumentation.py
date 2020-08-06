@@ -158,12 +158,24 @@ class ClassManager(HasMemoized, dict):
         :class:`.AssociationProxy`.
 
         """
-        if exclude is None:
-            exclude = set()
-        for supercls in self.class_.__mro__:
-            for key in set(supercls.__dict__).difference(exclude):
-                exclude.add(key)
-                val = supercls.__dict__[key]
+
+        found = {}
+
+        # constraints:
+        # 1. yield keys in cls.__dict__ order
+        # 2. if a subclass has the same key as a superclass, include that
+        #    key as part of the ordering of the superclass, because an
+        #    overridden key is usually installed by the mapper which is going
+        #    on a different ordering
+        # 3. don't use getattr() as this fires off descriptors
+
+        for supercls in self.class_.__mro__[0:-1]:
+            inherits = supercls.__mro__[1]
+            for key in supercls.__dict__:
+                found.setdefault(key, supercls)
+                if key in inherits.__dict__:
+                    continue
+                val = found[key].__dict__[key]
                 if (
                     isinstance(val, interfaces.InspectionAttr)
                     and val.is_attribute

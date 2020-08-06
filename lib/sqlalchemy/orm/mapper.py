@@ -2434,6 +2434,21 @@ class Mapper(
         the attribute :attr:`.InspectionAttr.extension_type` will refer
         to a constant that distinguishes between different extension types.
 
+        The sorting of the attributes is based on what is located in
+        the ``__dict__`` of the mapped class as well as its mapped
+        superclasses.    The sorting will be all those attribute names
+        that appear in the ``__dict__`` of the immediate class and not
+        any of its superclasses, then the names which appear in the
+        ``__dict__`` of the superclass and not any of the further superclasses,
+        all the way down.   This will produce a deterministic ordering on
+        Python 3.6 and above.   It is not guaranteed to match the declared
+        ordering of attributes on the class, however, as the mapping process
+        itself populates Python descriptors into the ``__dict__`` of a mapped
+        class which are not always explicit in a declarative mapping.
+
+        .. versionchanged:: 1.4 ensured deterministic ordering for
+           :meth:`_orm.Mapper.all_orm_descriptors`.
+
         When dealing with a :class:`.QueryableAttribute`, the
         :attr:`.QueryableAttribute.property` attribute refers to the
         :class:`.MapperProperty` property, which is what you get when
