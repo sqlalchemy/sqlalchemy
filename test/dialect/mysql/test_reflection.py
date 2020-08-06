@@ -126,7 +126,10 @@ class TypeReflectionTest(fixtures.TestBase):
             (mysql.YEAR(display_width=4), mysql.YEAR(display_width=4)),
         ]
 
-        self._run_test(specs, ["display_width"])
+        if testing.against("mysql>=8.0.19"):
+            self._run_test(specs, [])
+        else:
+            self._run_test(specs, ["display_width"])
 
     def test_string_types(self):
         specs = [
@@ -193,7 +196,14 @@ class TypeReflectionTest(fixtures.TestBase):
                 (BigInteger, mysql.BIGINT(display_width=20)),
             ]
         )
-        self._run_test(specs, ["display_width", "unsigned", "zerofill"])
+
+        # TODO: mysql 8.0.19-ish doesn't consistently report
+        # on display_width.   need to test this more accurately though
+        # for the cases where it does
+        if testing.against("mysql >= 8.0.19"):
+            self._run_test(specs, ["unsigned", "zerofill"])
+        else:
+            self._run_test(specs, ["display_width", "unsigned", "zerofill"])
 
     def test_binary_types(self):
         specs = [
@@ -949,7 +959,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             )
         else:
             eq_(
-                inspect(testing.db).get_foreign_keys("PlaylistTrack"),
+                sorted(
+                    inspect(testing.db).get_foreign_keys("PlaylistTrack"),
+                    key=lambda elem: elem["name"],
+                ),
                 [
                     {
                         "name": "FK_PlaylistTTrackId",
