@@ -28,6 +28,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_regex
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.util import u
@@ -635,7 +636,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         meta2 = MetaData(testing.db)
         table = Table("mysql_bool", meta2, autoload=True)
         eq_(colspec(table.c.b3), "b3 TINYINT(1)")
-        eq_(colspec(table.c.b4), "b4 TINYINT(1) UNSIGNED")
+        eq_regex(colspec(table.c.b4), r"b4 TINYINT(?:\(1\))? UNSIGNED")
 
         meta2 = MetaData(testing.db)
         table = Table(
@@ -749,7 +750,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
                 eq_(list(row), [1950, 2050, None, 1950])
                 conn.execute(table.delete())
                 self.assert_(colspec(table.c.y1).startswith("y1 YEAR"))
-                eq_(colspec(table.c.y5), "y5 YEAR(4)")
+                eq_regex(colspec(table.c.y5), r"y5 YEAR(?:\(4\))?")
 
 
 class JSONTest(fixtures.TestBase):
