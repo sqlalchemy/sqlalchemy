@@ -2400,6 +2400,20 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             User.id == Address.user_id,
         )
 
+    def test_on_clause_no_right_side_two(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        sess = create_session()
+
+        right = Address.user_id
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Join target %s does not refer to a mapped entity" % right,
+            sess.query(User).join,
+            Address.user_id,
+        )
+
     def test_select_from(self):
         """Test that the left edge of the join can be set reliably with
         select_from()."""
