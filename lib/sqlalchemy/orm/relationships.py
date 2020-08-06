@@ -1115,9 +1115,15 @@ class RelationshipProperty(StrategizedProperty):
         """
 
         _of_type = None
+        _extra_criteria = ()
 
         def __init__(
-            self, prop, parentmapper, adapt_to_entity=None, of_type=None
+            self,
+            prop,
+            parentmapper,
+            adapt_to_entity=None,
+            of_type=None,
+            extra_criteria=(),
         ):
             """Construction of :class:`.RelationshipProperty.Comparator`
             is internal to the ORM's attribute mechanics.
@@ -1128,6 +1134,7 @@ class RelationshipProperty(StrategizedProperty):
             self._adapt_to_entity = adapt_to_entity
             if of_type:
                 self._of_type = of_type
+            self._extra_criteria = extra_criteria
 
         def adapt_to_entity(self, adapt_to_entity):
             return self.__class__(
@@ -1191,6 +1198,7 @@ class RelationshipProperty(StrategizedProperty):
                 source_polymorphic=True,
                 of_type_entity=of_type_entity,
                 alias_secondary=True,
+                extra_criteria=self._extra_criteria,
             )
             if sj is not None:
                 return pj & sj
@@ -1202,12 +1210,30 @@ class RelationshipProperty(StrategizedProperty):
 
             See :meth:`.PropComparator.of_type` for an example.
 
+
             """
             return RelationshipProperty.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
                 of_type=cls,
+                extra_criteria=self._extra_criteria,
+            )
+
+        def and_(self, *other):
+            """Add AND criteria.
+
+            See :meth:`.PropComparator.and_` for an example.
+
+            .. versionadded:: 1.4
+
+            """
+            return RelationshipProperty.Comparator(
+                self.property,
+                self._parententity,
+                adapt_to_entity=self._adapt_to_entity,
+                of_type=self._of_type,
+                extra_criteria=self._extra_criteria + other,
             )
 
         def in_(self, other):
@@ -2439,6 +2465,7 @@ class RelationshipProperty(StrategizedProperty):
         dest_selectable=None,
         of_type_entity=None,
         alias_secondary=False,
+        extra_criteria=(),
     ):
 
         aliased = False
@@ -2489,7 +2516,11 @@ class RelationshipProperty(StrategizedProperty):
             target_adapter,
             dest_selectable,
         ) = self._join_condition.join_targets(
-            source_selectable, dest_selectable, aliased, single_crit
+            source_selectable,
+            dest_selectable,
+            aliased,
+            single_crit,
+            extra_criteria,
         )
         if source_selectable is None:
             source_selectable = self.parent.local_table
@@ -3427,7 +3458,12 @@ class JoinCondition(object):
         )
 
     def join_targets(
-        self, source_selectable, dest_selectable, aliased, single_crit=None
+        self,
+        source_selectable,
+        dest_selectable,
+        aliased,
+        single_crit=None,
+        extra_criteria=(),
     ):
         """Given a source and destination selectable, create a
         join between them.
@@ -3462,6 +3498,12 @@ class JoinCondition(object):
                 secondaryjoin = secondaryjoin & single_crit
             else:
                 primaryjoin = primaryjoin & single_crit
+
+        if extra_criteria:
+            if secondaryjoin is not None:
+                secondaryjoin = secondaryjoin & sql.and_(*extra_criteria)
+            else:
+                primaryjoin = primaryjoin & sql.and_(*extra_criteria)
 
         if aliased:
             if secondary is not None:

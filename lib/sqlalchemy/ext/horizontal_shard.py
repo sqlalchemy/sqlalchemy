@@ -207,7 +207,6 @@ class ShardedSession(Session):
 
 
 def execute_and_instances(orm_context):
-
     if orm_context.is_select:
         load_options = active_options = orm_context.load_options
         update_options = None
@@ -237,8 +236,8 @@ def execute_and_instances(orm_context):
 
     if active_options._refresh_identity_token is not None:
         shard_id = active_options._refresh_identity_token
-    elif "_sa_shard_id" in orm_context.merged_execution_options:
-        shard_id = orm_context.merged_execution_options["_sa_shard_id"]
+    elif "_sa_shard_id" in orm_context.execution_options:
+        shard_id = orm_context.execution_options["_sa_shard_id"]
     elif "shard_id" in orm_context.bind_arguments:
         shard_id = orm_context.bind_arguments["shard_id"]
     else:

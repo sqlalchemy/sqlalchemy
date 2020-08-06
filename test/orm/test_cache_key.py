@@ -15,6 +15,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.base import CacheableOptions
 from sqlalchemy.sql.visitors import InternalTraversal
@@ -65,6 +66,62 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             compare_values=True,
         )
 
+    def test_loader_criteria(self):
+        User, Address = self.classes("User", "Address")
+
+        from sqlalchemy import Column, Integer, String
+
+        class Foo(object):
+            id = Column(Integer)
+            name = Column(String)
+
+        self._run_cache_key_fixture(
+            lambda: (
+                with_loader_criteria(User, User.name != "somename"),
+                with_loader_criteria(User, User.id != 5),
+                with_loader_criteria(User, lambda cls: cls.id == 10),
+                with_loader_criteria(Address, Address.id != 5),
+                with_loader_criteria(Foo, lambda cls: cls.id == 10),
+            ),
+            compare_values=True,
+        )
+
+    def test_loader_criteria_bound_param_thing(self):
+        from sqlalchemy import Column, Integer
+
+        class Foo(object):
+            id = Column(Integer)
+
+        def go(param):
+            return with_loader_criteria(Foo, lambda cls: cls.id == param)
+
+        g1 = go(10)
+        g2 = go(20)
+
+        ck1 = g1._generate_cache_key()
+        ck2 = g2._generate_cache_key()
+
+        eq_(ck1.key, ck2.key)
+        eq_(ck1.bindparams[0].key, ck2.bindparams[0].key)
+        eq_(ck1.bindparams[0].value, 10)
+        eq_(ck2.bindparams[0].value, 20)
+
+    def test_instrumented_attributes(self):
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
+                User.addresses,
+                User.addresses.of_type(aliased(Address)),
+                User.orders,
+                User.orders.and_(Order.id != 5),
+                User.orders.and_(Order.description != "somename"),
+            ),
+            compare_values=True,
+        )
+
     def test_unbound_options(self):
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
@@ -75,6 +132,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 joinedload(User.addresses),
                 joinedload(User.addresses.of_type(aliased(Address))),
                 joinedload("addresses"),
+                joinedload(User.orders),
+                joinedload(User.orders.and_(Order.id != 5)),
+                joinedload(User.orders.and_(Order.id == 5)),
+                joinedload(User.orders.and_(Order.description != "somename")),
                 joinedload(User.orders).selectinload("items"),
                 joinedload(User.orders).selectinload(Order.items),
                 defer(User.id),
@@ -110,6 +171,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                     User.addresses.of_type(aliased(Address))
                 ),
                 Load(User).joinedload(User.orders),
+                Load(User).joinedload(User.orders.and_(Order.id != 5)),
+                Load(User).joinedload(
+                    User.orders.and_(Order.description != "somename")
+                ),
                 Load(User).defer(User.id),
                 Load(User).subqueryload("addresses"),
                 Load(Address).defer("id"),
@@ -169,6 +234,9 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 select(User).join(Address, User.addresses),
                 select(User).join(a1, User.addresses),
                 select(User).join(User.addresses.of_type(a1)),
+                select(User).join(
+                    User.addresses.and_(Address.email_address == "foo")
+                ),
                 select(User)
                 .join(Address, User.addresses)
                 .join_from(User, Order),

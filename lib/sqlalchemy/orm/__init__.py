@@ -48,6 +48,7 @@ from .strategy_options import Load  # noqa
 from .util import aliased  # noqa
 from .util import Bundle  # noqa
 from .util import join  # noqa
+from .util import LoaderCriteriaOption  # noqa
 from .util import object_mapper  # noqa
 from .util import outerjoin  # noqa
 from .util import polymorphic_union  # noqa
@@ -100,6 +101,8 @@ def create_session(bind=None, **kwargs):
     kwargs.setdefault("expire_on_commit", False)
     return Session(bind=bind, **kwargs)
 
+
+with_loader_criteria = public_factory(LoaderCriteriaOption, ".orm")
 
 relationship = public_factory(RelationshipProperty, ".orm.relationship")
 

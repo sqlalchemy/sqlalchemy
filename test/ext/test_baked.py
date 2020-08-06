@@ -1017,8 +1017,8 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                 if ckey:
                     break
             else:
-                if "_cache_key" in orm_context.merged_execution_options:
-                    ckey = orm_context.merged_execution_options["_cache_key"]
+                if "_cache_key" in orm_context.execution_options:
+                    ckey = orm_context.execution_options["_cache_key"]
 
             if ckey is not None:
                 return get_value(

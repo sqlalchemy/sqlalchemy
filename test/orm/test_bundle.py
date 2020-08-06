@@ -3,6 +3,7 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import mapper
@@ -186,6 +187,35 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             ],
         )
 
+    def test_multi_bundle_future(self):
+        Data = self.classes.Data
+        Other = self.classes.Other
+
+        d1 = aliased(Data)
+
+        b1 = Bundle("b1", d1.d1, d1.d2)
+        b2 = Bundle("b2", Data.d1, Other.o1)
+
+        sess = Session(testing.db, future=True)
+
+        stmt = (
+            select(b1, b2)
+            .join(Data.others)
+            .join(d1, d1.id == Data.id)
+            .filter(b1.c.d1 == "d3d1")
+        )
+
+        eq_(
+            sess.execute(stmt).all(),
+            [
+                (("d3d1", "d3d2"), ("d3d1", "d3o0")),
+                (("d3d1", "d3d2"), ("d3d1", "d3o1")),
+                (("d3d1", "d3d2"), ("d3d1", "d3o2")),
+                (("d3d1", "d3d2"), ("d3d1", "d3o3")),
+                (("d3d1", "d3d2"), ("d3d1", "d3o4")),
+            ],
+        )
+
     def test_single_entity(self):
         Data = self.classes.Data
         sess = Session()
@@ -194,6 +224,18 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         eq_(
             sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
+            [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
+        )
+
+    def test_single_entity_future(self):
+        Data = self.classes.Data
+        sess = Session(testing.db, future=True)
+
+        b1 = Bundle("b1", Data.d1, Data.d2, single_entity=True)
+
+        stmt = select(b1).filter(b1.c.d1.between("d3d1", "d5d1"))
+        eq_(
+            sess.execute(stmt).scalars().all(),
             [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
         )
 

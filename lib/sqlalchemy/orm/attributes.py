@@ -50,6 +50,7 @@ from .. import inspection
 from .. import util
 from ..sql import base as sql_base
 from ..sql import roles
+from ..sql import traversals
 from ..sql import visitors
 
 
@@ -58,6 +59,7 @@ class QueryableAttribute(
     interfaces._MappedAttribute,
     interfaces.InspectionAttr,
     interfaces.PropComparator,
+    traversals.HasCopyInternals,
     roles.JoinTargetRole,
     roles.OnClauseRole,
     sql_base.Immutable,
@@ -91,6 +93,7 @@ class QueryableAttribute(
         impl=None,
         comparator=None,
         of_type=None,
+        extra_criteria=(),
     ):
         self.class_ = class_
         self.key = key
@@ -98,6 +101,7 @@ class QueryableAttribute(
         self.impl = impl
         self.comparator = comparator
         self._of_type = of_type
+        self._extra_criteria = extra_criteria
 
         manager = manager_of_class(class_)
         # manager is None in the case of AliasedClass
@@ -114,6 +118,7 @@ class QueryableAttribute(
         ("key", visitors.ExtendedInternalTraversal.dp_string),
         ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
         ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
+        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
     ]
 
     def __reduce__(self):
@@ -240,6 +245,29 @@ class QueryableAttribute(
             impl=self.impl,
             comparator=self.comparator.of_type(entity),
             of_type=inspection.inspect(entity),
+            extra_criteria=self._extra_criteria,
+        )
+
+    def and_(self, *other):
+        return QueryableAttribute(
+            self.class_,
+            self.key,
+            self._parententity,
+            impl=self.impl,
+            comparator=self.comparator.and_(*other),
+            of_type=self._of_type,
+            extra_criteria=self._extra_criteria + other,
+        )
+
+    def _clone(self, **kw):
+        return QueryableAttribute(
+            self.class_,
+            self.key,
+            self._parententity,
+            impl=self.impl,
+            comparator=self.comparator,
+            of_type=self._of_type,
+            extra_criteria=self._extra_criteria,
         )
 
     def label(self, name):

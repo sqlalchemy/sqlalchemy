@@ -112,13 +112,10 @@ the string name of an attribute against a parent, or for greater specificity
 can accommodate a class-bound attribute directly::
 
     # set children to load lazily
-    session.query(Parent).options(lazyload('children')).all()
-
-    # same, using class-bound attribute
     session.query(Parent).options(lazyload(Parent.children)).all()
 
     # set children to load eagerly with a join
-    session.query(Parent).options(joinedload('children')).all()
+    session.query(Parent).options(joinedload(Parent.children)).all()
 
 The loader options can also be "chained" using **method chaining**
 to specify how loading should occur further levels deep::
@@ -141,6 +138,48 @@ collections loaded.  When the ``children`` collection on a particular
 objects, but additionally apply eager loading to the ``subelements``
 collection on each member of ``children``.
 
+The above examples, using :class:`_orm.Query`, are now referred to as
+:term:`1.x style` queries.   The options system is available as well for
+:term:`2.0 style` queries using the :meth:`_sql.Select.options` method::
+
+  stmt = select(Parent).options(
+        lazyload(Parent.children).
+        subqueryload(Child.subelements))
+
+  result = session.execute(stmt)
+
+Under the hood, :class:`_orm.Query` is ultimately using the above
+:class:`_sql.select` based mechanism.
+
+
+.. _loader_option_criteria:
+
+Adding Criteria to loader options
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The relationship attributes used to indicate loader options include the
+ability to add additional filtering criteria to the ON clause of the join
+that's created, or to the WHERE criteria involved, depending on the loader
+strategy.  This can be achieved using the :meth:`.PropComparator.and_`
+method which will pass through an option such that loaded results are limited
+to the given filter criteria::
+
+    session.query(A).options(lazyload(A.bs.and_(B.id > 5)))
+
+When using limiting criteria, if a particular collection is already loaded
+it won't be refreshed; to ensure the new criteria takes place, apply
+the :meth:`_orm.Query.populate_existing` option::
+
+    session.query(A).options(lazyload(A.bs.and_(B.id > 5))).populate_existing()
+
+In order to add filtering criteria to all occurrences of an entity throughout
+a query, regardless of loader strategy or where it occurs in the loading
+process, see the :func:`_orm.with_loader_criteria` function.
+
+.. versionadded:: 1.4
+
+Specifying Sub-Options with Load.options()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Using method chaining, the loader style of each link in the path is explicitly
 stated.  To navigate along a path without changing the existing loader style
 of a particular attribute, the :func:`.defaultload` method/function may be used::
@@ -1263,6 +1302,7 @@ Relationship Loader API
 .. autofunction:: lazyload
 
 .. autoclass:: Load
+    :members:
 
 .. autofunction:: noload
 
