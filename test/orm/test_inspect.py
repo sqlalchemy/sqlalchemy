@@ -432,6 +432,139 @@ class TestORMInspection(_fixtures.FixtureTest):
             set(["id", "name", "q", "foob"]),
         )
 
+    def _random_names(self):
+        import random
+
+        return [
+            "".join(
+                random.choice("abcdegfghijklmnopqrstuvwxyz")
+                for i in range(random.randint(3, 15))
+            )
+            for j in range(random.randint(4, 12))
+        ]
+
+    def _ordered_name_fixture(self, glbls, clsname, base, supercls):
+        import random
+        from sqlalchemy import Integer, Column
+        import textwrap
+
+        names = self._random_names()
+
+        if base is supercls:
+            pk_names = set(
+                random.choice(names) for i in range(random.randint(1, 3))
+            )
+            fk_name = random.choice(
+                [name for name in names if name not in pk_names]
+            )
+        else:
+            pk_names = []
+            fk_name = None
+
+        def _make_name(name):
+            if name in pk_names:
+                return "%s = Column(Integer, primary_key=True)" % name
+            elif name == fk_name:
+                return "%s = Column(ForeignKey('myotherclass.id'))" % name
+            else:
+                type_ = random.choice(["relationship", "column", "hybrid"])
+                if type_ == "relationship":
+                    return "%s = relationship('MyOtherClass')" % name
+                elif type_ == "column":
+                    return "%s = Column(Integer)" % name
+                elif type_ == "hybrid":
+                    return (
+                        "@hybrid_property\ndef %s(self):\n    return None"
+                        % name
+                    )
+
+        glbls["Base"] = base
+        glbls["SuperCls"] = supercls
+
+        if base is supercls:
+
+            class MyOtherClass(base):
+                __tablename__ = "myotherclass"
+                id = Column(Integer, primary_key=True)
+
+            glbls["MyOtherClass"] = MyOtherClass
+        code = """
+
+from sqlalchemy import Column, Integer, ForeignKey
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
+
+class %s(SuperCls):
+    %s
+
+%s
+""" % (
+            clsname,
+            "__tablename__ = 'mytable'" if base is supercls else "",
+            "\n".join(
+                textwrap.indent(_make_name(name), "    ") for name in names
+            ),
+        )
+
+        exec(code, glbls)
+        return names, glbls[clsname]
+
+    @testing.requires.pep520
+    def test_all_orm_descriptors_pep520_noinh(self):
+        from sqlalchemy.ext.declarative import declarative_base
+
+        Base = declarative_base()
+
+        glbls = {}
+        names, MyClass = self._ordered_name_fixture(
+            glbls, "MyClass", Base, Base
+        )
+
+        eq_(MyClass.__mapper__.all_orm_descriptors.keys(), names)
+
+    @testing.requires.pep520
+    def test_all_orm_descriptors_pep520_onelevel_inh(self):
+        from sqlalchemy.ext.declarative import declarative_base
+
+        Base = declarative_base()
+
+        glbls = {}
+
+        base_names, MyClass = self._ordered_name_fixture(
+            glbls, "MyClass", Base, Base
+        )
+
+        sub_names, SubClass = self._ordered_name_fixture(
+            glbls, "SubClass", Base, MyClass
+        )
+
+        eq_(
+            SubClass.__mapper__.all_orm_descriptors.keys(),
+            sub_names + base_names,
+        )
+
+    @testing.requires.pep520
+    def test_all_orm_descriptors_pep520_classical(self):
+        class MyClass(object):
+            pass
+
+        from sqlalchemy.orm import mapper
+        from sqlalchemy import Table, MetaData, Column, Integer
+
+        names = self._random_names()
+
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("id", Integer, primary_key=True),
+            *[Column(name, Integer) for name in names]
+        )
+
+        m = mapper(MyClass, t)
+
+        eq_(m.all_orm_descriptors.keys(), ["id"] + names)
+
     def test_instance_state_ident_transient(self):
         User = self.classes.User
         u1 = User(name="ed")

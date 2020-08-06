@@ -1022,6 +1022,10 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def pep520(self):
+        return self.python36
+
+    @property
     def python36(self):
         return exclusions.skip_if(
             lambda: sys.version_info < (3, 6),
