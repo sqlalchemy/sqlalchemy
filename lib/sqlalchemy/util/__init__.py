@@ -43,6 +43,7 @@ from ._collections import UniqueAppender  # noqa
 from ._collections import update_copy  # noqa
 from ._collections import WeakPopulateDict  # noqa
 from ._collections import WeakSequence  # noqa
+from .compat import arm  # noqa
 from .compat import b  # noqa
 from .compat import b64decode  # noqa
 from .compat import b64encode  # noqa

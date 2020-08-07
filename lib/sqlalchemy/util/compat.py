@@ -11,6 +11,7 @@ import collections
 import contextlib
 import inspect
 import operator
+import platform
 import sys
 
 
@@ -27,6 +28,8 @@ pypy = hasattr(sys, "pypy_version_info")
 win32 = sys.platform.startswith("win")
 osx = sys.platform.startswith("darwin")
 cpython = not pypy and not jython  # TODO: something better for this ?
+arm = "aarch" in platform.machine().lower()
+
 
 contextmanager = contextlib.contextmanager
 dottedgetter = operator.attrgetter
