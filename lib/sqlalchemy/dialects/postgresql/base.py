@@ -2184,6 +2184,17 @@ class PGDDLCompiler(compiler.DDLCompiler):
             generated.sqltext, include_table=False, literal_binds=True
         )
 
+    def visit_create_sequence(self, create, **kw):
+        prefix = None
+        if create.element.data_type is not None:
+            prefix = " AS %s" % self.type_compiler.process(
+                create.element.data_type
+            )
+
+        return super(PGDDLCompiler, self).visit_create_sequence(
+            create, prefix=prefix, **kw
+        )
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TSVECTOR(self, type_, **kw):

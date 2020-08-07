@@ -1,6 +1,7 @@
 # coding: utf-8
 
 from sqlalchemy import and_
+from sqlalchemy import BigInteger
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import Computed
@@ -15,6 +16,7 @@ from sqlalchemy import null
 from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
+from sqlalchemy import SmallInteger
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -91,6 +93,20 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             with engine.begin() as conn:
                 r = conn.execute(t.insert())
                 eq_(r.inserted_primary_key, (1,))
+
+    @testing.combinations(
+        (None, ""),
+        (Integer, "AS INTEGER "),
+        (SmallInteger, "AS SMALLINT "),
+        (BigInteger, "AS BIGINT "),
+    )
+    def test_create_index_concurrently(self, type_, text):
+        s = Sequence("s1", data_type=type_)
+        self.assert_compile(
+            schema.CreateSequence(s),
+            "CREATE SEQUENCE s1 %sSTART WITH 1" % text,
+            dialect=postgresql.dialect(),
+        )
 
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
