@@ -706,7 +706,8 @@ More comprehensive rule-based class-level partitioning can be built by
 overriding the :meth:`.Session.get_bind` method.   Below we illustrate
 a custom :class:`.Session` which delivers the following rules:
 
-1. Flush operations are delivered to the engine named ``leader``.
+1. Flush operations, as well as bulk "update" and "delete" operations,
+   are delivered to the engine named ``leader``.
 
 2. Operations on objects that subclass ``MyOtherClass`` all
    occur on the ``other`` engine.
@@ -723,6 +724,7 @@ a custom :class:`.Session` which delivers the following rules:
         'follower2':create_engine("sqlite:///follower2.db"),
     }
 
+    from sqlalchemy.sql import Update, Delete
     from sqlalchemy.orm import Session, sessionmaker
     import random
 
@@ -730,7 +732,7 @@ a custom :class:`.Session` which delivers the following rules:
         def get_bind(self, mapper=None, clause=None):
             if mapper and issubclass(mapper.class_, MyOtherClass):
                 return engines['other']
-            elif self._flushing:
+            elif self._flushing or isinstance(clause, (Update, Delete)):
                 return engines['leader']
             else:
                 return engines[
