@@ -620,9 +620,8 @@ class ColumnOperators(Operators):
         """
         return self.operate(not_in_op, other)
 
-    def notin_(self, other):
-        # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
-        return self.not_in(other)
+    # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
+    notin_ = not_in
 
     def notlike(self, other, escape=None):
         """implement the ``NOT LIKE`` operator.
@@ -676,9 +675,8 @@ class ColumnOperators(Operators):
         """
         return self.operate(is_not, other)
 
-    def isnot(self, other):
-        # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
-        return self.is_not(other)
+    # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
+    isnot = is_not
 
     def startswith(self, other, **kwargs):
         r"""Implement the ``startswith`` operator.
