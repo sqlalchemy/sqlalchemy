@@ -4271,15 +4271,92 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            s1.next_value(),
+            "<next sequence value: [SCHEMA__none].s1>",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
+        )
+
+        self.assert_compile(
             schema.CreateSequence(s2),
             "CREATE SEQUENCE [SCHEMA_foo].s2 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
+            s2.next_value(),
+            "<next sequence value: [SCHEMA_foo].s2>",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
+        )
+
+        self.assert_compile(
             schema.CreateSequence(s3),
             "CREATE SEQUENCE [SCHEMA_bar].s3 START WITH 1",
             schema_translate_map=schema_translate_map,
+        )
+
+        self.assert_compile(
+            s3.next_value(),
+            "<next sequence value: [SCHEMA_bar].s3>",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
+        )
+
+    def test_schema_translate_map_sequence_server_default(self):
+        s1 = schema.Sequence("s1")
+        s2 = schema.Sequence("s2", schema="foo")
+        s3 = schema.Sequence("s3", schema="bar")
+
+        schema_translate_map = {None: "z", "bar": None, "foo": "bat"}
+
+        m = MetaData()
+
+        t1 = Table(
+            "t1",
+            m,
+            Column(
+                "id", Integer, server_default=s1.next_value(), primary_key=True
+            ),
+        )
+        t2 = Table(
+            "t2",
+            m,
+            Column(
+                "id", Integer, server_default=s2.next_value(), primary_key=True
+            ),
+        )
+        t3 = Table(
+            "t3",
+            m,
+            Column(
+                "id", Integer, server_default=s3.next_value(), primary_key=True
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE [SCHEMA__none].t1 "
+            "(id INTEGER DEFAULT <next sequence value: [SCHEMA__none].s1> "
+            "NOT NULL, PRIMARY KEY (id))",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
+        )
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE [SCHEMA__none].t2 "
+            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_foo].s2> "
+            "NOT NULL, PRIMARY KEY (id))",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
+        )
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE [SCHEMA__none].t3 "
+            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_bar].s3> "
+            "NOT NULL, PRIMARY KEY (id))",
+            schema_translate_map=schema_translate_map,
+            dialect="default_enhanced",
         )
 
     def test_fk_render(self):
