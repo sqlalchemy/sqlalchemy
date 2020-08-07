@@ -24,6 +24,7 @@ py2k = sys.version_info < (3, 0)
 cpython = platform.python_implementation() == "CPython"
 win32 = sys.platform.startswith("win")
 osx = sys.platform.startswith("darwin")
+arm = "aarch" in platform.machine().lower()
 
 has_refcount_gc = bool(cpython)
 

@@ -22,9 +22,6 @@ import sys
 
 from . import config
 from .util import gc_collect
-from ..util import cpython
-from ..util import osx
-from ..util import win32
 
 
 try:
@@ -99,16 +96,14 @@ class ProfileStatsFile(object):
         # keep it at 2.7, 3.1, 3.2, etc. for now.
         py_version = ".".join([str(v) for v in sys.version_info[0:2]])
 
-        if not cpython:
-            platform_tokens = [platform.python_implementation(), py_version]
-        else:
-            platform_tokens = [py_version]
-        platform_tokens.append(dbapi_key)
+        platform_tokens = [
+            platform.machine(),
+            platform.system().lower(),
+            platform.python_implementation().lower(),
+            py_version,
+            dbapi_key,
+        ]
 
-        if win32:
-            platform_tokens.append("win")
-        if osx:
-            platform_tokens.append("osx")
         platform_tokens.append(
             "nativeunicode"
             if config.db.dialect.convert_unicode
