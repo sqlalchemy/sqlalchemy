@@ -3661,7 +3661,9 @@ class StrSQLCompiler(SQLCompiler):
 class DDLCompiler(Compiled):
     @util.memoized_property
     def sql_compiler(self):
-        return self.dialect.statement_compiler(self.dialect, None)
+        return self.dialect.statement_compiler(
+            self.dialect, None, schema_translate_map=self.schema_translate_map
+        )
 
     @util.memoized_property
     def type_compiler(self):
