@@ -1931,12 +1931,7 @@ class EngineEventsTest(fixtures.TestBase):
         t = Table(
             "t",
             self.metadata,
-            Column(
-                "x",
-                testing.db.dialect.sequence_default_column_type,
-                Sequence("t_id_seq"),
-                primary_key=True,
-            ),
+            Column("x", Integer, Sequence("t_id_seq"), primary_key=True,),
             implicit_returning=False,
         )
         self.metadata.create_all(engine)

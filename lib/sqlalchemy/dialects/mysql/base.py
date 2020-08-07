@@ -2369,7 +2369,7 @@ class MySQLDialect(default.DefaultDialect):
     supports_sequences = False  # default for MySQL ...
     # ... may be updated to True for MariaDB 10.3+ in initialize()
 
-    sequences_optional = True
+    sequences_optional = False
 
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()

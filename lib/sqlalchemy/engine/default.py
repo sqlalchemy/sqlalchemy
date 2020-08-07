@@ -22,7 +22,6 @@ from . import cursor as _cursor
 from . import interfaces
 from .. import event
 from .. import exc
-from .. import Integer
 from .. import pool
 from .. import processors
 from .. import types as sqltypes
@@ -63,8 +62,6 @@ class DefaultDialect(interfaces.Dialect):
     # most DBAPIs happy with this for execute().
     # not cx_oracle.
     execute_sequence_format = tuple
-
-    sequence_default_column_type = Integer
 
     supports_views = True
     supports_sequences = False

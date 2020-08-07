@@ -993,7 +993,7 @@ class ExecuteTest(fixtures.TestBase):
             meta,
             Column(
                 "id",
-                testing.db.dialect.sequence_default_column_type,
+                Integer,
                 Sequence("t1idseq", optional=True),
                 primary_key=True,
             ),
@@ -1004,7 +1004,7 @@ class ExecuteTest(fixtures.TestBase):
             meta,
             Column(
                 "id",
-                testing.db.dialect.sequence_default_column_type,
+                Integer,
                 Sequence("t2idseq", optional=True),
                 primary_key=True,
             ),
