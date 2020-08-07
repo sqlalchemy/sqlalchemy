@@ -265,6 +265,8 @@ class Compiled(object):
 
     _cached_metadata = None
 
+    schema_translate_map = None
+
     execution_options = util.immutabledict()
     """
     Execution options propagated from the statement.   In some cases,
@@ -306,6 +308,7 @@ class Compiled(object):
         self.dialect = dialect
         self.bind = bind
         self.preparer = self.dialect.identifier_preparer
+        self.schema_translate_map = schema_translate_map
         if schema_translate_map:
             self.preparer = self.preparer._with_schema_translate(
                 schema_translate_map
@@ -2835,7 +2838,9 @@ class StrSQLCompiler(SQLCompiler):
 class DDLCompiler(Compiled):
     @util.memoized_property
     def sql_compiler(self):
-        return self.dialect.statement_compiler(self.dialect, None)
+        return self.dialect.statement_compiler(
+            self.dialect, None, schema_translate_map=self.schema_translate_map
+        )
 
     @util.memoized_property
     def type_compiler(self):
