@@ -25,7 +25,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
@@ -1174,7 +1174,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         def go():
             a = q.filter(addresses.c.id == 1).one()
-            is_not_(a.user, None)
+            is_not(a.user, None)
             u1 = sess.query(User).get(7)
             is_(a.user, u1)
 

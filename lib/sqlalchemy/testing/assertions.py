@@ -239,9 +239,8 @@ def is_not(a, b, msg=None):
     assert a is not b, msg or "%r is %r" % (a, b)
 
 
-def is_not_(a, b, msg=None):
-    # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
-    return is_not(a, b, msg=msg)
+# SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
+is_not_ = is_not
 
 
 def in_(a, b, msg=None):
@@ -254,9 +253,8 @@ def not_in(a, b, msg=None):
     assert a not in b, msg or "%r is in %r" % (a, b)
 
 
-def notin_(a, b, msg=None):
-    # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
-    return not_in(a, b, msg=msg)
+# SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
+notin_ = not_in
 
 
 def startswith_(a, fragment, msg=None):

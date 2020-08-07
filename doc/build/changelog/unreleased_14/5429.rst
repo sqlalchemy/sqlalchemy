@@ -1,17 +1,21 @@
 .. change::
-   :tags: 
+   :tags:
    :tickets: 5429
 
    With SqlAlchemy 1.4, several operators have been renamed to be more consistent
    with the naming of other SqlAlchemy terms:
-   
+
    * `isnot` is now `is_not`
-   * `notin_` is now `not_in`
-   
+   * `not_in_` is now `not_in`
+
    Because these are core operators, the internal migration strategy for this
    change is to support the legacy terms for an extended period of time -- if not
    indefinitely -- but update all documentation, tutorials, and internal usage
    to the new terms.
-   
+
    The legacy operators have been deprecated into aliases of the new terms.
-   
+
+   Associated testing terms have also been standardized with similar deprecations:
+
+   * `is_not_` is now `is_not`
+   * `not_in_` is now `not_in`
