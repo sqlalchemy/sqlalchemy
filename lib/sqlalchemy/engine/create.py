@@ -627,9 +627,9 @@ def create_engine(url, **kwargs):
                 )
                 if conn is None:
                     return
+
                 do_on_connect(conn)
 
-            event.listen(pool, "first_connect", on_connect)
             event.listen(pool, "connect", on_connect)
 
         def first_connect(dbapi_connection, connection_record):
@@ -640,9 +640,17 @@ def create_engine(url, **kwargs):
             dialect.initialize(c)
             dialect.do_rollback(c.connection)
 
-        event.listen(
-            pool, "first_connect", first_connect, _once_unless_exception=True
-        )
+        if do_on_connect:
+            event.listen(
+                pool, "connect", first_connect, _once_unless_exception=True
+            )
+        else:
+            event.listen(
+                pool,
+                "first_connect",
+                first_connect,
+                _once_unless_exception=True,
+            )
 
     dialect_cls.engine_created(engine)
     if entrypoint is not dialect_cls:

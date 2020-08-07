@@ -120,6 +120,8 @@ class DefaultDialect(interfaces.Dialect):
     max_identifier_length = 9999
     _user_defined_max_identifier_length = None
 
+    isolation_level = None
+
     # length at which to truncate
     # the name of an index.
     # Usually None to indicate

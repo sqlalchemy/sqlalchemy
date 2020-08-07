@@ -1,0 +1,11 @@
+.. change::
+    :tags: engine, change
+    :tickets: 5497
+
+    Adjusted the dialect initialization process such that the
+    :meth:`_engine.Dialect.on_connect` is not called a second time
+    on the first connection.   The hook is called first, then the
+    :meth:`_engine.Dialect.initialize` is called if that connection is the
+    first for that dialect, then no more events are called.   This eliminates
+    the two calls to the "on_connect" function which can produce very
+    difficult debugging situations.

@@ -208,6 +208,9 @@ class Dialect(object):
         The initialize() method of the base dialect should be called via
         super().
 
+        .. note:: as of SQLAlchemy 1.4, this method is called **before**
+           any :meth:`_engine.Dialect.on_connect` hooks are called.
+
         """
 
         pass
@@ -745,16 +748,13 @@ class Dialect(object):
         isolation modes, Unicode modes, etc.
 
         The "do_on_connect" callable is invoked by using the
-        :meth:`_events.PoolEvents.first_connect` and
         :meth:`_events.PoolEvents.connect` event
-        hooks, then unwrapping the DBAPI connection and passing it into the
-        callable.  The reason it is invoked for both events is so that any
-        dialect-level initialization that occurs upon first connection, which
-        also makes use of the :meth:`_events.PoolEvents.first_connect` method,
-        will
-        proceed after this hook has been called. This currently means the
-        hook is in fact called twice for the very first  connection in which a
-        dialect creates; and once per connection afterwards.
+        hook, then unwrapping the DBAPI connection and passing it into the
+        callable.
+
+        .. versionchanged:: 1.4 the on_connect hook is no longer called twice
+           for the first connection of a dialect.  The on_connect hook is still
+           called before the :meth:`_engine.Dialect.initialize` method however.
 
         If None is returned, no event listener is generated.
 

@@ -336,6 +336,9 @@ class DBAPIProxyCursor(object):
     def executemany(self, stmt, params, **kw):
         return self.cursor.executemany(stmt, params, **kw)
 
+    def __iter__(self):
+        return iter(self.cursor)
+
     def __getattr__(self, key):
         return getattr(self.cursor, key)
 
