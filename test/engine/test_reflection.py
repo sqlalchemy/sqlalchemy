@@ -32,6 +32,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -167,6 +168,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         t1 = Table("t1", meta2, resolve_fks=False, autoload_with=testing.db)
         in_("t1", meta2.tables)
         not_in("t2", meta2.tables)
+        notin_("t2", meta2.tables)
 
         assert_raises(
             sa.exc.NoReferencedTableError,
@@ -207,6 +209,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             extend_existing=True,
         )
         not_in("t2", meta2.tables)
+        notin_("t2", meta2.tables)
 
         assert_raises(
             sa.exc.NoReferencedTableError,
@@ -239,6 +242,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta2.reflect(testing.db, resolve_fks=False, only=["t1"])
         in_("t1", meta2.tables)
         not_in("t2", meta2.tables)
+        notin_("t2", meta2.tables)
 
         t1 = meta2.tables["t1"]
 

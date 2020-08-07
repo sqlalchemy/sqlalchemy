@@ -29,12 +29,16 @@ from .assertions import is_  # noqa
 from .assertions import is_false  # noqa
 from .assertions import is_instance_of  # noqa
 from .assertions import is_not  # noqa
+from .assertions import isnot  # noqa Issue#5429; test to ensure silent deprecation support
 from .assertions import is_true  # noqa
 from .assertions import le_  # noqa
 from .assertions import ne_  # noqa
 from .assertions import not_in  # noqa
+from .assertions import notin_  # noqa Issue#5429; test to ensure silent deprecation support
 from .assertions import startswith_  # noqa
 from .assertions import uses_deprecated  # noqa
+
+
 from .config import combinations  # noqa
 from .config import db  # noqa
 from .config import fixture  # noqa

@@ -26,6 +26,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -705,8 +706,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         in_(john, sess)
         not_in(jack, sess)
+        notin_(jack, sess)
         in_(jill, sess)
         not_in(jane, sess)
+        notin_(jane, sess)
 
     def test_delete_fetch_returning_lambda(self):
         User = self.classes.User
@@ -750,8 +753,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         in_(john, sess)
         not_in(jack, sess)
+        notin_(jack, sess)
         in_(jill, sess)
         not_in(jane, sess)
+        notin_(jane, sess)
 
     def test_update_with_filter_statement(self):
         """test for [ticket:4556] """

@@ -15,6 +15,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
 from sqlalchemy.testing.schema import Column
 
 
@@ -247,6 +248,7 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
 
         is_(i.modified, True)
         not_in("array", i.unmodified)
+        notin_("array", i.unmodified)
 
 
 class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
@@ -340,6 +342,7 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
 
         is_(i.modified, True)
         not_in("json", i.unmodified)
+        notin_("json", i.unmodified)
 
     def test_cast_type(self):
         Json = self.classes.Json

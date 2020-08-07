@@ -88,6 +88,7 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         (operators.add, right_column),
         (operators.is_, None),
         (operators.is_not, None),
+        (operators.isnot, None),  # Issue#5429; test to ensure silent deprecation support
         (operators.is_, null()),
         (operators.is_, true()),
         (operators.is_, false()),
@@ -99,14 +100,17 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         (operators.isnot_distinct_from, True),
         (operators.is_, True),
         (operators.is_not, True),
+        (operators.isnot, True),  # Issue#5429; test to ensure silent deprecation support
         (operators.is_, False),
         (operators.is_not, False),
+        (operators.isnot, False),  # Issue#5429; test to ensure silent deprecation support
         (operators.like_op, right_column),
         (operators.notlike_op, right_column),
         (operators.ilike_op, right_column),
         (operators.notilike_op, right_column),
         (operators.is_, right_column),
         (operators.is_not, right_column),
+        (operators.isnot, right_column),  # Issue#5429; test to ensure silent deprecation support
         (operators.concat_op, right_column),
         id_="ns",
     )
@@ -181,17 +185,19 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
 
     def test_notin(self):
         left = column("left")
-        assert left.comparator.operate(operators.not_in_op, [1, 2, 3]).compare(
-            BinaryExpression(
-                left,
-                BindParameter(
-                    "left", value=[1, 2, 3], unique=True, expanding=True
-                ),
-                operators.not_in_op,
-                type_=sqltypes.BOOLEANTYPE,
+        # SqlAlchemy 1.4 deprecates legacy terms for new standardizations (see Issue#5429)
+        for op_ in (operators.not_in_op, operators.notin_op):
+            assert left.comparator.operate(op_, [1, 2, 3]).compare(
+                BinaryExpression(
+                    left,
+                    BindParameter(
+                        "left", value=[1, 2, 3], unique=True, expanding=True
+                    ),
+                    op_,
+                    type_=sqltypes.BOOLEANTYPE,
+                )
             )
-        )
-        self._loop_test(operators.not_in_op, [1, 2, 3])
+            self._loop_test(op_, [1, 2, 3])
 
     def test_in_no_accept_list_of_non_column_element(self):
         left = column("left")

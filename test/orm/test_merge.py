@@ -30,6 +30,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedSet
@@ -1840,6 +1841,7 @@ class DeferredMergeTest(fixtures.MappedTest):
             # should not emit load for deferred 'excerpt'
             eq_(b2.summary, "some summary")
             not_in("excerpt", b2.__dict__)
+            notin_("excerpt", b2.__dict__)
 
             # now it should emit load for deferred 'excerpt'
             eq_(b2.excerpt, "some excerpt")
@@ -1886,6 +1888,7 @@ class DeferredMergeTest(fixtures.MappedTest):
             # should not emit load for deferred 'excerpt'
             eq_(b2.summary, "some summary")
             not_in("excerpt", b2.__dict__)
+            notin_("excerpt", b2.__dict__)
 
             # now it should emit load for deferred 'excerpt'
             eq_(b2.excerpt, "some excerpt")
