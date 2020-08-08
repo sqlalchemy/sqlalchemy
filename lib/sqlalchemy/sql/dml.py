@@ -133,6 +133,8 @@ class DMLState(CompileState):
 class InsertDMLState(DMLState):
     isinsert = True
 
+    include_table_with_column_exprs = False
+
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
 
@@ -149,6 +151,8 @@ class InsertDMLState(DMLState):
 class UpdateDMLState(DMLState):
     isupdate = True
 
+    include_table_with_column_exprs = False
+
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
         self.isupdate = True
@@ -159,7 +163,11 @@ class UpdateDMLState(DMLState):
             self._process_values(statement)
         elif statement._multi_values:
             self._process_multi_values(statement)
-        self._extra_froms = self._make_extra_froms(statement)
+        self._extra_froms = ef = self._make_extra_froms(statement)
+        self.is_multitable = mt = ef and self._dict_parameters
+        self.include_table_with_column_exprs = (
+            mt and compiler.render_table_with_column_in_update_from
+        )
 
 
 @CompileState.plugin_for("default", "delete")

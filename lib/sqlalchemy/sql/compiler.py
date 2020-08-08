@@ -3286,7 +3286,7 @@ class SQLCompiler(Compiled):
 
         if crud_params_single or not supports_default_values:
             text += " (%s)" % ", ".join(
-                [preparer.format_column(c[0]) for c in crud_params_single]
+                [expr for c, expr, value in crud_params_single]
             )
 
         if self.returning or insert_stmt._returning:
@@ -3311,12 +3311,15 @@ class SQLCompiler(Compiled):
         elif compile_state._has_multi_parameters:
             text += " VALUES %s" % (
                 ", ".join(
-                    "(%s)" % (", ".join(c[1] for c in crud_param_set))
+                    "(%s)"
+                    % (", ".join(value for c, expr, value in crud_param_set))
                     for crud_param_set in crud_params
                 )
             )
         else:
-            insert_single_values_expr = ", ".join([c[1] for c in crud_params])
+            insert_single_values_expr = ", ".join(
+                [value for c, expr, value in crud_params]
+            )
             text += " VALUES (%s)" % insert_single_values_expr
             if toplevel:
                 self.insert_single_values_expr = insert_single_values_expr
@@ -3424,15 +3427,7 @@ class SQLCompiler(Compiled):
         text += table_text
 
         text += " SET "
-        include_table = (
-            is_multitable and self.render_table_with_column_in_update_from
-        )
-        text += ", ".join(
-            c[0]._compiler_dispatch(self, include_table=include_table)
-            + "="
-            + c[1]
-            for c in crud_params
-        )
+        text += ", ".join(expr + "=" + value for c, expr, value in crud_params)
 
         if self.returning or update_stmt._returning:
             if self.returning_precedes_values:

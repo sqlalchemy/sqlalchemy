@@ -840,7 +840,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=mysql.dialect(),
         )
 
-    def test_update_to_expression(self):
+    def test_update_to_expression_one(self):
         """test update from an expression.
 
         this logic is triggered currently by a left side that doesn't
@@ -854,6 +854,72 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             table1.update().values({expr: "bar"}),
             "UPDATE mytable SET foo(myid)=:param_1",
+        )
+
+    def test_update_to_expression_two(self):
+        """test update from an expression.
+
+        this logic is triggered currently by a left side that doesn't
+        have a key.  The current supported use case is updating the index
+        of a PostgreSQL ARRAY type.
+
+        """
+
+        from sqlalchemy import ARRAY
+
+        t = table(
+            "foo",
+            column("data1", ARRAY(Integer)),
+            column("data2", ARRAY(Integer)),
+        )
+
+        stmt = t.update().values({t.c.data1[5]: 7, t.c.data2[10]: 18})
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+        self.assert_compile(
+            stmt,
+            "UPDATE foo SET data1[?]=?, data2[?]=?",
+            dialect=dialect,
+            checkpositional=(5, 7, 10, 18),
+        )
+
+    def test_update_to_expression_three(self):
+        # this test is from test_defaults but exercises a particular
+        # parameter ordering issue
+        metadata = MetaData()
+
+        q = Table(
+            "q",
+            metadata,
+            Column("x", Integer, default=2),
+            Column("y", Integer, onupdate=5),
+            Column("z", Integer),
+        )
+
+        p = Table(
+            "p",
+            metadata,
+            Column("s", Integer),
+            Column("t", Integer),
+            Column("u", Integer, onupdate=1),
+        )
+
+        cte = (
+            q.update().where(q.c.z == 1).values(x=7).returning(q.c.z).cte("c")
+        )
+        stmt = select([p.c.s, cte.c.z]).where(p.c.s == cte.c.z)
+
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+
+        self.assert_compile(
+            stmt,
+            "WITH c AS (UPDATE q SET x=?, y=? WHERE q.z = ? RETURNING q.z) "
+            "SELECT p.s, c.z FROM p, c WHERE p.s = c.z",
+            checkpositional=(7, None, 1),
+            dialect=dialect,
         )
 
     def test_update_bound_ordering(self):
