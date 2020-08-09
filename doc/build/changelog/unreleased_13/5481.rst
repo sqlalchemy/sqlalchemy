@@ -4,5 +4,5 @@
 
     The MySQL dialect will render FROM DUAL for a SELECT statement that has no
     FROM clause but has a WHERE clause. This allows things like "SELECT 1 WHERE
-    EXISTS (subuqery)" kinds of queries to be used as well as other use cases.
+    EXISTS (subquery)" kinds of queries to be used as well as other use cases.
 

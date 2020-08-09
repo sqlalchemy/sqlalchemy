@@ -536,7 +536,7 @@ class ColumnOperators(Operators):
           In this calling form, the expression renders an "empty set"
           expression.  These expressions are tailored to individual backends
           and are generaly trying to get an empty SELECT statement as a
-          subuqery.  Such as on SQLite, the expression is::
+          subquery.  Such as on SQLite, the expression is::
 
             WHERE col IN (SELECT 1 FROM (SELECT 1) WHERE 1!=1)
 

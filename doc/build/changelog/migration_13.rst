@@ -1408,7 +1408,7 @@ Once Python 3 was introduced, DBAPIs began to start supporting Unicode more
 fully, and more importantly, by default.  However, the conditions under which a
 particular DBAPI would or would not return Unicode data from a result, as well
 as accept Python Unicode values as parameters, remained extremely complicated.
-This was the beginning of the obsolesence of the "convert_unicode" flags,
+This was the beginning of the obsolescence of the "convert_unicode" flags,
 because they were no longer sufficient as a means of ensuring that
 encode/decode was occurring only where needed and not where it wasn't needed.
 Instead, "convert_unicode" started to be automatically detected by dialects.

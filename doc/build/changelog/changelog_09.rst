@@ -772,7 +772,7 @@
           when True indicates that the Python ``None`` value should be
           persisted as SQL NULL, rather than JSON-encoded ``'null'``.
 
-        Retrival of NULL as None is also repaired for DBAPIs other than
+        Retrieval of NULL as None is also repaired for DBAPIs other than
         psycopg2, namely pg8000.
 
     .. change::
@@ -2566,7 +2566,7 @@
 
         Added new argument ``include_backrefs=True`` to the
         :func:`.validates` function; when set to False, a validation event
-        will not be triggered if the event was initated as a backref to
+        will not be triggered if the event was initiated as a backref to
         an attribute operation from the other side.
 
         .. seealso::

@@ -65,7 +65,7 @@ Valid values for ``isolation_level`` include:
 
 
 .. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_oracle dialect
-   as well as the notion of a default isolation level, currently harcoded
+   as well as the notion of a default isolation level, currently hardcoded
    to "READ COMMITTED".
 
 .. seealso::

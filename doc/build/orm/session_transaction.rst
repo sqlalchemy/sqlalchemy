@@ -370,7 +370,7 @@ The :meth:`_orm.Session.begin` method and the session's "autobegin" process
 use the same sequence of steps to begin the transaction.   This includes
 that the :meth:`_orm.SessionEvents.after_transaction_create` event is invoked
 when it occurs; this hook is used by frameworks in order to integrate their
-own trasactional processes with that of the ORM :class:`_orm.Session`.
+own transactional processes with that of the ORM :class:`_orm.Session`.
 
 
 .. _session_subtransactions:
@@ -387,7 +387,7 @@ Migrating from the "subtransaction" pattern
 
 The "subtransaction" pattern that was often used with autocommit mode is
 also deprecated in 1.4.  This pattern allowed the use of the
-:meth:`_orm.Session.begin` method when a tranasction were already begun,
+:meth:`_orm.Session.begin` method when a transaction were already begun,
 resulting in a construct called a "subtransaction", which was essentially
 a block that would prevent the :meth:`_orm.Session.commit` method from actually
 committing.

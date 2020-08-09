@@ -128,7 +128,7 @@ refers to the :paramref:`_schema.MetaData.bind` parameter on the
 :class:`_schema.MetaData` object that in turn allows objects like the ORM
 :class:`_orm.Session` to associate a particular mapped class with an
 :class:`_orm.Engine`.   In SQLAlchemy 2.0, the :class:`_orm.Session` must be
-linked to each :class:`_orm.Engine` directly. That is, instead of instantating
+linked to each :class:`_orm.Engine` directly. That is, instead of instantiating
 the :class:`_orm.Session` or
 :class:`_orm.sessionmaker` without any arguments, and associating the
 :class:`_engine.Engine` with the :class:`_schema.MetaData`::
@@ -1054,7 +1054,7 @@ Instance <instance> is already associated with an instance of <instance> via its
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 
-This error is emited when the :paramref:`_orm.relationship.single_parent` flag
+This error is emitted when the :paramref:`_orm.relationship.single_parent` flag
 is used, and more than one object is assigned as the "parent" of an object at
 once.
 

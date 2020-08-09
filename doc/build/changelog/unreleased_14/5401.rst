@@ -1,10 +1,10 @@
 .. change::
-    :tags: peformance, postgresql
+    :tags: performance, postgresql
     :tickets: 5401
 
     The psycopg2 dialect now defaults to using the very performant
     ``execute_values()`` psycopg2 extension for compiled INSERT statements,
-    and also impements RETURNING support when this extension is used.  This
+    and also implements RETURNING support when this extension is used.  This
     allows INSERT statements that even include an autoincremented SERIAL
     or IDENTITY value to run very fast while still being able to return the
     newly generated primary key values.   The ORM will then integrate this

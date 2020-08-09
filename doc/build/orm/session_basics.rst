@@ -110,7 +110,7 @@ When you write your application, the
 :class:`.sessionmaker` factory should be globally scoped, the same way as
 the :class:`_engine.Engine` object created by :func:`_sa.create_engine` is
 also typically globally scoped.  As these objects are both factories, they
-can be used by any number of functions and threads simultaenously.
+can be used by any number of functions and threads simultaneously.
 
 .. seealso::
 
@@ -391,7 +391,7 @@ To emit a bulk UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` meth
 may be used::
 
     session.query(User).filter(User.nane == "squidward").\
-        update({"name": "spongebob"}, syncronize_session="fetch")
+        update({"name": "spongebob"}, synchronize_session="fetch")
 
 Above, an UPDATE will be emitted against all rows that match the name
 "squidward" and be updated to the name "spongebob".  The
@@ -410,7 +410,7 @@ be configured with :paramref:`_orm.Session.future` set to ``True``::
     from sqlalchemy import update
 
     stmt = update(User).where(User.nane == "squidward").values(name="spongebob")).\
-        execution_options(syncronize_session="fetch")
+        execution_options(synchronize_session="fetch")
 
     session.execute(stmt)
 
@@ -424,7 +424,7 @@ within the :class:`_orm.Session` will be marked as deleted and expunged.
 Bulk delete, :term:`1.x style`::
 
     session.query(User).filter(User.nane == "squidward").\
-        delete(syncronize_session="fetch")
+        delete(synchronize_session="fetch")
 
 Bulk delete, :term:`2.0 style`.  The :meth:`_orm.Session` must
 be configured with :paramref:`_orm.Session.future` set to ``True``::
@@ -432,7 +432,7 @@ be configured with :paramref:`_orm.Session.future` set to ``True``::
     session = Session(future=True)
     from sqlalchemy import delete
 
-    stmt = delete(User).where(User.nane == "squidward").execution_options(syncronize_session="fetch")
+    stmt = delete(User).where(User.nane == "squidward").execution_options(synchronize_session="fetch")
 
     session.execute(stmt)
 
@@ -478,7 +478,7 @@ values for ``synchronize_session`` are supported:
 
     The bulk UPDATE and DELETE features bypass ORM unit-of-work automation in
     favor being able to emit a single UPDATE or DELETE statement at once
-    without complextiy.
+    without complexity.
 
     * The operations do not offer in-Python cascading of
       relationships - it is assumed that ON UPDATE CASCADE and/or

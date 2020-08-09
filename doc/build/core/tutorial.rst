@@ -445,7 +445,7 @@ access:
     name: wendy ; fullname:  Wendy Williams
 
 To access columns via name using strings, either when the column name is
-progammatically generated, or contains non-ascii characters, the
+programmatically generated, or contains non-ascii characters, the
 :attr:`.Row._mapping` view may be used that provides dictionary-like access:
 
 .. sourcecode:: pycon+sql

@@ -296,7 +296,7 @@
 
     .. change::
        :tags: bug, orm
-       :tickests: 4400
+       :tickets: 4400
 
        Fixed bug where chaining of mapper options using
        :meth:`.RelationshipProperty.of_type` in conjunction with a chained option

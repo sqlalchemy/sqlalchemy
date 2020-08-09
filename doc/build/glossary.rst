@@ -117,7 +117,7 @@ Glossary
         SQLAlchemy Core which will behave differently when used in an ORM
         context.
 
-        SQLAlchemy allows Core consrtucts such as :class:`_sql.Select` objects
+        SQLAlchemy allows Core constructs such as :class:`_sql.Select` objects
         to participate in a "plugin" system, which can inject additional
         behaviors and features into the object that are not present by default.
 

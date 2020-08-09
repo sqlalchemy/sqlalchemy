@@ -2,7 +2,7 @@
     :tags: bug, orm
     :tickets: 5074
 
-    The :class:`.Session` object no longer initates a
+    The :class:`.Session` object no longer initiates a
     :class:`.SessionTransaction` object immediately upon construction or after
     the previous transaction is closed; instead, "autobegin" logic now
     initiates the new :class:`.SessionTransaction` on demand when it is next
