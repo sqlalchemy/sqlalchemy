@@ -241,7 +241,7 @@ and have no effect.
 Instead, each statement invoked upon the connection will commit any changes
 automatically; it sometimes also means that the connection itself will use
 fewer server-side database resources. For this reason and others, "autocommit"
-mode is often desirable for non-tranasctional applications that need to read
+mode is often desirable for non-transactional applications that need to read
 individual tables or rows in isolation of a true ACID transaction.
 
 SQLAlchemy dialects can support these isolation levels as well as autocommit to
@@ -264,7 +264,7 @@ certain backend, an error is raised.
 
 For example, to force REPEATABLE READ on a specific connection::
 
-  with engine.connect().execution_options(isolation_level="REPEATBLE READ") as connection:
+  with engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
       connection.execute(<statement>)
 
 The :paramref:`_engine.Connection.execution_options.isolation_level` option

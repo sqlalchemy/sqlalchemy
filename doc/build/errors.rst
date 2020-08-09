@@ -800,7 +800,7 @@ Instance <instance> is already associated with an instance of <instance> via its
 ---------------------------------------------------------------------------------------------------------------------------------------------
 
 
-This error is emited when the :paramref:`_orm.relationship.single_parent` flag
+This error is emitted when the :paramref:`_orm.relationship.single_parent` flag
 is used, and more than one object is assigned as the "parent" of an object at
 once.
 

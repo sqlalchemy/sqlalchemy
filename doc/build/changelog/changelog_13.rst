@@ -1019,7 +1019,7 @@
         Fixed issue where by if the "begin" of a transaction failed at the Core
         engine/connection level, such as due to network error or database is locked
         for some transactional recipes, within the context of the :class:`.Session`
-        procuring that connection from the conneciton pool and then immediately
+        procuring that connection from the connection pool and then immediately
         returning it, the ORM :class:`.Session` would not close the connection
         despite this connection not being stored within the state of that
         :class:`.Session`.  This would lead to the connection being cleaned out by
@@ -1550,7 +1550,7 @@
         by table name only without the column names would not correctly be
         reflected as far as setting up the "referred columns", since SQLite's
         PRAGMA does not report on these columns if they weren't given explicitly.
-        For some reason this was harcoded to assume the name of the local column,
+        For some reason this was hardcoded to assume the name of the local column,
         which might work for some cases but is not correct. The new approach
         reflects the primary key of the referred table and uses the constraint
         columns list as the referred columns list, if the remote column(s) aren't
@@ -1582,7 +1582,7 @@
 
         Added support for reflection of CHECK constraints that include the special
         PostgreSQL qualifier "NOT VALID", which can be present for CHECK
-        constraints that were added to an exsiting table with the directive that
+        constraints that were added to an existing table with the directive that
         they not be applied to existing data in the table. The PostgreSQL
         dictionary for CHECK constraints as returned by
         :meth:`_reflection.Inspector.get_check_constraints` may include an additional entry
@@ -1608,7 +1608,7 @@
 
         The dialects that support json are supposed to take arguments
         ``json_serializer`` and ``json_deserializer`` at the create_engine() level,
-        however the SQLite dialect calls them ``_json_serilizer`` and
+        however the SQLite dialect calls them ``_json_serializer`` and
         ``_json_deserilalizer``.  The names have been corrected, the old names are
         accepted with a change warning, and these parameters are now documented as
         :paramref:`_sa.create_engine.json_serializer` and
@@ -1915,7 +1915,7 @@
 
         Fixed an unlikely issue where the "corresponding column" routine for unions
         and other :class:`_selectable.CompoundSelect` objects could return the wrong column in
-        some overlapping column situtations, thus potentially impacting some ORM
+        some overlapping column situations, thus potentially impacting some ORM
         operations when set operations are in use, if the underlying
         :func:`_expression.select` constructs were used previously in other similar kinds of
         routines, due to a cached value not being cleared.
@@ -1991,7 +1991,7 @@
         :tags: bug, orm, py3k
         :tickets: 4674
 
-        Replaced the Python compatbility routines for ``getfullargspec()`` with a
+        Replaced the Python compatibility routines for ``getfullargspec()`` with a
         fully vendored version from Python 3.3.  Originally, Python was emitting
         deprecation warnings for this function in Python 3.8 alphas.  While this
         change was reverted, it was observed that Python 3 implementations for
@@ -2095,7 +2095,7 @@
         :tickets: 4695
 
         Fixed issue where the :paramref:`.AttributeEvents.active_history` flag
-        would not be set for an event listener that propgated to a subclass via the
+        would not be set for an event listener that propagated to a subclass via the
         :paramref:`.AttributeEvents.propagate` flag.   This bug has been present
         for the full span of the :class:`.AttributeEvents` system.
 

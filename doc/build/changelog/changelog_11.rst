@@ -925,7 +925,7 @@
 
     .. change:: 3882
         :tags: bug, sql
-        :tikets: 3882
+        :tickets: 3882
 
         Fixed bug originally introduced in 0.9 via :ticket:`1068` where
         order_by(<some Label()>) would order by the label name based on name

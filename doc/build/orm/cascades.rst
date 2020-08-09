@@ -246,7 +246,7 @@ association::
 
 Above, when a ``Parent`` object is marked for deletion
 using :meth:`_orm.Session.delete`, the flush process will as usual delete
-the assocation rows from the ``association`` table, however per cascade
+the associated rows from the ``association`` table, however per cascade
 rules it will also delete all related ``Child`` rows.
 
 
