@@ -316,6 +316,24 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r[1:], (2, "foo@bar.com"))
         eq_(r[:-1], (1, 2))
 
+    def test_mappings(self, connection):
+        users = self.tables.users
+        addresses = self.tables.addresses
+
+        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), user_id=2, user_name="jack")
+        connection.execute(
+            addresses.insert(), address_id=1, user_id=2, address="foo@bar.com"
+        )
+
+        r = connection.execute(
+            text("select * from addresses", bind=testing.db)
+        )
+        eq_(
+            r.mappings().all(),
+            [{"address_id": 1, "user_id": 2, "address": "foo@bar.com"}],
+        )
+
     def test_column_accessor_basic_compiled_mapping(self, connection):
         users = self.tables.users
 

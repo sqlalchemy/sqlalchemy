@@ -1212,7 +1212,6 @@ class BaseCursorResult(object):
                     log_row(made_row)
                     return made_row
 
-                self._row_getter = make_row
             else:
                 make_row = _make_row
             self._set_memoized_attribute("_row_getter", make_row)

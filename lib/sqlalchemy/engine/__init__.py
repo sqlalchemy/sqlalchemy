@@ -43,9 +43,11 @@ from .mock import create_mock_engine
 from .result import ChunkedIteratorResult  # noqa
 from .result import FrozenResult  # noqa
 from .result import IteratorResult  # noqa
+from .result import MappingResult  # noqa
 from .result import MergedResult  # noqa
 from .result import Result  # noqa
 from .result import result_tuple  # noqa
+from .result import ScalarResult  # noqa
 from .row import BaseRow  # noqa
 from .row import LegacyRow  # noqa
 from .row import Row  # noqa
