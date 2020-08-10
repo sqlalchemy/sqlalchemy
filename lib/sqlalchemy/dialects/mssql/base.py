@@ -2711,7 +2711,8 @@ class MSDialect(default.DefaultDialect):
 
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
-                "select ind.index_id, ind.is_unique, ind.name "
+                "select ind.index_id, ind.is_unique, ind.name, "
+                "ind.filter_definition "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
@@ -2731,6 +2732,7 @@ class MSDialect(default.DefaultDialect):
                 "name": row["name"],
                 "unique": row["is_unique"] == 1,
                 "column_names": [],
+                "dialect_options": {"mssql_where": row["filter_definition"]},
             }
         rp = connection.execution_options(future_result=True).execute(
             sql.text(

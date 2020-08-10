@@ -3402,6 +3402,7 @@ class PGDialect(default.DefaultDialect):
                   ix.indisunique, ix.indexprs, ix.indpred,
                   a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
                   ix.indoption::varchar, i.reloptions, am.amname,
+                  pg_get_expr(ix.indpred, ix.indrelid),
                   %s as indnkeyatts
               FROM
                   pg_class t
@@ -3452,6 +3453,7 @@ class PGDialect(default.DefaultDialect):
                 idx_option,
                 options,
                 amname,
+                filter_definition,
                 indnkeyatts,
             ) = row
 
@@ -3526,6 +3528,9 @@ class PGDialect(default.DefaultDialect):
                 if amname and amname != "btree":
                     index["amname"] = amname
 
+                if filter_definition:
+                    index["postgresql_where"] = filter_definition
+
         result = []
         for name, idx in indexes.items():
             entry = {
@@ -3548,6 +3553,10 @@ class PGDialect(default.DefaultDialect):
                 entry.setdefault("dialect_options", {})[
                     "postgresql_using"
                 ] = idx["amname"]
+            if "postgresql_where" in idx:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_where"
+                ] = idx["postgresql_where"]
             result.append(entry)
         return result
 

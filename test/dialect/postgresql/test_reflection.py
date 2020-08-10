@@ -932,6 +932,49 @@ class ReflectionTest(fixtures.TestBase):
             ],
         )
 
+    @testing.provide_metadata
+    def test_index_reflection_partial(self):
+        """Reflect the filter defintion on partial indexes
+        """
+
+        metadata = self.metadata
+
+        t1 = Table(
+            "table1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(20)),
+            Column("x", Integer),
+        )
+        metadata.create_all()
+        with testing.db.connect().execution_options(autocommit=True) as conn:
+            conn.exec_driver_sql("create index idx1 on table1 ((id || name))")
+            conn.exec_driver_sql(
+                "CREATE INDEX idx2 ON table1 (id) WHERE name = 'test'"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX idx3 ON table1 (id) WHERE x >= 5"
+            )
+            with testing.expect_warnings(
+                "Skipped unsupported reflection of "
+                "expression-based index idx1",
+                "Predicate of partial index idx2 ignored during reflection",
+                "Predicate of partial index idx3 ignored during reflection",
+            ):
+                ind = testing.db.dialect.get_indexes(conn, t1, None)
+
+        partial_definitions = []
+        for ix in ind:
+            if "dialect_options" in ix:
+                partial_definitions.append(
+                    ix["dialect_options"]["postgresql_where"]
+                )
+
+        eq_(
+            sorted(partial_definitions),
+            ["((name)::text = 'test'::text)", "(x >= 5)"],
+        )
+
     @testing.fails_if("postgresql < 8.3", "index ordering not supported")
     @testing.provide_metadata
     def test_index_reflection_with_sorting(self):

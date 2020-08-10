@@ -1,0 +1,7 @@
+.. change::
+    :tags: mssql, usecase
+    :tickets: 4966
+
+    The :meth:`.Dialect.get_indexes` will now reflect the filter definitions
+    for Partial Indexes / Filtered Indexes on the PostgreSQL and MSSQL
+    dialects. Pull request courtesy Ramon Williams.
