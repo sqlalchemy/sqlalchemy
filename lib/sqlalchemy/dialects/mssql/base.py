@@ -2732,8 +2732,13 @@ class MSDialect(default.DefaultDialect):
                 "name": row["name"],
                 "unique": row["is_unique"] == 1,
                 "column_names": [],
-                "dialect_options": {"mssql_where": row["filter_definition"]},
             }
+
+            if row["filter_definition"] is not None:
+                indexes[row["index_id"]].setdefault("dialect_options", {})[
+                    "mssql_where"
+                ] = row["filter_definition"]
+
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind_col.index_id, ind_col.object_id, col.name "
