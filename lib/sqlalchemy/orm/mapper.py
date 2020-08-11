@@ -2434,19 +2434,26 @@ class Mapper(
         the attribute :attr:`.InspectionAttr.extension_type` will refer
         to a constant that distinguishes between different extension types.
 
-        The sorting of the attributes is based on what is located in
-        the ``__dict__`` of the mapped class as well as its mapped
-        superclasses.    The sorting will be all those attribute names
-        that appear in the ``__dict__`` of the immediate class and not
-        any of its superclasses, then the names which appear in the
-        ``__dict__`` of the superclass and not any of the further superclasses,
-        all the way down.   This will produce a deterministic ordering on
-        Python 3.6 and above.   It is not guaranteed to match the declared
-        ordering of attributes on the class, however, as the mapping process
-        itself populates Python descriptors into the ``__dict__`` of a mapped
-        class which are not always explicit in a declarative mapping.
+        The sorting of the attributes is based on the following rules:
 
-        .. versionchanged:: 1.4 ensured deterministic ordering for
+        1. Iterate through the class and its superclasses in order from
+           subclass to superclass (i.e. iterate through ``cls.__mro__``)
+
+        2. For each class, yield the attributes in the order in which they
+           appear in ``__dict__``, with the exception of those in step
+           3 below.  In Python 3.6 and above this ordering will be the
+           same as that of the class' construction, with the exception
+           of attributes that were added after the fact by the application
+           or the mapper.
+
+        3. If a certain attribute key is also in the superclass ``__dict__``,
+           then it's included in the iteration for that class, and not the
+           class in which it first appeared.
+
+        The above process produces an ordering that is deterministic in terms
+        of the order in which attributes were assigned to the class.
+
+        .. versionchanged:: 1.3.19 ensured deterministic ordering for
            :meth:`_orm.Mapper.all_orm_descriptors`.
 
         When dealing with a :class:`.QueryableAttribute`, the
