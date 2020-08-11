@@ -1788,15 +1788,15 @@ class LegacyOperatorTest(fixtures.TestBase):
         assert hasattr(operators, 'notin_op')  # legacy
         assert operators.not_in_op is operators.notin_op
 
-        # precedence
+        # precedence mapping
         # is_not
-        assert 'is_not' in operators._PRECEDENCE  # modern
-        assert 'isnot' in operators._PRECEDENCE  # legacy
-        assert operators.is_not == operators.isnot
+        assert operators.is_not in operators._PRECEDENCE  # modern
+        assert operators.isnot in operators._PRECEDENCE  # legacy
+        assert operators._PRECEDENCE[operators.is_not] == operators._PRECEDENCE[operators.isnot]
         # not_in_op
-        assert 'not_in_op' in operators._PRECEDENCE  # modern
-        assert 'notin_op' in operators._PRECEDENCE  # legacy
-        assert operators.not_in_op == operators.notin_op
+        assert operators.not_in_op in operators._PRECEDENCE  # modern
+        assert operators.notin_op in operators._PRECEDENCE  # legacy
+        assert operators._PRECEDENCE[operators.not_in_op] == operators._PRECEDENCE[operators.notin_op]
 
         # ColumnOperators
         # is_not
