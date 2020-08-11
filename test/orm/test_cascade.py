@@ -27,7 +27,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
+from sqlalchemy.testing import notin_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -4210,9 +4210,6 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         not_in(orders[0], sess)
         not_in(orders[1], sess)
 
-        notin_(orders[0], sess)
-        notin_(orders[1], sess)
-
     def test_default_none_cascade(self):
         User, Order, orders, users = (
             self.classes.User,
@@ -4251,9 +4248,6 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
 
         not_in(o1, sess)
         not_in(o2, sess)
-
-        notin_(o1, sess)
-        notin_(o2, sess)
 
     def test_default_merge_cascade(self):
         User, Order, orders, users = (

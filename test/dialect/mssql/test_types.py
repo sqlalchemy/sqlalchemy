@@ -52,6 +52,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import b
 

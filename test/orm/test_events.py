@@ -29,6 +29,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import ANY
 from sqlalchemy.testing.mock import call

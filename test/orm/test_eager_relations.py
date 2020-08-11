@@ -36,6 +36,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table

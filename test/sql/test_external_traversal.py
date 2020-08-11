@@ -37,6 +37,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
+
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 

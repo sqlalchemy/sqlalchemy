@@ -31,6 +31,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest

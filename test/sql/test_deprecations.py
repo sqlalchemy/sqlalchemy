@@ -42,7 +42,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
+from sqlalchemy.testing import notin_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -995,9 +995,6 @@ class KeyTargetingTest(fixtures.TablesTest):
         not_in(content.c.type, row)
         not_in(bar.c.content_type, row)
 
-        notin_(content.c.type, row)
-        notin_(bar.c.content_type, row)
-
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
             "with only matching names"
@@ -1010,8 +1007,6 @@ class KeyTargetingTest(fixtures.TablesTest):
         not_in(content.c.type, row)
         not_in(bar.c.content_type, row)
 
-        notin_(content.c.type, row)
-        notin_(bar.c.content_type, row)
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
             "with only matching names"
@@ -1294,7 +1289,6 @@ class CursorResultTest(fixtures.TablesTest):
         row = connection.execute(content.select().apply_labels()).first()
         in_(content.c.type, row._mapping)
         not_in(bar.c.content_type, row)
-        notin_(bar.c.content_type, row)
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
             "with only matching names"
@@ -1311,7 +1305,6 @@ class CursorResultTest(fixtures.TablesTest):
             in_(content.c.type, row)
 
         not_in(bar.c.content_type, row)
-        notin_(bar.c.content_type, row)
 
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
@@ -1324,10 +1317,8 @@ class CursorResultTest(fixtures.TablesTest):
         ).first()
 
         not_in(content.c.type, row)
-        notin_(content.c.type, row)
 
         not_in(bar.c.content_type, row)
-        notin_(bar.c.content_type, row)
 
         with testing.expect_deprecated(
             "Retrieving row values using Column objects "
@@ -1555,7 +1546,6 @@ class CursorResultTest(fixtures.TablesTest):
 
         # no warning if the key is not there
         not_in("foobar", r)
-        notin_("foobar", r)
 
         # this seems to happen only with Python BaseRow
         # with testing.expect_deprecated(

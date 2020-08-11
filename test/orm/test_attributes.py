@@ -15,9 +15,10 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing import notin_  # noqa Issue#5429; test to ensure silent deprecation support
+from sqlalchemy.testing import notin_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import all_partial_orderings
@@ -3695,7 +3696,6 @@ class CollectionInitTest(fixtures.TestBase):
 
         a1.bs = []  # replaces previous "empty" collection
         not_in("bs", state._empty_collections)  # empty is replaced
-        notin_("bs", state._empty_collections)  # empty is replaced
         is_(existing._sa_adapter, None)
 
     def test_assert_false_on_default_value(self):
