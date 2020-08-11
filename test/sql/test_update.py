@@ -873,7 +873,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             column("data2", ARRAY(Integer)),
         )
 
-        stmt = t.update().values({t.c.data1[5]: 7, t.c.data2[10]: 18})
+        stmt = t.update().ordered_values(
+            (t.c.data1[5], 7), (t.c.data2[10], 18)
+        )
         dialect = default.StrCompileDialect()
         dialect.paramstyle = "qmark"
         dialect.positional = True

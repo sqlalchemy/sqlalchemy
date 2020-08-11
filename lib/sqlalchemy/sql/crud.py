@@ -337,9 +337,11 @@ def _scan_cols(
             _column_as_key(key) for key in compile_state._parameter_ordering
         ]
         ordered_keys = set(parameter_ordering)
-        cols = [stmt.table.c[key] for key in parameter_ordering] + [
-            c for c in stmt.table.c if c.key not in ordered_keys
-        ]
+        cols = [
+            stmt.table.c[key]
+            for key in parameter_ordering
+            if isinstance(key, util.string_types) and key in stmt.table.c
+        ] + [c for c in stmt.table.c if c.key not in ordered_keys]
     else:
         cols = stmt.table.columns
 
