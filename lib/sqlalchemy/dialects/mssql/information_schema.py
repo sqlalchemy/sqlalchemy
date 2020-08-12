@@ -5,9 +5,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-# TODO: should be using the sys. catalog with SQL Server, not information
-# schema
-
 from ... import cast
 from ... import Column
 from ... import MetaData
@@ -91,6 +88,25 @@ columns = Table(
     Column("COLUMN_DEFAULT", Integer, key="column_default"),
     Column("COLLATION_NAME", String, key="collation_name"),
     schema="INFORMATION_SCHEMA",
+)
+
+mssql_temp_table_columns = Table(
+    "COLUMNS",
+    ischema,
+    Column("TABLE_SCHEMA", CoerceUnicode, key="table_schema"),
+    Column("TABLE_NAME", CoerceUnicode, key="table_name"),
+    Column("COLUMN_NAME", CoerceUnicode, key="column_name"),
+    Column("IS_NULLABLE", Integer, key="is_nullable"),
+    Column("DATA_TYPE", String, key="data_type"),
+    Column("ORDINAL_POSITION", Integer, key="ordinal_position"),
+    Column(
+        "CHARACTER_MAXIMUM_LENGTH", Integer, key="character_maximum_length"
+    ),
+    Column("NUMERIC_PRECISION", Integer, key="numeric_precision"),
+    Column("NUMERIC_SCALE", Integer, key="numeric_scale"),
+    Column("COLUMN_DEFAULT", Integer, key="column_default"),
+    Column("COLLATION_NAME", String, key="collation_name"),
+    schema="tempdb.INFORMATION_SCHEMA",
 )
 
 constraints = Table(

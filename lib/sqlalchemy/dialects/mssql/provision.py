@@ -2,8 +2,10 @@ from ... import create_engine
 from ... import exc
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
+from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
 from ...testing.provision import run_reap_dbs
+from ...testing.provision import temp_table_keyword_args
 
 
 @create_db.for_db("mssql")
@@ -72,3 +74,13 @@ def _reap_mssql_dbs(url, idents):
         log.info(
             "Dropped %d out of %d stale databases detected", dropped, total
         )
+
+
+@temp_table_keyword_args.for_db("mssql")
+def _mssql_temp_table_keyword_args(cfg, eng):
+    return {}
+
+
+@get_temp_table_name.for_db("mssql")
+def _mssql_get_temp_table_name(cfg, eng, base_name):
+    return "#" + base_name

@@ -296,3 +296,18 @@ def temp_table_keyword_args(cfg, eng):
     raise NotImplementedError(
         "no temp table keyword args routine for cfg: %s" % eng.url
     )
+
+
+@register.init
+def get_temp_table_name(cfg, eng, base_name):
+    """Specify table name for creating a temporary Table.
+
+    Dialect-specific implementations of this method will return the
+    name to use when creating a temporary table for testing,
+    e.g., in the define_temp_tables method of the
+    ComponentReflectionTest class in suite/test_reflection.py
+
+    Default to just the base name since that's what most dialects will
+    use. The mssql dialect's implementation will need a "#" prepended.
+    """
+    return base_name

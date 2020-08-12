@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, mssql
+    :tickets: 5506
+
+    Added support for reflection of temporary tables with the SQL Server dialect.
+    Table names that are prefixed by a pound sign "#" are now introspected from
+    the MSSQL "tempdb" system catalog.

@@ -1,7 +1,10 @@
 # -*- encoding: utf-8
+import datetime
+
 from sqlalchemy import Column
 from sqlalchemy import DDL
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -244,6 +247,52 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ", MetaData(), autoload_with=testing.db
         )
         eq_(t.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    @testing.provide_metadata
+    @testing.combinations(
+        ("local_temp", "#tmp", True),
+        ("global_temp", "##tmp", True),
+        ("nonexistent", "#no_es_bueno", False),
+        id_="iaa",
+    )
+    def test_temporary_table(self, table_name, exists):
+        metadata = self.metadata
+        if exists:
+            # TODO: why this test hangs when using the connection fixture?
+            with testing.db.connect() as conn:
+                tran = conn.begin()
+                conn.execute(
+                    (
+                        "CREATE TABLE %s "
+                        "(id int primary key, txt nvarchar(50), dt2 datetime2)"  # noqa
+                    )
+                    % table_name
+                )
+                conn.execute(
+                    (
+                        "INSERT INTO %s (id, txt, dt2) VALUES "
+                        "(1, N'foo', '2020-01-01 01:01:01'), "
+                        "(2, N'bar', '2020-02-02 02:02:02') "
+                    )
+                    % table_name
+                )
+                tran.commit()
+                tran = conn.begin()
+                try:
+                    tmp_t = Table(
+                        table_name, metadata, autoload_with=testing.db,
+                    )
+                    tran.commit()
+                    result = conn.execute(
+                        tmp_t.select().where(tmp_t.c.id == 2)
+                    ).fetchall()
+                    eq_(
+                        result,
+                        [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
+                    )
+                except exc.NoSuchTableError:
+                    if exists:
+                        raise
 
     @testing.provide_metadata
     def test_db_qualified_items(self):
