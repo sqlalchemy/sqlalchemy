@@ -38,6 +38,7 @@ from .. import inspection
 from .. import processors
 from .. import util
 from ..util import compat
+from ..util import langhelpers
 from ..util import pickle
 
 
@@ -1555,7 +1556,13 @@ class Enum(Emulated, String, SchemaType):
             else:
                 util.raise_(
                     LookupError(
-                        '"%s" is not among the defined enum values' % elem
+                        "'%s' is not among the defined enum values. "
+                        "Enum name: %s. Possible values: %s"
+                        % (
+                            elem,
+                            self.name,
+                            langhelpers.repr_tuple_names(self.enums),
+                        )
                     ),
                     replace_context=err,
                 )
@@ -1579,7 +1586,13 @@ class Enum(Emulated, String, SchemaType):
         except KeyError as err:
             util.raise_(
                 LookupError(
-                    '"%s" is not among the defined enum values' % elem
+                    "'%s' is not among the defined enum values. "
+                    "Enum name: %s. Possible values: %s"
+                    % (
+                        elem,
+                        self.name,
+                        langhelpers.repr_tuple_names(self.enums),
+                    )
                 ),
                 replace_context=err,
             )

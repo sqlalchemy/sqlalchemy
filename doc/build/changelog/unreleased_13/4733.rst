@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, datatypes, sql
+    :tickets: 4733
+
+    The ``LookupError`` message will now provide the user with up to four
+    possible values that a column is constrained to via the :class:`.Enum`.
+    Values longer than 11 characters will be truncated and replaced with
+    ellipses. Pull request courtesy Ramon Williams.
