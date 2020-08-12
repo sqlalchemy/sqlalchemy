@@ -15,6 +15,7 @@ import platform
 import sys
 
 
+py38 = sys.version_info >= (3, 8)
 py37 = sys.version_info >= (3, 7)
 py36 = sys.version_info >= (3, 6)
 py3k = sys.version_info >= (3, 0)
@@ -89,6 +90,11 @@ def inspect_getfullargspec(func):
         func.__annotations__ if py3k else {},
     )
 
+
+if py38:
+    from importlib import metadata as importlib_metadata
+else:
+    import importlib_metadata  # noqa
 
 if py3k:
     import base64

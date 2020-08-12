@@ -8,18 +8,49 @@
 r"""
 
 .. dialect:: mysql
-    :name: MySQL
+    :name: MySQL / MariaDB
 
 Supported Versions and Features
 -------------------------------
 
-SQLAlchemy supports MySQL starting with version 4.1 through modern releases.
-However, no heroic measures are taken to work around major missing
-SQL features - if your server version does not support sub-selects, for
-example, they won't work in SQLAlchemy either.
+SQLAlchemy supports MySQL starting with version 4.1 through modern releases, as
+well as all modern versions of MariaDB. However, no heroic measures are taken
+to work around major missing SQL features - if your server version does not
+support sub-selects, for example, they won't work in SQLAlchemy either.
 
 See the official MySQL documentation for detailed information about features
 supported in any given server release.
+
+MariaDB Support
+~~~~~~~~~~~~~~~
+
+The MariaDB variant of MySQL retains fundamental compatibility with MySQL's
+protocols however the development of these two products continues to diverge.
+Within the realm of SQLAlchemy, the two databases have a small number of
+syntactical and behavioral differences that SQLAlchemy accommodates automatically.
+To connect to a MariaDB database, no changes to the database URL are required::
+
+
+    engine = create_engine("mysql+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+
+Upon first connect, the SQLAlchemy dialect employs a
+server version detection scheme that determines if the
+backing database reports as MariaDB.  Based on this flag, the dialect
+can make different choices in those of areas where its behavior
+must be different.
+
+The dialect also supports a "MariaDB-only" mode of connection, which may be
+useful for the case where an application makes use of MariaDB-specific features
+and is not compatible with a MySQL database.    To use this mode of operation,
+replace the "mysql" token in the above URL with "mariadb"::
+
+    engine = create_engine("mariadb+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+
+The above engine, upon first connect, will raise an error if the server version
+detection detects that the backing database is not MariaDB.
+
+.. versionadded:: 1.4 Added "mariadb" dialect name supporting "MariaDB-only mode"
+   for the MySQL dialect.
 
 .. _mysql_connection_timeouts:
 
@@ -1943,7 +1974,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             qual = "INDEX "
             const = self.preparer.format_constraint(constraint)
         elif isinstance(constraint, sa_schema.CheckConstraint):
-            if self.dialect._is_mariadb:
+            if self.dialect.is_mariadb:
                 qual = "CONSTRAINT "
             else:
                 qual = "CHECK "
@@ -2352,6 +2383,8 @@ class MySQLDialect(default.DefaultDialect):
     ischema_names = ischema_names
     preparer = MySQLIdentifierPreparer
 
+    is_mariadb = False
+
     # default SQL compilation settings -
     # these are modified upon initialize(),
     # i.e. first connect
@@ -2378,6 +2411,7 @@ class MySQLDialect(default.DefaultDialect):
         isolation_level=None,
         json_serializer=None,
         json_deserializer=None,
+        is_mariadb=None,
         **kwargs
     ):
         kwargs.pop("use_ansiquotes", None)  # legacy
@@ -2385,6 +2419,7 @@ class MySQLDialect(default.DefaultDialect):
         self.isolation_level = isolation_level
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
+        self._set_mariadb(is_mariadb, None)
 
     def on_connect(self):
         if self.isolation_level is not None:
@@ -2473,7 +2508,25 @@ class MySQLDialect(default.DefaultDialect):
                     version.extend(g for g in mariadb.groups() if g)
                 else:
                     version.append(n)
-        return tuple(version)
+
+        server_version_info = tuple(version)
+
+        self._set_mariadb(
+            server_version_info and "MariaDB" in server_version_info, val
+        )
+
+        return server_version_info
+
+    def _set_mariadb(self, is_mariadb, server_version_info):
+        if is_mariadb is None:
+            return
+
+        if not is_mariadb and self.is_mariadb:
+            raise exc.InvalidRequestError(
+                "MySQL version %s is not a MariaDB variant."
+                % (server_version_info,)
+            )
+        self.is_mariadb = is_mariadb
 
     def do_commit(self, dbapi_connection):
         """Execute a COMMIT."""
@@ -2677,7 +2730,7 @@ class MySQLDialect(default.DefaultDialect):
         default.DefaultDialect.initialize(self, connection)
 
         self.supports_sequences = (
-            self._is_mariadb and self.server_version_info >= (10, 3)
+            self.is_mariadb and self.server_version_info >= (10, 3)
         )
 
         self.supports_for_update_of = (
@@ -2685,13 +2738,13 @@ class MySQLDialect(default.DefaultDialect):
         )
 
         self._needs_correct_for_88718_96365 = (
-            not self._is_mariadb and self.server_version_info >= (8,)
+            not self.is_mariadb and self.server_version_info >= (8,)
         )
 
         self._warn_for_known_db_issues()
 
     def _warn_for_known_db_issues(self):
-        if self._is_mariadb:
+        if self.is_mariadb:
             mdb_version = self._mariadb_normalized_version_info
             if mdb_version > (10, 2) and mdb_version < (10, 2, 9):
                 util.warn(
@@ -2706,17 +2759,15 @@ class MySQLDialect(default.DefaultDialect):
 
     @property
     def _is_mariadb(self):
-        return (
-            self.server_version_info and "MariaDB" in self.server_version_info
-        )
+        return self.is_mariadb
 
     @property
     def _is_mysql(self):
-        return not self._is_mariadb
+        return not self.is_mariadb
 
     @property
     def _is_mariadb_102(self):
-        return self._is_mariadb and self._mariadb_normalized_version_info > (
+        return self.is_mariadb and self._mariadb_normalized_version_info > (
             10,
             2,
         )
@@ -2726,7 +2777,7 @@ class MySQLDialect(default.DefaultDialect):
         # MariaDB's wire-protocol prepends the server_version with
         # the string "5.5"; now that we use @@version we no longer see this.
 
-        if self._is_mariadb:
+        if self.is_mariadb:
             idx = self.server_version_info.index("MariaDB")
             return self.server_version_info[idx - 3 : idx]
         else:

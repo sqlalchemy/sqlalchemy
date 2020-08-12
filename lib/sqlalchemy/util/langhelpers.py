@@ -290,12 +290,10 @@ class PluginLoader(object):
                 self.impls[name] = loader
                 return loader()
 
-        try:
-            import pkg_resources
-        except ImportError:
-            pass
-        else:
-            for impl in pkg_resources.iter_entry_points(self.group, name):
+        for impl in compat.importlib_metadata.entry_points().get(
+            self.group, ()
+        ):
+            if impl.name == name:
                 self.impls[name] = impl.load
                 return impl.load()
 

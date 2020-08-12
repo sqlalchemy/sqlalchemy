@@ -5,6 +5,7 @@ import datetime
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -12,18 +13,88 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
 from sqlalchemy.engine.url import make_url
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from ...engine import test_execute
 
 
-class DialectTest(fixtures.TestBase):
+class BackendDialectTest(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "mysql"
 
+    def test_no_show_variables(self):
+        from sqlalchemy.testing import mock
+
+        engine = engines.testing_engine()
+
+        def my_execute(self, statement, *args, **kw):
+            if statement.startswith("SHOW VARIABLES"):
+                statement = "SELECT 1 FROM DUAL WHERE 1=0"
+            return real_exec(self, statement, *args, **kw)
+
+        real_exec = engine._connection_cls.exec_driver_sql
+        with mock.patch.object(
+            engine._connection_cls, "exec_driver_sql", my_execute
+        ):
+            with expect_warnings(
+                "Could not retrieve SQL_MODE; please ensure the "
+                "MySQL user has permissions to SHOW VARIABLES"
+            ):
+                engine.connect()
+
+    def test_no_default_isolation_level(self):
+        from sqlalchemy.testing import mock
+
+        engine = engines.testing_engine()
+
+        real_isolation_level = testing.db.dialect.get_isolation_level
+
+        def fake_isolation_level(connection):
+            connection = mock.Mock(
+                cursor=mock.Mock(
+                    return_value=mock.Mock(
+                        fetchone=mock.Mock(return_value=None)
+                    )
+                )
+            )
+            return real_isolation_level(connection)
+
+        with mock.patch.object(
+            engine.dialect, "get_isolation_level", fake_isolation_level
+        ):
+            with expect_warnings(
+                "Could not retrieve transaction isolation level for MySQL "
+                "connection."
+            ):
+                engine.connect()
+
+    def test_autocommit_isolation_level(self):
+        c = testing.db.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        )
+        assert c.exec_driver_sql("SELECT @@autocommit;").scalar()
+
+        c = c.execution_options(isolation_level="READ COMMITTED")
+        assert not c.exec_driver_sql("SELECT @@autocommit;").scalar()
+
+    def test_isolation_level(self):
+        values = [
+            "READ UNCOMMITTED",
+            "READ COMMITTED",
+            "REPEATABLE READ",
+            "SERIALIZABLE",
+        ]
+        for value in values:
+            c = testing.db.connect().execution_options(isolation_level=value)
+            eq_(testing.db.dialect.get_isolation_level(c.connection), value)
+
+
+class DialectTest(fixtures.TestBase):
     @testing.combinations(
         (None, "cONnection was kILLEd", "InternalError", "pymysql", True),
         (None, "cONnection aLREady closed", "InternalError", "pymysql", True),
@@ -176,74 +247,31 @@ class DialectTest(fixtures.TestBase):
             conn = eng.connect()
             eq_(conn.dialect._connection_charset, enc)
 
-    def test_no_show_variables(self):
-        from sqlalchemy.testing import mock
-
-        engine = engines.testing_engine()
-
-        def my_execute(self, statement, *args, **kw):
-            if statement.startswith("SHOW VARIABLES"):
-                statement = "SELECT 1 FROM DUAL WHERE 1=0"
-            return real_exec(self, statement, *args, **kw)
-
-        real_exec = engine._connection_cls.exec_driver_sql
-        with mock.patch.object(
-            engine._connection_cls, "exec_driver_sql", my_execute
-        ):
-            with expect_warnings(
-                "Could not retrieve SQL_MODE; please ensure the "
-                "MySQL user has permissions to SHOW VARIABLES"
-            ):
-                engine.connect()
-
-    def test_no_default_isolation_level(self):
-        from sqlalchemy.testing import mock
-
-        engine = engines.testing_engine()
-
-        real_isolation_level = testing.db.dialect.get_isolation_level
-
-        def fake_isolation_level(connection):
-            connection = mock.Mock(
-                cursor=mock.Mock(
-                    return_value=mock.Mock(
-                        fetchone=mock.Mock(return_value=None)
-                    )
-                )
-            )
-            return real_isolation_level(connection)
-
-        with mock.patch.object(
-            engine.dialect, "get_isolation_level", fake_isolation_level
-        ):
-            with expect_warnings(
-                "Could not retrieve transaction isolation level for MySQL "
-                "connection."
-            ):
-                engine.connect()
-
-    def test_autocommit_isolation_level(self):
-        c = testing.db.connect().execution_options(
-            isolation_level="AUTOCOMMIT"
-        )
-        assert c.exec_driver_sql("SELECT @@autocommit;").scalar()
-
-        c = c.execution_options(isolation_level="READ COMMITTED")
-        assert not c.exec_driver_sql("SELECT @@autocommit;").scalar()
-
-    def test_isolation_level(self):
-        values = [
-            "READ UNCOMMITTED",
-            "READ COMMITTED",
-            "REPEATABLE READ",
-            "SERIALIZABLE",
-        ]
-        for value in values:
-            c = testing.db.connect().execution_options(isolation_level=value)
-            eq_(testing.db.dialect.get_isolation_level(c.connection), value)
-
 
 class ParseVersionTest(fixtures.TestBase):
+    def test_mariadb_madness(self):
+        mysql_dialect = make_url("mysql://").get_dialect()()
+
+        is_(mysql_dialect.is_mariadb, False)
+
+        mysql_dialect = make_url("mysql+pymysql://").get_dialect()()
+        is_(mysql_dialect.is_mariadb, False)
+
+        mariadb_dialect = make_url("mariadb://").get_dialect()()
+
+        is_(mariadb_dialect.is_mariadb, True)
+
+        mariadb_dialect = make_url("mariadb+pymysql://").get_dialect()()
+
+        is_(mariadb_dialect.is_mariadb, True)
+
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "MySQL version 5.7.20 is not a MariaDB variant.",
+            mariadb_dialect._parse_server_version,
+            "5.7.20",
+        )
+
     @testing.combinations(
         ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7, "MariaDB"), True),
         (
@@ -286,7 +314,7 @@ class ParseVersionTest(fixtures.TestBase):
         (True, (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log")),
     )
     def test_mariadb_check_warning(self, expect_, version):
-        dialect = mysql.dialect()
+        dialect = mysql.dialect(is_mariadb="MariaDB" in version)
         dialect.server_version_info = version
         if expect_:
             with expect_warnings(

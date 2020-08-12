@@ -150,13 +150,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         constraint_name = "constraint"
         constraint = CheckConstraint("data IS NOT NULL", name=constraint_name)
         Table(table_name, m, Column("data", String(255)), constraint)
-        dialect = mysql.dialect()
-        dialect.server_version_info = (10, 1, 1, "MariaDB")
         self.assert_compile(
             schema.DropConstraint(constraint),
             "ALTER TABLE %s DROP CONSTRAINT `%s`"
             % (table_name, constraint_name),
-            dialect=dialect,
+            dialect="mariadb",
         )
 
     def test_create_index_with_length_quoted(self):
@@ -354,8 +352,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(expr, "concat('x', 'y')", literal_binds=True)
 
     def test_mariadb_for_update(self):
-        dialect = mysql.dialect()
-        dialect.server_version_info = (10, 1, 1, "MariaDB")
 
         table1 = table(
             "mytable", column("myid"), column("name"), column("description")
@@ -366,7 +362,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE",
-            dialect=dialect,
+            dialect="mariadb",
         )
 
         self.assert_compile(
@@ -376,7 +372,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE",
-            dialect=dialect,
+            dialect="mariadb",
         )
 
     def test_delete_extra_froms(self):

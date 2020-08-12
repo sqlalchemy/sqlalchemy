@@ -1,7 +1,7 @@
 .. _mysql_toplevel:
 
-MySQL
-=====
+MySQL and MariaDB
+=================
 
 .. automodule:: sqlalchemy.dialects.mysql.base
 

@@ -4,6 +4,7 @@ from distutils.errors import DistutilsExecError
 from distutils.errors import DistutilsPlatformError
 import os
 import platform
+import re
 import sys
 
 from setuptools import Distribution as _Distribution
@@ -116,6 +117,16 @@ def status_msgs(*msgs):
     print("*" * 75)
 
 
+with open(
+    os.path.join(os.path.dirname(__file__), "lib", "sqlalchemy", "__init__.py")
+) as v_file:
+    VERSION = (
+        re.compile(r""".*__version__ = ["'](.*?)['"]""", re.S)
+        .match(v_file.read())
+        .group(1)
+    )
+
+
 def run_setup(with_cext):
     kwargs = {}
     if with_cext:
@@ -129,7 +140,7 @@ def run_setup(with_cext):
 
         kwargs["ext_modules"] = []
 
-    setup(cmdclass=cmdclass, distclass=Distribution, **kwargs)
+    setup(version=VERSION, cmdclass=cmdclass, distclass=Distribution, **kwargs)
 
 
 if not cpython:
