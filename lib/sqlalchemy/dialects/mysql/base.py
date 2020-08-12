@@ -1772,6 +1772,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             [
                 ("DEFAULT_CHARSET", "COLLATE"),
                 ("DEFAULT_CHARACTER_SET", "COLLATE"),
+                ("CHARSET", "COLLATE"),
+                ("CHARACTER_SET", "COLLATE"),
             ],
             nonpart_options,
         ):

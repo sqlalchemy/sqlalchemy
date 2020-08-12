@@ -864,6 +864,34 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             ")STATS_SAMPLE_PAGES=2 PARTITION BY HASH(other_id) PARTITIONS 2",
         )
 
+    def test_create_table_with_collate(self):
+        # issue #5411
+        t1 = Table(
+            "testtable",
+            MetaData(),
+            Column("id", Integer(), primary_key=True, autoincrement=True),
+            mysql_engine="InnoDB",
+            mysql_collate="utf8_icelandic_ci",
+            mysql_charset="utf8",
+        )
+        first_part = (
+            "CREATE TABLE testtable ("
+            "id INTEGER NOT NULL AUTO_INCREMENT, "
+            "PRIMARY KEY (id))"
+        )
+        try:
+            self.assert_compile(
+                schema.CreateTable(t1),
+                first_part
+                + "ENGINE=InnoDB CHARSET=utf8 COLLATE utf8_icelandic_ci",
+            )
+        except AssertionError:
+            self.assert_compile(
+                schema.CreateTable(t1),
+                first_part
+                + "CHARSET=utf8 ENGINE=InnoDB COLLATE utf8_icelandic_ci",
+            )
+
     def test_inner_join(self):
         t1 = table("t1", column("x"))
         t2 = table("t2", column("y"))
