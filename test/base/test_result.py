@@ -223,6 +223,40 @@ class ResultTest(fixtures.TestBase):
 
         return res
 
+    def test_class_presented(self):
+        """To support different kinds of objects returned vs. rows,
+        there are two wrapper classes for Result.
+        """
+
+        r1 = self._fixture()
+
+        r2 = r1.columns(0, 1, 2)
+        assert isinstance(r2, result.Result)
+
+        m1 = r1.mappings()
+        assert isinstance(m1, result.MappingResult)
+
+        s1 = r1.scalars(1)
+        assert isinstance(s1, result.ScalarResult)
+
+    def test_mapping_plus_base(self):
+        r1 = self._fixture()
+
+        m1 = r1.mappings()
+        eq_(m1.fetchone(), {"a": 1, "b": 1, "c": 1})
+        eq_(r1.fetchone(), (2, 1, 2))
+
+    def test_scalar_plus_base(self):
+        r1 = self._fixture()
+
+        m1 = r1.scalars()
+
+        # base is not affected
+        eq_(r1.fetchone(), (1, 1, 1))
+
+        # scalars
+        eq_(m1.first(), 2)
+
     def test_index_extra(self):
         ex1a, ex1b, ex2, ex3a, ex3b = (
             object(),
@@ -400,23 +434,22 @@ class ResultTest(fixtures.TestBase):
         result = self._fixture()
 
         eq_(
-            list(result.scalars().mappings()),
+            list(result.columns(0).mappings()),
             [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 4}],
         )
 
     def test_scalars_no_fetchone(self):
         result = self._fixture()
 
-        result = result.scalars()
+        s = result.scalars()
 
-        assert_raises_message(
-            exc.InvalidRequestError,
-            r"Can't use fetchone\(\) when returning scalar values; ",
-            result.fetchone,
-        )
+        assert not hasattr(s, "fetchone")
 
-        # mappings() switches the flag off
-        eq_(result.mappings().fetchone(), {"a": 1})
+        # original result is unchanged
+        eq_(result.mappings().fetchone(), {"a": 1, "b": 1, "c": 1})
+
+        # scalars
+        eq_(s.all(), [2, 1, 4])
 
     def test_first(self):
         result = self._fixture()
@@ -614,6 +647,19 @@ class ResultTest(fixtures.TestBase):
             ],
         )
 
+    def test_mappings_with_columns(self):
+        result = self._fixture()
+
+        m1 = result.mappings().columns("b", "c")
+
+        eq_(m1.fetchmany(2), [{"b": 1, "c": 1}, {"b": 1, "c": 2}])
+
+        # no slice here
+        eq_(result.fetchone(), (1, 3, 2))
+
+        # still slices
+        eq_(m1.fetchone(), {"b": 1, "c": 2})
+
     def test_alt_row_fetch(self):
         class AppleRow(Row):
             def apple(self):
@@ -693,6 +739,33 @@ class ResultTest(fixtures.TestBase):
         result = result.scalars(1).unique()
         eq_(result.all(), [None, 4])
 
+    def test_scalar_only_on_filter(self):
+        # test a mixture of the "real" result and the
+        # scalar filter, where scalar has unique and real result does not.
+
+        # this is new as of [ticket:5503] where we have created
+        # ScalarResult / MappingResult "filters" that don't modify
+        # the Result
+        result = self._fixture(
+            data=[
+                (1, 1, 2),
+                (3, 4, 5),
+                (1, 1, 2),
+                (3, None, 5),
+                (3, 4, 5),
+                (3, None, 5),
+            ]
+        )
+
+        # result is non-unique.   u_s is unique on column 0
+        u_s = result.scalars(0).unique()
+
+        eq_(next(u_s), 1)  # unique value 1 from first row
+        eq_(next(result), (3, 4, 5))  # second row
+        eq_(next(u_s), 3)  # skip third row, return 3 for fourth row
+        eq_(next(result), (3, 4, 5))  # non-unique fifth row
+        eq_(u_s.all(), [])  # unique set is done because only 3 is left
+
     def test_scalar_none_one(self):
         result = self._fixture(data=[(1, None, 2)])
 
@@ -756,14 +829,12 @@ class ResultTest(fixtures.TestBase):
     def test_scalars_freeze(self):
         result = self._fixture()
 
-        result = result.scalars(1)
-
         frozen = result.freeze()
 
         r1 = frozen()
-        eq_(r1.fetchall(), [1, 1, 3, 1])
+        eq_(r1.scalars(1).fetchall(), [1, 1, 3, 1])
 
-        r2 = frozen().unique()
+        r2 = frozen().scalars(1).unique()
         eq_(r2.fetchall(), [1, 3])
 
 
@@ -856,7 +927,7 @@ class MergeResultTest(fixtures.TestBase):
 
         result = r1.merge(r2, r3, r4)
 
-        eq_(result.all(), [7, 8, 9, 10, 11, 12])
+        eq_(result.scalars(0).all(), [7, 8, 9, 10, 11, 12])
 
     def test_merge_unique(self, dupe_fixture):
         r1, r2 = dupe_fixture
@@ -866,7 +937,7 @@ class MergeResultTest(fixtures.TestBase):
         result = r1.merge(r2)
 
         # uniqued 2, 2, 1, 3
-        eq_(result.unique().all(), [2, 1, 3])
+        eq_(result.scalars("y").unique().all(), [2, 1, 3])
 
     def test_merge_preserve_unique(self, dupe_fixture):
         r1, r2 = dupe_fixture
@@ -876,7 +947,7 @@ class MergeResultTest(fixtures.TestBase):
         result = r1.merge(r2)
 
         # unique takes place
-        eq_(result.all(), [2, 1, 3])
+        eq_(result.scalars("y").all(), [2, 1, 3])
 
 
 class OnlyScalarsTest(fixtures.TestBase):
@@ -924,17 +995,30 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         return chunks
 
-    def test_scalar_mode_scalars_mapping(self, no_tuple_fixture):
+    def test_scalar_mode_columns0_mapping(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
 
         r = result.ChunkedIteratorResult(
             metadata, no_tuple_fixture, source_supports_scalars=True
         )
 
-        r = r.scalars().mappings()
+        r = r.columns(0).mappings()
         eq_(
             list(r), [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
         )
+
+    def test_scalar_mode_but_accessed_nonscalar_result(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(["a", "b", "c"])
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True
+        )
+
+        s1 = r.scalars()
+
+        eq_(r.fetchone(), (1,))
+
+        eq_(s1.all(), [2, 1, 1, 4])
 
     def test_scalar_mode_scalars_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])

@@ -21,6 +21,15 @@ from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
 from ..util import collections_abc
 
+if util.TYPE_CHECKING:
+    from typing import Any
+    from typing import List
+    from typing import Optional
+    from typing import Int
+    from typing import Iterator
+    from typing import Mapping
+
+
 if _baserow_usecext:
     from sqlalchemy.cresultproxy import tuplegetter
 
@@ -275,302 +284,21 @@ def result_tuple(fields, extra=None):
 _NO_ROW = util.symbol("NO_ROW")
 
 
-class Result(InPlaceGenerative):
-    """Represent a set of database results.
-
-    .. versionadded:: 1.4  The :class:`.Result` object provides a completely
-       updated usage model and calling facade for SQLAlchemy Core and
-       SQLAlchemy ORM.   In Core, it forms the basis of the
-       :class:`.CursorResult` object which replaces the previous
-       :class:`.ResultProxy` interface.   When using the ORM, a higher level
-       object called :class:`.ChunkedIteratorResult` is normally used.
-
-    """
-
-    _process_row = Row
-
-    _row_logging_fn = None
-
-    _source_supports_scalars = False
+class ResultInternal(InPlaceGenerative):
+    _real_result = None
     _generate_rows = True
-    _column_slice_filter = None
-    _post_creational_filter = None
     _unique_filter_state = None
-    _no_scalar_onerow = False
-    _yield_per = None
-
-    _attributes = util.immutabledict()
-
-    def __init__(self, cursor_metadata):
-        self._metadata = cursor_metadata
-
-    def _soft_close(self, hard=False):
-        raise NotImplementedError()
-
-    def keys(self):
-        """Return an iterable view which yields the string keys that would
-        be represented by each :class:`.Row`.
-
-        The view also can be tested for key containment using the Python
-        ``in`` operator, which will test both for the string keys represented
-        in the view, as well as for alternate keys such as column objects.
-
-        .. versionchanged:: 1.4 a key view object is returned rather than a
-           plain list.
-
-
-        """
-        return self._metadata.keys
-
-    @_generative
-    def yield_per(self, num):
-        """Configure the row-fetching strategy to fetch num rows at a time.
-
-        This impacts the underlying behavior of the result when iterating over
-        the result object, or otherwise making use of  methods such as
-        :meth:`_engine.Result.fetchone` that return one row at a time.   Data
-        from the underlying cursor or other data source will be buffered up to
-        this many rows in memory, and the buffered collection will then be
-        yielded out one row at at time or as many rows are requested. Each time
-        the buffer clears, it will be refreshed to this many rows or as many
-        rows remain if fewer remain.
-
-        The :meth:`_engine.Result.yield_per` method is generally used in
-        conjunction with the
-        :paramref:`_engine.Connection.execution_options.stream_results`
-        execution option, which will allow the database dialect in use to make
-        use of a server side cursor, if the DBAPI supports it.
-
-        Most DBAPIs do not use server side cursors by default, which means  all
-        rows will be fetched upfront from the database regardless of  the
-        :meth:`_engine.Result.yield_per` setting.  However,
-        :meth:`_engine.Result.yield_per` may still be useful in that it batches
-        the SQLAlchemy-side processing of the raw data from the database, and
-        additionally when used for ORM scenarios will batch the conversion of
-        database rows into  ORM entity rows.
-
-
-        .. versionadded:: 1.4
-
-        :param num: number of rows to fetch each time the buffer is refilled.
-         If set to a value below 1, fetches all rows for the next buffer.
-
-        """
-        self._yield_per = num
-
-    @_generative
-    def unique(self, strategy=None):
-        """Apply unique filtering to the objects returned by this
-        :class:`_engine.Result`.
-
-        When this filter is applied with no arguments, the rows or objects
-        returned will filtered such that each row is returned uniquely. The
-        algorithm used to determine this uniqueness is by default the Python
-        hashing identity of the whole tuple.   In some cases a specialized
-        per-entity hashing scheme may be used, such as when using the ORM, a
-        scheme is applied which  works against the primary key identity of
-        returned objects.
-
-        The unique filter is applied **after all other filters**, which means
-        if the columns returned have been refined using a method such as the
-        :meth:`_engine.Result.columns` or :meth:`_engine.Result.scalars`
-        method, the uniquing is applied to **only the column or columns
-        returned**.   This occurs regardless of the order in which these
-        methods have been called upon the :class:`_engine.Result` object.
-
-        The unique filter also changes the calculus used for methods like
-        :meth:`_engine.Result.fetchmany` and :meth:`_engine.Result.partitions`.
-        When using :meth:`_engine.Result.unique`, these methods will continue
-        to yield the number of rows or objects requested, after uniquing
-        has been applied.  However, this necessarily impacts the buffering
-        behavior of the underlying cursor or datasource, such that multiple
-        underlying calls to ``cursor.fetchmany()`` may be necessary in order
-        to accumulate enough objects in order to provide a unique collection
-        of the requested size.
-
-        :param strategy: a callable that will be applied to rows or objects
-         being iterated, which should return an object that represents the
-         unique value of the row.   A Python ``set()`` is used to store
-         these identities.   If not passed, a default uniqueness strategy
-         is used which may have been assembled by the source of this
-         :class:`_engine.Result` object.
-
-        """
-        self._unique_filter_state = (set(), strategy)
-
-    @HasMemoized.memoized_attribute
-    def _unique_strategy(self):
-        uniques, strategy = self._unique_filter_state
-
-        if not strategy and self._metadata._unique_filters:
-            if self._source_supports_scalars:
-                strategy = self._metadata._unique_filters[0]
-            else:
-                filters = self._metadata._unique_filters
-                if self._metadata._tuplefilter:
-                    filters = self._metadata._tuplefilter(filters)
-
-                strategy = operator.methodcaller("_filter_on_values", filters)
-        return uniques, strategy
-
-    def columns(self, *col_expressions):
-        r"""Establish the columns that should be returned in each row.
-
-        This method may be used to limit the columns returned as well
-        as to reorder them.   The given list of expressions are normally
-        a series of integers or string key names.   They may also be
-        appropriate :class:`.ColumnElement` objects which correspond to
-        a given statement construct.
-
-        E.g.::
-
-            statement = select(table.c.x, table.c.y, table.c.z)
-            result = connection.execute(statement)
-
-            for z, y in result.columns('z', 'y'):
-                # ...
-
-
-        Example of using the column objects from the statement itself::
-
-            for z, y in result.columns(
-                    statement.selected_columns.c.z,
-                    statement.selected_columns.c.y
-            ):
-                # ...
-
-        .. versionadded:: 1.4
-
-        :param \*col_expressions: indicates columns to be returned.  Elements
-         may be integer row indexes, string column names, or appropriate
-         :class:`.ColumnElement` objects corresponding to a select construct.
-
-        :return: this :class:`_engine.Result` object with the modifications
-         given.
-
-        """
-        return self._column_slices(col_expressions)
-
-    def partitions(self, size=None):
-        """Iterate through sub-lists of rows of the size given.
-
-        Each list will be of the size given, excluding the last list to
-        be yielded, which may have a small number of rows.  No empty
-        lists will be yielded.
-
-        The result object is automatically closed when the iterator
-        is fully consumed.
-
-        Note that the backend driver will usually buffer the entire result
-        ahead of time unless the
-        :paramref:`.Connection.execution_options.stream_results` execution
-        option is used indicating that the driver should not pre-buffer
-        results, if possible.   Not all drivers support this option and
-        the option is silently ignored for those who do.
-
-        .. versionadded:: 1.4
-
-        :param size: indicate the maximum number of rows to be present
-         in each list yielded.  If None, makes use of the value set by
-         :meth:`_engine.Result.yield_per`, if present, otherwise uses the
-         :meth:`_engine.Result.fetchmany` default which may be backend
-         specific.
-
-        :return: iterator of lists
-
-        """
-        getter = self._manyrow_getter
-
-        while True:
-            partition = getter(self, size)
-            if partition:
-                yield partition
-            else:
-                break
-
-    def scalars(self, index=0):
-        """Apply a scalars filter to returned rows.
-
-        When this filter is applied, fetching results will return Python scalar
-        objects from exactly one column of each row, rather than  :class:`.Row`
-        objects or mappings.
-
-        This filter cancels out other filters that may be established such
-        as that of :meth:`_engine.Result.mappings`.
-
-        .. versionadded:: 1.4
-
-        :param index: integer or row key indicating the column to be fetched
-         from each row, defaults to ``0`` indicating the first column.
-
-        :return: this :class:`_engine.Result` object with modifications.
-
-        """
-        result = self._column_slices([index])
-        if self._generate_rows:
-            result._post_creational_filter = operator.itemgetter(0)
-        result._no_scalar_onerow = True
-        return result
-
-    @_generative
-    def _column_slices(self, indexes):
-        if self._source_supports_scalars and len(indexes) == 1:
-            self._generate_rows = False
-        else:
-            self._generate_rows = True
-            self._metadata = self._metadata._reduce(indexes)
-
-    def _getter(self, key, raiseerr=True):
-        """return a callable that will retrieve the given key from a
-        :class:`.Row`.
-
-        """
-        if self._source_supports_scalars:
-            raise NotImplementedError(
-                "can't use this function in 'only scalars' mode"
-            )
-        return self._metadata._getter(key, raiseerr)
-
-    def _tuple_getter(self, keys):
-        """return a callable that will retrieve the given keys from a
-        :class:`.Row`.
-
-        """
-        if self._source_supports_scalars:
-            raise NotImplementedError(
-                "can't use this function in 'only scalars' mode"
-            )
-        return self._metadata._row_as_tuple_getter(keys)
-
-    @_generative
-    def mappings(self):
-        """Apply a mappings filter to returned rows.
-
-        When this filter is applied, fetching rows will return
-        :class:`.RowMapping` objects instead of :class:`.Row` objects.
-
-        This filter cancels out other filters that may be established such
-        as that of :meth:`_engine.Result.scalars`.
-
-        .. versionadded:: 1.4
-
-        :return: this :class:`._engine.Result` object with modifications.
-        """
-
-        if self._source_supports_scalars:
-            self._metadata = self._metadata._reduce([0])
-
-        self._post_creational_filter = operator.attrgetter("_mapping")
-        self._no_scalar_onerow = False
-        self._generate_rows = True
+    _post_creational_filter = None
 
     @HasMemoized.memoized_attribute
     def _row_getter(self):
-        if self._source_supports_scalars:
+        real_result = self._real_result if self._real_result else self
+
+        if real_result._source_supports_scalars:
             if not self._generate_rows:
                 return None
             else:
-                _proc = self._process_row
+                _proc = real_result._process_row
 
                 def process_row(
                     metadata, processors, keymap, key_style, scalar_obj
@@ -580,16 +308,16 @@ class Result(InPlaceGenerative):
                     )
 
         else:
-            process_row = self._process_row
+            process_row = real_result._process_row
 
-        key_style = self._process_row._default_key_style
+        key_style = real_result._process_row._default_key_style
         metadata = self._metadata
 
         keymap = metadata._keymap
         processors = metadata._processors
         tf = metadata._tuplefilter
 
-        if tf and not self._source_supports_scalars:
+        if tf and not real_result._source_supports_scalars:
             if processors:
                 processors = tf(processors)
 
@@ -607,13 +335,10 @@ class Result(InPlaceGenerative):
 
         fns = ()
 
-        if self._row_logging_fn:
-            fns = (self._row_logging_fn,)
+        if real_result._row_logging_fn:
+            fns = (real_result._row_logging_fn,)
         else:
             fns = ()
-
-        if self._column_slice_filter:
-            fns += (self._column_slice_filter,)
 
         if fns:
             _make_row = make_row
@@ -625,53 +350,6 @@ class Result(InPlaceGenerative):
                 return row
 
         return make_row
-
-    def _raw_row_iterator(self):
-        """Return a safe iterator that yields raw row data.
-
-        This is used by the :meth:`._engine.Result.merge` method
-        to merge multiple compatible results together.
-
-        """
-        raise NotImplementedError()
-
-    def freeze(self):
-        """Return a callable object that will produce copies of this
-        :class:`.Result` when invoked.
-
-        The callable object returned is an instance of
-        :class:`_engine.FrozenResult`.
-
-        This is used for result set caching.  The method must be called
-        on the result when it has been unconsumed, and calling the method
-        will consume the result fully.   When the :class:`_engine.FrozenResult`
-        is retrieved from a cache, it can be called any number of times where
-        it will produce a new :class:`_engine.Result` object each time
-        against its stored set of rows.
-
-        .. seealso::
-
-            :ref:`do_orm_execute_re_executing` - example usage within the
-            ORM to implement a result-set cache.
-
-        """
-        return FrozenResult(self)
-
-    def merge(self, *others):
-        """Merge this :class:`.Result` with other compatible result
-        objects.
-
-        The object returned is an instance of :class:`_engine.MergedResult`,
-        which will be composed of iterators from the given result
-        objects.
-
-        The new result will use the metadata from this result object.
-        The subsequent result objects must be against an identical
-        set of result / cursor metadata, otherwise the behavior is
-        undefined.
-
-        """
-        return MergedResult(self._metadata, (self,) + others)
 
     @HasMemoized.memoized_attribute
     def _iterator_getter(self):
@@ -712,6 +390,8 @@ class Result(InPlaceGenerative):
 
     def _allrows(self):
 
+        post_creational_filter = self._post_creational_filter
+
         make_row = self._row_getter
 
         rows = self._fetchall_impl()
@@ -719,8 +399,6 @@ class Result(InPlaceGenerative):
             made_rows = [make_row(row) for row in rows]
         else:
             made_rows = rows
-
-        post_creational_filter = self._post_creational_filter
 
         if self._unique_filter_state:
             uniques, strategy = self._unique_strategy
@@ -816,8 +494,11 @@ class Result(InPlaceGenerative):
                     # different DBAPIs / fetch strategies may be different.
                     # do a fetch to find what the number is.  if there are
                     # only fewer rows left, then it doesn't matter.
-                    if self._yield_per:
-                        num_required = num = self._yield_per
+                    real_result = (
+                        self._real_result if self._real_result else self
+                    )
+                    if real_result._yield_per:
+                        num_required = num = real_result._yield_per
                     else:
                         rows = _manyrows(num)
                         num = len(rows)
@@ -846,7 +527,10 @@ class Result(InPlaceGenerative):
 
             def manyrows(self, num):
                 if num is None:
-                    num = self._yield_per
+                    real_result = (
+                        self._real_result if self._real_result else self
+                    )
+                    num = real_result._yield_per
 
                 rows = self._fetchmany_impl(num)
                 if make_row:
@@ -857,107 +541,9 @@ class Result(InPlaceGenerative):
 
         return manyrows
 
-    def _fetchiter_impl(self):
-        raise NotImplementedError()
-
-    def _fetchone_impl(self, hard_close=False):
-        raise NotImplementedError()
-
-    def _fetchall_impl(self):
-        raise NotImplementedError()
-
-    def _fetchmany_impl(self, size=None):
-        raise NotImplementedError()
-
-    def __iter__(self):
-        return self._iterator_getter(self)
-
-    def __next__(self):
-        row = self._onerow_getter(self)
-        if row is _NO_ROW:
-            raise StopIteration()
-        else:
-            return row
-
-    next = __next__
-
-    def fetchall(self):
-        """A synonym for the :meth:`_engine.Result.all` method."""
-
-        return self._allrows()
-
-    def fetchone(self):
-        """Fetch one row.
-
-        When all rows are exhausted, returns None.
-
-        .. note:: This method is not compatible with the
-           :meth:`_result.Result.scalars`
-           filter, as there is no way to distinguish between a data value of
-           None and the ending value.   Prefer to use iterative / collection
-           methods which support scalar None values.
-
-        This method is provided for backwards compatibility with
-        SQLAlchemy 1.x.x.
-
-        To fetch the first row of a result only, use the
-        :meth:`_engine.Result.first` method.  To iterate through all
-        rows, iterate the :class:`_engine.Result` object directly.
-
-        :return: a :class:`.Row` object if no filters are applied, or None
-         if no rows remain.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
-         may be returned.
-
-        """
-        if self._no_scalar_onerow:
-            raise exc.InvalidRequestError(
-                "Can't use fetchone() when returning scalar values; there's "
-                "no way to distinguish between end of results and None"
-            )
-        row = self._onerow_getter(self)
-        if row is _NO_ROW:
-            return None
-        else:
-            return row
-
-    def fetchmany(self, size=None):
-        """Fetch many rows.
-
-        When all rows are exhausted, returns an empty list.
-
-        This method is provided for backwards compatibility with
-        SQLAlchemy 1.x.x.
-
-        To fetch rows in groups, use the :meth:`._result.Result.partitions`
-        method.
-
-        :return: a list of :class:`.Row` objects if no filters are applied.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
-         may be returned.
-
-        """
-        return self._manyrow_getter(self, size)
-
-    def all(self):
-        """Return all rows in a list.
-
-        Closes the result set after invocation.   Subsequent invocations
-        will return an empty list.
-
-        .. versionadded:: 1.4
-
-        :return: a list of :class:`.Row` objects if no filters are applied.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
-         may be returned.
-
-        """
-        return self._allrows()
-
-    def _only_one_row(self, raise_for_second_row, raise_for_none, scalar):
+    def _only_one_row(
+        self, raise_for_second_row, raise_for_none, scalar,
+    ):
         onerow = self._fetchone_impl
 
         row = onerow(hard_close=True)
@@ -1030,7 +616,396 @@ class Result(InPlaceGenerative):
         else:
             return row
 
+    @_generative
+    def _column_slices(self, indexes):
+        real_result = self._real_result if self._real_result else self
+
+        if real_result._source_supports_scalars and len(indexes) == 1:
+            self._generate_rows = False
+        else:
+            self._generate_rows = True
+            self._metadata = self._metadata._reduce(indexes)
+
+    @HasMemoized.memoized_attribute
+    def _unique_strategy(self):
+        uniques, strategy = self._unique_filter_state
+
+        real_result = (
+            self._real_result if self._real_result is not None else self
+        )
+
+        if not strategy and self._metadata._unique_filters:
+            if real_result._source_supports_scalars:
+                strategy = self._metadata._unique_filters[0]
+            else:
+                filters = self._metadata._unique_filters
+                if self._metadata._tuplefilter:
+                    filters = self._metadata._tuplefilter(filters)
+
+                strategy = operator.methodcaller("_filter_on_values", filters)
+        return uniques, strategy
+
+
+class Result(ResultInternal):
+    """Represent a set of database results.
+
+    .. versionadded:: 1.4  The :class:`.Result` object provides a completely
+       updated usage model and calling facade for SQLAlchemy Core and
+       SQLAlchemy ORM.   In Core, it forms the basis of the
+       :class:`.CursorResult` object which replaces the previous
+       :class:`.ResultProxy` interface.   When using the ORM, a higher level
+       object called :class:`.ChunkedIteratorResult` is normally used.
+
+    """
+
+    _process_row = Row
+
+    _row_logging_fn = None
+
+    _source_supports_scalars = False
+
+    _yield_per = None
+
+    _attributes = util.immutabledict()
+
+    def __init__(self, cursor_metadata):
+        self._metadata = cursor_metadata
+
+    def _soft_close(self, hard=False):
+        raise NotImplementedError()
+
+    def keys(self):
+        """Return an iterable view which yields the string keys that would
+        be represented by each :class:`.Row`.
+
+        The view also can be tested for key containment using the Python
+        ``in`` operator, which will test both for the string keys represented
+        in the view, as well as for alternate keys such as column objects.
+
+        .. versionchanged:: 1.4 a key view object is returned rather than a
+           plain list.
+
+
+        """
+        return self._metadata.keys
+
+    @_generative
+    def yield_per(self, num):
+        """Configure the row-fetching strategy to fetch num rows at a time.
+
+        This impacts the underlying behavior of the result when iterating over
+        the result object, or otherwise making use of  methods such as
+        :meth:`_engine.Result.fetchone` that return one row at a time.   Data
+        from the underlying cursor or other data source will be buffered up to
+        this many rows in memory, and the buffered collection will then be
+        yielded out one row at at time or as many rows are requested. Each time
+        the buffer clears, it will be refreshed to this many rows or as many
+        rows remain if fewer remain.
+
+        The :meth:`_engine.Result.yield_per` method is generally used in
+        conjunction with the
+        :paramref:`_engine.Connection.execution_options.stream_results`
+        execution option, which will allow the database dialect in use to make
+        use of a server side cursor, if the DBAPI supports it.
+
+        Most DBAPIs do not use server side cursors by default, which means  all
+        rows will be fetched upfront from the database regardless of  the
+        :meth:`_engine.Result.yield_per` setting.  However,
+        :meth:`_engine.Result.yield_per` may still be useful in that it batches
+        the SQLAlchemy-side processing of the raw data from the database, and
+        additionally when used for ORM scenarios will batch the conversion of
+        database rows into  ORM entity rows.
+
+
+        .. versionadded:: 1.4
+
+        :param num: number of rows to fetch each time the buffer is refilled.
+         If set to a value below 1, fetches all rows for the next buffer.
+
+        """
+        self._yield_per = num
+
+    @_generative
+    def unique(self, strategy=None):
+        # type(Optional[object]) -> Result
+        """Apply unique filtering to the objects returned by this
+        :class:`_engine.Result`.
+
+        When this filter is applied with no arguments, the rows or objects
+        returned will filtered such that each row is returned uniquely. The
+        algorithm used to determine this uniqueness is by default the Python
+        hashing identity of the whole tuple.   In some cases a specialized
+        per-entity hashing scheme may be used, such as when using the ORM, a
+        scheme is applied which  works against the primary key identity of
+        returned objects.
+
+        The unique filter is applied **after all other filters**, which means
+        if the columns returned have been refined using a method such as the
+        :meth:`_engine.Result.columns` or :meth:`_engine.Result.scalars`
+        method, the uniquing is applied to **only the column or columns
+        returned**.   This occurs regardless of the order in which these
+        methods have been called upon the :class:`_engine.Result` object.
+
+        The unique filter also changes the calculus used for methods like
+        :meth:`_engine.Result.fetchmany` and :meth:`_engine.Result.partitions`.
+        When using :meth:`_engine.Result.unique`, these methods will continue
+        to yield the number of rows or objects requested, after uniquing
+        has been applied.  However, this necessarily impacts the buffering
+        behavior of the underlying cursor or datasource, such that multiple
+        underlying calls to ``cursor.fetchmany()`` may be necessary in order
+        to accumulate enough objects in order to provide a unique collection
+        of the requested size.
+
+        :param strategy: a callable that will be applied to rows or objects
+         being iterated, which should return an object that represents the
+         unique value of the row.   A Python ``set()`` is used to store
+         these identities.   If not passed, a default uniqueness strategy
+         is used which may have been assembled by the source of this
+         :class:`_engine.Result` object.
+
+        """
+        self._unique_filter_state = (set(), strategy)
+
+    def columns(self, *col_expressions):
+        # type: (*object) -> Result
+        r"""Establish the columns that should be returned in each row.
+
+        This method may be used to limit the columns returned as well
+        as to reorder them.   The given list of expressions are normally
+        a series of integers or string key names.   They may also be
+        appropriate :class:`.ColumnElement` objects which correspond to
+        a given statement construct.
+
+        E.g.::
+
+            statement = select(table.c.x, table.c.y, table.c.z)
+            result = connection.execute(statement)
+
+            for z, y in result.columns('z', 'y'):
+                # ...
+
+
+        Example of using the column objects from the statement itself::
+
+            for z, y in result.columns(
+                    statement.selected_columns.c.z,
+                    statement.selected_columns.c.y
+            ):
+                # ...
+
+        .. versionadded:: 1.4
+
+        :param \*col_expressions: indicates columns to be returned.  Elements
+         may be integer row indexes, string column names, or appropriate
+         :class:`.ColumnElement` objects corresponding to a select construct.
+
+        :return: this :class:`_engine.Result` object with the modifications
+         given.
+
+        """
+        return self._column_slices(col_expressions)
+
+    def scalars(self, index=0):
+        # type: (Int) -> ScalarResult
+        """Return a :class:`_result.ScalarResult` filtering object which
+        will return single elements rather than :class:`_row.Row` objects.
+
+        E.g.::
+
+            >>> result = conn.execute(text("select int_id from table"))
+            >>> result.scalars().all()
+            [1, 2, 3]
+
+        When results are fetched from the :class:`_result.ScalarResult`
+        filtering object, the single column-row that would be returned by the
+        :class:`_result.Result` is instead returned as the column's value.
+
+        .. versionadded:: 1.4
+
+        :param index: integer or row key indicating the column to be fetched
+         from each row, defaults to ``0`` indicating the first column.
+
+        :return: a new :class:`_result.ScalarResult` filtering object referring
+         to this :class:`_result.Result` object.
+
+        """
+        return ScalarResult(self, index)
+
+    def _getter(self, key, raiseerr=True):
+        """return a callable that will retrieve the given key from a
+        :class:`.Row`.
+
+        """
+        if self._source_supports_scalars:
+            raise NotImplementedError(
+                "can't use this function in 'only scalars' mode"
+            )
+        return self._metadata._getter(key, raiseerr)
+
+    def _tuple_getter(self, keys):
+        """return a callable that will retrieve the given keys from a
+        :class:`.Row`.
+
+        """
+        if self._source_supports_scalars:
+            raise NotImplementedError(
+                "can't use this function in 'only scalars' mode"
+            )
+        return self._metadata._row_as_tuple_getter(keys)
+
+    def mappings(self):
+        # type() -> MappingResult
+        """Apply a mappings filter to returned rows, returning an instance of
+        :class:`_result.MappingResult`.
+
+        When this filter is applied, fetching rows will return
+        :class:`.RowMapping` objects instead of :class:`.Row` objects.
+
+        .. versionadded:: 1.4
+
+        :return: a new :class:`_result.MappingResult` filtering object
+         referring to this :class:`_result.Result` object.
+
+        """
+
+        return MappingResult(self)
+
+    def _raw_row_iterator(self):
+        """Return a safe iterator that yields raw row data.
+
+        This is used by the :meth:`._engine.Result.merge` method
+        to merge multiple compatible results together.
+
+        """
+        raise NotImplementedError()
+
+    def _fetchiter_impl(self):
+        raise NotImplementedError()
+
+    def _fetchone_impl(self, hard_close=False):
+        raise NotImplementedError()
+
+    def _fetchall_impl(self):
+        raise NotImplementedError()
+
+    def _fetchmany_impl(self, size=None):
+        raise NotImplementedError()
+
+    def __iter__(self):
+        return self._iterator_getter(self)
+
+    def __next__(self):
+        row = self._onerow_getter(self)
+        if row is _NO_ROW:
+            raise StopIteration()
+        else:
+            return row
+
+    next = __next__
+
+    def partitions(self, size=None):
+        # type: (Optional[Int]) -> Iterator[List[Row]]
+        """Iterate through sub-lists of rows of the size given.
+
+        Each list will be of the size given, excluding the last list to
+        be yielded, which may have a small number of rows.  No empty
+        lists will be yielded.
+
+        The result object is automatically closed when the iterator
+        is fully consumed.
+
+        Note that the backend driver will usually buffer the entire result
+        ahead of time unless the
+        :paramref:`.Connection.execution_options.stream_results` execution
+        option is used indicating that the driver should not pre-buffer
+        results, if possible.   Not all drivers support this option and
+        the option is silently ignored for those who do.
+
+        .. versionadded:: 1.4
+
+        :param size: indicate the maximum number of rows to be present
+         in each list yielded.  If None, makes use of the value set by
+         :meth:`_engine.Result.yield_per`, if present, otherwise uses the
+         :meth:`_engine.Result.fetchmany` default which may be backend
+         specific.
+
+        :return: iterator of lists
+
+        """
+
+        getter = self._manyrow_getter
+
+        while True:
+            partition = getter(self, size)
+            if partition:
+                yield partition
+            else:
+                break
+
+    def fetchall(self):
+        # type: () -> List[Row]
+        """A synonym for the :meth:`_engine.Result.all` method."""
+
+        return self._allrows()
+
+    def fetchone(self):
+        # type: () -> Row
+        """Fetch one row.
+
+        When all rows are exhausted, returns None.
+
+        This method is provided for backwards compatibility with
+        SQLAlchemy 1.x.x.
+
+        To fetch the first row of a result only, use the
+        :meth:`_engine.Result.first` method.  To iterate through all
+        rows, iterate the :class:`_engine.Result` object directly.
+
+        :return: a :class:`.Row` object if no filters are applied, or None
+         if no rows remain.
+
+        """
+        row = self._onerow_getter(self)
+        if row is _NO_ROW:
+            return None
+        else:
+            return row
+
+    def fetchmany(self, size=None):
+        # type: (Optional[Int]) -> List[Row]
+        """Fetch many rows.
+
+        When all rows are exhausted, returns an empty list.
+
+        This method is provided for backwards compatibility with
+        SQLAlchemy 1.x.x.
+
+        To fetch rows in groups, use the :meth:`._result.Result.partitions`
+        method.
+
+        :return: a list of :class:`.Row` objects.
+
+        """
+
+        return self._manyrow_getter(self, size)
+
+    def all(self):
+        # type: () -> List[Row]
+        """Return all rows in a list.
+
+        Closes the result set after invocation.   Subsequent invocations
+        will return an empty list.
+
+        .. versionadded:: 1.4
+
+        :return: a list of :class:`.Row` objects.
+
+        """
+
+        return self._allrows()
+
     def first(self):
+        # type: () -> Row
         """Fetch the first row or None if no row is present.
 
         Closes the result set and discards remaining rows.
@@ -1042,11 +1017,8 @@ class Result(InPlaceGenerative):
 
         .. comment: A warning is emitted if additional rows remain.
 
-        :return: a :class:`.Row` object if no filters are applied, or None
+        :return: a :class:`.Row` object, or None
          if no rows remain.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalars`, different kinds of objects
-         may be returned.
 
          .. seealso::
 
@@ -1058,6 +1030,7 @@ class Result(InPlaceGenerative):
         return self._only_one_row(False, False, False)
 
     def one_or_none(self):
+        # type: () -> Optional[Row]
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the result has no rows.
@@ -1067,9 +1040,6 @@ class Result(InPlaceGenerative):
         .. versionadded:: 1.4
 
         :return: The first :class:`.Row` or None if no row is available.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
-         may be returned.
 
         :raises: :class:`.MultipleResultsFound`
 
@@ -1083,6 +1053,7 @@ class Result(InPlaceGenerative):
         return self._only_one_row(True, False, False)
 
     def scalar_one(self):
+        # type: () -> Any
         """Return exactly one scalar result or raise an exception.
 
         This is equvalent to calling :meth:`.Result.scalars` and then
@@ -1098,6 +1069,7 @@ class Result(InPlaceGenerative):
         return self._only_one_row(True, True, True)
 
     def scalar_one_or_none(self):
+        # type: () -> Optional[Any]
         """Return exactly one or no scalar result.
 
         This is equvalent to calling :meth:`.Result.scalars` and then
@@ -1113,6 +1085,7 @@ class Result(InPlaceGenerative):
         return self._only_one_row(True, False, True)
 
     def one(self):
+        # type: () -> Row
         """Return exactly one row or raise an exception.
 
         Raises :class:`.NoResultFound` if the result returns no
@@ -1127,9 +1100,6 @@ class Result(InPlaceGenerative):
         .. versionadded:: 1.4
 
         :return: The first :class:`.Row`.
-         When filters are applied, such as :meth:`_engine.Result.mappings`
-         or :meth:`._engine.Result.scalar`, different kinds of objects
-         may be returned.
 
         :raises: :class:`.MultipleResultsFound`, :class:`.NoResultFound`
 
@@ -1145,6 +1115,7 @@ class Result(InPlaceGenerative):
         return self._only_one_row(True, True, False)
 
     def scalar(self):
+        # type: () -> Optional[Any]
         """Fetch the first column of the first row, and close the result set.
 
         Returns None if there are no rows to fetch.
@@ -1159,6 +1130,362 @@ class Result(InPlaceGenerative):
 
         """
         return self._only_one_row(False, False, True)
+
+    def freeze(self):
+        """Return a callable object that will produce copies of this
+        :class:`.Result` when invoked.
+
+        The callable object returned is an instance of
+        :class:`_engine.FrozenResult`.
+
+        This is used for result set caching.  The method must be called
+        on the result when it has been unconsumed, and calling the method
+        will consume the result fully.   When the :class:`_engine.FrozenResult`
+        is retrieved from a cache, it can be called any number of times where
+        it will produce a new :class:`_engine.Result` object each time
+        against its stored set of rows.
+
+        .. seealso::
+
+            :ref:`do_orm_execute_re_executing` - example usage within the
+            ORM to implement a result-set cache.
+
+        """
+
+        return FrozenResult(self)
+
+    def merge(self, *others):
+        """Merge this :class:`.Result` with other compatible result
+        objects.
+
+        The object returned is an instance of :class:`_engine.MergedResult`,
+        which will be composed of iterators from the given result
+        objects.
+
+        The new result will use the metadata from this result object.
+        The subsequent result objects must be against an identical
+        set of result / cursor metadata, otherwise the behavior is
+        undefined.
+
+        """
+        return MergedResult(self._metadata, (self,) + others)
+
+
+class FilterResult(ResultInternal):
+    """A wrapper for a :class:`_engine.Result` that returns objects other than
+    :class:`_result.Row` objects, such as dictionaries or scalar objects.
+
+    """
+
+    _post_creational_filter = None
+
+    def _soft_close(self, hard=False):
+        self._real_result._soft_close(hard=hard)
+
+    @property
+    def _attributes(self):
+        return self._real_result._attributes
+
+    def __iter__(self):
+        return self._iterator_getter(self)
+
+    def __next__(self):
+        row = self._onerow_getter(self)
+        if row is _NO_ROW:
+            raise StopIteration()
+        else:
+            return row
+
+    next = __next__
+
+    def _fetchiter_impl(self):
+        return self._real_result._fetchiter_impl()
+
+    def _fetchone_impl(self, hard_close=False):
+        return self._real_result._fetchone_impl(hard_close=hard_close)
+
+    def _fetchall_impl(self):
+        return self._real_result._fetchall_impl()
+
+    def _fetchmany_impl(self, size=None):
+        return self._real_result._fetchmany_impl(size=size)
+
+
+class ScalarResult(FilterResult):
+    """A wrapper for a :class:`_result.Result` that returns scalar values
+    rather than :class:`_row.Row` values.
+
+    The :class:`_result.ScalarResult` object is acquired by calling the
+    :meth:`_result.Result.scalars` method.
+
+    A special limitation of :class:`_result.ScalarResult` is that it has
+    no ``fetchone()`` method; since the semantics of ``fetchone()`` are that
+    the ``None`` value indicates no more results, this is not compatible
+    with :class:`_result.ScalarResult` since there is no way to distinguish
+    between ``None`` as a row value versus ``None`` as an indicator.  Use
+    ``next(result)`` to receive values individually.
+
+    """
+
+    _generate_rows = False
+
+    def __init__(self, real_result, index):
+        self._real_result = real_result
+
+        if real_result._source_supports_scalars:
+            self._metadata = real_result._metadata
+            self._post_creational_filter = None
+        else:
+            self._metadata = real_result._metadata._reduce([index])
+            self._post_creational_filter = operator.itemgetter(0)
+
+        self._unique_filter_state = real_result._unique_filter_state
+
+    def unique(self, strategy=None):
+        # type: () -> ScalarResult
+        """Apply unique filtering to the objects returned by this
+        :class:`_engine.ScalarResult`.
+
+        See :meth:`_engine.Result.unique` for usage details.
+
+        """
+        self._unique_filter_state = (set(), strategy)
+        return self
+
+    def partitions(self, size=None):
+        # type: (Optional[Int]) -> Iterator[List[Any]]
+        """Iterate through sub-lists of elements of the size given.
+
+        Equivalent to :meth:`_result.Result.partitions` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+
+        getter = self._manyrow_getter
+
+        while True:
+            partition = getter(self, size)
+            if partition:
+                yield partition
+            else:
+                break
+
+    def fetchall(self):
+        # type: () -> List[Any]
+        """A synonym for the :meth:`_engine.ScalarResult.all` method."""
+
+        return self._allrows()
+
+    def fetchmany(self, size=None):
+        # type: (Optional[Int]) -> List[Any]
+        """Fetch many objects.
+
+        Equivalent to :meth:`_result.Result.fetchmany` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._manyrow_getter(self, size)
+
+    def all(self):
+        # type: () -> List[Any]
+        """Return all scalar values in a list.
+
+        Equivalent to :meth:`_result.Result.all` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._allrows()
+
+    def first(self):
+        # type: () -> Optional[Any]
+        """Fetch the first object or None if no object is present.
+
+        Equivalent to :meth:`_result.Result.first` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+
+        """
+        return self._only_one_row(False, False, False)
+
+    def one_or_none(self):
+        # type: () -> Optional[Any]
+        """Return at most one object or raise an exception.
+
+        Equivalent to :meth:`_result.Result.one_or_none` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._only_one_row(True, False, False)
+
+    def one(self):
+        # type: () -> Any
+        """Return exactly one object or raise an exception.
+
+        Equivalent to :meth:`_result.Result.one` except that
+        scalar values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._only_one_row(True, True, False)
+
+
+class MappingResult(FilterResult):
+    """A wrapper for a :class:`_engine.Result` that returns dictionary values
+    rather than :class:`_engine.Row` values.
+
+    The :class:`_engine.MappingResult` object is acquired by calling the
+    :meth:`_engine.Result.mappings` method.
+
+    """
+
+    _generate_rows = True
+
+    _post_creational_filter = operator.attrgetter("_mapping")
+
+    def __init__(self, result):
+        self._real_result = result
+        self._unique_filter_state = result._unique_filter_state
+        self._metadata = result._metadata
+        if result._source_supports_scalars:
+            self._metadata = self._metadata._reduce([0])
+
+    def keys(self):
+        """Return an iterable view which yields the string keys that would
+        be represented by each :class:`.Row`.
+
+        The view also can be tested for key containment using the Python
+        ``in`` operator, which will test both for the string keys represented
+        in the view, as well as for alternate keys such as column objects.
+
+        .. versionchanged:: 1.4 a key view object is returned rather than a
+           plain list.
+
+
+        """
+        return self._metadata.keys
+
+    def unique(self, strategy=None):
+        # type: () -> MappingResult
+        """Apply unique filtering to the objects returned by this
+        :class:`_engine.MappingResult`.
+
+        See :meth:`_engine.Result.unique` for usage details.
+
+        """
+        self._unique_filter_state = (set(), strategy)
+        return self
+
+    def columns(self, *col_expressions):
+        # type: (*object) -> MappingResult
+        r"""Establish the columns that should be returned in each row.
+
+
+        """
+        return self._column_slices(col_expressions)
+
+    def partitions(self, size=None):
+        # type: (Optional[Int]) -> Iterator[List[Mapping]]
+        """Iterate through sub-lists of elements of the size given.
+
+        Equivalent to :meth:`_result.Result.partitions` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+
+        getter = self._manyrow_getter
+
+        while True:
+            partition = getter(self, size)
+            if partition:
+                yield partition
+            else:
+                break
+
+    def fetchall(self):
+        # type: () -> List[Mapping]
+        """A synonym for the :meth:`_engine.ScalarResult.all` method."""
+
+        return self._allrows()
+
+    def fetchone(self):
+        # type: () -> Mapping
+        """Fetch one object.
+
+        Equivalent to :meth:`_result.Result.fetchone` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+
+        row = self._onerow_getter(self)
+        if row is _NO_ROW:
+            return None
+        else:
+            return row
+
+    def fetchmany(self, size=None):
+        # type: (Optional[Int]) -> List[Mapping]
+        """Fetch many objects.
+
+        Equivalent to :meth:`_result.Result.fetchmany` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+
+        return self._manyrow_getter(self, size)
+
+    def all(self):
+        # type: () -> List[Mapping]
+        """Return all scalar values in a list.
+
+        Equivalent to :meth:`_result.Result.all` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+
+        return self._allrows()
+
+    def first(self):
+        # type: () -> Optional[Mapping]
+        """Fetch the first object or None if no object is present.
+
+        Equivalent to :meth:`_result.Result.first` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+
+        """
+        return self._only_one_row(False, False, False)
+
+    def one_or_none(self):
+        # type: () -> Optional[Mapping]
+        """Return at most one object or raise an exception.
+
+        Equivalent to :meth:`_result.Result.one_or_none` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._only_one_row(True, False, False)
+
+    def one(self):
+        # type: () -> Mapping
+        """Return exactly one object or raise an exception.
+
+        Equivalent to :meth:`_result.Result.one` except that
+        mapping values, rather than :class:`_result.Row` objects,
+        are returned.
+
+        """
+        return self._only_one_row(True, True, False)
 
 
 class FrozenResult(object):
@@ -1204,11 +1531,8 @@ class FrozenResult(object):
 
     def __init__(self, result):
         self.metadata = result._metadata._for_freeze()
-        self._post_creational_filter = result._post_creational_filter
-        self._generate_rows = result._generate_rows
         self._source_supports_scalars = result._source_supports_scalars
         self._attributes = result._attributes
-        result._post_creational_filter = None
 
         if self._source_supports_scalars:
             self.data = list(result._raw_row_iterator())
@@ -1224,8 +1548,6 @@ class FrozenResult(object):
     def with_new_rows(self, tuple_data):
         fr = FrozenResult.__new__(FrozenResult)
         fr.metadata = self.metadata
-        fr._post_creational_filter = self._post_creational_filter
-        fr._generate_rows = self._generate_rows
         fr._attributes = self._attributes
         fr._source_supports_scalars = self._source_supports_scalars
 
@@ -1237,8 +1559,6 @@ class FrozenResult(object):
 
     def __call__(self):
         result = IteratorResult(self.metadata, iter(self.data))
-        result._post_creational_filter = self._post_creational_filter
-        result._generate_rows = self._generate_rows
         result._attributes = self._attributes
         result._source_supports_scalars = self._source_supports_scalars
         return result
@@ -1342,14 +1662,11 @@ class MergedResult(IteratorResult):
         )
 
         self._unique_filter_state = results[0]._unique_filter_state
-        self._post_creational_filter = results[0]._post_creational_filter
-        self._no_scalar_onerow = results[0]._no_scalar_onerow
         self._yield_per = results[0]._yield_per
 
         # going to try someting w/ this in next rev
         self._source_supports_scalars = results[0]._source_supports_scalars
 
-        self._generate_rows = results[0]._generate_rows
         self._attributes = self._attributes.merge_with(
             *[r._attributes for r in results]
         )
