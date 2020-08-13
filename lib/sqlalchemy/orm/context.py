@@ -923,7 +923,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     def _simple_statement(self):
 
-        if (self.distinct and not self.distinct_on) and self.order_by:
+        if (
+            self.compile_options._use_legacy_query_style
+            and (self.distinct and not self.distinct_on)
+            and self.order_by
+        ):
             to_add = sql_util.expand_column_list_from_order_by(
                 self.primary_columns, self.order_by
             )

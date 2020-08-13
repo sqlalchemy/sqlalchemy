@@ -5,5 +5,8 @@
     Repaired an issue where the "ORDER BY" clause rendering a label name rather
     than a complete expression, which is particularly important for SQL Server,
     would fail to occur if the expression were enclosed in a parenthesized
-    grouping in some cases.   This case has been added to test support.
+    grouping in some cases.   This case has been added to test support. The
+    change additionally adjusts the "automatically add ORDER BY columns when
+    DISTINCT is present" behavior of ORM query, deprecated in 1.4, to more
+    accurately detect column expressions that are already present.
 
