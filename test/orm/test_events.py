@@ -2768,6 +2768,25 @@ class QueryEventsTest(
             )
         )
 
+    def test_before_compile_execution_options(self):
+        User = self.classes.User
+
+        @event.listens_for(query.Query, "before_compile", retval=True)
+        def _before_compile(query):
+            return query.execution_options(my_option=True)
+
+        opts = {}
+
+        @event.listens_for(testing.db, "before_cursor_execute")
+        def _before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            opts.update(context.execution_options)
+
+        sess = create_session(bind=testing.db, autocommit=False)
+        sess.query(User).first()
+        eq_(opts["my_option"], True)
+
 
 class RefreshFlushInReturningTest(fixtures.MappedTest):
     """test [ticket:3427].
