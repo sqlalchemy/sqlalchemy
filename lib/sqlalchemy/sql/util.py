@@ -27,6 +27,8 @@ from .elements import _textual_label_reference
 from .elements import BindParameter
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import Grouping
+from .elements import Label
 from .elements import Null
 from .elements import UnaryExpression
 from .schema import Column
@@ -282,6 +284,17 @@ def unwrap_order_by(clause):
             not isinstance(t, UnaryExpression)
             or not operators.is_ordering_modifier(t.modifier)
         ):
+            if isinstance(t, Label) and not isinstance(
+                t.element, ScalarSelect
+            ):
+                t = t.element
+
+                if isinstance(t, Grouping):
+                    t = t.element
+
+                stack.append(t)
+                continue
+
             if isinstance(t, _label_reference):
                 t = t.element
             if isinstance(t, (_textual_label_reference)):
@@ -317,11 +330,9 @@ def expand_column_list_from_order_by(collist, order_by):
         ]
     )
 
-    return [
-        col
-        for col in chain(*[unwrap_order_by(o) for o in order_by])
-        if col not in cols_already_present
-    ]
+    to_look_for = list(chain(*[unwrap_order_by(o) for o in order_by]))
+
+    return [col for col in to_look_for if col not in cols_already_present]
 
 
 def clause_is_present(clause, search):

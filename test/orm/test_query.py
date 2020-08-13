@@ -3,6 +3,7 @@ import functools
 
 import sqlalchemy as sa
 from sqlalchemy import and_
+from sqlalchemy import asc
 from sqlalchemy import between
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
@@ -3785,6 +3786,76 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .distinct()
             .order_by(desc(User.name))
             .all(),
+        )
+
+    def test_issue_5470_one(self):
+        User = self.classes.User
+
+        expr = (User.id.op("+")(2)).label("label")
+
+        sess = create_session()
+
+        q = sess.query(expr).select_from(User).order_by(desc(expr)).distinct()
+
+        # no double col in the select list,
+        # orders by the label
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT users.id + :id_1 AS label "
+            "FROM users ORDER BY label DESC",
+        )
+
+    def test_issue_5470_two(self):
+        User = self.classes.User
+
+        expr = User.id + literal(1)
+
+        sess = create_session()
+        q = sess.query(expr).select_from(User).order_by(asc(expr)).distinct()
+
+        # no double col in the select list,
+        # there's no label so this is the requested SQL
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT users.id + :param_1 AS anon_1 "
+            "FROM users ORDER BY users.id + :param_1 ASC",
+        )
+
+    def test_issue_5470_three(self):
+        User = self.classes.User
+
+        expr = (User.id + literal(1)).label("label")
+
+        sess = create_session()
+        q = sess.query(expr).select_from(User).order_by(asc(expr)).distinct()
+
+        # no double col in the select list,
+        # orders by the label
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT users.id + :param_1 AS label "
+            "FROM users ORDER BY label ASC",
+        )
+
+    def test_issue_5470_four(self):
+        User = self.classes.User
+
+        expr = (User.id + literal(1)).label("label")
+
+        sess = create_session()
+        q = (
+            sess.query(expr)
+            .select_from(User)
+            .order_by(asc("label"))
+            .distinct()
+        )
+
+        # no double col in the select list,
+        # orders by the label
+        self.assert_compile(
+            q,
+            "SELECT DISTINCT users.id + :param_1 AS label "
+            "FROM users ORDER BY label ASC",
         )
 
     def test_columns_augmented_roundtrip_one(self):
