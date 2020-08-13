@@ -74,30 +74,41 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
         ]
 
     if compile_state._has_multi_parameters:
-        stmt_parameters = compile_state._multi_parameters[0]
+        spd = compile_state._multi_parameters[0]
+        stmt_parameter_tuples = list(spd.items())
+    elif compile_state._ordered_values:
+        spd = compile_state._dict_parameters
+        stmt_parameter_tuples = compile_state._ordered_values
+    elif compile_state._dict_parameters:
+        spd = compile_state._dict_parameters
+        stmt_parameter_tuples = list(spd.items())
     else:
-        stmt_parameters = compile_state._dict_parameters
+        stmt_parameter_tuples = spd = None
 
     # if we have statement parameters - set defaults in the
     # compiled params
     if compiler.column_keys is None:
         parameters = {}
-    else:
+    elif stmt_parameter_tuples:
         parameters = dict(
             (_column_as_key(key), REQUIRED)
             for key in compiler.column_keys
-            if not stmt_parameters or key not in stmt_parameters
+            if key not in spd
+        )
+    else:
+        parameters = dict(
+            (_column_as_key(key), REQUIRED) for key in compiler.column_keys
         )
 
     # create a list of column assignment clauses as tuples
     values = []
 
-    if stmt_parameters is not None:
-        _get_stmt_parameters_params(
+    if stmt_parameter_tuples is not None:
+        _get_stmt_parameter_tuples_params(
             compiler,
             compile_state,
             parameters,
-            stmt_parameters,
+            stmt_parameter_tuples,
             _column_as_key,
             values,
             kw,
@@ -112,7 +123,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             compiler,
             stmt,
             compile_state,
-            stmt_parameters,
+            stmt_parameter_tuples,
             check_columns,
             _col_bind_name,
             _getattr_col_key,
@@ -147,10 +158,10 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
             kw,
         )
 
-    if parameters and stmt_parameters:
+    if parameters and stmt_parameter_tuples:
         check = (
             set(parameters)
-            .intersection(_column_as_key(k) for k in stmt_parameters)
+            .intersection(_column_as_key(k) for k, v in stmt_parameter_tuples)
             .difference(check_columns)
         )
         if check:
@@ -342,6 +353,7 @@ def _scan_cols(
             for key in parameter_ordering
             if isinstance(key, util.string_types) and key in stmt.table.c
         ] + [c for c in stmt.table.c if c.key not in ordered_keys]
+
     else:
         cols = stmt.table.columns
 
@@ -757,7 +769,7 @@ def _get_multitable_params(
     compiler,
     stmt,
     compile_state,
-    stmt_parameters,
+    stmt_parameter_tuples,
     check_columns,
     _col_bind_name,
     _getattr_col_key,
@@ -766,7 +778,7 @@ def _get_multitable_params(
 ):
     normalized_params = dict(
         (coercions.expect(roles.DMLColumnRole, c), param)
-        for c, param in stmt_parameters.items()
+        for c, param in stmt_parameter_tuples
     )
 
     include_table = compile_state.include_table_with_column_exprs
@@ -861,17 +873,17 @@ def _extend_values_for_multiparams(compiler, stmt, compile_state, values, kw):
     return values
 
 
-def _get_stmt_parameters_params(
+def _get_stmt_parameter_tuples_params(
     compiler,
     compile_state,
     parameters,
-    stmt_parameters,
+    stmt_parameter_tuples,
     _column_as_key,
     values,
     kw,
 ):
 
-    for k, v in stmt_parameters.items():
+    for k, v in stmt_parameter_tuples:
         colkey = _column_as_key(k)
         if colkey is not None:
             parameters.setdefault(colkey, v)

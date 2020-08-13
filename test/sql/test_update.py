@@ -1,3 +1,6 @@
+import itertools
+import random
+
 from sqlalchemy import bindparam
 from sqlalchemy import column
 from sqlalchemy import exc
@@ -23,6 +26,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -856,7 +860,66 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "UPDATE mytable SET foo(myid)=:param_1",
         )
 
-    def test_update_to_expression_two(self):
+    @testing.fixture
+    def randomized_param_order_update(self):
+        from sqlalchemy.sql.dml import UpdateDMLState
+
+        super_process_ordered_values = UpdateDMLState._process_ordered_values
+
+        # this fixture is needed for Python 3.6 and above to work around
+        # dictionaries being insert-ordered.  in python 2.7 the previous
+        # logic fails pretty easily without this fixture.
+        def _process_ordered_values(self, statement):
+            super_process_ordered_values(self, statement)
+
+            tuples = list(self._dict_parameters.items())
+            random.shuffle(tuples)
+            self._dict_parameters = dict(tuples)
+
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+
+        with mock.patch.object(
+            UpdateDMLState, "_process_ordered_values", _process_ordered_values
+        ):
+            yield
+
+    def random_update_order_parameters():
+        from sqlalchemy import ARRAY
+
+        t = table(
+            "foo",
+            column("data1", ARRAY(Integer)),
+            column("data2", ARRAY(Integer)),
+            column("data3", ARRAY(Integer)),
+            column("data4", ARRAY(Integer)),
+        )
+
+        idx_to_value = [
+            (t.c.data1, 5, 7),
+            (t.c.data2, 10, 18),
+            (t.c.data3, 8, 4),
+            (t.c.data4, 12, 14),
+        ]
+
+        def combinations():
+            while True:
+                random.shuffle(idx_to_value)
+                yield list(idx_to_value)
+
+        return testing.combinations(
+            *[
+                (t, combination)
+                for i, combination in zip(range(10), combinations())
+            ],
+            argnames="t, idx_to_value"
+        )
+
+    @random_update_order_parameters()
+    def test_update_to_expression_two(
+        self, randomized_param_order_update, t, idx_to_value
+    ):
         """test update from an expression.
 
         this logic is triggered currently by a left side that doesn't
@@ -865,25 +928,57 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         """
 
-        from sqlalchemy import ARRAY
-
-        t = table(
-            "foo",
-            column("data1", ARRAY(Integer)),
-            column("data2", ARRAY(Integer)),
-        )
-
-        stmt = t.update().ordered_values(
-            (t.c.data1[5], 7), (t.c.data2[10], 18)
-        )
         dialect = default.StrCompileDialect()
         dialect.paramstyle = "qmark"
         dialect.positional = True
+
+        stmt = t.update().ordered_values(
+            *[(col[idx], val) for col, idx, val in idx_to_value]
+        )
+
         self.assert_compile(
             stmt,
-            "UPDATE foo SET data1[?]=?, data2[?]=?",
+            "UPDATE foo SET %s"
+            % (
+                ", ".join(
+                    "%s[?]=?" % col.key for col, idx, val in idx_to_value
+                )
+            ),
             dialect=dialect,
-            checkpositional=(5, 7, 10, 18),
+            checkpositional=tuple(
+                itertools.chain.from_iterable(
+                    (idx, val) for col, idx, val in idx_to_value
+                )
+            ),
+        )
+
+    @random_update_order_parameters()
+    def test_update_to_expression_ppo(
+        self, randomized_param_order_update, t, idx_to_value
+    ):
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+
+        # deprecated pattern here
+        stmt = t.update(preserve_parameter_order=True).values(
+            [(col[idx], val) for col, idx, val in idx_to_value]
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE foo SET %s"
+            % (
+                ", ".join(
+                    "%s[?]=?" % col.key for col, idx, val in idx_to_value
+                )
+            ),
+            dialect=dialect,
+            checkpositional=tuple(
+                itertools.chain.from_iterable(
+                    (idx, val) for col, idx, val in idx_to_value
+                )
+            ),
         )
 
     def test_update_to_expression_three(self):

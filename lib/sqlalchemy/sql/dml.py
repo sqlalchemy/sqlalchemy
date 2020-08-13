@@ -34,6 +34,7 @@ class DMLState(CompileState):
     _no_parameters = True
     _dict_parameters = None
     _multi_parameters = None
+    _ordered_values = None
     _parameter_ordering = None
     _has_multi_parameters = False
     isupdate = False
@@ -97,6 +98,7 @@ class DMLState(CompileState):
         if self._no_parameters:
             self._no_parameters = False
             self._dict_parameters = dict(parameters)
+            self._ordered_values = parameters
             self._parameter_ordering = [key for key, value in parameters]
         elif self._has_multi_parameters:
             self._cant_mix_formats_error()
