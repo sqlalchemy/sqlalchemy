@@ -1,11 +1,28 @@
+import copy
 import time
 
 from ... import exc
 from ... import text
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
+from ...testing.provision import generate_driver_url
 from ...testing.provision import log
 from ...testing.provision import temp_table_keyword_args
+
+
+@generate_driver_url.for_db("postgresql")
+def generate_driver_url(url, driver):
+    new_url = copy.copy(url)
+    new_url.drivername = "postgresql+%s" % driver
+    if new_url.get_driver_name() == "asyncpg":
+        new_url.query = dict(new_url.query)
+        new_url.query["async_fallback"] = "true"
+    try:
+        new_url.get_dialect()
+    except exc.NoSuchModuleError:
+        return None
+    else:
+        return new_url
 
 
 @create_db.for_db("postgresql")
