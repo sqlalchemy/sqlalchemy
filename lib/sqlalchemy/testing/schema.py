@@ -33,6 +33,16 @@ def Table(*args, **kw):
                 kw["mysql_engine"] = "InnoDB"
             else:
                 kw["mysql_engine"] = "MyISAM"
+    elif exclusions.against(config._current, "mariadb"):
+        if (
+            "mariadb_engine" not in kw
+            and "mariadb_type" not in kw
+            and "autoload_with" not in kw
+        ):
+            if "test_needs_fk" in test_opts or "test_needs_acid" in test_opts:
+                kw["mariadb_engine"] = "InnoDB"
+            else:
+                kw["mariadb_engine"] = "MyISAM"
 
     # Apply some default cascading rules for self-referential foreign keys.
     # MySQL InnoDB has some issues around selecting self-refs too.

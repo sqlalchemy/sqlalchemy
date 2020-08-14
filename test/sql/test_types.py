@@ -3139,7 +3139,7 @@ class BooleanTest(
         )
 
     @testing.fails_on(
-        "mysql",
+        ["mysql", "mariadb"],
         "The CHECK clause is parsed but ignored by all storage engines.",
     )
     @testing.fails_on("mssql", "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")

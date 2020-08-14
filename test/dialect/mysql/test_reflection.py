@@ -41,7 +41,7 @@ from sqlalchemy.testing import mock
 
 
 class TypeReflectionTest(fixtures.TestBase):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @testing.provide_metadata
@@ -228,7 +228,7 @@ class TypeReflectionTest(fixtures.TestBase):
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     def test_default_reflection(self):
@@ -304,18 +304,31 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reflection_with_table_options(self):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
+        if testing.against("mariadb"):
+            kwargs = dict(
+                mariadb_engine="MEMORY",
+                mariadb_default_charset="utf8",
+                mariadb_auto_increment="5",
+                mariadb_avg_row_length="3",
+                mariadb_password="secret",
+                mariadb_connection="fish",
+            )
+        else:
+            kwargs = dict(
+                mysql_engine="MEMORY",
+                mysql_default_charset="utf8",
+                mysql_auto_increment="5",
+                mysql_avg_row_length="3",
+                mysql_password="secret",
+                mysql_connection="fish",
+            )
 
         def_table = Table(
             "mysql_def",
             MetaData(testing.db),
             Column("c1", Integer()),
-            mysql_engine="MEMORY",
             comment=comment,
-            mysql_default_charset="utf8",
-            mysql_auto_increment="5",
-            mysql_avg_row_length="3",
-            mysql_password="secret",
-            mysql_connection="fish",
+            **kwargs
         )
 
         def_table.create()
@@ -324,27 +337,50 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         finally:
             def_table.drop()
 
-        assert def_table.kwargs["mysql_engine"] == "MEMORY"
-        assert def_table.comment == comment
-        assert def_table.kwargs["mysql_default_charset"] == "utf8"
-        assert def_table.kwargs["mysql_auto_increment"] == "5"
-        assert def_table.kwargs["mysql_avg_row_length"] == "3"
-        assert def_table.kwargs["mysql_password"] == "secret"
-        assert def_table.kwargs["mysql_connection"] == "fish"
+        if testing.against("mariadb"):
+            assert def_table.kwargs["mariadb_engine"] == "MEMORY"
+            assert def_table.comment == comment
+            assert def_table.kwargs["mariadb_default_charset"] == "utf8"
+            assert def_table.kwargs["mariadb_auto_increment"] == "5"
+            assert def_table.kwargs["mariadb_avg_row_length"] == "3"
+            assert def_table.kwargs["mariadb_password"] == "secret"
+            assert def_table.kwargs["mariadb_connection"] == "fish"
 
-        assert reflected.kwargs["mysql_engine"] == "MEMORY"
+            assert reflected.kwargs["mariadb_engine"] == "MEMORY"
 
-        assert reflected.comment == comment
-        assert reflected.kwargs["mysql_comment"] == comment
-        assert reflected.kwargs["mysql_default charset"] == "utf8"
-        assert reflected.kwargs["mysql_avg_row_length"] == "3"
-        assert reflected.kwargs["mysql_connection"] == "fish"
+            assert reflected.comment == comment
+            assert reflected.kwargs["mariadb_comment"] == comment
+            assert reflected.kwargs["mariadb_default charset"] == "utf8"
+            assert reflected.kwargs["mariadb_avg_row_length"] == "3"
+            assert reflected.kwargs["mariadb_connection"] == "fish"
 
-        # This field doesn't seem to be returned by mysql itself.
-        # assert reflected.kwargs['mysql_password'] == 'secret'
+            # This field doesn't seem to be returned by mariadb itself.
+            # assert reflected.kwargs['mariadb_password'] == 'secret'
 
-        # This is explicitly ignored when reflecting schema.
-        # assert reflected.kwargs['mysql_auto_increment'] == '5'
+            # This is explicitly ignored when reflecting schema.
+            # assert reflected.kwargs['mariadb_auto_increment'] == '5'
+        else:
+            assert def_table.kwargs["mysql_engine"] == "MEMORY"
+            assert def_table.comment == comment
+            assert def_table.kwargs["mysql_default_charset"] == "utf8"
+            assert def_table.kwargs["mysql_auto_increment"] == "5"
+            assert def_table.kwargs["mysql_avg_row_length"] == "3"
+            assert def_table.kwargs["mysql_password"] == "secret"
+            assert def_table.kwargs["mysql_connection"] == "fish"
+
+            assert reflected.kwargs["mysql_engine"] == "MEMORY"
+
+            assert reflected.comment == comment
+            assert reflected.kwargs["mysql_comment"] == comment
+            assert reflected.kwargs["mysql_default charset"] == "utf8"
+            assert reflected.kwargs["mysql_avg_row_length"] == "3"
+            assert reflected.kwargs["mysql_connection"] == "fish"
+
+            # This field doesn't seem to be returned by mysql itself.
+            # assert reflected.kwargs['mysql_password'] == 'secret'
+
+            # This is explicitly ignored when reflecting schema.
+            # assert reflected.kwargs['mysql_auto_increment'] == '5'
 
     def test_reflection_on_include_columns(self):
         """Test reflection of include_columns to be sure they respect case."""
@@ -714,15 +750,22 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             self.metadata,
             Column("id", Integer, primary_key=True),
             Column("textdata", String(50)),
+            mariadb_engine="InnoDB",
             mysql_engine="InnoDB",
         )
-        Index("textdata_ix", mt.c.textdata, mysql_prefix="FULLTEXT")
+
+        Index(
+            "textdata_ix",
+            mt.c.textdata,
+            mysql_prefix="FULLTEXT",
+            mariadb_prefix="FULLTEXT",
+        )
         self.metadata.create_all(testing.db)
 
         mt = Table("mytable", MetaData(), autoload_with=testing.db)
         idx = list(mt.indexes)[0]
         eq_(idx.name, "textdata_ix")
-        eq_(idx.dialect_options["mysql"]["prefix"], "FULLTEXT")
+        eq_(idx.dialect_options[testing.db.name]["prefix"], "FULLTEXT")
         self.assert_compile(
             CreateIndex(idx),
             "CREATE FULLTEXT INDEX textdata_ix ON mytable (textdata)",

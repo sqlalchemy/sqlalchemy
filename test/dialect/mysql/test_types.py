@@ -469,7 +469,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     __dialect__ = mysql.dialect()
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     # fixed in mysql-connector as of 2.0.1,
@@ -755,7 +755,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
 class JSONTest(fixtures.TestBase):
     __requires__ = ("json_type",)
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @testing.provide_metadata
@@ -791,7 +791,7 @@ class EnumSetTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
 
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __dialect__ = mysql.dialect()
     __backend__ = True
 

@@ -871,7 +871,7 @@ class ReversePKsTest(fixtures.MappedTest):
 class SelfReferentialTest(fixtures.MappedTest):
     # mssql, mysql don't allow
     # ON UPDATE on self-referential keys
-    __unsupported_on__ = ("mssql", "mysql")
+    __unsupported_on__ = ("mssql", "mysql", "mariadb")
 
     __requires__ = ("on_update_or_deferrable_fks",)
     __backend__ = True

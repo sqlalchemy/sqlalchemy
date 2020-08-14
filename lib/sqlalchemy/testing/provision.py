@@ -21,9 +21,10 @@ class register(object):
     def init(cls, fn):
         return register().for_db("*")(fn)
 
-    def for_db(self, dbname):
+    def for_db(self, *dbnames):
         def decorate(fn):
-            self.fns[dbname] = fn
+            for dbname in dbnames:
+                self.fns[dbname] = fn
             return self
 
         return decorate
@@ -138,6 +139,7 @@ def _generate_driver_urls(url, extra_drivers):
     main_driver = url.get_driver_name()
     extra_drivers.discard(main_driver)
 
+    url = generate_driver_url(url, main_driver)
     yield str(url)
 
     for drv in list(extra_drivers):

@@ -25,7 +25,7 @@ from ...engine import test_execute
 
 class BackendDialectTest(fixtures.TestBase):
     __backend__ = True
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
 
     def test_no_show_variables(self):
         from sqlalchemy.testing import mock
@@ -227,7 +227,7 @@ class DialectTest(fixtures.TestBase):
         )[1]
         assert "raise_on_warnings" not in kw
 
-    @testing.only_on("mysql")
+    @testing.only_on(["mysql", "mariadb"])
     def test_random_arg(self):
         dialect = testing.db.dialect
         kw = dialect.create_connect_args(
@@ -235,7 +235,7 @@ class DialectTest(fixtures.TestBase):
         )[1]
         eq_(kw["foo"], "true")
 
-    @testing.only_on("mysql")
+    @testing.only_on(["mysql", "mariadb"])
     @testing.skip_if("mysql+mysqlconnector", "totally broken for the moment")
     @testing.fails_on("mysql+oursql", "unsupported")
     def test_special_encodings(self):
@@ -272,27 +272,33 @@ class ParseVersionTest(fixtures.TestBase):
             "5.7.20",
         )
 
+    def test_502_minimum(self):
+        dialect = mysql.dialect()
+        assert_raises_message(
+            NotImplementedError,
+            "the MySQL/MariaDB dialect supports server "
+            "version info 5.0.2 and above.",
+            dialect._parse_server_version,
+            "5.0.1",
+        )
+
     @testing.combinations(
-        ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7, "MariaDB"), True),
-        (
-            (10, 2, 7),
-            "5.6.15.10.2.7-MariaDB",
-            (5, 6, 15, 10, 2, 7, "MariaDB"),
-            True,
-        ),
-        ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10, "MariaDB"), True),
+        ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7), True),
+        ((10, 2, 7), "5.6.15.10.2.7-MariaDB", (5, 6, 15, 10, 2, 7), True,),
+        ((5, 0, 51, 24), "5.0.51a.24+lenny5", (5, 0, 51, 24), False),
+        ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10), True),
         ((5, 7, 20), "5.7.20", (5, 7, 20), False),
         ((5, 6, 15), "5.6.15", (5, 6, 15), False),
         (
             (10, 2, 6),
             "10.2.6.MariaDB.10.2.6+maria~stretch-log",
-            (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log"),
+            (10, 2, 6, 10, 2, 6),
             True,
         ),
         (
             (10, 1, 9),
             "10.1.9-MariaDBV1.0R050D002-20170809-1522",
-            (10, 1, 9, "MariaDB", "V1", "0R050D002", 20170809, 1522),
+            (10, 1, 9, 20170809, 1522),
             True,
         ),
     )
@@ -306,16 +312,16 @@ class ParseVersionTest(fixtures.TestBase):
         assert dialect._is_mariadb is is_mariadb
 
     @testing.combinations(
-        (True, (10, 2, 7, "MariaDB")),
-        (True, (5, 6, 15, 10, 2, 7, "MariaDB")),
-        (False, (10, 2, 10, "MariaDB")),
-        (False, (5, 7, 20)),
-        (False, (5, 6, 15)),
-        (True, (10, 2, 6, "MariaDB", 10, 2, "6+maria~stretch", "log")),
+        (True, "10.2.7-MariaDB"),
+        (True, "5.6.15-10.2.7-MariaDB"),
+        (False, "10.2.10-MariaDB"),
+        (False, "5.7.20"),
+        (False, "5.6.15"),
+        (True, "10.2.6-MariaDB-10.2.6+maria~stretch.log"),
     )
     def test_mariadb_check_warning(self, expect_, version):
         dialect = mysql.dialect(is_mariadb="MariaDB" in version)
-        dialect.server_version_info = version
+        dialect._parse_server_version(version)
         if expect_:
             with expect_warnings(
                 ".*before 10.2.9 has known issues regarding "
@@ -337,7 +343,7 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
 
     """
 
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @classmethod
@@ -412,7 +418,7 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
 
 
 class SQLModeDetectionTest(fixtures.TestBase):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     def _options(self, modes):
@@ -462,7 +468,7 @@ class SQLModeDetectionTest(fixtures.TestBase):
 class ExecutionTest(fixtures.TestBase):
     """Various MySQL execution special cases."""
 
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     def test_charset_caching(self):
@@ -482,7 +488,7 @@ class ExecutionTest(fixtures.TestBase):
 
 
 class AutocommitTextTest(test_execute.AutocommitTextTest):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
 
     def test_load_data(self):
         self._test_keyword("LOAD DATA STUFF")

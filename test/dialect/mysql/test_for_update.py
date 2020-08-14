@@ -23,7 +23,7 @@ from sqlalchemy.testing import fixtures
 
 class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     __backend__ = True
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __requires__ = ("mysql_for_update",)
 
     @classmethod
@@ -36,7 +36,10 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             x = Column(Integer)
             y = Column(Integer)
             bs = relationship("B")
-            __table_args__ = {"mysql_engine": "InnoDB"}
+            __table_args__ = {
+                "mysql_engine": "InnoDB",
+                "mariadb_engine": "InnoDB",
+            }
 
         class B(Base):
             __tablename__ = "b"
@@ -44,7 +47,10 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
             a_id = Column(ForeignKey("a.id"))
             x = Column(Integer)
             y = Column(Integer)
-            __table_args__ = {"mysql_engine": "InnoDB"}
+            __table_args__ = {
+                "mysql_engine": "InnoDB",
+                "mariadb_engine": "InnoDB",
+            }
 
     @classmethod
     def insert_data(cls, connection):
