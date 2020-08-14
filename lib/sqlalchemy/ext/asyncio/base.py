@@ -1,0 +1,25 @@
+import abc
+
+from . import exc as async_exc
+
+
+class StartableContext(abc.ABC):
+    @abc.abstractmethod
+    async def start(self) -> "StartableContext":
+        pass
+
+    def __await__(self):
+        return self.start().__await__()
+
+    async def __aenter__(self):
+        return await self.start()
+
+    @abc.abstractmethod
+    async def __aexit__(self, type_, value, traceback):
+        pass
+
+    def _raise_for_not_started(self):
+        raise async_exc.AsyncContextNotStarted(
+            "%s context has not been started and object has not been awaited."
+            % (self.__class__.__name__)
+        )

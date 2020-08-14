@@ -1252,10 +1252,7 @@ Asyncio Support
 
 .. admonition:: Certainty: definite
 
-  A surprising development will allow asyncio support including with the
-  ORM to be fully implemented.   There will even be a **completely optional**
-  path to having lazy loading be available, for those willing to make use of
-  some "controversial" patterns.
+  This is now implemented in 1.4.
 
 There was previously an entire section here detailing how asyncio is a nice to
 have, but not really necessary from a technical standpoint, there are some
@@ -1267,113 +1264,7 @@ an entirely separate version of everything be maintained, therefore this makes
 it feasible to deliver this feature to those users who prefer an all-async
 application style without impact on the traditional blocking archictecture.
 
-The proof of concept at https://gist.github.com/zzzeek/4e89ce6226826e7a8df13e1b573ad354
-illustrates how to write an asyncio application that makes use of a pure asyncio
-driver (asyncpg), with part of the code **in between** remaining as sync code
-without the use of any await/async keywords.  The central technique involves
-minimal use of a greenlet (e.g. stackless Python) to perform the necessary
-context switches when an "await" occurs.   The approach has been vetted
-both with asyncio developers as well as greenlet developers, the latter
-of which contributed a great degree of simplification the already simple recipe
-such that can context switch async coroutines with no decrease in performance.
-
-The proof of concept has then been expanded to work within SQLAlchemy Core
-and is presently in a Gerrit review.   A SQLAlchemy dialect for the asyncpg
-driver has been written and it passes most tests.
-
-Example ORM use will look similar to the following; this example is already
-runnable with the in-review codebase::
-
-    import asyncio
-
-    from sqlalchemy.asyncio import create_async_engine
-    from sqlalchemy.asyncio import AsyncSession
-    # ... other imports ...
-
-    async def async_main():
-        engine = create_async_engine(
-            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
-        )
-
-
-        # assume a typical ORM model with classes A and B
-
-        session = AsyncSession(engine)
-        session.add_all(
-            [
-                A(bs=[B(), B()], data="a1"),
-                A(bs=[B()], data="a2"),
-                A(bs=[B(), B()], data="a3"),
-            ]
-        )
-        await session.commit()
-        stmt = select(A).options(selectinload(A.bs))
-        result = await session.execute(stmt)
-        for a1 in result.scalars():
-            print(a1)
-            for b1 in a1.bs:
-                print(b1)
-
-        result = await session.execute(select(A).order_by(A.id))
-
-        a1 = result.scalars().first()
-        a1.data = "new data"
-        await session.commit()
-
-    asyncio.run(async_main())
-
-The "controversial" feature, if provided, would include that the "greenlet"
-context would be supplied as front-facing API.  This would allow an asyncio
-application to spawn a greenlet that contains sync-code, which could use the
-Core and ORM in a fully traditional manner including that lazy loading
-for columns and relationships would be present.  This mode of use is
-somewhat similar to running an application under an event-based
-programming library such as gevent or eventlet, however the underyling
-network calls would be within a pure asyncio context, i.e. like that of the
-asyncpg driver.   An example of this use, which is also runnable with
-the in-review codebase::
-
-    import asyncio
-
-    from sqlalchemy.asyncio import greenlet_spawn
-
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
-    # ... other imports ...
-
-    def main():
-        # standard "sync" engine with the "async" driver.
-        engine = create_engine(
-            "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
-        )
-
-        # assume a typical ORM model with classes A and B
-
-        session = Session(engine)
-        session.add_all(
-            [
-                A(bs=[B(), B()], data="a1"),
-                A(bs=[B()], data="a2"),
-                A(bs=[B(), B()], data="a3"),
-            ]
-        )
-        session.commit()
-        for a1 in session.query(A).all():
-            print("a: %s" % a1)
-            print("bs: %s" % (a1.bs))  # emits a lazyload.
-
-    asyncio.run(greenlet_spawn(main))
-
-
-Above, we see a ``main()`` function that contains within it a 100% normal
-looking Python program using the SQLAlchemy ORM, using plain ORM imports and
-basically absolutely nothing out of the ordinary.  It just happens to be called
-from inside of an ``asyncio.run()`` call rather than directly, and it uses a
-DBAPI that is only compatible with asyncio.   There is no "monkeypatching" or
-anything else like that involved.    Any asyncio program can opt
-to place it's database-related business methods into the above pattern,
-if preferred, rather than using the asyncio SQLAlchemy API directly.  This
-technique is also being adapted to other frameworks such as Flask and will
-hopefully lead to greater interoperability between blocking and non-blocking
-libraries and frameworks.
+SQLAlchemy 1.4 now includes full asyncio capability with initial support
+using the :ref:`dialect-postgresql-asyncpg` Python database driver;
+see :ref:`asyncio_toplevel`.
 

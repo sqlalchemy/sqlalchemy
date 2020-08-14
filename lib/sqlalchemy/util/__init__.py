@@ -90,6 +90,10 @@ from .compat import unquote_plus  # noqa
 from .compat import win32  # noqa
 from .compat import with_metaclass  # noqa
 from .compat import zip_longest  # noqa
+from .concurrency import asyncio  # noqa
+from .concurrency import await_fallback  # noqa
+from .concurrency import await_only  # noqa
+from .concurrency import greenlet_spawn  # noqa
 from .deprecations import deprecated  # noqa
 from .deprecations import deprecated_20  # noqa
 from .deprecations import deprecated_20_cls  # noqa

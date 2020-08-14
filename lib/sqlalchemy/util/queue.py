@@ -21,7 +21,10 @@ condition.
 from collections import deque
 from time import time as _time
 
+from . import compat
 from .compat import threading
+from .concurrency import asyncio
+from .concurrency import await_fallback
 
 
 __all__ = ["Empty", "Full", "Queue"]
@@ -196,3 +199,64 @@ class Queue:
         else:
             # FIFO
             return self.queue.popleft()
+
+
+class AsyncAdaptedQueue:
+    await_ = await_fallback
+
+    def __init__(self, maxsize=0, use_lifo=False):
+        if use_lifo:
+            self._queue = asyncio.LifoQueue(maxsize=maxsize)
+        else:
+            self._queue = asyncio.Queue(maxsize=maxsize)
+        self.maxsize = maxsize
+        self.empty = self._queue.empty
+        self.full = self._queue.full
+        self.qsize = self._queue.qsize
+
+    def put_nowait(self, item):
+        try:
+            return self._queue.put_nowait(item)
+        except asyncio.queues.QueueFull as err:
+            compat.raise_(
+                Full(), replace_context=err,
+            )
+
+    def put(self, item, block=True, timeout=None):
+        if not block:
+            return self.put_nowait(item)
+
+        try:
+            if timeout:
+                return self.await_(
+                    asyncio.wait_for(self._queue.put(item), timeout)
+                )
+            else:
+                return self.await_(self._queue.put(item))
+        except asyncio.queues.QueueFull as err:
+            compat.raise_(
+                Full(), replace_context=err,
+            )
+
+    def get_nowait(self):
+        try:
+            return self._queue.get_nowait()
+        except asyncio.queues.QueueEmpty as err:
+            compat.raise_(
+                Empty(), replace_context=err,
+            )
+
+    def get(self, block=True, timeout=None):
+        if not block:
+            return self.get_nowait()
+        try:
+            if timeout:
+                return self.await_(
+                    asyncio.wait_for(self._queue.get(), timeout)
+                )
+            else:
+                return self.await_(self._queue.get())
+        except asyncio.queues.QueueEmpty as err:
+            compat.raise_(
+                Empty(), replace_context=err,
+            )

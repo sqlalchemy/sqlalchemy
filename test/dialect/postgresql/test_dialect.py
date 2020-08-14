@@ -937,9 +937,7 @@ $$ LANGUAGE plpgsql;
         stmt = text("select cast('hi' as char) as hi").columns(hi=Numeric)
         assert_raises(exc.InvalidRequestError, connection.execute, stmt)
 
-    @testing.only_if(
-        "postgresql >= 8.2", "requires standard_conforming_strings"
-    )
+    @testing.only_on("postgresql+psycopg2")
     def test_serial_integer(self):
         class BITD(TypeDecorator):
             impl = Integer

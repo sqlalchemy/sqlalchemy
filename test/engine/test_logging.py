@@ -10,8 +10,8 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import assert_raises_return
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_regex
@@ -104,7 +104,7 @@ class LogParamsTest(fixtures.TestBase):
 
     def test_log_positional_array(self):
         with self.eng.connect() as conn:
-            exc_info = assert_raises_return(
+            exc_info = assert_raises(
                 tsa.exc.DBAPIError,
                 conn.execute,
                 tsa.text("SELECT * FROM foo WHERE id IN :foo AND bar=:bar"),

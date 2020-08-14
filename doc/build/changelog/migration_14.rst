@@ -20,8 +20,8 @@ What's New in SQLAlchemy 1.4?
 
     For the current status of SQLAlchemy 2.0, see :ref:`migration_20_toplevel`.
 
-Behavioral Changes - General
-============================
+Major API changes and features - General
+=========================================
 
 .. _change_5159:
 
@@ -224,6 +224,92 @@ driven in order to support this new feature.
 :ticket:`4808`
 :ticket:`5004`
 
+.. _change_3414:
+
+Asynchronous IO Support for Core and ORM
+------------------------------------------
+
+SQLAlchemy now supports Python ``asyncio``-compatible database drivers using an
+all-new asyncio front-end interface to :class:`_engine.Connection` for Core
+usage as well as :class:`_orm.Session` for ORM use, using the
+:class:`_asyncio.AsyncConnection` and :class:`_asyncio.AsyncSession` objects.
+
+.. note::  The new asyncio feature should be considered **alpha level** for
+   the initial releases of SQLAlchemy 1.4.   This is super new stuff that uses
+   some previously unfamiliar programming techniques.
+
+The initial database API supported is the :ref:`dialect-postgresql-asyncpg`
+asyncio driver for PostgreSQL.
+
+The internal features of SQLAlchemy are fully integrated by making use of
+the `greenlet <https://greenlet.readthedocs.io/en/latest/>`_ library in order
+to adapt the flow of execution within SQLAlchemy's internals to propagate
+asyncio ``await`` keywords outwards from the database driver to the end-user
+API, which features ``async`` methods.  Using this approach, the asyncpg
+driver is fully operational within SQLAlchemy's own test suite and features
+compatibility with most psycopg2 features.   The approach was vetted and
+improved upon by developers of the greenlet project for which SQLAlchemy
+is appreciative.
+
+.. sidebar:: greenlets are good
+
+  Don't confuse the greenlet_ library with event-based IO libraries that build
+  on top of it such as ``gevent`` and ``eventlet``; while the use of these
+  libraries with SQLAlchemy is common, SQLAlchemy's asyncio integration
+  **does not** make use of these event based systems in any way. The asyncio
+  API integrates with the user-provided event loop, typically Python's own
+  asyncio event loop, without the use of additional threads or event systems.
+  The approach involves a single greenlet context switch per ``await`` call,
+  and the extension which makes it possible is less than 20 lines of code.
+
+The user facing ``async`` API itself is focused around IO-oriented methods such
+as :meth:`_asyncio.AsyncEngine.connect` and
+:meth:`_asyncio.AsyncConnection.execute`.   The new Core constructs strictly
+support :term:`2.0 style` usage only; which means all statements must be
+invoked given a connection object, in this case
+:class:`_asyncio.AsyncConnection`.
+
+Within the ORM, :term:`2.0 style` query execution is
+supported, using :func:`_sql.select` constructs in conjunction with
+:meth:`_asyncio.AsyncSession.execute`; the legacy :class:`_orm.Query`
+object itself is not supported by the :class:`_asyncio.AsyncSession` class.
+
+ORM features such as lazy loading of related attributes as well as unexpiry of
+expired attributes are by definition disallowed in the traditional asyncio
+programming model, as they indicate IO operations that would run implicitly
+within the scope of a Python ``getattr()`` operation.   To overcome this, the
+**traditional** asyncio application should make judicious use of :ref:`eager
+loading <loading_toplevel>` techniques as well as forego the use of features
+such as :ref:`expire on commit <session_committing>` so that such loads are not
+needed.
+
+For the asyncio application developer who **chooses to break** with
+tradition, the new API provides a **strictly optional
+feature** such that applications that wish to make use of such ORM features
+can opt to organize database-related code into functions which can then be
+run within greenlets using the :meth:`_asyncio.AsyncSession.run_sync`
+method. See the ``greenlet_orm.py`` example at :ref:`examples_asyncio`
+for a demonstration.
+
+Support for asynchronous cursors is also provided using new methods
+:meth:`_asyncio.AsyncConnection.stream` and
+:meth:`_asyncio.AsyncSession.stream`, which support a new
+:class:`_asyncio.AsyncResult` object that itself provides awaitable
+versions of common methods like
+:meth:`_asyncio.AsyncResult.all` and
+:meth:`_asyncio.AsyncResult.fetchmany`.   Both Core and ORM are integrated
+with the feature which corresponds to the use of "server side cursors"
+in traditional SQLAlchemy.
+
+.. seealso::
+
+  :ref:`asyncio_toplevel`
+
+  :ref:`examples_asyncio`
+
+
+
+:ticket:`3414`
 
 .. _change_deferred_construction:
 

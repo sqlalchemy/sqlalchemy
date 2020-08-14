@@ -198,7 +198,7 @@ class DefaultRequirements(SuiteRequirements):
                 "mysql+pymysql",
                 "mysql+cymysql",
                 "mysql+mysqlconnector",
-                "postgresql",
+                "postgresql+pg8000",
             ]
         )
 
@@ -1163,20 +1163,6 @@ class DefaultRequirements(SuiteRequirements):
                     "with only four decimal places",
                 ),
                 (
-                    "mssql+pyodbc",
-                    None,
-                    None,
-                    "mssql+pyodbc has FP inaccuracy even with "
-                    "only four decimal places ",
-                ),
-                (
-                    "mssql+pymssql",
-                    None,
-                    None,
-                    "mssql+pymssql has FP inaccuracy even with "
-                    "only four decimal places ",
-                ),
-                (
                     "postgresql+pg8000",
                     None,
                     None,
@@ -1279,6 +1265,12 @@ class DefaultRequirements(SuiteRequirements):
                 return False
 
         return only_if(check_range_types)
+
+    @property
+    def async_dialect(self):
+        """dialect makes use of await_() to invoke operations on the DBAPI."""
+
+        return only_on(["postgresql+asyncpg"])
 
     @property
     def oracle_test_dblink(self):

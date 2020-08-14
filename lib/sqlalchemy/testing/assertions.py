@@ -298,10 +298,6 @@ def assert_raises_context_ok(except_cls, callable_, *args, **kw):
     return _assert_raises(except_cls, callable_, args, kw,)
 
 
-def assert_raises_return(except_cls, callable_, *args, **kw):
-    return _assert_raises(except_cls, callable_, args, kw, check_context=True)
-
-
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
     return _assert_raises(
         except_cls, callable_, args, kwargs, msg=msg, check_context=True
@@ -317,14 +313,26 @@ def assert_raises_message_context_ok(
 def _assert_raises(
     except_cls, callable_, args, kwargs, msg=None, check_context=False
 ):
-    ret_err = None
+
+    with _expect_raises(except_cls, msg, check_context) as ec:
+        callable_(*args, **kwargs)
+    return ec.error
+
+
+class _ErrorContainer(object):
+    error = None
+
+
+@contextlib.contextmanager
+def _expect_raises(except_cls, msg=None, check_context=False):
+    ec = _ErrorContainer()
     if check_context:
         are_we_already_in_a_traceback = sys.exc_info()[0]
     try:
-        callable_(*args, **kwargs)
+        yield ec
         success = False
     except except_cls as err:
-        ret_err = err
+        ec.error = err
         success = True
         if msg is not None:
             assert re.search(
@@ -337,7 +345,13 @@ def _assert_raises(
     # assert outside the block so it works for AssertionError too !
     assert success, "Callable did not raise an exception"
 
-    return ret_err
+
+def expect_raises(except_cls):
+    return _expect_raises(except_cls, check_context=True)
+
+
+def expect_raises_message(except_cls, msg):
+    return _expect_raises(except_cls, msg=msg, check_context=True)
 
 
 class AssertsCompiledSQL(object):

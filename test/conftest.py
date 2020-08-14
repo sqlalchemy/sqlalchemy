@@ -11,6 +11,11 @@ import sys
 
 import pytest
 
+
+collect_ignore_glob = []
+if sys.version_info[0] < 3:
+    collect_ignore_glob.append("*_py3k.py")
+
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
 

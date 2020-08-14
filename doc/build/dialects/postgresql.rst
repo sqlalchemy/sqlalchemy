@@ -196,6 +196,13 @@ pg8000
 
 .. automodule:: sqlalchemy.dialects.postgresql.pg8000
 
+.. _dialect-postgresql-asyncpg:
+
+asyncpg
+-------
+
+.. automodule:: sqlalchemy.dialects.postgresql.asyncpg
+
 psycopg2cffi
 ------------
 
