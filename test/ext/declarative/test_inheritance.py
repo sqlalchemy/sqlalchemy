@@ -2038,3 +2038,40 @@ class ConcreteExtensionConfigTest(
             "(SELECT offers.documenttype AS documenttype, offers.id AS id, "
             "'offer' AS type FROM offers) AS pjoin",
         )
+
+    def test_configure_discriminator_col(self):
+        """test #5513"""
+
+        class Employee(AbstractConcreteBase, Base):
+            _concrete_discriminator_name = (
+                "_alternative_concrete_discriminator"
+            )
+            employee_id = Column(Integer, primary_key=True)
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        class Engineer(Employee):
+            __tablename__ = "engineer"
+
+            __mapper_args__ = {
+                "polymorphic_identity": "engineer",
+                "concrete": True,
+            }
+
+        configure_mappers()
+        self.assert_compile(
+            Session().query(Employee),
+            "SELECT pjoin.employee_id AS pjoin_employee_id, "
+            "pjoin._alternative_concrete_discriminator AS pjoin__alternative_concrete_discriminator "
+            "FROM (SELECT engineer.employee_id AS employee_id, "
+            "'engineer' AS _alternative_concrete_discriminator "
+            "FROM engineer UNION ALL SELECT manager.employee_id AS employee_id, "
+            "'manager' AS _alternative_concrete_discriminator "
+            "FROM manager) AS pjoin",
+        )
