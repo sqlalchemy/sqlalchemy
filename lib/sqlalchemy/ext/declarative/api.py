@@ -445,7 +445,8 @@ class ConcreteBase(object):
         By default the name of the discriminator column used in the
         :func:`.polymorphic_union` will be ``type``. This name might clash with
         a column in one of your mapped tables. For that reason, the name of
-        the discriminator can be configured by setting the ``_concrete_discriminator_name`` attribute.
+        the discriminator can be configured by setting the
+        ``_concrete_discriminator_name`` attribute.
 
         Example::
 
@@ -478,7 +479,10 @@ class ConcreteBase(object):
         if m.with_polymorphic:
             return
 
-        discriminator_name = _get_immediate_cls_attr(cls, "_concrete_discriminator_name") or "type"
+        discriminator_name = (
+            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
+            or "type"
+        )
 
         mappers = list(m.self_and_descendants)
         pjoin = cls._create_polymorphic_union(mappers, discriminator_name)
@@ -627,7 +631,10 @@ class AbstractConcreteBase(ConcreteBase):
             if mn is not None:
                 mappers.append(mn)
 
-        discriminator_name = _get_immediate_cls_attr(cls, "_concrete_discriminator_name") or "type"
+        discriminator_name = (
+            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
+            or "type"
+        )
         pjoin = cls._create_polymorphic_union(mappers, discriminator_name)
 
         # For columns that were declared on the class, these
@@ -647,7 +654,7 @@ class AbstractConcreteBase(ConcreteBase):
 
         def mapper_args():
             args = m_args()
-            args["polymorphic_on"] = pjoin.c[discriminator_name]            
+            args["polymorphic_on"] = pjoin.c[discriminator_name]
             return args
 
         to_map.mapper_args_fn = mapper_args
