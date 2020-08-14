@@ -218,7 +218,7 @@ attribute accesses within a separate function::
                     ]
                 )
 
-            session.run_sync(fetch_and_update_objects)
+            await session.run_sync(fetch_and_update_objects)
 
             await session.commit()
 
