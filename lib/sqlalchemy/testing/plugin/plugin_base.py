@@ -17,8 +17,12 @@ is pytest.
 from __future__ import absolute_import
 
 import abc
+import logging
 import re
 import sys
+
+
+log = logging.getLogger("sqlalchemy.testing.plugin_base")
 
 
 py3k = sys.version_info >= (3, 0)
@@ -89,6 +93,15 @@ def setup_options(make_option):
         type="string",
         dest="dburi",
         help="Database uri.  Multiple OK, " "first one is run by default.",
+    )
+    make_option(
+        "--dbdriver",
+        action="append",
+        type="string",
+        dest="dbdriver",
+        help="Additional database drivers to include in tests.  "
+        "These are linked to the existing database URLs by the "
+        "provisioning system.",
     )
     make_option(
         "--dropfirst",
@@ -350,6 +363,7 @@ def _init_symbols(options, file_config):
 
 @post
 def _engine_uri(options, file_config):
+
     from sqlalchemy.testing import config
     from sqlalchemy import testing
     from sqlalchemy.testing import provision
@@ -358,6 +372,8 @@ def _engine_uri(options, file_config):
         db_urls = list(options.dburi)
     else:
         db_urls = []
+
+    extra_drivers = options.dbdriver or []
 
     if options.db:
         for db_token in options.db:
@@ -374,7 +390,11 @@ def _engine_uri(options, file_config):
         db_urls.append(file_config.get("db", "default"))
 
     config._current = None
-    for db_url in db_urls:
+
+    expanded_urls = list(provision.generate_db_urls(db_urls, extra_drivers))
+
+    for db_url in expanded_urls:
+        log.info("Adding database URL: %s", db_url)
 
         if options.write_idents and provision.FOLLOWER_IDENT:  # != 'master':
             with open(options.write_idents, "a") as file_:
@@ -596,7 +616,8 @@ def stop_test_class(cls):
 
 
 def _restore_engine():
-    config._current.reset(testing)
+    if config._current:
+        config._current.reset(testing)
 
 
 def final_process_cleanup():

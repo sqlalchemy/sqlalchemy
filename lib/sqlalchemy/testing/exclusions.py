@@ -272,6 +272,9 @@ class SpecPredicate(Predicate):
     }
 
     def __call__(self, config):
+        if config is None:
+            return False
+
         engine = config.db
 
         if "+" in self.db:
