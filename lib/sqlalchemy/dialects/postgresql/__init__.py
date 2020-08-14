@@ -59,7 +59,7 @@ from .ranges import TSRANGE
 from .ranges import TSTZRANGE
 from ...util import compat
 
-if compat.py3k:
+if compat.py36:
     from . import asyncpg  # noqa
 
 base.dialect = dialect = psycopg2.dialect
