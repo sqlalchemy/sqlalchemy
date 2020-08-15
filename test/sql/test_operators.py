@@ -2791,7 +2791,7 @@ class TupleTypingTest(fixtures.TestBase):
         )
         t1 = tuple_(a, b, c)
         expr = t1 == (3, "hi", "there")
-        self._assert_types([bind.type for bind in expr.right.element.clauses])
+        self._assert_types([bind.type for bind in expr.right.clauses])
 
     def test_type_coercion_on_in(self):
         a, b, c = (
@@ -2803,7 +2803,8 @@ class TupleTypingTest(fixtures.TestBase):
         expr = t1.in_([(3, "hi", "there"), (4, "Q", "P")])
 
         eq_(len(expr.right.value), 2)
-        self._assert_types(expr.right._expanding_in_types)
+
+        self._assert_types(expr.right.type.types)
 
 
 class InSelectableTest(fixtures.TestBase, testing.AssertsCompiledSQL):

@@ -848,10 +848,10 @@ class SQLCompiler(Compiled):
                 (
                     self.bind_names[bindparam],
                     bindparam.type._cached_bind_processor(self.dialect)
-                    if not bindparam._expanding_in_types
+                    if not bindparam.type._is_tuple_type
                     else tuple(
                         elem_type._cached_bind_processor(self.dialect)
-                        for elem_type in bindparam._expanding_in_types
+                        for elem_type in bindparam.type.types
                     ),
                 )
                 for bindparam in self.bind_names
@@ -1018,9 +1018,9 @@ class SQLCompiler(Compiled):
             if bindparam in literal_execute_params:
                 continue
 
-            if bindparam._expanding_in_types:
+            if bindparam.type._is_tuple_type:
                 inputsizes[bindparam] = [
-                    _lookup_type(typ) for typ in bindparam._expanding_in_types
+                    _lookup_type(typ) for typ in bindparam.type.types
                 ]
             else:
                 inputsizes[bindparam] = _lookup_type(bindparam.type)
@@ -1107,7 +1107,7 @@ class SQLCompiler(Compiled):
 
                 if not parameter.literal_execute:
                     parameters.update(to_update)
-                    if parameter._expanding_in_types:
+                    if parameter.type._is_tuple_type:
                         new_processors.update(
                             (
                                 "%s_%s_%s" % (name, i, j),
@@ -1541,6 +1541,9 @@ class SQLCompiler(Compiled):
                 if s
             )
 
+    def visit_tuple(self, clauselist, **kw):
+        return "(%s)" % self.visit_clauselist(clauselist, **kw)
+
     def visit_clauselist(self, clauselist, **kw):
         sep = clauselist.operator
         if sep is None:
@@ -1548,10 +1551,7 @@ class SQLCompiler(Compiled):
         else:
             sep = OPERATORS[clauselist.operator]
 
-        text = self._generate_delimited_list(clauselist.clauses, sep, **kw)
-        if clauselist._tuple_values and self.dialect.tuple_in_values:
-            text = "VALUES " + text
-        return text
+        return self._generate_delimited_list(clauselist.clauses, sep, **kw)
 
     def visit_case(self, clause, **kwargs):
         x = "CASE "
@@ -1824,27 +1824,31 @@ class SQLCompiler(Compiled):
     def _literal_execute_expanding_parameter_literal_binds(
         self, parameter, values
     ):
+
         if not values:
+            assert not parameter.type._is_tuple_type
             replacement_expression = self.visit_empty_set_expr(
-                parameter._expanding_in_types
-                if parameter._expanding_in_types
-                else [parameter.type]
+                [parameter.type]
             )
 
         elif isinstance(values[0], (tuple, list)):
+            assert parameter.type._is_tuple_type
             replacement_expression = (
                 "VALUES " if self.dialect.tuple_in_values else ""
             ) + ", ".join(
                 "(%s)"
                 % (
                     ", ".join(
-                        self.render_literal_value(value, parameter.type)
-                        for value in tuple_element
+                        self.render_literal_value(value, param_type)
+                        for value, param_type in zip(
+                            tuple_element, parameter.type.types
+                        )
                     )
                 )
                 for i, tuple_element in enumerate(values)
             )
         else:
+            assert not parameter.type._is_tuple_type
             replacement_expression = ", ".join(
                 self.render_literal_value(value, parameter.type)
                 for value in values
@@ -1853,6 +1857,7 @@ class SQLCompiler(Compiled):
         return (), replacement_expression
 
     def _literal_execute_expanding_parameter(self, name, parameter, values):
+
         if parameter.literal_execute:
             return self._literal_execute_expanding_parameter_literal_binds(
                 parameter, values
@@ -1860,11 +1865,15 @@ class SQLCompiler(Compiled):
 
         if not values:
             to_update = []
-            replacement_expression = self.visit_empty_set_expr(
-                parameter._expanding_in_types
-                if parameter._expanding_in_types
-                else [parameter.type]
-            )
+            if parameter.type._is_tuple_type:
+
+                replacement_expression = self.visit_empty_set_expr(
+                    parameter.type.types
+                )
+            else:
+                replacement_expression = self.visit_empty_set_expr(
+                    [parameter.type]
+                )
 
         elif isinstance(values[0], (tuple, list)):
             to_update = [
@@ -2560,6 +2569,12 @@ class SQLCompiler(Compiled):
         if keyname is None:
             self._ordered_columns = False
             self._textual_ordered_columns = True
+        if type_._is_tuple_type:
+            raise exc.CompileError(
+                "Most backends don't support SELECTing "
+                "from a tuple() object.  If this is an ORM query, "
+                "consider using the Bundle object."
+            )
         self._result_columns.append((keyname, name, objects, type_))
 
     def _label_select_column(

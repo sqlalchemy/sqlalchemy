@@ -2801,6 +2801,21 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             self.item_type._set_parent_with_dispatch(parent)
 
 
+class TupleType(TypeEngine):
+    """represent the composite type of a Tuple."""
+
+    _is_tuple_type = True
+
+    def __init__(self, *types):
+        self.types = types
+
+    def result_processor(self, dialect, coltype):
+        raise NotImplementedError(
+            "The tuple type does not support being fetched "
+            "as a column in a result row."
+        )
+
+
 class REAL(Float):
 
     """The SQL REAL type."""

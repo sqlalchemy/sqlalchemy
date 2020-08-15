@@ -665,6 +665,30 @@ class PostCompileParamsTest(
             )
         )
 
+    @testing.requires.tuple_in
+    def test_execute_tuple_expanding_plus_literal_heterogeneous_execute(self):
+        table = self.tables.some_table
+
+        stmt = select([table.c.id]).where(
+            tuple_(table.c.x, table.c.z).in_(
+                bindparam("q", expanding=True, literal_execute=True)
+            )
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            with config.db.connect() as conn:
+                conn.execute(stmt, q=[(5, "z1"), (12, "z3")])
+
+        asserter.assert_(
+            CursorSQL(
+                "SELECT some_table.id \nFROM some_table "
+                "\nWHERE (some_table.x, some_table.z) "
+                "IN (%s(5, 'z1'), (12, 'z3'))"
+                % ("VALUES " if config.db.dialect.tuple_in_values else ""),
+                () if config.db.dialect.positional else {},
+            )
+        )
+
 
 class ExpandingBoundInTest(fixtures.TablesTest):
     __backend__ = True

@@ -9,8 +9,10 @@ import re
 
 from ... import types as sqltypes
 from ... import util
+from ...sql import coercions
 from ...sql import expression
 from ...sql import operators
+from ...sql import roles
 
 
 def Any(other, arrexpr, operator=operators.eq):
@@ -41,7 +43,7 @@ def All(other, arrexpr, operator=operators.eq):
     return arrexpr.all(other, operator)
 
 
-class array(expression.Tuple):
+class array(expression.ClauseList, expression.ColumnElement):
 
     """A PostgreSQL ARRAY literal.
 
@@ -97,16 +99,31 @@ class array(expression.Tuple):
     __visit_name__ = "array"
 
     def __init__(self, clauses, **kw):
+        clauses = [
+            coercions.expect(roles.ExpressionElementRole, c) for c in clauses
+        ]
+
         super(array, self).__init__(*clauses, **kw)
-        if isinstance(self.type, ARRAY):
+
+        self._type_tuple = [arg.type for arg in clauses]
+        main_type = kw.pop(
+            "type_",
+            self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE,
+        )
+
+        if isinstance(main_type, ARRAY):
             self.type = ARRAY(
-                self.type.item_type,
-                dimensions=self.type.dimensions + 1
-                if self.type.dimensions is not None
+                main_type.item_type,
+                dimensions=main_type.dimensions + 1
+                if main_type.dimensions is not None
                 else 2,
             )
         else:
-            self.type = ARRAY(self.type)
+            self.type = ARRAY(main_type)
+
+    @property
+    def _select_iterable(self):
+        return (self,)
 
     def _bind_param(self, operator, obj, _assume_scalar=False, type_=None):
         if _assume_scalar or operator is operators.getitem:
