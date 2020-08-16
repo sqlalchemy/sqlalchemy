@@ -22,6 +22,12 @@ import sys
 import types
 import weakref
 
+try:
+    import dataclasses
+except ImportError:
+    # The dataclasses module was added in Python 3.7
+    dataclasses = None
+
 from . import attributes
 from . import exc as orm_exc
 from . import instrumentation
@@ -2645,6 +2651,20 @@ class Mapper(
         else:
             return True
 
+    @HasMemoized.memoized_attribute
+    def _is_dataclass(self):
+        if dataclasses is not None:
+            return dataclasses.is_dataclass(self.class_)
+        else:
+            return False
+
+    @HasMemoized.memoized_attribute
+    def _dataclass_fields(self):
+        return set(field.name for field in dataclasses.fields(self.class_))
+
+    def _is_dataclass_field(self, assigned_name):
+        return self._is_dataclass and assigned_name in self._dataclass_fields
+
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
         present on the class.
@@ -2656,16 +2676,21 @@ class Mapper(
 
         # check for class-bound attributes and/or descriptors,
         # either local or from an inherited class
+        # ignore dataclass field default values
         if local:
             if self.class_.__dict__.get(
                 assigned_name, None
             ) is not None and self._is_userland_descriptor(
                 self.class_.__dict__[assigned_name]
-            ):
+            ) and not self._is_dataclass_field(assigned_name):
                 return True
         else:
             attr = self.class_manager._get_class_attr_mro(assigned_name, None)
-            if attr is not None and self._is_userland_descriptor(attr):
+            if (
+                attr is not None
+                and self._is_userland_descriptor(attr)
+                and not self._is_dataclass_field(assigned_name)
+            ):
                 return True
 
         if (

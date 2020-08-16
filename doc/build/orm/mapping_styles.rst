@@ -120,6 +120,86 @@ user-defined class, linked together with a :func:`.mapper`.  When we talk about
 "the behavior of :func:`.mapper`", this includes when using the Declarative system
 as well - it's still used, just behind the scenes.
 
+Mapping dataclasses and attrs
+-----------------------------
+
+The dataclasses_ module, added in Python 3.7, provides a ``dataclass`` class
+decorator to automatically generate boilerplate definitions of ``__init__()``,
+``__eq__()``, ``__repr()__``, etc. methods. Another very popular library that does
+the same, and much more, is attrs_. Classes defined using either of these can
+be mapped with the following caveats.
+
+.. note::
+
+    * Only classical mapping is possible, not Declarative. Classes inheriting from
+      Declarative base would get processed by SQLAlchemy before being handed to the
+      ``dataclass`` or ``attrs`` decorator, and this would interfere with its function.
+
+    * The ``dataclass`` decorator adds class attributes corresponding to simple default values.
+      This is done mostly as documentation, these attributes are not necessary for the function
+      of any of the generated methods. Mapping replaces these class attributes with property
+      descriptors.
+
+    * Mapping of frozen ``dataclass`` and ``attrs`` classes is not possible, because the
+      machinery used to enforce immutability interferes with loading.
+
+Example::
+
+    from __future__ import annotations
+    from dataclasses import dataclass, field
+    from typing import List
+
+    from sqlalchemy import Column, ForeignKey, Integer, MetaData, String, Table
+    from sqlalchemy.orm import mapper, relationship
+
+    @dataclass
+    class User:
+        id: int = field(init=False)
+        name: str = None
+        fullname: str = None
+        nickname: str = None
+        addresses: List[Address] = field(default_factory=list)
+
+    @dataclass
+    class Address:
+        id: int = field(init=False)
+        user_id: int = field(init=False)
+        email_address: str = None
+
+    metadata = MetaData()
+
+    user = Table(
+        'user',
+        metadata,
+        Column('id', Integer, primary_key=True),
+        Column('name', String(50)),
+        Column('fullname', String(50)),
+        Column('nickname', String(12)),
+    )
+
+    address = Table(
+        'address',
+        metadata,
+        Column('id', Integer, primary_key=True),
+        Column('user_id', Integer, ForeignKey('user.id')),
+        Column('email_address', String(50)),
+    )
+
+    mapper(User, user, properties={
+        'addresses': relationship(Address, backref='user', order_by=address.c.id),
+    })
+
+    mapper(Address, address)
+
+Note that ``User.id``, ``Address.id``, and ``Address.user_id`` are defined as ``field(init=False)``.
+This means that parameters for these won't be added to ``__init__()`` methods, but
+:class:`.Session` will still be able to set them after getting their values during flush
+from autoincrement or other default value generator. You can also give them a
+``None`` default value instead if you want to be able to specify their values in the constructor.
+
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html
+.. _attrs: https://www.attrs.org/en/stable/
+
 Runtime Introspection of Mappings, Objects
 ==========================================
 
