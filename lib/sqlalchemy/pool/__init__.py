@@ -29,6 +29,7 @@ from .dbapi_proxy import clear_managers
 from .dbapi_proxy import manage
 from .impl import AssertionPool
 from .impl import AsyncAdaptedQueuePool
+from .impl import FallbackAsyncAdaptedQueuePool
 from .impl import NullPool
 from .impl import QueuePool
 from .impl import SingletonThreadPool
@@ -46,6 +47,7 @@ __all__ = [
     "NullPool",
     "QueuePool",
     "AsyncAdaptedQueuePool",
+    "FallbackAsyncAdaptedQueuePool",
     "SingletonThreadPool",
     "StaticPool",
 ]

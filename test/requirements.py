@@ -1330,7 +1330,10 @@ class DefaultRequirements(SuiteRequirements):
         """dialect makes use of await_() to invoke operations on the DBAPI."""
 
         return only_on(
-            ["postgresql+asyncpg", "mysql+aiomysql", "mariadb+aiomysql"]
+            LambdaPredicate(
+                lambda config: config.db.dialect.is_async,
+                "Async dialect required",
+            )
         )
 
     @property

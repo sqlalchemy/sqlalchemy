@@ -587,7 +587,7 @@ class AsyncAdapt_asyncpg_dbapi:
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
 
-        if async_fallback:
+        if util.asbool(async_fallback):
             return AsyncAdaptFallback_asyncpg_connection(
                 self,
                 await_fallback(self.asyncpg.connect(*arg, **kw)),
@@ -729,6 +729,7 @@ class PGDialect_asyncpg(PGDialect):
             REGCLASS: AsyncpgREGCLASS,
         },
     )
+    is_async = True
 
     @util.memoized_property
     def _dbapi_version(self):
@@ -792,8 +793,14 @@ class PGDialect_asyncpg(PGDialect):
         return ([], opts)
 
     @classmethod
-    def get_pool_class(self, url):
-        return pool.AsyncAdaptedQueuePool
+    def get_pool_class(cls, url):
+
+        async_fallback = url.query.get("async_fallback", False)
+
+        if util.asbool(async_fallback):
+            return pool.FallbackAsyncAdaptedQueuePool
+        else:
+            return pool.AsyncAdaptedQueuePool
 
     def is_disconnect(self, e, connection, cursor):
         if connection:

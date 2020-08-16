@@ -210,6 +210,8 @@ class DefaultDialect(interfaces.Dialect):
 
     """
 
+    is_async = False
+
     CACHE_HIT = CACHE_HIT
     CACHE_MISS = CACHE_MISS
     CACHING_DISABLED = CACHING_DISABLED

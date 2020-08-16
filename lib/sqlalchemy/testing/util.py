@@ -11,12 +11,23 @@ import random
 import sys
 import types
 
+from . import config
 from . import mock
+from .. import inspect
+from ..schema import Column
+from ..schema import DropConstraint
+from ..schema import DropTable
+from ..schema import ForeignKeyConstraint
+from ..schema import MetaData
+from ..schema import Table
+from ..sql import schema
+from ..sql.sqltypes import Integer
 from ..util import decorator
 from ..util import defaultdict
 from ..util import has_refcount_gc
 from ..util import inspect_getfullargspec
 from ..util import py2k
+
 
 if not has_refcount_gc:
 
@@ -198,9 +209,9 @@ def fail(msg):
 def provide_metadata(fn, *args, **kw):
     """Provide bound MetaData for a single test, dropping afterwards."""
 
-    from . import config
+    # import cycle that only occurs with py2k's import resolver
+    # in py3k this can be moved top level.
     from . import engines
-    from sqlalchemy import schema
 
     metadata = schema.MetaData(config.db)
     self = args[0]
@@ -243,8 +254,6 @@ def flag_combinations(*combinations):
 
     """
 
-    from . import config
-
     keys = set()
 
     for d in combinations:
@@ -264,8 +273,6 @@ def flag_combinations(*combinations):
 
 
 def lambda_combinations(lambda_arg_sets, **kw):
-    from . import config
-
     args = inspect_getfullargspec(lambda_arg_sets)
 
     arg_sets = lambda_arg_sets(*[mock.Mock() for arg in args[0]])
@@ -302,11 +309,8 @@ def resolve_lambda(__fn, **kw):
 def metadata_fixture(ddl="function"):
     """Provide MetaData for a pytest fixture."""
 
-    from . import config
-
     def decorate(fn):
         def run_ddl(self):
-            from sqlalchemy import schema
 
             metadata = self.metadata = schema.MetaData()
             try:
@@ -328,8 +332,6 @@ def force_drop_names(*names):
     isolating for foreign key cycles
 
     """
-    from . import config
-    from sqlalchemy import inspect
 
     @decorator
     def go(fn, *args, **kw):
@@ -358,14 +360,6 @@ class adict(dict):
 
 
 def drop_all_tables(engine, inspector, schema=None, include_names=None):
-    from sqlalchemy import (
-        Column,
-        Table,
-        Integer,
-        MetaData,
-        ForeignKeyConstraint,
-    )
-    from sqlalchemy.schema import DropTable, DropConstraint
 
     if include_names is not None:
         include_names = set(include_names)

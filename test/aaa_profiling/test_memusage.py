@@ -1568,7 +1568,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         go()
 
-    @testing.fails
+    @testing.fails()
     def test_the_counter(self):
         @assert_cycles()
         def go():

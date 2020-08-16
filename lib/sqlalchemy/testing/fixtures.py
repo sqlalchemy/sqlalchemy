@@ -48,6 +48,11 @@ class TestBase(object):
     # skipped.
     __skip_if__ = None
 
+    # If this class should be wrapped in asyncio compatibility functions
+    # when using an async engine. This should be set to False only for tests
+    # that use the asyncio features of sqlalchemy directly
+    __asyncio_wrap__ = True
+
     def assert_(self, val, msg=None):
         assert val, msg
 
@@ -88,6 +93,12 @@ class TestBase(object):
     #        yield metadata
     #    finally:
     #       engines.drop_all_tables(metadata, config.db)
+
+
+class AsyncTestBase(TestBase):
+    """Mixin marking a test as using its own explicit asyncio patterns."""
+
+    __asyncio_wrap__ = False
 
 
 class FutureEngineMixin(object):

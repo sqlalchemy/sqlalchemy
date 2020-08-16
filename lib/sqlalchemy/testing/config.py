@@ -7,6 +7,8 @@
 
 import collections
 
+from .. import util
+
 requirements = None
 db = None
 db_url = None
@@ -14,6 +16,7 @@ db_opts = None
 file_config = None
 test_schema = None
 test_schema_2 = None
+any_async = False
 _current = None
 ident = "main"
 
@@ -104,6 +107,10 @@ class Config(object):
         self.test_schema = "test_schema"
         self.test_schema_2 = "test_schema_2"
 
+        self.is_async = db.dialect.is_async and not util.asbool(
+            db.url.query.get("async_fallback", False)
+        )
+
     _stack = collections.deque()
     _configs = set()
 
@@ -121,7 +128,15 @@ class Config(object):
         If there are no configs set up yet, this config also
         gets set as the "_current".
         """
+        global any_async
+
         cfg = Config(db, db_opts, options, file_config)
+
+        # if any backends include an async driver, then ensure
+        # all setup/teardown and tests are wrapped in the maybe_async()
+        # decorator that will set up a greenlet context for async drivers.
+        any_async = any_async or cfg.is_async
+
         cls._configs.add(cfg)
         return cfg
 

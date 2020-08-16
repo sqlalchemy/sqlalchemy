@@ -34,6 +34,7 @@ handling.
 
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
+from ... import util
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
@@ -226,7 +227,7 @@ class AsyncAdapt_aiomysql_dbapi:
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
 
-        if async_fallback:
+        if util.asbool(async_fallback):
             return AsyncAdaptFallback_aiomysql_connection(
                 self,
                 await_fallback(self.aiomysql.connect(*arg, **kw)),
@@ -244,6 +245,8 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     supports_server_side_cursors = True
     _sscursor = AsyncAdapt_aiomysql_ss_cursor
 
+    is_async = True
+
     @classmethod
     def dbapi(cls):
         return AsyncAdapt_aiomysql_dbapi(
@@ -251,8 +254,14 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
         )
 
     @classmethod
-    def get_pool_class(self, url):
-        return pool.AsyncAdaptedQueuePool
+    def get_pool_class(cls, url):
+
+        async_fallback = url.query.get("async_fallback", False)
+
+        if util.asbool(async_fallback):
+            return pool.FallbackAsyncAdaptedQueuePool
+        else:
+            return pool.AsyncAdaptedQueuePool
 
     def create_connect_args(self, url):
         args, kw = super(MySQLDialect_aiomysql, self).create_connect_args(url)

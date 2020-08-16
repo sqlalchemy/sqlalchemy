@@ -64,7 +64,6 @@ def await_fallback(awaitable: Coroutine) -> Any:
     :param awaitable: The coroutine to call.
 
     """
-
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
@@ -135,3 +134,15 @@ class AsyncAdaptedLock:
 
     def __exit__(self, *arg, **kw):
         self.mutex.release()
+
+
+def _util_async_run(fn, *args, **kwargs):
+    """for test suite/ util only"""
+
+    loop = asyncio.get_event_loop()
+    if not loop.is_running():
+        return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
+    else:
+        # allow for a wrapped test function to call another
+        assert isinstance(greenlet.getcurrent(), _AsyncIoGreenlet)
+        return fn(*args, **kwargs)

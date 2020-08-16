@@ -46,7 +46,7 @@ class ConnectionKiller(object):
             fn()
         except Exception as e:
             warnings.warn(
-                "testing_reaper couldn't " "rollback/close connection: %s" % e
+                "testing_reaper couldn't rollback/close connection: %s" % e
             )
 
     def rollback_all(self):
@@ -199,9 +199,7 @@ class ReconnectFixture(object):
         try:
             fn()
         except Exception as e:
-            warnings.warn(
-                "ReconnectFixture couldn't " "close connection: %s" % e
-            )
+            warnings.warn("ReconnectFixture couldn't close connection: %s" % e)
 
     def shutdown(self, stop=False):
         # TODO: this doesn't cover all cases

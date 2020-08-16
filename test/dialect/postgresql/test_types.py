@@ -2734,14 +2734,14 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_equal(self):
         self._test_clause(
-            self.col == self._data_str,
+            self.col == self._data_str(),
             "data_table.range = %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_not_equal(self):
         self._test_clause(
-            self.col != self._data_str,
+            self.col != self._data_str(),
             "data_table.range <> %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
@@ -2760,94 +2760,94 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
     def test_where_less_than(self):
         self._test_clause(
-            self.col < self._data_str,
+            self.col < self._data_str(),
             "data_table.range < %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than(self):
         self._test_clause(
-            self.col > self._data_str,
+            self.col > self._data_str(),
             "data_table.range > %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_less_than_or_equal(self):
         self._test_clause(
-            self.col <= self._data_str,
+            self.col <= self._data_str(),
             "data_table.range <= %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_where_greater_than_or_equal(self):
         self._test_clause(
-            self.col >= self._data_str,
+            self.col >= self._data_str(),
             "data_table.range >= %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_contains(self):
         self._test_clause(
-            self.col.contains(self._data_str),
+            self.col.contains(self._data_str()),
             "data_table.range @> %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_contained_by(self):
         self._test_clause(
-            self.col.contained_by(self._data_str),
+            self.col.contained_by(self._data_str()),
             "data_table.range <@ %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_overlaps(self):
         self._test_clause(
-            self.col.overlaps(self._data_str),
+            self.col.overlaps(self._data_str()),
             "data_table.range && %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_left_of(self):
         self._test_clause(
-            self.col << self._data_str,
+            self.col << self._data_str(),
             "data_table.range << %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
-            self.col.strictly_left_of(self._data_str),
+            self.col.strictly_left_of(self._data_str()),
             "data_table.range << %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_strictly_right_of(self):
         self._test_clause(
-            self.col >> self._data_str,
+            self.col >> self._data_str(),
             "data_table.range >> %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
         self._test_clause(
-            self.col.strictly_right_of(self._data_str),
+            self.col.strictly_right_of(self._data_str()),
             "data_table.range >> %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_right_of(self):
         self._test_clause(
-            self.col.not_extend_right_of(self._data_str),
+            self.col.not_extend_right_of(self._data_str()),
             "data_table.range &< %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_not_extend_left_of(self):
         self._test_clause(
-            self.col.not_extend_left_of(self._data_str),
+            self.col.not_extend_left_of(self._data_str()),
             "data_table.range &> %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
 
     def test_adjacent_to(self):
         self._test_clause(
-            self.col.adjacent_to(self._data_str),
+            self.col.adjacent_to(self._data_str()),
             "data_table.range -|- %(range_1)s",
             sqltypes.BOOLEANTYPE,
         )
@@ -2920,14 +2920,14 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
 
     def test_insert_text(self, connection):
         connection.execute(
-            self.tables.data_table.insert(), {"range": self._data_str}
+            self.tables.data_table.insert(), {"range": self._data_str()}
         )
         self._assert_data(connection)
 
     def test_union_result(self, connection):
         # insert
         connection.execute(
-            self.tables.data_table.insert(), {"range": self._data_str}
+            self.tables.data_table.insert(), {"range": self._data_str()}
         )
         # select
         range_ = self.tables.data_table.c.range
@@ -2937,7 +2937,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
     def test_intersection_result(self, connection):
         # insert
         connection.execute(
-            self.tables.data_table.insert(), {"range": self._data_str}
+            self.tables.data_table.insert(), {"range": self._data_str()}
         )
         # select
         range_ = self.tables.data_table.c.range
@@ -2947,7 +2947,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
     def test_difference_result(self, connection):
         # insert
         connection.execute(
-            self.tables.data_table.insert(), {"range": self._data_str}
+            self.tables.data_table.insert(), {"range": self._data_str()}
         )
         # select
         range_ = self.tables.data_table.c.range
@@ -2959,7 +2959,9 @@ class _Int4RangeTests(object):
 
     _col_type = INT4RANGE
     _col_str = "INT4RANGE"
-    _data_str = "[1,2)"
+
+    def _data_str(self):
+        return "[1,2)"
 
     def _data_obj(self):
         return self.extras().NumericRange(1, 2)
@@ -2969,7 +2971,9 @@ class _Int8RangeTests(object):
 
     _col_type = INT8RANGE
     _col_str = "INT8RANGE"
-    _data_str = "[9223372036854775806,9223372036854775807)"
+
+    def _data_str(self):
+        return "[9223372036854775806,9223372036854775807)"
 
     def _data_obj(self):
         return self.extras().NumericRange(
@@ -2981,7 +2985,9 @@ class _NumRangeTests(object):
 
     _col_type = NUMRANGE
     _col_str = "NUMRANGE"
-    _data_str = "[1.0,2.0)"
+
+    def _data_str(self):
+        return "[1.0,2.0)"
 
     def _data_obj(self):
         return self.extras().NumericRange(
@@ -2993,7 +2999,9 @@ class _DateRangeTests(object):
 
     _col_type = DATERANGE
     _col_str = "DATERANGE"
-    _data_str = "[2013-03-23,2013-03-24)"
+
+    def _data_str(self):
+        return "[2013-03-23,2013-03-24)"
 
     def _data_obj(self):
         return self.extras().DateRange(
@@ -3005,7 +3013,9 @@ class _DateTimeRangeTests(object):
 
     _col_type = TSRANGE
     _col_str = "TSRANGE"
-    _data_str = "[2013-03-23 14:30,2013-03-23 23:30)"
+
+    def _data_str(self):
+        return "[2013-03-23 14:30,2013-03-23 23:30)"
 
     def _data_obj(self):
         return self.extras().DateTimeRange(
@@ -3031,7 +3041,6 @@ class _DateTimeTZRangeTests(object):
                 self._tstzs = (lower, upper)
         return self._tstzs
 
-    @property
     def _data_str(self):
         return "[%s,%s)" % self.tstzs()
 
@@ -3178,7 +3187,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
     __only_on__ = ("postgresql >= 9.3",)
     __backend__ = True
 
-    test_type = JSON
+    data_type = JSON
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3187,8 +3196,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(30), nullable=False),
-            Column("data", cls.test_type),
-            Column("nulldata", cls.test_type(none_as_null=True)),
+            Column("data", cls.data_type),
+            Column("nulldata", cls.data_type(none_as_null=True)),
         )
 
     def _fixture_data(self, engine):
@@ -3255,7 +3264,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
     def test_reflect(self):
         insp = inspect(testing.db)
         cols = insp.get_columns("data_table")
-        assert isinstance(cols[2]["type"], self.test_type)
+        assert isinstance(cols[2]["type"], self.data_type)
 
     def test_insert(self, connection):
         self._test_insert(connection)
@@ -3286,7 +3295,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             options=dict(json_serializer=dumps, json_deserializer=loads)
         )
 
-        s = select(cast({"key": "value", "x": "q"}, self.test_type))
+        s = select(cast({"key": "value", "x": "q"}, self.data_type))
         with engine.begin() as conn:
             eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
 
@@ -3366,7 +3375,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         s = select(
             cast(
                 {"key": "value", "key2": {"k1": "v1", "k2": "v2"}},
-                self.test_type,
+                self.data_type,
             )
         )
         eq_(
@@ -3381,7 +3390,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
                     util.u("réveillé"): util.u("réveillé"),
                     "data": {"k1": util.u("drôle")},
                 },
-                self.test_type,
+                self.data_type,
             )
         )
         eq_(
@@ -3483,7 +3492,7 @@ class JSONBTest(JSONTest):
 class JSONBRoundTripTest(JSONRoundTripTest):
     __requires__ = ("postgresql_jsonb",)
 
-    test_type = JSONB
+    data_type = JSONB
 
     @testing.requires.postgresql_utf8_server_encoding
     def test_unicode_round_trip(self, connection):

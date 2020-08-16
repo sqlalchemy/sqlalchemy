@@ -63,21 +63,21 @@ def setup_options(make_option):
     make_option(
         "--log-info",
         action="callback",
-        type="string",
+        type=str,
         callback=_log,
         help="turn on info logging for <LOG> (multiple OK)",
     )
     make_option(
         "--log-debug",
         action="callback",
-        type="string",
+        type=str,
         callback=_log,
         help="turn on debug logging for <LOG> (multiple OK)",
     )
     make_option(
         "--db",
         action="append",
-        type="string",
+        type=str,
         dest="db",
         help="Use prefab database uri. Multiple OK, "
         "first one is run by default.",
@@ -91,7 +91,7 @@ def setup_options(make_option):
     make_option(
         "--dburi",
         action="append",
-        type="string",
+        type=str,
         dest="dburi",
         help="Database uri.  Multiple OK, " "first one is run by default.",
     )
@@ -109,6 +109,11 @@ def setup_options(make_option):
         action="store_true",
         dest="dropfirst",
         help="Drop all tables in the target database first",
+    )
+    make_option(
+        "--disable-asyncio",
+        action="store_true",
+        help="disable test / fixtures / provisoning running in asyncio",
     )
     make_option(
         "--backend-only",
@@ -130,20 +135,20 @@ def setup_options(make_option):
     )
     make_option(
         "--profile-sort",
-        type="string",
+        type=str,
         default="cumulative",
         dest="profilesort",
         help="Type of sort for profiling standard output",
     )
     make_option(
         "--profile-dump",
-        type="string",
+        type=str,
         dest="profiledump",
         help="Filename where a single profile run will be dumped",
     )
     make_option(
         "--postgresql-templatedb",
-        type="string",
+        type=str,
         help="name of template database to use for PostgreSQL "
         "CREATE DATABASE (defaults to current database)",
     )
@@ -156,7 +161,7 @@ def setup_options(make_option):
     )
     make_option(
         "--write-idents",
-        type="string",
+        type=str,
         dest="write_idents",
         help="write out generated follower idents to <file>, "
         "when -n<num> is used",
@@ -172,7 +177,7 @@ def setup_options(make_option):
     make_option(
         "--requirements",
         action="callback",
-        type="string",
+        type=str,
         callback=_requirements_opt,
         help="requirements class for testing, overrides setup.cfg",
     )
@@ -188,14 +193,14 @@ def setup_options(make_option):
         "--include-tag",
         action="callback",
         callback=_include_tag,
-        type="string",
+        type=str,
         help="Include tests with tag <tag>",
     )
     make_option(
         "--exclude-tag",
         action="callback",
         callback=_exclude_tag,
-        type="string",
+        type=str,
         help="Exclude tests with tag <tag>",
     )
     make_option(
@@ -375,10 +380,18 @@ def _init_symbols(options, file_config):
 
 
 @post
+def _set_disable_asyncio(opt, file_config):
+    if opt.disable_asyncio:
+        from sqlalchemy.testing import asyncio
+
+        asyncio.ENABLE_ASYNCIO = False
+
+
+@post
 def _engine_uri(options, file_config):
 
-    from sqlalchemy.testing import config
     from sqlalchemy import testing
+    from sqlalchemy.testing import config
     from sqlalchemy.testing import provision
 
     if options.dburi:

@@ -25,6 +25,7 @@ from . import compat
 from .compat import threading
 from .concurrency import asyncio
 from .concurrency import await_fallback
+from .concurrency import await_only
 
 
 __all__ = ["Empty", "Full", "Queue"]
@@ -202,7 +203,7 @@ class Queue:
 
 
 class AsyncAdaptedQueue:
-    await_ = staticmethod(await_fallback)
+    await_ = staticmethod(await_only)
 
     def __init__(self, maxsize=0, use_lifo=False):
         if use_lifo:
@@ -265,3 +266,7 @@ class AsyncAdaptedQueue:
                 Empty(),
                 replace_context=err,
             )
+
+
+class FallbackAsyncAdaptedQueue(AsyncAdaptedQueue):
+    await_ = staticmethod(await_fallback)

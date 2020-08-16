@@ -94,11 +94,11 @@ def generate_db_urls(db_urls, extra_drivers):
         --dburi postgresql://db2  \
         --dbdriver=psycopg2 --dbdriver=asyncpg?async_fallback=true
 
-    Noting that the default postgresql driver is psycopg2.  the output
+    Noting that the default postgresql driver is psycopg2,  the output
     would be::
 
         postgresql+psycopg2://db1
-        postgresql+asyncpg://db1?async_fallback=true
+        postgresql+asyncpg://db1
         postgresql+psycopg2://db2
         postgresql+psycopg2://db3
 
@@ -108,6 +108,12 @@ def generate_db_urls(db_urls, extra_drivers):
     for a driver that is both coming from --dburi as well as --dbdrivers,
     we want to keep it in that dburi.
 
+    Driver specific query options can be specified by added them to the
+    driver name. For example, to enable the async fallback option for
+    asyncpg::
+
+        --dburi postgresql://db1  \
+        --dbdriver=asyncpg?async_fallback=true
 
     """
     urls = set()

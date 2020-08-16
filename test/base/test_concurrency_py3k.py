@@ -26,7 +26,7 @@ def go(*fns):
     return sum(await_only(fn()) for fn in fns)
 
 
-class TestAsyncioCompat(fixtures.TestBase):
+class TestAsyncioCompat(fixtures.AsyncTestBase):
     @async_test
     async def test_ok(self):
 
