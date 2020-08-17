@@ -36,23 +36,29 @@ class InsertExecTest(fixtures.TablesTest):
         )
 
     @testing.requires.multivalues_inserts
-    def test_multivalues_insert(self):
+    def test_multivalues_insert(self, connection):
         users = self.tables.users
-        users.insert(
-            values=[
-                {"user_id": 7, "user_name": "jack"},
-                {"user_id": 8, "user_name": "ed"},
-            ]
-        ).execute()
-        rows = users.select().order_by(users.c.user_id).execute().fetchall()
+        connection.execute(
+            users.insert().values(
+                [
+                    {"user_id": 7, "user_name": "jack"},
+                    {"user_id": 8, "user_name": "ed"},
+                ]
+            )
+        )
+        rows = connection.execute(
+            users.select().order_by(users.c.user_id)
+        ).all()
         eq_(rows[0], (7, "jack"))
         eq_(rows[1], (8, "ed"))
-        users.insert(values=[(9, "jack"), (10, "ed")]).execute()
-        rows = users.select().order_by(users.c.user_id).execute().fetchall()
+        connection.execute(users.insert().values([(9, "jack"), (10, "ed")]))
+        rows = connection.execute(
+            users.select().order_by(users.c.user_id)
+        ).all()
         eq_(rows[2], (9, "jack"))
         eq_(rows[3], (10, "ed"))
 
-    def test_insert_heterogeneous_params(self):
+    def test_insert_heterogeneous_params(self, connection):
         """test that executemany parameters are asserted to match the
         parameter set of the first."""
         users = self.tables.users
@@ -63,16 +69,22 @@ class InsertExecTest(fixtures.TablesTest):
             "bind parameter 'user_name', in "
             "parameter group 2\n"
             r"\[SQL: u?INSERT INTO users",
-            users.insert().execute,
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9},
+            connection.execute,
+            users.insert(),
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9},
+            ],
         )
 
         # this succeeds however.   We aren't yet doing
         # a length check on all subsequent parameters.
-        users.insert().execute(
-            {"user_id": 7}, {"user_id": 8, "user_name": "ed"}, {"user_id": 9}
+        connection.execute(
+            users.insert(),
+            {"user_id": 7},
+            {"user_id": 8, "user_name": "ed"},
+            {"user_id": 9},
         )
 
     def _test_lastrow_accessor(self, table_, values, assertvalues):
@@ -94,26 +106,29 @@ class InsertExecTest(fixtures.TablesTest):
                 ):
                     is_(bool(comp.returning), True)
 
-            result = engine.execute(table_.insert(), **values)
-            ret = values.copy()
+            with engine.begin() as connection:
+                result = connection.execute(table_.insert(), **values)
+                ret = values.copy()
 
-            for col, id_ in zip(
-                table_.primary_key, result.inserted_primary_key
-            ):
-                ret[col.key] = id_
+                for col, id_ in zip(
+                    table_.primary_key, result.inserted_primary_key
+                ):
+                    ret[col.key] = id_
 
-            if result.lastrow_has_defaults():
-                criterion = and_(
-                    *[
-                        col == id_
-                        for col, id_ in zip(
-                            table_.primary_key, result.inserted_primary_key
-                        )
-                    ]
-                )
-                row = engine.execute(table_.select(criterion)).first()
-                for c in table_.c:
-                    ret[c.key] = row._mapping[c]
+                if result.lastrow_has_defaults():
+                    criterion = and_(
+                        *[
+                            col == id_
+                            for col, id_ in zip(
+                                table_.primary_key, result.inserted_primary_key
+                            )
+                        ]
+                    )
+                    row = connection.execute(
+                        table_.select().where(criterion)
+                    ).first()
+                    for c in table_.c:
+                        ret[c.key] = row._mapping[c]
             return ret
 
         if testing.against("firebird", "postgresql", "oracle", "mssql"):
@@ -275,15 +290,16 @@ class InsertExecTest(fixtures.TablesTest):
             Column("x", Integer, primary_key=True),
             Column("y", Integer),
         )
-        t.create(eng)
-        r = eng.execute(t.insert().values(y=5))
-        eq_(r.inserted_primary_key, (0,))
+        with eng.begin() as conn:
+            t.create(conn)
+            r = conn.execute(t.insert().values(y=5))
+            eq_(r.inserted_primary_key, (0,))
 
     @testing.fails_on(
         "sqlite", "sqlite autoincrement doesn't work with composite pks"
     )
     @testing.provide_metadata
-    def test_misordered_lastrow(self):
+    def test_misordered_lastrow(self, connection):
         metadata = self.metadata
 
         related = Table(
@@ -312,37 +328,39 @@ class InsertExecTest(fixtures.TablesTest):
             mariadb_engine="MyISAM",
         )
 
-        metadata.create_all()
-        r = related.insert().values(id=12).execute()
+        metadata.create_all(connection)
+        r = connection.execute(related.insert().values(id=12))
         id_ = r.inserted_primary_key[0]
         eq_(id_, 12)
 
-        r = t6.insert().values(manual_id=id_).execute()
+        r = connection.execute(t6.insert().values(manual_id=id_))
         eq_(r.inserted_primary_key, (12, 1))
 
-    def test_implicit_id_insert_select_columns(self):
+    def test_implicit_id_insert_select_columns(self, connection):
         users = self.tables.users
         stmt = users.insert().from_select(
             (users.c.user_id, users.c.user_name),
             users.select().where(users.c.user_id == 20),
         )
 
-        testing.db.execute(stmt)
+        r = connection.execute(stmt)
+        eq_(r.inserted_primary_key, (None,))
 
-    def test_implicit_id_insert_select_keys(self):
+    def test_implicit_id_insert_select_keys(self, connection):
         users = self.tables.users
         stmt = users.insert().from_select(
             ["user_id", "user_name"],
             users.select().where(users.c.user_id == 20),
         )
 
-        testing.db.execute(stmt)
+        r = connection.execute(stmt)
+        eq_(r.inserted_primary_key, (None,))
 
     @testing.requires.empty_inserts
     @testing.requires.returning
-    def test_no_inserted_pk_on_returning(self):
+    def test_no_inserted_pk_on_returning(self, connection):
         users = self.tables.users
-        result = testing.db.execute(
+        result = connection.execute(
             users.insert().returning(users.c.user_id, users.c.user_name)
         )
         assert_raises_message(
@@ -399,52 +417,60 @@ class TableInsertTest(fixtures.TablesTest):
         return t
 
     def _test(
-        self, stmt, row, returning=None, inserted_primary_key=False, table=None
+        self,
+        connection,
+        stmt,
+        row,
+        returning=None,
+        inserted_primary_key=False,
+        table=None,
     ):
-        with testing.db.connect() as conn:
-            r = conn.execute(stmt)
+        r = connection.execute(stmt)
 
-            if returning:
-                returned = r.first()
-                eq_(returned, returning)
-            elif inserted_primary_key is not False:
-                eq_(r.inserted_primary_key, inserted_primary_key)
+        if returning:
+            returned = r.first()
+            eq_(returned, returning)
+        elif inserted_primary_key is not False:
+            eq_(r.inserted_primary_key, inserted_primary_key)
 
-            if table is None:
-                table = self.tables.foo
+        if table is None:
+            table = self.tables.foo
 
-            eq_(conn.execute(table.select()).first(), row)
+        eq_(connection.execute(table.select()).first(), row)
 
-    def _test_multi(self, stmt, rows, data):
-        testing.db.execute(stmt, rows)
+    def _test_multi(self, connection, stmt, rows, data):
+        connection.execute(stmt, rows)
         eq_(
-            testing.db.execute(
+            connection.execute(
                 self.tables.foo.select().order_by(self.tables.foo.c.id)
-            ).fetchall(),
+            ).all(),
             data,
         )
 
     @testing.requires.sequences
-    def test_explicit_sequence(self):
+    def test_explicit_sequence(self, connection):
         t = self._fixture()
         self._test(
+            connection,
             t.insert().values(
                 id=func.next_value(Sequence("t_id_seq")), data="data", x=5
             ),
             (testing.db.dialect.default_sequence_base, "data", 5),
         )
 
-    def test_uppercase(self):
+    def test_uppercase(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=(1,),
         )
 
-    def test_uppercase_inline(self):
+    def test_uppercase_inline(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().inline().values(id=1, data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=(1,),
@@ -454,64 +480,71 @@ class TableInsertTest(fixtures.TablesTest):
         "mssql+pyodbc",
         "Pyodbc + SQL Server + Py3K, some decimal handling issue",
     )
-    def test_uppercase_inline_implicit(self):
+    def test_uppercase_inline_implicit(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().inline().values(data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=(None,),
         )
 
-    def test_uppercase_implicit(self):
+    def test_uppercase_implicit(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=(testing.db.dialect.default_sequence_base,),
         )
 
-    def test_uppercase_direct_params(self):
+    def test_uppercase_direct_params(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=(1,),
         )
 
     @testing.requires.returning
-    def test_uppercase_direct_params_returning(self):
+    def test_uppercase_direct_params_returning(self, connection):
         t = self.tables.foo
         self._test(
+            connection,
             t.insert().values(id=1, data="data", x=5).returning(t.c.id, t.c.x),
             (1, "data", 5),
             returning=(1, 5),
         )
 
     @testing.requires.sql_expressions_inserted_as_primary_key
-    def test_sql_expr_lastrowid(self):
+    def test_sql_expr_lastrowid(self, connection):
 
         # see also test.orm.test_unitofwork.py
         # ClauseAttributesTest.test_insert_pk_expression
         t = self.tables.foo_no_seq
         self._test(
+            connection,
             t.insert().values(id=literal(5) + 10, data="data", x=5),
             (15, "data", 5),
             inserted_primary_key=(15,),
             table=self.tables.foo_no_seq,
         )
 
-    def test_direct_params(self):
+    def test_direct_params(self, connection):
         t = self._fixture()
         self._test(
+            connection,
             t.insert().values(id=1, data="data", x=5),
             (1, "data", 5),
             inserted_primary_key=(),
         )
 
     @testing.requires.returning
-    def test_direct_params_returning(self):
+    def test_direct_params_returning(self, connection):
         t = self._fixture()
         self._test(
+            connection,
             t.insert().values(id=1, data="data", x=5).returning(t.c.id, t.c.x),
             (testing.db.dialect.default_sequence_base, "data", 5),
             returning=(testing.db.dialect.default_sequence_base, 5),
@@ -523,9 +556,10 @@ class TableInsertTest(fixtures.TablesTest):
     # does not indicate the Sequence
     @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
-    def test_implicit_pk(self):
+    def test_implicit_pk(self, connection):
         t = self._fixture()
         self._test(
+            connection,
             t.insert().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=(),
@@ -533,9 +567,10 @@ class TableInsertTest(fixtures.TablesTest):
 
     @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
-    def test_implicit_pk_multi_rows(self):
+    def test_implicit_pk_multi_rows(self, connection):
         t = self._fixture()
         self._test_multi(
+            connection,
             t.insert(),
             [
                 {"data": "d1", "x": 5},
@@ -547,9 +582,10 @@ class TableInsertTest(fixtures.TablesTest):
 
     @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
-    def test_implicit_pk_inline(self):
+    def test_implicit_pk_inline(self, connection):
         t = self._fixture()
         self._test(
+            connection,
             t.insert().inline().values(data="data", x=5),
             (testing.db.dialect.default_sequence_base, "data", 5),
             inserted_primary_key=(),

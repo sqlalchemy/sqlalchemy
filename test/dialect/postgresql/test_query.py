@@ -194,13 +194,11 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
                 # single execute, explicit id, inline
 
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
 
                 # single execute, inline, uses SERIAL
 
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -262,10 +260,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"id": 32, "data": "d4"},
                 )
                 conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -338,13 +334,11 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
                 # single execute, explicit id, inline
 
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
 
                 # single execute, inline, uses SERIAL
 
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -406,10 +400,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"id": 32, "data": "d4"},
                 )
                 conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -467,10 +459,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"id": 32, "data": "d4"},
                 )
                 conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -532,10 +522,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     {"id": 32, "data": "d4"},
                 )
                 conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
-                conn.execute(
-                    table.insert(inline=True), {"id": 33, "data": "d7"}
-                )
-                conn.execute(table.insert(inline=True), {"data": "d8"})
+                conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
+                conn.execute(table.insert().inline(), {"data": "d8"})
 
         asserter.assert_(
             DialectSQL(
@@ -634,7 +622,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 table.insert(),
                 [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
             )
-            conn.execute(table.insert(inline=True), {"id": 33, "data": "d4"})
+            conn.execute(table.insert().inline(), {"id": 33, "data": "d4"})
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [(30, "d1"), (31, "d2"), (32, "d3"), (33, "d4")],
@@ -671,7 +659,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 table.insert(),
                 [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
             )
-            conn.execute(table.insert(inline=True), {"id": 33, "data": "d4"})
+            conn.execute(table.insert().inline(), {"id": 33, "data": "d4"})
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [(30, "d1"), (31, "d2"), (32, "d3"), (33, "d4")],

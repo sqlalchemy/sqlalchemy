@@ -1193,7 +1193,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         metadata.create_all()
         with testing.db.connect() as conn:
-            conn.execute("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
+            conn.exec_driver_sql("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
 
             # prior to #5205, this would return:
             # [{'column_names': ['x', 'name'],

@@ -3014,7 +3014,7 @@ class Mapper(
         cols = []
         for key in col_attribute_names:
             cols.extend(props[key].columns)
-        return sql.select(cols, cond, use_labels=True)
+        return sql.select(*cols).where(cond).apply_labels()
 
     def _iterate_to_target_viawpoly(self, mapper):
         if self.isa(mapper):

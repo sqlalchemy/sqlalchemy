@@ -273,15 +273,20 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         # version) generate a subquery for limits/offsets. ensure that the
         # generated result map corresponds to the selected table, not the
         # select query
-        s = table1.select(
-            use_labels=True, order_by=[table1.c.this_is_the_primarykey_column]
-        ).limit(2)
+        s = (
+            table1.select()
+            .apply_labels()
+            .order_by(table1.c.this_is_the_primarykey_column)
+            .limit(2)
+        )
         self._assert_labeled_table1_select(s)
 
     def test_result_map_subquery(self):
         table1 = self.table1
-        s = table1.select(table1.c.this_is_the_primarykey_column == 4).alias(
-            "foo"
+        s = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias("foo")
         )
         s2 = select(s)
         compiled = s2.compile(dialect=self._length_fixture())
@@ -302,7 +307,11 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
         dialect = self._length_fixture()
 
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias()
+        )
         s = select(q).apply_labels()
 
         self.assert_compile(
@@ -348,7 +357,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_column_bind_labels_1(self):
         table1 = self.table1
 
-        s = table1.select(table1.c.this_is_the_primarykey_column == 4)
+        s = table1.select().where(table1.c.this_is_the_primarykey_column == 4)
         self.assert_compile(
             s,
             "SELECT some_large_named_table.this_is_the_primarykey_column, "
@@ -375,7 +384,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_column_bind_labels_2(self):
         table1 = self.table1
 
-        s = table1.select(
+        s = table1.select().where(
             or_(
                 table1.c.this_is_the_primarykey_column == 4,
                 table1.c.this_is_the_primarykey_column == 2,
@@ -473,8 +482,10 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_adjustable_1(self):
         table1 = self.table1
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias(
-            "foo"
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias("foo")
         )
         x = select(q)
         compile_dialect = default.DefaultDialect(label_length=10)
@@ -501,8 +512,10 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_adjustable_2(self):
         table1 = self.table1
 
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias(
-            "foo"
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias("foo")
         )
         x = select(q)
 
@@ -531,8 +544,10 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
 
         compile_dialect = default.DefaultDialect(label_length=4)
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias(
-            "foo"
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias("foo")
         )
         x = select(q)
 
@@ -559,7 +574,11 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_adjustable_4(self):
         table1 = self.table1
 
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias()
+        )
         x = select(q).apply_labels()
 
         compile_dialect = default.DefaultDialect(label_length=10)
@@ -586,7 +605,11 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_adjustable_5(self):
         table1 = self.table1
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias()
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias()
+        )
         x = select(q).apply_labels()
 
         compile_dialect = default.DefaultDialect(label_length=4)
@@ -615,7 +638,8 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
 
         q = (
-            table1.select(table1.c.this_is_the_primarykey_column == 4)
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
             .apply_labels()
             .alias("foo")
         )
@@ -642,8 +666,10 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_adjustable_result_schema_column_2(self):
         table1 = self.table1
 
-        q = table1.select(table1.c.this_is_the_primarykey_column == 4).alias(
-            "foo"
+        q = (
+            table1.select()
+            .where(table1.c.this_is_the_primarykey_column == 4)
+            .alias("foo")
         )
         x = select(q)
 

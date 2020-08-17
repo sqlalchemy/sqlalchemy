@@ -5,11 +5,11 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 
 
 class InheritTest(fixtures.MappedTest):
@@ -171,7 +171,7 @@ class InheritTest2(fixtures.MappedTest):
 
         # test that "bar.bid" does not need to be referenced in a get
         # (ticket 185)
-        assert sess.query(Bar).get(b.id).id == b.id
+        assert sess.get(Bar, b.id).id == b.id
 
     def test_basic(self):
         class Foo(object):

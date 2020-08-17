@@ -247,9 +247,9 @@ class MagazineTest(fixtures.MappedTest):
                     "c": self.tables.page.join(self.tables.magazine_page).join(
                         self.tables.classified_page
                     ),
-                    "p": self.tables.page.select(
-                        self.tables.page.c.type == "p"
-                    ).subquery(),
+                    "p": self.tables.page.select()
+                    .where(self.tables.page.c.type == "p")
+                    .subquery(),
                 },
                 None,
                 "page_join",

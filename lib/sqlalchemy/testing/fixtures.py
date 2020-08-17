@@ -330,6 +330,12 @@ class _ORMTest(object):
         sa.orm.clear_mappers()
 
 
+def create_session(**kw):
+    kw.setdefault("autoflush", False)
+    kw.setdefault("expire_on_commit", False)
+    return sa.orm.Session(config.db, **kw)
+
+
 class ORMTest(_ORMTest, TestBase):
     pass
 

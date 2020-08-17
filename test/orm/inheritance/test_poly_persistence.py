@@ -6,7 +6,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
@@ -15,6 +14,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 
 
@@ -123,7 +123,9 @@ class InsertOrderTest(PolymorphTest):
             {
                 "engineer": people.join(engineers),
                 "manager": people.join(managers),
-                "person": people.select(people.c.type == "person").subquery(),
+                "person": people.select()
+                .where(people.c.type == "person")
+                .subquery(),
             },
             None,
             "pjoin",
@@ -191,7 +193,7 @@ class InsertOrderTest(PolymorphTest):
         session.add(c)
         session.flush()
         session.expunge_all()
-        eq_(session.query(Company).get(c.company_id), c)
+        eq_(session.get(Company, c.company_id), c)
 
 
 @testing.combinations(
@@ -235,9 +237,9 @@ class RoundTripTest(PolymorphTest):
                     {
                         "engineer": people.join(engineers),
                         "manager": people.join(managers),
-                        "person": people.select(
-                            people.c.type == "person"
-                        ).subquery(),
+                        "person": people.select()
+                        .where(people.c.type == "person")
+                        .subquery(),
                     },
                     None,
                     "pjoin",
@@ -399,7 +401,7 @@ class RoundTripTest(PolymorphTest):
         employees = session.query(Person).order_by(Person.person_id).all()
         company = session.query(Company).first()
 
-        eq_(session.query(Person).get(dilbert.person_id), dilbert)
+        eq_(session.get(Person, dilbert.person_id), dilbert)
         session.expunge_all()
 
         eq_(
@@ -411,7 +413,7 @@ class RoundTripTest(PolymorphTest):
         session.expunge_all()
 
         def go():
-            cc = session.query(Company).get(company.company_id)
+            cc = session.get(Company, company.company_id)
             eq_(cc.employees, employees)
 
         if not lazy_relationship:
@@ -471,7 +473,7 @@ class RoundTripTest(PolymorphTest):
         # the "palias" alias does *not* get sucked up
         # into the "person_join" conversion.
         palias = people.alias("palias")
-        dilbert = session.query(Person).get(dilbert.person_id)
+        dilbert = session.get(Person, dilbert.person_id)
         is_(
             dilbert,
             session.query(Person)

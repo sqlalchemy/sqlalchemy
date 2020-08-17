@@ -4,10 +4,10 @@ from sqlalchemy import String
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 

@@ -16,18 +16,19 @@ from sqlalchemy import util
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -115,8 +116,8 @@ class RelationshipTest1(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Person).get(p.person_id)
-        m = session.query(Manager).get(m.person_id)
+        p = session.get(Person, p.person_id)
+        m = session.get(Manager, m.person_id)
         assert p.manager is m
 
     def test_descendant_refs_parent(self):
@@ -147,8 +148,8 @@ class RelationshipTest1(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Person).get(p.person_id)
-        m = session.query(Manager).get(m.person_id)
+        p = session.get(Person, p.person_id)
+        m = session.get(Manager, m.person_id)
         assert m.employee is p
 
 
@@ -215,9 +216,9 @@ class RelationshipTest2(fixtures.MappedTest):
         if jointype == "join1":
             poly_union = polymorphic_union(
                 {
-                    "person": people.select(
-                        people.c.type == "person"
-                    ).subquery(),
+                    "person": people.select()
+                    .where(people.c.type == "person")
+                    .subquery(),
                     "manager": join(
                         people,
                         managers,
@@ -230,9 +231,9 @@ class RelationshipTest2(fixtures.MappedTest):
         elif jointype == "join2":
             poly_union = polymorphic_union(
                 {
-                    "person": people.select(
-                        people.c.type == "person"
-                    ).subquery(),
+                    "person": people.select()
+                    .where(people.c.type == "person")
+                    .subquery(),
                     "manager": managers.join(
                         people, people.c.person_id == managers.c.person_id
                     ),
@@ -306,8 +307,8 @@ class RelationshipTest2(fixtures.MappedTest):
         sess.flush()
 
         sess.expunge_all()
-        p = sess.query(Person).get(p.person_id)
-        m = sess.query(Manager).get(m.person_id)
+        p = sess.get(Person, p.person_id)
+        m = sess.get(Manager, m.person_id)
         assert m.colleague is p
         if usedata:
             assert m.data.data == "ms data"
@@ -377,9 +378,9 @@ class RelationshipTest3(fixtures.MappedTest):
                     "manager": managers.join(
                         people, people.c.person_id == managers.c.person_id
                     ),
-                    "person": people.select(
-                        people.c.type == "person"
-                    ).subquery(),
+                    "person": people.select()
+                    .where(people.c.type == "person")
+                    .subquery(),
                 },
                 None,
             )
@@ -391,9 +392,9 @@ class RelationshipTest3(fixtures.MappedTest):
                         managers,
                         people.c.person_id == managers.c.person_id,
                     ),
-                    "person": people.select(
-                        people.c.type == "person"
-                    ).subquery(),
+                    "person": people.select()
+                    .where(people.c.type == "person")
+                    .subquery(),
                 },
                 None,
             )
@@ -477,10 +478,10 @@ class RelationshipTest3(fixtures.MappedTest):
         sess.flush()
 
         sess.expunge_all()
-        p = sess.query(Person).get(p.person_id)
-        p2 = sess.query(Person).get(p2.person_id)
-        p3 = sess.query(Person).get(p3.person_id)
-        m = sess.query(Person).get(m.person_id)
+        p = sess.get(Person, p.person_id)
+        p2 = sess.get(Person, p2.person_id)
+        p3 = sess.get(Person, p3.person_id)
+        m = sess.get(Person, m.person_id)
         assert len(p.colleagues) == 1
         assert p.colleagues == [p2]
         assert m.colleagues == [p3]
@@ -635,17 +636,15 @@ class RelationshipTest4(fixtures.MappedTest):
         session.expunge_all()
 
         def go():
-            testcar = (
-                session.query(Car)
-                .options(joinedload("employee"))
-                .get(car1.car_id)
+            testcar = session.get(
+                Car, car1.car_id, options=[joinedload("employee")]
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
         self.assert_sql_count(testing.db, go, 1)
 
-        car1 = session.query(Car).get(car1.car_id)
-        usingGet = session.query(person_mapper).get(car1.owner)
+        car1 = session.get(Car, car1.car_id)
+        usingGet = session.get(person_mapper, car1.owner)
         usingProperty = car1.employee
 
         assert str(engineer4) == "Engineer E4, status X"
@@ -656,10 +655,8 @@ class RelationshipTest4(fixtures.MappedTest):
         # and now for the lightning round, eager !
 
         def go():
-            testcar = (
-                session.query(Car)
-                .options(joinedload("employee"))
-                .get(car1.car_id)
+            testcar = session.get(
+                Car, car1.car_id, options=[joinedload("employee")],
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
@@ -864,8 +861,8 @@ class RelationshipTest6(fixtures.MappedTest):
         sess.flush()
 
         sess.expunge_all()
-        m = sess.query(Manager).get(m.person_id)
-        m2 = sess.query(Manager).get(m2.person_id)
+        m = sess.get(Manager, m.person_id)
+        m2 = sess.get(Manager, m2.person_id)
         assert m.colleague is m2
 
 
@@ -984,7 +981,8 @@ class RelationshipTest7(fixtures.MappedTest):
         car_join = polymorphic_union(
             {
                 "car": cars.outerjoin(offroad_cars)
-                .select(offroad_cars.c.car_id == None)
+                .select()
+                .where(offroad_cars.c.car_id == None)
                 .reduce_columns()
                 .subquery(),
                 "offroad": cars.join(offroad_cars),
@@ -1266,42 +1264,38 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         Status, Person, Engineer, Manager, Car = cls.classes(
             "Status", "Person", "Engineer", "Manager", "Car"
         )
-        session = create_session(connection)
+        with sessionmaker(connection).begin() as session:
 
-        active = Status(name="active")
-        dead = Status(name="dead")
+            active = Status(name="active")
+            dead = Status(name="dead")
 
-        session.add(active)
-        session.add(dead)
-        session.flush()
+            session.add(active)
+            session.add(dead)
 
-        # TODO: we haven't created assertions for all
-        # the data combinations created here
+            # TODO: we haven't created assertions for all
+            # the data combinations created here
 
-        # creating 5 managers named from M1 to M5
-        # and 5 engineers named from E1 to E5
-        # M4, M5, E4 and E5 are dead
-        for i in range(1, 5):
-            if i < 4:
-                st = active
-            else:
-                st = dead
-            session.add(
-                Manager(name="M%d" % i, category="YYYYYYYYY", status=st)
-            )
-            session.add(Engineer(name="E%d" % i, field="X", status=st))
+            # creating 5 managers named from M1 to M5
+            # and 5 engineers named from E1 to E5
+            # M4, M5, E4 and E5 are dead
+            for i in range(1, 5):
+                if i < 4:
+                    st = active
+                else:
+                    st = dead
+                session.add(
+                    Manager(name="M%d" % i, category="YYYYYYYYY", status=st)
+                )
+                session.add(Engineer(name="E%d" % i, field="X", status=st))
 
-        session.flush()
+            # get E4
+            engineer4 = session.query(Engineer).filter_by(name="E4").one()
 
-        # get E4
-        engineer4 = session.query(Engineer).filter_by(name="E4").one()
-
-        # create 2 cars for E4, one active and one dead
-        car1 = Car(employee=engineer4, status=active)
-        car2 = Car(employee=engineer4, status=dead)
-        session.add(car1)
-        session.add(car2)
-        session.flush()
+            # create 2 cars for E4, one active and one dead
+            car1 = Car(employee=engineer4, status=active)
+            car2 = Car(employee=engineer4, status=dead)
+            session.add(car1)
+            session.add(car2)
 
     def test_join_to_q_person(self):
         Status, Person, Engineer, Manager, Car = self.classes(
@@ -1357,7 +1351,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         )
         session = create_session()
         r = session.query(Person).filter(
-            exists([1], Car.owner == Person.person_id)
+            exists().where(Car.owner == Person.person_id)
         )
 
         eq_(
@@ -1424,9 +1418,9 @@ class MultiLevelTest(fixtures.MappedTest):
                 .where(table_Employee.c.atype == "Engineer")
                 .select_from(table_Employee.join(table_Engineer))
                 .subquery(),
-                "Employee": table_Employee.select(
-                    table_Employee.c.atype == "Employee"
-                ).subquery(),
+                "Employee": table_Employee.select()
+                .where(table_Employee.c.atype == "Employee")
+                .subquery(),
             },
             None,
             "pu_employee",
@@ -1540,9 +1534,9 @@ class ManyToManyPolyTest(fixtures.MappedTest):
 
         item_join = polymorphic_union(
             {
-                "BaseItem": base_item_table.select(
-                    base_item_table.c.child_name == "BaseItem"
-                ).subquery(),
+                "BaseItem": base_item_table.select()
+                .where(base_item_table.c.child_name == "BaseItem")
+                .subquery(),
                 "Item": base_item_table.join(item_table),
             },
             None,
@@ -1610,7 +1604,7 @@ class CustomPKTest(fixtures.MappedTest):
         # a 2-col pk in any case but the leading select has a NULL for the
         # "t2id" column
         d = util.OrderedDict()
-        d["t1"] = t1.select(t1.c.type == "t1").subquery()
+        d["t1"] = t1.select().where(t1.c.type == "t1").subquery()
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 
@@ -1634,9 +1628,9 @@ class CustomPKTest(fixtures.MappedTest):
         # query using get(), using only one value.
         # this requires the select_table mapper
         # has the same single-col primary key.
-        assert sess.query(T1).get(ot1.id).id == ot1.id
+        assert sess.get(T1, ot1.id).id == ot1.id
 
-        ot1 = sess.query(T1).get(ot1.id)
+        ot1 = sess.get(T1, ot1.id)
         ot1.data = "hi"
         sess.flush()
 
@@ -1656,7 +1650,7 @@ class CustomPKTest(fixtures.MappedTest):
         # a 2-col pk in any case but the leading select has a NULL for the
         # "t2id" column
         d = util.OrderedDict()
-        d["t1"] = t1.select(t1.c.type == "t1").subquery()
+        d["t1"] = t1.select().where(t1.c.type == "t1").subquery()
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 
@@ -1681,9 +1675,9 @@ class CustomPKTest(fixtures.MappedTest):
         # query using get(), using only one value.  this requires the
         # select_table mapper
         # has the same single-col primary key.
-        assert sess.query(T1).get(ot1.id).id == ot1.id
+        assert sess.get(T1, ot1.id).id == ot1.id
 
-        ot1 = sess.query(T1).get(ot1.id)
+        ot1 = sess.get(T1, ot1.id)
         ot1.data = "hi"
         sess.flush()
 

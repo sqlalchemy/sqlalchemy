@@ -625,7 +625,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert sql_util.ClauseAdapter(u).traverse(t1) is u
 
-    def test_binds(self):
+    def test_bindparams(self):
         """test that unique bindparams change their name upon clone()
         to prevent conflicts"""
 
@@ -1513,7 +1513,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         t1alias = t1.alias("t1alias")
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
-            vis.traverse(case([(t1.c.col1 == 5, t1.c.col2)], else_=t1.c.col1)),
+            vis.traverse(case((t1.c.col1 == 5, t1.c.col2), else_=t1.c.col1)),
             "CASE WHEN (t1alias.col1 = :col1_1) THEN "
             "t1alias.col2 ELSE t1alias.col1 END",
         )
@@ -1523,7 +1523,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         vis = sql_util.ClauseAdapter(t1alias)
         self.assert_compile(
             vis.traverse(
-                case([(5, t1.c.col2)], value=t1.c.col1, else_=t1.c.col1)
+                case((5, t1.c.col2), value=t1.c.col1, else_=t1.c.col1)
             ),
             "CASE t1alias.col1 WHEN :param_1 THEN "
             "t1alias.col2 ELSE t1alias.col1 END",
@@ -2152,7 +2152,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
             "VALUES (:col1, :col2, :col3)",
         )
 
-        i2 = t1.insert(prefixes=["squiznart"])
+        i2 = t1.insert().prefix_with("squiznart")
         self.assert_compile(
             i2,
             "INSERT squiznart INTO table1 (col1, col2, col3) "
@@ -2223,7 +2223,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_inline_values_single(self):
-        i = t1.insert(values={"col1": 5})
+        i = t1.insert().values({"col1": 5})
 
         compile_state = i._compile_state_factory(i, None)
 
@@ -2231,7 +2231,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(compile_state._has_multi_parameters, False)
 
     def test_inline_values_multi(self):
-        i = t1.insert(values=[{"col1": 5}, {"col1": 6}])
+        i = t1.insert().values([{"col1": 5}, {"col1": 6}])
 
         compile_state = i._compile_state_factory(i, None)
 
@@ -2354,7 +2354,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_update_no_support_multi_constructor(self):
-        stmt = t1.update(values=[{"col1": 5}, {"col1": 7}])
+        stmt = t1.update().values([{"col1": 5}, {"col1": 7}])
 
         assert_raises_message(
             exc.InvalidRequestError,

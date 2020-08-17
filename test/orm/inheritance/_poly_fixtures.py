@@ -2,9 +2,9 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import util
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
@@ -221,11 +221,9 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
         cls.c2 = c2 = Company(name="Elbonia, Inc.")
         c2.employees = [e3]
 
-        sess = create_session(connection)
-        sess.add(c1)
-        sess.add(c2)
-        sess.flush()
-        sess.expunge_all()
+        with sessionmaker(connection, expire_on_commit=False).begin() as sess:
+            sess.add(c1)
+            sess.add(c2)
 
         cls.all_employees = [e1, e2, b1, m1, e3]
         cls.c1_employees = [e1, e2, b1, m1]

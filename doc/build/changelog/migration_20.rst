@@ -649,101 +649,49 @@ or attribute::
 Declarative becomes a first class API
 =====================================
 
-.. admonition:: Certainty: almost definitely
+.. admonition:: Certainty: definite
 
-  Declarative is already what all the ORM documentation refers towards
-  so it doesn't even make sense that it's an "ext".   The hardest part will
-  be integrating the declarative documentation appropriately.
+  This is now committed in master and the new documenation can be seen at
+  :ref:`orm_mapping_classes_toplevel`.
 
 Declarative will now be part of ``sqlalchemy.orm`` in 2.0, and in 1.4 the
 new version will be present in ``sqlalchemy.future.orm``.   The concept
 of the ``Base`` class will be there as it is now and do the same thing
 it already does, however it will also have some new capabilities.
 
+.. seealso::
 
-The original "mapper()" function removed; replaced with a Declarative compatibility function
-============================================================================================
+  :ref:`orm_mapping_classes_toplevel` - all new unified documentation for
+  Declarative, classical mapping, dataclasses, attrs, etc.
 
-.. admonition:: Certainty: tentative
 
-  The proposal to have "mapper()" be a sub-function of declarative simplifies
-  the codepaths towards a class becoming mapped.   The "classical mapping"
-  pattern doesn't really have that much usefulness, however as some users have
-  expressed their preference for it, the same code pattern will continue to
-  be available, just on top of declarative.  Hopefully it should be a little
-  nicer even.
+The original "mapper()" function now a core element of Declarative, renamed
+===========================================================================
 
-Declarative has become very capable and in fact a mapping that is set up with
-declarative may have a superior configuration than one made with ``mapper()`` alone.
-Features that make a declarative mapping superior include:
+.. admonition:: Certainty: definite
 
-* The declarative mapping has a reference to the "class registry", which is a
-  local set of classes that can then be accessed configurationally via strings
-  when configuring inter-class relationships.  Put another way, using declarative
-  you can say ``relationship("SomeClass")``, and the string name ``"SomeClass"``
-  is late-resolved to the actual mapped class ``SomeClass``.
+  This is now committed in master and the new documenation can be seen at
+  :ref:`orm_mapping_classes_toplevel`.
 
-* Declarative provides convenience hooks on mapped classes such as
-  ``__declare_first__`` and ``__declare_last__``.   It also allows for
-  mixins and ``__abstract__`` classes which provide for superior organization
-  of classes and attributes.
+By popular demand, "classical mapping" is staying around, however the new
+form of it is based off of the :class:`_orm.registry` object and is available
+as :meth:`_orm.registry.map_imperatively`.
 
-* Declarative sets parameters on the underlying ``mapper()`` that allow for
-  better behaviors.     A key example is when configuring single table
-  inheritance, and a particular table column is local to a subclass, Declarative
-  automatically sets up ``exclude_columns`` on the base class and other sibling
-  classes that don't include those columns.
+In addition, the primary rationale used for "classical mapping" is that of
+keeping the :class:`_schema.Table` setup distinct from the class.  Declarative
+has always allowed this style using so-called
+:ref:`hybrid declarative <orm_imperative_table_configuration>`. However,
+to remove the base class requirement, a first class :ref:`decorator <declarative_config_toplevel>`
+form has been added.
 
-* Declarative also ensures that "inherits" is configured appropriately for
-  mappers against inherited classes and checks for several other conditions
-  that can only be determined by the fact that Declarative scans table information
-  from the mapped class itself.
+As yet another separate but related enhancement, support for :ref:`Python
+dataclasses <orm_declarative_dataclasses>` is added as well to both
+declarative decorator and classical mapping forms.
 
-Some of the above Declarative capabilities are lost when one declares their
-mapping using ``__table__``, however the class registry and special hooks
-are still available.  Declarative does not in fact depend on the use of
-a special base class or metaclass, this is just the API that is currently
-used.  An alternative API that behaves just like ``mapper()`` can be defined
-right now as follows::
+.. seealso::
 
-    # 1.xx code
-
-    from sqlalchemy.ext.declarative import base
-    def declarative_mapper():
-        _decl_class_registry = {}
-
-        def mapper(cls, table, properties={}):
-            cls.__table__ = table
-            cls._decl_class_registry = _decl_class_registry
-            for key, value in properties.items():
-                setattr(cls, key, value)
-            base._as_declarative(cls, cls.__name__, cls.__dict__)
-
-        return mapper
-
-    # mapper here is the mapper() function
-    mapper = declarative_mapper()
-
-Above, the ``mapper()`` callable is using a class registry that's local
-to where the ``declarative_mapper()`` function was called.   However, we
-can just as easily add the above ``mapper()`` function to any declarative base,
-to make for a pattern such as::
-
-    from sqlalchemy.future.orm import declarative_base
-
-    base = declarative_base()
-
-    class MyClass(object):
-        pass
-
-    my_table = Table("my_table", base.metadata, Column('id', Integer, primary_key=True))
-
-    # "classical" mapping:
-    base.mapper(MyClass, my_table)
-
-In 2.0, an application that still wishes to use a separate :class:`_schema.Table` and
-does not want to use Declarative with ``__table__``, can instead use the above
-pattern which basically does the same thing.
+  :ref:`orm_mapping_classes_toplevel` - all new unified documentation for
+  Declarative, classical mapping, dataclasses, attrs, etc.
 
 .. _migration_20_unify_select:
 

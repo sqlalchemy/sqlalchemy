@@ -3157,36 +3157,31 @@ class JSONRoundTripTest(fixtures.TablesTest):
         ).fetchall()
         eq_([d for d, in data], [None])
 
-    def _test_insert(self, engine):
-        with engine.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-            )
-            self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], conn)
+    def _test_insert(self, conn):
+        conn.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+        )
+        self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], conn)
 
-    def _test_insert_nulls(self, engine):
-        with engine.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(), {"name": "r1", "data": null()}
-            )
-            self._assert_data([None], conn)
+    def _test_insert_nulls(self, conn):
+        conn.execute(
+            self.tables.data_table.insert(), {"name": "r1", "data": null()}
+        )
+        self._assert_data([None], conn)
 
-    def _test_insert_none_as_null(self, engine):
-        with engine.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "nulldata": None},
-            )
-            self._assert_column_is_NULL(conn, column="nulldata")
+    def _test_insert_none_as_null(self, conn):
+        conn.execute(
+            self.tables.data_table.insert(), {"name": "r1", "nulldata": None},
+        )
+        self._assert_column_is_NULL(conn, column="nulldata")
 
-    def _test_insert_nulljson_into_none_as_null(self, engine):
-        with engine.connect() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "nulldata": JSON.NULL},
-            )
-            self._assert_column_is_JSON_NULL(conn, column="nulldata")
+    def _test_insert_nulljson_into_none_as_null(self, conn):
+        conn.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "nulldata": JSON.NULL},
+        )
+        self._assert_column_is_JSON_NULL(conn, column="nulldata")
 
     def test_reflect(self):
         insp = inspect(testing.db)

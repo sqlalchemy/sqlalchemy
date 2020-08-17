@@ -73,7 +73,6 @@ def py_fallback():
                     # textual statement with positional parameters to
                     # execute().
                     # execute(stmt, ("value", "value"))
-
                     return [zero]
             elif hasattr(zero, "keys"):
                 # execute(stmt, {"key":"value"})

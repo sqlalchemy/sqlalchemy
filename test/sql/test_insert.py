@@ -164,7 +164,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         checkparams = {"myid": 3, "name": "jack"}
 
         self.assert_compile(
-            insert(table1, dict(myid=3, name="jack")),
+            insert(table1).values(myid=3, name="jack"),
             "INSERT INTO mytable (myid, name) VALUES (:myid, :name)",
             checkparams=checkparams,
         )
@@ -194,7 +194,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         checkparams = {"myid": 3, "name": "jack", "unknowncol": "oops"}
 
-        stmt = insert(table1, values=checkparams)
+        stmt = insert(table1).values(checkparams)
         assert_raises_message(
             exc.CompileError,
             "Unconsumed column names: unknowncol",
@@ -210,7 +210,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             {"myid": 4, "name": "someone", "unknowncol": "oops"},
         ]
 
-        stmt = insert(table1, values=checkparams)
+        stmt = insert(table1).values(checkparams)
         assert_raises_message(
             exc.CompileError,
             "Unconsumed column names: unknowncol",
@@ -228,7 +228,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         }
 
         self.assert_compile(
-            insert(table1, (3, "jack", "mydescription")),
+            insert(table1).values([3, "jack", "mydescription"]),
             "INSERT INTO mytable (myid, name, description) "
             "VALUES (:myid, :name, :description)",
             checkparams=checkparams,
@@ -238,7 +238,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            insert(table1, values=dict(myid=func.lala())),
+            insert(table1).values(myid=func.lala()),
             "INSERT INTO mytable (myid) VALUES (lala())",
         )
 
@@ -251,7 +251,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         }
 
         self.assert_compile(
-            insert(table1, values),
+            insert(table1).values(values),
             "INSERT INTO mytable (myid, name) VALUES (:userid, :username)",
         )
 
@@ -262,7 +262,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         values2 = {table1.c.name: bindparam("username")}
 
         self.assert_compile(
-            insert(table1, values=values1).values(values2),
+            insert(table1).values(values1).values(values2),
             "INSERT INTO mytable (myid, name) VALUES (:userid, :username)",
         )
 

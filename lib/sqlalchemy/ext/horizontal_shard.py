@@ -186,8 +186,8 @@ class ShardedSession(Session):
         if shard_id is None:
             shard_id = self._choose_shard_and_assign(mapper, instance)
 
-        if self.transaction is not None:
-            return self.transaction.connection(mapper, shard_id=shard_id)
+        if self.in_transaction():
+            return self.get_transaction().connection(mapper, shard_id=shard_id)
         else:
             return self.get_bind(
                 mapper, shard_id=shard_id, instance=instance
