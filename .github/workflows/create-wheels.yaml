@@ -214,10 +214,8 @@ jobs:
         # - check the c extension
         # - runs the tests
         run: |
-          pip install -q wheel
-          version=`python -W ignore -c 'from wheel.pep425tags import get_abbr_impl, get_impl_ver, get_abi_tag; print("{0}{1}-{2}".format(get_abbr_impl(), get_impl_ver(), get_abi_tag()))'`
-          echo Wheel tag ${{ matrix.python-version }}. Installed version $version.
-          if [[ "${{ matrix.python-version }}" = "$version" ]]
+          pip install packaging>=20.4
+          if python .github/workflows/scripts/can_install.py "${{ matrix.python-version }}"
           then
             pip install -f dist --no-index sqlalchemy
             python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
