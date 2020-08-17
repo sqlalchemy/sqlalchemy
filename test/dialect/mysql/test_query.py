@@ -22,7 +22,7 @@ from sqlalchemy.testing import is_
 
 
 class IdiosyncrasyTest(fixtures.TestBase):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @testing.emits_warning()
@@ -44,7 +44,7 @@ class IdiosyncrasyTest(fixtures.TestBase):
 
 
 class MatchTest(fixtures.TestBase):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @classmethod
@@ -58,6 +58,7 @@ class MatchTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("description", String(50)),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
         matchtable = Table(
             "matchtable",
@@ -66,6 +67,7 @@ class MatchTest(fixtures.TestBase):
             Column("title", String(200)),
             Column("category_id", Integer, ForeignKey("cattable.id")),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
         metadata.create_all()
 
@@ -216,7 +218,7 @@ class MatchTest(fixtures.TestBase):
 
 
 class AnyAllTest(fixtures.TablesTest):
-    __only_on__ = "mysql"
+    __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
     @classmethod

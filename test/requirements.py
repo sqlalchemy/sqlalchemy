@@ -6,7 +6,6 @@
 import sys
 
 from sqlalchemy import exc
-from sqlalchemy import util
 from sqlalchemy.sql import text
 from sqlalchemy.testing import exclusions
 from sqlalchemy.testing.exclusions import against
@@ -40,6 +39,7 @@ class DefaultRequirements(SuiteRequirements):
             [
                 no_support("firebird", "not supported by database"),
                 no_support("mysql", "not supported by database"),
+                no_support("mariadb", "not supported by database"),
                 no_support("mssql", "not supported by database"),
             ]
         )
@@ -111,7 +111,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def foreign_key_constraint_option_reflection_ondelete(self):
-        return only_on(["postgresql", "mysql", "sqlite", "oracle"])
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite", "oracle"])
 
     @property
     def fk_constraint_option_reflection_ondelete_restrict(self):
@@ -119,11 +119,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def fk_constraint_option_reflection_ondelete_noaction(self):
-        return only_on(["postgresql", "mysql", "sqlite"])
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
 
     @property
     def foreign_key_constraint_option_reflection_onupdate(self):
-        return only_on(["postgresql", "mysql", "sqlite"])
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
 
     @property
     def fk_constraint_option_reflection_onupdate_restrict(self):
@@ -131,14 +131,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def comment_reflection(self):
-        return only_on(["postgresql", "mysql", "oracle"])
+        return only_on(["postgresql", "mysql", "mariadb", "oracle"])
 
     @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 
         return skip_if(
-            ["firebird", "oracle", "mysql"], "not supported by database"
+            ["firebird", "oracle", "mysql", "mariadb"],
+            "not supported by database",
         )
 
     @property
@@ -183,7 +184,14 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def qmark_paramstyle(self):
         return only_on(
-            ["firebird", "sqlite", "+pyodbc", "+mxodbc", "mysql+oursql"]
+            [
+                "firebird",
+                "sqlite",
+                "+pyodbc",
+                "+mxodbc",
+                "mysql+oursql",
+                "mariadb+oursql",
+            ]
         )
 
     @property
@@ -198,6 +206,10 @@ class DefaultRequirements(SuiteRequirements):
                 "mysql+pymysql",
                 "mysql+cymysql",
                 "mysql+mysqlconnector",
+                "mariadb+mysqldb",
+                "mariadb+pymysql",
+                "mariadb+cymysql",
+                "mariadb+mysqlconnector",
                 "postgresql+pg8000",
             ]
         )
@@ -213,6 +225,9 @@ class DefaultRequirements(SuiteRequirements):
                 "mysql+mysqlconnector",
                 "mysql+pymysql",
                 "mysql+cymysql",
+                "mariadb+mysqlconnector",
+                "mariadb+pymysql",
+                "mariadb+cymysql",
                 "mssql+pymssql",
             ]
         )
@@ -310,14 +325,14 @@ class DefaultRequirements(SuiteRequirements):
                 config, "sqlite"
             ) and config.db.dialect.dbapi.sqlite_version_info >= (3, 15, 0)
 
-        return only_on(["mysql", "postgresql", _sqlite_tuple_in])
+        return only_on(["mysql", "mariadb", "postgresql", _sqlite_tuple_in])
 
     @property
     def independent_cursors(self):
         """Target must support simultaneous, independent database cursors
         on a single connection."""
 
-        return skip_if(["mssql", "mysql"], "no driver support")
+        return skip_if(["mssql", "mysql", "mariadb"], "no driver support")
 
     @property
     def independent_connections(self):
@@ -369,7 +384,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def isolation_level(self):
         return only_on(
-            ("postgresql", "sqlite", "mysql", "mssql", "oracle"),
+            ("postgresql", "sqlite", "mysql", "mariadb", "mssql", "oracle"),
             "DBAPI has no isolation level support",
         ) + fails_on(
             "postgresql+pypostgresql",
@@ -386,6 +401,9 @@ class DefaultRequirements(SuiteRequirements):
             default = "READ COMMITTED"
             levels.add("AUTOCOMMIT")
         elif against(config, "mysql"):
+            default = "REPEATABLE READ"
+            levels.add("AUTOCOMMIT")
+        elif against(config, "mariadb"):
             default = "REPEATABLE READ"
             levels.add("AUTOCOMMIT")
         elif against(config, "mssql"):
@@ -416,6 +434,7 @@ class DefaultRequirements(SuiteRequirements):
             [
                 # no access to same table
                 no_support("mysql", "requires SUPER priv"),
+                no_support("mariadb", "requires SUPER priv"),
                 exclude("mysql", "<", (5, 0, 10), "not supported by database"),
                 # huh?  TODO: implement triggers for PG tests, remove this
                 no_support(
@@ -457,7 +476,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target must support UPDATE..FROM syntax"""
 
         return only_on(
-            ["postgresql", "mssql", "mysql"],
+            ["postgresql", "mssql", "mysql", "mariadb"],
             "Backend does not support UPDATE..FROM",
         )
 
@@ -465,7 +484,7 @@ class DefaultRequirements(SuiteRequirements):
     def delete_from(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
-            ["postgresql", "mssql", "mysql", "sybase"],
+            ["postgresql", "mssql", "mysql", "mariadb", "sybase"],
             "Backend does not support DELETE..FROM",
         )
 
@@ -516,7 +535,7 @@ class DefaultRequirements(SuiteRequirements):
     def cross_schema_fk_reflection(self):
         """target system must support reflection of inter-schema foreign keys
         """
-        return only_on(["postgresql", "mysql", "mssql"])
+        return only_on(["postgresql", "mysql", "mariadb", "mssql"])
 
     @property
     def implicit_default_schema(self):
@@ -531,7 +550,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def unique_constraint_reflection(self):
         return fails_on_everything_except(
-            "postgresql", "mysql", "sqlite", "oracle"
+            "postgresql", "mysql", "mariadb", "sqlite", "oracle"
         )
 
     @property
@@ -539,6 +558,7 @@ class DefaultRequirements(SuiteRequirements):
         return (
             self.unique_constraint_reflection
             + skip_if("mysql")
+            + skip_if("mariadb")
             + skip_if("oracle")
         )
 
@@ -572,15 +592,14 @@ class DefaultRequirements(SuiteRequirements):
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(
-            ["firebird", "mssql", "mysql", "sqlite", "sybase"],
+            ["firebird", "mssql", "mysql", "mariadb", "sqlite", "sybase"],
             "no FOR UPDATE NOWAIT support",
         )
 
     @property
     def subqueries(self):
         """Target database must support subqueries."""
-
-        return skip_if(exclude("mysql", "<", (4, 1, 1)), "no subquery support")
+        return exclusions.open()
 
     @property
     def ctes(self):
@@ -599,6 +618,7 @@ class DefaultRequirements(SuiteRequirements):
                         and config.db.dialect.server_version_info >= (8,)
                     )
                 ),
+                "mariadb>10.2",
                 "postgresql",
                 "mssql",
                 "oracle",
@@ -633,7 +653,9 @@ class DefaultRequirements(SuiteRequirements):
         """target database must use a plain percent '%' as the 'modulus'
         operator."""
 
-        return only_if(["mysql", "sqlite", "postgresql+psycopg2", "mssql"])
+        return only_if(
+            ["mysql", "mariadb", "sqlite", "postgresql+psycopg2", "mssql"]
+        )
 
     @property
     def intersect(self):
@@ -700,7 +722,7 @@ class DefaultRequirements(SuiteRequirements):
     def sql_expression_limit_offset(self):
         return (
             fails_if(
-                ["mysql"],
+                ["mysql", "mariadb"],
                 "Target backend can't accommodate full expressions in "
                 "OFFSET or LIMIT",
             )
@@ -769,7 +791,8 @@ class DefaultRequirements(SuiteRequirements):
     def two_phase_recovery(self):
         return self.two_phase_transactions + (
             skip_if(
-                "mysql", "still can't get recover to work w/ MariaDB / MySQL"
+                ["mysql", "mariadb"],
+                "still can't get recover to work w/ MariaDB / MySQL",
             )
         )
 
@@ -817,31 +840,19 @@ class DefaultRequirements(SuiteRequirements):
     def unicode_connections(self):
         """
         Target driver must support some encoding of Unicode across the wire.
+
         """
-        # TODO: expand to exclude MySQLdb versions w/ broken unicode
-        return skip_if(
-            [exclude("mysql", "<", (4, 1, 1), "no unicode connection support")]
-        )
+        return exclusions.open()
 
     @property
     def unicode_ddl(self):
         """Target driver must support some degree of non-ascii symbol names."""
-        # TODO: expand to exclude MySQLdb versions w/ broken unicode
 
         return skip_if(
             [
                 no_support("oracle", "FIXME: no support in database?"),
                 no_support("sybase", "FIXME: guessing, needs confirmation"),
                 no_support("mssql+pymssql", "no FreeTDS support"),
-                LambdaPredicate(
-                    lambda config: against(config, "mysql+mysqlconnector")
-                    and config.db.dialect._mysqlconnector_version_info > (2, 0)
-                    and util.py2k,
-                    "bug in mysqlconnector 2.0",
-                ),
-                exclude(
-                    "mysql", "<", (4, 1, 1), "no unicode connection support"
-                ),
             ]
         )
 
@@ -861,7 +872,26 @@ class DefaultRequirements(SuiteRequirements):
         after an insert() construct executes.
         """
         return fails_on_everything_except(
-            "mysql", "sqlite+pysqlite", "sqlite+pysqlcipher", "sybase", "mssql"
+            "mysql",
+            "mariadb",
+            "sqlite+pysqlite",
+            "sqlite+pysqlcipher",
+            "sybase",
+            "mssql",
+        )
+
+    @property
+    def emulated_lastrowid_even_with_sequences(self):
+        """"target dialect retrieves cursor.lastrowid or an equivalent
+        after an insert() construct executes, even if the table has a
+        Sequence on it..
+        """
+        return fails_on_everything_except(
+            "mysql",
+            "mariadb",
+            "sqlite+pysqlite",
+            "sqlite+pysqlcipher",
+            "sybase",
         )
 
     @property
@@ -877,7 +907,11 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(
             "mssql+pymssql", "crashes on pymssql"
         ) + fails_on_everything_except(
-            "mysql", "sqlite+pysqlite", "sqlite+pysqlcipher", "mssql"
+            "mysql",
+            "mariadb",
+            "sqlite+pysqlite",
+            "sqlite+pysqlcipher",
+            "mssql",
         )
 
     @property
@@ -926,6 +960,7 @@ class DefaultRequirements(SuiteRequirements):
                         >= (10, 2, 7)
                     )
                 ),
+                "mariadb>=10.2.7",
                 "postgresql >= 9.3",
                 self._sqlite_json,
             ]
@@ -938,6 +973,7 @@ class DefaultRequirements(SuiteRequirements):
             [
                 lambda config: against(config, "mysql")
                 and config.db.dialect._is_mariadb,
+                "mariadb",
                 "sqlite",
             ]
         )
@@ -1004,7 +1040,9 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
 
-        return skip_if(["mssql", "mysql", "firebird", "oracle", "sybase"])
+        return skip_if(
+            ["mssql", "mysql", "mariadb", "firebird", "oracle", "sybase"]
+        )
 
     @property
     def timestamp_microseconds(self):
@@ -1055,7 +1093,9 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.time() with microsecond objects."""
 
-        return skip_if(["mssql", "mysql", "firebird", "oracle", "sybase"])
+        return skip_if(
+            ["mssql", "mysql", "mariadb", "firebird", "oracle", "sybase"]
+        )
 
     @property
     def precision_numerics_general(self):
@@ -1142,6 +1182,12 @@ class DefaultRequirements(SuiteRequirements):
                     "mysql FLOAT type only returns 4 decimals",
                 ),
                 (
+                    "mariadb",
+                    None,
+                    None,
+                    "mysql FLOAT type only returns 4 decimals",
+                ),
+                (
                     "firebird",
                     None,
                     None,
@@ -1155,6 +1201,7 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(
             [
                 ("mysql+oursql", None, None, "Floating point error"),
+                ("mariadb+oursql", None, None, "Floating point error"),
                 (
                     "firebird",
                     None,
@@ -1198,24 +1245,7 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        # fixed for mysqlclient in
-        # https://github.com/PyMySQL/mysqlclient-python/commit/68b9662918577fc05be9610ef4824a00f2b051b0
-        def check(config):
-            if against(config, "mysql+mysqldb"):
-                # can remove once post 1.3.13 is released
-                try:
-                    from MySQLdb import converters
-                    from decimal import Decimal
-
-                    return Decimal not in converters.conversions
-                except:
-                    return True
-
-            return against(
-                config, "mysql+mysqldb"
-            ) and config.db.dialect._mysql_dbapi_version <= (1, 3, 13)
-
-        return exclusions.fails_on(check, "fixed for mysqlclient post 1.3.13")
+        return exclusions.open()
 
     @property
     def fetch_null_from_numeric(self):
@@ -1334,6 +1364,7 @@ class DefaultRequirements(SuiteRequirements):
                     "bind placeholders",
                 ),
                 ("mysql", None, None, "executemany() doesn't work here"),
+                ("mariadb", None, None, "executemany() doesn't work here"),
             ]
         )
 
@@ -1360,6 +1391,7 @@ class DefaultRequirements(SuiteRequirements):
             # note MySQL databases need to be created w/ utf8mb4 charset
             # for the test suite
             "mysql": "utf8mb4_bin",
+            "mariadb": "utf8mb4_bin",
             "sqlite": "NOCASE",
             # will raise *with* quoting
             "mssql": "Latin1_General_CI_AS",
@@ -1452,7 +1484,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def mysql_fsp(self):
-        return only_if("mysql >= 5.6.4")
+        return only_if(["mysql >= 5.6.4", "mariadb"])
 
     @property
     def mysql_fully_case_sensitive(self):
@@ -1516,7 +1548,7 @@ class DefaultRequirements(SuiteRequirements):
     def _mysql_and_check_constraints_exist(self, config):
         # 1. we have mysql / mariadb and
         # 2. it enforces check constraints
-        if exclusions.against(config, "mysql"):
+        if exclusions.against(config, ["mysql", "mariadb"]):
             if config.db.dialect._is_mariadb:
                 norm_version_info = (
                     config.db.dialect._mariadb_normalized_version_info
@@ -1532,7 +1564,7 @@ class DefaultRequirements(SuiteRequirements):
         # 1. we dont have mysql / mariadb or
         # 2. we have mysql / mariadb that enforces check constraints
         return not exclusions.against(
-            config, "mysql"
+            config, ["mysql", "mariadb"]
         ) or self._mysql_and_check_constraints_exist(config)
 
     def _mysql_check_constraints_dont_exist(self, config):
@@ -1541,28 +1573,27 @@ class DefaultRequirements(SuiteRequirements):
         return not self._mysql_check_constraints_exist(config)
 
     def _mysql_not_mariadb_102(self, config):
-        return against(config, "mysql") and (
+        return (against(config, ["mysql", "mariadb"])) and (
             not config.db.dialect._is_mariadb
             or config.db.dialect._mariadb_normalized_version_info < (10, 2)
         )
 
     def _mysql_not_mariadb_103(self, config):
-        return against(config, "mysql") and (
+        return (against(config, ["mysql", "mariadb"])) and (
             not config.db.dialect._is_mariadb
             or config.db.dialect._mariadb_normalized_version_info < (10, 3)
         )
 
     def _mysql_not_mariadb_104(self, config):
-        return against(config, "mysql") and (
+        return (against(config, ["mysql", "mariadb"])) and (
             not config.db.dialect._is_mariadb
             or config.db.dialect._mariadb_normalized_version_info < (10, 4)
         )
 
     def _has_mysql_on_windows(self, config):
         return (
-            against(config, "mysql")
-            and config.db.dialect._detect_casing(config.db) == 1
-        )
+            against(config, ["mysql", "mariadb"])
+        ) and config.db.dialect._detect_casing(config.db) == 1
 
     def _has_mysql_fully_case_sensitive(self, config):
         return (

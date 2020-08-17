@@ -13,7 +13,7 @@ from sqlalchemy.testing.assertions import eq_
 
 
 class OnDuplicateTest(fixtures.TablesTest):
-    __only_on__ = ("mysql",)
+    __only_on__ = ("mysql", "mariadb")
     __backend__ = True
     run_define_tables = "each"
 

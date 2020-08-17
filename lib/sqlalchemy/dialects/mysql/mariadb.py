@@ -3,6 +3,7 @@ from .base import MySQLDialect
 
 class MariaDBDialect(MySQLDialect):
     is_mariadb = True
+    name = "mariadb"
 
 
 def loader(driver):

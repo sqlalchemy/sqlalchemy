@@ -274,6 +274,7 @@ class InsertExecTest(fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
         t6 = Table(
             "t6",
@@ -291,6 +292,7 @@ class InsertExecTest(fixtures.TablesTest):
                 test_needs_autoincrement=True,
             ),
             mysql_engine="MyISAM",
+            mariadb_engine="MyISAM",
         )
 
         metadata.create_all()

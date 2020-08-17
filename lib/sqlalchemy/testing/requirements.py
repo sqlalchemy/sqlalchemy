@@ -19,7 +19,6 @@ import platform
 import sys
 
 from . import exclusions
-from . import fails_on_everything_except
 from .. import util
 
 
@@ -403,6 +402,15 @@ class SuiteRequirements(Requirements):
 
         Only dialects that "pre-execute", or need RETURNING to get last
         inserted id, would return closed/fail/skip for this.
+
+        """
+        return exclusions.closed()
+
+    @property
+    def emulated_lastrowid_even_with_sequences(self):
+        """"target dialect retrieves cursor.lastrowid or an equivalent
+        after an insert() construct executes, even if the table has a
+        Sequence on it.
 
         """
         return exclusions.closed()
@@ -1245,14 +1253,4 @@ class SuiteRequirements(Requirements):
         return exclusions.skip_if(
             lambda config: not config.db.dialect.supports_is_distinct_from,
             "driver doesn't support an IS DISTINCT FROM construct",
-        )
-
-    @property
-    def emulated_lastrowid_even_with_sequences(self):
-        """"target dialect retrieves cursor.lastrowid or an equivalent
-        after an insert() construct executes, even if the table has a
-        Sequence on it..
-        """
-        return fails_on_everything_except(
-            "mysql", "sqlite+pysqlite", "sqlite+pysqlcipher", "sybase",
         )

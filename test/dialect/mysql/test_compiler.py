@@ -640,18 +640,6 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         with expect_warnings("Datatype FLOAT does not support CAST on MySQL;"):
             self.assert_compile(expr, "(foo + 5)", literal_binds=True)
 
-        dialect = mysql.MySQLDialect()
-        dialect.server_version_info = (3, 9, 8)
-        with expect_warnings("Current MySQL version does not support CAST"):
-            eq_(
-                str(
-                    expr.compile(
-                        dialect=dialect, compile_kwargs={"literal_binds": True}
-                    )
-                ),
-                "(foo + 5)",
-            )
-
     m = mysql
 
     @testing.combinations(
@@ -676,31 +664,10 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         with expect_warnings("Datatype .* does not support CAST on MySQL;"):
             self.assert_compile(cast(t.c.col, type_), expected)
 
-    def test_no_cast_pre_4(self):
-        self.assert_compile(
-            cast(Column("foo", Integer), String), "CAST(foo AS CHAR)"
-        )
-        dialect = mysql.dialect()
-        dialect.server_version_info = (3, 2, 3)
-        with expect_warnings("Current MySQL version does not support CAST;"):
-            self.assert_compile(
-                cast(Column("foo", Integer), String), "foo", dialect=dialect
-            )
-
     def test_cast_grouped_expression_non_castable(self):
         with expect_warnings("Datatype FLOAT does not support CAST on MySQL;"):
             self.assert_compile(
                 cast(sql.column("x") + sql.column("y"), Float), "(x + y)"
-            )
-
-    def test_cast_grouped_expression_pre_4(self):
-        dialect = mysql.dialect()
-        dialect.server_version_info = (3, 2, 3)
-        with expect_warnings("Current MySQL version does not support CAST;"):
-            self.assert_compile(
-                cast(sql.column("x") + sql.column("y"), Integer),
-                "(x + y)",
-                dialect=dialect,
             )
 
     def test_extract(self):

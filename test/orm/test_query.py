@@ -2654,7 +2654,9 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             [User(id=8), User(id=9)],
         )
 
-    @testing.fails_on("mysql", "doesn't like CAST in the limit clause")
+    @testing.fails_on(
+        ["mysql", "mariadb"], "doesn't like CAST in the limit clause"
+    )
     @testing.requires.bound_limit_offset
     def test_select_with_bindparam_offset_limit_w_cast(self):
         User = self.classes.User

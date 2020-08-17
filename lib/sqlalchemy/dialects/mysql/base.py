@@ -13,13 +13,12 @@ r"""
 Supported Versions and Features
 -------------------------------
 
-SQLAlchemy supports MySQL starting with version 4.1 through modern releases, as
-well as all modern versions of MariaDB. However, no heroic measures are taken
-to work around major missing SQL features - if your server version does not
-support sub-selects, for example, they won't work in SQLAlchemy either.
+SQLAlchemy supports MySQL starting with version 5.0.2 through modern releases,
+as well as all modern versions of MariaDB.   See the official MySQL
+documentation for detailed information about features supported in any given
+server release.
 
-See the official MySQL documentation for detailed information about features
-supported in any given server release.
+.. versionchanged:: 1.4  minimum MySQL version supported is now 5.0.2.
 
 MariaDB Support
 ~~~~~~~~~~~~~~~
@@ -39,7 +38,12 @@ backing database reports as MariaDB.  Based on this flag, the dialect
 can make different choices in those of areas where its behavior
 must be different.
 
-The dialect also supports a "MariaDB-only" mode of connection, which may be
+.. _mysql_mariadb_only_mode:
+
+MariaDB-Only Mode
+~~~~~~~~~~~~~~~~~
+
+The dialect also supports an **optional** "MariaDB-only" mode of connection, which may be
 useful for the case where an application makes use of MariaDB-specific features
 and is not compatible with a MySQL database.    To use this mode of operation,
 replace the "mysql" token in the above URL with "mariadb"::
@@ -49,6 +53,32 @@ replace the "mysql" token in the above URL with "mariadb"::
 The above engine, upon first connect, will raise an error if the server version
 detection detects that the backing database is not MariaDB.
 
+When using an engine with ``"mariadb"`` as the dialect name, **all mysql-specific options
+that include the name "mysql" in them are now named with "mariadb"**.  This means
+options like ``mysql_engine`` should be named ``mariadb_engine``, etc.  Both
+"mysql" and "mariadb" options can be used simultaneously for applications that
+use URLs with both "mysql" and "mariadb" dialects::
+
+    my_table = Table(
+        "mytable",
+        metadata,
+        Column("id", Integer, primary_key=True),
+        Column("textdata", String(50)),
+        mariadb_engine="InnoDB",
+        mysql_engine="InnoDB",
+    )
+
+    Index(
+        "textdata_ix",
+        my_table.c.textdata,
+        mysql_prefix="FULLTEXT",
+        mariadb_prefix="FULLTEXT",
+    )
+
+Similar behavior will occur when the above structures are reflected, i.e. the
+"mariadb" prefix will be present in the option names when the database URL
+is based on the "mariadb" name.
+
 .. versionadded:: 1.4 Added "mariadb" dialect name supporting "MariaDB-only mode"
    for the MySQL dialect.
 
@@ -57,7 +87,7 @@ detection detects that the backing database is not MariaDB.
 Connection Timeouts and Disconnects
 -----------------------------------
 
-MySQL features an automatic connection close behavior, for connections that
+MySQL / MariaDB feature an automatic connection close behavior, for connections that
 have been idle for a fixed period of time, defaulting to eight hours.
 To circumvent having this issue, use
 the :paramref:`_sa.create_engine.pool_recycle` option which ensures that
@@ -80,7 +110,7 @@ be employed.  See :ref:`pool_disconnects` for current approaches.
 CREATE TABLE arguments including Storage Engines
 ------------------------------------------------
 
-MySQL's CREATE TABLE syntax includes a wide array of special options,
+Both MySQL's and MariaDB's CREATE TABLE syntax includes a wide array of special options,
 including ``ENGINE``, ``CHARSET``, ``MAX_ROWS``, ``ROW_FORMAT``,
 ``INSERT_METHOD``, and many more.
 To accommodate the rendering of these arguments, specify the form
@@ -95,7 +125,28 @@ of ``1024``::
         mysql_key_block_size="1024"
        )
 
-The MySQL dialect will normally transfer any keyword specified as
+When supporing :ref:`mysql_mariadb_only_mode` mode, similar keys against
+the "mariadb" prefix must be included as well.  The values can of course
+vary independently so that different settings on MySQL vs. MariaDB may
+be maintained::
+
+  # support both "mysql" and "mariadb-only" engine URLs
+
+  Table('mytable', metadata,
+        Column('data', String(32)),
+
+        mysql_engine='InnoDB',
+        mariadb_engine='InnoDB',
+
+        mysql_charset='utf8mb4',
+        mariadb_charset='utf8',
+
+        mysql_key_block_size="1024"
+        mariadb_key_block_size="1024"
+
+       )
+
+The MySQL / MariaDB dialects will normally transfer any keyword specified as
 ``mysql_keyword_name`` to be rendered as ``KEYWORD_NAME`` in the
 ``CREATE TABLE`` statement.  A handful of these names will render with a space
 instead of an underscore; to support this, the MySQL dialect has awareness of
@@ -111,7 +162,7 @@ to ``InnoDB``.  The ``InnoDB`` engine is typically preferred for its support
 of transactions and foreign keys.
 
 A :class:`_schema.Table`
-that is created in a MySQL database with a storage engine
+that is created in a MySQL / MariaDB database with a storage engine
 of ``MyISAM`` will be essentially non-transactional, meaning any
 INSERT/UPDATE/DELETE statement referring to this table will be invoked as
 autocommit.   It also will have no support for foreign key constraints; while
@@ -123,16 +174,11 @@ For fully atomic transactions as well as support for foreign key
 constraints, all participating ``CREATE TABLE`` statements must specify a
 transactional engine, which in the vast majority of cases is ``InnoDB``.
 
-.. seealso::
-
-    `The InnoDB Storage Engine
-    <http://dev.mysql.com/doc/refman/5.0/en/innodb-storage-engine.html>`_ -
-    on the MySQL website.
 
 Case Sensitivity and Table Reflection
 -------------------------------------
 
-MySQL has inconsistent support for case-sensitive identifier
+Both MySQL and MariaDB have inconsistent support for case-sensitive identifier
 names, basing support on specific details of the underlying
 operating system. However, it has been observed that no matter
 what case sensitivity behavior is present, the names of tables in
@@ -141,7 +187,7 @@ as all-lower case, making it impossible to accurately reflect a
 schema where inter-related tables use mixed-case identifier names.
 
 Therefore it is strongly advised that table names be declared as
-all lower case both within SQLAlchemy as well as on the MySQL
+all lower case both within SQLAlchemy as well as on the MySQL / MariaDB
 database itself, especially if database reflection features are
 to be used.
 
@@ -150,7 +196,7 @@ to be used.
 Transaction Isolation Level
 ---------------------------
 
-All MySQL dialects support setting of transaction isolation level both via a
+All MySQL / MariaDB dialects support setting of transaction isolation level both via a
 dialect-specific parameter :paramref:`_sa.create_engine.isolation_level`
 accepted
 by :func:`_sa.create_engine`, as well as the
@@ -186,7 +232,7 @@ Valid values for ``isolation_level`` include:
 The special ``AUTOCOMMIT`` value makes use of the various "autocommit"
 attributes provided by specific DBAPIs, and is currently supported by
 MySQLdb, MySQL-Client, MySQL-Connector Python, and PyMySQL.   Using it,
-the MySQL connection will return true for the value of
+the database connection will return true for the value of
 ``SELECT @@autocommit;``.
 
 .. seealso::
@@ -226,7 +272,7 @@ Server Side Cursors
 -------------------
 
 Server-side cursor support is available for the MySQLdb and PyMySQL dialects.
-From a MySQL point of view this means that the ``MySQLdb.cursors.SSCursor`` or
+From a database driver point of view this means that the ``MySQLdb.cursors.SSCursor`` or
 ``pymysql.cursors.SSCursor`` class is used when building up the cursor which
 will receive results.  The most typical way of invoking this feature is via the
 :paramref:`.Connection.execution_options.stream_results` connection execution
@@ -244,7 +290,7 @@ Unicode
 Charset Selection
 ~~~~~~~~~~~~~~~~~
 
-Most MySQL DBAPIs offer the option to set the client character set for
+Most MySQL / MariaDB DBAPIs offer the option to set the client character set for
 a connection.   This is typically delivered using the ``charset`` parameter
 in the URL, such as::
 
@@ -257,17 +303,16 @@ will make use of the ``default-character-set`` setting in the ``my.cnf``
 file as well.   Documentation for the DBAPI in use should be consulted
 for specific behavior.
 
-The encoding used for Unicode has traditionally been ``'utf8'``.  However,
-for MySQL versions 5.5.3 on forward, a new MySQL-specific encoding
-``'utf8mb4'`` has been introduced, and as of MySQL 8.0 a warning is emitted
-by the server if plain ``utf8`` is specified within any server-side
-directives, replaced with ``utf8mb3``.   The rationale for this new encoding
-is due to the fact that MySQL's legacy utf-8 encoding only supports
-codepoints up to three bytes instead of four.  Therefore,
-when communicating with a MySQL database
-that includes codepoints more than three bytes in size,
-this new charset is preferred, if supported by both the database as well
-as the client DBAPI, as in::
+The encoding used for Unicode has traditionally been ``'utf8'``.  However, for
+MySQL versions 5.5.3 and MariaDB 5.5 on forward, a new MySQL-specific encoding
+``'utf8mb4'`` has been introduced, and as of MySQL 8.0 a warning is emitted by
+the server if plain ``utf8`` is specified within any server-side directives,
+replaced with ``utf8mb3``.  The rationale for this new encoding is due to the
+fact that MySQL's legacy utf-8 encoding only supports codepoints up to three
+bytes instead of four.  Therefore, when communicating with a MySQL or MariaDB
+database that includes codepoints more than three bytes in size, this new
+charset is preferred, if supported by both the database as well as the client
+DBAPI, as in::
 
     e = create_engine(
         "mysql+pymysql://scott:tiger@localhost/test?charset=utf8mb4")
@@ -275,7 +320,7 @@ as the client DBAPI, as in::
 All modern DBAPIs should support the ``utf8mb4`` charset.
 
 In order to use ``utf8mb4`` encoding for a schema that was created with  legacy
-``utf8``, changes to the MySQL schema and/or server configuration may be
+``utf8``, changes to the MySQL/MariaDB schema and/or server configuration may be
 required.
 
 .. seealso::
@@ -334,7 +379,7 @@ most efficient place for this additional keyword to be passed.
 ANSI Quoting Style
 ------------------
 
-MySQL features two varieties of identifier "quoting style", one using
+MySQL / MariaDB feature two varieties of identifier "quoting style", one using
 backticks and the other using quotes, e.g. ```some_identifier```  vs.
 ``"some_identifier"``.   All MySQL dialects detect which version
 is in use by checking the value of ``sql_mode`` when a connection is first
@@ -344,18 +389,18 @@ into play when rendering table and column names as well as when reflecting
 existing database structures.  The detection is entirely automatic and
 no special configuration is needed to use either quoting style.
 
-MySQL SQL Extensions
---------------------
+MySQL / MariaDB SQL Extensions
+------------------------------
 
-Many of the MySQL SQL extensions are handled through SQLAlchemy's generic
+Many of the MySQL / MariaDB SQL extensions are handled through SQLAlchemy's generic
 function and operator support::
 
   table.select(table.c.password==func.md5('plaintext'))
   table.select(table.c.username.op('regexp')('^[a-d]'))
 
-And of course any valid MySQL statement can be executed as a string as well.
+And of course any valid SQL statement can be executed as a string as well.
 
-Some limited direct support for MySQL extensions to SQL is currently
+Some limited direct support for MySQL / MariaDB extensions to SQL is currently
 available.
 
 * INSERT..ON DUPLICATE KEY UPDATE:  See
@@ -368,7 +413,7 @@ available.
 
 * UPDATE with LIMIT::
 
-    update(..., mysql_limit=10)
+    update(..., mysql_limit=10, mariadb_limit=10)
 
 * optimizer hints, use :meth:`_expression.Select.prefix_with` and
   :meth:`_query.Query.prefix_with`::
@@ -385,7 +430,7 @@ available.
 INSERT...ON DUPLICATE KEY UPDATE (Upsert)
 ------------------------------------------
 
-MySQL allows "upserts" (update or insert)
+MySQL / MariaDB allow "upserts" (update or insert)
 of rows into a table via the ``ON DUPLICATE KEY UPDATE`` clause of the
 ``INSERT`` statement.  A candidate row will only be inserted if that row does
 not match an existing primary or unique key in the table; otherwise, an UPDATE
@@ -505,63 +550,36 @@ This setting is currently hardcoded.
     :attr:`_engine.CursorResult.rowcount`
 
 
-CAST Support
-------------
-
-MySQL documents the CAST operator as available in version 4.0.2.  When using
-the SQLAlchemy :func:`.cast` function, SQLAlchemy
-will not render the CAST token on MySQL before this version, based on server
-version detection, instead rendering the internal expression directly.
-
-CAST may still not be desirable on an early MySQL version post-4.0.2, as it
-didn't add all datatype support until 4.1.1.   If your application falls into
-this narrow area, the behavior of CAST can be controlled using the
-:ref:`sqlalchemy.ext.compiler_toplevel` system, as per the recipe below::
-
-    from sqlalchemy.sql.expression import Cast
-    from sqlalchemy.ext.compiler import compiles
-
-    @compiles(Cast, 'mysql')
-    def _check_mysql_version(element, compiler, **kw):
-        if compiler.dialect.server_version_info < (4, 1, 0):
-            return compiler.process(element.clause, **kw)
-        else:
-            return compiler.visit_cast(element, **kw)
-
-The above function, which only needs to be declared once
-within an application, overrides the compilation of the
-:func:`.cast` construct to check for version 4.1.0 before
-fully rendering CAST; else the internal element of the
-construct is rendered directly.
-
-
 .. _mysql_indexes:
 
-MySQL Specific Index Options
-----------------------------
+MySQL / MariaDB- Specific Index Options
+-----------------------------------------
 
-MySQL-specific extensions to the :class:`.Index` construct are available.
+MySQL and MariaDB-specific extensions to the :class:`.Index` construct are available.
 
 Index Length
 ~~~~~~~~~~~~~
 
-MySQL provides an option to create index entries with a certain length, where
+MySQL and MariaDB both provide an option to create index entries with a certain length, where
 "length" refers to the number of characters or bytes in each value which will
 become part of the index. SQLAlchemy provides this feature via the
-``mysql_length`` parameter::
+``mysql_length`` and/or ``mariadb_length`` parameters::
 
-    Index('my_index', my_table.c.data, mysql_length=10)
+    Index('my_index', my_table.c.data, mysql_length=10, mariadb_length=10)
 
     Index('a_b_idx', my_table.c.a, my_table.c.b, mysql_length={'a': 4,
+                                                               'b': 9})
+
+    Index('a_b_idx', my_table.c.a, my_table.c.b, mariadb_length={'a': 4,
                                                                'b': 9})
 
 Prefix lengths are given in characters for nonbinary string types and in bytes
 for binary string types. The value passed to the keyword argument *must* be
 either an integer (and, thus, specify the same prefix length value for all
 columns of the index) or a dict in which keys are column names and values are
-prefix length values for corresponding columns. MySQL only allows a length for
-a column of an index if it is for a CHAR, VARCHAR, TEXT, BINARY, VARBINARY and
-BLOB.
+prefix length values for corresponding columns. MySQL and MariaDB only allow a
+length for a column of an index if it is for a CHAR, VARCHAR, TEXT, BINARY,
+VARBINARY and BLOB.
 
 Index Prefixes
 ~~~~~~~~~~~~~~
@@ -589,11 +607,11 @@ Some MySQL storage engines permit you to specify an index type when creating
 an index or primary key constraint. SQLAlchemy provides this feature via the
 ``mysql_using`` parameter on :class:`.Index`::
 
-    Index('my_index', my_table.c.data, mysql_using='hash')
+    Index('my_index', my_table.c.data, mysql_using='hash', mariadb_using='hash')
 
 As well as the ``mysql_using`` parameter on :class:`.PrimaryKeyConstraint`::
 
-    PrimaryKeyConstraint("data", mysql_using='hash')
+    PrimaryKeyConstraint("data", mysql_using='hash', mariadb_using='hash')
 
 The value passed to the keyword argument will be simply passed through to the
 underlying CREATE INDEX or PRIMARY KEY clause, so it *must* be a valid index
@@ -613,57 +631,51 @@ is available using the keyword argument ``mysql_with_parser``::
 
     Index(
         'my_index', my_table.c.data,
-        mysql_prefix='FULLTEXT', mysql_with_parser="ngram")
+        mysql_prefix='FULLTEXT', mysql_with_parser="ngram",
+        mariadb_prefix='FULLTEXT', mariadb_with_parser="ngram",
+    )
 
 .. versionadded:: 1.3
 
 
 .. _mysql_foreign_keys:
 
-MySQL Foreign Keys
-------------------
+MySQL / MariaDB Foreign Keys
+-----------------------------
 
-MySQL's behavior regarding foreign keys has some important caveats.
+MySQL and MariaDB's behavior regarding foreign keys has some important caveats.
 
 Foreign Key Arguments to Avoid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-MySQL does not support the foreign key arguments "DEFERRABLE", "INITIALLY",
+Neither MySQL nor MariaDB support the foreign key arguments "DEFERRABLE", "INITIALLY",
 or "MATCH".  Using the ``deferrable`` or ``initially`` keyword argument with
 :class:`_schema.ForeignKeyConstraint` or :class:`_schema.ForeignKey`
 will have the effect of
 these keywords being rendered in a DDL expression, which will then raise an
-error on MySQL.  In order to use these keywords on a foreign key while having
-them ignored on a MySQL backend, use a custom compile rule::
+error on MySQL or MariaDB.  In order to use these keywords on a foreign key while having
+them ignored on a MySQL / MariaDB backend, use a custom compile rule::
 
     from sqlalchemy.ext.compiler import compiles
     from sqlalchemy.schema import ForeignKeyConstraint
 
-    @compiles(ForeignKeyConstraint, "mysql")
+    @compiles(ForeignKeyConstraint, "mysql", "mariadb")
     def process(element, compiler, **kw):
         element.deferrable = element.initially = None
         return compiler.visit_foreign_key_constraint(element, **kw)
 
-.. versionchanged:: 0.9.0 - the MySQL backend no longer silently ignores
-   the ``deferrable`` or ``initially`` keyword arguments of
-   :class:`_schema.ForeignKeyConstraint` and :class:`_schema.ForeignKey`.
-
 The "MATCH" keyword is in fact more insidious, and is explicitly disallowed
-by SQLAlchemy in conjunction with the MySQL backend.  This argument is
-silently ignored by MySQL, but in addition has the effect of ON UPDATE and ON
+by SQLAlchemy in conjunction with the MySQL or MariaDB backends.  This argument is
+silently ignored by MySQL / MariaDB, but in addition has the effect of ON UPDATE and ON
 DELETE options also being ignored by the backend.   Therefore MATCH should
-never be used with the MySQL backend; as is the case with DEFERRABLE and
-INITIALLY, custom compilation rules can be used to correct a MySQL
+never be used with the MySQL / MariaDB backends; as is the case with DEFERRABLE and
+INITIALLY, custom compilation rules can be used to correct a
 ForeignKeyConstraint at DDL definition time.
-
-.. versionadded:: 0.9.0 - the MySQL backend will raise a
-   :class:`.CompileError` when the ``match`` keyword is used with
-   :class:`_schema.ForeignKeyConstraint` or :class:`_schema.ForeignKey`.
 
 Reflection of Foreign Key Constraints
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Not all MySQL storage engines support foreign keys.  When using the
+Not all MySQL / MariaDB storage engines support foreign keys.  When using the
 very common ``MyISAM`` MySQL storage engine, the information loaded by table
 reflection will not include foreign keys.  For these tables, you may supply a
 :class:`~sqlalchemy.ForeignKeyConstraint` at reflection time::
@@ -679,22 +691,22 @@ reflection will not include foreign keys.  For these tables, you may supply a
 
 .. _mysql_unique_constraints:
 
-MySQL Unique Constraints and Reflection
----------------------------------------
+MySQL / MariaDB Unique Constraints and Reflection
+----------------------------------------------------
 
 SQLAlchemy supports both the :class:`.Index` construct with the
 flag ``unique=True``, indicating a UNIQUE index, as well as the
 :class:`.UniqueConstraint` construct, representing a UNIQUE constraint.
-Both objects/syntaxes are supported by MySQL when emitting DDL to create
-these constraints.  However, MySQL does not have a unique constraint
+Both objects/syntaxes are supported by MySQL / MariaDB when emitting DDL to create
+these constraints.  However, MySQL / MariaDB does not have a unique constraint
 construct that is separate from a unique index; that is, the "UNIQUE"
-constraint on MySQL is equivalent to creating a "UNIQUE INDEX".
+constraint on MySQL / MariaDB is equivalent to creating a "UNIQUE INDEX".
 
 When reflecting these constructs, the
 :meth:`_reflection.Inspector.get_indexes`
 and the :meth:`_reflection.Inspector.get_unique_constraints`
 methods will **both**
-return an entry for a UNIQUE index in MySQL.  However, when performing
+return an entry for a UNIQUE index in MySQL / MariaDB.  However, when performing
 full table reflection using ``Table(..., autoload=True)``,
 the :class:`.UniqueConstraint` construct is
 **not** part of the fully reflected :class:`_schema.Table` construct under any
@@ -708,10 +720,10 @@ TIMESTAMP / DATETIME issues
 
 .. _mysql_timestamp_onupdate:
 
-Rendering ON UPDATE CURRENT TIMESTAMP for MySQL's explicit_defaults_for_timestamp
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Rendering ON UPDATE CURRENT TIMESTAMP for MySQL / MariaDB's explicit_defaults_for_timestamp
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-MySQL has historically expanded the DDL for the :class:`_types.TIMESTAMP`
+MySQL / MariaDB have historically expanded the DDL for the :class:`_types.TIMESTAMP`
 datatype into the phrase "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE
 CURRENT_TIMESTAMP", which includes non-standard SQL that automatically updates
 the column with the current timestamp when an UPDATE occurs, eliminating the
@@ -873,7 +885,6 @@ output::
 from array import array as _array
 from collections import defaultdict
 import re
-import sys
 
 from sqlalchemy import literal_column
 from sqlalchemy.sql import visitors
@@ -1545,14 +1556,6 @@ class MySQLCompiler(compiler.SQLCompiler):
             return None
 
     def visit_cast(self, cast, **kw):
-        # No cast until 4, no decimals until 5.
-        if not self.dialect._supports_cast:
-            util.warn(
-                "Current MySQL version does not support "
-                "CAST; the CAST will be skipped."
-            )
-            return self.process(cast.clause.self_group(), **kw)
-
         type_ = self.process(cast.typeclause)
         if type_ is None:
             util.warn(
@@ -1902,13 +1905,13 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if index.unique:
             text += "UNIQUE "
 
-        index_prefix = index.kwargs.get("mysql_prefix", None)
+        index_prefix = index.kwargs.get("%s_prefix" % self.dialect.name, None)
         if index_prefix:
             text += index_prefix + " "
 
         text += "INDEX %s ON %s " % (name, table)
 
-        length = index.dialect_options["mysql"]["length"]
+        length = index.dialect_options[self.dialect.name]["length"]
         if length is not None:
 
             if isinstance(length, dict):
@@ -2384,6 +2387,7 @@ class MySQLDialect(default.DefaultDialect):
     preparer = MySQLIdentifierPreparer
 
     is_mariadb = False
+    _mariadb_normalized_version_info = None
 
     # default SQL compilation settings -
     # these are modified upon initialize(),
@@ -2482,6 +2486,24 @@ class MySQLDialect(default.DefaultDialect):
             val = val.decode()
         return val.upper().replace("-", " ")
 
+    @classmethod
+    def _is_mariadb_from_url(cls, url):
+        dbapi = cls.dbapi()
+        dialect = cls(dbapi=dbapi)
+
+        cargs, cparams = dialect.create_connect_args(url)
+        conn = dialect.connect(*cargs, **cparams)
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT VERSION() LIKE '%MariaDB%'")
+            val = cursor.fetchone()[0]
+        except:
+            raise
+        else:
+            return bool(val)
+        finally:
+            conn.close()
+
     def _get_server_version_info(self, connection):
         # get database server version info explicitly over the wire
         # to avoid proxy servers like MaxScale getting in the
@@ -2498,23 +2520,38 @@ class MySQLDialect(default.DefaultDialect):
 
     def _parse_server_version(self, val):
         version = []
-        r = re.compile(r"[.\-]")
-        for n in r.split(val):
-            try:
-                version.append(int(n))
-            except ValueError:
-                mariadb = re.match(r"(.*)(MariaDB)(.*)", n)
-                if mariadb:
-                    version.extend(g for g in mariadb.groups() if g)
-                else:
-                    version.append(n)
+        is_mariadb = False
+
+        r = re.compile(r"[.\-+]")
+        tokens = r.split(val)
+        for token in tokens:
+            parsed_token = re.match(
+                r"^(?:(\d+)(?:a|b|c)?|(MariaDB\w*))$", token
+            )
+            if not parsed_token:
+                continue
+            elif parsed_token.group(2):
+                self._mariadb_normalized_version_info = tuple(version[-3:])
+                is_mariadb = True
+            else:
+                digit = int(parsed_token.group(1))
+                version.append(digit)
 
         server_version_info = tuple(version)
 
-        self._set_mariadb(
-            server_version_info and "MariaDB" in server_version_info, val
-        )
+        self._set_mariadb(server_version_info and is_mariadb, val)
 
+        if not is_mariadb:
+            self._mariadb_normalized_version_info = server_version_info
+
+        if server_version_info < (5, 0, 2):
+            raise NotImplementedError(
+                "the MySQL/MariaDB dialect supports server "
+                "version info 5.0.2 and above."
+            )
+
+        # setting it here to help w the test suite
+        self.server_version_info = server_version_info
         return server_version_info
 
     def _set_mariadb(self, is_mariadb, server_version_info):
@@ -2527,36 +2564,6 @@ class MySQLDialect(default.DefaultDialect):
                 % (server_version_info,)
             )
         self.is_mariadb = is_mariadb
-
-    def do_commit(self, dbapi_connection):
-        """Execute a COMMIT."""
-
-        # COMMIT/ROLLBACK were introduced in 3.23.15.
-        # Yes, we have at least one user who has to talk to these old
-        # versions!
-        #
-        # Ignore commit/rollback if support isn't present, otherwise even
-        # basic operations via autocommit fail.
-        try:
-            dbapi_connection.commit()
-        except Exception:
-            if self.server_version_info < (3, 23, 15):
-                args = sys.exc_info()[1].args
-                if args and args[0] == 1064:
-                    return
-            raise
-
-    def do_rollback(self, dbapi_connection):
-        """Execute a ROLLBACK."""
-
-        try:
-            dbapi_connection.rollback()
-        except Exception:
-            if self.server_version_info < (3, 23, 15):
-                args = sys.exc_info()[1].args
-                if args and args[0] == 1064:
-                    return
-            raise
 
     def do_begin_twophase(self, connection, xid):
         connection.execute(sql.text("XA BEGIN :xid"), dict(xid=xid))
@@ -2772,24 +2779,6 @@ class MySQLDialect(default.DefaultDialect):
             2,
         )
 
-    @property
-    def _mariadb_normalized_version_info(self):
-        # MariaDB's wire-protocol prepends the server_version with
-        # the string "5.5"; now that we use @@version we no longer see this.
-
-        if self.is_mariadb:
-            idx = self.server_version_info.index("MariaDB")
-            return self.server_version_info[idx - 3 : idx]
-        else:
-            return self.server_version_info
-
-    @property
-    def _supports_cast(self):
-        return (
-            self.server_version_info is None
-            or self.server_version_info >= (4, 0, 2)
-        )
-
     @reflection.cache
     def get_schema_names(self, connection, **kw):
         rp = connection.exec_driver_sql("SHOW schemas")
@@ -2804,34 +2793,22 @@ class MySQLDialect(default.DefaultDialect):
             current_schema = self.default_schema_name
 
         charset = self._connection_charset
-        if self.server_version_info < (5, 0, 2):
-            rp = connection.exec_driver_sql(
-                "SHOW TABLES FROM %s"
-                % self.identifier_preparer.quote_identifier(current_schema)
-            )
-            return [
-                row[0] for row in self._compat_fetchall(rp, charset=charset)
-            ]
-        else:
-            rp = connection.exec_driver_sql(
-                "SHOW FULL TABLES FROM %s"
-                % self.identifier_preparer.quote_identifier(current_schema)
-            )
 
-            return [
-                row[0]
-                for row in self._compat_fetchall(rp, charset=charset)
-                if row[1] == "BASE TABLE"
-            ]
+        rp = connection.exec_driver_sql(
+            "SHOW FULL TABLES FROM %s"
+            % self.identifier_preparer.quote_identifier(current_schema)
+        )
+
+        return [
+            row[0]
+            for row in self._compat_fetchall(rp, charset=charset)
+            if row[1] == "BASE TABLE"
+        ]
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        if self.server_version_info < (5, 0, 2):
-            raise NotImplementedError
         if schema is None:
             schema = self.default_schema_name
-        if self.server_version_info < (5, 0, 2):
-            return self.get_table_names(connection, schema)
         charset = self._connection_charset
         rp = connection.exec_driver_sql(
             "SHOW FULL TABLES FROM %s"
@@ -3012,7 +2989,11 @@ class MySQLDialect(default.DefaultDialect):
         parsed_state = self._parsed_state_or_create(
             connection, table_name, schema, **kw
         )
-        return {"text": parsed_state.table_options.get("mysql_comment", None)}
+        return {
+            "text": parsed_state.table_options.get(
+                "%s_comment" % self.name, None
+            )
+        }
 
     @reflection.cache
     def get_indexes(self, connection, table_name, schema=None, **kw):
@@ -3032,7 +3013,7 @@ class MySQLDialect(default.DefaultDialect):
             if flavor == "UNIQUE":
                 unique = True
             elif flavor in ("FULLTEXT", "SPATIAL"):
-                dialect_options["mysql_prefix"] = flavor
+                dialect_options["%s_prefix" % self.name] = flavor
             elif flavor is None:
                 pass
             else:
@@ -3042,7 +3023,9 @@ class MySQLDialect(default.DefaultDialect):
                 pass
 
             if spec["parser"]:
-                dialect_options["mysql_with_parser"] = spec["parser"]
+                dialect_options["%s_with_parser" % (self.name)] = spec[
+                    "parser"
+                ]
 
             index_d = {}
             if dialect_options:
@@ -3104,11 +3087,7 @@ class MySQLDialect(default.DefaultDialect):
         retrieved server version information first.
 
         """
-        if self.server_version_info < (4, 1) and self._server_ansiquotes:
-            # ANSI_QUOTES doesn't affect SHOW CREATE TABLE on < 4.1
-            preparer = self.preparer(self, server_ansiquotes=False)
-        else:
-            preparer = self.identifier_preparer
+        preparer = self.identifier_preparer
         return _reflection.MySQLTableDefinitionParser(self, preparer)
 
     @reflection.cache
@@ -3171,13 +3150,10 @@ class MySQLDialect(default.DefaultDialect):
         """
 
         collations = {}
-        if self.server_version_info < (4, 1, 0):
-            pass
-        else:
-            charset = self._connection_charset
-            rs = connection.exec_driver_sql("SHOW COLLATION")
-            for row in self._compat_fetchall(rs, charset):
-                collations[row[0]] = row[1]
+        charset = self._connection_charset
+        rs = connection.exec_driver_sql("SHOW COLLATION")
+        for row in self._compat_fetchall(rs, charset):
+            collations[row[0]] = row[1]
         return collations
 
     def _detect_sql_mode(self, connection):
