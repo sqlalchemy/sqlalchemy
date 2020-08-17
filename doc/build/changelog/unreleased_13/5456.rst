@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, reflection, sqlite, mssql
-    :tickets: 5456
-
-    Applied a sweep through all included dialects to ensure names that contain
-    single or double quotes are properly escaped when querying system tables,
-    for all :class:`.Inspector` methods that accept object names as an argument
-    (e.g. table names, view names, etc).   SQLite and MSSQL contained two
-    quoting issues that were repaired.

@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 5411
-
-    Fixed an issue where CREATE TABLE statements were not specifying the
-    COLLATE keyword correctly.

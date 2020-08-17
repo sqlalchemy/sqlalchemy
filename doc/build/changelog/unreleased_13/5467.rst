@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mssql, sql
-    :tickets: 5467
-
-    Fixed bug where the mssql dialect incorrectly escaped object names that
-    contained ']' character(s).
