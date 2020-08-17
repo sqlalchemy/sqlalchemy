@@ -12,7 +12,125 @@
 
 .. changelog::
     :version: 1.3.19
-    :include_notes_from: unreleased_13
+    :released: August 17, 2020
+
+    .. change::
+        :tags: usecase, py3k
+        :tickets: #5357
+
+        Added a ``**kw`` argument to the :meth:`.DeclarativeMeta.__init__` method.
+        This allows a class to support the :pep:`487` metaclass hook
+        ``__init_subclass__``.  Pull request courtesy Ewen Gillies.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5470
+
+        Repaired an issue where the "ORDER BY" clause rendering a label name rather
+        than a complete expression, which is particularly important for SQL Server,
+        would fail to occur if the expression were enclosed in a parenthesized
+        grouping in some cases.   This case has been added to test support. The
+        change additionally adjusts the "automatically add ORDER BY columns when
+        DISTINCT is present" behavior of ORM query, deprecated in 1.4, to more
+        accurately detect column expressions that are already present.
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 5481
+
+        The MySQL dialect will render FROM DUAL for a SELECT statement that has no
+        FROM clause but has a WHERE clause. This allows things like "SELECT 1 WHERE
+        EXISTS (subquery)" kinds of queries to be used as well as other use cases.
+
+
+    .. change::
+        :tags: bug, mssql, sql
+        :tickets: 5467
+
+        Fixed bug where the mssql dialect incorrectly escaped object names that
+        contained ']' character(s).
+
+    .. change::
+        :tags: bug, reflection, sqlite, mssql
+        :tickets: 5456
+
+        Applied a sweep through all included dialects to ensure names that contain
+        single or double quotes are properly escaped when querying system tables,
+        for all :class:`.Inspector` methods that accept object names as an argument
+        (e.g. table names, view names, etc).   SQLite and MSSQL contained two
+        quoting issues that were repaired.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5411
+
+        Fixed an issue where CREATE TABLE statements were not specifying the
+        COLLATE keyword correctly.
+
+    .. change::
+        :tags: bug, datatypes, sql
+        :tickets: 4733
+
+        The ``LookupError`` message will now provide the user with up to four
+        possible values that a column is constrained to via the :class:`.Enum`.
+        Values longer than 11 characters will be truncated and replaced with
+        ellipses. Pull request courtesy Ramon Williams.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5476
+
+        Fixed issue where the return type for the various RANGE comparison
+        operators would itself be the same RANGE type rather than BOOLEAN, which
+        would cause an undesirable result in the case that a
+        :class:`.TypeDecorator` that defined result-processing behavior were in
+        use.  Pull request courtesy Jim Bosch.
+
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5493
+
+        Added MariaDB code 1927 to the list of "disconnect" codes, as recent
+        MariaDB versions apparently use this code when the database server was
+        stopped.
+
+    .. change::
+        :tags: usecase, declarative, orm
+        :tickets: 5513
+
+        The name of the virtual column used when using the
+        :class:`_declarative.AbstractConcreteBase` and
+        :class:`_declarative.ConcreteBase` classes can now be customized, to allow
+        for models that have a column that is actually named ``type``.  Pull
+        request courtesy Jesse-Bakker.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 5494
+
+        Adjusted the workings of the :meth:`_orm.Mapper.all_orm_descriptors`
+        accessor to represent the attributes in the order that they are located in
+        a deterministic way, assuming the use of Python 3.6 or higher which
+        maintains the sorting order of class attributes based on how they were
+        declared.   This sorting is not guaranteed to match the declared order of
+        attributes in all cases however; see the method documentation for the exact
+        scheme.
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5500
+
+        Fixed issue where the
+        :paramref:`_engine.Connection.execution_options.schema_translate_map`
+        feature would not take effect when the :meth:`_schema.Sequence.next_value`
+        function function for a :class:`_schema.Sequence` were used in the
+        :paramref:`_schema.Column.server_default` parameter and the create table
+        DDL were emitted.
 
 .. changelog::
     :version: 1.3.18
