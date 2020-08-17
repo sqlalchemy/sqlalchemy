@@ -179,6 +179,18 @@ class QueryTest(fixtures.TestBase):
         assert row.x == True  # noqa
         assert row.y == False  # noqa
 
+    def test_select_tuple(self, connection):
+        connection.execute(
+            users.insert(), {"user_id": 1, "user_name": "apples"},
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Most backends don't support SELECTing from a tuple\(\) object.",
+            connection.execute,
+            select(tuple_(users.c.user_id, users.c.user_name)),
+        )
+
     def test_like_ops(self, connection):
         connection.execute(
             users.insert(),

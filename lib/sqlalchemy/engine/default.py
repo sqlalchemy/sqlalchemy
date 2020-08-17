@@ -1456,8 +1456,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     continue
 
                 if key in self._expanded_parameters:
-                    if bindparam._expanding_in_types:
-                        num = len(bindparam._expanding_in_types)
+                    if bindparam.type._is_tuple_type:
+                        num = len(bindparam.type.types)
                         dbtypes = inputsizes[bindparam]
                         positional_inputsizes.extend(
                             [
@@ -1488,8 +1488,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     continue
 
                 if key in self._expanded_parameters:
-                    if bindparam._expanding_in_types:
-                        num = len(bindparam._expanding_in_types)
+                    if bindparam.type._is_tuple_type:
+                        num = len(bindparam.type.types)
                         dbtypes = inputsizes[bindparam]
                         keyword_inputsizes.update(
                             [

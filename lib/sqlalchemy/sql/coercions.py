@@ -478,7 +478,6 @@ class InElementImpl(RoleImpl):
 
             if non_literal_expressions:
                 return elements.ClauseList(
-                    _tuple_values=isinstance(expr, elements.Tuple),
                     *[
                         non_literal_expressions[o]
                         if o in non_literal_expressions
@@ -509,10 +508,6 @@ class InElementImpl(RoleImpl):
                 # param to IN? check for ARRAY type?
                 element = element._clone(maintain_key=True)
                 element.expanding = True
-            if isinstance(expr, elements.Tuple):
-                element = element._with_expanding_in_types(
-                    [elem.type for elem in expr]
-                )
 
             return element
         else:

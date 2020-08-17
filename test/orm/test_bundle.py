@@ -1,15 +1,18 @@
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import tuple_
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ClauseList
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -82,6 +85,34 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             ]
         )
         sess.commit()
+
+    def test_tuple_suggests_bundle(self, connection):
+        Data, Other = self.classes("Data", "Other")
+
+        sess = Session(connection)
+        q = sess.query(tuple_(Data.id, Other.id)).join(Data.others)
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Most backends don't support SELECTing from a tuple\(\) object.  "
+            "If this is an ORM query, consider using the Bundle object.",
+            q.all,
+        )
+
+    def test_tuple_suggests_bundle_future(self, connection):
+        Data, Other = self.classes("Data", "Other")
+
+        stmt = select(tuple_(Data.id, Other.id)).join(Data.others)
+
+        sess = Session(connection, future=True)
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Most backends don't support SELECTing from a tuple\(\) object.  "
+            "If this is an ORM query, consider using the Bundle object.",
+            sess.execute,
+            stmt,
+        )
 
     def test_same_named_col_clauselist(self):
         Data, Other = self.classes("Data", "Other")

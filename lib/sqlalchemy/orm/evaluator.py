@@ -113,6 +113,9 @@ class EvaluatorCompiler(object):
         get_corresponding_attr = operator.attrgetter(key)
         return lambda obj: get_corresponding_attr(obj)
 
+    def visit_tuple(self, clause):
+        return self.visit_clauselist(clause)
+
     def visit_clauselist(self, clause):
         evaluators = list(map(self.process, clause.clauses))
         if clause.operator is operators.or_:

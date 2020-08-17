@@ -1059,7 +1059,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
     ]
 
     _is_crud = False
-    _expanding_in_types = ()
     _is_bind_parameter = True
     _key_is_anon = False
 
@@ -1371,15 +1370,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
             self.type = type_()
         else:
             self.type = type_
-
-    def _with_expanding_in_types(self, types):
-        """Return a copy of this :class:`.BindParameter` in
-        the context of an expanding IN against a tuple.
-
-        """
-        cloned = self._clone(maintain_key=True)
-        cloned._expanding_in_types = types
-        return cloned
 
     def _with_value(self, value, maintain_key=False):
         """Return a copy of this :class:`.BindParameter` with the given value
@@ -2141,7 +2131,6 @@ class ClauseList(
         self.group_contents = kwargs.pop("group_contents", True)
         if kwargs.pop("_flatten_sub_clauses", False):
             clauses = util.flatten_iterator(clauses)
-        self._tuple_values = kwargs.pop("_tuple_values", False)
         self._text_converter_role = text_converter_role = kwargs.pop(
             "_literal_as_text_role", roles.WhereHavingRole
         )
@@ -2168,7 +2157,6 @@ class ClauseList(
         self.group = True
         self.operator = operator
         self.group_contents = True
-        self._tuple_values = False
         self._is_implicitly_boolean = False
         return self
 
@@ -2211,8 +2199,6 @@ class ClauseList(
 class BooleanClauseList(ClauseList, ColumnElement):
     __visit_name__ = "clauselist"
     inherit_cache = True
-
-    _tuple_values = False
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
@@ -2471,8 +2457,11 @@ or_ = BooleanClauseList.or_
 class Tuple(ClauseList, ColumnElement):
     """Represent a SQL tuple."""
 
+    __visit_name__ = "tuple"
+
     _traverse_internals = ClauseList._traverse_internals + []
 
+    @util.preload_module("sqlalchemy.sql.sqltypes")
     def __init__(self, *clauses, **kw):
         """Return a :class:`.Tuple`.
 
@@ -2496,15 +2485,12 @@ class Tuple(ClauseList, ColumnElement):
             invoked.
 
         """
+        sqltypes = util.preloaded.sql_sqltypes
 
         clauses = [
             coercions.expect(roles.ExpressionElementRole, c) for c in clauses
         ]
-        self._type_tuple = [arg.type for arg in clauses]
-        self.type = kw.pop(
-            "type_",
-            self._type_tuple[0] if self._type_tuple else type_api.NULLTYPE,
-        )
+        self.type = sqltypes.TupleType(*[arg.type for arg in clauses])
 
         super(Tuple, self).__init__(*clauses, **kw)
 
@@ -2520,7 +2506,8 @@ class Tuple(ClauseList, ColumnElement):
                 _compared_to_operator=operator,
                 unique=True,
                 expanding=True,
-            )._with_expanding_in_types(self._type_tuple)
+                type_=self.type,
+            )
         else:
             return Tuple(
                 *[
@@ -2532,9 +2519,13 @@ class Tuple(ClauseList, ColumnElement):
                         unique=True,
                         type_=type_,
                     )
-                    for o, compared_to_type in zip(obj, self._type_tuple)
+                    for o, compared_to_type in zip(obj, self.type.types)
                 ]
-            ).self_group()
+            )
+
+    def self_group(self, against=None):
+        # Tuple is parenthsized by definition.
+        return self
 
 
 class Case(ColumnElement):

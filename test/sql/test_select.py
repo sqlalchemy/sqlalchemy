@@ -6,6 +6,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import tuple_
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
@@ -196,4 +197,28 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             'Entity namespace for "mytable" has no property "foo"',
             select(table1).filter_by,
             foo="bar",
+        )
+
+    def test_select_tuple_outer(self):
+        stmt = select(tuple_(table1.c.myid, table1.c.name))
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Most backends don't support SELECTing from a tuple\(\) object.  "
+            "If this is an ORM query, consider using the Bundle object.",
+            stmt.compile,
+        )
+
+    def test_select_tuple_subquery(self):
+        subq = select(
+            table1.c.name, tuple_(table1.c.myid, table1.c.name)
+        ).subquery()
+
+        stmt = select(subq.c.name)
+
+        # if we aren't fetching it, then render it
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.name FROM (SELECT mytable.name AS name, "
+            "(mytable.myid, mytable.name) AS anon_2 FROM mytable) AS anon_1",
         )

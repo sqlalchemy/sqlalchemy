@@ -45,6 +45,7 @@ class TypeEngine(Traversible):
 
     _sqla_type = True
     _isnull = False
+    _is_tuple_type = False
 
     class Comparator(operators.ColumnOperators):
         """Base class for custom comparison operations defined at the
