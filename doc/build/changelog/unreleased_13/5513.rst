@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, declarative, orm
+    :tickets: 5513
+
+    The name of the virtual column used when using the
+    :class:`_declarative.AbstractConcreteBase` and
+    :class:`_declarative.ConcreteBase` classes can now be customized, to allow
+    for models that have a column that is actually named ``type``.  Pull
+    request courtesy Jesse-Bakker.

@@ -15,6 +15,7 @@ from .base import _as_declarative
 from .base import _declarative_constructor
 from .base import _DeferredMapperConfig
 from .base import _del_attribute
+from .base import _get_immediate_cls_attr
 from .clsregistry import _class_resolver
 from ... import exc
 from ... import inspection
@@ -438,6 +439,20 @@ class ConcreteBase(object):
                             'polymorphic_identity':'manager',
                             'concrete':True}
 
+
+    The name of the discriminator column used by :func:`.polymorphic_union`
+    defaults to the name ``type``.  To suit the use case of a mapping where an
+    actual column in a mapped table is already named ``type``, the
+    discriminator name can be configured by setting the
+    ``_concrete_discriminator_name`` attribute::
+
+        class Employee(ConcreteBase, Base):
+            _concrete_discriminator_name = '_concrete_discriminator'
+
+    .. versionadded:: 1.3.19 Added the ``_concrete_discriminator_name``
+       attribute to :class:`_declarative.ConcreteBase` so that the
+       virtual discriminator column name can be customized.
+
     .. seealso::
 
         :class:`.AbstractConcreteBase`
@@ -448,12 +463,12 @@ class ConcreteBase(object):
     """
 
     @classmethod
-    def _create_polymorphic_union(cls, mappers):
+    def _create_polymorphic_union(cls, mappers, discriminator_name):
         return polymorphic_union(
             OrderedDict(
                 (mp.polymorphic_identity, mp.local_table) for mp in mappers
             ),
-            "type",
+            discriminator_name,
             "pjoin",
         )
 
@@ -463,10 +478,15 @@ class ConcreteBase(object):
         if m.with_polymorphic:
             return
 
+        discriminator_name = (
+            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
+            or "type"
+        )
+
         mappers = list(m.self_and_descendants)
-        pjoin = cls._create_polymorphic_union(mappers)
+        pjoin = cls._create_polymorphic_union(mappers, discriminator_name)
         m._set_with_polymorphic(("*", pjoin))
-        m._set_polymorphic_on(pjoin.c.type)
+        m._set_polymorphic_on(pjoin.c[discriminator_name])
 
 
 class AbstractConcreteBase(ConcreteBase):
@@ -609,7 +629,12 @@ class AbstractConcreteBase(ConcreteBase):
             mn = _mapper_or_none(klass)
             if mn is not None:
                 mappers.append(mn)
-        pjoin = cls._create_polymorphic_union(mappers)
+
+        discriminator_name = (
+            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
+            or "type"
+        )
+        pjoin = cls._create_polymorphic_union(mappers, discriminator_name)
 
         # For columns that were declared on the class, these
         # are normally ignored with the "__no_table__" mapping,
@@ -628,7 +653,7 @@ class AbstractConcreteBase(ConcreteBase):
 
         def mapper_args():
             args = m_args()
-            args["polymorphic_on"] = pjoin.c.type
+            args["polymorphic_on"] = pjoin.c[discriminator_name]
             return args
 
         to_map.mapper_args_fn = mapper_args
