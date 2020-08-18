@@ -1017,7 +1017,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def json_array_indexes(self):
-        return self.json_type + fails_if("+pg8000")
+        return self.json_type
 
     @property
     def datetime_literals(self):
@@ -1209,20 +1209,6 @@ class DefaultRequirements(SuiteRequirements):
                     "Firebird still has FP inaccuracy even "
                     "with only four decimal places",
                 ),
-                (
-                    "postgresql+pg8000",
-                    None,
-                    None,
-                    "postgresql+pg8000 has FP inaccuracy even with "
-                    "only four decimal places ",
-                ),
-                (
-                    "postgresql+psycopg2cffi",
-                    None,
-                    None,
-                    "postgresql+psycopg2cffi has FP inaccuracy even with "
-                    "only four decimal places ",
-                ),
             ]
         )
 
@@ -1253,7 +1239,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def duplicate_key_raises_integrity_error(self):
-        return fails_on("postgresql+pg8000")
+        return exclusions.open()
 
     def _has_pg_extension(self, name):
         def check(config):

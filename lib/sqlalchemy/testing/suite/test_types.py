@@ -34,7 +34,6 @@ from ... import testing
 from ... import Text
 from ... import Time
 from ... import TIMESTAMP
-from ... import type_coerce
 from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
@@ -1159,37 +1158,6 @@ class JSONStringCastIndexTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         self._test_index_criteria(
             and_(name == "r6", cast(col["b"], String) == '"some value"'), "r6"
-        )
-
-    def test_crit_against_int_basic(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["a"], String) == "5"), "r6"
-        )
-
-    def _dont_test_crit_against_string_coerce_type(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(
-                name == "r6",
-                cast(col["b"], String) == type_coerce("some value", JSON),
-            ),
-            "r6",
-            test_literal=False,
-        )
-
-    def _dont_test_crit_against_int_coerce_type(self):
-        name = self.tables.data_table.c.name
-        col = self.tables.data_table.c["data"]
-
-        self._test_index_criteria(
-            and_(name == "r6", cast(col["a"], String) == type_coerce(5, JSON)),
-            "r6",
-            test_literal=False,
         )
 
 

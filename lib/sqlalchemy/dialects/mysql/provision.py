@@ -9,7 +9,7 @@ from ...testing.provision import temp_table_keyword_args
 
 
 @generate_driver_url.for_db("mysql", "mariadb")
-def generate_driver_url(url, driver):
+def generate_driver_url(url, driver, query):
     backend = url.get_backend_name()
 
     if backend == "mysql":
@@ -18,7 +18,10 @@ def generate_driver_url(url, driver):
             backend = "mariadb"
 
     new_url = copy.copy(url)
+    new_url.query = dict(new_url.query)
     new_url.drivername = "%s+%s" % (backend, driver)
+    new_url.query.update(query)
+
     try:
         new_url.get_dialect()
     except exc.NoSuchModuleError:

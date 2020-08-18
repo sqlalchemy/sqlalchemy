@@ -346,12 +346,12 @@ def _expect_raises(except_cls, msg=None, check_context=False):
     assert success, "Callable did not raise an exception"
 
 
-def expect_raises(except_cls):
-    return _expect_raises(except_cls, check_context=True)
+def expect_raises(except_cls, check_context=True):
+    return _expect_raises(except_cls, check_context=check_context)
 
 
-def expect_raises_message(except_cls, msg):
-    return _expect_raises(except_cls, msg=msg, check_context=True)
+def expect_raises_message(except_cls, msg, check_context=True):
+    return _expect_raises(except_cls, msg=msg, check_context=check_context)
 
 
 class AssertsCompiledSQL(object):
