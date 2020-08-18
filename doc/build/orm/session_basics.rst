@@ -813,9 +813,15 @@ reset the state of the :class:`~sqlalchemy.orm.session.Session`.
 Closing
 -------
 
-The :meth:`~.Session.close` method issues a
-:meth:`~.Session.expunge_all`, and :term:`releases` any
-transactional/connection resources. When connections are returned to the
-connection pool, transactional state is rolled back as well.
+The :meth:`~.Session.close` method issues a :meth:`~.Session.expunge_all` which
+removes all ORM-mapped objects from the session, and :term:`releases` any
+transactional/connection resources from the :class:`_engine.Engine` object(s)
+to which it is bound.   When connections are returned to the connection pool,
+transactional state is rolled back as well.
+
+When the :class:`_orm.Session` is closed, it is essentially in the
+original state as when it was first constructed, and **may be used again**.
+In this sense, the :meth:`_orm.Session.close` method is more like a "reset"
+back to the clean state and not as much like a "database close" method.
 
 
