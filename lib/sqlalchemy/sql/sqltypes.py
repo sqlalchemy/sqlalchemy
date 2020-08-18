@@ -2699,9 +2699,13 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
-            return operator(
+
+            # send plain BinaryExpression so that negate remains at None,
+            # leading to NOT expr for negation.
+            return elements.BinaryExpression(
                 coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_any(self.expr),
+                operator,
             )
 
         @util.preload_module("sqlalchemy.sql.elements")
@@ -2735,9 +2739,13 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             """
             elements = util.preloaded.sql_elements
             operator = operator if operator else operators.eq
-            return operator(
+
+            # send plain BinaryExpression so that negate remains at None,
+            # leading to NOT expr for negation.
+            return elements.BinaryExpression(
                 coercions.expect(roles.ExpressionElementRole, other),
                 elements.CollectionAggregate._create_all(self.expr),
+                operator,
             )
 
     comparator_factory = Comparator

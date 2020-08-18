@@ -1234,6 +1234,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "%(param_1)s = ANY (x)",
             checkparams={"param_1": 4},
         )
+
+        self.assert_compile(
+            c.any(5), "%(param_1)s = ANY (x)", checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~c.any(5),
+            "NOT (%(param_1)s = ANY (x))",
+            checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            c.all(5), "%(param_1)s = ALL (x)", checkparams={"param_1": 5},
+        )
+
+        self.assert_compile(
+            ~c.all(5),
+            "NOT (%(param_1)s = ALL (x))",
+            checkparams={"param_1": 5},
+        )
+
         self.assert_compile(
             c.any(5, operator=operators.ne),
             "%(param_1)s != ANY (x)",
