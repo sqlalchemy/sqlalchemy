@@ -2790,12 +2790,30 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"param_1": 5},
         )
 
+    def test_any_array_comparator_negate_accessor(self, t_fixture):
+        t = t_fixture
+
+        self.assert_compile(
+            ~t.c.arrval.any(5, operator.gt),
+            "NOT (:param_1 > ANY (tab1.arrval))",
+            checkparams={"param_1": 5},
+        )
+
     def test_all_array_comparator_accessor(self, t_fixture):
         t = t_fixture
 
         self.assert_compile(
             t.c.arrval.all(5, operator.gt),
             ":param_1 > ALL (tab1.arrval)",
+            checkparams={"param_1": 5},
+        )
+
+    def test_all_array_comparator_negate_accessor(self, t_fixture):
+        t = t_fixture
+
+        self.assert_compile(
+            ~t.c.arrval.all(5, operator.gt),
+            "NOT (:param_1 > ALL (tab1.arrval))",
             checkparams={"param_1": 5},
         )
 
