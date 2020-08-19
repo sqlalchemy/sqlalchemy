@@ -2903,7 +2903,11 @@ class PGDialect(default.DefaultDialect):
                 "JOIN pg_namespace n ON n.oid = c.relnamespace "
                 "WHERE n.nspname = :schema AND c.relkind in ('r', 'p')"
             ).columns(relname=sqltypes.Unicode),
-            schema=schema if schema is not None else self.default_schema_name,
+            dict(
+                schema=schema
+                if schema is not None
+                else self.default_schema_name
+            ),
         )
         return [name for name, in result]
 
@@ -3018,7 +3022,7 @@ class PGDialect(default.DefaultDialect):
             .bindparams(sql.bindparam("table_oid", type_=sqltypes.Integer))
             .columns(attname=sqltypes.Unicode, default=sqltypes.Unicode)
         )
-        c = connection.execute(s, table_oid=table_oid)
+        c = connection.execute(s, dict(table_oid=table_oid))
         rows = c.fetchall()
 
         # dictionary with (name, ) if default search path or (schema, name)
@@ -3260,7 +3264,7 @@ class PGDialect(default.DefaultDialect):
                 ORDER BY k.ord
             """
         t = sql.text(PK_SQL).columns(attname=sqltypes.Unicode)
-        c = connection.execute(t, table_oid=table_oid)
+        c = connection.execute(t, dict(table_oid=table_oid))
         cols = [r[0] for r in c.fetchall()]
 
         PK_CONS_SQL = """
@@ -3270,7 +3274,7 @@ class PGDialect(default.DefaultDialect):
            ORDER BY 1
         """
         t = sql.text(PK_CONS_SQL).columns(conname=sqltypes.Unicode)
-        c = connection.execute(t, table_oid=table_oid)
+        c = connection.execute(t, dict(table_oid=table_oid))
         name = c.scalar()
 
         return {"constrained_columns": cols, "name": name}
@@ -3318,7 +3322,7 @@ class PGDialect(default.DefaultDialect):
         t = sql.text(FK_SQL).columns(
             conname=sqltypes.Unicode, condef=sqltypes.Unicode
         )
-        c = connection.execute(t, table=table_oid)
+        c = connection.execute(t, dict(table=table_oid))
         fkeys = []
         for conname, condef, conschema in c.fetchall():
             m = re.search(FK_REGEX, condef).groups()
@@ -3490,7 +3494,7 @@ class PGDialect(default.DefaultDialect):
         t = sql.text(IDX_SQL).columns(
             relname=sqltypes.Unicode, attname=sqltypes.Unicode
         )
-        c = connection.execute(t, table_oid=table_oid)
+        c = connection.execute(t, dict(table_oid=table_oid))
 
         indexes = defaultdict(lambda: defaultdict(dict))
 
@@ -3632,7 +3636,7 @@ class PGDialect(default.DefaultDialect):
         """
 
         t = sql.text(UNIQUE_SQL).columns(col_name=sqltypes.Unicode)
-        c = connection.execute(t, table_oid=table_oid)
+        c = connection.execute(t, dict(table_oid=table_oid))
 
         uniques = defaultdict(lambda: defaultdict(dict))
         for row in c.fetchall():
@@ -3683,7 +3687,7 @@ class PGDialect(default.DefaultDialect):
                 cons.contype = 'c'
         """
 
-        c = connection.execute(sql.text(CHECK_SQL), table_oid=table_oid)
+        c = connection.execute(sql.text(CHECK_SQL), dict(table_oid=table_oid))
 
         ret = []
         for name, src in c:

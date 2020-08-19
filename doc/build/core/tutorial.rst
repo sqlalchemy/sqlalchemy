@@ -323,7 +323,7 @@ and use it in the "normal" way:
 .. sourcecode:: pycon+sql
 
     >>> ins = users.insert()
-    >>> conn.execute(ins, id=2, name='wendy', fullname='Wendy Williams')
+    >>> conn.execute(ins, {"id": 2, "name":"wendy", "fullname": "Wendy Williams"})
     {opensql}INSERT INTO users (id, name, fullname) VALUES (?, ?, ?)
     [...] (2, 'wendy', 'Wendy Williams')
     COMMIT
@@ -972,7 +972,7 @@ unchanged.  Below, we create a :func:`_expression.text` object and execute it:
     ...         "AND users.name BETWEEN :x AND :y "
     ...         "AND (addresses.email_address LIKE :e1 "
     ...             "OR addresses.email_address LIKE :e2)")
-    >>> conn.execute(s, x='m', y='z', e1='%@aol.com', e2='%@msn.com').fetchall()
+    >>> conn.execute(s, {"x":"m", "y":"z", "e1":"%@aol.com", "e2":"%@msn.com"}).fetchall()
     {opensql}SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN ? AND ? AND
@@ -1127,7 +1127,7 @@ need to refer to any pre-established :class:`_schema.Table` metadata:
     ...                     "OR addresses.email_address LIKE :y)")
     ...             )
     ...         ).select_from(text('users, addresses'))
-    >>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
+    >>> conn.execute(s, {"x": "%@aol.com", "y": "%@msn.com"}).fetchall()
     {opensql}SELECT users.fullname || ', ' || addresses.email_address AS title
     FROM users, addresses
     WHERE users.id = addresses.user_id AND users.name BETWEEN 'm' AND 'z'
@@ -1180,7 +1180,7 @@ be quoted:
     ...        )
     ...    ).select_from(table('users')).select_from(table('addresses'))
 
-    >>> conn.execute(s, x='%@aol.com', y='%@msn.com').fetchall()
+    >>> conn.execute(s, {"x":"%@aol.com", "y":"%@msn.com"}).fetchall()
     {opensql}SELECT users.fullname || ? || addresses.email_address AS anon_1
     FROM users, addresses
     WHERE users.id = addresses.user_id

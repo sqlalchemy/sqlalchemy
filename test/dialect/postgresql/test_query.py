@@ -609,8 +609,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     (exc.IntegrityError, exc.ProgrammingError),
                     conn.execute,
                     table.insert(),
-                    {"data": "d2"},
-                    {"data": "d3"},
+                    [{"data": "d2"}, {"data": "d3"}],
                 )
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
@@ -628,14 +627,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     (exc.IntegrityError, exc.ProgrammingError),
                     conn.execute,
                     table.insert(),
-                    {"data": "d2"},
-                    {"data": "d3"},
+                    [{"data": "d2"}, {"data": "d3"}],
                 )
 
             conn.execute(
                 table.insert(),
-                {"id": 31, "data": "d2"},
-                {"id": 32, "data": "d3"},
+                [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
             )
             conn.execute(table.insert(inline=True), {"id": 33, "data": "d4"})
             eq_(
@@ -668,13 +665,11 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     (exc.IntegrityError, exc.ProgrammingError),
                     conn.execute,
                     table.insert(),
-                    {"data": "d2"},
-                    {"data": "d3"},
+                    [{"data": "d2"}, {"data": "d3"}],
                 )
             conn.execute(
                 table.insert(),
-                {"id": 31, "data": "d2"},
-                {"id": 32, "data": "d3"},
+                [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
             )
             conn.execute(table.insert(inline=True), {"id": 33, "data": "d4"})
             eq_(

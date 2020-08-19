@@ -30,10 +30,14 @@ def connection_memoize(key):
     return decorated
 
 
+_no_tuple = ()
+_no_kw = util.immutabledict()
+
+
 def py_fallback():
     # TODO: pass the Connection in so that there can be a standard
     # method for warning on parameter format
-    def _distill_params(multiparams, params):  # noqa
+    def _distill_params(connection, multiparams, params):  # noqa
         r"""Given arguments from the calling form \*multiparams, \**params,
         return a list of bind parameter structures, usually a list of
         dictionaries.
@@ -43,9 +47,12 @@ def py_fallback():
 
         """
 
+        # C version will fail if this assertion is not true.
+        # assert isinstance(multiparams, tuple)
+
         if not multiparams:
             if params:
-                # TODO: parameter format deprecation warning
+                connection._warn_for_legacy_exec_format()
                 return [params]
             else:
                 return []
@@ -61,16 +68,22 @@ def py_fallback():
                     # execute(stmt, [(), (), (), ...])
                     return zero
                 else:
+                    # this is used by exec_driver_sql only, so a deprecation
+                    # warning would already be coming from passing a plain
+                    # textual statement with positional parameters to
+                    # execute().
                     # execute(stmt, ("value", "value"))
+
                     return [zero]
             elif hasattr(zero, "keys"):
                 # execute(stmt, {"key":"value"})
                 return [zero]
             else:
+                connection._warn_for_legacy_exec_format()
                 # execute(stmt, "value")
                 return [[zero]]
         else:
-            # TODO: parameter format deprecation warning
+            connection._warn_for_legacy_exec_format()
             if hasattr(multiparams[0], "__iter__") and not hasattr(
                 multiparams[0], "strip"
             ):
@@ -81,14 +94,55 @@ def py_fallback():
     return locals()
 
 
-_no_tuple = ()
-_no_kw = util.immutabledict()
+def _distill_cursor_params(connection, multiparams, params):
+    """_distill_params without any warnings.  more appropriate for
+    "cursor" params that can include tuple arguments, lists of tuples,
+    etc.
+
+    """
+
+    if not multiparams:
+        if params:
+            return [params]
+        else:
+            return []
+    elif len(multiparams) == 1:
+        zero = multiparams[0]
+        if isinstance(zero, (list, tuple)):
+            if (
+                not zero
+                or hasattr(zero[0], "__iter__")
+                and not hasattr(zero[0], "strip")
+            ):
+                # execute(stmt, [{}, {}, {}, ...])
+                # execute(stmt, [(), (), (), ...])
+                return zero
+            else:
+                # this is used by exec_driver_sql only, so a deprecation
+                # warning would already be coming from passing a plain
+                # textual statement with positional parameters to
+                # execute().
+                # execute(stmt, ("value", "value"))
+
+                return [zero]
+        elif hasattr(zero, "keys"):
+            # execute(stmt, {"key":"value"})
+            return [zero]
+        else:
+            # execute(stmt, "value")
+            return [[zero]]
+    else:
+        if hasattr(multiparams[0], "__iter__") and not hasattr(
+            multiparams[0], "strip"
+        ):
+            return multiparams
+        else:
+            return [multiparams]
 
 
 def _distill_params_20(params):
-    # TODO: this has to be in C
     if params is None:
-        return _no_tuple, _no_kw, []
+        return _no_tuple, _no_kw
     elif isinstance(params, list):
         # collections_abc.MutableSequence): # avoid abc.__instancecheck__
         if params and not isinstance(
@@ -98,15 +152,14 @@ def _distill_params_20(params):
                 "List argument must consist only of tuples or dictionaries"
             )
 
-        # the tuple is needed atm by the C version of _distill_params...
-        return tuple(params), _no_kw, params
+        return (params,), _no_kw
     elif isinstance(
         params,
         (tuple, dict, immutabledict),
         # avoid abc.__instancecheck__
         # (collections_abc.Sequence, collections_abc.Mapping),
     ):
-        return _no_tuple, params, [params]
+        return (params,), _no_kw
     else:
         raise exc.ArgumentError("mapping or sequence expected for parameters")
 
