@@ -1417,15 +1417,20 @@ class MySQLCompiler(compiler.SQLCompiler):
             # explicitly return true/false constants
             type_expression = "WHEN true THEN true ELSE false"
         elif binary.type._type_affinity is sqltypes.String:
-            # this fails with a JSON value that's a four byte unicode
+            # (gord): this fails with a JSON value that's a four byte unicode
             # string.  SQLite has the same problem at the moment
+            # (zzzeek): I'm not really sure.  let's take a look at a test case
+            # that hits each backend and maybe make a requires rule for it?
             type_expression = "ELSE JSON_UNQUOTE(JSON_EXTRACT(%s, %s))" % (
                 self.process(binary.left, **kw),
                 self.process(binary.right, **kw),
             )
         else:
             # other affinity....this is not expected right now
-            type_expression = "ELSE JSON_EXTRACT(%s, %s)"
+            type_expression = "ELSE JSON_EXTRACT(%s, %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+            )
 
         return case_expression + " " + type_expression + " END"
 
