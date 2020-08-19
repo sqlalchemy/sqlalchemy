@@ -1008,6 +1008,7 @@ from ...sql import elements
 from ...sql import expression
 from ...sql import sqltypes
 from ...sql import util as sql_util
+from ...sql.ddl import DDLBase
 from ...types import BIGINT
 from ...types import BOOLEAN
 from ...types import CHAR
@@ -1502,10 +1503,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         if not bind.dialect.supports_native_enum:
             return
 
-        if not checkfirst or not bind.dialect.has_type(
-            bind, self.name, schema=self.schema
-        ):
-            bind.execute(CreateEnumType(self))
+        bind._run_visitor(self.EnumGenerator, self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
         """Emit ``DROP TYPE`` for this
@@ -1525,10 +1523,49 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         if not bind.dialect.supports_native_enum:
             return
 
-        if not checkfirst or bind.dialect.has_type(
-            bind, self.name, schema=self.schema
-        ):
-            bind.execute(DropEnumType(self))
+        bind._run_visitor(self.EnumDropper, self, checkfirst=checkfirst)
+
+    class EnumGenerator(DDLBase):
+        def __init__(self, dialect, connection, checkfirst=False, **kwargs):
+            super(ENUM.EnumGenerator, self).__init__(connection, **kwargs)
+            self.checkfirst = checkfirst
+
+        def _can_create_enum(self, enum):
+            if not self.checkfirst:
+                return True
+
+            effective_schema = self.connection.schema_for_object(enum)
+
+            return not self.connection.dialect.has_type(
+                self.connection, enum.name, schema=effective_schema
+            )
+
+        def visit_enum(self, enum):
+            if not self._can_create_enum(enum):
+                return
+
+            self.connection.execute(CreateEnumType(enum))
+
+    class EnumDropper(DDLBase):
+        def __init__(self, dialect, connection, checkfirst=False, **kwargs):
+            super(ENUM.EnumDropper, self).__init__(connection, **kwargs)
+            self.checkfirst = checkfirst
+
+        def _can_drop_enum(self, enum):
+            if not self.checkfirst:
+                return True
+
+            effective_schema = self.connection.schema_for_object(enum)
+
+            return self.connection.dialect.has_type(
+                self.connection, enum.name, schema=effective_schema
+            )
+
+        def visit_enum(self, enum):
+            if not self._can_drop_enum(enum):
+                return
+
+            self.connection.execute(DropEnumType(enum))
 
     def _check_for_name_in_memos(self, checkfirst, kw):
         """Look in the 'ddl runner' for 'memos', then
@@ -1554,14 +1591,14 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             return False
 
     def _on_table_create(self, target, bind, checkfirst=False, **kw):
+
         if (
             checkfirst
             or (
                 not self.metadata
                 and not kw.get("_is_metadata_operation", False)
             )
-            and not self._check_for_name_in_memos(checkfirst, kw)
-        ):
+        ) and not self._check_for_name_in_memos(checkfirst, kw):
             self.create(bind=bind, checkfirst=checkfirst)
 
     def _on_table_drop(self, target, bind, checkfirst=False, **kw):

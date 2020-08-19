@@ -59,6 +59,7 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import ComparesTables
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
+from sqlalchemy.testing.assertsql import RegexSQL
 from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
 
@@ -378,6 +379,40 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         e1.drop(bind=testing.db)
 
     @testing.provide_metadata
+    def test_dont_keep_checking(self, connection):
+        metadata = self.metadata
+
+        e1 = postgresql.ENUM("one", "two", "three", name="myenum")
+
+        Table("t", metadata, Column("a", e1), Column("b", e1), Column("c", e1))
+
+        with self.sql_execution_asserter(connection) as asserter:
+            metadata.create_all(connection)
+
+        asserter.assert_(
+            RegexSQL(
+                "select relname from pg_class c join pg_namespace.*",
+                dialect="postgresql",
+            ),
+            RegexSQL(r".*SELECT EXISTS ", dialect="postgresql"),
+            RegexSQL("CREATE TYPE myenum AS ENUM .*", dialect="postgresql"),
+            RegexSQL(r"CREATE TABLE t .*", dialect="postgresql"),
+        )
+
+        with self.sql_execution_asserter(connection) as asserter:
+            metadata.drop_all(connection)
+
+        asserter.assert_(
+            RegexSQL(
+                "select relname from pg_class c join pg_namespace.*",
+                dialect="postgresql",
+            ),
+            RegexSQL("DROP TABLE t", dialect="postgresql"),
+            RegexSQL(r".*SELECT EXISTS ", dialect="postgresql"),
+            RegexSQL("DROP TYPE myenum", dialect="postgresql"),
+        )
+
+    @testing.provide_metadata
     def test_generate_multiple(self):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.
@@ -487,6 +522,41 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         assert "myenum" not in [
             e["name"] for e in inspect(testing.db).get_enums()
         ]
+
+    def test_create_drop_schema_translate_map(self, connection):
+
+        conn = connection.execution_options(
+            schema_translate_map={None: testing.config.test_schema}
+        )
+
+        e1 = Enum("one", "two", "three", name="myenum")
+
+        assert "myenum" not in [
+            e["name"]
+            for e in inspect(connection).get_enums(testing.config.test_schema)
+        ]
+
+        e1.create(conn, checkfirst=True)
+        e1.create(conn, checkfirst=True)
+
+        assert "myenum" in [
+            e["name"]
+            for e in inspect(connection).get_enums(testing.config.test_schema)
+        ]
+
+        s1 = conn.begin_nested()
+        assert_raises(exc.ProgrammingError, e1.create, conn, checkfirst=False)
+        s1.rollback()
+
+        e1.drop(conn, checkfirst=True)
+        e1.drop(conn, checkfirst=True)
+
+        assert "myenum" not in [
+            e["name"]
+            for e in inspect(connection).get_enums(testing.config.test_schema)
+        ]
+
+        assert_raises(exc.ProgrammingError, e1.drop, conn, checkfirst=False)
 
     @testing.provide_metadata
     def test_remain_on_table_metadata_wide(self):

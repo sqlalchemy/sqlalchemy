@@ -194,12 +194,12 @@ class CompiledSQL(SQLMatchRule):
 
 
 class RegexSQL(CompiledSQL):
-    def __init__(self, regex, params=None):
+    def __init__(self, regex, params=None, dialect="default"):
         SQLMatchRule.__init__(self)
         self.regex = re.compile(regex)
         self.orig_regex = regex
         self.params = params
-        self.dialect = "default"
+        self.dialect = dialect
 
     def _failure_message(self, expected_params):
         return (
