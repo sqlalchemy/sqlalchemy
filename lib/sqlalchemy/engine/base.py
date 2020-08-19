@@ -935,6 +935,17 @@ class Connection(Connectable):
         if not self.in_transaction():
             self._rollback_impl()
 
+    def _warn_for_legacy_exec_format(self):
+        util.warn_deprecated_20(
+            "The connection.execute() method in "
+            "SQLAlchemy 2.0 will accept parameters as a single "
+            "dictionary or a "
+            "single sequence of dictionaries only. "
+            "Parameters passed as keyword arguments, tuples or positionally "
+            "oriened dictionaries and/or tuples "
+            "will no longer be accepted."
+        )
+
     def close(self):
         """Close this :class:`_engine.Connection`.
 
@@ -1073,14 +1084,13 @@ class Connection(Connectable):
                 "or the Connection.exec_driver_sql() method to invoke a "
                 "driver-level SQL string."
             )
-            distilled_parameters = _distill_params(multiparams, params)
 
             return self._exec_driver_sql(
                 object_,
                 multiparams,
                 params,
-                distilled_parameters,
                 _EMPTY_EXECUTION_OPTS,
+                future=False,
             )
 
         try:
@@ -1113,11 +1123,16 @@ class Connection(Connectable):
             execution_options
         )
 
+        distilled_parameters = _distill_params(self, multiparams, params)
+
         if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_execute:
-                default, multiparams, params = fn(
-                    self, default, multiparams, params, execution_options
-                )
+            (
+                distilled_params,
+                event_multiparams,
+                event_params,
+            ) = self._invoke_before_exec_event(
+                default, distilled_parameters, execution_options
+            )
 
         try:
             conn = self._dbapi_connection
@@ -1139,7 +1154,12 @@ class Connection(Connectable):
 
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(
-                self, default, multiparams, params, execution_options, ret
+                self,
+                default,
+                event_multiparams,
+                event_params,
+                execution_options,
+                ret,
             )
 
         return ret
@@ -1151,11 +1171,16 @@ class Connection(Connectable):
             self._execution_options, execution_options
         )
 
+        distilled_parameters = _distill_params(self, multiparams, params)
+
         if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_execute:
-                ddl, multiparams, params = fn(
-                    self, ddl, multiparams, params, execution_options
-                )
+            (
+                distilled_params,
+                event_multiparams,
+                event_params,
+            ) = self._invoke_before_exec_event(
+                ddl, distilled_parameters, execution_options
+            )
 
         exec_opts = self._execution_options.merge_with(execution_options)
         schema_translate_map = exec_opts.get("schema_translate_map", None)
@@ -1175,9 +1200,42 @@ class Connection(Connectable):
         )
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(
-                self, ddl, multiparams, params, execution_options, ret
+                self,
+                ddl,
+                event_multiparams,
+                event_params,
+                execution_options,
+                ret,
             )
         return ret
+
+    def _invoke_before_exec_event(
+        self, elem, distilled_params, execution_options
+    ):
+
+        if len(distilled_params) == 1:
+            event_multiparams, event_params = [], distilled_params[0]
+        else:
+            event_multiparams, event_params = distilled_params, {}
+
+        for fn in self.dispatch.before_execute:
+            elem, event_multiparams, event_params = fn(
+                self, elem, event_multiparams, event_params, execution_options,
+            )
+
+        if event_multiparams:
+            distilled_params = list(event_multiparams)
+            if event_params:
+                raise exc.InvalidRequestError(
+                    "Event handler can't return non-empty multiparams "
+                    "and params at the same time"
+                )
+        elif event_params:
+            distilled_params = [event_params]
+        else:
+            distilled_params = []
+
+        return distilled_params, event_multiparams, event_params
 
     def _execute_clauseelement(
         self, elem, multiparams, params, execution_options
@@ -1188,14 +1246,18 @@ class Connection(Connectable):
             self._execution_options, execution_options
         )
 
+        distilled_params = _distill_params(self, multiparams, params)
+
         has_events = self._has_events or self.engine._has_events
         if has_events:
-            for fn in self.dispatch.before_execute:
-                elem, multiparams, params = fn(
-                    self, elem, multiparams, params, execution_options
-                )
+            (
+                distilled_params,
+                event_multiparams,
+                event_params,
+            ) = self._invoke_before_exec_event(
+                elem, distilled_params, execution_options
+            )
 
-        distilled_params = _distill_params(multiparams, params)
         if distilled_params:
             # ensure we don't retain a link to the view object for keys()
             # which links to the values, which we don't want to cache
@@ -1237,7 +1299,12 @@ class Connection(Connectable):
         )
         if has_events:
             self.dispatch.after_execute(
-                self, elem, multiparams, params, execution_options, ret
+                self,
+                elem,
+                event_multiparams,
+                event_params,
+                execution_options,
+                ret,
             )
         return ret
 
@@ -1257,49 +1324,58 @@ class Connection(Connectable):
         execution_options = compiled.execution_options.merge_with(
             self._execution_options, execution_options
         )
+        distilled_parameters = _distill_params(self, multiparams, params)
 
         if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_execute:
-                compiled, multiparams, params = fn(
-                    self, compiled, multiparams, params, execution_options
-                )
+            (
+                distilled_params,
+                event_multiparams,
+                event_params,
+            ) = self._invoke_before_exec_event(
+                compiled, distilled_parameters, execution_options
+            )
 
         dialect = self.dialect
-        parameters = _distill_params(multiparams, params)
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,
             compiled,
-            parameters,
+            distilled_parameters,
             execution_options,
             compiled,
-            parameters,
+            distilled_parameters,
             None,
             None,
         )
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(
-                self, compiled, multiparams, params, execution_options, ret
+                self,
+                compiled,
+                event_multiparams,
+                event_params,
+                execution_options,
+                ret,
             )
         return ret
 
     def _exec_driver_sql(
-        self,
-        statement,
-        multiparams,
-        params,
-        distilled_parameters,
-        execution_options,
+        self, statement, multiparams, params, execution_options, future
     ):
 
         execution_options = self._execution_options.merge_with(
             execution_options
         )
 
-        if self._has_events or self.engine._has_events:
-            for fn in self.dispatch.before_execute:
-                statement, multiparams, params = fn(
-                    self, statement, multiparams, params, execution_options
+        distilled_parameters = _distill_params(self, multiparams, params)
+
+        if not future:
+            if self._has_events or self.engine._has_events:
+                (
+                    distilled_params,
+                    event_multiparams,
+                    event_params,
+                ) = self._invoke_before_exec_event(
+                    statement, distilled_parameters, execution_options
                 )
 
         dialect = self.dialect
@@ -1312,10 +1388,17 @@ class Connection(Connectable):
             statement,
             distilled_parameters,
         )
-        if self._has_events or self.engine._has_events:
-            self.dispatch.after_execute(
-                self, statement, multiparams, params, execution_options, ret
-            )
+
+        if not future:
+            if self._has_events or self.engine._has_events:
+                self.dispatch.after_execute(
+                    self,
+                    statement,
+                    event_multiparams,
+                    event_params,
+                    execution_options,
+                    ret,
+                )
         return ret
 
     def _execute_20(
@@ -1324,9 +1407,7 @@ class Connection(Connectable):
         parameters=None,
         execution_options=_EMPTY_EXECUTION_OPTS,
     ):
-        multiparams, params, distilled_parameters = _distill_params_20(
-            parameters
-        )
+        args_10style, kwargs_10style = _distill_params_20(parameters)
         try:
             meth = statement._execute_on_connection
         except AttributeError as err:
@@ -1334,7 +1415,7 @@ class Connection(Connectable):
                 exc.ObjectNotExecutableError(statement), replace_context=err
             )
         else:
-            return meth(self, multiparams, params, execution_options)
+            return meth(self, args_10style, kwargs_10style, execution_options)
 
     def exec_driver_sql(
         self, statement, parameters=None, execution_options=None
@@ -1373,22 +1454,28 @@ class Connection(Connectable):
                  (1, 'v1')
              )
 
+         .. note:: The :meth:`_engine.Connection.exec_driver_sql` method does
+             not participate in the
+             :meth:`_events.ConnectionEvents.before_execute` and
+             :meth:`_events.ConnectionEvents.after_execute` events.   To
+             intercept calls to :meth:`_engine.Connection.exec_driver_sql`, use
+             :meth:`_events.ConnectionEvents.before_cursor_execute` and
+             :meth:`_events.ConnectionEvents.after_cursor_execute`.
+
          .. seealso::
 
             :pep:`249`
 
         """
 
-        multiparams, params, distilled_parameters = _distill_params_20(
-            parameters
-        )
+        args_10style, kwargs_10style = _distill_params_20(parameters)
 
         return self._exec_driver_sql(
             statement,
-            multiparams,
-            params,
-            distilled_parameters,
+            args_10style,
+            kwargs_10style,
             execution_options,
+            future=True,
         )
 
     def _execute_context(

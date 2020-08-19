@@ -98,7 +98,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         ) as conn:
             [tuple(row) for row in conn.execute(t2.select()).fetchall()]
 
-    @profiling.function_call_count(variance=0.10)
+    @profiling.function_call_count(variance=0.15)
     def test_raw_string(self):
         stmt = "SELECT %s FROM table1" % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
@@ -106,7 +106,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         with testing.db.connect() as conn:
             [tuple(row) for row in conn.exec_driver_sql(stmt).fetchall()]
 
-    @profiling.function_call_count(variance=0.10)
+    @profiling.function_call_count(variance=0.15)
     def test_raw_unicode(self):
         stmt = "SELECT %s FROM table2" % (
             ", ".join("field%d" % fnum for fnum in range(NUM_FIELDS))
