@@ -68,7 +68,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import random_choices
@@ -1102,8 +1103,8 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ck2 = s2._generate_cache_key()
 
         ne_(ck1, ck2)
-        is_not_(ck1, None)
-        is_not_(ck2, None)
+        is_not(ck1, None)
+        is_not(ck2, None)
 
     def test_generative_cache_key_regen_w_del(self):
         t1 = table("t1", column("a"), column("b"))
@@ -1124,8 +1125,8 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ck3 = s3._generate_cache_key()
 
         ne_(ck1, ck3)
-        is_not_(ck1, None)
-        is_not_(ck3, None)
+        is_not(ck1, None)
+        is_not(ck3, None)
 
 
 class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):

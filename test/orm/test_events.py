@@ -28,7 +28,8 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import ANY
 from sqlalchemy.testing.mock import call
@@ -2270,7 +2271,7 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             listener.flag_checked(instance)
             # this is actually u1, because
             # we have a strong ref internally
-            is_not_(None, instance)
+            is_not(None, instance)
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -2303,7 +2304,7 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         @event.listens_for(sess, "persistent_to_deleted")
         def persistent_to_deleted(session, instance):
-            is_not_(None, instance)
+            is_not(None, instance)
             listener.flag_checked(instance)
 
         sess.delete(u1)

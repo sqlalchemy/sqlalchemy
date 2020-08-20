@@ -45,7 +45,8 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import le_
 from sqlalchemy.testing import ne_
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
+from sqlalchemy.testing import not_in_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
@@ -204,17 +205,17 @@ class CursorResultTest(fixtures.TablesTest):
 
         row = connection.execute(content.select(use_labels=True)).first()
         in_(content.c.type, row._mapping)
-        not_in_(bar.c.content_type, row._mapping)
+        not_in(bar.c.content_type, row._mapping)
 
-        not_in_(bar.c.content_type, row._mapping)
+        not_in(bar.c.content_type, row._mapping)
 
         row = connection.execute(
             select([func.now().label("content_type")])
         ).first()
 
-        not_in_(content.c.type, row._mapping)
+        not_in(content.c.type, row._mapping)
 
-        not_in_(bar.c.content_type, row._mapping)
+        not_in(bar.c.content_type, row._mapping)
 
     def test_pickled_rows(self, connection):
         users = self.tables.users
@@ -487,15 +488,15 @@ class CursorResultTest(fixtures.TablesTest):
         ).first()
 
         if testing.against("sqlite < 3.10.0"):
-            not_in_("user_id", r)
-            not_in_("user_name", r)
+            not_in("user_id", r)
+            not_in("user_name", r)
             eq_(r["users.user_id"], 1)
             eq_(r["users.user_name"], "john")
 
             eq_(list(r._fields), ["users.user_id", "users.user_name"])
         else:
-            not_in_("users.user_id", r._mapping)
-            not_in_("users.user_name", r._mapping)
+            not_in("users.user_id", r._mapping)
+            not_in("users.user_name", r._mapping)
             eq_(r._mapping["user_id"], 1)
             eq_(r._mapping["user_name"], "john")
 
@@ -522,8 +523,8 @@ class CursorResultTest(fixtures.TablesTest):
             eq_(r._mapping["users.user_id"], 1)
             eq_(r._mapping["users.user_name"], "john")
         else:
-            not_in_("users.user_id", r._mapping)
-            not_in_("users.user_name", r._mapping)
+            not_in("users.user_id", r._mapping)
+            not_in("users.user_name", r._mapping)
 
         eq_(list(r._fields), ["user_id", "user_name"])
 
@@ -542,7 +543,7 @@ class CursorResultTest(fixtures.TablesTest):
         ).first()
         eq_(r._mapping["users.user_id"], 1)
         eq_(r._mapping["users.user_name"], "john")
-        not_in_("user_name", r._mapping)
+        not_in("user_name", r._mapping)
         eq_(list(r._fields), ["users.user_id", "users.user_name"])
 
     def test_column_accessor_unary(self, connection):
@@ -692,7 +693,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         in_("case_insensitive", row._keymap)
         in_("CaseSensitive", row._keymap)
-        not_in_("casesensitive", row._keymap)
+        not_in("casesensitive", row._keymap)
 
         eq_(row._mapping["case_insensitive"], 1)
         eq_(row._mapping["CaseSensitive"], 2)
@@ -719,7 +720,7 @@ class CursorResultTest(fixtures.TablesTest):
 
             in_("case_insensitive", row._keymap)
             in_("CaseSensitive", row._keymap)
-            not_in_("casesensitive", row._keymap)
+            not_in("casesensitive", row._keymap)
 
             eq_(row._mapping["case_insensitive"], 1)
             eq_(row._mapping["CaseSensitive"], 2)
@@ -1072,11 +1073,11 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(keys, ["user_id", "user_name"])
         ne_(keys, ["user_name", "user_id"])
         in_("user_id", keys)
-        not_in_("foo", keys)
+        not_in("foo", keys)
         in_(users.c.user_id, keys)
-        not_in_(0, keys)
-        not_in_(addresses.c.user_id, keys)
-        not_in_(addresses.c.address, keys)
+        not_in(0, keys)
+        not_in(addresses.c.user_id, keys)
+        not_in(addresses.c.address, keys)
 
         if isinstance(obj, Row):
             eq_(obj._fields, ("user_id", "user_name"))
@@ -1092,7 +1093,7 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row._fields, ("user_id", "user_name"))
 
         in_("user_id", row.keys())
-        not_in_("foo", row.keys())
+        not_in("foo", row.keys())
         in_(users.c.user_id, row.keys())
 
     def test_row_keys_legacy_dont_warn(self, connection):

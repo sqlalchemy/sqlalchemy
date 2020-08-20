@@ -14,7 +14,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
+from sqlalchemy.testing import not_in_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.schema import Column
 
 
@@ -246,7 +247,7 @@ class IndexPropertyArrayTest(fixtures.DeclarativeMappedTest):
         a.first = 10
 
         is_(i.modified, True)
-        not_in_("array", i.unmodified)
+        not_in("array", i.unmodified)
 
 
 class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
@@ -339,7 +340,7 @@ class IndexPropertyJsonTest(fixtures.DeclarativeMappedTest):
         j.other = 42
 
         is_(i.modified, True)
-        not_in_("json", i.unmodified)
+        not_in("json", i.unmodified)
 
     def test_cast_type(self):
         Json = self.classes.Json

@@ -30,7 +30,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 from test.orm._fixtures import FixtureTest
@@ -809,7 +810,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(trans._state, _session.CLOSED)
 
         # outermost transaction is new
-        is_not_(session._transaction, trans)
+        is_not(session._transaction, trans)
 
         is_(session._transaction, None)
         eq_(session.is_active, True)
@@ -1026,7 +1027,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         session.add(User(name="ed"))
         session.transaction.commit()
 
-        is_not_(session.transaction, None)
+        is_not(session.transaction, None)
 
     def test_no_autocommit_with_explicit_commit_future(self):
         User, users = self.classes.User, self.tables.users
@@ -1880,7 +1881,7 @@ class SavepointTest(_LocalFixture):
         assert u1 not in s.new
 
         is_(trans._state, _session.CLOSED)
-        is_not_(s.transaction, trans)
+        is_not(s.transaction, trans)
         is_(s.transaction._state, _session.ACTIVE)
 
         is_(s.transaction.nested, False)
@@ -2134,13 +2135,13 @@ class ContextManagerPlusFutureTest(FixtureTest):
 
         s1.commit()
         eq_(s1.connection().scalar(select(func.count()).select_from(users)), 1)
-        is_not_(s1.transaction, None)
+        is_not(s1.transaction, None)
 
     def test_session_as_ctx_manager_one(self):
         users = self.tables.users
 
         with Session(testing.db) as sess:
-            is_not_(sess.transaction, None)
+            is_not(sess.transaction, None)
 
             sess.connection().execute(
                 users.insert().values(id=1, name="user1")
@@ -2150,9 +2151,9 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 sess.connection().execute(users.select()).all(), [(1, "user1")]
             )
 
-            is_not_(sess.transaction, None)
+            is_not(sess.transaction, None)
 
-        is_not_(sess.transaction, None)
+        is_not(sess.transaction, None)
 
         # did not commit
         eq_(sess.connection().execute(users.select()).all(), [])
@@ -2171,7 +2172,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 sess.connection().execute(users.select()).all(), [(1, "user1")]
             )
 
-            is_not_(sess.transaction, None)
+            is_not(sess.transaction, None)
 
         is_(sess.transaction, None)
 
@@ -2183,7 +2184,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
 
         try:
             with Session(testing.db) as sess:
-                is_not_(sess.transaction, None)
+                is_not(sess.transaction, None)
 
                 sess.connection().execute(
                     users.insert().values(id=1, name="user1")
@@ -2192,7 +2193,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 raise Exception("force rollback")
         except:
             pass
-        is_not_(sess.transaction, None)
+        is_not(sess.transaction, None)
 
     def test_session_as_ctx_manager_two_future(self):
         users = self.tables.users
