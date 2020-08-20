@@ -85,6 +85,7 @@ a pre-set URL.  These can be seen using --dbs::
     Available --db options (use --dburi to override)
                  default    sqlite:///:memory:
                 firebird    firebird://sysdba:masterkey@localhost//Users/classic/foo.fdb
+                 mariadb    mariadb://scott:tiger@192.168.0.199:3307/test
                    mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
                    mysql    mysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
@@ -259,6 +260,21 @@ intended for production use!
 
     # To stop the container. It will also remove it.
     docker stop mysql
+
+**MariaDB configuration**::
+
+    # only needed if a local image of MariaDB is not already present
+    docker pull mariadb
+
+    # create the container with the proper configuration for sqlalchemy
+    docker run --rm -e MYSQL_USER='scott' -e MYSQL_PASSWORD='tiger' -e MYSQL_DATABASE='test' -e MYSQL_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mariadb mariadb --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+    # configure the database
+    sleep 20
+    docker exec -ti mariadb mysql -u root -ppassword -D test -w -e "GRANT ALL ON *.* TO scott@'%'; CREATE DATABASE test_schema CHARSET utf8mb4; CREATE DATABASE test_schema_2 CHARSET utf8mb4;"
+
+    # To stop the container. It will also remove it.
+    docker stop mariadb
 
 **MSSQL configuration**::
 

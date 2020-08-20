@@ -10,6 +10,18 @@ from ...testing.provision import temp_table_keyword_args
 def generate_driver_url(url, driver, query_str):
     backend = url.get_backend_name()
 
+    # NOTE: at the moment, tests are running mariadbconnector
+    # against both mariadb and mysql backends.   if we want this to be
+    # limited, do the decisionmaking here to reject a "mysql+mariadbconnector"
+    # URL.  Optionally also re-enable the module level
+    # MySQLDialect_mariadbconnector.is_mysql flag as well, which must include
+    # a unit and/or functional test.
+
+    # all the Jenkins tests have been running mysqlclient Python library
+    # built against mariadb client drivers for years against all MySQL /
+    # MariaDB versions going back to MySQL 5.6, currently they can talk
+    # to MySQL databases without problems.
+
     if backend == "mysql":
         dialect_cls = url.get_dialect()
         if dialect_cls._is_mariadb_from_url(url):
