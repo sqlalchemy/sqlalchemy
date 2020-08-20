@@ -25,7 +25,9 @@ from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import INTEGER
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.schema import CreateIndex
 from sqlalchemy.sql.schema import CheckConstraint
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
@@ -419,7 +421,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             base.PGDialect.ischema_names = ischema_names
 
 
-class ReflectionTest(fixtures.TestBase):
+class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -880,7 +882,7 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection(self):
-        """ Reflecting partial & expression-based indexes should warn
+        """ Reflecting expression-based indexes should warn
         """
 
         metadata = self.metadata
@@ -926,10 +928,51 @@ class ReflectionTest(fixtures.TestBase):
             [
                 "Skipped unsupported reflection of "
                 "expression-based index idx1",
-                "Predicate of partial index idx2 ignored during " "reflection",
                 "Skipped unsupported reflection of "
                 "expression-based index idx3",
             ],
+        )
+
+    @testing.provide_metadata
+    def test_index_reflection_partial(self, connection):
+        """Reflect the filter defintion on partial indexes
+        """
+
+        metadata = self.metadata
+
+        t1 = Table(
+            "table1",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(20)),
+            Column("x", Integer),
+        )
+        Index("idx1", t1.c.id, postgresql_where=t1.c.name == "test")
+        Index("idx2", t1.c.id, postgresql_where=t1.c.x >= 5)
+
+        metadata.create_all(connection)
+
+        ind = testing.db.dialect.get_indexes(connection, t1, None)
+
+        partial_definitions = []
+        for ix in ind:
+            if "dialect_options" in ix:
+                partial_definitions.append(
+                    ix["dialect_options"]["postgresql_where"]
+                )
+
+        eq_(
+            sorted(partial_definitions),
+            ["((name)::text = 'test'::text)", "(x >= 5)"],
+        )
+
+        t2 = Table("table1", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx),
+            "CREATE INDEX idx1 ON table1 (id) "
+            "WHERE ((name)::text = 'test'::text)",
         )
 
     @testing.fails_if("postgresql < 8.3", "index ordering not supported")

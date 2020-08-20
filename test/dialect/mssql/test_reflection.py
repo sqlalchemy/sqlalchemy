@@ -17,6 +17,7 @@ from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 from sqlalchemy.dialects.mssql.information_schema import tables
+from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import eq_
@@ -318,6 +319,36 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         t2 = Table("t", m2, autoload=True, autoload_with=testing.db)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x col"], t2.c.y]))
+
+    @testing.provide_metadata
+    def test_indexes_with_filtered(self, connection):
+        metadata = self.metadata
+
+        t1 = Table(
+            "t",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("x", types.String(20)),
+            Column("y", types.Integer),
+        )
+        Index("idx_x", t1.c.x, mssql_where=t1.c.x == "test")
+        Index("idx_y", t1.c.y, mssql_where=t1.c.y >= 5)
+        metadata.create_all(connection)
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+
+        filtered_indexes = []
+        for ix in ind:
+            if "dialect_options" in ix:
+                filtered_indexes.append(ix["dialect_options"]["mssql_where"])
+
+        eq_(sorted(filtered_indexes), ["([x]='test')", "([y]>=(5))"])
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        idx = list(sorted(t2.indexes, key=lambda idx: idx.name))[0]
+
+        self.assert_compile(
+            CreateIndex(idx), "CREATE INDEX idx_x ON t (x) WHERE ([x]='test')"
+        )
 
     @testing.provide_metadata
     def test_max_ident_in_varchar_not_present(self):

@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, mssql, postgresql
+    :tickets: 4966
+
+    Added support for inspection / reflection of partial indexes / filtered
+    indexes, i.e. those which use the ``mssql_where`` or ``postgresql_where``
+    parameters, with :class:`_schema.Index`.   The entry is both part of the
+    dictionary returned by :meth:`.Inspector.get_indexes` as well as part of a
+    reflected :class:`_schema.Index` construct that was reflected.  Pull
+    request courtesy Ramon Williams.
