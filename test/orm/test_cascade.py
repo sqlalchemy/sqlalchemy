@@ -26,7 +26,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
+from sqlalchemy.testing import not_in_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -4206,8 +4207,8 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
 
         sess.expunge(u1)
 
-        not_in_(orders[0], sess)
-        not_in_(orders[1], sess)
+        not_in(orders[0], sess)
+        not_in(orders[1], sess)
 
     def test_default_none_cascade(self):
         User, Order, orders, users = (
@@ -4245,8 +4246,8 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         u1.orders.append(o1)
         u1.orders.append(o2)
 
-        not_in_(o1, sess)
-        not_in_(o2, sess)
+        not_in(o1, sess)
+        not_in(o2, sess)
 
     def test_default_merge_cascade(self):
         User, Order, orders, users = (

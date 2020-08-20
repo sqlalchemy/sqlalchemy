@@ -29,7 +29,8 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
@@ -130,19 +131,19 @@ class TransScopingTest(_fixtures.FixtureTest):
         is_(s._transaction, None)
 
         s.execute(select(1))
-        is_not_(s._transaction, None)
+        is_not(s._transaction, None)
 
         s.commit()
         is_(s._transaction, None)
 
         s.execute(select(1))
-        is_not_(s._transaction, None)
+        is_not(s._transaction, None)
 
         s.close()
         is_(s._transaction, None)
 
         s.execute(select(1))
-        is_not_(s._transaction, None)
+        is_not(s._transaction, None)
 
         s.close()
         is_(s._transaction, None)
@@ -163,7 +164,7 @@ class TransScopingTest(_fixtures.FixtureTest):
 
         s.add(User(id=1, name="name"))
         s.flush()
-        is_not_(s._transaction, None)
+        is_not(s._transaction, None)
         s.commit()
         is_(s._transaction, None)
 

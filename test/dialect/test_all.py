@@ -1,6 +1,7 @@
 from sqlalchemy import dialects
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 
 
 class ImportStarTest(fixtures.TestBase):
@@ -14,4 +15,4 @@ class ImportStarTest(fixtures.TestBase):
     def test_all_import(self):
         for package in self._all_dialect_packages():
             for item_name in package.__all__:
-                is_not_(None, getattr(package, item_name))
+                is_not(None, getattr(package, item_name))

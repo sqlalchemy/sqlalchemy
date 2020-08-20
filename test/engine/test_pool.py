@@ -15,7 +15,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import ANY
@@ -151,7 +152,7 @@ class PoolTest(PoolTestBase):
         self.assert_("foo2" in c.info)
 
         c2 = p.connect()
-        is_not_(c.connection, c2.connection)
+        is_not(c.connection, c2.connection)
         assert not c2.info
         assert "foo2" in c.info
 
@@ -215,7 +216,7 @@ class PoolTest(PoolTestBase):
 
         c2 = r1.get_connection()
 
-        is_not_(c1, c2)
+        is_not(c1, c2)
         is_(c2, r1.connection)
 
         eq_(c2.mock_calls, [])
@@ -1203,7 +1204,7 @@ class QueuePoolTest(PoolTestBase):
 
             mock.return_value = 10035
             c3 = p.connect()
-            is_not_(c3.connection, c_ref())
+            is_not(c3.connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_invalidate(self):
@@ -1221,7 +1222,7 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(0.5)
         c3 = p.connect()
 
-        is_not_(c3.connection, c_ref())
+        is_not(c3.connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_soft_invalidate(self):
@@ -1244,7 +1245,7 @@ class QueuePoolTest(PoolTestBase):
         c2.close()
 
         c3 = p.connect()
-        is_not_(c3.connection, c_ref())
+        is_not(c3.connection, c_ref())
         is_(c3._connection_record, c2_rec)
         is_(c2_rec.connection, c3.connection)
 

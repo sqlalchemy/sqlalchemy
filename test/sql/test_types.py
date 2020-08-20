@@ -78,7 +78,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
 from sqlalchemy.testing.schema import Column
@@ -2728,12 +2729,12 @@ class ExpressionTest(
         expr = tab.c.avalue["foo"] == "bar"
 
         is_(expr.right.type._type_affinity, String)
-        is_not_(expr.right.type, my_json_normal)
+        is_not(expr.right.type, my_json_normal)
 
         expr = tab.c.bvalue["foo"] == "bar"
 
         is_(expr.right.type._type_affinity, String)
-        is_not_(expr.right.type, my_json_variant)
+        is_not(expr.right.type, my_json_variant)
 
     def test_variant_righthand_coercion_returns_self(self):
         my_datetime_normal = DateTime()

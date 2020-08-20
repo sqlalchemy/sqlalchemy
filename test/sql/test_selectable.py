@@ -45,7 +45,8 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import ne_
 
 
@@ -2601,14 +2602,14 @@ class AnnotationsTest(fixtures.TestBase):
         ):
             eq_(elem, {})
 
-        is_not_(b2.left, bin_.left)
-        is_not_(b3.left, b2.left)
-        is_not_(b2.left, bin_.left)
+        is_not(b2.left, bin_.left)
+        is_not(b3.left, b2.left)
+        is_not(b2.left, bin_.left)
         is_(b4.left, bin_.left)  # since column is immutable
         # deannotate copies the element
-        is_not_(bin_.right, b2.right)
-        is_not_(b2.right, b3.right)
-        is_not_(b3.right, b4.right)
+        is_not(bin_.right, b2.right)
+        is_not(b2.right, b3.right)
+        is_not(b3.right, b4.right)
 
     def test_deannotate_clone(self):
         table1 = table("table1", column("col1"), column("col2"))
@@ -2634,8 +2635,8 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(s3._raw_columns[0]._annotations, {})
         eq_(s4._raw_columns[0]._annotations, {})
 
-        is_not_(s3, s2)
-        is_not_(s4, s3)  # deep deannotate makes a clone unconditionally
+        is_not(s3, s2)
+        is_not(s4, s3)  # deep deannotate makes a clone unconditionally
 
         is_(s3._deannotate(), s3)  # regular deannotate returns same object
 

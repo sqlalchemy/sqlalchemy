@@ -36,7 +36,8 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
@@ -447,7 +448,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         adapter = sql_util.ColumnAdapter(t3_alias)
 
         lblx_adapted = adapter.traverse(lbl_x)
-        is_not_(lblx_adapted._element, lbl_x._element)
+        is_not(lblx_adapted._element, lbl_x._element)
 
         lblx_adapted = adapter.traverse(lbl_x)
         self.assert_compile(
@@ -1017,7 +1018,7 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = select(t1a.c.col1).label("x")
         expr_adapted = adapter.traverse(expr)
-        is_not_(expr, expr_adapted)
+        is_not(expr, expr_adapted)
         is_(adapter.columns[expr], expr_adapted)
 
     def test_traverse_memoizes_w_itself(self):
@@ -1026,7 +1027,7 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = select(t1a.c.col1).label("x")
         expr_adapted = adapter.traverse(expr)
-        is_not_(expr, expr_adapted)
+        is_not(expr, expr_adapted)
         is_(adapter.traverse(expr), expr_adapted)
 
     def test_columns_memoizes_w_itself(self):
@@ -1035,7 +1036,7 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = select(t1a.c.col1).label("x")
         expr_adapted = adapter.columns[expr]
-        is_not_(expr, expr_adapted)
+        is_not(expr, expr_adapted)
         is_(adapter.columns[expr], expr_adapted)
 
     def test_wrapping_fallthrough(self):
@@ -1112,7 +1113,7 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(a1_to_a2.columns[t2.c.col1], stmt2.c.table2_col1)
 
         # check that these aren't the same column
-        is_not_(stmt2.c.col1, stmt2.c.table2_col1)
+        is_not(stmt2.c.col1, stmt2.c.table2_col1)
 
         # for mutually exclusive columns, order doesn't matter
         is_(a2_to_a1.columns[t1.c.col1], stmt2.c.table1_col1)
@@ -2031,8 +2032,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             select_copy,
             "SELECT table1.col1, table1.col2, " "table1.col3, yyy FROM table1",
         )
-        is_not_(s.selected_columns, select_copy.selected_columns)
-        is_not_(s._raw_columns, select_copy._raw_columns)
+        is_not(s.selected_columns, select_copy.selected_columns)
+        is_not(s._raw_columns, select_copy._raw_columns)
         self.assert_compile(
             s, "SELECT table1.col1, table1.col2, " "table1.col3 FROM table1"
         )

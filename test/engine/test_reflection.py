@@ -28,10 +28,12 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
+from sqlalchemy.testing import not_in_  # noqa Issue#5429 Legacy Support
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -166,7 +168,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta2 = MetaData()
         t1 = Table("t1", meta2, resolve_fks=False, autoload_with=testing.db)
         in_("t1", meta2.tables)
-        not_in_("t2", meta2.tables)
+        not_in("t2", meta2.tables)
 
         assert_raises(
             sa.exc.NoReferencedTableError,
@@ -206,7 +208,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=testing.db,
             extend_existing=True,
         )
-        not_in_("t2", meta2.tables)
+        not_in("t2", meta2.tables)
 
         assert_raises(
             sa.exc.NoReferencedTableError,
@@ -238,7 +240,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         meta2 = MetaData()
         meta2.reflect(testing.db, resolve_fks=False, only=["t1"])
         in_("t1", meta2.tables)
-        not_in_("t2", meta2.tables)
+        not_in("t2", meta2.tables)
 
         t1 = meta2.tables["t1"]
 
@@ -2273,7 +2275,7 @@ class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
     def check_table_column(self, table, name, text, persisted):
         is_true(name in table.columns)
         col = table.columns[name]
-        is_not_(col.computed, None)
+        is_not(col.computed, None)
         is_instance_of(col.computed, Computed)
 
         eq_(self.normalize(str(col.computed.sqltext)), text)
