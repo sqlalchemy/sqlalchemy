@@ -843,7 +843,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
         stmt = (
             select([table.c.id])
-            .where(table.c.x.notin_(bindparam("q", expanding=True)))
+            .where(table.c.x.not_in(bindparam("q", expanding=True)))
             .order_by(table.c.id)
         )
 
@@ -865,7 +865,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
         stmt = (
             select([table.c.id])
-            .where(table.c.z.notin_(bindparam("q", expanding=True)))
+            .where(table.c.z.not_in(bindparam("q", expanding=True)))
             .order_by(table.c.id)
         )
 

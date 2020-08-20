@@ -205,7 +205,7 @@ class EvaluateTest(fixtures.MappedTest):
         )
 
         eval_eq(
-            User.name.notin_(["foo", "bar"]),
+            User.name.not_in(["foo", "bar"]),
             testcases=[
                 (User(id=1, name="foo"), False),
                 (User(id=2, name="bat"), True),
@@ -229,7 +229,7 @@ class EvaluateTest(fixtures.MappedTest):
         )
 
         eval_eq(
-            tuple_(User.id, User.name).notin_([(1, "foo"), (2, "bar")]),
+            tuple_(User.id, User.name).not_in([(1, "foo"), (2, "bar")]),
             testcases=[
                 (User(id=1, name="foo"), False),
                 (User(id=2, name="bat"), True),

@@ -28,12 +28,14 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
+from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -1771,3 +1773,61 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt, "UPDATE foo SET bar=%s LIMIT 10", dialect="mysql"
         )
+
+
+class LegacyOperatorTest(fixtures.TestBase):
+    def test_issue_5429_operators(self):
+        # functions
+        # is_not
+        assert hasattr(operators, "is_not")  # modern
+        assert hasattr(operators, "isnot")  # legacy
+        assert operators.is_not is operators.isnot
+        # not_in
+        assert hasattr(operators, "not_in_op")  # modern
+        assert hasattr(operators, "notin_op")  # legacy
+        assert operators.not_in_op is operators.notin_op
+
+        # precedence mapping
+        # is_not
+        assert operators.is_not in operators._PRECEDENCE  # modern
+        assert operators.isnot in operators._PRECEDENCE  # legacy
+        assert (
+            operators._PRECEDENCE[operators.is_not]
+            == operators._PRECEDENCE[operators.isnot]
+        )
+        # not_in_op
+        assert operators.not_in_op in operators._PRECEDENCE  # modern
+        assert operators.notin_op in operators._PRECEDENCE  # legacy
+        assert (
+            operators._PRECEDENCE[operators.not_in_op]
+            == operators._PRECEDENCE[operators.notin_op]
+        )
+
+        # ColumnOperators
+        # is_not
+        assert hasattr(operators.ColumnOperators, "is_not")  # modern
+        assert hasattr(operators.ColumnOperators, "isnot")  # legacy
+        assert (
+            operators.ColumnOperators.is_not == operators.ColumnOperators.isnot
+        )
+        # not_in
+        assert hasattr(operators.ColumnOperators, "not_in")  # modern
+        assert hasattr(operators.ColumnOperators, "notin_")  # legacy
+        assert (
+            operators.ColumnOperators.not_in
+            == operators.ColumnOperators.notin_
+        )
+
+    def test_issue_5429_assertions(self):
+        """
+        2) ensure compatibility across sqlalchemy.testing.assertions
+        """
+        # functions
+        # is_not
+        assert hasattr(assertions, "is_not")  # modern
+        assert hasattr(assertions, "is_not_")  # legacy
+        assert assertions.is_not is assertions.is_not_
+        # not_in
+        assert hasattr(assertions, "not_in")  # modern
+        assert hasattr(assertions, "not_in_")  # legacy
+        assert assertions.not_in is assertions.not_in_
