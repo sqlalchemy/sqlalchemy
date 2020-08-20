@@ -13,7 +13,7 @@ from .. import event
 from .. import util
 from ..engine import url
 from ..engine.default import DefaultDialect
-from ..engine.util import _distill_params
+from ..engine.util import _distill_cursor_params
 from ..schema import _DDLCompiles
 
 
@@ -348,7 +348,9 @@ class SQLExecuteObserved(object):
     def __init__(self, context, clauseelement, multiparams, params):
         self.context = context
         self.clauseelement = clauseelement
-        self.parameters = _distill_params(multiparams, params)
+        self.parameters = _distill_cursor_params(
+            context.connection, tuple(multiparams), params
+        )
         self.statements = []
 
     def __repr__(self):

@@ -28,6 +28,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
@@ -396,6 +397,25 @@ class DeprecatedEngineFeatureTest(fixtures.TablesTest):
     def test_execute_plain_string(self):
         with _string_deprecation_expect():
             testing.db.execute(select1(testing.db)).scalar()
+
+    def test_execute_plain_string_events(self):
+
+        m1 = Mock()
+        select1_str = select1(testing.db)
+        with _string_deprecation_expect():
+            with testing.db.connect() as conn:
+                event.listen(conn, "before_execute", m1.before_execute)
+                event.listen(conn, "after_execute", m1.after_execute)
+                result = conn.execute(select1_str)
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.before_execute(mock.ANY, select1_str, [], {}, {}),
+                mock.call.after_execute(
+                    mock.ANY, select1_str, [], {}, {}, result
+                ),
+            ],
+        )
 
     def test_scalar_plain_string(self):
         with _string_deprecation_expect():
@@ -770,6 +790,76 @@ class RawExecuteTest(fixtures.TablesTest):
                 (3, "horse"),
                 (4, "sally"),
             ]
+
+
+class DeprecatedExecParamsTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("user_id", INT, primary_key=True, autoincrement=False),
+            Column("user_name", VARCHAR(20)),
+        )
+
+        Table(
+            "users_autoinc",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+        )
+
+    def test_kwargs(self, connection):
+        users = self.tables.users
+
+        with testing.expect_deprecated_20(
+            r"The connection.execute\(\) method in "
+            "SQLAlchemy 2.0 will accept parameters as a single "
+        ):
+            connection.execute(
+                users.insert(), user_id=5, user_name="some name"
+            )
+
+        eq_(connection.execute(select(users)).all(), [(5, "some name")])
+
+    def test_positional_dicts(self, connection):
+        users = self.tables.users
+
+        with testing.expect_deprecated_20(
+            r"The connection.execute\(\) method in "
+            "SQLAlchemy 2.0 will accept parameters as a single "
+        ):
+            connection.execute(
+                users.insert(),
+                {"user_id": 5, "user_name": "some name"},
+                {"user_id": 6, "user_name": "some other name"},
+            )
+
+        eq_(
+            connection.execute(select(users).order_by(users.c.user_id)).all(),
+            [(5, "some name"), (6, "some other name")],
+        )
+
+    def test_single_scalar(self, connection):
+
+        users = self.tables.users_autoinc
+
+        with testing.expect_deprecated_20(
+            r"The connection.execute\(\) method in "
+            "SQLAlchemy 2.0 will accept parameters as a single "
+        ):
+            # TODO: I'm not even sure what this exec format is or how
+            # it worked if at all
+            connection.execute(users.insert(), "some name")
+
+        eq_(
+            connection.execute(select(users).order_by(users.c.user_id)).all(),
+            [(1, None)],
+        )
 
 
 class EngineEventsTest(fixtures.TestBase):

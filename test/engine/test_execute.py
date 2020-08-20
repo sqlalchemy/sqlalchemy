@@ -34,6 +34,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1420,6 +1421,18 @@ class EngineEventsTest(fixtures.TestBase):
             eq_(canary.be1.call_count, 2)
             eq_(canary.be2.call_count, 2)
 
+    def test_new_exec_driver_sql_no_events(self):
+        m1 = Mock()
+
+        def select1(db):
+            return str(select([1]).compile(dialect=db.dialect))
+
+        with testing.db.connect() as conn:
+            event.listen(conn, "before_execute", m1.before_execute)
+            event.listen(conn, "after_execute", m1.after_execute)
+            conn.exec_driver_sql(select1(testing.db))
+        eq_(m1.mock_calls, [])
+
     def test_add_event_after_connect(self):
         # new feature as of #2978
         canary = Mock()
@@ -1503,6 +1516,83 @@ class EngineEventsTest(fixtures.TestBase):
             canary.ace.mock_calls,
             [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)],
         )
+
+    @testing.combinations(
+        (
+            ([{"x": 5, "y": 10}, {"x": 8, "y": 9}],),
+            {},
+            [{"x": 5, "y": 10}, {"x": 8, "y": 9}],
+            {},
+        ),
+        ((), {"z": 10}, [], {"z": 10}, testing.requires.legacy_engine),
+        (({"z": 10},), {}, [], {"z": 10}),
+    )
+    def test_modify_parameters_from_event_one(
+        self, multiparams, params, expected_multiparams, expected_params
+    ):
+        # this is testing both the normalization added to parameters
+        # as of I97cb4d06adfcc6b889f10d01cc7775925cffb116 as well as
+        # that the return value from the event is taken as the new set
+        # of parameters.
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            eq_(multiparams, expected_multiparams)
+            eq_(params, expected_params)
+            return clauseelement, (), {"q": "15"}
+
+        def after_execute(
+            conn, clauseelement, multiparams, params, result, execution_options
+        ):
+            eq_(multiparams, ())
+            eq_(params, {"q": "15"})
+
+        e1 = testing_engine(config.db_url)
+        event.listen(e1, "before_execute", before_execute, retval=True)
+        event.listen(e1, "after_execute", after_execute)
+
+        with e1.connect() as conn:
+            result = conn.execute(
+                select(bindparam("q", type_=String)), *multiparams, **params
+            )
+            eq_(result.all(), [("15",)])
+
+    @testing.provide_metadata
+    def test_modify_parameters_from_event_two(self, connection):
+        t = Table("t", self.metadata, Column("q", Integer))
+
+        t.create(connection)
+
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            return clauseelement, [{"q": 15}, {"q": 19}], {}
+
+        event.listen(connection, "before_execute", before_execute, retval=True)
+        connection.execute(t.insert(), {"q": 12})
+        event.remove(connection, "before_execute", before_execute)
+
+        eq_(
+            connection.execute(select(t).order_by(t.c.q)).fetchall(),
+            [(15,), (19,)],
+        )
+
+    def test_modify_parameters_from_event_three(self, connection):
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            return clauseelement, [{"q": 15}, {"q": 19}], {"q": 7}
+
+        e1 = testing_engine(config.db_url)
+        event.listen(e1, "before_execute", before_execute, retval=True)
+
+        with expect_raises_message(
+            tsa.exc.InvalidRequestError,
+            "Event handler can't return non-empty multiparams "
+            "and params at the same time",
+        ):
+            with e1.connect() as conn:
+                conn.execute(select(literal("1")))
 
     def test_argument_format_execute(self):
         def before_execute(
@@ -1591,30 +1681,13 @@ class EngineEventsTest(fixtures.TestBase):
                 if ctx:
                     ctx.close()
 
-            if engine._is_future:
-                compiled = [
-                    ("CREATE TABLE t1", {}, None),
-                    (
-                        "INSERT INTO t1 (c1, c2)",
-                        {"c2": "some data", "c1": 5},
-                        None,
-                    ),
-                    ("INSERT INTO t1 (c1, c2)", {"c1": 6}, None),
-                    ("select * from t1", {}, None),
-                    ("DROP TABLE t1", {}, None),
-                ]
-            else:
-                compiled = [
-                    ("CREATE TABLE t1", {}, None),
-                    (
-                        "INSERT INTO t1 (c1, c2)",
-                        {},
-                        ({"c2": "some data", "c1": 5},),
-                    ),
-                    ("INSERT INTO t1 (c1, c2)", {}, ({"c1": 6},)),
-                    ("select * from t1", {}, None),
-                    ("DROP TABLE t1", {}, None),
-                ]
+            compiled = [
+                ("CREATE TABLE t1", {}, None),
+                ("INSERT INTO t1 (c1, c2)", {"c2": "some data", "c1": 5}, (),),
+                ("INSERT INTO t1 (c1, c2)", {"c1": 6}, ()),
+                ("select * from t1", {}, None),
+                ("DROP TABLE t1", {}, None),
+            ]
 
             cursor = [
                 ("CREATE TABLE t1", {}, ()),

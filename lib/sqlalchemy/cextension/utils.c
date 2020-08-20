@@ -26,12 +26,13 @@ distill_params(PyObject *self, PyObject *args)
 	// TODO: pass the Connection in so that there can be a standard
 	// method for warning on parameter format
 
-	PyObject *multiparams, *params;
+	PyObject *connection, *multiparams, *params;
 	PyObject *enclosing_list, *double_enclosing_list;
 	PyObject *zero_element, *zero_element_item;
+    PyObject *tmp;
 	Py_ssize_t multiparam_size, zero_element_length;
 
-	if (!PyArg_UnpackTuple(args, "_distill_params", 2, 2, &multiparams, &params)) {
+	if (!PyArg_UnpackTuple(args, "_distill_params", 3, 3, &connection, &multiparams, &params)) {
 		return NULL;
 	}
 
@@ -47,8 +48,12 @@ distill_params(PyObject *self, PyObject *args)
 
 	if (multiparam_size == 0) {
 		if (params != Py_None && PyMapping_Size(params) != 0) {
-			// TODO: this is keyword parameters, emit parameter format
-			// deprecation warning
+
+		    tmp = PyObject_CallMethod(connection, "_warn_for_legacy_exec_format", "");
+	        if (tmp == NULL) {
+	            return NULL;
+	        }
+
 			enclosing_list = PyList_New(1);
 			if (enclosing_list == NULL) {
 				return NULL;
@@ -102,6 +107,7 @@ distill_params(PyObject *self, PyObject *args)
 				 * execute(stmt, ("value", "value"))
 				 */
 				Py_XDECREF(zero_element_item);
+
 				enclosing_list = PyList_New(1);
 				if (enclosing_list == NULL) {
 					return NULL;
@@ -131,6 +137,11 @@ distill_params(PyObject *self, PyObject *args)
 			}
 			return enclosing_list;
 		} else {
+		    tmp = PyObject_CallMethod(connection, "_warn_for_legacy_exec_format", "");
+	        if (tmp == NULL) {
+	            return NULL;
+	        }
+
 			enclosing_list = PyList_New(1);
 			if (enclosing_list ==  NULL) {
 				return NULL;
@@ -157,8 +168,12 @@ distill_params(PyObject *self, PyObject *args)
 		}
 	}
 	else {
-		// TODO: this is multiple positional params, emit parameter format
-		// deprecation warning
+
+	    tmp = PyObject_CallMethod(connection, "_warn_for_legacy_exec_format", "");
+        if (tmp == NULL) {
+            return NULL;
+        }
+
 		zero_element = PyTuple_GetItem(multiparams, 0);
 		if (PyObject_HasAttrString(zero_element, "__iter__") &&
 				!PyObject_HasAttrString(zero_element, "strip")
