@@ -4,12 +4,6 @@ from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import log
 from ...testing.provision import run_reap_dbs
-from ...testing.provision import update_db_opts
-
-
-@update_db_opts.for_db("mssql")
-def _mssql_update_db_opts(db_url, db_opts):
-    db_opts["legacy_schema_aliasing"] = False
 
 
 @create_db.for_db("mssql")

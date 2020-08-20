@@ -1,7 +1,6 @@
 # -*- encoding: utf-8
 
 from sqlalchemy import Column
-from sqlalchemy import engine_from_config
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import Integer
@@ -337,18 +336,6 @@ class ParseConnectTest(fixtures.TestBase):
         assert_raises_message(
             exc.SAWarning, "Unrecognized server version info", engine.connect
         )
-
-
-class EngineFromConfigTest(fixtures.TestBase):
-    def test_legacy_schema_flag(self):
-        cfg = {
-            "sqlalchemy.url": "mssql://foodsn",
-            "sqlalchemy.legacy_schema_aliasing": "false",
-        }
-        e = engine_from_config(
-            cfg, module=Mock(version="MS SQL Server 11.0.92")
-        )
-        eq_(e.dialect.legacy_schema_aliasing, False)
 
 
 class FastExecutemanyTest(fixtures.TestBase):

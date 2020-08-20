@@ -537,6 +537,10 @@ it is available using the ``legacy_schema_aliasing`` argument to
    in version 1.0.5 to allow disabling of legacy mode for schemas now
    defaults to False.
 
+.. deprecated:: 1.4
+
+   The ``legacy_schema_aliasing`` flag is now
+   deprecated and will be removed in a future release.
 
 .. _mssql_indexes:
 
@@ -2549,6 +2553,8 @@ class MSDialect(default.DefaultDialect):
     _supports_offset_fetch = False
     _supports_nvarchar_max = False
 
+    legacy_schema_aliasing = False
+
     server_version_info = ()
 
     statement_compiler = MSSQLCompiler
@@ -2573,9 +2579,9 @@ class MSDialect(default.DefaultDialect):
         schema_name="dbo",
         isolation_level=None,
         deprecate_large_types=None,
-        legacy_schema_aliasing=False,
         json_serializer=None,
         json_deserializer=None,
+        legacy_schema_aliasing=None,
         **opts
     ):
         self.query_timeout = int(query_timeout or 0)
@@ -2583,7 +2589,14 @@ class MSDialect(default.DefaultDialect):
 
         self.use_scope_identity = use_scope_identity
         self.deprecate_large_types = deprecate_large_types
-        self.legacy_schema_aliasing = legacy_schema_aliasing
+
+        if legacy_schema_aliasing is not None:
+            util.warn_deprecated(
+                "The legacy_schema_aliasing parameter is "
+                "deprecated and will be removed in a future release.",
+                "1.4",
+            )
+            self.legacy_schema_aliasing = legacy_schema_aliasing
 
         super(MSDialect, self).__init__(**opts)
 
