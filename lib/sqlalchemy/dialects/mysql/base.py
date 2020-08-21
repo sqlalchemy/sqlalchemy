@@ -1782,14 +1782,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec.append("NOT NULL")
 
-        # see: http://docs.sqlalchemy.org/en/latest/dialects/
-        #   mysql.html#mysql_timestamp_null
+        # see: http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#mysql_timestamp_null  # noqa
         elif column.nullable and is_timestamp:
             colspec.append("NULL")
-
-        default = self.get_column_default_string(column)
-        if default is not None:
-            colspec.append("DEFAULT " + default)
 
         comment = column.comment
         if comment is not None:
@@ -1802,9 +1797,17 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             column.table is not None
             and column is column.table._autoincrement_column
             and column.server_default is None
+            and not (
+                self.dialect.supports_sequences
+                and isinstance(column.default, sa_schema.Sequence)
+                and not column.default.optional
+            )
         ):
             colspec.append("AUTO_INCREMENT")
-
+        else:
+            default = self.get_column_default_string(column)
+            if default is not None:
+                colspec.append("DEFAULT " + default)
         return " ".join(colspec)
 
     def post_create_table(self, table):

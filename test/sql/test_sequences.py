@@ -231,38 +231,29 @@ class SequenceExecTest(fixtures.TestBase):
         connection.execute(t1.insert().values(x=s.next_value()))
         self._assert_seq_result(connection.scalar(t1.select()))
 
-    @testing.requires.no_lastrowid_support
     @testing.provide_metadata
-    def test_inserted_pk_no_returning_no_lastrowid(self):
+    def test_inserted_pk_no_returning(self):
         """test inserted_primary_key contains [None] when
         pk_col=next_value(), implicit returning is not used."""
 
+        # I'm not really sure what this test wants to accomlish.
+
         metadata = self.metadata
         t1 = Table("t", metadata, Column("x", Integer, primary_key=True))
-        t1.create(testing.db)
+        s = Sequence("my_sequence_here", metadata=metadata)
 
         e = engines.testing_engine(options={"implicit_returning": False})
-        s = Sequence("my_sequence")
         with e.connect() as conn:
+
+            t1.create(conn)
+            s.create(conn)
+
             r = conn.execute(t1.insert().values(x=s.next_value()))
-            eq_(r.inserted_primary_key, [None])
 
-    @testing.requires.supports_lastrowid
-    @testing.requires.supports_lastrowid_for_expressions
-    @testing.provide_metadata
-    def test_inserted_pk_no_returning_w_lastrowid(self):
-        """test inserted_primary_key contains the pk when
-        pk_col=next_value(), lastrowid is supported."""
-
-        metadata = self.metadata
-        t1 = Table("t", metadata, Column("x", Integer, primary_key=True,),)
-        t1.create(testing.db)
-        e = engines.testing_engine(options={"implicit_returning": False})
-        s = Sequence("my_sequence")
-
-        with e.connect() as conn:
-            r = conn.execute(t1.insert().values(x=s.next_value()))
-            self._assert_seq_result(r.inserted_primary_key[0])
+            if testing.requires.emulated_lastrowid_even_with_sequences.enabled:
+                eq_(r.inserted_primary_key, (1,))
+            else:
+                eq_(r.inserted_primary_key, (None,))
 
     @testing.requires.returning
     @testing.provide_metadata

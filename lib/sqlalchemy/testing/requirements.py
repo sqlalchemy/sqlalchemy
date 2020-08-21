@@ -507,7 +507,9 @@ class SuiteRequirements(Requirements):
     @property
     def no_lastrowid_support(self):
         """the opposite of supports_lastrowid"""
-        return exclusions.NotPredicate(self.supports_lastrowid)
+        return exclusions.only_if(
+            [lambda config: not config.db.dialect.postfetch_lastrowid]
+        )
 
     @property
     def reflects_pk_names(self):

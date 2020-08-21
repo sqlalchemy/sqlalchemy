@@ -47,7 +47,7 @@ class OnDuplicateTest(fixtures.TablesTest):
             {"id": 2, "bar": "baz"},
         )
 
-    def test_on_duplicate_key_update(self):
+    def test_on_duplicate_key_update_multirow(self):
         foos = self.tables.foos
         with testing.db.connect() as conn:
             conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
@@ -55,14 +55,34 @@ class OnDuplicateTest(fixtures.TablesTest):
                 [dict(id=1, bar="ab"), dict(id=2, bar="b")]
             )
             stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
+
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, (2,))
+
+            # multirow, so its ambiguous.  this is a behavioral change
+            # in 1.4
+            eq_(result.inserted_primary_key, (None,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "ab", "bz", False)],
             )
 
-    def test_on_duplicate_key_update_null(self):
+    def test_on_duplicate_key_update_singlerow(self):
+        foos = self.tables.foos
+        with testing.db.connect() as conn:
+            conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
+            stmt = insert(foos).values(dict(id=2, bar="b"))
+            stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
+
+            result = conn.execute(stmt)
+
+            # only one row in the INSERT so we do inserted_primary_key
+            eq_(result.inserted_primary_key, (2,))
+            eq_(
+                conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
+                [(1, "b", "bz", False)],
+            )
+
+    def test_on_duplicate_key_update_null_multirow(self):
         foos = self.tables.foos
         with testing.db.connect() as conn:
             conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
@@ -71,13 +91,15 @@ class OnDuplicateTest(fixtures.TablesTest):
             )
             stmt = stmt.on_duplicate_key_update(updated_once=None)
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, (2,))
+
+            # ambiguous
+            eq_(result.inserted_primary_key, (None,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "b", "bz", None)],
             )
 
-    def test_on_duplicate_key_update_expression(self):
+    def test_on_duplicate_key_update_expression_multirow(self):
         foos = self.tables.foos
         with testing.db.connect() as conn:
             conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
@@ -88,7 +110,7 @@ class OnDuplicateTest(fixtures.TablesTest):
                 bar=func.concat(stmt.inserted.bar, "_foo")
             )
             result = conn.execute(stmt)
-            eq_(result.inserted_primary_key, (2,))
+            eq_(result.inserted_primary_key, (None,))
             eq_(
                 conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
                 [(1, "ab_foo", "bz", False)],

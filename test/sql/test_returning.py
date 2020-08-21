@@ -430,6 +430,30 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             [None],
         )
 
+    def test_insert_sql_expr(self, connection):
+        from sqlalchemy import literal
+
+        t1 = self.tables.t1
+        result = connection.execute(
+            t1.insert().return_defaults().values(insdef=literal(10) + 5)
+        )
+
+        eq_(
+            result.returned_defaults._mapping,
+            {"id": 1, "data": None, "insdef": 15, "upddef": None},
+        )
+
+    def test_update_sql_expr(self, connection):
+        from sqlalchemy import literal
+
+        t1 = self.tables.t1
+        connection.execute(t1.insert().values(upddef=1))
+        result = connection.execute(
+            t1.update().values(upddef=literal(10) + 5).return_defaults()
+        )
+
+        eq_(result.returned_defaults._mapping, {"upddef": 15})
+
     def test_insert_non_default_plus_default(self, connection):
         t1 = self.tables.t1
         result = connection.execute(
