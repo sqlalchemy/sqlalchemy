@@ -577,6 +577,157 @@ producing::
     SELECT address.email_address, user.name FROM user JOIN address ON user.id == address.user_id
 
 
+.. _change_5526:
+
+The URL object is now immutable
+-------------------------------
+
+The :class:`_engine.URL` object has been formalized such that it now presents
+itself as a ``namedtuple`` with a fixed number of fields that are immutable. In
+addition, the dictionary represented by the :attr:`_engine.URL.query` attribute
+is also an immutable mapping.   Mutation of the :class:`_engine.URL` object was
+not a formally supported or documented use case which led to some open-ended
+use cases that made it very difficult to intercept incorrect usages, most
+commonly mutation of the :attr:`_engine.URL.query` dictionary to include non-string elements.
+It also led to all the common problems of allowing mutability in a fundamental
+data object, namely unwanted mutations elsewhere leaking into code that didn't
+expect the URL to change.  Finally, the namedtuple design is inspired by that
+of Python's ``urllib.parse.urlparse()`` which returns the parsed object as a
+named tuple.
+
+The decision to change the API outright is based on a calculus weighing the
+infeasability of a deprecation path (which would involve changing the
+:attr:`_engine.URL.query` dictionary to be a special dictionary that emits deprecation
+warnings when any kind of standard library mutation methods are invoked, in
+addition that when the dictionary would hold any kind of list of elements, the
+list would also have to emit deprecation warnings on mutation) against the
+unlikely use case of projects already mutating :class:`_engine.URL` objects in
+the first place, as well as that small changes such as that of :ticket:`5341`
+were creating backwards-incompatibility in any case.   The primary case for
+mutation of a
+:class:`_engine.URL` object is that of parsing plugin arguments within the
+:class:`_engine.CreateEnginePlugin` extension point, itself a fairly recent
+addition that based on Github code search is in use by two repositories,
+neither of which are actually mutating the URL object.
+
+The :class:`_engine.URL` object now provides a rich interface inspecting
+and generating new :class:`_engine.URL` objects.  The
+existing mechanism to create a :class:`_engine.URL` object, the
+:func:`_engine.make_url` function, remains unchanged::
+
+     >>> from sqlalchemy.engine import make_url
+     >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
+
+For programmatic construction, code that may have been using the
+:class:`_engine.URL` constructor or ``__init__`` method directly will
+receive a deprecation warning if arguments are passed as keyword arguments
+and not an exact 7-tuple.  The keyword-style constructor is now available
+via the :meth:`_engine.URL.create` method::
+
+    >>> from sqlalchemy.engine import URL
+    >>> url = URL.create("postgresql", "user", "pass", host="host", database="dbname")
+    >>> str(url)
+    'postgresql://user:pass@host/dbname'
+
+
+Fields can be altered typically using the :meth:`_engine.URL.set` method, which
+returns a new :class:`_engine.URL` object with changes applied::
+
+    >>> mysql_url = url.set(drivername="mysql+pymysql")
+    >>> str(mysql_url)
+    'mysql+pymysql://user:pass@host/dbname'
+
+To alter the contents of the :attr:`_engine.URL.query` dictionary, methods
+such as :meth:`_engine.URL.update_query_dict` may be used::
+
+    >>> url.update_query_dict({"sslcert": '/path/to/crt'})
+    postgresql://user:***@host/dbname?sslcert=%2Fpath%2Fto%2Fcrt
+
+To upgrade code that is mutating these fields directly, a **backwards and
+forwards compatible approach** is to use a duck-typing, as in the following
+style::
+
+    def set_url_drivername(some_url, some_drivername):
+        # check for 1.4
+        if hasattr(some_url, "set"):
+            return some_url.set(drivername=some_drivername)
+        else:
+            # SQLAlchemy 1.3 or earlier, mutate in place
+            some_url.drivername = some_drivername
+            return some_url
+
+    def set_ssl_cert(some_url, ssl_cert):
+        # check for 1.4
+        if hasattr(some_url, "update_query_dict"):
+            return some_url.update_query_dict({"sslcert": ssl_cert})
+        else:
+            # SQLAlchemy 1.3 or earlier, mutate in place
+            some_url.query["sslcert"] = ssl_cert
+            return some_url
+
+The query string retains its existing format as a dictionary of strings
+to strings, using sequences of strings to represent multiple parameters.
+For example::
+
+    >>> from sqlalchemy.engine import make_url
+    >>> url = make_url("postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&sslcert=%2Fpath%2Fto%2Fcrt")
+    >>> url.query
+    immutabledict({'alt_host': ('host1', 'host2'), 'sslcert': '/path/to/crt'})
+
+To work with the contents of the :attr:`_engine.URL.query` attribute such that all values are
+normalized into sequences, use the :attr:`_engine.URL.normalized_query` attribute::
+
+    >>> url.normalized_query
+    immutabledict({'alt_host': ('host1', 'host2'), 'sslcert': ('/path/to/crt',)})
+
+The query string can be appended to via methods such as :meth:`_engine.URL.update_query_dict`,
+:meth:`_engine.URL.update_query_pairs`, :meth:`_engine.URL.update_query_string`::
+
+    >>> url.update_query_dict({"alt_host": "host3"}, append=True)
+    postgresql://user:***@host/dbname?alt_host=host1&alt_host=host2&alt_host=host3&sslcert=%2Fpath%2Fto%2Fcrt
+
+.. seealso::
+
+  :class:`_engine.URL`
+
+
+Changes to CreateEnginePlugin
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :class:`_engine.CreateEnginePlugin` is also impacted by this change,
+as the documentation for custom plugins indicated that the ``dict.pop()``
+method should be used to remove consumed arguments from the URL object.  This
+should now be acheived using the :meth:`_engine.CreateEnginePlugin.update_url`
+method.  A backwards compatible approach would look like::
+
+    from sqlalchemy.engine import CreateEnginePlugin
+
+    class MyPlugin(CreateEnginePlugin):
+        def __init__(self, url, kwargs):
+            # check for 1.4 style
+            if hasattr(CreateEnginePlugin, "update_url"):
+                self.my_argument_one = url.query['my_argument_one']
+                self.my_argument_two = url.query['my_argument_two']
+            else:
+                # legacy
+                self.my_argument_one = url.query.pop('my_argument_one')
+                self.my_argument_two = url.query.pop('my_argument_two')
+
+            self.my_argument_three = kwargs.pop('my_argument_three', None)
+
+        def update_url(self, url):
+            # this method runs in 1.4 only and should be used to consume
+            # plugin-specific arguments
+            return url.difference_update_query(
+                ["my_argument_one", "my_argument_two"]
+            )
+
+See the docstring at :class:`_engine.CreateEnginePlugin` for complete details
+on how this class is used.
+
+:ticket:`5526`
+
+
 .. _change_5284:
 
 select(), case() now accept positional expressions

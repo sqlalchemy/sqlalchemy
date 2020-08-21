@@ -194,11 +194,73 @@ Engine Creation API
 
 .. autofunction:: sqlalchemy.create_mock_engine
 
-.. autofunction:: sqlalchemy.engine.url.make_url
+.. autofunction:: sqlalchemy.engine.make_url
 
 
-.. autoclass:: sqlalchemy.engine.url.URL
+.. autoclass:: sqlalchemy.engine.URL
     :members:
+
+    .. py:attribute:: drivername
+        :annotation: str
+
+        database backend and driver name, such as
+        ``postgresql+psycopg2``
+
+    .. py:attribute::  username
+        :annotation: str
+
+        username string
+
+    .. py:attribute::  password
+        :annotation: str
+
+        password, which is normally a string but may also be any
+        object that has a ``__str__()`` method.
+
+    .. py:attribute::  host
+        :annotation: str
+
+        string hostname
+
+    .. py:attribute::  port
+        :annotation: int
+
+        integer port number
+
+    .. py:attribute::  database
+        :annotation: str
+
+        string database name
+
+    .. py:attribute::  query
+        :annotation: Mapping[str, Union[str, Sequence[str]]]
+
+        an immutable mapping representing the query string.  contains strings
+        for keys and either strings or tuples of strings for values, e.g.::
+
+            >>> from sqlalchemy.engine import make_url
+            >>> url = make_url("postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url.query
+            immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
+
+         To create a mutable copy of this mapping, use the ``dict`` constructor::
+
+            mutable_query_opts = dict(url.query)
+
+        .. seealso::
+
+          :attr:`_engine.URL.normalized_query` - normalizes all values into sequences
+          for consistent processing
+
+          Methods for altering the contents of :attr:`_engine.URL.query`:
+
+          :meth:`_engine.URL.update_query_dict`
+
+          :meth:`_engine.URL.update_query_string`
+
+          :meth:`_engine.URL.update_query_pairs`
+
+          :meth:`_engine.URL.difference_update_query`
 
 Pooling
 =======

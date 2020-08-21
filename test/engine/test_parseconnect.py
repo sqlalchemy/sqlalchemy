@@ -9,6 +9,7 @@ from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
 import sqlalchemy.engine.url as url
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -113,22 +114,24 @@ class URLTest(fixtures.TestBase):
                 return self.value
 
         sp = SecurePassword("secured_password")
-        u = url.URL("dbtype", username="x", password=sp, host="localhost")
+        u = url.URL.create(
+            "dbtype", username="x", password=sp, host="localhost"
+        )
 
         eq_(u.password, "secured_password")
         eq_(str(u), "dbtype://x:secured_password@localhost")
 
         # test in-place modification
         sp.value = "new_secured_password"
-        eq_(u.password, "new_secured_password")
+        eq_(u.password, sp)
         eq_(str(u), "dbtype://x:new_secured_password@localhost")
 
-        u.password = "hi"
+        u = u.set(password="hi")
 
         eq_(u.password, "hi")
         eq_(str(u), "dbtype://x:hi@localhost")
 
-        u.password = None
+        u = u._replace(password=None)
 
         is_(u.password, None)
         eq_(str(u), "dbtype://x@localhost")
@@ -141,7 +144,7 @@ class URLTest(fixtures.TestBase):
         u = url.make_url(
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3"
         )
-        eq_(u.query, {"arg1": "param1", "arg2": ["param2", "param3"]})
+        eq_(u.query, {"arg1": "param1", "arg2": ("param2", "param3")})
         eq_(
             str(u),
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3",
@@ -153,16 +156,6 @@ class URLTest(fixtures.TestBase):
         eq_(str(u), test_url)
 
     def test_comparison(self):
-        components = (
-            "drivername",
-            "username",
-            "password",
-            "host",
-            "database",
-            "query",
-            "port",
-        )
-
         common_url = (
             "dbtype://username:password"
             "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
@@ -178,11 +171,156 @@ class URLTest(fixtures.TestBase):
         is_true(url1 != url3)
         is_false(url1 == url3)
 
-        for curr_component in components:
-            setattr(url2, curr_component, "new_changed_value")
-            is_true(url1 != url2)
-            is_false(url1 == url2)
-            setattr(url2, curr_component, getattr(url1, curr_component))
+    @testing.combinations(
+        "drivername", "username", "password", "host", "database",
+    )
+    def test_component_set(self, component):
+        common_url = (
+            "dbtype://username:password"
+            "@[2001:da8:2004:1000:202:116:160:90]:80/database?foo=bar"
+        )
+        url1 = url.make_url(common_url)
+        url2 = url.make_url(common_url)
+
+        url3 = url2.set(**{component: "new_changed_value"})
+        is_true(url1 != url3)
+        is_false(url1 == url3)
+
+        url4 = url3.set(**{component: getattr(url1, component)})
+
+        is_true(url4 == url1)
+        is_false(url4 != url1)
+
+    @testing.combinations(
+        (
+            "foo1=bar1&foo2=bar2",
+            {"foo2": "bar22", "foo3": "bar3"},
+            "foo1=bar1&foo2=bar22&foo3=bar3",
+            False,
+        ),
+        (
+            "foo1=bar1&foo2=bar2",
+            {"foo2": "bar22", "foo3": "bar3"},
+            "foo1=bar1&foo2=bar2&foo2=bar22&foo3=bar3",
+            True,
+        ),
+    )
+    def test_update_query_dict(self, starting, update_with, expected, append):
+        eq_(
+            url.make_url("drivername:///?%s" % starting).update_query_dict(
+                update_with, append=append
+            ),
+            url.make_url("drivername:///?%s" % expected),
+        )
+
+    @testing.combinations(
+        (
+            "foo1=bar1&foo2=bar2",
+            "foo2=bar22&foo3=bar3",
+            "foo1=bar1&foo2=bar22&foo3=bar3",
+            False,
+        ),
+        (
+            "foo1=bar1&foo2=bar2",
+            "foo2=bar22&foo3=bar3",
+            "foo1=bar1&foo2=bar2&foo2=bar22&foo3=bar3",
+            True,
+        ),
+        (
+            "foo1=bar1&foo2=bar21&foo2=bar22&foo3=bar31",
+            "foo2=bar23&foo3=bar32&foo3=bar33",
+            "foo1=bar1&foo2=bar21&foo2=bar22&foo2=bar23&"
+            "foo3=bar31&foo3=bar32&foo3=bar33",
+            True,
+        ),
+        (
+            "foo1=bar1&foo2=bar21&foo2=bar22&foo3=bar31",
+            "foo2=bar23&foo3=bar32&foo3=bar33",
+            "foo1=bar1&foo2=bar23&" "foo3=bar32&foo3=bar33",
+            False,
+        ),
+    )
+    def test_update_query_string(
+        self, starting, update_with, expected, append
+    ):
+        eq_(
+            url.make_url("drivername:///?%s" % starting).update_query_string(
+                update_with, append=append
+            ),
+            url.make_url("drivername:///?%s" % expected),
+        )
+
+    @testing.combinations(
+        "username", "host", "database",
+    )
+    def test_only_str_constructor(self, argname):
+        assert_raises_message(
+            TypeError,
+            "%s must be a string" % argname,
+            url.URL.create,
+            "somedriver",
+            **{argname: 35.8}
+        )
+
+    @testing.combinations(
+        "username", "host", "database",
+    )
+    def test_only_str_set(self, argname):
+        u1 = url.URL.create("somedriver")
+
+        assert_raises_message(
+            TypeError,
+            "%s must be a string" % argname,
+            u1.set,
+            **{argname: 35.8}
+        )
+
+    def test_only_str_query_key_constructor(self):
+        assert_raises_message(
+            TypeError,
+            "Query dictionary keys must be strings",
+            url.URL.create,
+            "somedriver",
+            query={35.8: "foo"},
+        )
+
+    def test_only_str_query_value_constructor(self):
+        assert_raises_message(
+            TypeError,
+            "Query dictionary values must be strings or sequences of strings",
+            url.URL.create,
+            "somedriver",
+            query={"foo": 35.8},
+        )
+
+    def test_only_str_query_key_update(self):
+        assert_raises_message(
+            TypeError,
+            "Query dictionary keys must be strings",
+            url.make_url("drivername://").update_query_dict,
+            {35.8: "foo"},
+        )
+
+    def test_only_str_query_value_update(self):
+        assert_raises_message(
+            TypeError,
+            "Query dictionary values must be strings or sequences of strings",
+            url.make_url("drivername://").update_query_dict,
+            {"foo": 35.8},
+        )
+
+    def test_deprecated_constructor(self):
+        with testing.expect_deprecated(
+            r"Calling URL\(\) directly is deprecated and will be "
+            "disabled in a future release."
+        ):
+            u1 = url.URL(
+                drivername="somedriver",
+                username="user",
+                port=52,
+                host="hostname",
+            )
+        eq_(u1, url.make_url("somedriver://user@hostname:52"))
 
 
 class DialectImportTest(fixtures.TestBase):
@@ -486,7 +624,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
     @testing.requires.sqlite
     def test_wrapper_hooks(self):
         def get_dialect_cls(url):
-            url.drivername = "sqlite"
+            url = url.set(drivername="sqlite")
             return url.get_dialect()
 
         global WrapperFactory
@@ -505,7 +643,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
         eq_(
             WrapperFactory.mock_calls,
             [
-                call.get_dialect_cls(url.make_url("sqlite://")),
+                call.get_dialect_cls(url.make_url("wrapperdialect://")),
                 call.engine_created(e),
             ],
         )
@@ -527,10 +665,12 @@ class TestRegNewDBAPI(fixtures.TestBase):
             )
             eq_(kw, {"logging_name": "foob"})
             kw["logging_name"] = "bar"
-            url.query.pop("myplugin_arg", None)
             return MyEnginePlugin
 
-        MyEnginePlugin = Mock(side_effect=side_effect)
+        def update_url(url):
+            return url.difference_update_query(["myplugin_arg"])
+
+        MyEnginePlugin = Mock(side_effect=side_effect, update_url=update_url)
 
         plugins.register("engineplugin", __name__, "MyEnginePlugin")
 
@@ -548,15 +688,18 @@ class TestRegNewDBAPI(fixtures.TestBase):
         eq_(
             MyEnginePlugin.mock_calls,
             [
-                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call(
+                    url.make_url(
+                        "sqlite:///?plugin=engineplugin"
+                        "&foo=bar&myplugin_arg=bat"
+                    ),
+                    {},
+                ),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
             ],
         )
-
-        # url was modified in place by MyEnginePlugin
-        eq_(str(MyEnginePlugin.mock_calls[0][1][0]), "sqlite:///?foo=bar")
 
     @testing.requires.sqlite
     def test_plugin_multiple_url_registration(self):
@@ -568,24 +711,31 @@ class TestRegNewDBAPI(fixtures.TestBase):
         def side_effect_1(url, kw):
             eq_(kw, {"logging_name": "foob"})
             kw["logging_name"] = "bar"
-            url.query.pop("myplugin1_arg", None)
             return MyEnginePlugin1
 
         def side_effect_2(url, kw):
-            url.query.pop("myplugin2_arg", None)
             return MyEnginePlugin2
 
-        MyEnginePlugin1 = Mock(side_effect=side_effect_1)
-        MyEnginePlugin2 = Mock(side_effect=side_effect_2)
+        def update_url(url):
+            return url.difference_update_query(
+                ["myplugin1_arg", "myplugin2_arg"]
+            )
+
+        MyEnginePlugin1 = Mock(
+            side_effect=side_effect_1, update_url=update_url
+        )
+        MyEnginePlugin2 = Mock(
+            side_effect=side_effect_2, update_url=update_url
+        )
 
         plugins.register("engineplugin1", __name__, "MyEnginePlugin1")
         plugins.register("engineplugin2", __name__, "MyEnginePlugin2")
 
-        e = create_engine(
+        url_str = (
             "sqlite:///?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
-            "&plugin=engineplugin2&myplugin2_arg=hoho",
-            logging_name="foob",
+            "&plugin=engineplugin2&myplugin2_arg=hoho"
         )
+        e = create_engine(url_str, logging_name="foob",)
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 
@@ -596,7 +746,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
         eq_(
             MyEnginePlugin1.mock_calls,
             [
-                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call(url.make_url(url_str), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
@@ -606,7 +756,7 @@ class TestRegNewDBAPI(fixtures.TestBase):
         eq_(
             MyEnginePlugin2.mock_calls,
             [
-                call(url.make_url("sqlite:///?foo=bar"), {}),
+                call(url.make_url(url_str), {}),
                 call.handle_dialect_kwargs(sqlite.dialect, mock.ANY),
                 call.handle_pool_kwargs(mock.ANY, {"dialect": e.dialect}),
                 call.engine_created(e),
@@ -632,7 +782,10 @@ class TestRegNewDBAPI(fixtures.TestBase):
             kw.pop("myplugin_arg", None)
             return MyEnginePlugin
 
-        MyEnginePlugin = Mock(side_effect=side_effect)
+        def update_url(url):
+            return url.difference_update_query(["myplugin_arg"])
+
+        MyEnginePlugin = Mock(side_effect=side_effect, update_url=update_url)
 
         plugins.register("engineplugin", __name__, "MyEnginePlugin")
 

@@ -738,7 +738,7 @@ class Result(ResultInternal):
 
     @_generative
     def unique(self, strategy=None):
-        # type(Optional[object]) -> Result
+        # type: (Optional[object]) -> Result
         """Apply unique filtering to the objects returned by this
         :class:`_engine.Result`.
 

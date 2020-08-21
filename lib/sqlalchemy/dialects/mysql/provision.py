@@ -1,5 +1,3 @@
-import copy
-
 from ... import exc
 from ...testing.provision import configure_follower
 from ...testing.provision import create_db
@@ -9,7 +7,7 @@ from ...testing.provision import temp_table_keyword_args
 
 
 @generate_driver_url.for_db("mysql", "mariadb")
-def generate_driver_url(url, driver, query):
+def generate_driver_url(url, driver, query_str):
     backend = url.get_backend_name()
 
     if backend == "mysql":
@@ -17,10 +15,9 @@ def generate_driver_url(url, driver, query):
         if dialect_cls._is_mariadb_from_url(url):
             backend = "mariadb"
 
-    new_url = copy.copy(url)
-    new_url.query = dict(new_url.query)
-    new_url.drivername = "%s+%s" % (backend, driver)
-    new_url.query.update(query)
+    new_url = url.set(
+        drivername="%s+%s" % (backend, driver)
+    ).update_query_string(query_str)
 
     try:
         new_url.get_dialect()

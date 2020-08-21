@@ -97,9 +97,7 @@ def _reap_oracle_dbs(url, idents):
 @follower_url_from_main.for_db("oracle")
 def _oracle_follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
-    url.username = ident
-    url.password = "xe"
-    return url
+    return url.set(username=ident, password="xe")
 
 
 @temp_table_keyword_args.for_db("oracle")

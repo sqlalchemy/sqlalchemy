@@ -7,7 +7,7 @@ Some key internal constructs are listed here.
 
 .. currentmodule:: sqlalchemy
 
-.. autoclass:: sqlalchemy.engine.interfaces.Compiled
+.. autoclass:: sqlalchemy.engine.Compiled
     :members:
 
 .. autoclass:: sqlalchemy.sql.compiler.DDLCompiler
@@ -18,14 +18,14 @@ Some key internal constructs are listed here.
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.engine.interfaces.Dialect
+.. autoclass:: sqlalchemy.engine.Dialect
     :members:
 
 .. autoclass:: sqlalchemy.engine.default.DefaultExecutionContext
     :members:
 
 
-.. autoclass:: sqlalchemy.engine.interfaces.ExecutionContext
+.. autoclass:: sqlalchemy.engine.ExecutionContext
     :members:
 
 
