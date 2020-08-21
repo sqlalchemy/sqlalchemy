@@ -77,15 +77,18 @@ The steps to achieve this are as follows:
   well as providing for the initial real-world adoption of the new
   architectures.
 
-* A new deprecation class :class:`.exc.RemovedIn20Warning` is added, which
-  subclasses :class:`.exc.SADeprecationWarning`.   Applications and their test
+* A new deprecation class :class:`_exc.RemovedIn20Warning` is added, which
+  subclasses :class:`_exc.SADeprecationWarning`.   Applications and their test
   suites can opt to enable or disable reporting of the
-  :class:`.exc.RemovedIn20Warning` warning as needed.   To some extent, the
-  :class:`.exc.RemovedIn20Warning` deprecation class is analogous to the ``-3``
+  :class:`_exc.RemovedIn20Warning` warning as needed, by setting the
+  environment variable ``SQLALCHEMY_WARN_20=1`` **before** the program
+  runs.   To some extent, the
+  :class:`_exc.RemovedIn20Warning` deprecation class is analogous to the ``-3``
   flag available on Python 2 which reports on future Python 3
-  incompatibilities.
+  incompatibilities.   See :ref:`deprecation_20_mode` for background
+  on turning this on.
 
-* APIs which emit :class:`.exc.RemovedIn20Warning` should always feature a new
+* APIs which emit :class:`_exc.RemovedIn20Warning` should always feature a new
   1.4-compatible usage pattern that applications can migrate towards.  This
   pattern will then be fully compatible with SQLAlchemy 2.0.   In this way,
   an application can gradually adjust all of its 1.4-style code to work fully

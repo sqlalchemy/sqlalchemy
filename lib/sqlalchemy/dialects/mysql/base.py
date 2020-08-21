@@ -887,6 +887,7 @@ from collections import defaultdict
 import re
 
 from sqlalchemy import literal_column
+from sqlalchemy import text
 from sqlalchemy.sql import visitors
 from . import reflection as _reflection
 from .enumerated import ENUM
@@ -938,6 +939,7 @@ from ...sql import compiler
 from ...sql import elements
 from ...sql import roles
 from ...sql import util as sql_util
+from ...sql.sqltypes import Unicode
 from ...types import BINARY
 from ...types import BLOB
 from ...types import BOOLEAN
@@ -2708,39 +2710,24 @@ class MySQLDialect(default.DefaultDialect):
         return connection.exec_driver_sql("SELECT DATABASE()").scalar()
 
     def has_table(self, connection, table_name, schema=None):
-        # SHOW TABLE STATUS LIKE and SHOW TABLES LIKE do not function properly
-        # on macosx (and maybe win?) with multibyte table names.
-        #
-        # TODO: if this is not a problem on win, make the strategy swappable
-        # based on platform.  DESCRIBE is slower.
+        if schema is None:
+            schema = self.default_schema_name
 
-        # [ticket:726]
-        # full_name = self.identifier_preparer.format_table(table,
-        #                                                   use_schema=True)
-
-        full_name = ".".join(
-            self.identifier_preparer._quote_free_identifiers(
-                schema, table_name
-            )
+        rs = connection.execute(
+            text(
+                "SELECT * FROM information_schema.tables WHERE "
+                "table_schema = :table_schema AND "
+                "table_name = :table_name"
+            ).bindparams(
+                sql.bindparam("table_schema", type_=Unicode),
+                sql.bindparam("table_name", type_=Unicode),
+            ),
+            {
+                "table_schema": util.text_type(schema),
+                "table_name": util.text_type(table_name),
+            },
         )
-
-        st = "DESCRIBE %s" % full_name
-        rs = None
-        try:
-            try:
-                rs = connection.execution_options(
-                    skip_user_error_events=True
-                ).exec_driver_sql(st)
-                have = rs.fetchone() is not None
-                rs.close()
-                return have
-            except exc.DBAPIError as e:
-                if self._extract_error_code(e.orig) == 1146:
-                    return False
-                raise
-        finally:
-            if rs:
-                rs.close()
+        return bool(rs.scalar())
 
     def has_sequence(self, connection, sequence_name, schema=None):
         if not self.supports_sequences:

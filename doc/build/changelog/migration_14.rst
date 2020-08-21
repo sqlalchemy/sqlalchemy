@@ -409,6 +409,124 @@ is established as the implementation.
 :ticket:`1390`
 
 
+.. _deprecation_20_mode:
+
+SQLAlchemy 2.0 Deprecations Mode
+---------------------------------
+
+One of the primary goals of the 1.4 release is to provide a "transitional"
+release so that applications may migrate to SQLAlchemy 2.0 gradually.   Towards
+this end, a primary feature in release 1.4 is "2.0 deprecations mode", which is
+a series of deprecation warnings that emit against every detectable API pattern
+which will work differently in version 2.0.   The warnings all make use of the
+:class:`_exc.RemovedIn20Warning` class. As these warnings affect foundational
+patterns including the :func:`_sql.select` and :class:`_engine.Engine` constructs, even
+simple applications can generate a lot of warnings until appropriate API
+changes are made.   The warning mode is therefore turned off by default until
+the developer enables the environment variable ``SQLALCHEMY_WARN_20=1``.
+
+Given the example program below::
+
+  from sqlalchemy import column
+  from sqlalchemy import create_engine
+  from sqlalchemy import select
+  from sqlalchemy import table
+
+
+  engine = create_engine("sqlite://")
+
+  engine.execute("CREATE TABLE foo (id integer)")
+  engine.execute("INSERT INTO foo (id) VALUES (1)")
+
+
+  foo = table("foo", column("id"))
+  result = engine.execute(select([foo.c.id]))
+
+  print(result.fetchall())
+
+The above program uses several patterns that many users will already identify
+as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
+that's part of the :ref:`connectionlesss execution <dbengine_implicit>`
+system.  When we run the above program against 1.4, it returns a single line::
+
+  $ python test3.py
+  [(1,)]
+
+To enable "2.0 deprecations mode", we enable the ``SQLALCHEMY_WARN_20=1``
+variable::
+
+    SQLALCHEMY_WARN_20=1 python test3.py
+
+**IMPORTANT** - older versions of Python may not emit deprecation warnings
+by default.   To guarantee deprecation warnings, use a `warnings filter`_
+that ensures warnings are printed::
+
+    SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
+
+.. _warnings filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
+
+With warnings turned on, our program now has a lot to say::
+
+  $ SQLALCHEMY_WARN_20=1 python2 -W always::DeprecationWarning test3.py
+  test3.py:9: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    engine.execute("CREATE TABLE foo (id integer)")
+  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:2856: RemovedIn20Warning: Passing a string to Connection.execute() is deprecated and will be removed in version 2.0.  Use the text() construct, or the Connection.exec_driver_sql() method to invoke a driver-level SQL string. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    return connection.execute(statement, *multiparams, **params)
+  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:1639: RemovedIn20Warning: The current statement is being autocommitted using implicit autocommit.Implicit autocommit will be removed in SQLAlchemy 2.0.   Use the .begin() method of Engine or Connection in order to use an explicit transaction for DML and DDL statements. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    self._commit_impl(autocommit=True)
+  test3.py:10: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    engine.execute("INSERT INTO foo (id) VALUES (1)")
+  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:2856: RemovedIn20Warning: Passing a string to Connection.execute() is deprecated and will be removed in version 2.0.  Use the text() construct, or the Connection.exec_driver_sql() method to invoke a driver-level SQL string. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    return connection.execute(statement, *multiparams, **params)
+  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:1639: RemovedIn20Warning: The current statement is being autocommitted using implicit autocommit.Implicit autocommit will be removed in SQLAlchemy 2.0.   Use the .begin() method of Engine or Connection in order to use an explicit transaction for DML and DDL statements. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    self._commit_impl(autocommit=True)
+  /home/classic/dev/sqlalchemy/lib/sqlalchemy/sql/selectable.py:4271: RemovedIn20Warning: The legacy calling style of select() is deprecated and will be removed in SQLAlchemy 2.0.  Please use the new calling style described at select(). (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    return cls.create_legacy_select(*args, **kw)
+  test3.py:14: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
+    result = engine.execute(select([foo.c.id]))
+  [(1,)]
+
+With the above guidance, we can migrate our program to use 2.0 styles, and
+as a bonus our program is much clearer::
+
+  from sqlalchemy import column
+  from sqlalchemy import create_engine
+  from sqlalchemy import select
+  from sqlalchemy import table
+  from sqlalchemy import text
+
+
+  engine = create_engine("sqlite://")
+
+  # don't rely on autocommit for DML and DDL
+  with engine.begin() as connection:
+      # use connection.execute(), not engine.execute()
+      # use the text() construct to execute textual SQL
+      connection.execute(text("CREATE TABLE foo (id integer)"))
+      connection.execute(text("INSERT INTO foo (id) VALUES (1)"))
+
+
+  foo = table("foo", column("id"))
+
+  with engine.connect() as connection:
+      # use connection.execute(), not engine.execute()
+      # select() now accepts column / table expressions positionally
+      result = connection.execute(select(foo.c.id))
+
+  print(result.fetchall())
+
+
+The goal of "2.0 deprecations mode" is that a program which runs with no
+:class:`_exc.RemovedIn20Warning` warnings with "2.0 deprecations mode" turned
+on is then ready to run in SQLAlchemy 2.0.
+
+
+.. seealso::
+
+  :ref:`migration_20_toplevel`
+
+
+
 API and Behavioral Changes - Core
 ==================================
 

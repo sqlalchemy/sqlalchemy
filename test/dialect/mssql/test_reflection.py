@@ -12,6 +12,7 @@ from sqlalchemy import schema
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types
+from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
@@ -143,20 +144,38 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(table2.c["col1"].dialect_options["mssql"]["identity_start"], 2)
         eq_(table2.c["col1"].dialect_options["mssql"]["identity_increment"], 3)
 
-    @testing.emits_warning("Did not recognize")
     @testing.provide_metadata
-    def test_skip_types(self):
-        metadata = self.metadata
-        with testing.db.connect() as c:
-            c.exec_driver_sql(
-                "create table foo (id integer primary key, data xml)"
-            )
+    def test_skip_types(self, connection):
+        connection.exec_driver_sql(
+            "create table foo (id integer primary key, data xml)"
+        )
         with mock.patch.object(
-            testing.db.dialect, "ischema_names", {"int": mssql.INTEGER}
+            connection.dialect, "ischema_names", {"int": mssql.INTEGER}
         ):
-            t1 = Table("foo", metadata, autoload=True)
-        assert isinstance(t1.c.id.type, Integer)
-        assert isinstance(t1.c.data.type, types.NullType)
+            with testing.expect_warnings(
+                "Did not recognize type 'xml' of column 'data'"
+            ):
+                eq_(
+                    inspect(connection).get_columns("foo"),
+                    [
+                        {
+                            "name": "id",
+                            "type": testing.eq_type_affinity(sqltypes.INTEGER),
+                            "nullable": False,
+                            "default": None,
+                            "autoincrement": False,
+                        },
+                        {
+                            "name": "data",
+                            "type": testing.eq_type_affinity(
+                                sqltypes.NullType
+                            ),
+                            "nullable": True,
+                            "default": None,
+                            "autoincrement": False,
+                        },
+                    ],
+                )
 
     @testing.provide_metadata
     def test_cross_schema_fk_pk_name_overlaps(self):

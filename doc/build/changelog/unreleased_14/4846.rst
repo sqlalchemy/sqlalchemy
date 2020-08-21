@@ -1,0 +1,19 @@
+.. change::
+    :tags: engine
+    :tickets: 4846
+
+    "Implicit autocommit", which is the COMMIT that occurs when a DML or DDL
+    statement is emitted on a connection, is deprecated and won't be part of
+    SQLAlchemy 2.0.   A 2.0-style warning is emitted when autocommit takes
+    effect, so that the calling code may be adjusted to use an explicit
+    transaction.
+
+    As part of this change, DDL methods such as
+    :meth:`_schema.MetaData.create_all` when used against an
+    :class:`_engine.Engine` will run the operation in a BEGIN block if one is
+    not started already.
+
+    .. seealso::
+
+        :ref:`deprecation_20_mode`
+

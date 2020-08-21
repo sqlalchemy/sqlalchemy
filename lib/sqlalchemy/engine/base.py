@@ -829,6 +829,15 @@ class Connection(Connectable):
     def _commit_impl(self, autocommit=False):
         assert not self.__branch_from
 
+        if autocommit:
+            util.warn_deprecated_20(
+                "The current statement is being autocommitted using "
+                "implicit autocommit, which will be removed in "
+                "SQLAlchemy 2.0. "
+                "Use the .begin() method of Engine or Connection in order to "
+                "use an explicit transaction for DML and DDL statements."
+            )
+
         if self._has_events or self.engine._has_events:
             self.dispatch.commit(self)
 
@@ -2814,7 +2823,7 @@ class Engine(Connectable, log.Identified):
             return conn.run_callable(callable_, *args, **kwargs)
 
     def _run_ddl_visitor(self, visitorcallable, element, **kwargs):
-        with self.connect() as conn:
+        with self.begin() as conn:
             conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 
     @util.deprecated_20(

@@ -9,6 +9,7 @@ from . import config
 from . import exclusions
 from .. import event
 from .. import schema
+from .. import types as sqltypes
 
 
 __all__ = ["Table", "Column"]
@@ -113,6 +114,43 @@ def Column(*args, **kw):
 
             event.listen(col, "after_parent_attach", add_seq, propagate=True)
     return col
+
+
+class eq_type_affinity(object):
+    """Helper to compare types inside of datastructures based on affinity.
+
+    E.g.::
+
+        eq_(
+            inspect(connection).get_columns("foo"),
+            [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.INTEGER),
+                    "nullable": False,
+                    "default": None,
+                    "autoincrement": False,
+                },
+                {
+                    "name": "data",
+                    "type": testing.eq_type_affinity(sqltypes.NullType),
+                    "nullable": True,
+                    "default": None,
+                    "autoincrement": False,
+                },
+            ],
+        )
+
+    """
+
+    def __init__(self, target):
+        self.target = sqltypes.to_instance(target)
+
+    def __eq__(self, other):
+        return self.target._type_affinity is other._type_affinity
+
+    def __ne__(self, other):
+        return self.target._type_affinity is not other._type_affinity
 
 
 def _truncate_name(dialect, name):

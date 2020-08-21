@@ -104,19 +104,18 @@ a comprehensive future compatibility system that is to be integrated into the
 unambiguous, and incremental upgrade path in order to migrate applications to
 being fully 2.0 compatible.   The :class:`.exc.RemovedIn20Warning` deprecation
 warning is at the base of this system to provide guidance on what behaviors in
-an existing codebase will need to be modified.
-
-For some occurrences of this warning, an additional recommendation to use an
-API in either the ``sqlalchemy.future`` or  ``sqlalchemy.future.orm`` packages
-may be present.  This refers to two  special future-compatibility packages that
-are part of SQLAlchemy 1.4 and  are there to help migrate an application to the
-2.0 version.
+an existing codebase will need to be modified.  An overview of how to enable
+this warning is at :ref:`deprecation_20_mode`.
 
 .. seealso::
 
     :ref:`migration_20_toplevel`  - An overview of the upgrade process from
     the 1.x series, as well as the current goals and progress of SQLAlchemy
     2.0.
+
+
+    :ref:`deprecation_20_mode` - specific guidelines on how to use
+    "2.0 deprecations mode" in SQLAlchemy 1.4.
 
 .. _error_c9bf:
 

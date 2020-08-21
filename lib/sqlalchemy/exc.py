@@ -636,6 +636,8 @@ class RemovedIn20Warning(SADeprecationWarning):
 
         :ref:`error_b8d9`.
 
+        :ref:`deprecation_20_mode`
+
     """
 
     deprecated_since = "1.4"

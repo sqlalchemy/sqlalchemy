@@ -57,7 +57,7 @@ class _LiteralRoundTripFixture(object):
         t = Table("t", self.metadata, Column("x", type_))
         t.create()
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             for value in input_:
                 ins = (
                     t.insert()

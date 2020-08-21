@@ -549,6 +549,163 @@ class DDLExecutionTest(fixtures.TestBase):
             )
 
 
+class DDLTransactionTest(fixtures.TestBase):
+    """test DDL transactional behavior as of SQLAlchemy 1.4."""
+
+    @testing.fixture
+    def metadata_fixture(self):
+        m = MetaData()
+        Table("t1", m, Column("q", Integer))
+        Table("t2", m, Column("q", Integer))
+
+        try:
+            yield m
+        finally:
+            m.drop_all(testing.db)
+
+    def _listening_engine_fixture(self, future=False):
+        eng = engines.testing_engine(future=future)
+
+        m1 = mock.Mock()
+
+        event.listen(eng, "begin", m1.begin)
+        event.listen(eng, "commit", m1.commit)
+        event.listen(eng, "rollback", m1.rollback)
+
+        @event.listens_for(eng, "before_cursor_execute")
+        def before_cursor_execute(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            if "CREATE TABLE" in statement:
+                m1.cursor_execute("CREATE TABLE ...")
+
+        eng.connect().close()
+
+        return eng, m1
+
+    @testing.fixture
+    def listening_engine_fixture(self):
+        return self._listening_engine_fixture(future=False)
+
+    @testing.fixture
+    def future_listening_engine_fixture(self):
+        return self._listening_engine_fixture(future=True)
+
+    def test_ddl_legacy_engine(
+        self, metadata_fixture, listening_engine_fixture
+    ):
+        eng, m1 = listening_engine_fixture
+
+        metadata_fixture.create_all(eng)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+    def test_ddl_future_engine(
+        self, metadata_fixture, future_listening_engine_fixture
+    ):
+        eng, m1 = future_listening_engine_fixture
+
+        metadata_fixture.create_all(eng)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+    def test_ddl_legacy_connection_no_transaction(
+        self, metadata_fixture, listening_engine_fixture
+    ):
+        eng, m1 = listening_engine_fixture
+
+        with eng.connect() as conn:
+            with testing.expect_deprecated(
+                "The current statement is being autocommitted using "
+                "implicit autocommit"
+            ):
+                metadata_fixture.create_all(conn)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+    def test_ddl_legacy_connection_transaction(
+        self, metadata_fixture, listening_engine_fixture
+    ):
+        eng, m1 = listening_engine_fixture
+
+        with eng.connect() as conn:
+            with conn.begin():
+                metadata_fixture.create_all(conn)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+    def test_ddl_future_connection_autobegin_transaction(
+        self, metadata_fixture, future_listening_engine_fixture
+    ):
+        eng, m1 = future_listening_engine_fixture
+
+        with eng.connect() as conn:
+            metadata_fixture.create_all(conn)
+
+            conn.commit()
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+    def test_ddl_future_connection_explicit_begin_transaction(
+        self, metadata_fixture, future_listening_engine_fixture
+    ):
+        eng, m1 = future_listening_engine_fixture
+
+        with eng.connect() as conn:
+            with conn.begin():
+                metadata_fixture.create_all(conn)
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(mock.ANY),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.cursor_execute("CREATE TABLE ..."),
+                mock.call.commit(mock.ANY),
+            ],
+        )
+
+
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
     def mock_engine(self):
         def executor(*a, **kw):
