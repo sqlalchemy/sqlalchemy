@@ -9,6 +9,7 @@ from sqlalchemy import delete
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -1703,6 +1704,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "PostrgreSQL computed columns do not support 'virtual'",
             schema.CreateTable(t).compile,
             dialect=postgresql.dialect(),
+        )
+
+    def test_column_identity(self):
+        # all other tests are in test_identity_column.py
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column("y", Integer, Identity(always=True, start=4, increment=7)),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
+            "(INCREMENT BY 7 START WITH 4))",
         )
 
 

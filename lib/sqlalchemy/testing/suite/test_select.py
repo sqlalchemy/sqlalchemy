@@ -4,6 +4,7 @@ from .. import AssertsCompiledSQL
 from .. import AssertsExecutionResults
 from .. import config
 from .. import fixtures
+from ..assertions import assert_raises
 from ..assertions import eq_
 from ..assertions import in_
 from ..assertsql import CursorSQL
@@ -17,6 +18,7 @@ from ... import exists
 from ... import false
 from ... import ForeignKey
 from ... import func
+from ... import Identity
 from ... import Integer
 from ... import literal
 from ... import literal_column
@@ -30,6 +32,8 @@ from ... import true
 from ... import tuple_
 from ... import union
 from ... import util
+from ...exc import DatabaseError
+from ...exc import ProgrammingError
 
 
 class CollateTest(fixtures.TablesTest):
@@ -1044,6 +1048,81 @@ class ComputedColumnTest(fixtures.TablesTest):
             eq_(res, [(100, 40), (1764, 168)])
 
 
+class IdentityColumnTest(fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("identity_columns",)
+    run_inserts = "once"
+    run_deletes = "once"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "tbl_a",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(always=True, start=42),
+                primary_key=True,
+            ),
+            Column("desc", String(100)),
+        )
+        Table(
+            "tbl_b",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(increment=-5, start=0, minvalue=-1000, maxvalue=0,),
+                primary_key=True,
+            ),
+            Column("desc", String(100)),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        connection.execute(
+            cls.tables.tbl_a.insert(), [{"desc": "a"}, {"desc": "b"}],
+        )
+        connection.execute(
+            cls.tables.tbl_b.insert(), [{"desc": "a"}, {"desc": "b"}],
+        )
+        connection.execute(
+            cls.tables.tbl_b.insert(), [{"id": 42, "desc": "c"}],
+        )
+
+    def test_select_all(self, connection):
+        res = connection.execute(
+            select([text("*")])
+            .select_from(self.tables.tbl_a)
+            .order_by(self.tables.tbl_a.c.id)
+        ).fetchall()
+        eq_(res, [(42, "a"), (43, "b")])
+
+        res = connection.execute(
+            select([text("*")])
+            .select_from(self.tables.tbl_b)
+            .order_by(self.tables.tbl_b.c.id)
+        ).fetchall()
+        eq_(res, [(-5, "b"), (0, "a"), (42, "c")])
+
+    def test_select_columns(self, connection):
+
+        res = connection.execute(
+            select([self.tables.tbl_a.c.id]).order_by(self.tables.tbl_a.c.id)
+        ).fetchall()
+        eq_(res, [(42,), (43,)])
+
+    @testing.requires.identity_columns_standard
+    def test_insert_always_error(self, connection):
+        def fn():
+            connection.execute(
+                self.tables.tbl_a.insert(), [{"id": 200, "desc": "a"}],
+            )
+
+        assert_raises((DatabaseError, ProgrammingError), fn)
+
+
 class ExistsTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -1093,7 +1172,6 @@ class ExistsTest(fixtures.TablesTest):
 
 class DistinctOnTest(AssertsCompiledSQL, fixtures.TablesTest):
     __backend__ = True
-    __requires__ = ("standard_cursor_sql",)
 
     @testing.fails_if(testing.requires.supports_distinct_on)
     def test_distinct_on(self):

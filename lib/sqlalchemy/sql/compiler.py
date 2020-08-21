@@ -3918,31 +3918,39 @@ class DDLCompiler(Compiled):
             drop.element, use_table=True
         )
 
+    def get_identity_options(self, identity_options):
+        text = []
+        if identity_options.increment is not None:
+            text.append("INCREMENT BY %d" % identity_options.increment)
+        if identity_options.start is not None:
+            text.append("START WITH %d" % identity_options.start)
+        if identity_options.minvalue is not None:
+            text.append("MINVALUE %d" % identity_options.minvalue)
+        if identity_options.maxvalue is not None:
+            text.append("MAXVALUE %d" % identity_options.maxvalue)
+        if identity_options.nominvalue is not None:
+            text.append("NO MINVALUE")
+        if identity_options.nomaxvalue is not None:
+            text.append("NO MAXVALUE")
+        if identity_options.cache is not None:
+            text.append("CACHE %d" % identity_options.cache)
+        if identity_options.order is True:
+            text.append("ORDER")
+        if identity_options.cycle is not None:
+            text.append("CYCLE")
+        return " ".join(text)
+
     def visit_create_sequence(self, create, prefix=None, **kw):
         text = "CREATE SEQUENCE %s" % self.preparer.format_sequence(
             create.element
         )
         if prefix:
             text += prefix
-        if create.element.increment is not None:
-            text += " INCREMENT BY %d" % create.element.increment
         if create.element.start is None:
             create.element.start = self.dialect.default_sequence_base
-        text += " START WITH %d" % create.element.start
-        if create.element.minvalue is not None:
-            text += " MINVALUE %d" % create.element.minvalue
-        if create.element.maxvalue is not None:
-            text += " MAXVALUE %d" % create.element.maxvalue
-        if create.element.nominvalue is not None:
-            text += " NO MINVALUE"
-        if create.element.nomaxvalue is not None:
-            text += " NO MAXVALUE"
-        if create.element.cache is not None:
-            text += " CACHE %d" % create.element.cache
-        if create.element.order is True:
-            text += " ORDER"
-        if create.element.cycle is not None:
-            text += " CYCLE"
+        options = self.get_identity_options(create.element)
+        if options:
+            text += " " + options
         return text
 
     def visit_drop_sequence(self, drop, **kw):
@@ -3980,6 +3988,9 @@ class DDLCompiler(Compiled):
 
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
+
+        if column.identity is not None:
+            colspec += " " + self.process(column.identity)
 
         if not column.nullable:
             colspec += " NOT NULL"
@@ -4136,6 +4147,15 @@ class DDLCompiler(Compiled):
             text += " STORED"
         elif generated.persisted is False:
             text += " VIRTUAL"
+        return text
+
+    def visit_identity_column(self, identity, **kw):
+        text = "GENERATED %s AS IDENTITY" % (
+            "ALWAYS" if identity.always else "BY DEFAULT",
+        )
+        options = self.get_identity_options(identity)
+        if options:
+            text += " (%s)" % options
         return text
 
 

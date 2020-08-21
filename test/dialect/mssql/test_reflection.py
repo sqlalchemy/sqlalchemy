@@ -133,7 +133,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 primary_key=True,
             ),
         )
-        table.create()
+        with testing.expect_deprecated(
+            "The dialect options 'mssql_identity_start' and"
+        ):
+            table.create()
 
         meta2 = MetaData(testing.db)
         table2 = Table("identity_test", meta2, autoload=True)
