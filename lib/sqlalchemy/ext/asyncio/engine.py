@@ -79,7 +79,10 @@ class AsyncConnection(StartableContext):
         self.sync_connection = await (greenlet_spawn(self.sync_engine.connect))
         return self
 
-    def _sync_connection(self):
+    async def _sync_connection(self):
+        # Even though this method itself doesn't have to be async, it's still
+        # defined as an async method to allow subclasses to be able to add
+        # different async logic here, e.g. lazy connections.
         if not self.sync_connection:
             self._raise_for_not_started()
         return self.sync_connection
@@ -88,14 +91,12 @@ class AsyncConnection(StartableContext):
         """Begin a transaction prior to autobegin occurring.
 
         """
-        self._sync_connection()
         return AsyncTransaction(self)
 
     def begin_nested(self) -> "AsyncTransaction":
         """Begin a nested transaction and return a transaction handle.
 
         """
-        self._sync_connection()
         return AsyncTransaction(self, nested=True)
 
     async def commit(self):
@@ -110,7 +111,7 @@ class AsyncConnection(StartableContext):
         :meth:`_future.Connection.begin` method is called.
 
         """
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
         await greenlet_spawn(conn.commit)
 
     async def rollback(self):
@@ -127,7 +128,7 @@ class AsyncConnection(StartableContext):
 
 
         """
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
         await greenlet_spawn(conn.rollback)
 
     async def close(self):
@@ -137,7 +138,7 @@ class AsyncConnection(StartableContext):
         is in place.
 
         """
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
         await greenlet_spawn(conn.close)
 
     async def exec_driver_sql(
@@ -151,7 +152,7 @@ class AsyncConnection(StartableContext):
 
         """
 
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
 
         result = await greenlet_spawn(
             conn.exec_driver_sql, statement, parameters, execution_options,
@@ -175,7 +176,7 @@ class AsyncConnection(StartableContext):
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object."""
 
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
 
         result = await greenlet_spawn(
             conn._execute_20,
@@ -227,7 +228,7 @@ class AsyncConnection(StartableContext):
         :return: a :class:`_engine.Result` object.
 
         """
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
 
         result = await greenlet_spawn(
             conn._execute_20, statement, parameters, execution_options,
@@ -274,7 +275,7 @@ class AsyncConnection(StartableContext):
 
         """
 
-        conn = self._sync_connection()
+        conn = await self._sync_connection()
 
         return await greenlet_spawn(fn, conn, *arg, **kw)
 
@@ -434,10 +435,9 @@ class AsyncTransaction(StartableContext):
 
         """
 
+        conn = await self.connection._sync_connection()
         self.sync_transaction = await greenlet_spawn(
-            self.connection._sync_connection().begin_nested
-            if self.nested
-            else self.connection._sync_connection().begin
+            conn.begin_nested if self.nested else conn.begin
         )
         return self
 

@@ -69,11 +69,11 @@ class AsyncEngineTest(EngineFixture):
     async def test_connection_not_started(self, async_engine):
 
         conn = async_engine.connect()
-        testing.assert_raises_message(
+        await assert_raises_message_async(
             asyncio_exc.AsyncContextNotStarted,
             "AsyncConnection context has not been started and "
             "object has not been awaited.",
-            conn.begin,
+            conn.begin(),
         )
 
     @async_test
