@@ -87,3 +87,40 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+
+  run-test-arm64:
+    name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - cp35-cp35m
+          - cp36-cp36m
+          - cp37-cp37m
+          - cp38-cp38
+        build-type:
+          - "cext"
+          - "nocext"
+
+      fail-fast: false
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up emulation
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Run tests
+        uses: docker://quay.io/pypa/manylinux2014_aarch64
+        with:
+          args: |
+            bash -c "
+            export PATH=/opt/python/${{ matrix.python-version }}/bin:$PATH &&
+            python --version &&
+            python -m pip install --upgrade pip &&
+            pip install --upgrade tox setuptools &&
+            pip list &&
+            tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+            "
