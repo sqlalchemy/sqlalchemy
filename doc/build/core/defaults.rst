@@ -548,7 +548,7 @@ including the default schema, if any.
 
 .. _computed_ddl:
 
-Computed (GENERATED ALWAYS AS) Columns
+Computed Columns (GENERATED ALWAYS AS)
 --------------------------------------
 
 .. versionadded:: 1.3.11
@@ -679,10 +679,11 @@ like::
 The database will generate a value for the ``id`` column upon insert,
 starting from ``42``, if the statement did not already contain a value for
 the ``id`` column.
-An identity column can also require that the database generate the value
+An identity column can also require that the database generates the value
 of the column, ignoring the value passed with the statement or raising an
-error, depending on backend. To activate this mode, specify the parameter
-``always=True`` in the :class:`.Identity` construct. Updating the previous
+error, depending on the backend. To activate this mode, set the parameter
+:paramref:`_schema.Identity.always` to ``True`` in the
+:class:`.Identity` construct. Updating the previous
 example to include this parameter will generate the following DDL::
 
     CREATE TABLE data (
@@ -690,9 +691,6 @@ example to include this parameter will generate the following DDL::
         data VARCHAR,
         PRIMARY KEY (id)
     )
-
-..TODO: not sure if we will actually implement it this way. server onupdate seems
-  unnecessary?
 
 The :class:`.Identity` construct is a subclass of the :class:`.FetchedValue`
 object, and will set itself up as the "server default" generator for the
@@ -707,9 +705,9 @@ The :class:`.Identity` construct is currently known to be supported by:
 
 * PostgreSQL as of version 10.
 
-* Oracle as of version 12. Oracle also support passing ``always=None`` to
+* Oracle as of version 12. It also supports passing ``always=None`` to
   enable the default generated mode and the parameter ``on_null=True`` to
-  specify "ON NULL" in conjunction with a 'by default' identity column.
+  specify "ON NULL" in conjunction with a "BY DEFAULT" identity column.
 
 * Microsoft SQL Server. MSSQL uses a custom syntax that only supports the
   ``start`` and ``increment`` parameters, and ignores all other.
@@ -718,7 +716,7 @@ When :class:`.Identity` is used with an unsupported backend, it is ignored,
 and the default SQLAlchemy logic for autoincrementing columns is used.
 
 An error is raised when a :class:`_schema.Column` specifies both an
-:class:`.Identity` and also set :paramref:`_schema.Column.autoincrement`
+:class:`.Identity` and also sets :paramref:`_schema.Column.autoincrement`
 to ``False``.
 
 .. seealso::
