@@ -51,7 +51,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import pickleable
 from sqlalchemy.util import b
 
@@ -1051,7 +1051,7 @@ class TypeRoundTripTest(
                     is_(tbl._autoincrement_column, col)
                 else:
                     eq_(col.autoincrement, "auto")
-                    is_not_(tbl._autoincrement_column, col)
+                    is_not(tbl._autoincrement_column, col)
 
             # mxodbc can't handle scope_identity() with DEFAULT VALUES
 

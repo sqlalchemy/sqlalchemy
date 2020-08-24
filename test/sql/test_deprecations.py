@@ -35,7 +35,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
 
 
 class DeprecationWarningsTest(fixtures.TestBase):
@@ -173,8 +173,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         assert isinstance(func.myfunc().type, DateTime)
 
         in_("myfunc", reg)
-        not_in_("MYFUNC", reg)
-        not_in_("MyFunc", reg)
+        not_in("MYFUNC", reg)
+        not_in("MyFunc", reg)
         in_("myfunc", cs_reg)
         eq_(set(cs_reg["myfunc"].keys()), set(["MYFUNC"]))
 
@@ -198,8 +198,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
             assert isinstance(func.myfunc().type, Integer)
 
         eq_(reg["myfunc"], functions._CASE_SENSITIVE)
-        not_in_("MYFUNC", reg)
-        not_in_("MyFunc", reg)
+        not_in("MYFUNC", reg)
+        not_in("MyFunc", reg)
         in_("myfunc", cs_reg)
         eq_(set(cs_reg["myfunc"].keys()), set(["MYFUNC", "MyFunc"]))
 
@@ -217,8 +217,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         assert isinstance(func.replaceable_func().type, Integer)
 
         in_("replaceable_func", reg)
-        not_in_("REPLACEABLE_FUNC", reg)
-        not_in_("Replaceable_Func", reg)
+        not_in("REPLACEABLE_FUNC", reg)
+        not_in("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
         eq_(set(cs_reg["replaceable_func"].keys()), set(["REPLACEABLE_FUNC"]))
 
@@ -241,8 +241,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         assert isinstance(func.replaceable_func().type, NullType)
 
         eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
-        not_in_("REPLACEABLE_FUNC", reg)
-        not_in_("Replaceable_Func", reg)
+        not_in("REPLACEABLE_FUNC", reg)
+        not_in("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
         eq_(
             set(cs_reg["replaceable_func"].keys()),
@@ -287,8 +287,8 @@ class CaseSensitiveFunctionDeprecationsTest(fixtures.TestBase):
         assert isinstance(func.replaceable_func().type, String)
 
         eq_(reg["replaceable_func"], functions._CASE_SENSITIVE)
-        not_in_("REPLACEABLE_FUNC", reg)
-        not_in_("Replaceable_Func", reg)
+        not_in("REPLACEABLE_FUNC", reg)
+        not_in("Replaceable_Func", reg)
         in_("replaceable_func", cs_reg)
         eq_(
             set(cs_reg["replaceable_func"].keys()),

@@ -11,7 +11,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 
 
 class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -69,7 +69,7 @@ class DDLComputedTest(fixtures.TestBase, AssertsCompiledSQL):
         t2 = t.tometadata(m2)
         comp2 = t2.c.y.server_default
 
-        is_not_(comp1, comp2)
+        is_not(comp1, comp2)
 
         is_(comp1.column, t.c.y)
         is_(t.c.y.server_onupdate, comp1)

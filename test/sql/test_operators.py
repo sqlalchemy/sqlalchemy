@@ -53,7 +53,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.types import ARRAY
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Concatenable
@@ -1083,9 +1083,9 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_constant_non_singleton(self):
-        is_not_(null(), null())
-        is_not_(false(), false())
-        is_not_(true(), true())
+        is_not(null(), null())
+        is_not(false(), false())
+        is_not(true(), true())
 
     def test_constant_render_distinct(self):
         self.assert_compile(
@@ -2002,7 +2002,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         expr = not_(orig_expr)
         isinstance(expr, Label)
         eq_(expr.name, "foo")
-        is_not_(expr, orig_expr)
+        is_not(expr, orig_expr)
         is_(expr._element.operator, operator.inv)  # e.g. and not false_
 
         self.assert_compile(
@@ -2016,7 +2016,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid == 1, self.table1.c.myid == 2
         ).self_group()
         expr = not_(orig_expr)
-        is_not_(expr, orig_expr)
+        is_not(expr, orig_expr)
 
         self.assert_compile(
             expr,

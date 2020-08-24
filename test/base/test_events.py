@@ -8,7 +8,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import gc_collect
@@ -162,7 +162,7 @@ class EventsTest(fixtures.TestBase):
         def listen_two(x, y):
             pass
 
-        is_not_(
+        is_not(
             self.Target.dispatch._empty_listener_reg[self.Target]["event_one"],
             t1.dispatch.event_one,
         )
