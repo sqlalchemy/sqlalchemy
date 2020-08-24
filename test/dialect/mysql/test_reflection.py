@@ -321,6 +321,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_avg_row_length="3",
                 mysql_password="secret",
                 mysql_connection="fish",
+                mysql_stats_sample_pages="4",
             )
 
         def_table = Table(
@@ -367,6 +368,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             assert def_table.kwargs["mysql_avg_row_length"] == "3"
             assert def_table.kwargs["mysql_password"] == "secret"
             assert def_table.kwargs["mysql_connection"] == "fish"
+            assert def_table.kwargs["mysql_stats_sample_pages"] == "4"
 
             assert reflected.kwargs["mysql_engine"] == "MEMORY"
 
@@ -375,12 +377,146 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             assert reflected.kwargs["mysql_default charset"] == "utf8"
             assert reflected.kwargs["mysql_avg_row_length"] == "3"
             assert reflected.kwargs["mysql_connection"] == "fish"
+            assert reflected.kwargs["mysql_stats_sample_pages"] == "4"
 
             # This field doesn't seem to be returned by mysql itself.
             # assert reflected.kwargs['mysql_password'] == 'secret'
 
             # This is explicitly ignored when reflecting schema.
             # assert reflected.kwargs['mysql_auto_increment'] == '5'
+
+    def test_reflection_with_partition_options(self):
+        kwargs = dict(
+            mysql_engine="InnoDB",
+            mysql_default_charset="utf8",
+            mysql_partition_by="HASH(MONTH(c2))",
+            mysql_partitions="6",
+        )
+
+        def_table = Table(
+            "mysql_def",
+            MetaData(testing.db),
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs
+        )
+
+        def_table.create()
+        try:
+            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
+        finally:
+            def_table.drop()
+
+        assert def_table.kwargs["mysql_partition_by"] == "HASH(MONTH(c2))"
+        assert def_table.kwargs["mysql_partitions"] == "6"
+
+        assert reflected.kwargs["mysql_partition_by"] == "HASH (month(`c2`))"
+        assert reflected.kwargs["mysql_partitions"] == "6"
+
+    def test_reflection_with_subpartition_options(self):
+
+        subpartititon_text = """HASH (TO_DAYS (c2))
+                                SUBPARTITIONS 2(
+                                 PARTITION p0 VALUES LESS THAN (1990),
+                                 PARTITION p1 VALUES LESS THAN (2000),
+                                 PARTITION p2 VALUES LESS THAN MAXVALUE
+                             );"""
+        kwargs = dict(
+            mysql_engine="InnoDB",
+            mysql_default_charset="utf8",
+            mysql_partition_by="RANGE(YEAR(c2))",
+            mysql_subpartition_by=subpartititon_text,
+        )
+
+        def_table = Table(
+            "mysql_def",
+            MetaData(testing.db),
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs
+        )
+
+        def_table.create()
+        try:
+            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
+        finally:
+            def_table.drop()
+
+        assert def_table.kwargs["mysql_partition_by"] == "RANGE(YEAR(c2))"
+
+        ref_kwargs = reflected.kwargs
+        assert ref_kwargs["mysql_partition_by"] == "RANGE (year(`c2`))"
+        assert ref_kwargs["mysql_subpartition_by"] == "HASH (to_days(`c2`))"
+        assert ref_kwargs["mysql_subpartitions"] == "2"
+
+        opts = reflected.dialect_options["mysql"]
+        expected = (
+            "PARTITION p0 VALUES LESS THAN (1990) ENGINE = InnoDB,"
+            " PARTITION p1 VALUES LESS THAN (2000) ENGINE = InnoDB,"
+            " PARTITION p2 VALUES LESS THAN MAXVALUE ENGINE = InnoDB"
+        )
+        assert opts["partition_definitions"] == expected
+
+    def test_reflection_with_subpartition_options_two(self):
+        partititon_text = """RANGE (YEAR (c2))
+                                SUBPARTITION BY HASH( TO_DAYS(c2))(
+                                 PARTITION p0 VALUES LESS THAN (1990)(
+                                 SUBPARTITION s0,
+                                 SUBPARTITION s1
+                                 ),
+                                 PARTITION p1 VALUES LESS THAN (2000)(
+                                 SUBPARTITION s2,
+                                 SUBPARTITION s3
+                                 ),
+                                PARTITION p2 VALUES LESS THAN MAXVALUE(
+                                 SUBPARTITION s4,
+                                 SUBPARTITION s5
+                                 )
+                             );"""
+
+        kwargs = dict(
+            mysql_engine="InnoDB",
+            mysql_default_charset="utf8",
+            mysql_partition_by=partititon_text,
+        )
+
+        def_table = Table(
+            "mysql_def",
+            MetaData(testing.db),
+            Column("c1", Integer()),
+            Column("c2", DateTime),
+            **kwargs
+        )
+
+        def_table.create()
+        try:
+            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
+        finally:
+            def_table.drop()
+
+        assert def_table.kwargs["mysql_partition_by"] == partititon_text
+
+        ref_kwargs = reflected.kwargs
+        assert ref_kwargs["mysql_partition_by"] == "RANGE (year(`c2`))"
+        assert ref_kwargs["mysql_subpartition_by"] == "HASH (to_days(`c2`))"
+
+        opts = reflected.dialect_options["mysql"]
+        part_expected = (
+            "PARTITION p0 VALUES LESS THAN (1990),"
+            " PARTITION p1 VALUES LESS THAN (2000),"
+            " PARTITION p2 VALUES LESS THAN MAXVALUE"
+        )
+        subpart_expected = (
+            "SUBPARTITION s0 ENGINE = InnoDB,"
+            " SUBPARTITION s1 ENGINE = InnoDB,"
+            " SUBPARTITION s2 ENGINE = InnoDB,"
+            " SUBPARTITION s3 ENGINE = InnoDB,"
+            " SUBPARTITION s4 ENGINE = InnoDB,"
+            " SUBPARTITION s5 ENGINE = InnoDB"
+        )
+
+        assert opts["partition_definitions"] == part_expected
+        assert opts["subpartition_definitions"] == subpart_expected
 
     def test_reflection_on_include_columns(self):
         """Test reflection of include_columns to be sure they respect case."""

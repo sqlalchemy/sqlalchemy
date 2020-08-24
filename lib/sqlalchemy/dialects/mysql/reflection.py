@@ -52,6 +52,8 @@ class MySQLTableDefinitionParser(object):
                 pass
             elif line.startswith("CREATE "):
                 self._parse_table_name(line, state)
+            elif "PARTITION" in line:
+                self._parse_partition_options(line, state)
             # Not present in real reflection, but may be if
             # loading from a file.
             elif not line:
@@ -159,6 +161,52 @@ class MySQLTableDefinitionParser(object):
 
         for opt, val in options.items():
             state.table_options["%s_%s" % (self.dialect.name, opt)] = val
+
+    def _parse_partition_options(self, line, state):
+        options = {}
+        rest_of_line = line[:]
+
+        while rest_of_line[0] == "(" or rest_of_line[0] == " ":
+            rest_of_line = rest_of_line[1:]
+
+        for regex, cleanup in self._pr_options:
+            m = regex.search(rest_of_line)
+            if not m or "PARTITION" not in regex.pattern:
+                continue
+
+            directive = m.group("directive")
+            directive = directive.replace(" ", "_").lower()
+            is_subpartition = directive == "subpartition"
+
+            if directive == "partition" or is_subpartition:
+                rest_of_line = rest_of_line.replace(") */", "")
+                rest_of_line = rest_of_line.replace(",", "")
+                if is_subpartition and rest_of_line[-1] == ")":
+                    rest_of_line = rest_of_line[:-1]
+                defs = "mysql_%s_definitions" % (directive)
+                options[defs] = rest_of_line
+            else:
+                value = m.group("val")
+                if cleanup:
+                    value = cleanup(value)
+                options[directive] = value
+            break
+
+        for opt, val in options.items():
+            if (
+                opt == "mysql_partition_definitions"
+                or opt == "mysql_subpartition_definitions"
+            ):
+                # builds a string of definitions
+                if opt not in state.table_options:
+                    state.table_options[opt] = val
+                else:
+                    state.table_options[opt] = "%s, %s" % (
+                        state.table_options[opt],
+                        val,
+                    )
+            else:
+                state.table_options["%s_%s" % (self.dialect.name, opt)] = val
 
     def _parse_column(self, line, state):
         """Extract column details.
@@ -487,8 +535,19 @@ class MySQLTableDefinitionParser(object):
             "PACK_KEYS",
             "ROW_FORMAT",
             "KEY_BLOCK_SIZE",
+            "STATS_SAMPLE_PAGES",
         ):
             self._add_option_word(option)
+
+        for option in (
+            "PARTITION BY",
+            "SUBPARTITION BY",
+            "PARTITIONS",
+            "SUBPARTITIONS",
+            "PARTITION",
+            "SUBPARTITION",
+        ):
+            self._add_partition_option_word(option)
 
         self._add_option_regex("UNION", r"\([^\)]+\)")
         self._add_option_regex("TABLESPACE", r".*? STORAGE DISK")
@@ -515,6 +574,21 @@ class MySQLTableDefinitionParser(object):
             re.escape(directive),
             self._optional_equals,
         )
+        self._pr_options.append(_pr_compile(regex))
+
+    def _add_partition_option_word(self, directive):
+        if directive == "PARTITION BY" or directive == "SUBPARTITION BY":
+            regex = r"(?<!\S)(?P<directive>%s)%s" r"(?P<val>\w+.*)" % (
+                re.escape(directive),
+                self._optional_equals,
+            )
+        elif directive == "SUBPARTITIONS" or directive == "PARTITIONS":
+            regex = r"(?<!\S)(?P<directive>%s)%s" r"(?P<val>\d+)" % (
+                re.escape(directive),
+                self._optional_equals,
+            )
+        else:
+            regex = r"(?<!\S)(?P<directive>%s)(?!\S)" % (re.escape(directive),)
         self._pr_options.append(_pr_compile(regex))
 
     def _add_option_regex(self, directive, regex):
