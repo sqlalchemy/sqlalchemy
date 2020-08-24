@@ -96,7 +96,7 @@ by any additional options::
     import psycopg2
 
     def getconn():
-        c = psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
+        c = psycopg2.connect(user='ed', host='127.0.0.1', dbname='test')
         return c
 
     mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)

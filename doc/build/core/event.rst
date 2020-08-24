@@ -94,7 +94,7 @@ and objects::
     import psycopg2
 
     def connect():
-        return psycopg2.connect(username='ed', host='127.0.0.1', dbname='test')
+        return psycopg2.connect(user='ed', host='127.0.0.1', dbname='test')
 
     my_pool = QueuePool(connect)
     my_engine = create_engine('postgresql://ed@localhost/test')
