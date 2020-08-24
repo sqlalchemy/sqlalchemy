@@ -4697,7 +4697,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
         :param on_null:
           Set to ``True`` to specify ON NULL in conjunction with a
-          'by default' identity column. This option is only supported on
+          ``always=False`` identity column. This option is only supported on
           some backends, like Oracle.
 
         :param start: the starting index of the sequence.
