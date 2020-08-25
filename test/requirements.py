@@ -884,7 +884,7 @@ class DefaultRequirements(SuiteRequirements):
     def emulated_lastrowid_even_with_sequences(self):
         """"target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
-        Sequence on it..
+        Sequence on it.
         """
         return fails_on_everything_except(
             "mysql",
@@ -1666,8 +1666,8 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def supports_lastrowid_for_expressions(self):
-        """sequences allowed in WHERE, GROUP BY, HAVING, etc."""
-        return skip_if("mssql")
+        """cursor.lastrowid works if an explicit SQL expression was used."""
+        return only_on(["sqlite", "mysql", "mariadb"])
 
     @property
     def supports_sequence_for_autoincrement_column(self):

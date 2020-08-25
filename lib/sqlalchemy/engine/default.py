@@ -1315,15 +1315,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _setup_dml_or_text_result(self):
         if self.isinsert:
-            if (
-                not self._is_implicit_returning
-                and not self.compiled.inline
-                and self.dialect.postfetch_lastrowid
-                and not self.executemany
-            ):
-
+            if self.compiled.postfetch_lastrowid:
                 self._setup_ins_pk_from_lastrowid()
-
             elif not self._is_implicit_returning:
                 self._setup_ins_pk_from_empty()
 

@@ -669,6 +669,10 @@ class SQLCompiler(Compiled):
 
     insert_prefetch = update_prefetch = ()
 
+    postfetch_lastrowid = False
+    """if True, and this in insert, use cursor.lastrowid to populate
+    result.inserted_primary_key. """
+
     _cache_key_bind_match = None
     """a mapping that will relate the BindParameter object we compile
     to those that are part of the extracted collection of parameters

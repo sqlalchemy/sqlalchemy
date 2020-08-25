@@ -4,6 +4,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import INT
 from sqlalchemy import Integer
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import sql
@@ -207,6 +208,22 @@ class InsertExecTest(fixtures.TablesTest):
             {"id": 1, "foo": "hi", "bar": "hi"},
         )
 
+    @testing.requires.sequences
+    def test_lastrow_accessor_four_a(self):
+        metadata = MetaData()
+        self._test_lastrow_accessor(
+            Table(
+                "t4",
+                metadata,
+                Column(
+                    "id", Integer, Sequence("t4_id_seq"), primary_key=True,
+                ),
+                Column("foo", String(30)),
+            ),
+            {"foo": "hi"},
+            {"id": 1, "foo": "hi"},
+        )
+
     def test_lastrow_accessor_five(self):
         metadata = MetaData()
         self._test_lastrow_accessor(
@@ -362,6 +379,16 @@ class TableInsertTest(fixtures.TablesTest):
             Column("x", Integer),
         )
 
+        Table(
+            "foo_no_seq",
+            metadata,
+            # note this will have full AUTO INCREMENT on MariaDB
+            # whereas "foo" will not due to sequence support
+            Column("id", Integer, primary_key=True,),
+            Column("data", String(50)),
+            Column("x", Integer),
+        )
+
     def _fixture(self, types=True):
         if types:
             t = sql.table(
@@ -376,16 +403,22 @@ class TableInsertTest(fixtures.TablesTest):
             )
         return t
 
-    def _test(self, stmt, row, returning=None, inserted_primary_key=False):
-        r = testing.db.execute(stmt)
+    def _test(
+        self, stmt, row, returning=None, inserted_primary_key=False, table=None
+    ):
+        with testing.db.connect() as conn:
+            r = conn.execute(stmt)
 
-        if returning:
-            returned = r.first()
-            eq_(returned, returning)
-        elif inserted_primary_key is not False:
-            eq_(r.inserted_primary_key, inserted_primary_key)
+            if returning:
+                returned = r.first()
+                eq_(returned, returning)
+            elif inserted_primary_key is not False:
+                eq_(r.inserted_primary_key, inserted_primary_key)
 
-        eq_(testing.db.execute(self.tables.foo.select()).first(), row)
+            if table is None:
+                table = self.tables.foo
+
+            eq_(conn.execute(table.select()).first(), row)
 
     def _test_multi(self, stmt, rows, data):
         testing.db.execute(stmt, rows)
@@ -459,6 +492,19 @@ class TableInsertTest(fixtures.TablesTest):
             returning=(1, 5),
         )
 
+    @testing.requires.sql_expressions_inserted_as_primary_key
+    def test_sql_expr_lastrowid(self):
+
+        # see also test.orm.test_unitofwork.py
+        # ClauseAttributesTest.test_insert_pk_expression
+        t = self.tables.foo_no_seq
+        self._test(
+            t.insert().values(id=literal(5) + 10, data="data", x=5),
+            (15, "data", 5),
+            inserted_primary_key=(15,),
+            table=self.tables.foo_no_seq,
+        )
+
     def test_direct_params(self):
         t = self._fixture()
         self._test(
@@ -476,7 +522,11 @@ class TableInsertTest(fixtures.TablesTest):
             returning=(testing.db.dialect.default_sequence_base, 5),
         )
 
-    @testing.requires.emulated_lastrowid_even_with_sequences
+    # there's a non optional Sequence in the metadata, which if the dialect
+    # supports sequences, it means the CREATE TABLE should *not* have
+    # autoincrement, so the INSERT below would fail because the "t" fixture
+    # does not indicate the Sequence
+    @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
     def test_implicit_pk(self):
         t = self._fixture()
@@ -486,7 +536,7 @@ class TableInsertTest(fixtures.TablesTest):
             inserted_primary_key=(),
         )
 
-    @testing.requires.emulated_lastrowid_even_with_sequences
+    @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
     def test_implicit_pk_multi_rows(self):
         t = self._fixture()
@@ -500,7 +550,7 @@ class TableInsertTest(fixtures.TablesTest):
             [(1, "d1", 5), (2, "d2", 6), (3, "d3", 7)],
         )
 
-    @testing.requires.emulated_lastrowid_even_with_sequences
+    @testing.fails_if(testing.requires.sequences)
     @testing.requires.emulated_lastrowid
     def test_implicit_pk_inline(self):
         t = self._fixture()

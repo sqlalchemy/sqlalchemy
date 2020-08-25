@@ -2526,7 +2526,6 @@ class PGExecutionContext(default.DefaultExecutionContext):
             elif column.default is None or (
                 column.default.is_sequence and column.default.optional
             ):
-
                 # execute the sequence associated with a SERIAL primary
                 # key column. for non-primary-key SERIAL, the ID just
                 # generates server side.
