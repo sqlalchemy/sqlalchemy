@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 4589
+
+    Fixed issue where using a loader option against a string attribute name
+    that is not actually a mapped attribute, such as a plain Python descriptor,
+    would raise an uninformative AttributeError;  a descriptive error is now
+    raised.
+
+
