@@ -52,6 +52,8 @@ from .row import BaseRow  # noqa
 from .row import LegacyRow  # noqa
 from .row import Row  # noqa
 from .row import RowMapping  # noqa
+from .url import make_url  # noqa
+from .url import URL  # noqa
 from .util import connection_memoize  # noqa
 from ..sql import ddl  # noqa
 

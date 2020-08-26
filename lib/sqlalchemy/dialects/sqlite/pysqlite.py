@@ -491,7 +491,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             util.coerce_kw_type(opts, key, type_, dest=pysqlite_opts)
 
         if pysqlite_opts.get("uri", False):
-            uri_opts = opts.copy()
+            uri_opts = dict(opts)
             # here, we are actually separating the parameters that go to
             # sqlite3/pysqlite vs. those that go the SQLite URI.  What if
             # two names conflict?  again, this seems to be not the case right

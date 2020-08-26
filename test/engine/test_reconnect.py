@@ -759,7 +759,7 @@ class MockReconnectTest(fixtures.TestBase):
         class Dialect(DefaultDialect):
             initialize = Mock()
 
-        engine = create_engine(MyURL("foo://"), module=dbapi)
+        engine = create_engine(MyURL.create("foo://"), module=dbapi)
         engine.connect()
 
         # note that the dispose() call replaces the old pool with a new one;
@@ -798,7 +798,7 @@ class MockReconnectTest(fixtures.TestBase):
         # on a subsequent attempt without initialization having proceeded.
 
         Dialect.initialize.side_effect = TypeError
-        engine = create_engine(MyURL("foo://"), module=dbapi)
+        engine = create_engine(MyURL.create("foo://"), module=dbapi)
 
         assert_raises(TypeError, engine.connect)
         eq_(Dialect.initialize.call_count, 1)
@@ -943,7 +943,7 @@ class CursorErrTest(fixtures.TestBase):
         url = Mock(
             get_dialect=lambda: default.DefaultDialect,
             _get_entrypoint=lambda: default.DefaultDialect,
-            _instantiate_plugins=lambda kwargs: (),
+            _instantiate_plugins=lambda kwargs: (url, [], kwargs),
             translate_connect_args=lambda: {},
             query={},
         )

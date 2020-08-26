@@ -83,7 +83,7 @@ class CompiledSQL(SQLMatchRule):
                 params = {"implicit_returning": True}
             else:
                 params = {}
-            return url.URL(self.dialect).get_dialect()(**params)
+            return url.URL.create(self.dialect).get_dialect()(**params)
 
     def _received_statement(self, execute_observed):
         """reconstruct the statement and params in terms

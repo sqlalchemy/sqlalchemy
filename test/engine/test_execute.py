@@ -2842,7 +2842,7 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
             port=None,
             query={},
             database=None,
-            _instantiate_plugins=lambda kw: [],
+            _instantiate_plugins=lambda kw: (u1, [], kw),
             _get_entrypoint=Mock(
                 return_value=Mock(get_dialect_cls=lambda u: SomeDialect)
             ),

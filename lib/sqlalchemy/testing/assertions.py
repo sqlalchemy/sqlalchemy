@@ -390,7 +390,7 @@ class AssertsCompiledSQL(object):
             elif dialect == "default_enhanced":
                 dialect = default.StrCompileDialect()
             elif isinstance(dialect, util.string_types):
-                dialect = url.URL(dialect).get_dialect()()
+                dialect = url.URL.create(dialect).get_dialect()()
 
         if default_schema_name:
             dialect.default_schema_name = default_schema_name

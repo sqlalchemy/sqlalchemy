@@ -486,10 +486,7 @@ def create_engine(url, **kwargs):
     # create url.URL object
     u = _url.make_url(url)
 
-    plugins = u._instantiate_plugins(kwargs)
-
-    u.query.pop("plugin", None)
-    kwargs.pop("plugins", None)
+    u, plugins, kwargs = u._instantiate_plugins(kwargs)
 
     entrypoint = u._get_entrypoint()
     dialect_cls = entrypoint.get_dialect_cls(u)
