@@ -269,10 +269,13 @@ def attribute_mapped_collection(attr_name):
     'attr_name' attribute of entities in the collection, where ``attr_name``
     is the string name of the attribute.
 
-    The key value must be immutable for the lifetime of the object.  You
-    can not, for example, map on foreign key values if those key values will
-    change during the session, i.e. from None to a database-assigned integer
-    after a session flush.
+    .. warning:: the key value must be assigned to its final value
+       **before** it is accessed by the attribute mapped collection.
+       Additionally, changes to the key attribute are **not tracked**
+       automatically, which means the key in the dictionary is not
+       automatically synchronized with the key value on the target object
+       itself.  See the section :ref:`key_collections_mutations`
+       for an example.
 
     """
     getter = _SerializableAttrGetter(attr_name)

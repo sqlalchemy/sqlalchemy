@@ -302,6 +302,88 @@ Dictionary mappings are often combined with the "Association Proxy" extension to
 streamlined dictionary views.  See :ref:`proxying_dictionaries` and :ref:`composite_association_proxy`
 for examples.
 
+.. _key_collections_mutations:
+
+Dealing with Key Mutations and back-populating for Dictionary collections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using :func:`.attribute_mapped_collection`, the "key" for the dictionary
+is taken from an attribute on the target object.   **Changes to this key
+are not tracked**.  This means that the key must be assigned towards when
+it is first used, and if the key changes, the collection will not be mutated.
+A typical example where this might be an issue is when relying upon backrefs
+to populate an attribute mapped collection.  Given the following::
+
+    class A(Base):
+        __tablename__ = "a"
+
+        id = Column(Integer, primary_key=True)
+        bs = relationship(
+            "B",
+            collection_class=attribute_mapped_collection("data"),
+            back_populates="a",
+        )
+
+
+    class B(Base):
+        __tablename__ = "b"
+        id = Column(Integer, primary_key=True)
+        a_id = Column(ForeignKey("a.id"))
+        data = Column(String)
+
+        a = relationship("A", back_populates="bs")
+
+Above, if we create a ``B()`` that refers to a specific ``A()``, the back
+populates will then add the ``B()`` to the ``A.bs`` collection, however
+if the value of ``B.data`` is not set yet, the key will be ``None``::
+
+    >>> a1 = A()
+    >>> b1 = B(a=a1)
+    >>> a1.bs
+    {None: <test3.B object at 0x7f7b1023ef70>}
+
+
+Setting ``b1.data`` after the fact does not update the collection::
+
+    >>> b1.data = 'the key'
+    >>> a1.bs
+    {None: <test3.B object at 0x7f7b1023ef70>}
+
+
+This can also be seen if one attempts to set up ``B()`` in the constructor.
+The order of arguments changes the result::
+
+    >>> B(a=a1, data='the key')
+    <test3.B object at 0x7f7b10114280>
+    >>> a1.bs
+    {None: <test3.B object at 0x7f7b10114280>}
+
+vs::
+
+    >>> B(data='the key', a=a1)
+    <test3.B object at 0x7f7b10114340>
+    >>> a1.bs
+    {'the key': <test3.B object at 0x7f7b10114340>}
+
+If backrefs are being used in this way, ensure that attributes are populated
+in the correct order using an ``__init__`` method.
+
+An event handler such as the following may also be used to track changes in the
+collection as well::
+
+    from sqlalchemy import event
+
+    from sqlalchemy.orm import attributes
+
+    @event.listens_for(B.data, "set")
+    def set_item(obj, value, previous, initiator):
+        if obj.a is not None:
+            previous = None if previous == attributes.NO_VALUE else previous
+            obj.a.bs[value] = obj
+            obj.a.bs.pop(previous)
+
+
+
 .. autofunction:: attribute_mapped_collection
 
 .. autofunction:: column_mapped_collection
