@@ -20,6 +20,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import inspect
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import pool
 from sqlalchemy import PrimaryKeyConstraint
@@ -27,6 +28,7 @@ from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import tuple_
@@ -2608,3 +2610,76 @@ class TypeReflectionTest(fixtures.TestBase):
 
     def test_round_trip_direct_type_affinity(self):
         self._test_round_trip(self._type_affinity_fixture())
+
+
+class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "sqlite"
+
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid REGEXP ?",
+            checkpositional=("pattern",),
+        )
+
+    def test_regexp_match_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid REGEXP mytable.name",
+            checkparams={},
+        )
+
+    def test_regexp_match_str(self):
+        self.assert_compile(
+            literal("string").regexp_match(self.table.c.name),
+            "? REGEXP mytable.name",
+            checkpositional=("string",),
+        )
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid REGEXP ?",
+            checkpositional=("pattern",),
+        )
+
+    def test_not_regexp_match(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid NOT REGEXP ?",
+            checkpositional=("pattern",),
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid NOT REGEXP ?",
+            checkpositional=("pattern",),
+        )
+
+    def test_not_regexp_match_column(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid NOT REGEXP mytable.name",
+            checkparams={},
+        )
+
+    def test_not_regexp_match_str(self):
+        self.assert_compile(
+            ~literal("string").regexp_match(self.table.c.name),
+            "? NOT REGEXP mytable.name",
+            checkpositional=("string",),
+        )
+
+    def test_regexp_replace(self):
+        assert_raises_message(
+            exc.CompileError,
+            "sqlite dialect does not support regular expression replacements",
+            self.table.c.myid.regexp_replace("pattern", "rep").compile,
+            dialect=sqlite.dialect(),
+        )

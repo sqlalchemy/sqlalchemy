@@ -252,6 +252,45 @@ def _collate_impl(expr, op, other, **kw):
     return collate(expr, other)
 
 
+def _regexp_match_impl(expr, op, pattern, flags, **kw):
+    if flags is not None:
+        flags = coercions.expect(
+            roles.BinaryElementRole,
+            flags,
+            expr=expr,
+            operator=operators.regexp_replace_op,
+        )
+    return _boolean_compare(
+        expr,
+        op,
+        pattern,
+        flags=flags,
+        negate=operators.not_regexp_match_op
+        if op is operators.regexp_match_op
+        else operators.regexp_match_op,
+        **kw
+    )
+
+
+def _regexp_replace_impl(expr, op, pattern, replacement, flags, **kw):
+    replacement = coercions.expect(
+        roles.BinaryElementRole,
+        replacement,
+        expr=expr,
+        operator=operators.regexp_replace_op,
+    )
+    if flags is not None:
+        flags = coercions.expect(
+            roles.BinaryElementRole,
+            flags,
+            expr=expr,
+            operator=operators.regexp_replace_op,
+        )
+    return _binary_operate(
+        expr, op, pattern, replacement=replacement, flags=flags, **kw
+    )
+
+
 # a mapping of operators with the method they use, along with
 # their negated operator for comparison operators
 operator_lookup = {
@@ -304,4 +343,7 @@ operator_lookup = {
     "lshift": (_unsupported_impl,),
     "rshift": (_unsupported_impl,),
     "contains": (_unsupported_impl,),
+    "regexp_match_op": (_regexp_match_impl,),
+    "not_regexp_match_op": (_regexp_match_impl,),
+    "regexp_replace_op": (_regexp_replace_impl,),
 }

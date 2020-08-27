@@ -30,7 +30,7 @@ is placed in the FROM clause of a SELECT statement.
 
 .. autofunction:: cast
 
-.. autofunction:: sqlalchemy.sql.expression.column
+.. autofunction:: column
 
 .. autofunction:: collate
 
@@ -114,7 +114,7 @@ is placed in the FROM clause of a SELECT statement.
    :inherited-members:
    :undoc-members:
 
-.. autoclass:: sqlalchemy.sql.operators.ColumnOperators
+.. autoclass:: ColumnOperators
    :members:
    :special-members:
    :inherited-members:
@@ -125,7 +125,7 @@ is placed in the FROM clause of a SELECT statement.
 .. autoclass:: Extract
    :members:
 
-.. autoclass:: sqlalchemy.sql.elements.False_
+.. autoclass:: False_
    :members:
 
 .. autoclass:: FunctionFilter
@@ -137,7 +137,7 @@ is placed in the FROM clause of a SELECT statement.
 .. autoclass:: LambdaElement
    :members:
 
-.. autoclass:: sqlalchemy.sql.elements.Null
+.. autoclass:: Null
    :members:
 
 .. autoclass:: Over
@@ -158,20 +158,20 @@ is placed in the FROM clause of a SELECT statement.
 .. autoclass:: sqlalchemy.sql.elements.WrapsColumnExpression
    :members:
 
-.. autoclass:: sqlalchemy.sql.elements.True_
+.. autoclass:: True_
    :members:
 
 .. autoclass:: TypeCoerce
    :members:
 
-.. autoclass:: sqlalchemy.sql.operators.custom_op
+.. autoclass:: custom_op
    :members:
 
-.. autoclass:: sqlalchemy.sql.operators.Operators
+.. autoclass:: Operators
    :members:
    :special-members:
 
-.. autoclass:: sqlalchemy.sql.elements.quoted_name
+.. autoclass:: quoted_name
 
    .. attribute:: quote
 

@@ -373,6 +373,42 @@ instead.
 
 :ticket:`4689`
 
+
+.. _change_1390:
+
+Support for SQL Regular Expression operators
+--------------------------------------------
+
+A long awaited feature to add rudimentary support for database regular
+expression operators, to complement the :meth:`_sql.ColumnOperators.like` and
+:meth:`_sql.ColumnOperators.match` suites of operations.   The new features
+include :meth:`_sql.ColumnOperators.regexp_match` implementing a regular
+expression match like function, and :meth:`_sql.ColumnOperators.regexp_replace`
+implementing a regular expression string replace function.
+
+Supported backends include SQLite, PostgreSQL, MySQL / MariaDB, and Oracle.
+The SQLite backend only supports "regexp_match" but not "regexp_replace".
+
+The regular expression syntaxes and flags are **not backend agnostic**.
+A future feature will allow multiple regular expression syntaxes to be
+specified at once to switch between different backends on the fly.
+
+For SQLite, Python's ``re.match()`` function with no additional arguments
+is established as the implementation.
+
+.. seealso::
+
+
+    :meth:`_sql.ColumnOperators.regexp_match`
+
+    :meth:`_sql.ColumnOperators.regexp_replace`
+
+    :ref:`pysqlite_regexp` - SQLite implementation notes
+
+
+:ticket:`1390`
+
+
 API and Behavioral Changes - Core
 ==================================
 

@@ -913,7 +913,7 @@ class ColumnOperators(Operators):
     def match(self, other, **kwargs):
         """Implements a database-specific 'match' operator.
 
-        :meth:`~.ColumnOperators.match` attempts to resolve to
+        :meth:`_sql.ColumnOperators.match` attempts to resolve to
         a MATCH-like function or operator provided by the backend.
         Examples include:
 
@@ -927,6 +927,96 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(match_op, other, **kwargs)
+
+    def regexp_match(self, pattern, flags=None):
+        """Implements a database-specific 'regexp match' operator.
+
+        E.g.::
+
+            stmt = select(table.c.some_column).where(
+                table.c.some_column.regexp_match('^(b|c)')
+            )
+
+        :meth:`_sql.ColumnOperators.regexp_match` attempts to resolve to
+        a REGEXP-like function or operator provided by the backend, however
+        the specific regular expression syntax and flags available are
+        **not backend agnostic**.
+
+        Examples include:
+
+        * PostgreSQL - renders ``x ~ y`` or ``x !~ y`` when negated.
+        * Oracle - renders ``REGEXP_LIKE(x, y)``
+        * SQLite - uses SQLite's ``REGEXP`` placeholder operator and calls into
+          the Python ``re.match()`` builtin.
+        * other backends may provide special implementations.
+        * Backends without any special implementation will emit
+          the operator as "REGEXP" or "NOT REGEXP".  This is compatible with
+          SQLite and MySQL, for example.
+
+        Regular expression support is currently implemented for Oracle,
+        PostgreSQL, MySQL and MariaDB.  Partial support is available for
+        SQLite.  Support among third-party dialects may vary.
+
+        :param pattern: The regular expression pattern string or column
+          clause.
+        :param flags: Any regular expression string flags to apply. Flags
+          tend to be backend specific. It can be a string or a column clause.
+          Some backends, like PostgreSQL and MariaDB, may alternatively
+          specify the flags as part of the pattern.
+          When using the ignore case flag 'i' in PostgreSQL, the ignore case
+          regexp match operator ``~*`` or ``!~*`` will be used.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :meth:`_sql.ColumnOperators.regexp_replace`
+
+
+        """
+        return self.operate(regexp_match_op, pattern, flags=flags)
+
+    def regexp_replace(self, pattern, replacement, flags=None):
+        """Implements a database-specific 'regexp replace' operator.
+
+        E.g.::
+
+            stmt = select(
+                table.c.some_column.regexp_replace(
+                    'b(..)',
+                    'X\1Y',
+                    flags='g'
+                )
+            )
+
+        :meth:`_sql.ColumnOperators.regexp_replace` attempts to resolve to
+        a REGEXP_REPLACE-like function provided by the backend, that
+        usually emit the function ``REGEXP_REPLACE()``.  However,
+        the specific regular expression syntax and flags available are
+        **not backend agnostic**.
+
+        Regular expression replacement support is currently implemented for
+        Oracle, PostgreSQL, MySQL 8 or greater and MariaDB.  Support among
+        third-party dialects may vary.
+
+        :param pattern: The regular expression pattern string or column
+          clause.
+        :param pattern: The replacement string or column clause.
+        :param flags: Any regular expression string flags to apply. Flags
+          tend to be backend specific. It can be a string or a column clause.
+          Some backends, like PostgreSQL and MariaDB, may alternatively
+          specify the flags as part of the pattern.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :meth:`_sql.ColumnOperators.regexp_match`
+
+        """
+        return self.operate(
+            regexp_replace_op, pattern, replacement=replacement, flags=flags
+        )
 
     def desc(self):
         """Produce a :func:`_expression.desc` clause against the
@@ -1299,6 +1389,20 @@ def match_op(a, b, **kw):
 
 
 @comparison_op
+def regexp_match_op(a, b, flags=None):
+    return a.regexp_match(b, flags=flags)
+
+
+@comparison_op
+def not_regexp_match_op(a, b, flags=None):
+    return ~a.regexp_match(b, flags=flags)
+
+
+def regexp_replace_op(a, b, replacement, flags=None):
+    return a.regexp_replace(b, replacement=replacement, flags=flags)
+
+
+@comparison_op
 def notmatch_op(a, b, **kw):
     return a.notmatch(b, **kw)
 
@@ -1417,6 +1521,9 @@ _PRECEDENCE = {
     filter_op: 6,
     match_op: 5,
     notmatch_op: 5,
+    regexp_match_op: 5,
+    not_regexp_match_op: 5,
+    regexp_replace_op: 5,
     ilike_op: 5,
     notilike_op: 5,
     like_op: 5,

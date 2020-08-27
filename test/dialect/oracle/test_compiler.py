@@ -1307,3 +1307,134 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect.identifier_preparer.format_sequence(seq)
             == '"Some_Schema"."My_Seq"'
         )
+
+
+class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "oracle"
+
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern"),
+            "REGEXP_LIKE(mytable.myid, :myid_1)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_match_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name),
+            "REGEXP_LIKE(mytable.myid, mytable.name)",
+            checkparams={},
+        )
+
+    def test_regexp_match_str(self):
+        self.assert_compile(
+            literal("string").regexp_match(self.table.c.name),
+            "REGEXP_LIKE(:param_1, mytable.name)",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "REGEXP_LIKE(mytable.myid, :myid_1, :myid_2)",
+            checkparams={"myid_1": "pattern", "myid_2": "ig"},
+        )
+
+    def test_regexp_match_flags_col(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags=self.table.c.name),
+            "REGEXP_LIKE(mytable.myid, :myid_1, mytable.name)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern"),
+            "NOT REGEXP_LIKE(mytable.myid, :myid_1)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match_column(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(self.table.c.name),
+            "NOT REGEXP_LIKE(mytable.myid, mytable.name)",
+            checkparams={},
+        )
+
+    def test_not_regexp_match_str(self):
+        self.assert_compile(
+            ~literal("string").regexp_match(self.table.c.name),
+            "NOT REGEXP_LIKE(:param_1, mytable.name)",
+            checkparams={"param_1": "string"},
+        )
+
+    def test_not_regexp_match_flags_col(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(
+                "pattern", flags=self.table.c.name
+            ),
+            "NOT REGEXP_LIKE(mytable.myid, :myid_1, mytable.name)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "NOT REGEXP_LIKE(mytable.myid, :myid_1, :myid_2)",
+            checkparams={"myid_1": "pattern", "myid_2": "ig"},
+        )
+
+    def test_regexp_replace(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", "replacement"),
+            "REGEXP_REPLACE(mytable.myid, :myid_1, :myid_2)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )
+
+    def test_regexp_replace_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(mytable.myid, :myid_1, mytable.name)",
+            checkparams={"myid_1": "pattern"},
+        )
+
+    def test_regexp_replace_column2(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(self.table.c.name, "replacement"),
+            "REGEXP_REPLACE(mytable.myid, mytable.name, :myid_1)",
+            checkparams={"myid_1": "replacement"},
+        )
+
+    def test_regexp_replace_string(self):
+        self.assert_compile(
+            literal("string").regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(:param_1, :param_2, mytable.name)",
+            checkparams={"param_2": "pattern", "param_1": "string"},
+        )
+
+    def test_regexp_replace_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="ig"
+            ),
+            "REGEXP_REPLACE(mytable.myid, :myid_1, :myid_3, :myid_2)",
+            checkparams={
+                "myid_1": "pattern",
+                "myid_3": "replacement",
+                "myid_2": "ig",
+            },
+        )
+
+    def test_regexp_replace_flags_col(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags=self.table.c.name
+            ),
+            "REGEXP_REPLACE(mytable.myid, :myid_1, :myid_2, mytable.name)",
+            checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )

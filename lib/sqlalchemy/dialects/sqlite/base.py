@@ -1077,6 +1077,12 @@ class SQLiteCompiler(compiler.SQLCompiler):
             ", ".join("1" for type_ in element_types or [INTEGER()]),
         )
 
+    def visit_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(binary, " REGEXP ", **kw)
+
+    def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
+        return self._generate_generic_binary(binary, " NOT REGEXP ", **kw)
+
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):

@@ -643,7 +643,7 @@ DDL is emitted to the database.
 .. _identity_ddl:
 
 Identity Columns (GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY)
---------------------------------------------------------------
+-----------------------------------------------------------------
 
 .. versionadded:: 1.4
 

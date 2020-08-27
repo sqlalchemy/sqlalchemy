@@ -1280,3 +1280,22 @@ class SuiteRequirements(Requirements):
         This is mainly to exclude MSSql.
         """
         return exclusions.closed()
+
+    @property
+    def regexp_match(self):
+        """backend supports the regexp_match operator.
+
+        .. versionadded:: 1.4
+
+        """
+        return exclusions.closed()
+
+    @property
+    def regexp_replace(self):
+        """backend supports the regexp_replace operator.
+
+        .. versionadded:: 1.4
+
+
+        """
+        return exclusions.closed()

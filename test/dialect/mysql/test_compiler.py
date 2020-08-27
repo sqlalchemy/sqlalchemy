@@ -960,3 +960,134 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
                 "baz_1": "some literal",
             },
         )
+
+
+class RegexpCommon(testing.AssertsCompiledSQL):
+    def setUp(self):
+        self.table = table(
+            "mytable", column("myid", Integer), column("name", String)
+        )
+
+    def test_regexp_match(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid REGEXP %s",
+            checkpositional=("pattern",),
+        )
+
+    def test_regexp_match_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid REGEXP mytable.name",
+            checkpositional=(),
+        )
+
+    def test_regexp_match_str(self):
+        self.assert_compile(
+            literal("string").regexp_match(self.table.c.name),
+            "%s REGEXP mytable.name",
+            checkpositional=("string",),
+        )
+
+    def test_not_regexp_match(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern"),
+            "mytable.myid NOT REGEXP %s",
+            checkpositional=("pattern",),
+        )
+
+    def test_not_regexp_match_column(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match(self.table.c.name),
+            "mytable.myid NOT REGEXP mytable.name",
+            checkpositional=(),
+        )
+
+    def test_not_regexp_match_str(self):
+        self.assert_compile(
+            ~literal("string").regexp_match(self.table.c.name),
+            "%s NOT REGEXP mytable.name",
+            checkpositional=("string",),
+        )
+
+    def test_regexp_replace(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", "replacement"),
+            "REGEXP_REPLACE(mytable.myid, %s, %s)",
+            checkpositional=("pattern", "replacement"),
+        )
+
+    def test_regexp_replace_column(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(mytable.myid, %s, mytable.name)",
+            checkpositional=("pattern",),
+        )
+
+    def test_regexp_replace_column2(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(self.table.c.name, "replacement"),
+            "REGEXP_REPLACE(mytable.myid, mytable.name, %s)",
+            checkpositional=("replacement",),
+        )
+
+    def test_regexp_replace_string(self):
+        self.assert_compile(
+            literal("string").regexp_replace("pattern", self.table.c.name),
+            "REGEXP_REPLACE(%s, %s, mytable.name)",
+            checkpositional=("string", "pattern"),
+        )
+
+
+class RegexpTestMySql(fixtures.TestBase, RegexpCommon):
+    __dialect__ = "mysql"
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "REGEXP_LIKE(mytable.myid, %s, %s)",
+            checkpositional=("pattern", "ig"),
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "NOT REGEXP_LIKE(mytable.myid, %s, %s)",
+            checkpositional=("pattern", "ig"),
+        )
+
+    def test_regexp_replace_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="ig"
+            ),
+            "REGEXP_REPLACE(mytable.myid, %s, %s, %s)",
+            checkpositional=("pattern", "replacement", "ig"),
+        )
+
+
+class RegexpTestMariaDb(fixtures.TestBase, RegexpCommon):
+    __dialect__ = "mariadb"
+
+    def test_regexp_match_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid REGEXP CONCAT('(?', %s, ')', %s)",
+            checkpositional=("ig", "pattern"),
+        )
+
+    def test_not_regexp_match_flags(self):
+        self.assert_compile(
+            ~self.table.c.myid.regexp_match("pattern", flags="ig"),
+            "mytable.myid NOT REGEXP CONCAT('(?', %s, ')', %s)",
+            checkpositional=("ig", "pattern"),
+        )
+
+    def test_regexp_replace_flags(self):
+        self.assert_compile(
+            self.table.c.myid.regexp_replace(
+                "pattern", "replacement", flags="ig"
+            ),
+            "REGEXP_REPLACE(mytable.myid, CONCAT('(?', %s, ')', %s), %s)",
+            checkpositional=("ig", "pattern", "replacement"),
+        )
