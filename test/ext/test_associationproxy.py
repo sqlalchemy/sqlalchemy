@@ -4,6 +4,7 @@ import pickle
 from sqlalchemy import cast
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -1659,6 +1660,26 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
         eq_(str(proxy_sql), str(direct_sql))
         eq_(q_proxy.all(), q_direct.all())
+
+    def test_no_straight_expr(self):
+        User = self.classes.User
+
+        assert_raises_message(
+            NotImplementedError,
+            "The association proxy can't be used as a plain column expression",
+            func.foo,
+            User.singular_value,
+        )
+
+        # this raises the same NotImplementedError as above in 1.4
+        # because we consistently call __clause_element__().   1.3 not
+        # quite there :)
+        assert_raises_message(
+            exc.InvalidRequestError,
+            "SQL expression, column, or mapped entity expected ",
+            self.session.query,
+            User.singular_value,
+        )
 
     def test_filter_any_criterion_ul_scalar(self):
         UserKeyword, User = self.classes.UserKeyword, self.classes.User
