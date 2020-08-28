@@ -13,6 +13,7 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
@@ -176,31 +177,22 @@ class CreateEngineTest(fixtures.TestBase):
             )
 
 
-class TransactionTest(fixtures.TestBase):
+class TransactionTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        metadata = MetaData()
-        cls.users = Table(
-            "query_users",
+    def define_tables(cls, metadata):
+        Table(
+            "users",
             metadata,
             Column("user_id", Integer, primary_key=True),
             Column("user_name", String(20)),
             test_needs_acid=True,
         )
-        cls.users.create(testing.db)
-
-    def teardown(self):
-        with testing.db.connect() as conn:
-            conn.execute(self.users.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        cls.users.drop(testing.db)
+        Table("inserttable", metadata, Column("data", String(20)))
 
     def test_transaction_container(self):
-        users = self.users
+        users = self.tables.users
 
         def go(conn, table, data):
             for d in data:
@@ -230,6 +222,38 @@ class TransactionTest(fixtures.TestBase):
             )
         with testing.db.connect() as conn:
             eq_(conn.execute(users.select()).fetchall(), [(1, "user1")])
+
+    def test_implicit_autocommit_compiled(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated_20(
+                "The current statement is being autocommitted "
+                "using implicit autocommit."
+            ):
+                conn.execute(
+                    users.insert(), {"user_id": 1, "user_name": "user3"}
+                )
+
+    def test_implicit_autocommit_text(self):
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated_20(
+                "The current statement is being autocommitted "
+                "using implicit autocommit."
+            ):
+                conn.execute(
+                    text("insert into inserttable (data) values ('thedata')")
+                )
+
+    def test_implicit_autocommit_driversql(self):
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated_20(
+                "The current statement is being autocommitted "
+                "using implicit autocommit."
+            ):
+                conn.exec_driver_sql(
+                    "insert into inserttable (data) values ('thedata')"
+                )
 
 
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):

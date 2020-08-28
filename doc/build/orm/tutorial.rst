@@ -209,16 +209,16 @@ the actual ``CREATE TABLE`` statement:
 .. sourcecode:: python+sql
 
     >>> Base.metadata.create_all(engine)
-    PRAGMA main.table_info("users")
-    [...] ()
-    PRAGMA temp.table_info("users")
-    [...] ()
+    BEGIN...
     CREATE TABLE users (
-        id INTEGER NOT NULL, name VARCHAR,
+        id INTEGER NOT NULL,
+        name VARCHAR,
         fullname VARCHAR,
         nickname VARCHAR,
         PRIMARY KEY (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
     COMMIT
 
@@ -1215,14 +1215,16 @@ already been created:
 .. sourcecode:: python+sql
 
     {sql}>>> Base.metadata.create_all(engine)
-    PRAGMA...
+    BEGIN...
     CREATE TABLE addresses (
         id INTEGER NOT NULL,
         email_address VARCHAR NOT NULL,
         user_id INTEGER,
         PRIMARY KEY (id),
-         FOREIGN KEY(user_id) REFERENCES users (id)
+        FOREIGN KEY(user_id) REFERENCES users (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
     COMMIT
 
@@ -2080,15 +2082,17 @@ Create new tables:
 .. sourcecode:: python+sql
 
     {sql}>>> Base.metadata.create_all(engine)
-    PRAGMA...
+    BEGIN...
     CREATE TABLE keywords (
         id INTEGER NOT NULL,
         keyword VARCHAR(50) NOT NULL,
         PRIMARY KEY (id),
         UNIQUE (keyword)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
-    COMMIT
+    <BLANKLINE>
     CREATE TABLE posts (
         id INTEGER NOT NULL,
         user_id INTEGER,
@@ -2097,8 +2101,10 @@ Create new tables:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
-    COMMIT
+    <BLANKLINE>
     CREATE TABLE post_keywords (
         post_id INTEGER NOT NULL,
         keyword_id INTEGER NOT NULL,
@@ -2106,6 +2112,8 @@ Create new tables:
         FOREIGN KEY(post_id) REFERENCES posts (id),
         FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
     COMMIT
 

@@ -55,6 +55,7 @@ from .exclusions import only_if  # noqa
 from .exclusions import only_on  # noqa
 from .exclusions import skip  # noqa
 from .exclusions import skip_if  # noqa
+from .schema import eq_type_affinity  # noqa
 from .util import adict  # noqa
 from .util import fail  # noqa
 from .util import flag_combinations  # noqa

@@ -150,15 +150,17 @@ each table first before creating, so it's safe to call multiple times:
 .. sourcecode:: pycon+sql
 
     {sql}>>> metadata.create_all(engine)
-    PRAGMA...
+    BEGIN...
     CREATE TABLE users (
         id INTEGER NOT NULL,
         name VARCHAR,
         fullname VARCHAR,
         PRIMARY KEY (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
-    COMMIT
+    <BLANKLINE>
     CREATE TABLE addresses (
         id INTEGER NOT NULL,
         user_id INTEGER,
@@ -166,6 +168,8 @@ each table first before creating, so it's safe to call multiple times:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
+    <BLANKLINE>
+    <BLANKLINE>
     [...] ()
     COMMIT
 

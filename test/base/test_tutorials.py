@@ -89,7 +89,7 @@ class DocTest(fixtures.TestBase):
     def test_orm(self):
         self._run_doctest("orm/tutorial.rst")
 
-    @testing.emits_warning("SELECT statement has a cartesian")
+    @testing.emits_warning()
     def test_core(self):
         self._run_doctest("core/tutorial.rst")
 

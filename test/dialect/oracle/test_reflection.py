@@ -5,6 +5,7 @@ from sqlalchemy import exc
 from sqlalchemy import FLOAT
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import INTEGER
@@ -13,7 +14,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import select
-from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import Unicode
@@ -437,29 +437,6 @@ class DontReflectIOTTest(fixtures.TestBase):
         eq_(set(t.name for t in m.tables.values()), set(["admin_docindex"]))
 
 
-class UnsupportedIndexReflectTest(fixtures.TestBase):
-    __only_on__ = "oracle"
-    __backend__ = True
-
-    @testing.emits_warning("No column names")
-    @testing.provide_metadata
-    def test_reflect_functional_index(self):
-        metadata = self.metadata
-        Table(
-            "test_index_reflect",
-            metadata,
-            Column("data", String(20), primary_key=True),
-        )
-        metadata.create_all()
-
-        exec_sql(
-            testing.db,
-            "CREATE INDEX DATA_IDX ON " "TEST_INDEX_REFLECT (UPPER(DATA))",
-        )
-        m2 = MetaData(testing.db)
-        Table("test_index_reflect", m2, autoload=True)
-
-
 def all_tables_compression_missing():
     try:
         exec_sql(testing.db, "SELECT compression FROM all_tables")
@@ -606,6 +583,40 @@ class RoundTripIndexTest(fixtures.TestBase):
                     "dialect_options": {},
                     "unique": True,
                 },
+            ],
+        )
+
+    @testing.provide_metadata
+    def test_reflect_fn_index(self, connection):
+        """test reflection of a functional index.
+
+        it appears this emitted a warning at some point but does not right now.
+        the returned data is not exactly correct, but this is what it's
+        likely been doing for many years.
+
+        """
+
+        metadata = self.metadata
+        s_table = Table(
+            "sometable",
+            metadata,
+            Column("group", Unicode(255), primary_key=True),
+            Column("col", Unicode(255)),
+        )
+
+        Index("data_idx", func.upper(s_table.c.col))
+
+        metadata.create_all(connection)
+
+        eq_(
+            inspect(connection).get_indexes("sometable"),
+            [
+                {
+                    "column_names": [],
+                    "dialect_options": {},
+                    "name": "data_idx",
+                    "unique": False,
+                }
             ],
         )
 
