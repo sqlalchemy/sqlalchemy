@@ -14,7 +14,7 @@ env:
   TOX_WORKERS: -n2
 
 jobs:
-  run-test:
+  run-test-amd64:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-${{ matrix.architecture }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -51,3 +51,34 @@ jobs:
 
       - name: Run tests
         run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+
+  # Arm emulation is quite slow (~20min) so for now just run it when merging to master
+  # run-test-arm64:
+  #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       python-version:
+  #         - "3.8"
+  #       build-type:
+  #         - "cext"
+  #         - "nocext"
+  #     fail-fast: true
+
+  #   steps:
+  #     - name: Checkout repo
+  #       uses: actions/checkout@v2
+
+  #     - name: Set up emulation
+  #       run: |
+  #         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+  #     - name: Run tests
+  #       uses: docker://arm64v8/python:3.8-buster
+  #       with:
+  #         args: |
+  #               bash -c "
+  #               python -m pip install --upgrade pip &&
+  #               pip install --upgrade tox setuptools &&
+  #               pip list &&
+  #               tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}"
