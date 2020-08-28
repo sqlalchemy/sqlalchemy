@@ -232,7 +232,6 @@ class ORMExecuteState(util.MemoizedSlots):
             _execution_options,
             _bind_arguments,
             _parent_execute_state=self,
-            future=self._future,
         )
 
     @property
@@ -1431,7 +1430,6 @@ class Session(_SessionClassMethods):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        future=False,
         _parent_execute_state=None,
         _add_event=None,
         **kw
@@ -1538,14 +1536,6 @@ class Session(_SessionClassMethods):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-        :param future:
-            Use future style execution for this statement.  This is
-            the same effect as the :paramref:`_orm.Session.future` flag,
-            except at the level of this single statement execution.  See
-            that flag for details.
-
-            .. versionadded:: 1.4
-
         :param mapper:
           deprecated; use the bind_arguments dictionary
 
@@ -1570,8 +1560,6 @@ class Session(_SessionClassMethods):
 
         """
         statement = coercions.expect(roles.CoerceTextStatementRole, statement)
-
-        future = future or self.future
 
         if not bind_arguments:
             bind_arguments = kw
@@ -1605,13 +1593,9 @@ class Session(_SessionClassMethods):
             )
         else:
             bind_arguments.setdefault("clause", statement)
-            if future:
-                # not sure if immutabledict is working w/ this syntax
-                # execution_options =
-                # execution_options.union(future_result=True)
-                execution_options = execution_options.union(
-                    {"future_result": True}
-                )
+            execution_options = execution_options.union(
+                {"future_result": True}
+            )
 
         if _parent_execute_state:
             events_todo = _parent_execute_state._remaining_events()
@@ -1637,7 +1621,6 @@ class Session(_SessionClassMethods):
                 if result:
                     return result
 
-            # TODO: coverage for this pattern
             statement = orm_exec_state.statement
             execution_options = orm_exec_state.local_execution_options
 

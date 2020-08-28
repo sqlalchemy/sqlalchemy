@@ -989,7 +989,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         )
 
         result = session.execute(
-            stmt, params, future=True, execution_options=execution_options
+            stmt, params, execution_options=execution_options
         )
 
         result = result.unique().scalars().all()
@@ -2794,7 +2794,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                             for key in chunk
                         ]
                     },
-                    future=True,
                 ).unique()
             }
 
@@ -2839,7 +2838,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             data = collections.defaultdict(list)
             for k, v in itertools.groupby(
                 context.session.execute(
-                    q, params={"primary_keys": primary_keys}, future=True
+                    q, params={"primary_keys": primary_keys}
                 ).unique(),
                 lambda x: x[0],
             ):

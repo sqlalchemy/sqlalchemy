@@ -498,7 +498,6 @@ def load_on_pk_identity(
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            future=True,
         )
         .unique()
         .scalars()

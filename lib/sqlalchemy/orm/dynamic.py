@@ -461,7 +461,7 @@ class AppenderQuery(Generative):
                     % (orm_util.instance_str(instance), self.attr.key)
                 )
 
-        result = sess.execute(self._statement, future=True)
+        result = sess.execute(self._statement)
         result = result.scalars()
 
         if result._attributes.get("filtered", False):

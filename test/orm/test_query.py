@@ -188,7 +188,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session(testing.db, future=True)
+        s = Session(testing.db)
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -212,15 +212,8 @@ class RowTupleTest(QueryTest):
 
         row = s.execute(q.order_by(User.id)).first()
 
-        # old style row
-        assert "jack" not in row
-        assert "jack" in tuple(row)
-
-        row = s.execute(q.order_by(User.id), future=True).first()
-
-        # new style row - not sure what to do here w/ future yet
+        # s.execute() is now new style row
         assert "jack" in row
-        assert "jack" in tuple(row)
 
     def test_entity_mapping_access(self):
         User, users = self.classes.User, self.tables.users
@@ -877,7 +870,7 @@ class GetTest(QueryTest):
     def test_populate_existing_future(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session(testing.db, future=True, autoflush=False)
+        s = Session(testing.db, autoflush=False)
 
         userlist = s.query(User).all()
 
@@ -926,7 +919,7 @@ class GetTest(QueryTest):
         stmt = select(User).execution_options(
             populate_existing=True, autoflush=False, yield_per=10
         )
-        s = Session(testing.db, future=True)
+        s = Session(testing.db)
 
         m1 = mock.Mock()
 
@@ -4630,7 +4623,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_select_star_future(self):
         User = self.classes.User
 
-        sess = Session(testing.db, future=True)
+        sess = Session(testing.db)
         eq_(
             sess.execute(
                 select(User).from_statement(
@@ -4678,7 +4671,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # ordering doesn't matter
         User = self.classes.User
 
-        s = create_session(testing.db, future=True)
+        s = create_session(testing.db)
         q = select(User).from_statement(
             text(
                 "select name, 27 as foo, id as users_id from users order by id"
@@ -4725,7 +4718,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db, future=True)
+        s = create_session(testing.db)
         q = select(User, Address).from_statement(
             text(
                 "select users.name AS users_name, users.id AS users_id, "
@@ -4776,7 +4769,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db, future=True)
+        s = create_session(testing.db)
         q = (
             select(User)
             .from_statement(
@@ -4828,7 +4821,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db, future=True)
+        s = create_session(testing.db)
         q = (
             select(User)
             .from_statement(
@@ -4935,7 +4928,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_whereclause_future(self):
         User = self.classes.User
 
-        s = create_session(testing.db, future=True)
+        s = create_session(testing.db)
         eq_(
             s.execute(select(User).filter(text("id in (8, 9)")))
             .scalars()

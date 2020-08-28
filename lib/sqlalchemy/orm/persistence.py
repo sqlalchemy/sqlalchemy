@@ -2021,7 +2021,6 @@ class BulkUDCompileState(CompileState):
             execution_options,
             bind_arguments,
             _add_event=skip_for_full_returning,
-            future=True,
         )
         matched_rows = result.fetchall()
 

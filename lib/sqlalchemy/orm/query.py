@@ -2726,7 +2726,6 @@ class Query(
             statement,
             params,
             execution_options={"_sa_orm_load_options": self.load_options},
-            future=True,
         )
 
         # legacy: automatically set scalars, unique
@@ -3013,7 +3012,6 @@ class Query(
             delete_,
             self._params,
             execution_options={"synchronize_session": synchronize_session},
-            future=True,
         )
         bulk_del.result = result
         self.session.dispatch.after_bulk_delete(bulk_del)
@@ -3089,7 +3087,6 @@ class Query(
             upd,
             self._params,
             execution_options={"synchronize_session": synchronize_session},
-            future=True,
         )
         bulk_ud.result = result
         self.session.dispatch.after_bulk_update(bulk_ud)
