@@ -28,19 +28,22 @@ which is acquired via the :meth:`_engine.Engine.contextual_connect` method.  If 
 for an example of this), it is
 added to the transactional state directly.
 
-For each :class:`_engine.Connection`, the :class:`.Session` also maintains a :class:`.Transaction` object,
-which is acquired by calling :meth:`_engine.Connection.begin` on each :class:`_engine.Connection`,
-or if the :class:`.Session`
-object has been established using the flag ``twophase=True``, a :class:`.TwoPhaseTransaction`
-object acquired via :meth:`_engine.Connection.begin_twophase`.  These transactions are all committed or
-rolled back corresponding to the invocation of the
-:meth:`.Session.commit` and :meth:`.Session.rollback` methods.   A commit operation will
-also call the :meth:`.TwoPhaseTransaction.prepare` method on all transactions if applicable.
+For each :class:`_engine.Connection`, the :class:`.Session` also maintains a
+:class:`.Transaction` object, which is acquired by calling
+:meth:`_engine.Connection.begin` on each :class:`_engine.Connection`, or if the
+:class:`.Session` object has been established using the flag ``twophase=True``,
+a :class:`.TwoPhaseTransaction` object acquired via
+:meth:`_engine.Connection.begin_twophase`.  These transactions are all
+committed or rolled back corresponding to the invocation of the
+:meth:`.Session.commit` and :meth:`.Session.rollback` methods.   A commit
+operation will also call the :meth:`.TwoPhaseTransaction.prepare` method on
+all transactions if applicable.
 
-When the transactional state is completed after a rollback or commit, the :class:`.Session`
-:term:`releases` all :class:`.Transaction` and :class:`_engine.Connection` resources,
-and goes back to the "begin" state, which
-will again invoke new :class:`_engine.Connection` and :class:`.Transaction` objects as new
+When the transactional state is completed after a rollback or commit, the
+:class:`.Session`
+:term:`releases` all :class:`.Transaction` and :class:`_engine.Connection`
+resources, and goes back to the "begin" state, which will again invoke new
+:class:`_engine.Connection` and :class:`.Transaction` objects as new
 requests to emit SQL statements are received.
 
 The example below illustrates this lifecycle::
@@ -143,6 +146,17 @@ things like unique constraint exceptions::
 Autocommit Mode
 ---------------
 
+.. deprecated::  1.4
+
+    "autocommit" mode is a **legacy mode of use** and should not be considered
+    for new projects.  The feature will be deprecated in SQLAlchemy 1.4 and
+    removed in version 2.0; both versions provide a more refined
+    "autobegin" approach that allows the :meth:`.Session.begin` method
+    to be used normally.   If autocommit mode is used, it is strongly
+    advised that the application at least ensure that transaction scope is made
+    present via the :meth:`.Session.begin` method, rather than using the
+    session in pure autocommit mode.
+
 The examples of session lifecycle at :ref:`unitofwork_transaction` refer
 to a :class:`.Session` that runs in its default mode of ``autocommit=False``.
 In this mode, the :class:`.Session` begins new transactions automatically
@@ -160,22 +174,6 @@ methods like :meth:`.Session.execute` as well as when executing a query
 returned by :meth:`.Session.query`.  For a flush operation, the :class:`.Session`
 starts a new transaction for the duration of the flush, and commits it when
 complete.
-
-.. warning::
-
-    "autocommit" mode is a **legacy mode of use** and should not be
-    considered for new projects.   If autocommit mode is used, it is strongly
-    advised that the application at least ensure that transaction scope
-    is made present via the :meth:`.Session.begin` method, rather than
-    using the session in pure autocommit mode.   An upcoming release of
-    SQLAlchemy will include a new mode of usage that provides this pattern
-    as a first class feature.
-
-    If the :meth:`.Session.begin` method is not used, and operations are allowed
-    to proceed using ad-hoc connections with immediate autocommit, then the
-    application probably should set ``autoflush=False, expire_on_commit=False``,
-    since these features are intended to be used only within the context
-    of a database transaction.
 
 Modern usage of "autocommit mode" tends to be for framework integrations that
 wish to control specifically when the "begin" state occurs.  A session which is
@@ -214,18 +212,26 @@ compatible with the ``with`` statement::
 Using Subtransactions with Autocommit
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A subtransaction indicates usage of the :meth:`.Session.begin` method in conjunction with
-the ``subtransactions=True`` flag.  This produces a non-transactional, delimiting construct that
-allows nesting of calls to :meth:`~.Session.begin` and :meth:`~.Session.commit`.
-Its purpose is to allow the construction of code that can function within a transaction
-both independently of any external code that starts a transaction,
-as well as within a block that has already demarcated a transaction.
+.. deprecated:: 1.4 The :paramref:`.Session.begin.subtransactions`
+   flag will be deprecated in SQLAlchemy 1.4 and removed in SQLAlchemy 2.0.
+   For background on migrating away from the "subtransactions" pattern
+   see the next section :ref:`session_subtransactions_migrating`.
+
+A subtransaction indicates usage of the :meth:`.Session.begin` method in
+conjunction with the :paramref:`.Session.begin.subtransactions` flag set to
+``True``.  This produces a
+non-transactional, delimiting construct that allows nesting of calls to
+:meth:`~.Session.begin` and :meth:`~.Session.commit`. Its purpose is to allow
+the construction of code that can function within a transaction both
+independently of any external code that starts a transaction, as well as within
+a block that has already demarcated a transaction.
 
 ``subtransactions=True`` is generally only useful in conjunction with
-autocommit, and is equivalent to the pattern described at :ref:`connections_nested_transactions`,
-where any number of functions can call :meth:`_engine.Connection.begin` and :meth:`.Transaction.commit`
-as though they are the initiator of the transaction, but in fact may be participating
-in an already ongoing transaction::
+autocommit, and is equivalent to the pattern described at
+:ref:`connections_nested_transactions`, where any number of functions can call
+:meth:`_engine.Connection.begin` and :meth:`.Transaction.commit` as though they
+are the initiator of the transaction, but in fact may be participating in an
+already ongoing transaction::
 
     # method_a starts a transaction and calls method_b
     def method_a(session):
@@ -255,11 +261,98 @@ in an already ongoing transaction::
     method_a(session)
     session.close()
 
-Subtransactions are used by the :meth:`.Session.flush` process to ensure that the
-flush operation takes place within a transaction, regardless of autocommit.   When
-autocommit is disabled, it is still useful in that it forces the :class:`.Session`
-into a "pending rollback" state, as a failed flush cannot be resumed in mid-operation,
-where the end user still maintains the "scope" of the transaction overall.
+Subtransactions are used by the :meth:`.Session.flush` process to ensure that
+the flush operation takes place within a transaction, regardless of autocommit.
+When autocommit is disabled, it is still useful in that it forces the
+:class:`.Session` into a "pending rollback" state, as a failed flush cannot be
+resumed in mid-operation, where the end user still maintains the "scope" of the
+transaction overall.
+
+.. _session_subtransactions_migrating:
+
+Migrating from the "subtransaction" pattern
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The "subtransaction" pattern will be deprecated in SQLAlchemy 1.4 and removed
+in version 2.0 as a public API.  This pattern has been shown to be confusing in
+real world applications, and it is preferable for an application to ensure that
+the top-most level of database operations are performed with a single
+begin/commit pair.
+
+To provide backwards compatibility for applications that make use of this
+pattern, the following context manager or a similar implementation based on
+a decorator may be used.  It relies on autocommit mode within SQLAlchemy
+1.3 but not in SQLAlchemy 1.4::
+
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def transaction(session):
+        assert session.autocommit, (
+            "this pattern expects the session to be in autocommit mode. "
+            "This assertion can be removed for SQLAlchemy 1.4."
+        )
+        if not session.transaction:
+            with session.begin():
+                yield
+        else:
+            yield
+
+
+The above context manager may be used in the same way the
+"subtransaction" flag works, such as in the following example::
+
+
+    # method_a starts a transaction and calls method_b
+    def method_a(session):
+        with transaction(session):
+            method_b(session)
+
+    # method_b also starts a transaction, but when
+    # called from method_a participates in the ongoing
+    # transaction.
+    def method_b(session):
+        with transaction(session):
+            session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine, autocommit=True)
+
+    # create a Session and call method_a
+    session = Session()
+    try:
+        method_a(session)
+    finally:
+        session.close()
+
+To compare towards the preferred idiomatic pattern, the begin block should
+be at the outermost level.  This removes the need for individual functions
+or methods to be concerned with the details of transaction demarcation::
+
+    def method_a(session):
+        method_b(session)
+
+    def method_b(session):
+        session.add(SomeObject('bat', 'lala'))
+
+    Session = sessionmaker(engine)
+
+    # create a Session and call method_a
+    session = Session()
+    try:
+        # Session "begins" the transaction automatically, so the
+        # .transaction attribute may be used as a context manager.
+        with session.transaction:
+            method_a(session)
+    finally:
+        session.close()
+
+SQLAlchemy 1.4 will feature an improved API for the above transactional
+patterns.
+
+.. seealso::
+
+    :ref:`connections_subtransactions` - similar pattern based on Core only
 
 .. _session_twophase:
 
