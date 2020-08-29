@@ -1085,11 +1085,11 @@ class Session(_SessionClassMethods):
 
     @property
     @util.deprecated_20(
-        "The :attr:`_orm.Session.transaction` accessor is deprecated and "
-        "will be removed in SQLAlchemy version 2.0.  "
-        "For context manager use, use :meth:`_orm.Session.begin`.  To access "
+        ":attr:`_orm.Session.transaction`",
+        alternative="For context manager use, use "
+        ":meth:`_orm.Session.begin`.  To access "
         "the current root transaction, use "
-        ":meth:`_orm.Session.get_transaction`"
+        ":meth:`_orm.Session.get_transaction`.",
     )
     def transaction(self):
         """The current active or inactive :class:`.SessionTransaction`.

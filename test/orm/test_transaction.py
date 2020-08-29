@@ -1089,34 +1089,80 @@ class _LocalFixture(FixtureTest):
         mapper(Address, addresses)
 
 
-class SubtransactionRecipeTest(FixtureTest):
-    run_inserts = None
-    __backend__ = True
+def subtransaction_recipe_one(self):
+    @contextlib.contextmanager
+    def transaction(session):
 
-    future = False
+        if session.in_transaction():
+            outermost = False
+        else:
+            outermost = True
+            session.begin()
 
-    @testing.fixture
-    def subtransaction_recipe(self):
-        @contextlib.contextmanager
-        def transaction(session):
-
+        try:
+            yield
+        except:
             if session.in_transaction():
-                outermost = False
-            else:
-                outermost = True
-                session.begin()
+                session.rollback()
+            raise
+        else:
+            if outermost and session.in_transaction():
+                session.commit()
 
+    return transaction
+
+
+def subtransaction_recipe_two(self):
+    # shorter recipe
+    @contextlib.contextmanager
+    def transaction(session):
+        if not session.in_transaction():
+            with session.begin():
+                yield
+        else:
+            yield
+
+    return transaction
+
+
+def subtransaction_recipe_three(self):
+    @contextlib.contextmanager
+    def transaction(session):
+        if not session.in_transaction():
+            session.begin()
+            try:
+                yield
+            except:
+                if session.in_transaction():
+                    session.rollback()
+            else:
+                session.commit()
+        else:
             try:
                 yield
             except:
                 if session.in_transaction():
                     session.rollback()
                 raise
-            else:
-                if outermost and session.in_transaction():
-                    session.commit()
 
-        return transaction
+    return transaction
+
+
+@testing.combinations(
+    (subtransaction_recipe_one, True),
+    (subtransaction_recipe_two, False),
+    (subtransaction_recipe_three, True),
+    argnames="target_recipe,recipe_rollsback_early",
+    id_="ns",
+)
+@testing.combinations((True,), (False,), argnames="future", id_="s")
+class SubtransactionRecipeTest(FixtureTest):
+    run_inserts = None
+    __backend__ = True
+
+    @testing.fixture
+    def subtransaction_recipe(self):
+        return self.target_recipe()
 
     @testing.requires.savepoints
     def test_recipe_heavy_nesting(self, subtransaction_recipe):
@@ -1253,10 +1299,15 @@ class SubtransactionRecipeTest(FixtureTest):
         except:
             pass
 
-        # that was a real rollback, so no transaction
-        is_(sess.get_transaction(), None)
+        if self.recipe_rollsback_early:
+            # that was a real rollback, so no transaction
+            assert not sess.in_transaction()
+            is_(sess.get_transaction(), None)
+        else:
+            assert sess.in_transaction()
 
         sess.close()
+        assert not sess.in_transaction()
 
     def test_recipe_multi_nesting(self, subtransaction_recipe):
         sess = Session(testing.db, future=self.future)
@@ -1271,7 +1322,12 @@ class SubtransactionRecipeTest(FixtureTest):
             except:
                 pass
 
-            assert not sess.in_transaction()
+            if self.recipe_rollsback_early:
+                assert not sess.in_transaction()
+            else:
+                assert sess.in_transaction()
+
+        assert not sess.in_transaction()
 
     def test_recipe_deactive_status_check(self, subtransaction_recipe):
         sess = Session(testing.db, future=self.future)
@@ -1282,10 +1338,6 @@ class SubtransactionRecipeTest(FixtureTest):
 
         assert not sess.in_transaction()
         sess.commit()  # no error
-
-
-class FutureSubtransactionRecipeTest(SubtransactionRecipeTest):
-    future = True
 
 
 class FixtureDataTest(_LocalFixture):

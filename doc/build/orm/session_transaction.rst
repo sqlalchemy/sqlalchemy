@@ -325,12 +325,15 @@ Explicit Begin
 
 .. versionchanged:: 1.4
     SQLAlchemy 1.4 deprecates "autocommit mode", which is historically enabled
-    by using the :paramref:`_orm.Session.autocommit` flag.    This flag allows
-    the :class:`_orm.Session` to invoke SQL statements within individual,
-    ad-hoc transactions and has been recommended against for many years.
-    Instead, the :meth:`_orm.Session.begin` method may now be called when
+    by using the :paramref:`_orm.Session.autocommit` flag.    Going forward,
+    a new approach to allowing usage of the :meth:`_orm.Session.begin` method
+    is new "autobegin" behavior so that the method may now be called when
     a :class:`_orm.Session` is first constructed, or after the previous
     transaction has ended and before it begins a new one.
+
+    For background on migrating away from the "subtransaction" pattern for
+    frameworks that rely upon nesting of begin()/commit() pairs, see the
+    next section :ref:`session_subtransactions`.
 
 The :class:`_orm.Session` features "autobegin" behavior, meaning that as soon
 as operations begin to take place, it ensures a :class:`_orm.SessionTransaction`
@@ -405,22 +408,11 @@ a decorator may be used::
 
     @contextlib.contextmanager
     def transaction(session):
-
-        if session.in_transaction():
-            outermost = False
+        if not session.in_transaction():
+            with session.begin():
+                yield
         else:
-            outermost = True
-            session.begin()
-
-        try:
             yield
-        except:
-            if session.in_transaction():
-                session.rollback()
-            raise
-        else:
-            if outermost and session.in_transaction():
-                session.commit()
 
 
 The above context manager may be used in the same way the
@@ -439,6 +431,8 @@ The above context manager may be used in the same way the
         with transaction(session):
             session.add(SomeObject('bat', 'lala'))
 
+    Session = sessionmaker(engine)
+
     # create a Session and call method_a
     with Session() as session:
         method_a(session)
@@ -453,11 +447,16 @@ or methods to be concerned with the details of transaction demarcation::
     def method_b(session):
         session.add(SomeObject('bat', 'lala'))
 
+    Session = sessionmaker(engine)
+
     # create a Session and call method_a
     with Session() as session:
         with session.begin():
             method_a(session)
 
+.. seealso::
+
+    :ref:`connections_subtransactions` - similar pattern based on Core only
 
 .. _session_twophase:
 

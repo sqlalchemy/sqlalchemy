@@ -81,6 +81,14 @@ Glossary
 
             `Relational Algebra (via Wikipedia) <https://en.wikipedia.org/wiki/Relational_algebra>`_
 
+    cyclomatic complexity
+        A measure of code complexity based on the number of possible paths
+        through a program's source code.
+
+        .. seealso::
+
+            `Cyclomatic Complexity <https://en.wikipedia.org/wiki/Cyclomatic_complexity>`_
+
     selectable
         A term used in SQLAlchemy to describe a SQL construct that represents
         a collection of rows.   It's largely similar to the concept of a
