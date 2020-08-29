@@ -135,6 +135,16 @@ class AsyncEngineTest(EngineFixture):
                 trans.rollback(),
             )
 
+    @async_test
+    async def test_create_async_engine_server_side_cursor(self, async_engine):
+        testing.assert_raises_message(
+            asyncio_exc.AsyncMethodRequired,
+            "Can't set server_side_cursors for async engine globally",
+            create_async_engine,
+            testing.db.url,
+            server_side_cursors=True,
+        )
+
 
 class AsyncResultTest(EngineFixture):
     @testing.combinations(
