@@ -31,7 +31,7 @@ def create_async_engine(*arg, **kw):
     """
 
     if kw.get("server_side_cursors", False):
-        raise exc.AsyncMethodRequired(
+        raise async_exc.AsyncMethodRequired(
             "Can't set server_side_cursors for async engine globally; "
             "use the connection.stream() method for an async "
             "streaming result set"
