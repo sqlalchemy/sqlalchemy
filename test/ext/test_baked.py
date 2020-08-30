@@ -22,7 +22,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from test.orm import _fixtures
@@ -108,7 +108,7 @@ class StateChangeTest(BakedTest):
         q1 = self.bakery(l1)
 
         q2 = q1.with_criteria(l2)
-        is_not_(q2, q1)
+        is_not(q2, q1)
 
         self._assert_cache_key(q1._cache_key, [l1])
         self._assert_cache_key(q2._cache_key, [l1, l2])
@@ -126,7 +126,7 @@ class StateChangeTest(BakedTest):
         q1 = self.bakery(l1)
 
         q2 = q1 + l2
-        is_not_(q2, q1)
+        is_not(q2, q1)
 
         self._assert_cache_key(q1._cache_key, [l1])
         self._assert_cache_key(q2._cache_key, [l1, l2])

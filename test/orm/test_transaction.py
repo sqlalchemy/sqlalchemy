@@ -27,7 +27,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
@@ -620,7 +620,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(trans._state, _session.CLOSED)
 
         # outermost transaction is new
-        is_not_(session.transaction, trans)
+        is_not(session.transaction, trans)
 
         # outermost is active
         eq_(session.transaction._state, _session.ACTIVE)
@@ -893,9 +893,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         session = create_session(autocommit=False)
         session.add(User(name="ed"))
         session.transaction.commit()
-        assert (
-            session.transaction is not None
-        ), "autocommit=False should start a new transaction"
+
+        is_not(session.transaction, None)
 
     @testing.requires.python2
     @testing.requires.savepoints_w_release
@@ -1580,7 +1579,7 @@ class SavepointTest(_LocalFixture):
         assert u1 not in s.new
 
         is_(trans._state, _session.CLOSED)
-        is_not_(s.transaction, trans)
+        is_not(s.transaction, trans)
         is_(s.transaction._state, _session.ACTIVE)
 
         is_(s.transaction.nested, False)

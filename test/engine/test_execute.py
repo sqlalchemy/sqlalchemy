@@ -33,7 +33,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.engines import testing_engine
@@ -2325,7 +2325,7 @@ class HandleErrorTest(fixtures.TestBase):
 
         for crec in crecs:
             if crec is target_crec or not set_to_false:
-                is_not_(crec.connection, crec.get_connection())
+                is_not(crec.connection, crec.get_connection())
             else:
                 is_(crec.connection, crec.get_connection())
 
