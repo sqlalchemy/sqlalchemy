@@ -367,11 +367,6 @@ class DefaultRequirements(SuiteRequirements):
                 # no access to same table
                 no_support("mysql", "requires SUPER priv"),
                 exclude("mysql", "<", (5, 0, 10), "not supported by database"),
-                # huh?  TODO: implement triggers for PG tests, remove this
-                no_support(
-                    "postgresql",
-                    "PG triggers need to be implemented for tests",
-                ),
             ]
         )
 
