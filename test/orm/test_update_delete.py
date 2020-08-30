@@ -19,7 +19,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -538,6 +540,68 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(
             sess.query(User.age).order_by(User.id).all(),
             list(zip([15, 27, 19, 27])),
+        )
+
+    @testing.combinations(
+        ("fetch", False),
+        ("fetch", True),
+        ("evaluate", False),
+        ("evaluate", True),
+    )
+    def test_update_with_loader_criteria(self, fetchstyle, future):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        john, jack, jill, jane = (
+            sess.execute(select(User).order_by(User.id)).scalars().all()
+        )
+
+        sess.execute(
+            update(User)
+            .options(
+                with_loader_criteria(User, User.name.in_(["jill", "jane"]))
+            )
+            .where(User.age > 29)
+            .values(age=User.age - 10)
+            .execution_options(synchronize_session=fetchstyle)
+        )
+
+        eq_([john.age, jack.age, jill.age, jane.age], [25, 47, 29, 27])
+        eq_(
+            sess.execute(select(User.age).order_by(User.id)).all(),
+            list(zip([25, 47, 29, 27])),
+        )
+
+    @testing.combinations(
+        ("fetch", False),
+        ("fetch", True),
+        ("evaluate", False),
+        ("evaluate", True),
+    )
+    def test_delete_with_loader_criteria(self, fetchstyle, future):
+        User = self.classes.User
+
+        sess = Session(testing.db, future=True)
+
+        john, jack, jill, jane = (
+            sess.execute(select(User).order_by(User.id)).scalars().all()
+        )
+
+        sess.execute(
+            delete(User)
+            .options(
+                with_loader_criteria(User, User.name.in_(["jill", "jane"]))
+            )
+            .where(User.age > 29)
+            .execution_options(synchronize_session=fetchstyle)
+        )
+
+        assert jane not in sess
+        assert jack in sess
+        eq_(
+            sess.execute(select(User.age).order_by(User.id)).all(),
+            list(zip([25, 47, 29])),
         )
 
     def test_update_against_table_col(self):
@@ -1645,4 +1709,137 @@ class InheritTest(fixtures.DeclarativeMappedTest):
         eq_(
             set(s.query(Person.name, Engineer.engineer_name)),
             set([("e1", "e1"), ("e22", "e55")]),
+        )
+
+
+class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
+    __backend__ = True
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Staff(Base):
+            __tablename__ = "staff"
+            position = Column(String(10), nullable=False)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(5))
+            stats = Column(String(5))
+            __mapper_args__ = {"polymorphic_on": position}
+
+        class Sales(Staff):
+            sales_stats = Column(String(5))
+            __mapper_args__ = {"polymorphic_identity": "sales"}
+
+        class Support(Staff):
+            support_stats = Column(String(5))
+            __mapper_args__ = {"polymorphic_identity": "support"}
+
+    @classmethod
+    def insert_data(cls, connection):
+        with sessionmaker(connection).begin() as session:
+            Sales, Support = (
+                cls.classes.Sales,
+                cls.classes.Support,
+            )
+            session.add_all(
+                [
+                    Sales(name="n1", sales_stats="1", stats="a"),
+                    Sales(name="n2", sales_stats="2", stats="b"),
+                    Support(name="n1", support_stats="3", stats="c"),
+                    Support(name="n2", support_stats="4", stats="d"),
+                ]
+            )
+
+    @testing.combinations(
+        ("fetch", False),
+        ("fetch", True),
+        ("evaluate", False),
+        ("evaluate", True),
+    )
+    def test_update(self, fetchstyle, future):
+        Staff, Sales, Support = self.classes("Staff", "Sales", "Support")
+
+        sess = Session()
+
+        en1, en2 = (
+            sess.execute(select(Sales).order_by(Sales.sales_stats))
+            .scalars()
+            .all()
+        )
+        mn1, mn2 = (
+            sess.execute(select(Support).order_by(Support.support_stats))
+            .scalars()
+            .all()
+        )
+
+        if future:
+            sess.execute(
+                update(Sales)
+                .filter_by(name="n1")
+                .values(stats="p")
+                .execution_options(synchronize_session=fetchstyle)
+            )
+        else:
+            sess.query(Sales).filter_by(name="n1").update(
+                {"stats": "p"}, synchronize_session=fetchstyle
+            )
+
+        eq_(en1.stats, "p")
+        eq_(mn1.stats, "c")
+        eq_(
+            sess.execute(
+                select(Staff.position, Staff.name, Staff.stats).order_by(
+                    Staff.id
+                )
+            ).all(),
+            [
+                ("sales", "n1", "p"),
+                ("sales", "n2", "b"),
+                ("support", "n1", "c"),
+                ("support", "n2", "d"),
+            ],
+        )
+
+    @testing.combinations(
+        ("fetch", False),
+        ("fetch", True),
+        ("evaluate", False),
+        ("evaluate", True),
+    )
+    def test_delete(self, fetchstyle, future):
+        Staff, Sales, Support = self.classes("Staff", "Sales", "Support")
+
+        sess = Session()
+        en1, en2 = sess.query(Sales).order_by(Sales.sales_stats).all()
+        mn1, mn2 = sess.query(Support).order_by(Support.support_stats).all()
+
+        if future:
+            sess.execute(
+                delete(Sales)
+                .filter_by(name="n1")
+                .execution_options(synchronize_session=fetchstyle)
+            )
+        else:
+            sess.query(Sales).filter_by(name="n1").delete(
+                synchronize_session=fetchstyle
+            )
+        assert en1 not in sess
+        assert en2 in sess
+        assert mn1 in sess
+        assert mn2 in sess
+
+        eq_(
+            sess.execute(
+                select(Staff.position, Staff.name, Staff.stats).order_by(
+                    Staff.id
+                )
+            ).all(),
+            [
+                ("sales", "n2", "b"),
+                ("support", "n1", "c"),
+                ("support", "n2", "d"),
+            ],
         )

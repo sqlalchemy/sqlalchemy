@@ -729,6 +729,8 @@ class ORMOption(ExecutableOption):
 
     _is_compile_state = False
 
+    _is_criteria_option = False
+
 
 class LoaderOption(ORMOption):
     """Describe a loader modification to an ORM statement at compilation time.
@@ -741,6 +743,27 @@ class LoaderOption(ORMOption):
 
     def process_compile_state(self, compile_state):
         """Apply a modification to a given :class:`.CompileState`."""
+
+
+class CriteriaOption(ORMOption):
+    """Describe a WHERE criteria modification to an ORM statement at
+    compilation time.
+
+    .. versionadded:: 1.4
+
+    """
+
+    _is_compile_state = True
+    _is_criteria_option = True
+
+    def process_compile_state(self, compile_state):
+        """Apply a modification to a given :class:`.CompileState`."""
+
+    def get_global_criteria(self, attributes):
+        """update additional entity criteria options in the given
+        attributes dictionary.
+
+        """
 
 
 class UserDefinedOption(ORMOption):

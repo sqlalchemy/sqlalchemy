@@ -23,7 +23,7 @@ from .base import object_state  # noqa
 from .base import state_attribute_str  # noqa
 from .base import state_class_str  # noqa
 from .base import state_str  # noqa
-from .interfaces import LoaderOption
+from .interfaces import CriteriaOption
 from .interfaces import MapperProperty  # noqa
 from .interfaces import ORMColumnsClauseRole
 from .interfaces import ORMEntityColumnsClauseRole
@@ -856,7 +856,7 @@ class AliasedInsp(
             return "aliased(%s)" % (self._target.__name__,)
 
 
-class LoaderCriteriaOption(LoaderOption):
+class LoaderCriteriaOption(CriteriaOption):
     """Add additional WHERE criteria to the load for all occurrences of
     a particular entity.
 
@@ -1026,8 +1026,11 @@ class LoaderCriteriaOption(LoaderOption):
         # if options to limit the criteria to immediate query only,
         # use compile_state.attributes instead
 
+        self.get_global_criteria(compile_state.global_attributes)
+
+    def get_global_criteria(self, attributes):
         for mp in self._all_mappers():
-            load_criteria = compile_state.global_attributes.setdefault(
+            load_criteria = attributes.setdefault(
                 ("additional_entity_criteria", mp), []
             )
 

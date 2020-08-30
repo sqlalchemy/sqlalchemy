@@ -1857,6 +1857,43 @@ class BulkUDCompileState(CompileState):
         return result
 
     @classmethod
+    def _adjust_for_extra_criteria(cls, global_attributes, ext_info):
+        """Apply extra criteria filtering.
+
+        For all distinct single-table-inheritance mappers represented in the
+        table being updated or deleted, produce additional WHERE criteria such
+        that only the appropriate subtypes are selected from the total results.
+
+        Additionally, add WHERE criteria originating from LoaderCriteriaOptions
+        collected from the statement.
+
+        """
+
+        return_crit = ()
+
+        adapter = ext_info._adapter if ext_info.is_aliased_class else None
+
+        if (
+            "additional_entity_criteria",
+            ext_info.mapper,
+        ) in global_attributes:
+            return_crit += tuple(
+                ae._resolve_where_criteria(ext_info)
+                for ae in global_attributes[
+                    ("additional_entity_criteria", ext_info.mapper)
+                ]
+                if ae.include_aliases or ae.entity is ext_info
+            )
+
+        if ext_info.mapper._single_table_criterion is not None:
+            return_crit += (ext_info.mapper._single_table_criterion,)
+
+        if adapter:
+            return_crit = tuple(adapter.traverse(crit) for crit in return_crit)
+
+        return return_crit
+
+    @classmethod
     def _do_pre_synchronize_evaluate(
         cls,
         session,
@@ -1873,10 +1910,22 @@ class BulkUDCompileState(CompileState):
 
         try:
             evaluator_compiler = evaluator.EvaluatorCompiler(target_cls)
+            crit = ()
             if statement._where_criteria:
-                eval_condition = evaluator_compiler.process(
-                    *statement._where_criteria
+                crit += statement._where_criteria
+
+            global_attributes = {}
+            for opt in statement._with_options:
+                if opt._is_criteria_option:
+                    opt.get_global_criteria(global_attributes)
+
+            if global_attributes:
+                crit += cls._adjust_for_extra_criteria(
+                    global_attributes, mapper
                 )
+
+            if crit:
+                eval_condition = evaluator_compiler.process(*crit)
             else:
 
                 def eval_condition(obj):
@@ -1920,16 +1969,17 @@ class BulkUDCompileState(CompileState):
 
         # TODO: detect when the where clause is a trivial primary key match.
         matched_objects = [
-            obj
-            for (cls, pk, identity_token,), obj in session.identity_map.items()
-            if issubclass(cls, target_cls)
-            and eval_condition(obj)
+            state.obj()
+            for state in session.identity_map.all_states()
+            if state.mapper.isa(mapper)
+            and eval_condition(state.obj())
             and (
                 update_options._refresh_identity_token is None
                 # TODO: coverage for the case where horiziontal sharding
                 # invokes an update() or delete() given an explicit identity
                 # token up front
-                or identity_token == update_options._refresh_identity_token
+                or state.identity_token
+                == update_options._refresh_identity_token
             )
         ]
         return update_options + {
@@ -2003,8 +2053,10 @@ class BulkUDCompileState(CompileState):
     ):
         mapper = update_options._subject_mapper
 
-        select_stmt = select(
-            *(mapper.primary_key + (mapper.select_identity_token,))
+        select_stmt = (
+            select(*(mapper.primary_key + (mapper.select_identity_token,)))
+            .select_from(mapper)
+            .options(*statement._with_options)
         )
         select_stmt._where_criteria = statement._where_criteria
 
@@ -2075,11 +2127,19 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
 
         self = cls.__new__(cls)
 
-        self.mapper = mapper = statement.table._annotations.get(
-            "parentmapper", None
-        )
+        ext_info = statement.table._annotations["parententity"]
+
+        self.mapper = mapper = ext_info.mapper
+
+        self.extra_criteria_entities = {}
 
         self._resolved_values = cls._get_resolved_values(mapper, statement)
+
+        extra_criteria_attributes = {}
+
+        for opt in statement._with_options:
+            if opt._is_criteria_option:
+                opt.get_global_criteria(extra_criteria_attributes)
 
         if not statement._preserve_parameter_order and statement._values:
             self._resolved_values = dict(self._resolved_values)
@@ -2096,6 +2156,12 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             new_stmt._ordered_values = self._resolved_values
         elif statement._values:
             new_stmt._values = self._resolved_values
+
+        new_crit = cls._adjust_for_extra_criteria(
+            extra_criteria_attributes, mapper
+        )
+        if new_crit:
+            new_stmt = new_stmt.where(*new_crit)
 
         # if we are against a lambda statement we might not be the
         # topmost object that received per-execute annotations
@@ -2211,11 +2277,25 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)
 
-        self.mapper = mapper = statement.table._annotations.get(
-            "parentmapper", None
-        )
+        ext_info = statement.table._annotations["parententity"]
+        self.mapper = mapper = ext_info.mapper
 
         top_level_stmt = compiler.statement
+
+        self.extra_criteria_entities = {}
+
+        extra_criteria_attributes = {}
+
+        for opt in statement._with_options:
+            if opt._is_criteria_option:
+                opt.get_global_criteria(extra_criteria_attributes)
+
+        new_crit = cls._adjust_for_extra_criteria(
+            extra_criteria_attributes, mapper
+        )
+        if new_crit:
+            statement = statement.where(*new_crit)
+
         if (
             mapper
             and top_level_stmt._annotations.get("synchronize_session", None)

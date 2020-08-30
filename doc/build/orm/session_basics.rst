@@ -507,10 +507,19 @@ values for ``synchronize_session`` are supported:
       Similar guidelines as those detailed at :ref:`multi_table_updates`
       may be applied.
 
-    * The polymorphic identity WHERE criteria is **not** included
-      for single- or
-      joined- table updates - this must be added **manually**, even
-      for single table inheritance.
+    * The WHERE criteria needed in order to limit the polymorphic identity to
+      specific subclasses for single-table-inheritance mappings **is included
+      automatically** .   This only applies to a subclass mapper that has no
+      table of its own.
+
+      .. versionchanged:: 1.4  ORM updates/deletes now automatically
+         accommodate for the WHERE criteria added for single-inheritance
+         mappings.
+
+    * The :func:`_orm.with_loader_criteria` option **is supported** by ORM
+      update and delete operations; criteria here will be added to that of the
+      UPDATE or DELETE statement being emitted, as well as taken into account
+      during the "synchronize" process.
 
     * In order to intercept bulk UPDATE and DELETE operations with event
       handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.

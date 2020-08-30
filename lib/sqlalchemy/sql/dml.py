@@ -12,6 +12,7 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 from sqlalchemy.types import NullType
 from . import coercions
 from . import roles
+from .base import _entity_namespace_key
 from .base import _from_objects
 from .base import _generative
 from .base import ColumnCollection
@@ -983,9 +984,29 @@ class DMLWhereBase(object):
         )
 
     def filter(self, *criteria):
-        """A synonym for the :meth:`_dml.DMLWhereBase.where` method."""
+        """A synonym for the :meth:`_dml.DMLWhereBase.where` method.
+
+        .. versionadded:: 1.4
+
+        """
 
         return self.where(*criteria)
+
+    def _filter_by_zero(self):
+        return self.table
+
+    def filter_by(self, **kwargs):
+        r"""apply the given filtering criterion as a WHERE clause
+        to this select.
+
+        """
+        from_entity = self._filter_by_zero()
+
+        clauses = [
+            _entity_namespace_key(from_entity, key) == value
+            for key, value in kwargs.items()
+        ]
+        return self.filter(*clauses)
 
     @property
     def whereclause(self):
