@@ -59,9 +59,24 @@ the PostgreSQL backend, we could invoke this as::
         Column('data', String(50))
     )
 
+    func = DDL(
+        "CREATE FUNCTION my_func() "
+        "RETURNS TRIGGER AS $$ "
+        "BEGIN "
+        "NEW.data := 'ins'; "
+        "RETURN NEW; "
+        "END; $$ LANGUAGE PLPGSQL"
+    )
+
     trigger = DDL(
         "CREATE TRIGGER dt_ins BEFORE INSERT ON mytable "
-        "FOR EACH ROW BEGIN SET NEW.data='ins'; END"
+        "FOR EACH ROW EXECUTE PROCEDURE my_func();"
+    )
+
+    event.listen(
+        mytable,
+        'after_create',
+        func.execute_if(dialect='postgresql')
     )
 
     event.listen(
@@ -296,5 +311,3 @@ DDL Expression Constructs API
 .. autoclass:: DropSchema
     :members:
     :undoc-members:
-
-
