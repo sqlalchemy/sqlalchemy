@@ -14,9 +14,9 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
-from sqlalchemy.testing import is_not_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
-from sqlalchemy.testing import not_in_
+from sqlalchemy.testing import not_in
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import all_partial_orderings
@@ -3710,10 +3710,10 @@ class CollectionInitTest(fixtures.TestBase):
         existing = a1.bs
 
         is_(state._empty_collections["bs"], existing)
-        is_not_(existing._sa_adapter, None)
+        is_not(existing._sa_adapter, None)
 
         a1.bs = []  # replaces previous "empty" collection
-        not_in_("bs", state._empty_collections)  # empty is replaced
+        not_in("bs", state._empty_collections)  # empty is replaced
         is_(existing._sa_adapter, None)
 
     def test_assert_false_on_default_value(self):
@@ -3735,7 +3735,7 @@ class CollectionInitTest(fixtures.TestBase):
         eq_(a1.__dict__["bs"], [b1, b2])
 
         old = a1.__dict__["bs"]
-        is_not_(old._sa_adapter, None)
+        is_not(old._sa_adapter, None)
         state = attributes.instance_state(a1)
 
         # this occurs during a load with populate_existing
