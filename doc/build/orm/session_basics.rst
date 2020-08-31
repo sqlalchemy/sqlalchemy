@@ -81,12 +81,85 @@ persisted to the database.  If we were only issuing SELECT calls and did not
 need to write any changes, then the call to :meth:`_orm.Session.commit` would
 be unnecessary.
 
-When using the :class:`_orm.sessionmaker`, this object acts as a factory
-for :class:`_orm.Session` objects and provides an all-in-one transactional
-context manager analogous to :meth:`_engine.Engine.begin`; this context manager
-begins and commits a transaction at the end of the block, or in the case
-of an exception throw, will call upon :meth:`_orm.Session.rollback` to
-roll back the transaction::
+Framing out a begin / commit / rollback block
+-----------------------------------------------
+
+We may also enclose the :meth:`_orm.Session.commit` call and the overall
+"framing" of the transaction within a context manager for those cases where
+we will be committing data to the database.  By "framing" we mean that if all
+operations succeed, the :meth:`_orm.Session.commit` method will be called,
+but if any exceptions are raised, the :meth:`_orm.Session.rollback` method
+will be called so that the transaction is rolled back immediately, before
+propagating the exception outward.   In Python this is most fundamentally
+expressed using a ``try: / except: / else:`` block such as::
+
+    # verbose version of what a context manager will do
+    with Session(engine) as session:
+        try:
+            session.add(some_object)
+            session.add(some_other_object)
+        except:
+            session.rollback()
+            raise
+        else:
+            session.commit()
+
+The long-form sequence of operations illustrated above can be
+achieved more succinctly by making use of the
+:class:`_orm.SessionTransaction` object returned by the :meth:`_orm.Session.begin`
+method, which provides a context manager interface for the same sequence of
+operations::
+
+    # create session and add objects
+    with Session(engine) as session:
+        with session.begin():
+          session.add(some_object)
+          session.add(some_other_object)
+        # inner context calls session.commit(), if there were no exceptions
+    # outer context calls session.close()
+
+More succinctly, the two contexts may be combined::
+
+    # create session and add objects
+    with Session(engine) as session, session.begin():
+        session.add(some_object)
+        session.add(some_other_object)
+    # inner context calls session.commit(), if there were no exceptions
+    # outer context calls session.close()
+
+Using a sessionmaker
+--------------------
+
+The purpose of :class:`_orm.sessionmaker` is to provide a factory for
+:class:`_orm.Session` objects with a fixed configuration.   As it is typical
+that an application will have an :class:`_engine.Engine` object in module
+scope, the :class:`_orm.sessionmaker` can provide a factory for
+:class:`_orm.Session` objects that are against this engine::
+
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    # an Engine, which the Session will use for connection
+    # resources, typically in module scope
+    engine = create_engine('postgresql://scott:tiger@localhost/')
+
+    # a sessionmaker(), also in the same scope as the engine
+    Session = sessionmaker(engine)
+
+    # we can now construct a Session() without needing to pass the
+    # engine each time
+    with Session() as session:
+        session.add(some_object)
+        session.add(some_other_object)
+        session.commit()
+    # closes the session
+
+The :class:`_orm.sessionmaker` is analogous to the :class:`_engine.Engine`
+as a module-level factory for function-level sessions / connections.   As such
+it also has its own :meth:`_orm.sessionmaker.begin` method, analogous
+to :meth:`_engine.Engine.begin`, which returns a :class:`_orm.Session` object
+and also maintains a begin/commit/rollback block::
+
 
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -95,8 +168,11 @@ roll back the transaction::
     # resources
     engine = create_engine('postgresql://scott:tiger@localhost/')
 
+    # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
 
+    # we can now construct a Session() and include begin()/commit()/rollback()
+    # at once
     with Session.begin() as session:
         session.add(some_object)
         session.add(some_other_object)
@@ -107,10 +183,11 @@ as well as that the :class:`_orm.Session` will be closed, when the above
 ``with:`` block ends.
 
 When you write your application, the
-:class:`.sessionmaker` factory should be globally scoped, the same way as
-the :class:`_engine.Engine` object created by :func:`_sa.create_engine` is
-also typically globally scoped.  As these objects are both factories, they
-can be used by any number of functions and threads simultaneously.
+:class:`.sessionmaker` factory should be scoped the same as the
+:class:`_engine.Engine` object created by :func:`_sa.create_engine`, which
+is typically at module-level or global scope.  As these objects are both
+factories, they can be used by any number of functions and threads
+simultaneously.
 
 .. seealso::
 
