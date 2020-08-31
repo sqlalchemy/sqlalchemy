@@ -5825,3 +5825,412 @@ class EntityViaMultiplePathTestThree(fixtures.DeclarativeMappedTest):
                     assert a.parent is not None
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class DeepOptionsTest(_fixtures.FixtureTest):
+    @classmethod
+    def setup_mappers(cls):
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+            orders,
+        ) = (
+            cls.tables.users,
+            cls.classes.Keyword,
+            cls.tables.items,
+            cls.tables.order_items,
+            cls.classes.Order,
+            cls.classes.Item,
+            cls.classes.User,
+            cls.tables.keywords,
+            cls.tables.item_keywords,
+            cls.tables.orders,
+        )
+
+        mapper(Keyword, keywords)
+
+        mapper(
+            Item,
+            items,
+            properties=dict(
+                keywords=relationship(
+                    Keyword, item_keywords, order_by=item_keywords.c.item_id
+                )
+            ),
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties=dict(
+                items=relationship(Item, order_items, order_by=items.c.id)
+            ),
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(orders=relationship(Order, order_by=orders.c.id)),
+        )
+
+    def test_deep_options_1(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        # joinedload nothing.
+        u = sess.query(User).order_by(User.id).all()
+
+        def go():
+            u[0].orders[1].items[0].keywords[1]
+
+        self.assert_sql_count(testing.db, go, 3)
+
+    def test_deep_options_2(self):
+        """test (joined|subquery)load_all() options"""
+
+        User = self.classes.User
+
+        sess = create_session()
+
+        result = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(
+                sa.orm.joinedload("orders")
+                .joinedload("items")
+                .joinedload("keywords")
+            )
+        ).all()
+
+        def go():
+            result[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(0, go)
+
+        sess = create_session()
+
+        result = (
+            sess.query(User).options(
+                sa.orm.subqueryload("orders")
+                .subqueryload("items")
+                .subqueryload("keywords")
+            )
+        ).all()
+
+        def go():
+            result[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(0, go)
+
+    def test_deep_options_3(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        # same thing, with separate options calls
+        q2 = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(sa.orm.joinedload("orders"))
+            .options(sa.orm.joinedload("orders.items"))
+            .options(sa.orm.joinedload("orders.items.keywords"))
+        )
+        u = q2.all()
+
+        def go():
+            u[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(0, go)
+
+    def test_deep_options_4(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = create_session()
+
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            'Mapped attribute "Order.items" does not apply to any of the '
+            "root entities in this query, e.g. mapped class User->users. "
+            "Please specify the full path from one of the root entities "
+            "to the target attribute.",
+            sess.query(User)
+            .options(sa.orm.joinedload(Order.items))
+            ._compile_context,
+        )
+
+        # joinedload "keywords" on items.  it will lazy load "orders", then
+        # lazy load the "items" on the order, but on "items" it will eager
+        # load the "keywords"
+        q3 = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(sa.orm.joinedload("orders.items.keywords"))
+        )
+        u = q3.all()
+
+        def go():
+            u[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(2, go)
+
+        sess = create_session()
+        q3 = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(
+                sa.orm.joinedload(User.orders, Order.items, Item.keywords)
+            )
+        )
+        u = q3.all()
+
+        def go():
+            u[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(2, go)
+
+
+class SecondaryOptionsTest(fixtures.MappedTest):
+
+    """test that the contains_eager() option doesn't bleed
+    into a secondary load."""
+
+    run_inserts = "once"
+
+    run_deletes = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "base",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("type", String(50), nullable=False),
+        )
+        Table(
+            "child1",
+            metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+            Column(
+                "child2id", Integer, ForeignKey("child2.id"), nullable=False
+            ),
+        )
+        Table(
+            "child2",
+            metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+        )
+        Table(
+            "related",
+            metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        child1, child2, base, related = (
+            cls.tables.child1,
+            cls.tables.child2,
+            cls.tables.base,
+            cls.tables.related,
+        )
+
+        class Base(cls.Comparable):
+            pass
+
+        class Child1(Base):
+            pass
+
+        class Child2(Base):
+            pass
+
+        class Related(cls.Comparable):
+            pass
+
+        mapper(
+            Base,
+            base,
+            polymorphic_on=base.c.type,
+            properties={"related": relationship(Related, uselist=False)},
+        )
+        mapper(
+            Child1,
+            child1,
+            inherits=Base,
+            polymorphic_identity="child1",
+            properties={
+                "child2": relationship(
+                    Child2,
+                    primaryjoin=child1.c.child2id == base.c.id,
+                    foreign_keys=child1.c.child2id,
+                )
+            },
+        )
+        mapper(Child2, child2, inherits=Base, polymorphic_identity="child2")
+        mapper(Related, related)
+
+    @classmethod
+    def insert_data(cls, connection):
+        child1, child2, base, related = (
+            cls.tables.child1,
+            cls.tables.child2,
+            cls.tables.base,
+            cls.tables.related,
+        )
+
+        connection.execute(
+            base.insert(),
+            [
+                {"id": 1, "type": "child1"},
+                {"id": 2, "type": "child1"},
+                {"id": 3, "type": "child1"},
+                {"id": 4, "type": "child2"},
+                {"id": 5, "type": "child2"},
+                {"id": 6, "type": "child2"},
+            ],
+        )
+        connection.execute(child2.insert(), [{"id": 4}, {"id": 5}, {"id": 6}])
+        connection.execute(
+            child1.insert(),
+            [
+                {"id": 1, "child2id": 4},
+                {"id": 2, "child2id": 5},
+                {"id": 3, "child2id": 6},
+            ],
+        )
+        connection.execute(
+            related.insert(),
+            [{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}, {"id": 6}],
+        )
+
+    def test_contains_eager(self):
+        Child1, Related = self.classes.Child1, self.classes.Related
+
+        sess = create_session()
+
+        child1s = (
+            sess.query(Child1)
+            .join(Child1.related)
+            .options(sa.orm.contains_eager(Child1.related))
+            .order_by(Child1.id)
+        )
+
+        def go():
+            eq_(
+                child1s.all(),
+                [
+                    Child1(id=1, related=Related(id=1)),
+                    Child1(id=2, related=Related(id=2)),
+                    Child1(id=3, related=Related(id=3)),
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        c1 = child1s[0]
+
+        self.assert_sql_execution(
+            testing.db,
+            lambda: c1.child2,
+            CompiledSQL(
+                "SELECT child2.id AS child2_id, base.id AS base_id, "
+                "base.type AS base_type "
+                "FROM base JOIN child2 ON base.id = child2.id "
+                "WHERE base.id = :param_1",
+                {"param_1": 4},
+            ),
+        )
+
+    def test_joinedload_on_other(self):
+        Child1, Related = self.classes.Child1, self.classes.Related
+
+        sess = create_session()
+
+        child1s = (
+            sess.query(Child1)
+            .join(Child1.related)
+            .options(sa.orm.joinedload(Child1.related))
+            .order_by(Child1.id)
+        )
+
+        def go():
+            eq_(
+                child1s.all(),
+                [
+                    Child1(id=1, related=Related(id=1)),
+                    Child1(id=2, related=Related(id=2)),
+                    Child1(id=3, related=Related(id=3)),
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        c1 = child1s[0]
+
+        self.assert_sql_execution(
+            testing.db,
+            lambda: c1.child2,
+            CompiledSQL(
+                "SELECT child2.id AS child2_id, base.id AS base_id, "
+                "base.type AS base_type "
+                "FROM base JOIN child2 ON base.id = child2.id "
+                "WHERE base.id = :param_1",
+                {"param_1": 4},
+            ),
+        )
+
+    def test_joinedload_on_same(self):
+        Child1, Child2, Related = (
+            self.classes.Child1,
+            self.classes.Child2,
+            self.classes.Related,
+        )
+
+        sess = create_session()
+
+        child1s = (
+            sess.query(Child1)
+            .join(Child1.related)
+            .options(sa.orm.joinedload(Child1.child2, Child2.related))
+            .order_by(Child1.id)
+        )
+
+        def go():
+            eq_(
+                child1s.all(),
+                [
+                    Child1(id=1, related=Related(id=1)),
+                    Child1(id=2, related=Related(id=2)),
+                    Child1(id=3, related=Related(id=3)),
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 4)
+
+        c1 = child1s[0]
+
+        # this *does* joinedload
+        self.assert_sql_execution(
+            testing.db,
+            lambda: c1.child2,
+            CompiledSQL(
+                "SELECT child2.id AS child2_id, base.id AS base_id, "
+                "base.type AS base_type, "
+                "related_1.id AS related_1_id FROM base JOIN child2 "
+                "ON base.id = child2.id "
+                "LEFT OUTER JOIN related AS related_1 "
+                "ON base.id = related_1.id WHERE base.id = :param_1",
+                {"param_1": 4},
+            ),
+        )

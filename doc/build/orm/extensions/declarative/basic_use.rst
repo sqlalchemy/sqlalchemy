@@ -2,109 +2,19 @@
 Basic Use
 =========
 
-.. seealso::
-
-    This section describes specifics about how the Declarative system
-    interacts with the SQLAlchemy ORM.  For a general introduction
-    to class mapping, see :ref:`ormtutorial_toplevel` as well as
-    :ref:`mapper_config_toplevel`.
-
-SQLAlchemy object-relational configuration involves the
-combination of :class:`_schema.Table`, :func:`.mapper`, and class
-objects to define a mapped class.
-:mod:`~sqlalchemy.ext.declarative` allows all three to be
-expressed at once within the class declaration. As much as
-possible, regular SQLAlchemy schema and ORM constructs are
-used directly, so that configuration between "classical" ORM
-usage and declarative remain highly similar.
-
-As a simple example::
-
-    from sqlalchemy import Column, Integer, String
-    from sqlalchemy.ext.declarative import declarative_base
-
-    Base = declarative_base()
-
-    class SomeClass(Base):
-        __tablename__ = 'some_table'
-        id = Column(Integer, primary_key=True)
-        name =  Column(String(50))
-
-Above, the :func:`declarative_base` callable returns a new base class from
-which all mapped classes should inherit. When the class definition is
-completed, a new :class:`_schema.Table` and :func:`.mapper` will have been generated.
-
-The resulting table and mapper are accessible via
-``__table__`` and ``__mapper__`` attributes on the
-``SomeClass`` class::
-
-    # access the mapped Table
-    SomeClass.__table__
-
-    # access the Mapper
-    SomeClass.__mapper__
+This section has moved to :ref:`orm_declarative_mapping`.
 
 Defining Attributes
 ===================
 
-In the previous example, the :class:`_schema.Column` objects are
-automatically named with the name of the attribute to which they are
-assigned.
-
-To name columns explicitly with a name distinct from their mapped attribute,
-just give the column a name.  Below, column "some_table_id" is mapped to the
-"id" attribute of `SomeClass`, but in SQL will be represented as
-"some_table_id"::
-
-    class SomeClass(Base):
-        __tablename__ = 'some_table'
-        id = Column("some_table_id", Integer, primary_key=True)
-
-Attributes may be added to the class after its construction, and they will be
-added to the underlying :class:`_schema.Table` and
-:func:`.mapper` definitions as appropriate::
-
-    SomeClass.data = Column('data', Unicode)
-    SomeClass.related = relationship(RelatedInfo)
-
-Classes which are constructed using declarative can interact freely
-with classes that are mapped explicitly with :func:`.mapper`.
+This section is covered by :ref:`mapping_columns_toplevel`
 
 
-.. sidebar:: Using MyPy with SQLAlchemy models
-
-    If you are using PEP 484 static type checkers for Python, a `MyPy <http://mypy-lang.org/>`_
-    plugin is included with
-    `type stubs for SQLAlchemy <https://github.com/dropbox/sqlalchemy-stubs>`_.  The plugin
-    is tailored towards SQLAlchemy declarative models.
-
-
-It is recommended, though not required, that all tables
-share the same underlying :class:`~sqlalchemy.schema.MetaData` object,
-so that string-configured :class:`~sqlalchemy.schema.ForeignKey`
-references can be resolved without issue.
 
 Accessing the MetaData
 ======================
 
-The :func:`declarative_base` base class contains a
-:class:`_schema.MetaData` object where newly defined
-:class:`_schema.Table` objects are collected. This object is
-intended to be accessed directly for
-:class:`_schema.MetaData`-specific operations. Such as, to issue
-CREATE statements for all tables::
-
-    engine = create_engine('sqlite://')
-    Base.metadata.create_all(engine)
-
-:func:`declarative_base` can also receive a pre-existing
-:class:`_schema.MetaData` object, which allows a
-declarative setup to be associated with an already
-existing traditional collection of :class:`~sqlalchemy.schema.Table`
-objects::
-
-    mymetadata = MetaData()
-    Base = declarative_base(metadata=mymetadata)
+This section has moved to :ref:`orm_declarative_metadata`.
 
 
 Class Constructor
@@ -119,25 +29,7 @@ to the named attributes::
 Mapper Configuration
 ====================
 
-Declarative makes use of the :func:`_orm.mapper` function internally
-when it creates the mapping to the declared table.   The options
-for :func:`_orm.mapper` are passed directly through via the
-``__mapper_args__`` class attribute.  As always, arguments which reference
-locally mapped columns can reference them directly from within the
-class declaration::
-
-    from datetime import datetime
-
-    class Widget(Base):
-        __tablename__ = 'widgets'
-
-        id = Column(Integer, primary_key=True)
-        timestamp = Column(DateTime, nullable=False)
-
-        __mapper_args__ = {
-                        'version_id_col': timestamp,
-                        'version_id_generator': lambda v:datetime.now()
-                    }
+This section is moved to :ref:`orm_declarative_mapper_options`.
 
 
 .. _declarative_sql_expressions:

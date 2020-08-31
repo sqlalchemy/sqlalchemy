@@ -2,12 +2,10 @@ import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.ext import declarative as decl
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import base as orm_base
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
@@ -15,8 +13,12 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
+from sqlalchemy.orm import has_inherited_table
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
@@ -32,14 +34,16 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import classproperty
 
-
 Base = None
+mapper_registry = None
 
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup(self):
-        global Base
-        Base = decl.declarative_base(testing.db)
+        global Base, mapper_registry
+
+        mapper_registry = registry(metadata=MetaData(bind=testing.db))
+        Base = mapper_registry.generate_base()
 
     def teardown(self):
         close_all_sessions()
@@ -48,7 +52,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class DeclarativeMixinTest(DeclarativeTestBase):
-    def test_simple(self):
+    def test_simple_wbase(self):
         class MyMixin(object):
 
             id = Column(
@@ -63,7 +67,33 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
+        session = create_session()
+        session.add(MyModel(name="testing"))
+        session.flush()
+        session.expunge_all()
+        obj = session.query(MyModel).one()
+        eq_(obj.id, 1)
+        eq_(obj.name, "testing")
+        eq_(obj.foo(), "bar1")
+
+    def test_simple_wdecorator(self):
+        class MyMixin(object):
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+            def foo(self):
+                return "bar" + str(self.id)
+
+        @mapper_registry.mapped
+        class MyModel(MyMixin):
+
+            __tablename__ = "test"
+            name = Column(String(100), nullable=False, index=True)
+
+        Base.metadata.create_all(testing.db)
         session = create_session()
         session.add(MyModel(name="testing"))
         session.flush()
@@ -85,7 +115,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         assert MyModel.__table__.c.value.unique
 
-    def test_hierarchical_bases(self):
+    def test_hierarchical_bases_wbase(self):
         class MyMixinParent:
 
             id = Column(
@@ -104,7 +134,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         session = create_session()
         session.add(MyModel(name="testing", baz="fu"))
         session.flush()
@@ -115,7 +145,38 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
         eq_(obj.baz, "fu")
 
-    def test_mixin_overrides(self):
+    def test_hierarchical_bases_wdecorator(self):
+        class MyMixinParent:
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+            def foo(self):
+                return "bar" + str(self.id)
+
+        class MyMixin(MyMixinParent):
+
+            baz = Column(String(100), nullable=False, index=True)
+
+        @mapper_registry.mapped
+        class MyModel(MyMixin, object):
+
+            __tablename__ = "test"
+            name = Column(String(100), nullable=False, index=True)
+
+        Base.metadata.create_all(testing.db)
+        session = create_session()
+        session.add(MyModel(name="testing", baz="fu"))
+        session.flush()
+        session.expunge_all()
+        obj = session.query(MyModel).one()
+        eq_(obj.id, 1)
+        eq_(obj.name, "testing")
+        eq_(obj.foo(), "bar1")
+        eq_(obj.baz, "fu")
+
+    def test_mixin_overrides_wbase(self):
         """test a mixin that overrides a column on a superclass."""
 
         class MixinA(object):
@@ -129,6 +190,28 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             id = Column(Integer, primary_key=True)
 
         class MyModelB(Base, MixinB):
+            __tablename__ = "testb"
+            id = Column(Integer, primary_key=True)
+
+        eq_(MyModelA.__table__.c.foo.type.__class__, String)
+        eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
+
+    def test_mixin_overrides_wdecorator(self):
+        """test a mixin that overrides a column on a superclass."""
+
+        class MixinA(object):
+            foo = Column(String(50))
+
+        class MixinB(MixinA):
+            foo = Column(Integer)
+
+        @mapper_registry.mapped
+        class MyModelA(MixinA):
+            __tablename__ = "testa"
+            id = Column(Integer, primary_key=True)
+
+        @mapper_registry.mapped
+        class MyModelB(MixinB):
             __tablename__ = "testb"
             id = Column(Integer, primary_key=True)
 
@@ -350,7 +433,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             Manager.target_id.property.columns[0], Person.__table__.c.target_id
         )
         # do a brief round trip on this
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         session = Session()
         o1, o2 = Other(), Other()
         session.add_all(
@@ -742,7 +825,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             def id(self):
                 return Column(Integer, primary_key=True)
 
-        Base = decl.declarative_base(cls=Base)
+        Base = declarative_base(cls=Base)
 
         class MyClass(Base):
             pass
@@ -910,7 +993,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         class NoJoinedTableNameMixin:
             @declared_attr
             def __tablename__(cls):
-                if decl.has_inherited_table(cls):
+                if has_inherited_table(cls):
                     return None
                 return cls.__name__.lower()
 
@@ -938,7 +1021,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             @declared_attr
             def __tablename__(cls):
                 if (
-                    decl.has_inherited_table(cls)
+                    has_inherited_table(cls)
                     and TableNameMixin not in cls.__bases__
                 ):
                     return None
@@ -1279,7 +1362,7 @@ class DeclarativeMixinPropertyTest(
         assert (
             MyModel.prop_hoho.property is not MyOtherModel.prop_hoho.property
         )
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         sess = create_session()
         m1, m2 = MyModel(prop_hoho="foo"), MyOtherModel(prop_hoho="bar")
         sess.add_all([m1, m2])
@@ -1458,7 +1541,7 @@ class DeclarativeMixinPropertyTest(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         sess = create_session()
         sess.add_all([MyModel(data="d1"), MyModel(data="d2")])
         sess.flush()
@@ -1510,7 +1593,7 @@ class DeclarativeMixinPropertyTest(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         sess = create_session()
         t1, t2 = Target(), Target()
         f1, f2, b1 = Foo(target=t1), Foo(target=t2), Bar(target=t1)
@@ -1601,7 +1684,14 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         eq_(counter.mock_calls, [mock.call("A")])
         del A
         gc_collect()
-        assert "A" not in Base._decl_class_registry
+
+        from sqlalchemy.orm.clsregistry import _key_is_empty
+
+        assert _key_is_empty(
+            "A",
+            Base.registry._class_registry,
+            lambda cls: hasattr(cls, "my_other_prop"),
+        )
 
     def test_can_we_access_the_mixin_straight(self):
         class Mixin(object):
@@ -1656,6 +1746,9 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         eq_(Foo.__tablename__, "foo")
         eq_(Foo.__tablename__, "foo")
 
+        # here we are testing that access of __tablename__ does in fact
+        # call the user-defined function, as we are no longer in the
+        # "declarative_scan" phase.  the class *is* mapped here.
         eq_(
             counter.mock_calls,
             [mock.call(Foo), mock.call(Foo), mock.call(Foo)],
@@ -1774,7 +1867,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         class Mixin(object):
             @declared_attr.cascading
             def my_attr(cls):
-                if decl.has_inherited_table(cls):
+                if has_inherited_table(cls):
                     id_ = Column(ForeignKey("a.my_attr"), primary_key=True)
                     asserted["b"].add(id_)
                 else:
@@ -1911,6 +2004,23 @@ class AbstractTest(DeclarativeTestBase):
             __abstract__ = True
             data = Column(String)
 
+        class C(B):
+            c_value = Column(String)
+
+        eq_(sa.inspect(C).attrs.keys(), ["id", "name", "data", "c_value"])
+
+    def test_implicit_abstract_viadecorator(self):
+        @mapper_registry.mapped
+        class A(object):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+
+        class B(A):
+            data = Column(String)
+
+        @mapper_registry.mapped
         class C(B):
             c_value = Column(String)
 

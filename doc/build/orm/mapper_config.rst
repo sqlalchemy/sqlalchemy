@@ -11,9 +11,10 @@ know how to construct and use rudimentary mappers and relationships.
 
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     mapping_styles
+    declarative_mapping
     scalar_mapping
     inheritance
     nonstandard_mappings

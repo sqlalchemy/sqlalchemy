@@ -291,6 +291,108 @@ Note that the mappers for the derived classes Manager and Engineer omit the
 ``__tablename__``, indicating they do not have a mapped table of
 their own.
 
+.. _orm_inheritance_column_conflicts:
+
+Resolving Column Conflicts
++++++++++++++++++++++++++++
+
+Note in the previous section that the ``manager_name`` and ``engineer_info`` columns
+are "moved up" to be applied to ``Employee.__table__``, as a result of their
+declaration on a subclass that has no table of its own.   A tricky case
+comes up when two subclasses want to specify *the same* column, as below::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(20))
+
+        __mapper_args__ = {
+            'polymorphic_on':type,
+            'polymorphic_identity':'employee'
+        }
+
+    class Engineer(Employee):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+        start_date = Column(DateTime)
+
+    class Manager(Employee):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+        start_date = Column(DateTime)
+
+Above, the ``start_date`` column declared on both ``Engineer`` and ``Manager``
+will result in an error::
+
+    sqlalchemy.exc.ArgumentError: Column 'start_date' on class
+    <class '__main__.Manager'> conflicts with existing
+    column 'employee.start_date'
+
+The above scenario presents an ambiguity to the Declarative mapping system that
+may be resolved by using
+:class:`.declared_attr` to define the :class:`_schema.Column` conditionally,
+taking care to return the **existing column** via the parent ``__table__``
+if it already exists::
+
+    from sqlalchemy.orm import declared_attr
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(20))
+
+        __mapper_args__ = {
+            'polymorphic_on':type,
+            'polymorphic_identity':'employee'
+        }
+
+    class Engineer(Employee):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+        @declared_attr
+        def start_date(cls):
+            "Start date column, if not present already."
+            return Employee.__table__.c.get('start_date', Column(DateTime))
+
+    class Manager(Employee):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+
+        @declared_attr
+        def start_date(cls):
+            "Start date column, if not present already."
+            return Employee.__table__.c.get('start_date', Column(DateTime))
+
+Above, when ``Manager`` is mapped, the ``start_date`` column is
+already present on the ``Employee`` class; by returning the existing
+:class:`_schema.Column` object, the declarative system recognizes that this
+is the same column to be mapped to the two different subclasses separately.
+
+A similar concept can be used with mixin classes (see :ref:`orm_mixins_toplevel`)
+to define a particular series of columns and/or other mapped attributes
+from a reusable mixin class::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        name = Column(String(50))
+        type = Column(String(20))
+
+        __mapper_args__ = {
+            'polymorphic_on':type,
+            'polymorphic_identity':'employee'
+        }
+
+    class HasStartDate:
+        @declared_attr
+        def start_date(cls):
+            return cls.__table__.c.get('start_date', Column(DateTime))
+
+    class Engineer(HasStartDate, Employee):
+        __mapper_args__ = {'polymorphic_identity': 'engineer'}
+
+    class Manager(HasStartDate, Employee):
+        __mapper_args__ = {'polymorphic_identity': 'manager'}
+
 Relationships with Single Table Inheritance
 +++++++++++++++++++++++++++++++++++++++++++
 
@@ -378,6 +480,7 @@ Above, the ``Manager`` class will have a ``Manager.company`` attribute;
 ``Company`` will have a ``Company.managers`` attribute that always
 loads against the ``employee`` with an additional WHERE clause that
 limits rows to those with ``type = 'manager'``.
+
 
 Loading Single Inheritance Mappings
 +++++++++++++++++++++++++++++++++++
@@ -680,9 +783,6 @@ With a mapping like the above, only instances of ``Manager`` and ``Engineer``
 may be persisted; querying against the ``Employee`` class will always produce
 ``Manager`` and ``Engineer`` objects.
 
-.. seealso::
-
-    :ref:`declarative_concrete_table` - in the Declarative reference documentation
 
 Classical and Semi-Classical Concrete Polymorphic Configuration
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -1,32 +1,23 @@
 .. _declarative_toplevel:
 
-===========
-Declarative
-===========
+.. currentmodule:: sqlalchemy.ext.declarative
 
-The Declarative system is the typically used system provided by the SQLAlchemy
-ORM in order to define classes mapped to relational database tables.  However,
-as noted in :ref:`classical_mapping`, Declarative is in fact a series of
-extensions that ride on top of the SQLAlchemy :func:`.mapper` construct.
+======================
+Declarative Extensions
+======================
 
-While the documentation typically refers to Declarative for most examples,
-the following sections will provide detailed information on how the
-Declarative API interacts with the basic :func:`.mapper` and Core :class:`_schema.Table`
-systems, as well as how sophisticated patterns can be built using systems
-such as mixins.
+Extensions specific to the :ref:`Declarative <orm_declarative_mapping>`
+mapping API.
 
+.. versionchanged:: 1.4  The vast majority of the Declarative extension is now
+   integrated into the SQLAlchemy ORM and is importable from the
+   ``sqlalchemy.orm`` namespace.  See the documentation at
+   :ref:`orm_declarative_mapping` for new documentation.
+   For an overview of the change, see :ref:`change_5508`.
 
-.. toctree::
-	:maxdepth: 2
+.. autoclass:: AbstractConcreteBase
 
-	basic_use
-	relationships
-	table_config
-	inheritance
-	mixins
-	api
+.. autoclass:: ConcreteBase
 
-
-
-
-
+.. autoclass:: DeferredReflection
+   :members:

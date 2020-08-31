@@ -6,6 +6,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import create_session
@@ -20,6 +21,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
@@ -1878,3 +1880,351 @@ class SubOptionsTest(PathTest, QueryTest):
             joinedload(User.orders).options,
             Load(Order).joinedload(Order.items),
         )
+
+
+class MapperOptionsTest(_fixtures.FixtureTest):
+    def test_synonym_options(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses),
+                    lazy="select",
+                    order_by=addresses.c.id,
+                ),
+                adlist=synonym("addresses"),
+            ),
+        )
+
+        def go():
+            sess = create_session()
+            u = (
+                sess.query(User)
+                .order_by(User.id)
+                .options(sa.orm.joinedload("adlist"))
+                .filter_by(name="jack")
+            ).one()
+            eq_(u.adlist, [self.static.user_address_result[0].addresses[0]])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_eager_options(self):
+        """A lazy relationship can be upgraded to an eager relationship."""
+
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), order_by=addresses.c.id
+                )
+            ),
+        )
+
+        sess = create_session()
+        result = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(sa.orm.joinedload("addresses"))
+        ).all()
+
+        def go():
+            eq_(result, self.static.user_address_result)
+
+        self.sql_count_(0, go)
+
+    def test_eager_options_with_limit(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), lazy="select"
+                )
+            ),
+        )
+
+        sess = create_session()
+        u = (
+            sess.query(User)
+            .options(sa.orm.joinedload("addresses"))
+            .filter_by(id=8)
+        ).one()
+
+        def go():
+            eq_(u.id, 8)
+            eq_(len(u.addresses), 3)
+
+        self.sql_count_(0, go)
+
+        sess.expunge_all()
+
+        u = sess.query(User).filter_by(id=8).one()
+        eq_(u.id, 8)
+        eq_(len(u.addresses), 3)
+
+    def test_lazy_options_with_limit(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), lazy="joined"
+                )
+            ),
+        )
+
+        sess = create_session()
+        u = (
+            sess.query(User)
+            .options(sa.orm.lazyload("addresses"))
+            .filter_by(id=8)
+        ).one()
+
+        def go():
+            eq_(u.id, 8)
+            eq_(len(u.addresses), 3)
+
+        self.sql_count_(1, go)
+
+    def test_eager_degrade(self):
+        """An eager relationship automatically degrades to a lazy relationship
+        if eager columns are not available"""
+
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses),
+                    lazy="joined",
+                    order_by=addresses.c.id,
+                )
+            ),
+        )
+
+        sess = create_session()
+        # first test straight eager load, 1 statement
+
+        def go():
+            result = sess.query(User).order_by(User.id).all()
+            eq_(result, self.static.user_address_result)
+
+        self.sql_count_(1, go)
+
+        sess.expunge_all()
+
+        # then select just from users.  run it into instances.
+        # then assert the data, which will launch 3 more lazy loads
+        # (previous users in session fell out of scope and were removed from
+        # session's identity map)
+        r = users.select().order_by(users.c.id).execute()
+
+        ctx = sess.query(User)._compile_context()
+
+        def go():
+            result = list(sess.query(User).instances(r, ctx))
+            eq_(result, self.static.user_address_result)
+
+        self.sql_count_(4, go)
+
+    def test_eager_degrade_deep(self):
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            item_keywords,
+            Order,
+            addresses,
+        ) = (
+            self.tables.users,
+            self.classes.Keyword,
+            self.tables.items,
+            self.tables.order_items,
+            self.tables.orders,
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Address,
+            self.tables.keywords,
+            self.tables.item_keywords,
+            self.classes.Order,
+            self.tables.addresses,
+        )
+
+        # test with a deeper set of eager loads.  when we first load the three
+        # users, they will have no addresses or orders.  the number of lazy
+        # loads when traversing the whole thing will be three for the
+        # addresses and three for the orders.
+        mapper(Address, addresses)
+
+        mapper(Keyword, keywords)
+
+        mapper(
+            Item,
+            items,
+            properties=dict(
+                keywords=relationship(
+                    Keyword,
+                    secondary=item_keywords,
+                    lazy="joined",
+                    order_by=item_keywords.c.keyword_id,
+                )
+            ),
+        )
+
+        mapper(
+            Order,
+            orders,
+            properties=dict(
+                items=relationship(
+                    Item,
+                    secondary=order_items,
+                    lazy="joined",
+                    order_by=order_items.c.item_id,
+                )
+            ),
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    Address, lazy="joined", order_by=addresses.c.id
+                ),
+                orders=relationship(
+                    Order, lazy="joined", order_by=orders.c.id
+                ),
+            ),
+        )
+
+        sess = create_session()
+
+        # first test straight eager load, 1 statement
+        def go():
+            result = sess.query(User).order_by(User.id).all()
+            eq_(result, self.static.user_all_result)
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expunge_all()
+
+        # then select just from users.  run it into instances.
+        # then assert the data, which will launch 6 more lazy loads
+        r = users.select().execute()
+
+        ctx = sess.query(User)._compile_context()
+
+        def go():
+            result = list(sess.query(User).instances(r, ctx))
+            eq_(result, self.static.user_all_result)
+
+        self.assert_sql_count(testing.db, go, 6)
+
+    def test_lazy_options(self):
+        """An eager relationship can be upgraded to a lazy relationship."""
+
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(
+                    mapper(Address, addresses), lazy="joined"
+                )
+            ),
+        )
+
+        sess = create_session()
+        result = (
+            sess.query(User)
+            .order_by(User.id)
+            .options(sa.orm.lazyload("addresses"))
+        ).all()
+
+        def go():
+            eq_(result, self.static.user_address_result)
+
+        self.sql_count_(4, go)
+
+    def test_option_propagate(self):
+        users, items, order_items, Order, Item, User, orders = (
+            self.tables.users,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        mapper(User, users, properties=dict(orders=relationship(Order)))
+        mapper(
+            Order,
+            orders,
+            properties=dict(items=relationship(Item, secondary=order_items)),
+        )
+        mapper(Item, items)
+
+        sess = create_session()
+
+        oalias = aliased(Order)
+        opt1 = sa.orm.joinedload(User.orders, Order.items)
+        opt2 = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
+        u1 = (
+            sess.query(User)
+            .join(oalias, User.orders)
+            .options(opt1, opt2)
+            .first()
+        )
+        ustate = attributes.instance_state(u1)
+        assert opt1 in ustate.load_options
+        assert opt2 not in ustate.load_options

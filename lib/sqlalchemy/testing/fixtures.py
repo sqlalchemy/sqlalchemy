@@ -15,11 +15,13 @@ from . import schema
 from .engines import drop_all_tables
 from .entities import BasicEntity
 from .entities import ComparableEntity
+from .entities import ComparableMixin  # noqa
 from .util import adict
 from .. import event
 from .. import util
-from ..ext.declarative import declarative_base
-from ..ext.declarative import DeclarativeMeta
+from ..orm import declarative_base
+from ..orm import registry
+from ..orm.decl_api import DeclarativeMeta
 from ..schema import sort_tables_and_constraints
 
 
@@ -383,15 +385,22 @@ class MappedTest(_ORMTest, TablesTest, assertions.AssertsExecutionResults):
     @classmethod
     def _setup_once_mappers(cls):
         if cls.run_setup_mappers == "once":
+            cls.mapper = cls._generate_mapper()
             cls._with_register_classes(cls.setup_mappers)
 
     def _setup_each_mappers(self):
         if self.run_setup_mappers == "each":
+            self.mapper = self._generate_mapper()
             self._with_register_classes(self.setup_mappers)
 
     def _setup_each_classes(self):
         if self.run_setup_classes == "each":
             self._with_register_classes(self.setup_classes)
+
+    @classmethod
+    def _generate_mapper(cls):
+        decl = registry()
+        return decl.map_imperatively
 
     @classmethod
     def _with_register_classes(cls, fn):

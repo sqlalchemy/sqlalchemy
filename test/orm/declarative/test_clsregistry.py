@@ -1,18 +1,18 @@
-import weakref
-
 from sqlalchemy import exc
 from sqlalchemy import MetaData
-from sqlalchemy.ext.declarative import clsregistry
+from sqlalchemy.orm import clsregistry
+from sqlalchemy.orm import registry
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 
 
 class MockClass(object):
     def __init__(self, base, name):
-        self._decl_class_registry = base
+        self._sa_class_manager = mock.Mock(registry=base)
         tokens = name.split(".")
         self.__module__ = ".".join(tokens[0:-1])
         self.name = self.__name__ = tokens[-1]
@@ -27,10 +27,11 @@ class ClsRegistryTest(fixtures.TestBase):
     __requires__ = ("predictable_gc",)
 
     def test_same_module_same_name(self):
-        base = weakref.WeakValueDictionary()
+
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1)
+        clsregistry.add_class("Foo", f1, base._class_registry)
         gc_collect()
 
         assert_raises_message(
@@ -41,14 +42,15 @@ class ClsRegistryTest(fixtures.TestBase):
             clsregistry.add_class,
             "Foo",
             f2,
+            base._class_registry,
         )
 
     def test_resolve(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -60,13 +62,13 @@ class ClsRegistryTest(fixtures.TestBase):
         is_(name_resolver("foo.alt.Foo")(), f2)
 
     def test_fragment_resolve(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
         f3 = MockClass(base, "bat.alt.Hoho")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
-        clsregistry.add_class("HoHo", f3)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry.add_class("HoHo", f3, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -78,13 +80,13 @@ class ClsRegistryTest(fixtures.TestBase):
         is_(name_resolver("alt.Foo")(), f2)
 
     def test_fragment_ambiguous(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
         f3 = MockClass(base, "bat.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
-        clsregistry.add_class("Foo", f3)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
+        clsregistry.add_class("Foo", f3, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -106,11 +108,11 @@ class ClsRegistryTest(fixtures.TestBase):
         )
 
     def test_no_fns_in_name_resolve(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
 
         gc_collect()
@@ -131,11 +133,11 @@ class ClsRegistryTest(fixtures.TestBase):
         )
 
     def test_resolve_dupe_by_name(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
 
         gc_collect()
 
@@ -159,11 +161,11 @@ class ClsRegistryTest(fixtures.TestBase):
         )
 
     def test_dupe_classes_back_to_one(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
 
         del f2
         gc_collect()
@@ -180,13 +182,13 @@ class ClsRegistryTest(fixtures.TestBase):
         # force this to maintain isolation between tests
         clsregistry._registries.clear()
 
-        base = weakref.WeakValueDictionary()
+        base = registry()
 
         for i in range(3):
             f1 = MockClass(base, "foo.bar.Foo")
             f2 = MockClass(base, "foo.alt.Foo")
-            clsregistry.add_class("Foo", f1)
-            clsregistry.add_class("Foo", f2)
+            clsregistry.add_class("Foo", f1, base._class_registry)
+            clsregistry.add_class("Foo", f2, base._class_registry)
 
             eq_(len(clsregistry._registries), 11)
 
@@ -199,13 +201,13 @@ class ClsRegistryTest(fixtures.TestBase):
     def test_dupe_classes_name_race(self):
         """test the race condition that the class was garbage "
         "collected while being resolved from a dupe class."""
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
         f2 = MockClass(base, "foo.alt.Foo")
-        clsregistry.add_class("Foo", f1)
-        clsregistry.add_class("Foo", f2)
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        clsregistry.add_class("Foo", f2, base._class_registry)
 
-        dupe_reg = base["Foo"]
+        dupe_reg = base._class_registry["Foo"]
         dupe_reg.contents = [lambda: None]
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
         f_resolver = resolver("Foo")
@@ -228,10 +230,10 @@ class ClsRegistryTest(fixtures.TestBase):
         """test the race condition that a class was gc'ed as we tried
         to look it up by module name."""
 
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1)
-        reg = base["_sa_module_registry"]
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        reg = base._class_registry["_sa_module_registry"]
 
         mod_entry = reg["foo"]["bar"]
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
@@ -253,10 +255,10 @@ class ClsRegistryTest(fixtures.TestBase):
         )
 
     def test_module_reg_no_class(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1)
-        reg = base["_sa_module_registry"]
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        reg = base._class_registry["_sa_module_registry"]
         mod_entry = reg["foo"]["bar"]  # noqa
         name_resolver, resolver = clsregistry._resolver(f1, MockProp())
         f_resolver = resolver("foo")
@@ -276,13 +278,13 @@ class ClsRegistryTest(fixtures.TestBase):
         )
 
     def test_module_reg_cleanout_two_sub(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f1 = MockClass(base, "foo.bar.Foo")
-        clsregistry.add_class("Foo", f1)
-        reg = base["_sa_module_registry"]
+        clsregistry.add_class("Foo", f1, base._class_registry)
+        reg = base._class_registry["_sa_module_registry"]
 
         f2 = MockClass(base, "foo.alt.Bar")
-        clsregistry.add_class("Bar", f2)
+        clsregistry.add_class("Bar", f2, base._class_registry)
         assert reg["foo"]["bar"]
         del f1
         gc_collect()
@@ -294,10 +296,10 @@ class ClsRegistryTest(fixtures.TestBase):
         assert "foo" not in reg.contents
 
     def test_module_reg_cleanout_sub_to_base(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f3 = MockClass(base, "bat.bar.Hoho")
-        clsregistry.add_class("Hoho", f3)
-        reg = base["_sa_module_registry"]
+        clsregistry.add_class("Hoho", f3, base._class_registry)
+        reg = base._class_registry["_sa_module_registry"]
 
         assert reg["bat"]["bar"]
         del f3
@@ -305,10 +307,10 @@ class ClsRegistryTest(fixtures.TestBase):
         assert "bat" not in reg
 
     def test_module_reg_cleanout_cls_to_base(self):
-        base = weakref.WeakValueDictionary()
+        base = registry()
         f4 = MockClass(base, "single.Blat")
-        clsregistry.add_class("Blat", f4)
-        reg = base["_sa_module_registry"]
+        clsregistry.add_class("Blat", f4, base._class_registry)
+        reg = base._class_registry["_sa_module_registry"]
         assert reg["single"]
         del f4
         gc_collect()

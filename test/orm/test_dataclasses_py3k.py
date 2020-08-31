@@ -7,6 +7,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry as declarative_registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
@@ -225,3 +226,62 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 .one()
             )
             self.check_data_fixture(a)
+
+
+class PlainDeclarativeDataclassesTest(DataclassesTest):
+    __requires__ = ("dataclasses",)
+
+    run_setup_classes = "each"
+    run_setup_mappers = "each"
+
+    @classmethod
+    def setup_classes(cls):
+        accounts = cls.tables.accounts
+        widgets = cls.tables.widgets
+
+        declarative = declarative_registry().mapped
+
+        @declarative
+        @dataclasses.dataclass
+        class Widget:
+            __table__ = widgets
+
+            name: Optional[str] = None
+
+            __mapper_args__ = dict(
+                polymorphic_on=widgets.c.type, polymorphic_identity="normal",
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class SpecialWidget(Widget):
+
+            magic: bool = False
+
+            __mapper_args__ = dict(polymorphic_identity="special",)
+
+        @declarative
+        @dataclasses.dataclass
+        class Account:
+            __table__ = accounts
+
+            account_id: int
+            widgets: List[Widget] = dataclasses.field(default_factory=list)
+            widget_count: int = dataclasses.field(init=False)
+
+            widgets = relationship("Widget")
+
+            def __post_init__(self):
+                self.widget_count = len(self.widgets)
+
+            def add_widget(self, widget: Widget):
+                self.widgets.append(widget)
+                self.widget_count += 1
+
+        cls.classes.Account = Account
+        cls.classes.Widget = Widget
+        cls.classes.SpecialWidget = SpecialWidget
+
+    @classmethod
+    def setup_mappers(cls):
+        pass

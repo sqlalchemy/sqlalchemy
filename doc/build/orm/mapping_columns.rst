@@ -1,3 +1,5 @@
+.. _mapping_columns_toplevel:
+
 .. currentmodule:: sqlalchemy.orm
 
 Mapping Table Columns
@@ -20,8 +22,9 @@ it matches the :attr:`_schema.Column.key` attribute on :class:`_schema.Column`, 
 by default is the same as the :attr:`_schema.Column.name`.
 
 The name assigned to the Python attribute which maps to
-:class:`_schema.Column` can be different from either :attr:`_schema.Column.name` or :attr:`_schema.Column.key`
-just by assigning it that way, as we illustrate here in a Declarative mapping::
+:class:`_schema.Column` can be different from either
+:attr:`_schema.Column.name` or :attr:`_schema.Column.key` just by assigning
+it that way, as we illustrate here in a Declarative mapping::
 
     class User(Base):
         __tablename__ = 'user'
@@ -39,10 +42,11 @@ can be referenced directly::
         id = user_table.c.user_id
         name = user_table.c.user_name
 
-Or in a classical mapping, placed in the ``properties`` dictionary
-with the desired key::
+The corresponding technique for an :term:`imperative` mapping is
+to place the desired key in the :paramref:`_orm.mapper.properties`
+dictionary with the desired key::
 
-    mapper(User, user_table, properties={
+    registry.mapper(User, user_table, properties={
        'id': user_table.c.user_id,
        'name': user_table.c.user_name,
     })

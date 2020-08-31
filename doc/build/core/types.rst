@@ -4,7 +4,7 @@ Column and Data Types
 =====================
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     type_basics
     custom_types

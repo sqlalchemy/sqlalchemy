@@ -1,0 +1,753 @@
+# ext/declarative/api.py
+# Copyright (C) 2005-2020 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+"""Public API functions and helpers for declarative."""
+from __future__ import absolute_import
+
+import re
+import weakref
+
+from . import attributes
+from . import clsregistry
+from . import exc as orm_exc
+from . import interfaces
+from .base import _inspect_mapped_class
+from .decl_base import _add_attribute
+from .decl_base import _as_declarative
+from .decl_base import _declarative_constructor
+from .decl_base import _DeferredMapperConfig
+from .decl_base import _del_attribute
+from .decl_base import _mapper
+from .descriptor_props import SynonymProperty as _orm_synonym
+from .. import inspection
+from .. import util
+from ..sql.schema import MetaData
+from ..util import hybridmethod
+from ..util import hybridproperty
+
+if util.TYPE_CHECKING:
+    from .mapper import Mapper
+
+
+def has_inherited_table(cls):
+    """Given a class, return True if any of the classes it inherits from has a
+    mapped table, otherwise return False.
+
+    This is used in declarative mixins to build attributes that behave
+    differently for the base class vs. a subclass in an inheritance
+    hierarchy.
+
+    .. seealso::
+
+        :ref:`decl_mixin_inheritance`
+
+    """
+    for class_ in cls.__mro__[1:]:
+        if getattr(class_, "__table__", None) is not None:
+            return True
+    return False
+
+
+class DeclarativeMeta(type):
+    def __init__(cls, classname, bases, dict_, **kw):
+        if not cls.__dict__.get("__abstract__", False):
+            _as_declarative(cls.registry, cls, cls.__dict__)
+        type.__init__(cls, classname, bases, dict_)
+
+    def __setattr__(cls, key, value):
+        _add_attribute(cls, key, value)
+
+    def __delattr__(cls, key):
+        _del_attribute(cls, key)
+
+
+def synonym_for(name, map_column=False):
+    """Decorator that produces an :func:`_orm.synonym`
+    attribute in conjunction with a Python descriptor.
+
+    The function being decorated is passed to :func:`_orm.synonym` as the
+    :paramref:`.orm.synonym.descriptor` parameter::
+
+        class MyClass(Base):
+            __tablename__ = 'my_table'
+
+            id = Column(Integer, primary_key=True)
+            _job_status = Column("job_status", String(50))
+
+            @synonym_for("job_status")
+            @property
+            def job_status(self):
+                return "Status: %s" % self._job_status
+
+    The :ref:`hybrid properties <mapper_hybrids>` feature of SQLAlchemy
+    is typically preferred instead of synonyms, which is a more legacy
+    feature.
+
+    .. seealso::
+
+        :ref:`synonyms` - Overview of synonyms
+
+        :func:`_orm.synonym` - the mapper-level function
+
+        :ref:`mapper_hybrids` - The Hybrid Attribute extension provides an
+        updated approach to augmenting attribute behavior more flexibly than
+        can be achieved with synonyms.
+
+    """
+
+    def decorate(fn):
+        return _orm_synonym(name, map_column=map_column, descriptor=fn)
+
+    return decorate
+
+
+class declared_attr(interfaces._MappedAttribute, property):
+    """Mark a class-level method as representing the definition of
+    a mapped property or special declarative member name.
+
+    @declared_attr turns the attribute into a scalar-like
+    property that can be invoked from the uninstantiated class.
+    Declarative treats attributes specifically marked with
+    @declared_attr as returning a construct that is specific
+    to mapping or declarative table configuration.  The name
+    of the attribute is that of what the non-dynamic version
+    of the attribute would be.
+
+    @declared_attr is more often than not applicable to mixins,
+    to define relationships that are to be applied to different
+    implementors of the class::
+
+        class ProvidesUser(object):
+            "A mixin that adds a 'user' relationship to classes."
+
+            @declared_attr
+            def user(self):
+                return relationship("User")
+
+    It also can be applied to mapped classes, such as to provide
+    a "polymorphic" scheme for inheritance::
+
+        class Employee(Base):
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50), nullable=False)
+
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+            @declared_attr
+            def __mapper_args__(cls):
+                if cls.__name__ == 'Employee':
+                    return {
+                            "polymorphic_on":cls.type,
+                            "polymorphic_identity":"Employee"
+                    }
+                else:
+                    return {"polymorphic_identity":cls.__name__}
+
+    """
+
+    def __init__(self, fget, cascading=False):
+        super(declared_attr, self).__init__(fget)
+        self.__doc__ = fget.__doc__
+        self._cascading = cascading
+
+    def __get__(desc, self, cls):
+        # the declared_attr needs to make use of a cache that exists
+        # for the span of the declarative scan_attributes() phase.
+        # to achieve this we look at the class manager that's configured.
+        manager = attributes.manager_of_class(cls)
+        if manager is None:
+            if not re.match(r"^__.+__$", desc.fget.__name__):
+                # if there is no manager at all, then this class hasn't been
+                # run through declarative or mapper() at all, emit a warning.
+                util.warn(
+                    "Unmanaged access of declarative attribute %s from "
+                    "non-mapped class %s" % (desc.fget.__name__, cls.__name__)
+                )
+            return desc.fget(cls)
+        elif manager.is_mapped:
+            # the class is mapped, which means we're outside of the declarative
+            # scan setup, just run the function.
+            return desc.fget(cls)
+
+        # here, we are inside of the declarative scan.  use the registry
+        # that is tracking the values of these attributes.
+        declarative_scan = manager.declarative_scan
+        reg = declarative_scan.declared_attr_reg
+
+        if desc in reg:
+            return reg[desc]
+        else:
+            reg[desc] = obj = desc.fget(cls)
+            return obj
+
+    @hybridmethod
+    def _stateful(cls, **kw):
+        return _stateful_declared_attr(**kw)
+
+    @hybridproperty
+    def cascading(cls):
+        """Mark a :class:`.declared_attr` as cascading.
+
+        This is a special-use modifier which indicates that a column
+        or MapperProperty-based declared attribute should be configured
+        distinctly per mapped subclass, within a mapped-inheritance scenario.
+
+        .. warning::
+
+            The :attr:`.declared_attr.cascading` modifier has several
+            limitations:
+
+            * The flag **only** applies to the use of :class:`.declared_attr`
+              on declarative mixin classes and ``__abstract__`` classes; it
+              currently has no effect when used on a mapped class directly.
+
+            * The flag **only** applies to normally-named attributes, e.g.
+              not any special underscore attributes such as ``__tablename__``.
+              On these attributes it has **no** effect.
+
+            * The flag currently **does not allow further overrides** down
+              the class hierarchy; if a subclass tries to override the
+              attribute, a warning is emitted and the overridden attribute
+              is skipped.  This is a limitation that it is hoped will be
+              resolved at some point.
+
+        Below, both MyClass as well as MySubClass will have a distinct
+        ``id`` Column object established::
+
+            class HasIdMixin(object):
+                @declared_attr.cascading
+                def id(cls):
+                    if has_inherited_table(cls):
+                        return Column(
+                            ForeignKey('myclass.id'), primary_key=True
+                        )
+                    else:
+                        return Column(Integer, primary_key=True)
+
+            class MyClass(HasIdMixin, Base):
+                __tablename__ = 'myclass'
+                # ...
+
+            class MySubClass(MyClass):
+                ""
+                # ...
+
+        The behavior of the above configuration is that ``MySubClass``
+        will refer to both its own ``id`` column as well as that of
+        ``MyClass`` underneath the attribute named ``some_id``.
+
+        .. seealso::
+
+            :ref:`declarative_inheritance`
+
+            :ref:`mixin_inheritance_columns`
+
+
+        """
+        return cls._stateful(cascading=True)
+
+
+class _stateful_declared_attr(declared_attr):
+    def __init__(self, **kw):
+        self.kw = kw
+
+    def _stateful(self, **kw):
+        new_kw = self.kw.copy()
+        new_kw.update(kw)
+        return _stateful_declared_attr(**new_kw)
+
+    def __call__(self, fn):
+        return declared_attr(fn, **self.kw)
+
+
+def declarative_base(
+    bind=None,
+    metadata=None,
+    mapper=None,
+    cls=object,
+    name="Base",
+    constructor=_declarative_constructor,
+    class_registry=None,
+    metaclass=DeclarativeMeta,
+):
+    r"""Construct a base class for declarative class definitions.
+
+    The new base class will be given a metaclass that produces
+    appropriate :class:`~sqlalchemy.schema.Table` objects and makes
+    the appropriate :func:`~sqlalchemy.orm.mapper` calls based on the
+    information provided declaratively in the class and any subclasses
+    of the class.
+
+    The :func:`_orm.declarative_base` function is a shorthand version
+    of using the :meth:`_orm.registry.generate_base`
+    method.  That is, the following::
+
+        from sqlalchemy.orm import declarative_base
+
+        Base = declarative_base()
+
+    Is equvialent to::
+
+        from sqlalchemy.orm import registry
+
+        mapper_registry = registry()
+        Base = mapper_registry.generate_base()
+
+    See the docstring for :class:`_orm.registry`
+    and :meth:`_orm.registry.generate_base`
+    for more details.
+
+    .. versionchanged:: 1.4  The :func:`_orm.declarative_base`
+       function is now a specialization of the more generic
+       :class:`_orm.registry` class.  The function also moves to the
+       ``sqlalchemy.orm`` package from the ``declarative.ext`` package.
+
+
+    :param bind: An optional
+      :class:`~sqlalchemy.engine.Connectable`, will be assigned
+      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
+      instance.
+
+      .. deprecated:: 1.4  The "bind" argument to declarative_base is
+         deprecated and will be removed in SQLAlchemy 2.0.
+
+    :param metadata:
+      An optional :class:`~sqlalchemy.schema.MetaData` instance.  All
+      :class:`~sqlalchemy.schema.Table` objects implicitly declared by
+      subclasses of the base will share this MetaData.  A MetaData instance
+      will be created if none is provided.  The
+      :class:`~sqlalchemy.schema.MetaData` instance will be available via the
+      ``metadata`` attribute of the generated declarative base class.
+
+    :param mapper:
+      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`. Will
+      be used to map subclasses to their Tables.
+
+    :param cls:
+      Defaults to :class:`object`. A type to use as the base for the generated
+      declarative base class. May be a class or tuple of classes.
+
+    :param name:
+      Defaults to ``Base``.  The display name for the generated
+      class.  Customizing this is not required, but can improve clarity in
+      tracebacks and debugging.
+
+    :param constructor:
+      Specify the implementation for the ``__init__`` function on a mapped
+      class that has no ``__init__`` of its own.  Defaults to an
+      implementation that assigns \**kwargs for declared
+      fields and relationships to an instance.  If ``None`` is supplied,
+      no __init__ will be provided and construction will fall back to
+      cls.__init__ by way of the normal Python semantics.
+
+    :param class_registry: optional dictionary that will serve as the
+      registry of class names-> mapped classes when string names
+      are used to identify classes inside of :func:`_orm.relationship`
+      and others.  Allows two or more declarative base classes
+      to share the same registry of class names for simplified
+      inter-base relationships.
+
+    :param metaclass:
+      Defaults to :class:`.DeclarativeMeta`.  A metaclass or __metaclass__
+      compatible callable to use as the meta type of the generated
+      declarative base class.
+
+    .. seealso::
+
+        :class:`_orm.registry`
+
+    """
+
+    return registry(
+        bind=bind,
+        metadata=metadata,
+        class_registry=class_registry,
+        constructor=constructor,
+    ).generate_base(mapper=mapper, cls=cls, name=name, metaclass=metaclass,)
+
+
+class registry(object):
+    """Generalized registry for mapping classes.
+
+    The :class:`_orm.registry` serves as the basis for maintaining a collection
+    of mappings, and provides configurational hooks used to map classes.
+
+    The three general kinds of mappings supported are Declarative Base,
+    Declarative Decorator, and Imperative Mapping.   All of these mapping
+    styles may be used interchangeably:
+
+    * :meth:`_orm.registry.generate_base` returns a new declarative base
+      class, and is the underlying implementation of the
+      :func:`_orm.declarative_base` function.
+
+    * :meth:`_orm.registry.mapped` provides a class decorator that will
+      apply declarative mapping to a class without the use of a declarative
+      base class.
+
+    * :meth:`_orm.registry.map_imperatively` will produce a
+      :class:`_orm.Mapper` for a class without scanning the class for
+      declarative class attributes. This method suits the use case historically
+      provided by the
+      :func:`_orm.mapper` classical mapping function.
+
+    .. versionadded:: 1.4
+
+    .. seealso::
+
+        :ref:`orm_mapping_classes_toplevel` - overview of class mapping
+        styles.
+
+    """
+
+    def __init__(
+        self,
+        bind=None,
+        metadata=None,
+        class_registry=None,
+        constructor=_declarative_constructor,
+    ):
+        r"""Construct a new :class:`_orm.registry`
+
+        :param metadata:
+          An optional :class:`_schema.MetaData` instance.  All
+          :class:`_schema.Table` objects generated using declarative
+          table mapping will make use of this :class:`_schema.MetaData`
+          collection.  If this argument is left at its default of ``None``,
+          a blank :class:`_schema.MetaData` collection is created.
+
+        :param constructor:
+          Specify the implementation for the ``__init__`` function on a mapped
+          class that has no ``__init__`` of its own.  Defaults to an
+          implementation that assigns \**kwargs for declared
+          fields and relationships to an instance.  If ``None`` is supplied,
+          no __init__ will be provided and construction will fall back to
+          cls.__init__ by way of the normal Python semantics.
+
+        :param class_registry: optional dictionary that will serve as the
+          registry of class names-> mapped classes when string names
+          are used to identify classes inside of :func:`_orm.relationship`
+          and others.  Allows two or more declarative base classes
+          to share the same registry of class names for simplified
+          inter-base relationships.
+
+        :param bind: An optional
+          :class:`~sqlalchemy.engine.Connectable`, will be assigned
+          the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
+          instance.
+
+          .. deprecated:: 1.4  The "bind" argument to registry is
+             deprecated and will be removed in SQLAlchemy 2.0.
+
+
+        """
+        lcl_metadata = metadata or MetaData()
+        if bind:
+            lcl_metadata.bind = bind
+
+        if class_registry is None:
+            class_registry = weakref.WeakValueDictionary()
+
+        self._class_registry = class_registry
+        self.metadata = lcl_metadata
+        self.constructor = constructor
+
+    def _dispose_declarative_artifacts(self, cls):
+        clsregistry.remove_class(cls.__name__, cls, self._class_registry)
+
+    def generate_base(
+        self, mapper=None, cls=object, name="Base", metaclass=DeclarativeMeta,
+    ):
+        """Generate a declarative base class.
+
+        Classes that inherit from the returned class object will be
+        automatically mapped using declarative mapping.
+
+        E.g.::
+
+            from sqlalchemy.orm import registry
+
+            mapper_registry = registry()
+
+            Base = mapper_registry.generate_base()
+
+            class MyClass(Base):
+                __tablename__ = "my_table"
+                id = Column(Integer, primary_key=True)
+
+        The :meth:`_orm.registry.generate_base` method provides the
+        implementation for the :func:`_orm.declarative_base` function, which
+        creates the :class:`_orm.registry` and base class all at once.
+
+
+        See the section :ref:`orm_declarative_mapping` for background and
+        examples.
+
+        :param mapper:
+          An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`.
+          This function is used to generate new :class:`_orm.Mapper` objects.
+
+        :param cls:
+          Defaults to :class:`object`. A type to use as the base for the
+          generated declarative base class. May be a class or tuple of classes.
+
+        :param name:
+          Defaults to ``Base``.  The display name for the generated
+          class.  Customizing this is not required, but can improve clarity in
+          tracebacks and debugging.
+
+        :param metaclass:
+          Defaults to :class:`.DeclarativeMeta`.  A metaclass or __metaclass__
+          compatible callable to use as the meta type of the generated
+          declarative base class.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapping`
+
+            :func:`_orm.declarative_base`
+
+        """
+        metadata = self.metadata
+
+        bases = not isinstance(cls, tuple) and (cls,) or cls
+
+        class_dict = dict(registry=self, metadata=metadata)
+        if isinstance(cls, type):
+            class_dict["__doc__"] = cls.__doc__
+
+        if self.constructor:
+            class_dict["__init__"] = self.constructor
+
+        class_dict["__abstract__"] = True
+        if mapper:
+            class_dict["__mapper_cls__"] = mapper
+
+        return metaclass(name, bases, class_dict)
+
+    def mapped(self, cls):
+        """Class decorator that will apply the Declarative mapping process
+        to a given class.
+
+        E.g.::
+
+            from sqlalchemy.orm import registry
+
+            mapper_registry = registry()
+
+            @mapper_registry.mapped
+            class Foo:
+                __tablename__ = 'some_table'
+
+                id = Column(Integer, primary_key=True)
+                name = Column(String)
+
+        See the section :ref:`orm_declarative_mapping` for complete
+        details and examples.
+
+        :param cls: class to be mapped.
+
+        :return: the class that was passed.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapping`
+
+            :meth:`_orm.registry.generate_base` - generates a base class
+            that will apply Declarative mapping to subclasses automatically
+            using a Python metaclass.
+
+        """
+        _as_declarative(self, cls, cls.__dict__)
+        return cls
+
+    def as_declarative_base(self, **kw):
+        """
+        Class decorator which will invoke
+        :meth:`_orm.registry.generate_base`
+        for a given base class.
+
+        E.g.::
+
+            from sqlalchemy.orm import registry
+
+            mapper_registry = registry()
+
+            @mapper_registry.as_declarative_base()
+            class Base(object):
+                @declared_attr
+                def __tablename__(cls):
+                    return cls.__name__.lower()
+                id = Column(Integer, primary_key=True)
+
+            class MyMappedClass(Base):
+                # ...
+
+        All keyword arguments passed to
+        :meth:`_orm.registry.as_declarative_base` are passed
+        along to :meth:`_orm.registry.generate_base`.
+
+        """
+
+        def decorate(cls):
+            kw["cls"] = cls
+            kw["name"] = cls.__name__
+            return self.generate_base(**kw)
+
+        return decorate
+
+    def map_declaratively(self, cls):
+        # type: (type) -> Mapper
+        """Map a class declaratively.
+
+        In this form of mapping, the class is scanned for mapping information,
+        including for columns to be associaed with a table, and/or an
+        actual table object.
+
+        Returns the :class:`_orm.Mapper` object.
+
+        E.g.::
+
+            from sqlalchemy.orm import registry
+
+            mapper_registry = registry()
+
+            class Foo:
+                __tablename__ = 'some_table'
+
+                id = Column(Integer, primary_key=True)
+                name = Column(String)
+
+            mapper = mapper_registry.map_declaratively(Foo)
+
+        This function is more conveniently invoked indirectly via either the
+        :meth:`_orm.registry.mapped` class decorator or by subclassing a
+        declarative metaclass generated from
+        :meth:`_orm.registry.generate_base`.
+
+        See the section :ref:`orm_declarative_mapping` for complete
+        details and examples.
+
+        :param cls: class to be mapped.
+
+        :return: a :class:`_orm.Mapper` object.
+
+        .. seealso::
+
+            :ref:`orm_declarative_mapping`
+
+            :meth:`_orm.registry.mapped` - more common decorator interface
+            to this function.
+
+            :meth:`_orm.registry.map_imperatively`
+
+        """
+        return _as_declarative(self, cls, cls.__dict__)
+
+    def map_imperatively(self, class_, local_table=None, **kw):
+        r"""Map a class imperatively.
+
+        In this form of mapping, the class is not scanned for any mapping
+        information.  Instead, all mapping constructs are passed as
+        arguments.
+
+        This method is intended to be fully equivalent to the classic
+        SQLAlchemy :func:`_orm.mapper` function, except that it's in terms of
+        a particular registry.
+
+        E.g.::
+
+            from sqlalchemy.orm import registry
+
+            mapper_registry = registry()
+
+            my_table = Table(
+                "my_table",
+                mapper_registry.metadata,
+                Column('id', Integer, primary_key=True)
+            )
+
+            class MyClass:
+                pass
+
+            mapper_registry.map_imperatively(MyClass, my_table)
+
+        See the section :ref:`orm_imperative_mapping` for complete background
+        and usage examples.
+
+        :param class\_: The class to be mapped.  Corresponds to the
+         :paramref:`_orm.mapper.class_` parameter.
+
+        :param local_table: the :class:`_schema.Table` or other
+         :class:`_sql.FromClause` object that is the subject of the mapping.
+         Corresponds to the
+         :paramref:`_orm.mapper.local_table` parameter.
+
+        :param \**kw: all other keyword arguments are passed to the
+         :func:`_orm.mapper` function directly.
+
+        .. seealso::
+
+            :ref:`orm_imperative_mapping`
+
+            :ref:`orm_declarative_mapping`
+
+        """
+        return _mapper(self, class_, local_table, kw)
+
+
+def as_declarative(**kw):
+    """
+    Class decorator which will adapt a given class into a
+    :func:`_orm.declarative_base`.
+
+    This function makes use of the :meth:`_orm.registry.as_declarative_base`
+    method, by first creating a :class:`_orm.registry` automatically
+    and then invoking the decorator.
+
+    E.g.::
+
+        from sqlalchemy.orm import as_declarative
+
+        @as_declarative()
+        class Base(object):
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+            id = Column(Integer, primary_key=True)
+
+        class MyMappedClass(Base):
+            # ...
+
+    .. seealso::
+
+        :meth:`_orm.registry.as_declarative_base`
+
+    """
+    bind, metadata, class_registry = (
+        kw.pop("bind", None),
+        kw.pop("metadata", None),
+        kw.pop("class_registry", None),
+    )
+
+    return registry(
+        bind=bind, metadata=metadata, class_registry=class_registry
+    ).as_declarative_base(**kw)
+
+
+@inspection._inspects(DeclarativeMeta)
+def _inspect_decl_meta(cls):
+    mp = _inspect_mapped_class(cls)
+    if mp is None:
+        if _DeferredMapperConfig.has_cls(cls):
+            _DeferredMapperConfig.raise_unmapped_for_cls(cls)
+            raise orm_exc.UnmappedClassError(
+                cls,
+                msg="Class %s has a deferred mapping on it.  It is not yet "
+                "usable as a mapped class." % orm_exc._safe_cls_name(cls),
+            )
+    return mp

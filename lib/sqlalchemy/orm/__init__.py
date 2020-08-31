@@ -16,11 +16,21 @@ documentation for an overview of how this module is used.
 from . import exc  # noqa
 from . import mapper as mapperlib  # noqa
 from . import strategy_options
+from .decl_api import as_declarative  # noqa
+from .decl_api import declarative_base  # noqa
+from .decl_api import declared_attr  # noqa
+from .decl_api import has_inherited_table  # noqa
+from .decl_api import registry  # noqa
+from .decl_api import synonym_for  # noqa
 from .descriptor_props import CompositeProperty  # noqa
 from .descriptor_props import SynonymProperty  # noqa
 from .interfaces import EXT_CONTINUE  # noqa
 from .interfaces import EXT_SKIP  # noqa
 from .interfaces import EXT_STOP  # noqa
+from .interfaces import MANYTOMANY  # noqa
+from .interfaces import MANYTOONE  # noqa
+from .interfaces import MapperProperty  # noqa
+from .interfaces import ONETOMANY  # noqa
 from .interfaces import PropComparator  # noqa
 from .mapper import _mapper_registry
 from .mapper import class_mapper  # noqa

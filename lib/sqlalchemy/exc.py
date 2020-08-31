@@ -644,6 +644,10 @@ class RemovedIn20Warning(SADeprecationWarning):
     "Indicates the version that started raising this deprecation warning"
 
 
+class MovedIn20Warning(RemovedIn20Warning):
+    """subtype of RemovedIn20Warning to indicate an API that moved only."""
+
+
 class SAPendingDeprecationWarning(PendingDeprecationWarning):
     """A similar warning as :class:`_exc.SADeprecationWarning`, this warning
     is not used in modern versions of SQLAlchemy.

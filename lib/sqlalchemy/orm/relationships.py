@@ -2088,8 +2088,13 @@ class RelationshipProperty(StrategizedProperty):
         class or aliased class that is referred towards.
 
         """
+
         mapperlib = util.preloaded.orm_mapper
-        if callable(self.argument) and not isinstance(
+
+        if isinstance(self.argument, util.string_types):
+            argument = self._clsregistry_resolve_name(self.argument)()
+
+        elif callable(self.argument) and not isinstance(
             self.argument, (type, mapperlib.Mapper)
         ):
             argument = self.argument()
@@ -2124,6 +2129,7 @@ class RelationshipProperty(StrategizedProperty):
         return self.entity.mapper
 
     def do_init(self):
+
         self._check_conflicts()
         self._process_dependent_arguments()
         self._setup_join_conditions()
@@ -2141,6 +2147,7 @@ class RelationshipProperty(StrategizedProperty):
         Callables are resolved, ORM annotations removed.
 
         """
+
         # accept callables for other attributes which may require
         # deferred initialization.  This technique is used
         # by declarative "string configs" and some recipes.
@@ -2153,7 +2160,12 @@ class RelationshipProperty(StrategizedProperty):
             "remote_side",
         ):
             attr_value = getattr(self, attr)
-            if callable(attr_value):
+
+            if isinstance(attr_value, util.string_types):
+                setattr(
+                    self, attr, self._clsregistry_resolve_arg(attr_value)()
+                )
+            elif callable(attr_value):
                 setattr(self, attr, attr_value())
 
         # remove "annotations" which are present if mapped class
@@ -2225,6 +2237,21 @@ class RelationshipProperty(StrategizedProperty):
         self.synchronize_pairs = jc.synchronize_pairs
         self._calculated_foreign_keys = jc.foreign_key_columns
         self.secondary_synchronize_pairs = jc.secondary_synchronize_pairs
+
+    @property
+    def _clsregistry_resolve_arg(self):
+        return self._clsregistry_resolvers[1]
+
+    @property
+    def _clsregistry_resolve_name(self):
+        return self._clsregistry_resolvers[0]
+
+    @util.memoized_property
+    @util.preload_module("sqlalchemy.orm.clsregistry")
+    def _clsregistry_resolvers(self):
+        _resolver = util.preloaded.orm_clsregistry._resolver
+
+        return _resolver(self.parent.class_, self)
 
     @util.preload_module("sqlalchemy.orm.mapper")
     def _check_conflicts(self):

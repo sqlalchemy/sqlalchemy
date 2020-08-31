@@ -3,7 +3,7 @@ Engine and Connection Use
 =========================
 
 .. toctree::
-	:maxdepth: 2
+	:maxdepth: 3
 
 	engines
 	connections

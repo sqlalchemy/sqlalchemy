@@ -39,10 +39,7 @@ class BasicEntity(object):
 _recursion_stack = set()
 
 
-class ComparableEntity(BasicEntity):
-    def __hash__(self):
-        return hash(self.__class__)
-
+class ComparableMixin(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
@@ -107,3 +104,8 @@ class ComparableEntity(BasicEntity):
             return True
         finally:
             _recursion_stack.remove(id(self))
+
+
+class ComparableEntity(ComparableMixin, BasicEntity):
+    def __hash__(self):
+        return hash(self.__class__)

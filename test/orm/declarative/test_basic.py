@@ -12,11 +12,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
-from sqlalchemy.ext import declarative as decl
-from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.ext.declarative import synonym_for
-from sqlalchemy.ext.declarative.base import _DeferredMapperConfig
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
@@ -26,13 +21,20 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import decl_base
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym_for
+from sqlalchemy.orm.decl_api import DeclarativeMeta
+from sqlalchemy.orm.decl_base import _DeferredMapperConfig
 from sqlalchemy.orm.events import MapperEvents
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -61,7 +63,7 @@ class DeclarativeTestBase(
 
     def setup(self):
         global Base
-        Base = decl.declarative_base(testing.db)
+        Base = declarative_base(testing.db)
 
     def teardown(self):
         close_all_sessions()
@@ -119,6 +121,57 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(a1, Address(email="two"))
         eq_(a1.user, User(name="u1"))
 
+    def test_back_populates_setup(self):
+        class User(Base):
+            __tablename__ = "users"
+
+            id = Column("id", Integer, primary_key=True)
+            addresses = relationship("Address", back_populates="user")
+
+        class Address(Base):
+            __tablename__ = "addresses"
+
+            id = Column(Integer, primary_key=True)
+            user_id = Column(
+                "user_id", Integer, ForeignKey("users.id"), key="_user_id"
+            )
+            user = relationship("User", back_populates="addresses")
+
+        configure_mappers()
+
+        assert (
+            Address.__mapper__.attrs.user
+            in User.__mapper__.attrs.addresses._reverse_property
+        )
+        assert (
+            User.__mapper__.attrs.addresses
+            in Address.__mapper__.attrs.user._reverse_property
+        )
+
+    def test_dispose_attrs(self):
+        reg = registry()
+
+        class Foo(object):
+            __tablename__ = "some_table"
+
+            id = Column(Integer, primary_key=True)
+
+        reg.mapped(Foo)
+
+        is_(Foo.__mapper__, class_mapper(Foo))
+        is_(Foo.__table__, class_mapper(Foo).local_table)
+
+        clear_mappers()
+
+        assert not hasattr(Foo, "__mapper__")
+        assert not hasattr(Foo, "__table__")
+
+        from sqlalchemy.orm import clsregistry
+
+        assert clsregistry._key_is_empty(
+            "Foo", reg._class_registry, lambda cls: cls is Foo
+        )
+
     def test_deferred_reflection_default_error(self):
         class MyExt(object):
             @classmethod
@@ -126,7 +179,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 "sample prepare method"
                 to_map = _DeferredMapperConfig.classes_for_base(cls)
                 for thingy in to_map:
-                    thingy.map()
+                    thingy.map({})
 
             @classmethod
             def _sa_decl_prepare(cls):
@@ -138,7 +191,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert_raises_message(
             orm_exc.UnmappedClassError,
-            "Class test.ext.declarative.test_basic.User has a deferred "
+            "Class .*User has a deferred "
             "mapping on it.  It is not yet usable as a mapped class.",
             Session().query,
             User,
@@ -452,7 +505,9 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             name = Column("name", String(50))
 
-        decl.instrument_declarative(User, {}, Base.metadata)
+        reg = registry(metadata=Base.metadata)
+
+        reg.map_declaratively(User)
 
     def test_reserved_identifiers(self):
         def go1():
@@ -483,7 +538,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(str(foo), "(no name)")
         eq_(foo.key, None)
         eq_(foo.name, None)
-        decl.base._undefer_column_name("foo", foo)
+        decl_base._undefer_column_name("foo", foo)
         eq_(str(foo), "foo")
         eq_(foo.key, "foo")
         eq_(foo.name, "foo")
@@ -841,7 +896,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     def test_string_dependency_resolution_schemas(self):
-        Base = decl.declarative_base()
+        Base = declarative_base()
 
         class User(Base):
 
@@ -880,7 +935,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     def test_string_dependency_resolution_annotations(self):
-        Base = decl.declarative_base()
+        Base = declarative_base()
 
         class Parent(Base):
             __tablename__ = "parent"
@@ -905,8 +960,8 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_shared_class_registry(self):
         reg = {}
-        Base1 = decl.declarative_base(testing.db, class_registry=reg)
-        Base2 = decl.declarative_base(testing.db, class_registry=reg)
+        Base1 = declarative_base(testing.db, class_registry=reg)
+        Base2 = declarative_base(testing.db, class_registry=reg)
 
         class A(Base1):
             __tablename__ = "a"
@@ -1026,7 +1081,7 @@ class DeclarativeTest(DeclarativeTestBase):
             def foobar(self):
                 return "foobar"
 
-        Base = decl.declarative_base(cls=MyBase)
+        Base = declarative_base(cls=MyBase)
         assert hasattr(Base, "metadata")
         assert Base().foobar() == "foobar"
 
@@ -1292,26 +1347,26 @@ class DeclarativeTest(DeclarativeTestBase):
             email = Column("email", String(50))
             user_id = Column("user_id", Integer, ForeignKey("users.id"))
 
-        reg = {}
-        decl.instrument_declarative(User, reg, Base.metadata)
-        decl.instrument_declarative(Address, reg, Base.metadata)
-        Base.metadata.create_all()
+        reg = registry(metadata=Base.metadata)
+        reg.mapped(User)
+        reg.mapped(Address)
+        reg.metadata.create_all()
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        eq_(
-            sess.query(User).all(),
-            [
-                User(
-                    name="u1",
-                    addresses=[Address(email="one"), Address(email="two")],
-                )
-            ],
-        )
+        with Session(testing.db) as sess:
+            sess.add(u1)
+            sess.commit()
+        with Session(testing.db) as sess:
+            eq_(
+                sess.query(User).all(),
+                [
+                    User(
+                        name="u1",
+                        addresses=[Address(email="one"), Address(email="two")],
+                    )
+                ],
+            )
 
     def test_custom_mapper_attribute(self):
         def mymapper(cls, tbl, **kwargs):
@@ -1319,7 +1374,7 @@ class DeclarativeTest(DeclarativeTestBase):
             m.CHECK = True
             return m
 
-        base = decl.declarative_base()
+        base = declarative_base()
 
         class Foo(base):
             __tablename__ = "foo"
@@ -1334,7 +1389,7 @@ class DeclarativeTest(DeclarativeTestBase):
             m.CHECK = True
             return m
 
-        base = decl.declarative_base(mapper=mymapper)
+        base = declarative_base(mapper=mymapper)
 
         class Foo(base):
             __tablename__ = "foo"
@@ -1343,7 +1398,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(Foo.__mapper__.CHECK, True)
 
     def test_no_change_to_all_descriptors(self):
-        base = decl.declarative_base()
+        base = declarative_base()
 
         class Foo(base):
             __tablename__ = "foo"
@@ -2005,7 +2060,7 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             name = Column("name", String(50))
 
-            @decl.synonym_for("name")
+            @synonym_for("name")
             @property
             def namesyn(self):
                 return self.name
@@ -2065,12 +2120,12 @@ class DeclarativeTest(DeclarativeTestBase):
         class MyBase(object):
             """MyBase Docstring"""
 
-        Base = decl.declarative_base(cls=MyBase)
+        Base = declarative_base(cls=MyBase)
 
         eq_(Base.__doc__, MyBase.__doc__)
 
     def test_delattr_mapped_raises(self):
-        Base = decl.declarative_base()
+        Base = declarative_base()
 
         class Foo(Base):
             __tablename__ = "foo"
@@ -2088,7 +2143,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     def test_delattr_hybrid_fine(self):
-        Base = decl.declarative_base()
+        Base = declarative_base()
 
         class Foo(Base):
             __tablename__ = "foo"
@@ -2109,7 +2164,7 @@ class DeclarativeTest(DeclarativeTestBase):
         assert not hasattr(Foo, "data_hybrid")
 
     def test_setattr_hybrid_updates_descriptors(self):
-        Base = decl.declarative_base()
+        Base = declarative_base()
 
         class Foo(Base):
             __tablename__ = "foo"
@@ -2165,7 +2220,7 @@ def _produce_test(inline, stringbased):
         @classmethod
         def define_tables(cls, metadata):
             global User, Address
-            Base = decl.declarative_base(metadata=metadata)
+            Base = declarative_base(metadata=metadata)
 
             class User(Base, fixtures.ComparableEntity):
 

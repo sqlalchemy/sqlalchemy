@@ -3,7 +3,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import util
 from sqlalchemy.orm import create_session
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -319,7 +318,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(
+        cls.mapper(
             Company,
             companies,
             properties={
@@ -327,14 +326,14 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(Machine, machines)
+        cls.mapper(Machine, machines)
 
         (
             person_with_polymorphic,
             manager_with_polymorphic,
         ) = cls._get_polymorphics()
 
-        mapper(
+        cls.mapper(
             Person,
             people,
             with_polymorphic=person_with_polymorphic,
@@ -347,7 +346,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(
+        cls.mapper(
             Engineer,
             engineers,
             inherits=Person,
@@ -359,7 +358,7 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(
+        cls.mapper(
             Manager,
             managers,
             with_polymorphic=manager_with_polymorphic,
@@ -367,9 +366,9 @@ class _PolymorphicFixtureBase(fixtures.MappedTest, AssertsCompiledSQL):
             polymorphic_identity="manager",
         )
 
-        mapper(Boss, boss, inherits=Manager, polymorphic_identity="boss")
+        cls.mapper(Boss, boss, inherits=Manager, polymorphic_identity="boss")
 
-        mapper(Paperwork, paperwork)
+        cls.mapper(Paperwork, paperwork)
 
 
 class _Polymorphic(_PolymorphicFixtureBase):

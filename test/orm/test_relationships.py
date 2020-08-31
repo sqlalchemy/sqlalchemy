@@ -5668,6 +5668,281 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
         eq_(s.query(User).count(), 1)
 
 
+class RaiseLoadTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    def test_o2m_raiseload_mapper(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, lazy="raise")),
+        )
+        q = create_session().query(User)
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'User.addresses' is not available due to lazy='raise'",
+                lambda: x[0].addresses,
+            )
+            result[0] = x
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(result[0], User, {"id": 7})
+
+    def test_o2m_raiseload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(User, users, properties=dict(addresses=relationship(Address)))
+        q = create_session().query(User)
+        result = [None]
+
+        def go():
+            x = (
+                q.options(sa.orm.raiseload(User.addresses))
+                .filter(User.id == 7)
+                .all()
+            )
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'User.addresses' is not available due to lazy='raise'",
+                lambda: x[0].addresses,
+            )
+            result[0] = x
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        self.assert_result(result[0], User, {"id": 7})
+
+    def test_o2m_raiseload_lazyload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, lazy="raise")),
+        )
+        q = create_session().query(User).options(sa.orm.lazyload("addresses"))
+        result = [None]
+
+        def go():
+            x = q.filter(User.id == 7).all()
+            x[0].addresses
+            result[0] = x
+
+        self.sql_count_(2, go)
+
+        self.assert_result(
+            result[0], User, {"id": 7, "addresses": (Address, [{"id": 1}])}
+        )
+
+    def test_m2o_raiseload_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        mapper(Address, addresses, properties={"user": relationship(User)})
+        mapper(User, users)
+        s = Session()
+        a1 = (
+            s.query(Address)
+            .filter_by(id=1)
+            .options(sa.orm.raiseload("user"))
+            .first()
+        )
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise'",
+                lambda: a1.user,
+            )
+
+        self.sql_count_(0, go)
+
+    def test_m2o_raise_on_sql_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        mapper(Address, addresses, properties={"user": relationship(User)})
+        mapper(User, users)
+        s = Session()
+        a1 = (
+            s.query(Address)
+            .filter_by(id=1)
+            .options(sa.orm.raiseload("user", sql_only=True))
+            .first()
+        )
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise_on_sql'",
+                lambda: a1.user,
+            )
+
+        self.sql_count_(0, go)
+
+        s.close()
+
+        u1 = s.query(User).first()
+        a1 = (
+            s.query(Address)
+            .filter_by(id=1)
+            .options(sa.orm.raiseload("user", sql_only=True))
+            .first()
+        )
+        assert "user" not in a1.__dict__
+        is_(a1.user, u1)
+
+    def test_m2o_non_use_get_raise_on_sql_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User,
+                    primaryjoin=sa.and_(
+                        addresses.c.user_id == users.c.id,
+                        users.c.name != None,  # noqa
+                    ),
+                )
+            },
+        )
+        mapper(User, users)
+        s = Session()
+        u1 = s.query(User).first()  # noqa
+        a1 = (
+            s.query(Address)
+            .filter_by(id=1)
+            .options(sa.orm.raiseload("user", sql_only=True))
+            .first()
+        )
+
+        def go():
+            assert_raises_message(
+                sa.exc.InvalidRequestError,
+                "'Address.user' is not available due to lazy='raise_on_sql'",
+                lambda: a1.user,
+            )
+
+    def test_raiseload_wildcard_all_classes_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
+        q = (
+            create_session()
+            .query(User, Address)
+            .join(Address, User.id == Address.user_id)
+        )
+
+        u1, a1 = q.options(sa.orm.raiseload("*")).filter(User.id == 7).first()
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'User.addresses' is not available due to lazy='raise'",
+            lambda: u1.addresses,
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Address.user' is not available due to lazy='raise'",
+            lambda: a1.user,
+        )
+
+        # columns still work
+        eq_(u1.id, 7)
+        eq_(a1.id, 1)
+
+    def test_raiseload_wildcard_specific_class_option(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(Address, addresses)
+        mapper(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address, backref="user")),
+        )
+        q = (
+            create_session()
+            .query(User, Address)
+            .join(Address, User.id == Address.user_id)
+        )
+
+        u1, a1 = (
+            q.options(sa.orm.Load(Address).raiseload("*"))
+            .filter(User.id == 7)
+            .first()
+        )
+
+        # User doesn't raise
+        def go():
+            eq_(u1.addresses, [a1])
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        # Address does
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Address.user' is not available due to lazy='raise'",
+            lambda: a1.user,
+        )
+
+        # columns still work
+        eq_(u1.id, 7)
+        eq_(a1.id, 1)
+
+
 class RelationDeprecationTest(fixtures.MappedTest):
 
     """test usage of the old 'relation' function."""

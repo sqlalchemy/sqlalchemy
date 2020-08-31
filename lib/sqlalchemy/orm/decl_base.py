@@ -5,33 +5,32 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 """Internal implementation for declarative."""
+from __future__ import absolute_import
 
 import collections
 import weakref
 
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm import instrumentation
 from . import clsregistry
-from ... import event
-from ... import exc
-from ... import util
-from ...orm import class_mapper
-from ...orm import exc as orm_exc
-from ...orm import mapper
-from ...orm import mapperlib
-from ...orm import synonym
-from ...orm.attributes import QueryableAttribute
-from ...orm.base import _is_mapped_class
-from ...orm.base import InspectionAttr
-from ...orm.descriptor_props import CompositeProperty
-from ...orm.interfaces import MapperProperty
-from ...orm.properties import ColumnProperty
-from ...schema import Column
-from ...schema import Table
-from ...sql import expression
-from ...util import topological
-
-
-declared_attr = declarative_props = None
+from . import exc as orm_exc
+from . import mapper as mapperlib
+from .attributes import QueryableAttribute
+from .base import _is_mapped_class
+from .base import InspectionAttr
+from .descriptor_props import CompositeProperty
+from .descriptor_props import SynonymProperty
+from .interfaces import MapperProperty
+from .mapper import Mapper as mapper
+from .properties import ColumnProperty
+from .util import class_mapper
+from .. import event
+from .. import exc
+from .. import util
+from ..sql import expression
+from ..sql.schema import Column
+from ..sql.schema import Table
+from ..util import topological
 
 
 def _declared_mapping_info(cls):
@@ -49,7 +48,7 @@ def _resolve_for_abstract_or_classical(cls):
     if cls is object:
         return None
 
-    if _get_immediate_cls_attr(cls, "__abstract__", strict=True):
+    if cls.__dict__.get("__abstract__", False):
         for sup in cls.__bases__:
             sup = _resolve_for_abstract_or_classical(sup)
             if sup is not None:
@@ -57,31 +56,12 @@ def _resolve_for_abstract_or_classical(cls):
         else:
             return None
     else:
-        classical = _dive_for_classically_mapped_class(cls)
-        if classical is not None:
-            return classical
+        clsmanager = _dive_for_cls_manager(cls)
+
+        if clsmanager:
+            return clsmanager.class_
         else:
             return cls
-
-
-def _dive_for_classically_mapped_class(cls):
-    # support issue #4321
-
-    # if we are within a base hierarchy, don't
-    # search at all for classical mappings
-    if hasattr(cls, "_decl_class_registry"):
-        return None
-
-    manager = instrumentation.manager_of_class(cls)
-    if manager is not None:
-        return cls
-    else:
-        for sup in cls.__bases__:
-            mapper = _dive_for_classically_mapped_class(sup)
-            if mapper is not None:
-                return sup
-        else:
-            return None
 
 
 def _get_immediate_cls_attr(cls, attrname, strict=False):
@@ -95,21 +75,24 @@ def _get_immediate_cls_attr(cls, attrname, strict=False):
     inherit from.
 
     """
+
+    # the rules are different for this name than others,
+    # make sure we've moved it out.  transitional
+    assert attrname != "__abstract__"
+
     if not issubclass(cls, object):
         return None
 
-    for base in cls.__mro__:
-        _is_declarative_inherits = hasattr(base, "_decl_class_registry")
-        _is_classicial_inherits = (
-            not _is_declarative_inherits
-            and _dive_for_classically_mapped_class(base) is not None
-        )
+    if attrname in cls.__dict__:
+        return getattr(cls, attrname)
+
+    for base in cls.__mro__[1:]:
+        _is_classicial_inherits = _dive_for_cls_manager(base)
 
         if attrname in base.__dict__ and (
             base is cls
             or (
                 (base in cls.__bases__ if strict else True)
-                and not _is_declarative_inherits
                 and not _is_classicial_inherits
             )
         ):
@@ -118,22 +101,44 @@ def _get_immediate_cls_attr(cls, attrname, strict=False):
         return None
 
 
-def _as_declarative(cls, classname, dict_):
-    global declared_attr, declarative_props
-    if declared_attr is None:
-        from .api import declared_attr
+def _dive_for_cls_manager(cls):
+    # because the class manager registration is pluggable,
+    # we need to do the search for every class in the hierarchy,
+    # rather than just a simple "cls._sa_class_manager"
 
-        declarative_props = (declared_attr, util.classproperty)
+    # python 2 old style class
+    if not hasattr(cls, "__mro__"):
+        return None
 
-    if _get_immediate_cls_attr(cls, "__abstract__", strict=True):
-        return
+    for base in cls.__mro__:
+        manager = attributes.manager_of_class(base)
+        if manager:
+            return manager
+    return None
 
-    _MapperConfig.setup_mapping(cls, classname, dict_)
+
+def _as_declarative(registry, cls, dict_):
+
+    # declarative scans the class for attributes.  no table or mapper
+    # args passed separately.
+
+    return _MapperConfig.setup_mapping(registry, cls, dict_, None, {})
+
+
+def _mapper(registry, cls, table, mapper_kw):
+    _ImperativeMapperConfig(registry, cls, table, mapper_kw)
+    return cls.__mapper__
+
+
+@util.preload_module("sqlalchemy.orm.decl_api")
+def _is_declarative_props(obj):
+    declared_attr = util.preloaded.orm_decl_api.declared_attr
+
+    return isinstance(obj, (declared_attr, util.classproperty))
 
 
 def _check_declared_props_nocascade(obj, name, cls):
-
-    if isinstance(obj, declarative_props):
+    if _is_declarative_props(obj):
         if getattr(obj, "_cascading", False):
             util.warn(
                 "@declared_attr.cascading is not supported on the %s "
@@ -146,8 +151,19 @@ def _check_declared_props_nocascade(obj, name, cls):
 
 
 class _MapperConfig(object):
+    __slots__ = ("cls", "classname", "properties", "declared_attr_reg")
+
     @classmethod
-    def setup_mapping(cls, cls_, classname, dict_):
+    def setup_mapping(cls, registry, cls_, dict_, table, mapper_kw):
+        manager = attributes.manager_of_class(cls)
+        if manager and manager.class_ is cls_:
+            raise exc.InvalidRequestError(
+                "Class %r already has been " "instrumented declaratively" % cls
+            )
+
+        if cls_.__dict__.get("__abstract__", False):
+            return
+
         defer_map = _get_immediate_cls_attr(
             cls_, "_sa_decl_prepare_nocascade", strict=True
         ) or hasattr(cls_, "_sa_decl_prepare")
@@ -155,45 +171,142 @@ class _MapperConfig(object):
         if defer_map:
             cfg_cls = _DeferredMapperConfig
         else:
-            cfg_cls = _MapperConfig
+            cfg_cls = _ClassScanMapperConfig
 
-        cfg_cls(cls_, classname, dict_)
+        return cfg_cls(registry, cls_, dict_, table, mapper_kw)
 
-    def __init__(self, cls_, classname, dict_):
-
+    def __init__(self, registry, cls_):
         self.cls = cls_
-
-        # dict_ will be a dictproxy, which we can't write to, and we need to!
-        self.dict_ = dict(dict_)
-        self.classname = classname
-        self.persist_selectable = None
+        self.classname = cls_.__name__
         self.properties = util.OrderedDict()
+        self.declared_attr_reg = {}
+
+        instrumentation.register_class(
+            self.cls,
+            finalize=False,
+            registry=registry,
+            declarative_scan=self,
+            init_method=registry.constructor,
+        )
+
+        event.listen(
+            cls_,
+            "class_uninstrument",
+            registry._dispose_declarative_artifacts,
+        )
+
+    def set_cls_attribute(self, attrname, value):
+
+        manager = instrumentation.manager_of_class(self.cls)
+        manager.install_member(attrname, value)
+        return value
+
+    def _early_mapping(self, mapper_kw):
+        self.map(mapper_kw)
+
+
+class _ImperativeMapperConfig(_MapperConfig):
+    __slots__ = ("dict_", "local_table", "inherits")
+
+    def __init__(
+        self, registry, cls_, table, mapper_kw,
+    ):
+        super(_ImperativeMapperConfig, self).__init__(registry, cls_)
+
+        self.dict_ = {}
+        self.local_table = self.set_cls_attribute("__table__", table)
+
+        with mapperlib._CONFIGURE_MUTEX:
+            clsregistry.add_class(
+                self.classname, self.cls, registry._class_registry
+            )
+
+            self._setup_inheritance(mapper_kw)
+
+            self._early_mapping(mapper_kw)
+
+    def map(self, mapper_kw=util.EMPTY_DICT):
+        mapper_cls = mapper
+
+        return self.set_cls_attribute(
+            "__mapper__", mapper_cls(self.cls, self.local_table, **mapper_kw),
+        )
+
+    def _setup_inheritance(self, mapper_kw):
+        cls = self.cls
+
+        inherits = mapper_kw.get("inherits", None)
+
+        if inherits is None:
+            # since we search for classical mappings now, search for
+            # multiple mapped bases as well and raise an error.
+            inherits_search = []
+            for c in cls.__bases__:
+                c = _resolve_for_abstract_or_classical(c)
+                if c is None:
+                    continue
+                if _declared_mapping_info(
+                    c
+                ) is not None and not _get_immediate_cls_attr(
+                    c, "_sa_decl_prepare_nocascade", strict=True
+                ):
+                    inherits_search.append(c)
+
+            if inherits_search:
+                if len(inherits_search) > 1:
+                    raise exc.InvalidRequestError(
+                        "Class %s has multiple mapped bases: %r"
+                        % (cls, inherits_search)
+                    )
+                inherits = inherits_search[0]
+        elif isinstance(inherits, mapper):
+            inherits = inherits.class_
+
+        self.inherits = inherits
+
+
+class _ClassScanMapperConfig(_MapperConfig):
+    __slots__ = (
+        "dict_",
+        "local_table",
+        "persist_selectable",
+        "declared_columns",
+        "column_copies",
+        "table_args",
+        "tablename",
+        "mapper_args",
+        "mapper_args_fn",
+        "inherits",
+    )
+
+    def __init__(
+        self, registry, cls_, dict_, table, mapper_kw,
+    ):
+
+        super(_ClassScanMapperConfig, self).__init__(registry, cls_)
+
+        self.dict_ = dict(dict_) if dict_ else {}
+        self.persist_selectable = None
         self.declared_columns = set()
         self.column_copies = {}
         self._setup_declared_events()
 
-        # temporary registry.  While early 1.0 versions
-        # set up the ClassManager here, by API contract
-        # we can't do that until there's a mapper.
-        self.cls._sa_declared_attr_reg = {}
-
         self._scan_attributes()
 
         with mapperlib._CONFIGURE_MUTEX:
-            clsregistry.add_class(self.classname, self.cls)
+            clsregistry.add_class(
+                self.classname, self.cls, registry._class_registry
+            )
 
             self._extract_mappable_attributes()
 
             self._extract_declared_columns()
 
-            self._setup_table()
+            self._setup_table(table)
 
-            self._setup_inheritance()
+            self._setup_inheritance(mapper_kw)
 
-            self._early_mapping()
-
-    def _early_mapping(self):
-        self.map()
+            self._early_mapping(mapper_kw)
 
     def _setup_declared_events(self):
         if _get_immediate_cls_attr(self.cls, "__declare_last__"):
@@ -265,7 +378,7 @@ class _MapperConfig(object):
                         if base is not cls:
                             inherited_table_args = True
                 elif class_mapped:
-                    if isinstance(obj, declarative_props):
+                    if _is_declarative_props(obj):
                         util.warn(
                             "Regular (i.e. not __special__) "
                             "attribute '%s.%s' uses @declared_attr, "
@@ -287,7 +400,7 @@ class _MapperConfig(object):
                             "be declared as @declared_attr callables "
                             "on declarative mixin classes."
                         )
-                    elif isinstance(obj, declarative_props):
+                    elif _is_declarative_props(obj):
                         if obj._cascading:
                             if name in dict_:
                                 # unfortunately, while we can use the user-
@@ -395,8 +508,8 @@ class _MapperConfig(object):
                 continue
 
             value = dict_[k]
-            if isinstance(value, declarative_props):
-                if isinstance(value, declared_attr) and value._cascading:
+            if _is_declarative_props(value):
+                if value._cascading:
                     util.warn(
                         "Use of @declared_attr.cascading only applies to "
                         "Declarative 'mixin' and 'abstract' classes.  "
@@ -413,7 +526,7 @@ class _MapperConfig(object):
             ):
                 # detect a QueryableAttribute that's already mapped being
                 # assigned elsewhere in userland, turn into a synonym()
-                value = synonym(value.key)
+                value = SynonymProperty(value.key)
                 setattr(cls, k, value)
 
             if (
@@ -446,8 +559,7 @@ class _MapperConfig(object):
                     "for the MetaData instance when using a "
                     "declarative base class."
                 )
-            prop = clsregistry._deferred_relationship(cls, value)
-            our_stuff[k] = prop
+            our_stuff[k] = value
 
     def _extract_declared_columns(self):
         our_stuff = self.properties
@@ -488,24 +600,25 @@ class _MapperConfig(object):
                     % (self.classname, name, (", ".join(sorted(keys))))
                 )
 
-    def _setup_table(self):
+    def _setup_table(self, table=None):
         cls = self.cls
         tablename = self.tablename
         table_args = self.table_args
         dict_ = self.dict_
         declared_columns = self.declared_columns
 
+        manager = attributes.manager_of_class(cls)
+
         declared_columns = self.declared_columns = sorted(
             declared_columns, key=lambda c: c._creation_order
         )
-        table = None
 
-        if hasattr(cls, "__table_cls__"):
-            table_cls = util.unbound_method_to_callable(cls.__table_cls__)
-        else:
-            table_cls = Table
+        if "__table__" not in dict_ and table is None:
+            if hasattr(cls, "__table_cls__"):
+                table_cls = util.unbound_method_to_callable(cls.__table_cls__)
+            else:
+                table_cls = Table
 
-        if "__table__" not in dict_:
             if tablename is not None:
 
                 args, table_kw = (), {}
@@ -522,14 +635,18 @@ class _MapperConfig(object):
                 if autoload:
                     table_kw["autoload"] = True
 
-                cls.__table__ = table = table_cls(
-                    tablename,
-                    cls.metadata,
-                    *(tuple(declared_columns) + tuple(args)),
-                    **table_kw
+                table = self.set_cls_attribute(
+                    "__table__",
+                    table_cls(
+                        tablename,
+                        manager.registry.metadata,
+                        *(tuple(declared_columns) + tuple(args)),
+                        **table_kw
+                    ),
                 )
         else:
-            table = cls.__table__
+            if table is None:
+                table = cls.__table__
             if declared_columns:
                 for c in declared_columns:
                     if not table.c.contains_column(c):
@@ -539,34 +656,40 @@ class _MapperConfig(object):
                         )
         self.local_table = table
 
-    def _setup_inheritance(self):
+    def _setup_inheritance(self, mapper_kw):
         table = self.local_table
         cls = self.cls
         table_args = self.table_args
         declared_columns = self.declared_columns
 
-        # since we search for classical mappings now, search for
-        # multiple mapped bases as well and raise an error.
-        inherits = []
-        for c in cls.__bases__:
-            c = _resolve_for_abstract_or_classical(c)
-            if c is None:
-                continue
-            if _declared_mapping_info(
-                c
-            ) is not None and not _get_immediate_cls_attr(
-                c, "_sa_decl_prepare_nocascade", strict=True
-            ):
-                inherits.append(c)
+        inherits = mapper_kw.get("inherits", None)
 
-        if inherits:
-            if len(inherits) > 1:
-                raise exc.InvalidRequestError(
-                    "Class %s has multiple mapped bases: %r" % (cls, inherits)
-                )
-            self.inherits = inherits[0]
-        else:
-            self.inherits = None
+        if inherits is None:
+            # since we search for classical mappings now, search for
+            # multiple mapped bases as well and raise an error.
+            inherits_search = []
+            for c in cls.__bases__:
+                c = _resolve_for_abstract_or_classical(c)
+                if c is None:
+                    continue
+                if _declared_mapping_info(
+                    c
+                ) is not None and not _get_immediate_cls_attr(
+                    c, "_sa_decl_prepare_nocascade", strict=True
+                ):
+                    inherits_search.append(c)
+
+            if inherits_search:
+                if len(inherits_search) > 1:
+                    raise exc.InvalidRequestError(
+                        "Class %s has multiple mapped bases: %r"
+                        % (cls, inherits_search)
+                    )
+                inherits = inherits_search[0]
+        elif isinstance(inherits, mapper):
+            inherits = inherits.class_
+
+        self.inherits = inherits
 
         if (
             table is None
@@ -614,12 +737,20 @@ class _MapperConfig(object):
                     ):
                         inherited_persist_selectable._refresh_for_new_column(c)
 
-    def _prepare_mapper_arguments(self):
+    def _prepare_mapper_arguments(self, mapper_kw):
         properties = self.properties
+
         if self.mapper_args_fn:
             mapper_args = self.mapper_args_fn()
         else:
             mapper_args = {}
+
+        if mapper_kw:
+            mapper_args.update(mapper_kw)
+
+        if "properties" in mapper_args:
+            properties = dict(properties)
+            properties.update(mapper_args["properties"])
 
         # make sure that column copies are used rather
         # than the original columns from any mixins
@@ -628,9 +759,16 @@ class _MapperConfig(object):
                 v = mapper_args[k]
                 mapper_args[k] = self.column_copies.get(v, v)
 
-        assert (
-            "inherits" not in mapper_args
-        ), "Can't specify 'inherits' explicitly with declarative mappings"
+        if "inherits" in mapper_args:
+            inherits_arg = mapper_args["inherits"]
+            if isinstance(inherits_arg, mapper):
+                inherits_arg = inherits_arg.class_
+
+            if inherits_arg is not self.inherits:
+                raise exc.InvalidRequestError(
+                    "mapper inherits argument given for non-inheriting "
+                    "class %s" % (mapper_args["inherits"])
+                )
 
         if self.inherits:
             mapper_args["inherits"] = self.inherits
@@ -674,8 +812,8 @@ class _MapperConfig(object):
         result_mapper_args["properties"] = properties
         self.mapper_args = result_mapper_args
 
-    def map(self):
-        self._prepare_mapper_arguments()
+    def map(self, mapper_kw=util.EMPTY_DICT):
+        self._prepare_mapper_arguments(mapper_kw)
         if hasattr(self.cls, "__mapper_cls__"):
             mapper_cls = util.unbound_method_to_callable(
                 self.cls.__mapper_cls__
@@ -683,17 +821,16 @@ class _MapperConfig(object):
         else:
             mapper_cls = mapper
 
-        self.cls.__mapper__ = mp_ = mapper_cls(
-            self.cls, self.local_table, **self.mapper_args
+        return self.set_cls_attribute(
+            "__mapper__",
+            mapper_cls(self.cls, self.local_table, **self.mapper_args),
         )
-        del self.cls._sa_declared_attr_reg
-        return mp_
 
 
-class _DeferredMapperConfig(_MapperConfig):
+class _DeferredMapperConfig(_ClassScanMapperConfig):
     _configs = util.OrderedDict()
 
-    def _early_mapping(self):
+    def _early_mapping(self, mapper_kw):
         pass
 
     @property
@@ -751,9 +888,9 @@ class _DeferredMapperConfig(_MapperConfig):
             )
         return list(topological.sort(tuples, classes_for_base))
 
-    def map(self):
+    def map(self, mapper_kw=util.EMPTY_DICT):
         self._configs.pop(self._cls, None)
-        return super(_DeferredMapperConfig, self).map()
+        return super(_DeferredMapperConfig, self).map(mapper_kw)
 
 
 def _add_attribute(cls, key, value):
@@ -776,16 +913,12 @@ def _add_attribute(cls, key, value):
                     cls.__table__.append_column(col)
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, MapperProperty):
-            cls.__mapper__.add_property(
-                key, clsregistry._deferred_relationship(cls, value)
-            )
+            cls.__mapper__.add_property(key, value)
         elif isinstance(value, QueryableAttribute) and value.key != key:
             # detect a QueryableAttribute that's already mapped being
             # assigned elsewhere in userland, turn into a synonym()
-            value = synonym(value.key)
-            cls.__mapper__.add_property(
-                key, clsregistry._deferred_relationship(cls, value)
-            )
+            value = SynonymProperty(value.key)
+            cls.__mapper__.add_property(key, value)
         else:
             type.__setattr__(cls, key, value)
             cls.__mapper__._expire_memoizations()

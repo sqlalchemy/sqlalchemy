@@ -531,12 +531,12 @@ we've declared are in an un-mapped state.
 
 """  # noqa
 from .declarative import declarative_base as _declarative_base
-from .declarative.base import _DeferredMapperConfig
 from .. import util
 from ..orm import backref
 from ..orm import exc as orm_exc
 from ..orm import interfaces
 from ..orm import relationship
+from ..orm.decl_base import _DeferredMapperConfig
 from ..orm.mapper import _CONFIGURE_MUTEX
 from ..schema import ForeignKeyConstraint
 from ..sql import and_

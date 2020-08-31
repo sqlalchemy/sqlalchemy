@@ -160,50 +160,23 @@ class Mapper(
         legacy_is_orphan=False,
         _compiled_cache_size=100,
     ):
-        r"""Return a new :class:`_orm.Mapper` object.
+        r"""Direct consructor for a new :class:`_orm.Mapper` object.
 
-        This function is typically used behind the scenes
-        via the Declarative extension.   When using Declarative,
-        many of the usual :func:`.mapper` arguments are handled
-        by the Declarative extension itself, including ``class_``,
-        ``local_table``, ``properties``, and  ``inherits``.
-        Other options are passed to :func:`.mapper` using
-        the ``__mapper_args__`` class variable::
+        The :func:`_orm.mapper` function is normally invoked through the
+        use of the :class:`_orm.registry` object through either the
+        :ref:`Declarative <orm_declarative_mapping>` or
+        :ref:`Imperative <orm_imperative_mapping>` mapping styles.
 
-           class MyClass(Base):
-               __tablename__ = 'my_table'
-               id = Column(Integer, primary_key=True)
-               type = Column(String(50))
-               alt = Column("some_alt", Integer)
+        .. versionchanged:: 1.4 The :func:`_orm.mapper` function should not
+           be called directly for classical mapping; for a classical mapping
+           configuration, use the :meth:`_orm.registry.map_imperatively`
+           method.   The :func:`_orm.mapper` function may become private in a
+           future release.
 
-               __mapper_args__ = {
-                   'polymorphic_on' : type
-               }
-
-
-        Explicit use of :func:`.mapper`
-        is often referred to as *classical mapping*.  The above
-        declarative example is equivalent in classical form to::
-
-            my_table = Table("my_table", metadata,
-                Column('id', Integer, primary_key=True),
-                Column('type', String(50)),
-                Column("some_alt", Integer)
-            )
-
-            class MyClass(object):
-                pass
-
-            mapper(MyClass, my_table,
-                polymorphic_on=my_table.c.type,
-                properties={
-                    'alt':my_table.c.some_alt
-                })
-
-        .. seealso::
-
-            :ref:`classical_mapping` - discussion of direct usage of
-            :func:`.mapper`
+        Parameters documented below may be passed to either the
+        :meth:`_orm.registry.map_imperatively` method, or may be passed in the
+        ``__mapper_args__`` declarative class attribute described at
+        :ref:`orm_declarative_mapper_options`.
 
         :param class\_: The class to be mapped.  When using Declarative,
           this argument is automatically passed as the declared class
@@ -342,12 +315,10 @@ class Mapper(
           mapping of the class to an alternate selectable, for loading
           only.
 
-          :paramref:`_orm.Mapper.non_primary` is not an often used option, but
-          is useful in some specific :func:`_orm.relationship` cases.
+         .. seealso::
 
-          .. seealso::
-
-              :ref:`relationship_non_primary_mapper`
+            :ref:`relationship_aliased_class` - the new pattern that removes
+            the need for the :paramref:`_orm.Mapper.non_primary` flag.
 
         :param passive_deletes: Indicates DELETE behavior of foreign key
            columns when a joined-table inheritance entity is being deleted.
@@ -1207,6 +1178,10 @@ class Mapper(
 
         """
 
+        # we expect that declarative has applied the class manager
+        # already and set up a registry.  if this is None,
+        # we will emit a deprecation warning below when we also see that
+        # it has no registry.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1226,9 +1201,6 @@ class Mapper(
             if manager.is_mapped:
                 raise sa_exc.ArgumentError(
                     "Class '%s' already has a primary mapper defined. "
-                    "Use non_primary=True to "
-                    "create a non primary Mapper.  clear_mappers() will "
-                    "remove *all* current mappers from all classes."
                     % self.class_
                 )
             # else:
@@ -1238,19 +1210,36 @@ class Mapper(
 
         _mapper_registry[self] = True
 
-        # note: this *must be called before instrumentation.register_class*
-        # to maintain the documented behavior of instrument_class
         self.dispatch.instrument_class(self, self.class_)
 
-        if manager is None:
-            manager = instrumentation.register_class(self.class_)
+        # this invokes the class_instrument event and sets up
+        # the __init__ method.  documented behavior is that this must
+        # occur after the instrument_class event above.
+        # yes two events with the same two words reversed and different APIs.
+        # :(
+
+        manager = instrumentation.register_class(
+            self.class_,
+            mapper=self,
+            expired_attribute_loader=util.partial(
+                loading.load_scalar_attributes, self
+            ),
+            # finalize flag means instrument the __init__ method
+            # and call the class_instrument event
+            finalize=True,
+        )
+        if not manager.registry:
+            util.warn_deprecated_20(
+                "Calling the mapper() function directly outside of a "
+                "declarative registry is deprecated."
+                " Please use the sqlalchemy.orm.registry.map_imperatively() "
+                "function for a classical mapping."
+            )
+            from . import registry
+
+            manager.registry = registry()
 
         self.class_manager = manager
-
-        manager.mapper = self
-        manager.expired_attribute_loader = util.partial(
-            loading.load_scalar_attributes, self
-        )
 
         # The remaining members can be added by any mapper,
         # e_name None or not.
@@ -2281,7 +2270,7 @@ class Mapper(
 
     @property
     def selectable(self):
-        """The :func:`_expression.select` construct this
+        """The :class:`_schema.FromClause` construct this
         :class:`_orm.Mapper` selects from by default.
 
         Normally, this is equivalent to :attr:`.persist_selectable`, unless

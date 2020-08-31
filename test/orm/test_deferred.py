@@ -3,9 +3,11 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import attributes
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
@@ -30,6 +32,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Boss
@@ -2132,3 +2135,118 @@ class AutoflushTest(fixtures.DeclarativeMappedTest):
         eq_(a1.b_count, 2)
 
         assert b1 in s
+
+
+class DeferredPopulationTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "thing",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(20)),
+        )
+
+        Table(
+            "human",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("thing_id", Integer, ForeignKey("thing.id")),
+            Column("name", String(20)),
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        thing, human = cls.tables.thing, cls.tables.human
+
+        class Human(cls.Basic):
+            pass
+
+        class Thing(cls.Basic):
+            pass
+
+        mapper(Human, human, properties={"thing": relationship(Thing)})
+        mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
+
+    @classmethod
+    def insert_data(cls, connection):
+        thing, human = cls.tables.thing, cls.tables.human
+
+        connection.execute(thing.insert(), [{"id": 1, "name": "Chair"}])
+
+        connection.execute(
+            human.insert(), [{"id": 1, "thing_id": 1, "name": "Clark Kent"}]
+        )
+
+    def _test(self, thing):
+        assert "name" in attributes.instance_state(thing).dict
+
+    def test_no_previous_query(self):
+        Thing = self.classes.Thing
+
+        session = create_session()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_query_twice_with_clear(self):
+        Thing = self.classes.Thing
+
+        session = create_session()
+        result = session.query(Thing).first()  # noqa
+        session.expunge_all()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_query_twice_no_clear(self):
+        Thing = self.classes.Thing
+
+        session = create_session()
+        result = session.query(Thing).first()  # noqa
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_joinedload_with_clear(self):
+        Thing, Human = self.classes.Thing, self.classes.Human
+
+        session = create_session()
+        human = (  # noqa
+            session.query(Human).options(sa.orm.joinedload("thing")).first()
+        )
+        session.expunge_all()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_joinedload_no_clear(self):
+        Thing, Human = self.classes.Thing, self.classes.Human
+
+        session = create_session()
+        human = (  # noqa
+            session.query(Human).options(sa.orm.joinedload("thing")).first()
+        )
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_join_with_clear(self):
+        Thing, Human = self.classes.Thing, self.classes.Human
+
+        session = create_session()
+        result = (  # noqa
+            session.query(Human).add_entity(Thing).join("thing").first()
+        )
+        session.expunge_all()
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)
+
+    def test_join_no_clear(self):
+        Thing, Human = self.classes.Thing, self.classes.Human
+
+        session = create_session()
+        result = (  # noqa
+            session.query(Human).add_entity(Thing).join("thing").first()
+        )
+        thing = session.query(Thing).options(sa.orm.undefer("name")).first()
+        self._test(thing)

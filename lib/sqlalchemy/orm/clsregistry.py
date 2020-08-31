@@ -12,16 +12,15 @@ This system allows specification of classes and expressions used in
 """
 import weakref
 
-from ... import exc
-from ... import inspection
-from ... import util
-from ...orm import class_mapper
-from ...orm import ColumnProperty
-from ...orm import interfaces
-from ...orm import RelationshipProperty
-from ...orm import SynonymProperty
-from ...schema import _get_table_key
-
+from . import attributes
+from . import interfaces
+from .descriptor_props import SynonymProperty
+from .properties import ColumnProperty
+from .util import class_mapper
+from .. import exc
+from .. import inspection
+from .. import util
+from ..sql.schema import _get_table_key
 
 # strong references to registries which we place in
 # the _decl_class_registry, which is usually weak referencing.
@@ -30,25 +29,25 @@ from ...schema import _get_table_key
 _registries = set()
 
 
-def add_class(classname, cls):
+def add_class(classname, cls, decl_class_registry):
     """Add a class to the _decl_class_registry associated with the
     given declarative class.
 
     """
-    if classname in cls._decl_class_registry:
+    if classname in decl_class_registry:
         # class already exists.
-        existing = cls._decl_class_registry[classname]
+        existing = decl_class_registry[classname]
         if not isinstance(existing, _MultipleClassMarker):
-            existing = cls._decl_class_registry[
-                classname
-            ] = _MultipleClassMarker([cls, existing])
+            existing = decl_class_registry[classname] = _MultipleClassMarker(
+                [cls, existing]
+            )
     else:
-        cls._decl_class_registry[classname] = cls
+        decl_class_registry[classname] = cls
 
     try:
-        root_module = cls._decl_class_registry["_sa_module_registry"]
+        root_module = decl_class_registry["_sa_module_registry"]
     except KeyError:
-        cls._decl_class_registry[
+        decl_class_registry[
             "_sa_module_registry"
         ] = root_module = _ModuleMarker("_sa_module_registry", None)
 
@@ -70,6 +69,55 @@ def add_class(classname, cls):
         module.add_class(classname, cls)
 
 
+def remove_class(classname, cls, decl_class_registry):
+    if classname in decl_class_registry:
+        existing = decl_class_registry[classname]
+        if isinstance(existing, _MultipleClassMarker):
+            existing.remove_item(cls)
+        else:
+            del decl_class_registry[classname]
+
+    try:
+        root_module = decl_class_registry["_sa_module_registry"]
+    except KeyError:
+        return
+
+    tokens = cls.__module__.split(".")
+
+    while tokens:
+        token = tokens.pop(0)
+        module = root_module.get_module(token)
+        for token in tokens:
+            module = module.get_module(token)
+        module.remove_class(classname, cls)
+
+
+def _key_is_empty(key, decl_class_registry, test):
+    """test if a key is empty of a certain object.
+
+    used for unit tests against the registry to see if garbage collection
+    is working.
+
+    "test" is a callable that will be passed an object should return True
+    if the given object is the one we were looking for.
+
+    We can't pass the actual object itself b.c. this is for testing garbage
+    collection; the caller will have to have removed references to the
+    object itself.
+
+    """
+    if key not in decl_class_registry:
+        return True
+
+    thing = decl_class_registry[key]
+    if isinstance(thing, _MultipleClassMarker):
+        for sub_thing in thing.contents:
+            if test(sub_thing):
+                return False
+    else:
+        return not test(thing)
+
+
 class _MultipleClassMarker(object):
     """refers to multiple classes of the same name
     within _decl_class_registry.
@@ -84,6 +132,9 @@ class _MultipleClassMarker(object):
             [weakref.ref(item, self._remove_item) for item in classes]
         )
         _registries.add(self)
+
+    def remove_item(self, cls):
+        self._remove_item(weakref.ref(cls))
 
     def __iter__(self):
         return (ref() for ref in self.contents)
@@ -104,7 +155,7 @@ class _MultipleClassMarker(object):
             return cls
 
     def _remove_item(self, ref):
-        self.contents.remove(ref)
+        self.contents.discard(ref)
         if not self.contents:
             _registries.discard(self)
             if self.on_remove:
@@ -181,6 +232,11 @@ class _ModuleMarker(object):
             existing = self.contents[name] = _MultipleClassMarker(
                 [cls], on_remove=lambda: self._remove_item(name)
             )
+
+    def remove_class(self, name, cls):
+        if name in self.contents:
+            existing = self.contents[name]
+            existing.remove_item(cls)
 
 
 class _ModNS(object):
@@ -259,27 +315,35 @@ def _determine_container(key, value):
 
 
 class _class_resolver(object):
+    __slots__ = "cls", "prop", "arg", "fallback", "_dict", "_resolvers"
+
     def __init__(self, cls, prop, fallback, arg):
         self.cls = cls
         self.prop = prop
-        self.arg = self._declarative_arg = arg
+        self.arg = arg
         self.fallback = fallback
         self._dict = util.PopulateDict(self._access_cls)
         self._resolvers = ()
 
     def _access_cls(self, key):
         cls = self.cls
-        if key in cls._decl_class_registry:
-            return _determine_container(key, cls._decl_class_registry[key])
-        elif key in cls.metadata.tables:
-            return cls.metadata.tables[key]
-        elif key in cls.metadata._schemas:
+
+        manager = attributes.manager_of_class(cls)
+        decl_base = manager.registry
+        decl_class_registry = decl_base._class_registry
+        metadata = decl_base.metadata
+
+        if key in decl_class_registry:
+            return _determine_container(key, decl_class_registry[key])
+        elif key in metadata.tables:
+            return metadata.tables[key]
+        elif key in metadata._schemas:
             return _GetTable(key, cls.metadata)
         elif (
-            "_sa_module_registry" in cls._decl_class_registry
-            and key in cls._decl_class_registry["_sa_module_registry"]
+            "_sa_module_registry" in decl_class_registry
+            and key in decl_class_registry["_sa_module_registry"]
         ):
-            registry = cls._decl_class_registry["_sa_module_registry"]
+            registry = decl_class_registry["_sa_module_registry"]
             return registry.resolve_attr(key)
         elif self._resolvers:
             for resolv in self._resolvers:
@@ -333,57 +397,25 @@ class _class_resolver(object):
             self._raise_for_name(n.args[0], n)
 
 
-def _resolver(cls, prop):
-    import sqlalchemy
-    from sqlalchemy.orm import foreign, remote
+_fallback_dict = None
 
-    fallback = sqlalchemy.__dict__.copy()
-    fallback.update({"foreign": foreign, "remote": remote})
+
+def _resolver(cls, prop):
+
+    global _fallback_dict
+
+    if _fallback_dict is None:
+        import sqlalchemy
+        from sqlalchemy.orm import foreign, remote
+
+        _fallback_dict = util.immutabledict(sqlalchemy.__dict__).union(
+            {"foreign": foreign, "remote": remote}
+        )
 
     def resolve_arg(arg):
-        return _class_resolver(cls, prop, fallback, arg)
+        return _class_resolver(cls, prop, _fallback_dict, arg)
 
     def resolve_name(arg):
-        return _class_resolver(cls, prop, fallback, arg)._resolve_name
+        return _class_resolver(cls, prop, _fallback_dict, arg)._resolve_name
 
     return resolve_name, resolve_arg
-
-
-def _deferred_relationship(cls, prop):
-
-    if isinstance(prop, RelationshipProperty):
-        resolve_name, resolve_arg = _resolver(cls, prop)
-
-        for attr in (
-            "order_by",
-            "primaryjoin",
-            "secondaryjoin",
-            "secondary",
-            "_user_defined_foreign_keys",
-            "remote_side",
-        ):
-            v = getattr(prop, attr)
-            if isinstance(v, util.string_types):
-                setattr(prop, attr, resolve_arg(v))
-
-        for attr in ("argument",):
-            v = getattr(prop, attr)
-            if isinstance(v, util.string_types):
-                setattr(prop, attr, resolve_name(v))
-
-        if prop.backref and isinstance(prop.backref, tuple):
-            key, kwargs = prop.backref
-            for attr in (
-                "primaryjoin",
-                "secondaryjoin",
-                "secondary",
-                "foreign_keys",
-                "remote_side",
-                "order_by",
-            ):
-                if attr in kwargs and isinstance(
-                    kwargs[attr], util.string_types
-                ):
-                    kwargs[attr] = resolve_arg(kwargs[attr])
-
-    return prop

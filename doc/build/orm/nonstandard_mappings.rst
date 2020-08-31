@@ -2,6 +2,8 @@
 Non-Traditional Mappings
 ========================
 
+.. _orm_mapping_joins:
+
 .. _maptojoin:
 
 Mapping a Class against Multiple Tables
@@ -114,26 +116,27 @@ may be used::
     that the LEFT OUTER JOIN from "p" to "q" does not have an entry for the "q"
     side.
 
+.. _orm_mapping_arbitrary_subqueries:
 
-Mapping a Class against Arbitrary Selects
-=========================================
+Mapping a Class against Arbitrary Subqueries
+============================================
 
-Similar to mapping against a join, a plain :func:`_expression.select` object can be used with a
-mapper as well.  The example fragment below illustrates mapping a class
-called ``Customer`` to a :func:`_expression.select` which includes a join to a
-subquery::
+Similar to mapping against a join, a plain :func:`_expression.select` object
+can be used with a mapper as well.  The example fragment below illustrates
+mapping a class called ``Customer`` to a :func:`_expression.select` which
+includes a join to a subquery::
 
     from sqlalchemy import select, func
 
     subq = select(
-                func.count(orders.c.id).label('order_count'),
-                func.max(orders.c.price).label('highest_order'),
-                orders.c.customer_id
-                ).group_by(orders.c.customer_id).alias()
+        func.count(orders.c.id).label('order_count'),
+        func.max(orders.c.price).label('highest_order'),
+        orders.c.customer_id
+    ).group_by(orders.c.customer_id).subquery()
 
-    customer_select = select(customers, subq).select_from(
-        join(customers, subq, customers.c.id == subq.c.customer_id)
-    ).alias()
+    customer_select = select(customers, subq).join_from(
+        customers, subq, customers.c.id == subq.c.customer_id
+    ).subquery()
 
     class Customer(Base):
         __table__ = customer_select

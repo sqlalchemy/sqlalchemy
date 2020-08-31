@@ -10,7 +10,7 @@ of its usage.   For an introduction to relationships, start with the
 :ref:`ormtutorial_toplevel` and head into :ref:`orm_tutorial_relationship`.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     basic_relationships
     self_referential

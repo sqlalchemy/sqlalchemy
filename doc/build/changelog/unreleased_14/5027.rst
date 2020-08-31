@@ -3,6 +3,13 @@
     :tickets: 5027
 
     Added support for direct mapping of Python classes that are defined using
-    the Python ``dataclasses`` decorator.    See the section
-    :ref:`mapping_dataclasses` for background.  Pull request courtesy Václav
-    Klusák.
+    the Python ``dataclasses`` decorator.    Pull request courtesy Václav
+    Klusák.  The new feature integrates into new support at the Declarative
+    level for systems such as ``dataclasses`` and ``attrs``.
+
+    .. seealso::
+
+        :ref:`change_5027`
+
+        :ref:`change_5508`
+

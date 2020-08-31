@@ -456,3 +456,200 @@ associated object, and a second to a target attribute.
   two-object ``Parent->Child`` relationship while still using the association
   object pattern, use the association proxy extension
   as documented at :ref:`associationproxy_toplevel`.
+
+.. _orm_declarative_relationship_eval:
+
+Late-Evaluation of Relationship Arguments
+-----------------------------------------
+
+Many of the examples in the preceding sections illustrate mappings
+where the various :func:`_orm.relationship` constructs refer to their target
+classes using a string name, rather than the class itself::
+
+    class Parent(Base):
+        # ...
+
+        children = relationship("Child", back_populates="parent")
+
+    class Child(Base):
+        # ...
+
+        parent = relationship("Parent", back_populates="children")
+
+These string names are resolved into classes in the mapper resolution stage,
+which is an internal process that occurs typically after all mappings have
+been defined and is normally triggered by the first usage of the mappings
+themselves.     The :class:`_orm.registry` object is the container in which
+these names are stored and resolved to the mapped classes they refer towards.
+
+In addition to the main class argument for :func:`_orm.relationship`,
+other arguments which depend upon the columns present on an as-yet
+undefined class may also be specified either as Python functions, or more
+commonly as strings.   For most of these
+arguments except that of the main argument, string inputs are
+**evaluated as Python expressions using Python's built-in eval() function.**,
+as they are intended to recieve complete SQL expressions.
+
+.. warning:: As the Python ``eval()`` function is used to interpret the
+   late-evaluated string arguments passed to :func:`_orm.relationship` mapper
+   configuration construct, these arguments should **not** be repurposed
+   such that they would receive untrusted user input; ``eval()`` is
+   **not secure** against untrusted user input.
+
+The full namespace available within this evaluation includes all classes mapped
+for this declarative base, as well as the contents of the ``sqlalchemy``
+package, including expression functions like :func:`_sql.desc` and
+:attr:`_functions.func`::
+
+    class Parent(Base):
+        # ...
+
+        children = relationship(
+            "Child",
+            order_by="desc(Child.email_address)",
+            primaryjoin="Parent.id == Child.parent_id"
+        )
+
+For the case where more than one module contains a class of the same name,
+string class names can also be specified as module-qualified paths
+within any of these string expressions::
+
+    class Parent(Base):
+        # ...
+
+        children = relationship(
+            "myapp.mymodel.Child",
+            order_by="desc(myapp.mymodel.Child.email_address)",
+            primaryjoin="myapp.mymodel.Parent.id == myapp.mymodel.Child.parent_id"
+        )
+
+The qualified path can be any partial path that removes ambiguity between
+the names.  For example, to disambiguate between
+``myapp.model1.Child`` and ``myapp.model2.Child``,
+we can specify ``model1.Child`` or ``model2.Child``::
+
+    class Parent(Base):
+        # ...
+
+        children = relationship(
+            "model1.Child",
+            order_by="desc(mymodel1.Child.email_address)",
+            primaryjoin="Parent.id == model1.Child.parent_id"
+        )
+
+The :func:`_orm.relationship` construct also accepts Python functions or
+lambdas as input for these arguments.   This has the advantage of providing
+more compile-time safety and better support for IDEs and :pep:`484` scenarios.
+
+A Python functional approach might look like the following::
+
+    from sqlalchemy import desc
+
+    def _resolve_child_model():
+         from myapplication import Child
+         return Child
+
+    class Parent(Base):
+        # ...
+
+        children = relationship(
+            _resolve_child_model(),
+            order_by=lambda: desc(_resolve_child_model().email_address),
+            primaryjoin=lambda: Parent.id == _resolve_child_model().parent_id
+        )
+
+The full list of parameters which accept Python functions/lambdas or strings
+that will be passed to ``eval()`` are:
+
+* :paramref:`_orm.relationship.order_by`
+
+* :paramref:`_orm.relationship.primaryjoin`
+
+* :paramref:`_orm.relationship.secondaryjoin`
+
+* :paramref:`_orm.relationship.secondary`
+
+* :paramref:`_orm.relationship.remote_side`
+
+* :paramref:`_orm.relationship.foreign_keys`
+
+* :paramref:`_orm.relationship._user_defined_foreign_keys`
+
+.. versionchanged:: 1.3.16
+
+    Prior to SQLAlchemy 1.3.16, the main :paramref:`_orm.relationship.argument`
+    to :func:`_orm.relationship` was also evaluated throught ``eval()``   As of
+    1.3.16 the string name is resolved from the class resolver directly without
+    supporting custom Python expressions.
+
+.. warning::
+
+    As stated previously, the above parameters to :func:`_orm.relationship`
+    are **evaluated as Python code expressions using eval().  DO NOT PASS
+    UNTRUSTED INPUT TO THESE ARGUMENTS.**
+
+It should also be noted that in a similar way as described at
+:ref:`orm_declarative_table_adding_columns`, any :class:`_orm.MapperProperty`
+construct can be added to a declarative base mapping at any time.  If
+we wanted to implement this :func:`_orm.relationship` after the ``Address``
+class were available, we could also apply it afterwards::
+
+    # first, module A, where Child has not been created yet,
+    # we create a Parent class which knows nothing about Child
+
+    class Parent(Base):
+        # ...
+
+
+    #... later, in Module B, which is imported after module A:
+
+    class Child(Base):
+        # ...
+
+    from module_a import Parent
+
+    # assign the User.addresses relationship as a class variable.  The
+    # declarative base class will intercept this and map the relationship.
+    Parent.children = relationship(
+        Child,
+        primaryjoin=Child.parent_id==Parent.id
+    )
+
+.. note:: assignment of mapped properties to a declaratively mapped class will only
+    function correctly if the "declarative base" class is used, which also
+    provides for a metaclass-driven ``__setattr__()`` method which will
+    intercept these operations. It will **not** work if the declarative
+    decorator provided by :meth:`_orm.registry.mapped` is used, nor will it
+    work for an imperatively mapped class mapped by
+    :meth:`_orm.registry.map_imperatively`.
+
+
+.. _orm_declarative_relationship_secondary_eval:
+
+Late-Evaluation for a many-to-many relationship
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Many-to-many relationships include a reference to an additional, non-mapped
+:class:`_schema.Table` object that is typically present in the :class:`_schema.MetaData`
+collection referred towards by the :class:`_orm.registry`.   The late-evaluation
+system includes support for having this attribute also be specified as a
+string argument which will be resolved from this :class:`_schema.MetaData`
+collection.  Below we specify an association table ``keyword_author``,
+sharing the :class:`_schema.MetaData` collection associated with our
+declarative base and its :class:`_orm.registry`.  We can then refer to this
+:class:`_schema.Table` by name in the :paramref:`_orm.relationship.secondary`
+parameter::
+
+    keyword_author = Table(
+        'keyword_author', Base.metadata,
+        Column('author_id', Integer, ForeignKey('authors.id')),
+        Column('keyword_id', Integer, ForeignKey('keywords.id'))
+        )
+
+    class Author(Base):
+        __tablename__ = 'authors'
+        id = Column(Integer, primary_key=True)
+        keywords = relationship("Keyword", secondary="keyword_author")
+
+For additional detail on many-to-many relationships see the section
+:ref:`relationships_many_to_many`.

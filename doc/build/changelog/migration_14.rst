@@ -224,6 +224,117 @@ driven in order to support this new feature.
 :ticket:`4808`
 :ticket:`5004`
 
+.. _change_5508:
+
+Declarative is now integrated into the ORM with new features
+-------------------------------------------------------------
+
+After ten years or so of popularity, the ``sqlalchemy.ext.declarative``
+package is now integrated into the ``sqlalchemy.orm`` namespace, with the
+exception of the declarative "extension" classes which remain as Declarative
+extensions.
+
+The new classes added to ``sqlalchemy.orm`` include:
+
+* :class:`_orm.registry` - a new class that supercedes the role of the
+  "declarative base" class, serving as a registry of mapped classes which
+  can be referenced via string name within :func:`_orm.relationship` calls
+  and is agnostic of the style in which any particular class was mapped.
+
+* :func:`_orm.declarative_base` - this is the same declarative base class that
+  has been in use throughout the span of the declarative system, except it now
+  references a :class:`_orm.registry` object internally and is implemented
+  by the :meth:`_orm.registry.generate_base` method which can be invoked
+  from a :class:`_orm.registry` directly.   The :func:`_orm.declarative_base`
+  function creates this registry automatically so there is no impact on
+  existing code.    The ``sqlalchemy.ext.declarative.declarative_base`` name
+  is still present, emitting a 2.0 deprecation warning when
+  :ref:`2.0 deprecations mode <deprecation_20_mode>` is enabled.
+
+* :func:`_orm.declared_attr` - the same "declared attr" function call now
+  part of ``sqlalchemy.orm``.  The ``sqlalchemy.ext.declarative.declared_attr``
+  name is still present, emitting a 2.0 deprecation warning when
+  :ref:`2.0 deprecations mode <deprecation_20_mode>` is enabled.
+
+* Other names moved into ``sqlalchemy.orm`` include :func:`_orm.has_inherited_table`,
+  :func:`_orm.synonym_for`, :class:`_orm.DeclarativeMeta`, :func:`_orm.as_declarative`.
+
+In addition, The :func:`_declarative.instrument_declarative` function is
+deprecated, superseded by :meth:`_orm.registry.map_declaratively`.  The
+:class:`_declarative.ConcreteBase`, :class:`_declarative.AbstractConcreteBase`,
+and :class:`_declarative.DeferredReflection` classes remain as extensions in the
+:ref:`declarative_toplevel` package.
+
+Mapping styles have now been organized such that they all extend from
+the :class:`_orm.registry` object, and fall into these categories:
+
+* :ref:`orm_declarative_mapping`
+    * Using :func:`_orm.declarative_base` Base class w/ metaclass
+        * :ref:`orm_declarative_table`
+        * :ref:`Imperative Table (a.k.a. "hybrid table") <orm_imperative_table_configuration>`
+    * Using :meth:`_orm.registry.mapped` Declarative Decorator
+        * Declarative Table
+        * Imperative Table (Hybrid)
+            * :ref:`orm_declarative_dataclasses`
+* :ref:`Imperative (a.k.a. "classical" mapping) <classical_mapping>`
+    * Using :meth:`_orm.registry.map_imperatively`
+        * :ref:`orm_imperative_dataclasses`
+
+The existing classical mapping function :func:`_orm.mapper` remains, however
+it is deprecated to call upon :func:`_orm.mapper` directly; the new
+:meth:`_orm.registry.map_imperatively` method now routes the request through
+the :meth:`_orm.registry` so that it integrates with other declarative mappings
+unambiguously.
+
+The new approach interoperates with 3rd party class instrumentation systems
+which necessarily must take place on the class before the mapping process
+does, allowing declartive mapping to work via a decorator instead of a
+declarative base so that packages like dataclasses_ and attrs_ can be
+used with declarative mappings, in addition to working with classical
+mappings.
+
+Declarative documentation has now been fully integrated into the ORM mapper
+configuration documentation and includes examples for all styles of mappings
+organized into one place. See the section
+:ref:`orm_mapping_classes_toplevel` for the start of the newly reorganized
+documentation.
+
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html
+.. _attrs: https://pypi.org/project/attrs/
+
+.. seealso::
+
+  :ref:`orm_mapping_classes_toplevel`
+
+  :ref:`change_5027`
+
+:ticket:`5508`
+
+
+.. _change_5027:
+
+Python Dataclasses, attrs Supported w/ Declarative, Imperative Mappings
+-----------------------------------------------------------------------
+
+Along with the new declarative decorator styles introduced in :ref:`change_5508`,
+the :class:`_orm.Mapper` is now explicitly aware of the Python ``dataclasses``
+module and will recognize attributes that are configured in this way, and
+proceed to map them without skipping them as was the case previously.  In the
+case of the ``attrs`` module, ``attrs`` already removes its own attributes
+from the class so was already compatible with SQLAlchemy classical mappings.
+With the addition of the :meth:`_orm.registry.mapped` decorator, both
+attribute systems can now interoperate with Declarative mappings as well.
+
+.. seealso::
+
+  :ref:`orm_declarative_dataclasses`
+
+  :ref:`orm_imperative_dataclasses`
+
+
+:ticket:`5027`
+
+
 .. _change_3414:
 
 Asynchronous IO Support for Core and ORM

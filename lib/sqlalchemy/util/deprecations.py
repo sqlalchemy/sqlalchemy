@@ -27,10 +27,12 @@ if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
 
 
 def _warn_with_version(msg, version, type_, stacklevel):
-    if type_ is exc.RemovedIn20Warning and not SQLALCHEMY_WARN_20:
+    is_20 = issubclass(type_, exc.RemovedIn20Warning)
+
+    if is_20 and not SQLALCHEMY_WARN_20:
         return
 
-    if type_ is exc.RemovedIn20Warning:
+    if is_20:
         msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
     warn = type_(msg)
@@ -148,6 +150,12 @@ def deprecated(
         )
 
     return decorate
+
+
+def moved_20(message, **kw):
+    return deprecated(
+        "2.0", message=message, warning=exc.MovedIn20Warning, **kw
+    )
 
 
 def deprecated_20(api_name, alternative=None, **kw):
@@ -325,19 +333,14 @@ def _decorate_with_warning(
             " (Background on SQLAlchemy 2.0 at: "
             ":ref:`migration_20_toplevel`)"
         )
-        warning_only = (
-            " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
-        )
     else:
-        doc_only = warning_only = ""
+        doc_only = ""
 
     @decorator
     def warned(fn, *args, **kwargs):
         skip_warning = kwargs.pop("_sa_skip_warning", False)
         if not skip_warning:
-            _warn_with_version(
-                message + warning_only, version, wtype, stacklevel=3
-            )
+            _warn_with_version(message, version, wtype, stacklevel=3)
         return fn(*args, **kwargs)
 
     doc = func.__doc__ is not None and func.__doc__ or ""

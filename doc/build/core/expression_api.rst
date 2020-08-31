@@ -10,7 +10,7 @@ see :ref:`sqlexpression_toplevel`.
 
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 3
 
     sqlelement
     selectable

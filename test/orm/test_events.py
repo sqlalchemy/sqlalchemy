@@ -711,6 +711,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         class MyClass(object):
             pass
 
+        class MySubClass(MyClass):
+            pass
+
         canary = Mock()
 
         def my_init(self):
@@ -720,6 +723,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         @event.listens_for(mapper, "instrument_class")
         def instrument_class(mp, class_):
             canary.instrument_class(class_)
+
             class_.__init__ = my_init
 
         # instrumentationmanager event
@@ -729,13 +733,21 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(MyClass, users)
 
+        mapper(MySubClass, inherits=MyClass)
+
         m1 = MyClass()
         assert attributes.instance_state(m1)
+
+        m2 = MySubClass()
+        assert attributes.instance_state(m2)
 
         eq_(
             [
                 call.instrument_class(MyClass),
                 call.class_instrument(MyClass),
+                call.instrument_class(MySubClass),
+                call.class_instrument(MySubClass),
+                call.init(),
                 call.init(),
             ],
             canary.mock_calls,

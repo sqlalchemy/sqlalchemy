@@ -101,6 +101,7 @@ from .deprecations import deprecated_20_cls  # noqa
 from .deprecations import deprecated_cls  # noqa
 from .deprecations import deprecated_params  # noqa
 from .deprecations import inject_docstring_text  # noqa
+from .deprecations import moved_20  # noqa
 from .deprecations import SQLALCHEMY_WARN_20  # noqa
 from .deprecations import warn_deprecated  # noqa
 from .deprecations import warn_deprecated_20  # noqa

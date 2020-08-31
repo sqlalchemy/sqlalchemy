@@ -56,11 +56,11 @@ sections, are listed here.
     :members: __get__, __set__, __delete__
     :undoc-members:
 
-.. autodata:: sqlalchemy.orm.interfaces.MANYTOONE
+.. autodata:: sqlalchemy.orm.MANYTOONE
 
-.. autodata:: sqlalchemy.orm.interfaces.MANYTOMANY
+.. autodata:: sqlalchemy.orm.MANYTOMANY
 
-.. autoclass:: sqlalchemy.orm.interfaces.MapperProperty
+.. autoclass:: sqlalchemy.orm.MapperProperty
     :members:
 
     .. py:attribute:: info
@@ -90,7 +90,7 @@ sections, are listed here.
 .. autofunction:: sqlalchemy.orm.loading.merge_frozen_result
 
 
-.. autodata:: sqlalchemy.orm.interfaces.ONETOMANY
+.. autodata:: sqlalchemy.orm.ONETOMANY
 
 .. autoclass:: sqlalchemy.orm.PropComparator
     :members:

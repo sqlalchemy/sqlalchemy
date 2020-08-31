@@ -13,7 +13,7 @@ persistence operations is the
 :class:`.Session`.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 3
 
     session_basics
     session_state_management

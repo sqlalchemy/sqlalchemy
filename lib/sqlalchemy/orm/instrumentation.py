@@ -39,6 +39,9 @@ from .. import util
 from ..util import HasMemoized
 
 
+DEL_ATTR = util.symbol("DEL_ATTR")
+
+
 class ClassManager(HasMemoized, dict):
     """Tracks state information at the class level."""
 
@@ -50,9 +53,12 @@ class ClassManager(HasMemoized, dict):
     expired_attribute_loader = None
     "previously known as deferred_scalar_loader"
 
-    original_init = object.__init__
+    init_method = None
 
     factory = None
+    mapper = None
+    declarative_scan = None
+    registry = None
 
     @property
     @util.deprecated(
@@ -78,6 +84,7 @@ class ClassManager(HasMemoized, dict):
         self.new_init = None
         self.local_attrs = {}
         self.originals = {}
+        self._finalized = False
 
         self._bases = [
             mgr
@@ -93,14 +100,13 @@ class ClassManager(HasMemoized, dict):
             self.update(base_)
 
         self.dispatch._events._new_classmanager_instance(class_, self)
-        # events._InstanceEventsHold.populate(class_, self)
 
         for basecls in class_.__mro__:
             mgr = manager_of_class(basecls)
             if mgr is not None:
                 self.dispatch._update(mgr.dispatch)
+
         self.manage()
-        self._instrument_init()
 
         if "__del__" in class_.__dict__:
             util.warn(
@@ -109,6 +115,52 @@ class ClassManager(HasMemoized, dict):
                 "as SQLAlchemy instrumentation often creates "
                 "reference cycles.  Please remove this method." % class_
             )
+
+    def _update_state(
+        self,
+        finalize=False,
+        mapper=None,
+        registry=None,
+        declarative_scan=None,
+        expired_attribute_loader=None,
+        init_method=None,
+    ):
+
+        if mapper:
+            self.mapper = mapper
+        if registry:
+            self.registry = registry
+        if declarative_scan:
+            self.declarative_scan = declarative_scan
+        if expired_attribute_loader:
+            self.expired_attribute_loader = expired_attribute_loader
+
+        if init_method:
+            assert not self._finalized, (
+                "class is already instrumented, "
+                "init_method %s can't be applied" % init_method
+            )
+            self.init_method = init_method
+
+        if not self._finalized:
+            self.original_init = (
+                self.init_method
+                if self.init_method is not None
+                and self.class_.__init__ is object.__init__
+                else self.class_.__init__
+            )
+
+        if finalize and not self._finalized:
+            self._finalize()
+
+    def _finalize(self):
+        if self._finalized:
+            return
+        self._finalized = True
+
+        self._instrument_init()
+
+        _instrumentation_factory.dispatch.class_instrument(self.class_)
 
     def __hash__(self):
         return id(self)
@@ -210,25 +262,11 @@ class ClassManager(HasMemoized, dict):
         can post-configure the auto-generated ClassManager when needed.
 
         """
-        manager = manager_of_class(cls)
-        if manager is None:
-            manager = _instrumentation_factory.create_manager_for_cls(cls)
-        return manager
+        return register_class(cls, finalize=False)
 
     def _instrument_init(self):
-        # TODO: self.class_.__init__ is often the already-instrumented
-        # __init__ from an instrumented superclass.  We still need to make
-        # our own wrapper, but it would
-        # be nice to wrap the original __init__ and not our existing wrapper
-        # of such, since this adds method overhead.
-        self.original_init = self.class_.__init__
-        self.new_init = _generate_init(self.class_, self)
+        self.new_init = _generate_init(self.class_, self, self.original_init)
         self.install_member("__init__", self.new_init)
-
-    def _uninstrument_init(self):
-        if self.new_init:
-            self.uninstall_member("__init__")
-            self.new_init = None
 
     @util.memoized_property
     def _state_constructor(self):
@@ -311,9 +349,10 @@ class ClassManager(HasMemoized, dict):
     def unregister(self):
         """remove all instrumentation established by this ClassManager."""
 
-        self._uninstrument_init()
+        for key in list(self.originals):
+            self.uninstall_member(key)
 
-        self.mapper = self.dispatch = None
+        self.mapper = self.dispatch = self.new_init = None
         self.info.clear()
 
         for key in list(self):
@@ -337,13 +376,15 @@ class ClassManager(HasMemoized, dict):
                 "%r: requested attribute name conflicts with "
                 "instrumentation attribute of the same name." % key
             )
-        self.originals.setdefault(key, getattr(self.class_, key, None))
+        self.originals.setdefault(key, self.class_.__dict__.get(key, DEL_ATTR))
         setattr(self.class_, key, implementation)
 
     def uninstall_member(self, key):
         original = self.originals.pop(key, None)
-        if original is not None:
+        if original is not DEL_ATTR:
             setattr(self.class_, key, original)
+        else:
+            delattr(self.class_, key)
 
     def instrument_collection_class(self, key, collection_class):
         return collections.prepare_instrumentation(collection_class)
@@ -484,7 +525,6 @@ class InstrumentationFactory(object):
 
         manager.factory = factory
 
-        self.dispatch.class_instrument(class_)
         return manager
 
     def _locate_extended_factory(self, class_):
@@ -518,7 +558,15 @@ instance_dict = _default_dict_getter = base.instance_dict
 manager_of_class = _default_manager_getter = base.manager_of_class
 
 
-def register_class(class_):
+def register_class(
+    class_,
+    finalize=True,
+    mapper=None,
+    registry=None,
+    declarative_scan=None,
+    expired_attribute_loader=None,
+    init_method=None,
+):
     """Register class instrumentation.
 
     Returns the existing or newly created class manager.
@@ -528,6 +576,15 @@ def register_class(class_):
     manager = manager_of_class(class_)
     if manager is None:
         manager = _instrumentation_factory.create_manager_for_cls(class_)
+    manager._update_state(
+        mapper=mapper,
+        registry=registry,
+        declarative_scan=declarative_scan,
+        expired_attribute_loader=expired_attribute_loader,
+        init_method=init_method,
+        finalize=finalize,
+    )
+
     return manager
 
 
@@ -550,14 +607,15 @@ def is_instrumented(instance, key):
     )
 
 
-def _generate_init(class_, class_manager):
+def _generate_init(class_, class_manager, original_init):
     """Build an __init__ decorator that triggers ClassManager events."""
 
     # TODO: we should use the ClassManager's notion of the
     # original '__init__' method, once ClassManager is fixed
     # to always reference that.
-    original__init__ = class_.__init__
-    assert original__init__
+
+    if original_init is None:
+        original_init = class_.__init__
 
     # Go through some effort here and don't change the user's __init__
     # calling signature, including the unlikely case that it has
@@ -570,23 +628,23 @@ def __init__(%(apply_pos)s):
     if new_state:
         return new_state._initialize_instance(%(apply_kw)s)
     else:
-        return original__init__(%(apply_kw)s)
+        return original_init(%(apply_kw)s)
 """
-    func_vars = util.format_argspec_init(original__init__, grouped=False)
+    func_vars = util.format_argspec_init(original_init, grouped=False)
     func_text = func_body % func_vars
 
     if util.py2k:
-        func = getattr(original__init__, "im_func", original__init__)
+        func = getattr(original_init, "im_func", original_init)
         func_defaults = getattr(func, "func_defaults", None)
     else:
-        func_defaults = getattr(original__init__, "__defaults__", None)
-        func_kw_defaults = getattr(original__init__, "__kwdefaults__", None)
+        func_defaults = getattr(original_init, "__defaults__", None)
+        func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
 
     env = locals().copy()
     exec(func_text, env)
     __init__ = env["__init__"]
-    __init__.__doc__ = original__init__.__doc__
-    __init__._sa_original_init = original__init__
+    __init__.__doc__ = original_init.__doc__
+    __init__._sa_original_init = original_init
 
     if func_defaults:
         __init__.__defaults__ = func_defaults
