@@ -202,7 +202,7 @@ class Queue:
 
 
 class AsyncAdaptedQueue:
-    await_ = await_fallback
+    await_ = staticmethod(await_fallback)
 
     def __init__(self, maxsize=0, use_lifo=False):
         if use_lifo:

@@ -1,3 +1,5 @@
+import asyncio
+
 from sqlalchemy import Column
 from sqlalchemy import delete
 from sqlalchemy import exc
@@ -133,6 +135,16 @@ class AsyncEngineTest(EngineFixture):
                 "AsyncTransaction context has not been started "
                 "and object has not been awaited.",
                 trans.rollback(),
+            )
+
+    @async_test
+    async def test_pool_exhausted(self, async_engine):
+        engine = create_async_engine(
+            testing.db.url, pool_size=1, max_overflow=0, pool_timeout=0.1,
+        )
+        async with engine.connect():
+            await assert_raises_message_async(
+                asyncio.TimeoutError, "", engine.connect(),
             )
 
 
