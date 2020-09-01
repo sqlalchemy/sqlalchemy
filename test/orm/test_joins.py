@@ -2220,15 +2220,53 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             ._compile_context,
         )
 
-    def test_on_clause_no_right_side(self):
+    def test_on_clause_no_right_side_one(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        sess = create_session()
+
+        # coercions does not catch this due to the
+        # legacy=True flag for JoinTargetRole
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Expected mapped entity or selectable/table as join target",
+            sess.query(User).join(User.id == Address.user_id)._compile_context,
+        )
+
+    def test_on_clause_no_right_side_one_future(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        # future mode can raise a more specific error at the coercions level
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, "
+            "or ORM relationship attribute expected",
+            select(User).join,
+            User.id == Address.user_id,
+        )
+
+    def test_on_clause_no_right_side_two(self):
         User = self.classes.User
         Address = self.classes.Address
         sess = create_session()
 
         assert_raises_message(
             sa_exc.ArgumentError,
-            "Expected mapped entity or selectable/table as join target",
-            sess.query(User).join(User.id == Address.user_id)._compile_context,
+            "Join target Address.user_id does not refer to a mapped entity",
+            sess.query(User).join(Address.user_id)._compile_context,
+        )
+
+    def test_on_clause_no_right_side_two_future(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        stmt = select(User).join(Address.user_id)
+
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            "Join target Address.user_id does not refer to a mapped entity",
+            stmt.compile,
         )
 
     def test_select_from(self):
