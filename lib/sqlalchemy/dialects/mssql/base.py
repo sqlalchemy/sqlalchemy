@@ -2864,10 +2864,12 @@ class MSDialect(default.DefaultDialect):
                 "name": row["name"],
                 "unique": row["is_unique"] == 1,
                 "column_names": [],
+                "include_columns": [],
             }
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
-                "select ind_col.index_id, ind_col.object_id, col.name "
+                "select ind_col.index_id, ind_col.object_id, col.name, "
+                "ind_col.is_included_column "
                 "from sys.columns as col "
                 "join sys.tables as tab on tab.object_id=col.object_id "
                 "join sys.index_columns as ind_col on "
@@ -2885,7 +2887,14 @@ class MSDialect(default.DefaultDialect):
         )
         for row in rp.mappings():
             if row["index_id"] in indexes:
-                indexes[row["index_id"]]["column_names"].append(row["name"])
+                if row["is_included_column"]:
+                    indexes[row["index_id"]]["include_columns"].append(
+                        row["name"]
+                    )
+                else:
+                    indexes[row["index_id"]]["column_names"].append(
+                        row["name"]
+                    )
 
         return list(indexes.values())
 

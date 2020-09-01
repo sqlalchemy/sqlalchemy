@@ -1,0 +1,8 @@
+.. change::
+    :tags: mssql, postgresql, reflection, schema, usecase
+    :tickets: 4458
+
+    Improved support for covering indexes (with INCLUDE columns). Added the
+    ability for postgresql to render CREATE INDEX statements with an INCLUDE
+    clause from Core. Index reflection also report INCLUDE columns separately
+    for both mssql and postgresql (11+).

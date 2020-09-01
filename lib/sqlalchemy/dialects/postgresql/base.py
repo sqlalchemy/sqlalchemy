@@ -670,6 +670,20 @@ PostgreSQL-Specific Index Options
 Several extensions to the :class:`.Index` construct are available, specific
 to the PostgreSQL dialect.
 
+Covering Indexes
+^^^^^^^^^^^^^^^^
+
+The ``postgresql_include`` option renders INCLUDE(colname) for the given
+string names::
+
+    Index("my_index", table.c.x, postgresql_include=['y'])
+
+would render the index as ``CREATE INDEX my_index ON table (x) INCLUDE (y)``
+
+Note that this feature requires PostgreSQL 11 or later.
+
+.. versionadded:: 1.4
+
 .. _postgresql_partial_indexes:
 
 Partial Indexes
@@ -2237,8 +2251,19 @@ class PGDDLCompiler(compiler.DDLCompiler):
             )
         )
 
-        withclause = index.dialect_options["postgresql"]["with"]
+        includeclause = index.dialect_options["postgresql"]["include"]
+        if includeclause:
+            inclusions = [
+                index.table.c[col]
+                if isinstance(col, util.string_types)
+                else col
+                for col in includeclause
+            ]
+            text += " INCLUDE (%s)" % ", ".join(
+                [preparer.quote(c.name) for c in inclusions]
+            )
 
+        withclause = index.dialect_options["postgresql"]["with"]
         if withclause:
             text += " WITH (%s)" % (
                 ", ".join(
@@ -2250,17 +2275,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
             )
 
         tablespace_name = index.dialect_options["postgresql"]["tablespace"]
-
         if tablespace_name:
             text += " TABLESPACE %s" % preparer.quote(tablespace_name)
 
         whereclause = index.dialect_options["postgresql"]["where"]
-
         if whereclause is not None:
             where_compiled = self.sql_compiler.process(
                 whereclause, include_table=False, literal_binds=True
             )
             text += " WHERE " + where_compiled
+
         return text
 
     def visit_drop_index(self, drop):
@@ -2731,6 +2755,7 @@ class PGDialect(default.DefaultDialect):
             schema.Index,
             {
                 "using": False,
+                "include": None,
                 "where": None,
                 "ops": {},
                 "concurrently": False,
@@ -3722,13 +3747,15 @@ class PGDialect(default.DefaultDialect):
                 # included columns, which are merely stored and do not
                 # participate in the index semantics"
                 if indnkeyatts and idx_keys[indnkeyatts:]:
-                    util.warn(
-                        "INCLUDE columns for covering index %s "
-                        "ignored during reflection" % (idx_name,)
-                    )
+                    # this is a "covering index" which has INCLUDE columns
+                    # as well as regular index columns
+                    inc_keys = idx_keys[indnkeyatts:]
                     idx_keys = idx_keys[:indnkeyatts]
+                else:
+                    inc_keys = []
 
                 index["key"] = [int(k.strip()) for k in idx_keys]
+                index["inc"] = [int(k.strip()) for k in inc_keys]
 
                 # (new in pg 8.3)
                 # "pg_index.indoption" is list of ints, one per column/expr.
@@ -3774,6 +3801,8 @@ class PGDialect(default.DefaultDialect):
                 "unique": idx["unique"],
                 "column_names": [idx["cols"][i] for i in idx["key"]],
             }
+            if self.server_version_info >= (11, 0):
+                entry["include_columns"] = [idx["cols"][i] for i in idx["inc"]]
             if "duplicates_constraint" in idx:
                 entry["duplicates_constraint"] = idx["duplicates_constraint"]
             if "sorting" in idx:

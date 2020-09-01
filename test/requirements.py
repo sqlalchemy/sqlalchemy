@@ -1688,3 +1688,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def identity_columns_standard(self):
         return self.identity_columns + skip_if("mssql")
+
+    @property
+    def index_reflects_included_columns(self):
+        return only_on(["postgresql >= 11", "mssql"])
