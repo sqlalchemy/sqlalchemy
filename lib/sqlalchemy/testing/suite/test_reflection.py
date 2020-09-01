@@ -8,6 +8,7 @@ from .. import eq_
 from .. import expect_warnings
 from .. import fixtures
 from .. import is_
+from ..provision import get_temp_table_name
 from ..provision import temp_table_keyword_args
 from ..schema import Column
 from ..schema import Table
@@ -442,8 +443,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @classmethod
     def define_temp_tables(cls, metadata):
         kw = temp_table_keyword_args(config, config.db)
+        table_name = get_temp_table_name(config, config.db, "user_tmp")
         user_tmp = Table(
-            "user_tmp",
+            table_name,
             metadata,
             Column("id", sa.INT, primary_key=True),
             Column("name", sa.VARCHAR(50)),
@@ -736,10 +738,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_reflection
     def test_get_temp_table_columns(self):
+        table_name = get_temp_table_name(config, config.db, "user_tmp")
         meta = MetaData(self.bind)
-        user_tmp = self.tables.user_tmp
+        user_tmp = self.tables[table_name]
         insp = inspect(meta.bind)
-        cols = insp.get_columns("user_tmp")
+        cols = insp.get_columns(table_name)
         self.assert_(len(cols) > 0, len(cols))
 
         for i, col in enumerate(user_tmp.columns):
@@ -1051,10 +1054,11 @@ class ComponentReflectionTest(fixtures.TablesTest):
             refl.pop("duplicates_index", None)
         eq_(reflected, [{"column_names": ["name"], "name": "user_tmp_uq"}])
 
-    @testing.requires.temp_table_reflection
+    @testing.requires.temp_table_reflect_indexes
     def test_get_temp_table_indexes(self):
         insp = inspect(self.bind)
-        indexes = insp.get_indexes("user_tmp")
+        table_name = get_temp_table_name(config, config.db, "user_tmp")
+        indexes = insp.get_indexes(table_name)
         for ind in indexes:
             ind.pop("dialect_options", None)
         eq_(

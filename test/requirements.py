@@ -257,13 +257,17 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def temporary_tables(self):
         """target database supports temporary tables"""
-        return skip_if(
-            ["mssql", "firebird", self._sqlite_file_db], "not supported (?)"
-        )
+        return skip_if(["firebird", self._sqlite_file_db], "not supported (?)")
 
     @property
     def temp_table_reflection(self):
         return self.temporary_tables
+
+    @property
+    def temp_table_reflect_indexes(self):
+        return skip_if(
+            ["mssql", "firebird", self._sqlite_file_db], "not supported (?)"
+        )
 
     @property
     def reflectable_autoincrement(self):
