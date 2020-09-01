@@ -503,7 +503,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             def foo(self):
                 pass
 
-        m._is_userland_descriptor(MyClass.foo)
+        assert m._is_userland_descriptor("foo", MyClass.foo)
 
     def test_configure_on_get_props_1(self):
         User, users = self.classes.User, self.tables.users

@@ -56,6 +56,12 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..util import HasMemoized
 
+try:
+    import dataclasses
+except ImportError:
+    # The dataclasses module was added in Python 3.7
+    dataclasses = None
+
 
 _mapper_registry = weakref.WeakKeyDictionary()
 _already_compiling = False
@@ -2632,7 +2638,7 @@ class Mapper(
 
         return result
 
-    def _is_userland_descriptor(self, obj):
+    def _is_userland_descriptor(self, assigned_name, obj):
         if isinstance(
             obj,
             (
@@ -2643,7 +2649,14 @@ class Mapper(
         ):
             return False
         else:
-            return True
+            return assigned_name not in self._dataclass_fields
+
+    @HasMemoized.memoized_attribute
+    def _dataclass_fields(self):
+        if dataclasses is None or not dataclasses.is_dataclass(self.class_):
+            return frozenset()
+
+        return {field.name for field in dataclasses.fields(self.class_)}
 
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly
@@ -2656,16 +2669,19 @@ class Mapper(
 
         # check for class-bound attributes and/or descriptors,
         # either local or from an inherited class
+        # ignore dataclass field default values
         if local:
             if self.class_.__dict__.get(
                 assigned_name, None
             ) is not None and self._is_userland_descriptor(
-                self.class_.__dict__[assigned_name]
+                assigned_name, self.class_.__dict__[assigned_name]
             ):
                 return True
         else:
             attr = self.class_manager._get_class_attr_mro(assigned_name, None)
-            if attr is not None and self._is_userland_descriptor(attr):
+            if attr is not None and self._is_userland_descriptor(
+                assigned_name, attr
+            ):
                 return True
 
         if (

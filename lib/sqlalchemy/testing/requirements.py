@@ -1143,6 +1143,10 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def dataclasses(self):
+        return self.python37
+
+    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"

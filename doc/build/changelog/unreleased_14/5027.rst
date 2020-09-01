@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 5027
+
+    Added support for direct mapping of Python classes that are defined using
+    the Python ``dataclasses`` decorator.    See the section
+    :ref:`mapping_dataclasses` for background.  Pull request courtesy Václav
+    Klusák.

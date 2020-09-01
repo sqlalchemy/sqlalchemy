@@ -56,7 +56,7 @@ class DescriptorProperty(MapperProperty):
 
         if self.descriptor is None:
             desc = getattr(mapper.class_, self.key, None)
-            if mapper._is_userland_descriptor(desc):
+            if mapper._is_userland_descriptor(self.key, desc):
                 self.descriptor = desc
 
         if self.descriptor is None:
