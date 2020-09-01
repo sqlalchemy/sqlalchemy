@@ -775,7 +775,7 @@ objects is at :class:`.ColumnOperators`.
         in_([('ed', 'edsnickname'), ('wendy', 'windy')])
     )
 
-* :meth:`NOT IN <.ColumnOperators.notin_>`::
+* :meth:`NOT IN <.ColumnOperators.not_in>`::
 
     statement.where(~users.c.name.in_(['ed', 'wendy', 'jack']))
 
@@ -786,12 +786,12 @@ objects is at :class:`.ColumnOperators`.
     # alternatively, if pep8/linters are a concern
     statement.where(users.c.name.is_(None))
 
-* :meth:`IS NOT NULL <.ColumnOperators.isnot>`::
+* :meth:`IS NOT NULL <.ColumnOperators.is_not>`::
 
     statement.where(users.c.name != None)
 
     # alternatively, if pep8/linters are a concern
-    statement.where(users.c.name.isnot(None))
+    statement.where(users.c.name.is_not(None))
 
 * :func:`AND <.sql.expression.and_>`::
 

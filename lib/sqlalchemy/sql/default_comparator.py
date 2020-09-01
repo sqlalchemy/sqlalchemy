@@ -73,20 +73,20 @@ def _boolean_compare(
                     expr,
                     coercions.expect(roles.ConstExprRole, obj),
                     operators.is_,
-                    negate=operators.isnot,
+                    negate=operators.is_not,
                     type_=result_type,
                 )
-            elif op in (operators.ne, operators.isnot):
+            elif op in (operators.ne, operators.is_not):
                 return BinaryExpression(
                     expr,
                     coercions.expect(roles.ConstExprRole, obj),
-                    operators.isnot,
+                    operators.is_not,
                     negate=operators.is_,
                     type_=result_type,
                 )
             else:
                 raise exc.ArgumentError(
-                    "Only '=', '!=', 'is_()', 'isnot()', "
+                    "Only '=', '!=', 'is_()', 'is_not()', "
                     "'is_distinct_from()', 'isnot_distinct_from()' "
                     "operators can be used with None/True/False"
                 )
@@ -328,10 +328,10 @@ operator_lookup = {
     "asc_op": (_scalar, UnaryExpression._create_asc),
     "nullsfirst_op": (_scalar, UnaryExpression._create_nullsfirst),
     "nullslast_op": (_scalar, UnaryExpression._create_nullslast),
-    "in_op": (_in_impl, operators.notin_op),
-    "notin_op": (_in_impl, operators.in_op),
+    "in_op": (_in_impl, operators.not_in_op),
+    "not_in_op": (_in_impl, operators.in_op),
     "is_": (_boolean_compare, operators.is_),
-    "isnot": (_boolean_compare, operators.isnot),
+    "is_not": (_boolean_compare, operators.is_not),
     "collate": (_collate_impl,),
     "match_op": (_match_impl,),
     "notmatch_op": (_match_impl,),

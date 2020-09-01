@@ -789,7 +789,7 @@ Here's a rundown of some of the most common operators used in
         in_([('ed', 'edsnickname'), ('wendy', 'windy')])
     )
 
-* :meth:`NOT IN <.ColumnOperators.notin_>`::
+* :meth:`NOT IN <.ColumnOperators.not_in>`::
 
     query.filter(~User.name.in_(['ed', 'wendy', 'jack']))
 
@@ -800,12 +800,12 @@ Here's a rundown of some of the most common operators used in
     # alternatively, if pep8/linters are a concern
     query.filter(User.name.is_(None))
 
-* :meth:`IS NOT NULL <.ColumnOperators.isnot>`::
+* :meth:`IS NOT NULL <.ColumnOperators.is_not>`::
 
     query.filter(User.name != None)
 
     # alternatively, if pep8/linters are a concern
-    query.filter(User.name.isnot(None))
+    query.filter(User.name.is_not(None))
 
 * :func:`AND <.sql.expression.and_>`::
 

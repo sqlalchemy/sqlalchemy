@@ -37,7 +37,7 @@ _straight_ops = set(
 
 _extended_ops = {
     operators.in_op: (lambda a, b: a in b),
-    operators.notin_op: (lambda a, b: a not in b),
+    operators.not_in_op: (lambda a, b: a not in b),
 }
 
 _notimplemented_ops = set(
@@ -170,7 +170,7 @@ class EvaluatorCompiler(object):
             def evaluate(obj):
                 return eval_left(obj) == eval_right(obj)
 
-        elif operator is operators.isnot:
+        elif operator is operators.is_not:
 
             def evaluate(obj):
                 return eval_left(obj) != eval_right(obj)
