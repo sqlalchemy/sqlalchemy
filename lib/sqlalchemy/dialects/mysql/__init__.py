@@ -7,6 +7,7 @@
 
 from . import base  # noqa
 from . import cymysql  # noqa
+from . import mariadbconnector  # noqa
 from . import mysqlconnector  # noqa
 from . import mysqldb  # noqa
 from . import oursql  # noqa

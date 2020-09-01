@@ -453,7 +453,7 @@ class ExecuteTest(fixtures.TablesTest):
             try:
                 cursor = raw.cursor()
                 cursor.execute("SELECTINCORRECT")
-            except testing.db.dialect.dbapi.DatabaseError as orig:
+            except testing.db.dialect.dbapi.Error as orig:
                 # py3k has "orig" in local scope...
                 the_orig = orig
         finally:
@@ -1506,6 +1506,7 @@ class EngineEventsTest(fixtures.TestBase):
         with e1.connect() as conn:
 
             result = conn.exec_driver_sql(stmt)
+            eq_(result.scalar(), 1)
 
         ctx = result.context
         eq_(
