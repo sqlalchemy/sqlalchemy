@@ -153,7 +153,7 @@ part of the object's primary key::
 
     session = Session(e)
 
-    foo = Foo(pk=sql.select([sql.func.coalesce(sql.func.max(Foo.pk) + 1, 1)])
+    foo = Foo(pk=sql.select(sql.func.coalesce(sql.func.max(Foo.pk) + 1, 1))
     session.add(foo)
     session.commit()
 
@@ -191,7 +191,7 @@ This is most easily accomplished using the
     result = session.execute("select * from table where id=:id", {'id':7})
 
     # execute a SQL expression construct
-    result = session.execute(select([mytable]).where(mytable.c.id==7))
+    result = session.execute(select(mytable).where(mytable.c.id==7))
 
 The current :class:`~sqlalchemy.engine.Connection` held by the
 :class:`~sqlalchemy.orm.session.Session` is accessible using the
@@ -222,7 +222,7 @@ proper context for the desired engine::
     )
 
     result = session.execute(
-        select([mytable], mytable.c.id==7),
+        select(mytable).where(mytable.c.id==7),
         bind_arguments={'mapper': MyMappedClass}
     )
 

@@ -825,7 +825,7 @@ class Executable(Generative):
         The :meth:`execution_options` method is generative.  A new
         instance of this statement is returned that contains the options::
 
-            statement = select([table.c.x, table.c.y])
+            statement = select(table.c.x, table.c.y)
             statement = statement.execution_options(autocommit=True)
 
         Note that only a subset of possible execution options can be applied

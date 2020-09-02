@@ -462,7 +462,7 @@ class ColumnOperators(Operators):
 
         E.g.::
 
-            stmt = select([sometable]).\
+            stmt = select(sometable).\
                 where(sometable.c.column.like("%foobar%"))
 
         :param other: expression to be compared
@@ -491,7 +491,7 @@ class ColumnOperators(Operators):
 
         E.g.::
 
-            stmt = select([sometable]).\
+            stmt = select(sometable).\
                 where(sometable.c.column.ilike("%foobar%"))
 
         :param other: expression to be compared
@@ -579,7 +579,7 @@ class ColumnOperators(Operators):
 
             stmt.where(
                 column.in_(
-                    select([othertable.c.y]).
+                    select(othertable.c.y).
                     where(table.c.x == othertable.c.x)
                 )
             )
@@ -682,7 +682,7 @@ class ColumnOperators(Operators):
 
         E.g.::
 
-            stmt = select([sometable]).\
+            stmt = select(sometable).\
                 where(sometable.c.column.startswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
@@ -761,7 +761,7 @@ class ColumnOperators(Operators):
 
         E.g.::
 
-            stmt = select([sometable]).\
+            stmt = select(sometable).\
                 where(sometable.c.column.endswith("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
@@ -840,7 +840,7 @@ class ColumnOperators(Operators):
 
         E.g.::
 
-            stmt = select([sometable]).\
+            stmt = select(sometable).\
                 where(sometable.c.column.contains("foobar"))
 
         Since the operator uses ``LIKE``, wildcard characters
@@ -1115,7 +1115,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.any_()
 
             # mysql '5 = ANY (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).scalar_subquery().any_()
+            expr = 5 == select(table.c.value).scalar_subquery().any_()
 
         .. seealso::
 
@@ -1140,7 +1140,7 @@ class ColumnOperators(Operators):
             expr = 5 == mytable.c.somearray.all_()
 
             # mysql '5 = ALL (SELECT value FROM table)'
-            expr = 5 == select([table.c.value]).scalar_subquery().all_()
+            expr = 5 == select(table.c.value).scalar_subquery().all_()
 
         .. seealso::
 

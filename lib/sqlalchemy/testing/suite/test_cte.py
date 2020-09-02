@@ -53,12 +53,12 @@ class CTETest(fixtures.TablesTest):
 
         with config.db.connect() as conn:
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte")
             )
             result = conn.execute(
-                select([cte.c.data]).where(cte.c.data.in_(["d4", "d5"]))
+                select(cte.c.data).where(cte.c.data.in_(["d4", "d5"]))
             )
             eq_(result.fetchall(), [("d4",)])
 
@@ -67,7 +67,7 @@ class CTETest(fixtures.TablesTest):
 
         with config.db.connect() as conn:
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte", recursive=True)
             )
@@ -77,10 +77,10 @@ class CTETest(fixtures.TablesTest):
             # note that SQL Server requires this to be UNION ALL,
             # can't be UNION
             cte = cte.union_all(
-                select([st1]).where(st1.c.id == cte_alias.c.parent_id)
+                select(st1).where(st1.c.id == cte_alias.c.parent_id)
             )
             result = conn.execute(
-                select([cte.c.data])
+                select(cte.c.data)
                 .where(cte.c.data != "d2")
                 .order_by(cte.c.data.desc())
             )
@@ -95,18 +95,18 @@ class CTETest(fixtures.TablesTest):
 
         with config.db.connect() as conn:
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte")
             )
             conn.execute(
                 some_other_table.insert().from_select(
-                    ["id", "data", "parent_id"], select([cte])
+                    ["id", "data", "parent_id"], select(cte)
                 )
             )
             eq_(
                 conn.execute(
-                    select([some_other_table]).order_by(some_other_table.c.id)
+                    select(some_other_table).order_by(some_other_table.c.id)
                 ).fetchall(),
                 [(2, "d2", 1), (3, "d3", 1), (4, "d4", 3)],
             )
@@ -120,12 +120,12 @@ class CTETest(fixtures.TablesTest):
         with config.db.connect() as conn:
             conn.execute(
                 some_other_table.insert().from_select(
-                    ["id", "data", "parent_id"], select([some_table])
+                    ["id", "data", "parent_id"], select(some_table)
                 )
             )
 
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte")
             )
@@ -136,7 +136,7 @@ class CTETest(fixtures.TablesTest):
             )
             eq_(
                 conn.execute(
-                    select([some_other_table]).order_by(some_other_table.c.id)
+                    select(some_other_table).order_by(some_other_table.c.id)
                 ).fetchall(),
                 [
                     (1, "d1", None),
@@ -156,12 +156,12 @@ class CTETest(fixtures.TablesTest):
         with config.db.connect() as conn:
             conn.execute(
                 some_other_table.insert().from_select(
-                    ["id", "data", "parent_id"], select([some_table])
+                    ["id", "data", "parent_id"], select(some_table)
                 )
             )
 
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte")
             )
@@ -172,7 +172,7 @@ class CTETest(fixtures.TablesTest):
             )
             eq_(
                 conn.execute(
-                    select([some_other_table]).order_by(some_other_table.c.id)
+                    select(some_other_table).order_by(some_other_table.c.id)
                 ).fetchall(),
                 [(1, "d1", None), (5, "d5", 3)],
             )
@@ -186,26 +186,26 @@ class CTETest(fixtures.TablesTest):
         with config.db.connect() as conn:
             conn.execute(
                 some_other_table.insert().from_select(
-                    ["id", "data", "parent_id"], select([some_table])
+                    ["id", "data", "parent_id"], select(some_table)
                 )
             )
 
             cte = (
-                select([some_table])
+                select(some_table)
                 .where(some_table.c.data.in_(["d2", "d3", "d4"]))
                 .cte("some_cte")
             )
             conn.execute(
                 some_other_table.delete().where(
                     some_other_table.c.data
-                    == select([cte.c.data])
+                    == select(cte.c.data)
                     .where(cte.c.id == some_other_table.c.id)
                     .scalar_subquery()
                 )
             )
             eq_(
                 conn.execute(
-                    select([some_other_table]).order_by(some_other_table.c.id)
+                    select(some_other_table).order_by(some_other_table.c.id)
                 ).fetchall(),
                 [(1, "d1", None), (5, "d5", 3)],
             )

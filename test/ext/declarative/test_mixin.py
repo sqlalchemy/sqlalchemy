@@ -1849,7 +1849,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             def address_count(cls):
                 counter(cls.id)
                 return column_property(
-                    select([func.count(Address.id)])
+                    select(func.count(Address.id))
                     .where(Address.user_id == cls.id)
                     .scalar_subquery()
                 )

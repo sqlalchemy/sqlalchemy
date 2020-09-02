@@ -134,7 +134,7 @@ class CursorResultTest(fixtures.TablesTest):
         )
 
         sel = (
-            select([users.c.user_id])
+            select(users.c.user_id)
             .where(users.c.user_name == "jack")
             .scalar_subquery()
         )
@@ -209,7 +209,7 @@ class CursorResultTest(fixtures.TablesTest):
         not_in(bar.c.content_type, row._mapping)
 
         row = connection.execute(
-            select([func.now().label("content_type")])
+            select(func.now().label("content_type"))
         ).first()
 
         not_in(content.c.type, row._mapping)
@@ -260,7 +260,7 @@ class CursorResultTest(fixtures.TablesTest):
                 )
 
     def test_column_error_printing(self, connection):
-        result = connection.execute(select([1]))
+        result = connection.execute(select(1))
         row = result.first()
 
         class unprintable(object):
@@ -440,7 +440,7 @@ class CursorResultTest(fixtures.TablesTest):
         # this will create column() objects inside
         # the select(), these need to match on name anyway
         r = connection.execute(
-            select([column("user_id"), column("user_name")])
+            select(column("user_id"), column("user_name"))
             .select_from(table("users"))
             .where(text("user_id=2"))
         ).first()
@@ -552,13 +552,13 @@ class CursorResultTest(fixtures.TablesTest):
 
         # unary expressions
         r = connection.execute(
-            select([users.c.user_name.distinct()]).order_by(users.c.user_name)
+            select(users.c.user_name.distinct()).order_by(users.c.user_name)
         ).first()
         eq_(r._mapping[users.c.user_name], "john")
         eq_(r.user_name, "john")
 
     def test_column_accessor_err(self, connection):
-        r = connection.execute(select([1])).first()
+        r = connection.execute(select(1)).first()
         assert_raises_message(
             AttributeError,
             "Could not locate column in row for column 'foo'",
@@ -681,10 +681,8 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_case_sensitive(self, connection):
         row = connection.execute(
             select(
-                [
-                    literal_column("1").label("case_insensitive"),
-                    literal_column("2").label("CaseSensitive"),
-                ]
+                literal_column("1").label("case_insensitive"),
+                literal_column("2").label("CaseSensitive"),
             )
         ).first()
 
@@ -704,11 +702,9 @@ class CursorResultTest(fixtures.TablesTest):
         with engines.testing_engine().connect() as ins_conn:
             row = ins_conn.execute(
                 select(
-                    [
-                        literal_column("1").label("case_insensitive"),
-                        literal_column("2").label("CaseSensitive"),
-                        text("3 AS screw_up_the_cols"),
-                    ]
+                    literal_column("1").label("case_insensitive"),
+                    literal_column("2").label("CaseSensitive"),
+                    text("3 AS screw_up_the_cols"),
                 )
             ).first()
 
@@ -820,7 +816,7 @@ class CursorResultTest(fixtures.TablesTest):
         ua = users.alias()
         u2 = users.alias()
         result = connection.execute(
-            select([users.c.user_id, ua.c.user_id]).select_from(
+            select(users.c.user_id, ua.c.user_id).select_from(
                 users.join(ua, true())
             )
         )
@@ -850,7 +846,7 @@ class CursorResultTest(fixtures.TablesTest):
         # but when they're fetched you'll get the ambiguous error.
         connection.execute(users.insert(), user_id=1, user_name="john")
         result = connection.execute(
-            select([users.c.user_id, addresses.c.user_id]).select_from(
+            select(users.c.user_id, addresses.c.user_id).select_from(
                 users.outerjoin(addresses)
             )
         )
@@ -940,10 +936,8 @@ class CursorResultTest(fixtures.TablesTest):
         connection.execute(users.insert(), user_id=1, user_name="john")
         result = connection.execute(
             select(
-                [
-                    users.c.user_id,
-                    type_coerce(users.c.user_id, Integer).label("foo"),
-                ]
+                users.c.user_id,
+                type_coerce(users.c.user_id, Integer).label("foo"),
             )
         )
         row = result.first()
@@ -1122,11 +1116,9 @@ class CursorResultTest(fixtures.TablesTest):
         connection.execute(users.insert(), user_id=1, user_name="foo")
         result = connection.execute(
             select(
-                [
-                    users.c.user_id,
-                    users.c.user_name.label(None),
-                    func.count(literal_column("1")),
-                ]
+                users.c.user_id,
+                users.c.user_name.label(None),
+                func.count(literal_column("1")),
             ).group_by(users.c.user_id, users.c.user_name)
         )
 
@@ -1412,7 +1404,7 @@ class CursorResultTest(fixtures.TablesTest):
                 "Statement is not a compiled expression construct.",
             ),
             (
-                select([1]),
+                select(1),
                 [
                     lambda r: r.last_inserted_params(),
                     lambda r: r.inserted_primary_key,
@@ -1420,12 +1412,12 @@ class CursorResultTest(fixtures.TablesTest):
                 r"Statement is not an insert\(\) expression construct.",
             ),
             (
-                select([1]),
+                select(1),
                 [lambda r: r.last_updated_params()],
                 r"Statement is not an update\(\) expression construct.",
             ),
             (
-                select([1]),
+                select(1),
                 [lambda r: r.prefetch_cols(), lambda r: r.postfetch_cols()],
                 r"Statement is not an insert\(\) "
                 r"or update\(\) expression construct.",
@@ -1533,7 +1525,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 
     def _test_keyed_targeting_no_label_at_all(self, expression, conn):
         lt = literal_column("2")
-        stmt = select([literal_column("1"), expression, lt]).select_from(
+        stmt = select(literal_column("1"), expression, lt).select_from(
             self.tables.keyed1
         )
         row = conn.execute(stmt).first()
@@ -1556,7 +1548,7 @@ class KeyTargetingTest(fixtures.TablesTest):
             return "max(a)"
 
         # assert that there is no "AS max_" or any label of any kind.
-        eq_(str(select([not_named_max()])), "SELECT max(a)")
+        eq_(str(select(not_named_max())), "SELECT max(a)")
 
         nnm = not_named_max()
         self._test_keyed_targeting_no_label_at_all(nnm, connection)
@@ -1571,7 +1563,7 @@ class KeyTargetingTest(fixtures.TablesTest):
             return "max(a)"
 
         # assert that there is no "AS max_" or any label of any kind.
-        eq_(str(select([not_named_max()])), "SELECT max(a)")
+        eq_(str(select(not_named_max())), "SELECT max(a)")
 
         nnm = not_named_max()
         self._test_keyed_targeting_no_label_at_all(nnm, connection)
@@ -1580,7 +1572,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         t1 = text("max(a)")
         t2 = text("min(a)")
 
-        stmt = select([t1, t2]).select_from(self.tables.keyed1)
+        stmt = select(t1, t2).select_from(self.tables.keyed1)
         row = connection.execute(stmt).first()
 
         eq_(row._mapping[t1], "a1")
@@ -1592,7 +1584,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = connection.execute(
-            select([keyed1, keyed2]).select_from(keyed1.join(keyed2, true()))
+            select(keyed1, keyed2).select_from(keyed1.join(keyed2, true()))
         ).first()
 
         # column access is unambiguous
@@ -1617,7 +1609,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         # illustrate why row.b above is ambiguous, and not "b2"; because
         # if we didn't have keyed2, now it matches row.a.  a new column
         # shouldn't be able to grab the value from a previous column.
-        row = connection.execute(select([keyed1])).first()
+        row = connection.execute(select(keyed1)).first()
         eq_(row.b, "a1")
 
     def test_keyed_accessor_composite_conflict_2_fix_w_uselabels(
@@ -1627,7 +1619,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = connection.execute(
-            select([keyed1, keyed2])
+            select(keyed1, keyed2)
             .select_from(keyed1.join(keyed2, true()))
             .apply_labels()
         ).first()
@@ -1643,7 +1635,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed4 = self.tables.keyed4
 
         row = connection.execute(
-            select([keyed1, keyed4]).select_from(keyed1.join(keyed4, true()))
+            select(keyed1, keyed4).select_from(keyed1.join(keyed4, true()))
         ).first()
         eq_(row.b, "b4")
         eq_(row.q, "q4")
@@ -1656,7 +1648,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed3 = self.tables.keyed3
 
         row = connection.execute(
-            select([keyed1, keyed3]).select_from(keyed1.join(keyed3, true()))
+            select(keyed1, keyed3).select_from(keyed1.join(keyed3, true()))
         ).first()
         eq_(row.q, "c1")
 
@@ -1680,7 +1672,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = connection.execute(
-            select([keyed1, keyed2])
+            select(keyed1, keyed2)
             .select_from(keyed1.join(keyed2, true()))
             .apply_labels()
         ).first()
@@ -1711,16 +1703,14 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         stmt = (
             select(
-                [
-                    keyed2.c.a,
-                    keyed3.c.a,
-                    keyed2.c.a,
-                    keyed2.c.a,
-                    keyed3.c.a,
-                    keyed3.c.a,
-                    keyed3.c.d,
-                    keyed3.c.d,
-                ]
+                keyed2.c.a,
+                keyed3.c.a,
+                keyed2.c.a,
+                keyed2.c.a,
+                keyed3.c.a,
+                keyed3.c.a,
+                keyed3.c.d,
+                keyed3.c.d,
             )
             .select_from(keyed2.join(keyed3, true()))
             .apply_labels()
@@ -1766,7 +1756,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         # originally addressed by [ticket:2932], however liberalized
         # Column-targeting rules are deprecated
         a, b = sql.column("a"), sql.column("b")
-        stmt = select([a, b]).select_from(table("keyed2"))
+        stmt = select(a, b).select_from(table("keyed2"))
         row = connection.execute(stmt).first()
 
         in_(a, row._mapping)
@@ -1775,7 +1765,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_columnclause_schema_column_two(self, connection):
         keyed2 = self.tables.keyed2
 
-        stmt = select([keyed2.c.a, keyed2.c.b])
+        stmt = select(keyed2.c.a, keyed2.c.b)
         row = connection.execute(stmt).first()
 
         in_(keyed2.c.a, row._mapping)
@@ -1819,12 +1809,12 @@ class KeyTargetingTest(fixtures.TablesTest):
     def _adapt_result_columns_fixture_one(self):
         keyed1 = self.tables.keyed1
         stmt = (
-            select([keyed1.c.b, keyed1.c.q.label("foo")])
+            select(keyed1.c.b, keyed1.c.q.label("foo"))
             .apply_labels()
             .subquery()
         )
 
-        return select([stmt.c.keyed1_b, stmt.c.foo])
+        return select(stmt.c.keyed1_b, stmt.c.foo)
 
     def _adapt_result_columns_fixture_two(self):
         return text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
@@ -1833,14 +1823,14 @@ class KeyTargetingTest(fixtures.TablesTest):
 
     def _adapt_result_columns_fixture_three(self):
         keyed1 = self.tables.keyed1
-        stmt = select([keyed1.c.b, keyed1.c.q.label("foo")]).subquery()
+        stmt = select(keyed1.c.b, keyed1.c.q.label("foo")).subquery()
 
-        return select([stmt.c.b, stmt.c.foo])
+        return select(stmt.c.b, stmt.c.foo)
 
     def _adapt_result_columns_fixture_four(self):
         keyed1 = self.tables.keyed1
 
-        stmt1 = select([keyed1]).apply_labels()
+        stmt1 = select(keyed1).apply_labels()
 
         a1 = keyed1.alias()
         stmt2 = ClauseAdapter(a1).traverse(stmt1)
@@ -2232,7 +2222,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         with self._proxy_fixture(cls):
             rows = []
             with self.engine.connect() as conn:
-                r = conn.execute(select([self.table]))
+                r = conn.execute(select(self.table))
                 assert isinstance(r.cursor_strategy, cls)
                 for i in range(5):
                     rows.append(r.fetchone())
@@ -2244,17 +2234,17 @@ class AlternateCursorResultTest(fixtures.TablesTest):
                 rows = r.fetchall()
                 eq_(rows, [(i, "t_%d" % i) for i in range(9, 12)])
 
-                r = conn.execute(select([self.table]))
+                r = conn.execute(select(self.table))
                 rows = r.fetchmany(None)
                 eq_(rows[0], (1, "t_1"))
                 # number of rows here could be one, or the whole thing
                 assert len(rows) == 1 or len(rows) == 11
 
-                r = conn.execute(select([self.table]).limit(1))
+                r = conn.execute(select(self.table).limit(1))
                 r.fetchone()
                 eq_(r.fetchone(), None)
 
-                r = conn.execute(select([self.table]).limit(5))
+                r = conn.execute(select(self.table).limit(5))
                 rows = r.fetchmany(6)
                 eq_(rows, [(i, "t_%d" % i) for i in range(1, 6)])
 
@@ -2272,11 +2262,11 @@ class AlternateCursorResultTest(fixtures.TablesTest):
 
                 self._assert_result_closed(r)
 
-                r = conn.execute(select([self.table]).limit(5))
+                r = conn.execute(select(self.table).limit(5))
                 eq_(r.first(), (1, "t_1"))
                 self._assert_result_closed(r)
 
-                r = conn.execute(select([self.table]).limit(5))
+                r = conn.execute(select(self.table).limit(5))
                 eq_(r.scalar(), 1)
                 self._assert_result_closed(r)
 
@@ -2344,7 +2334,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
                     cache = {}
                     conn = conn.execution_options(compiled_cache=cache)
 
-                stmt = select([literal("THERE", type_=MyType())])
+                stmt = select(literal("THERE", type_=MyType()))
                 for i in range(2):
                     r = conn.execute(stmt)
                     eq_(r.scalar(), "HI THERE")

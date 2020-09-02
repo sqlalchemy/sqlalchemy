@@ -20,7 +20,7 @@ if we don't use it explicitly)::
 
     >>> from sqlalchemy import table, column, select
     >>> t = table('my_table', column('x'))
-    >>> statement = select([t])
+    >>> statement = select(t)
     >>> print(str(statement))
     SELECT my_table.x
     FROM my_table
@@ -93,7 +93,7 @@ flag, passed to ``compile_kwargs``::
 
     t = table('t', column('x'))
 
-    s = select([t]).where(t.c.x == 5)
+    s = select(t).where(t.c.x == 5)
 
     # **do not use** with untrusted input!!!
     print(s.compile(compile_kwargs={"literal_binds": True}))

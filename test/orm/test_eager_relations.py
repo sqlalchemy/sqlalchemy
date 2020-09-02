@@ -1294,10 +1294,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         # tests the LIMIT/OFFSET aliasing on a mapper
         # against a select.   original issue from ticket #904
-        sel = sa.select(
-            [users, addresses.c.email_address],
-            users.c.id == addresses.c.user_id,
-        ).alias("useralias")
+        sel = (
+            sa.select(users, addresses.c.email_address)
+            .where(users.c.id == addresses.c.user_id,)
+            .alias("useralias")
+        )
         mapper(
             User,
             sel,
@@ -1810,10 +1811,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        max_orders_by_user = sa.select(
-            [sa.func.max(orders.c.id).label("order_id")],
-            group_by=[orders.c.user_id],
-        ).alias("max_orders_by_user")
+        max_orders_by_user = (
+            sa.select(sa.func.max(orders.c.id).label("order_id"))
+            .group_by(orders.c.user_id)
+            .alias("max_orders_by_user")
+        )
 
         max_orders = orders.select(
             orders.c.id == max_orders_by_user.c.order_id
@@ -1946,7 +1948,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        s = sa.select([orders], orders.c.isopen == 1).alias("openorders")
+        s = sa.select(orders).where(orders.c.isopen == 1).alias("openorders")
 
         mapper(
             Order, s, properties={"user": relationship(User, lazy="joined")}
@@ -4762,9 +4764,8 @@ class SubqueryTest(fixtures.MappedTest):
 
             tag_score = tags_table.c.score1 * tags_table.c.score2
             user_score = sa.select(
-                [sa.func.sum(tags_table.c.score1 * tags_table.c.score2)],
-                tags_table.c.user_id == users_table.c.id,
-            )
+                sa.func.sum(tags_table.c.score1 * tags_table.c.score2)
+            ).where(tags_table.c.user_id == users_table.c.id,)
 
             if labeled:
                 tag_score = tag_score.label(labelname)

@@ -137,7 +137,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
             from sqlalchemy.sql import column
 
-            stmt = select([column('x'), column('y')]).\
+            stmt = select(column('x'), column('y')).\
                 select_from(func.myfunction())
 
 
@@ -317,7 +317,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
             from sqlalchemy.sql import column
 
-            stmt = select([column('data_view')]).\
+            stmt = select(column('data_view')).\
                 select_from(SomeTable).\
                 select_from(func.unnest(SomeTable.data).alias('data_view')
             )
@@ -343,7 +343,7 @@ class FunctionElement(Executable, ColumnElement, FromClause):
 
         This is shorthand for::
 
-            s = select([function_element])
+            s = select(function_element)
 
         """
         s = Select._create_select(self)
@@ -453,7 +453,7 @@ class _FunctionGenerator(object):
     The returned object is an instance of :class:`.Function`, and  is a
     column-oriented SQL element like any other, and is used in that way::
 
-        >>> print(select([func.count(table.c.id)]))
+        >>> print(select(func.count(table.c.id)))
         SELECT count(sometable.id) FROM sometable
 
     Any name can be given to :data:`.func`. If the function name is unknown to
@@ -680,7 +680,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
         class as_utc(GenericFunction):
             type = DateTime
 
-        print(select([func.as_utc()]))
+        print(select(func.as_utc()))
 
     User-defined generic functions can be organized into
     packages by specifying the "package" attribute when defining
@@ -697,7 +697,7 @@ class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
     The above function would be available from :data:`.func`
     using the package name ``time``::
 
-        print(select([func.time.as_utc()]))
+        print(select(func.time.as_utc()))
 
     A final option is to allow the function to be accessed
     from one name in :data:`.func` but to render as a different name.
@@ -887,7 +887,7 @@ class count(GenericFunction):
 
         my_table = table('some_table', column('id'))
 
-        stmt = select([func.count()]).select_from(my_table)
+        stmt = select(func.count()).select_from(my_table)
 
     Executing ``stmt`` would emit::
 
@@ -958,7 +958,7 @@ class array_agg(GenericFunction):
 
     e.g.::
 
-        stmt = select([func.array_agg(table.c.values)[2:5]])
+        stmt = select(func.array_agg(table.c.values)[2:5])
 
     .. versionadded:: 1.1
 
@@ -1132,8 +1132,8 @@ class cube(GenericFunction):
     e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
-            [func.sum(table.c.value), table.c.col_1, table.c.col_2]
-            ).group_by(func.cube(table.c.col_1, table.c.col_2))
+            func.sum(table.c.value), table.c.col_1, table.c.col_2
+        ).group_by(func.cube(table.c.col_1, table.c.col_2))
 
     .. versionadded:: 1.2
 
@@ -1149,7 +1149,7 @@ class rollup(GenericFunction):
     e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
-            [func.sum(table.c.value), table.c.col_1, table.c.col_2]
+            func.sum(table.c.value), table.c.col_1, table.c.col_2
         ).group_by(func.rollup(table.c.col_1, table.c.col_2))
 
     .. versionadded:: 1.2
@@ -1166,7 +1166,7 @@ class grouping_sets(GenericFunction):
     e.g. :meth:`_expression.Select.group_by`::
 
         stmt = select(
-            [func.sum(table.c.value), table.c.col_1, table.c.col_2]
+            func.sum(table.c.value), table.c.col_1, table.c.col_2
         ).group_by(func.grouping_sets(table.c.col_1, table.c.col_2))
 
     In order to group by multiple sets, use the :func:`.tuple_` construct::
@@ -1174,10 +1174,9 @@ class grouping_sets(GenericFunction):
         from sqlalchemy import tuple_
 
         stmt = select(
-            [
-                func.sum(table.c.value),
-                table.c.col_1, table.c.col_2,
-                table.c.col_3]
+            func.sum(table.c.value),
+            table.c.col_1, table.c.col_2,
+            table.c.col_3
         ).group_by(
             func.grouping_sets(
                 tuple_(table.c.col_1, table.c.col_2),

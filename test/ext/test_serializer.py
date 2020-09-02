@@ -136,7 +136,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
         )
 
     def test_expression(self):
-        expr = select([users]).select_from(users.join(addresses)).limit(5)
+        expr = select(users).select_from(users.join(addresses)).limit(5)
         re_expr = serializer.loads(
             serializer.dumps(expr, -1), users.metadata, None
         )
@@ -228,7 +228,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
 
     def test_annotated_one(self):
         j = join(users, addresses)._annotate({"foo": "bar"})
-        query = select([addresses]).select_from(j)
+        query = select(addresses).select_from(j)
 
         str(query)
         for prot in pickle_protocols():
@@ -279,7 +279,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             ue("\u6e2c\u8a66"), m, Column(ue("\u6e2c\u8a66_id"), Integer)
         )
 
-        expr = select([t]).where(t.c[ue("\u6e2c\u8a66_id")] == 5)
+        expr = select(t).where(t.c[ue("\u6e2c\u8a66_id")] == 5)
 
         expr2 = serializer.loads(serializer.dumps(expr, -1), m)
 

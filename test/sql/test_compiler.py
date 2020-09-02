@@ -4901,11 +4901,12 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             select(t2, s1.correlate_except(t2).alias())
         )
 
-    def test_correlate_except_none(self):
+    @testing.combinations(False, None)
+    def test_correlate_except_none(self, value):
         t1, t2, s1 = self._fixture()
         self._assert_where_all_correlated(
             select(t1, t2).where(
-                t2.c.a == s1.correlate_except(None).scalar_subquery()
+                t2.c.a == s1.correlate_except(value).scalar_subquery()
             )
         )
 
@@ -4937,10 +4938,11 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             select(t2).having(t2.c.a == s1.scalar_subquery())
         )
 
-    def test_correlate_disabled_where(self):
+    @testing.combinations(False, None)
+    def test_correlate_disabled_where(self, value):
         t1, t2, s1 = self._fixture()
         self._assert_where_uncorrelated(
-            select(t2).where(t2.c.a == s1.correlate(None).scalar_subquery())
+            select(t2).where(t2.c.a == s1.correlate(value).scalar_subquery())
         )
 
     def test_correlate_disabled_column(self):

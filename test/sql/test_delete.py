@@ -116,7 +116,7 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1, table2 = self.tables.mytable, self.tables.myothertable
 
         # test a non-correlated WHERE clause
-        s = select([table2.c.othername], table2.c.otherid == 7)
+        s = select(table2.c.othername).where(table2.c.otherid == 7)
         self.assert_compile(
             delete(table1, table1.c.name == s.scalar_subquery()),
             "DELETE FROM mytable "
@@ -131,7 +131,7 @@ class DeleteTest(_DeleteTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1, table2 = self.tables.mytable, self.tables.myothertable
 
         # test one that is actually correlated...
-        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
+        s = select(table2.c.othername).where(table2.c.otherid == table1.c.myid)
         self.assert_compile(
             table1.delete(table1.c.name == s.scalar_subquery()),
             "DELETE FROM mytable "

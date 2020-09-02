@@ -290,7 +290,7 @@ get at this with a type like ``JSONEncodedDict``, we need to
 
     from sqlalchemy import type_coerce, String
 
-    stmt = select([my_table]).where(
+    stmt = select(my_table).where(
         type_coerce(my_table.c.json_data, String).like('%foo%'))
 
 :class:`.TypeDecorator` provides a built-in system for working up type
@@ -378,7 +378,7 @@ and use it in a :func:`_expression.select` construct::
                   Column('geom_data', Geometry)
                 )
 
-    print(select([geometry]).where(
+    print(select(geometry).where(
       geometry.c.geom_data == 'LINESTRING(189412 252431,189631 259122)'))
 
 The resulting SQL embeds both functions as appropriate.   ``ST_AsText``
@@ -396,7 +396,7 @@ with the labeling of the wrapped expression.   Such as, if we rendered
 a :func:`_expression.select` against a :func:`.label` of our expression, the string
 label is moved to the outside of the wrapped expression::
 
-    print(select([geometry.c.geom_data.label('my_data')]))
+    print(select(geometry.c.geom_data.label('my_data')))
 
 Output::
 
@@ -445,7 +445,7 @@ transparently::
                                     message="this is my message")
 
         print(conn.scalar(
-                select([message.c.message]).\
+                select(message.c.message).\
                     where(message.c.username == "some user")
             ))
 

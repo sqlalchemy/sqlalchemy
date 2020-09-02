@@ -1646,7 +1646,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         series = func.generate_series(1, 100).alias("series")
         series_col = column("series")
         query = select(
-            [func.array_agg(series_col).filter(series_col % 2 == 0)[3]]
+            func.array_agg(series_col).filter(series_col % 2 == 0)[3]
         ).select_from(series)
         self.assert_compile(
             query,
@@ -2143,22 +2143,22 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_plain_inline(self):
         self.assert_compile(
-            select([self.table], distinct=True),
+            select(self.table).distinct(),
             "SELECT DISTINCT t.id, t.a, t.b FROM t",
         )
 
     def test_on_columns_inline_list(self):
         self.assert_compile(
-            select(
-                [self.table], distinct=[self.table.c.a, self.table.c.b]
-            ).order_by(self.table.c.a, self.table.c.b),
+            select(self.table)
+            .distinct(self.table.c.a, self.table.c.b)
+            .order_by(self.table.c.a, self.table.c.b),
             "SELECT DISTINCT ON (t.a, t.b) t.id, "
             "t.a, t.b FROM t ORDER BY t.a, t.b",
         )
 
     def test_on_columns_inline_scalar(self):
         self.assert_compile(
-            select([self.table], distinct=self.table.c.a),
+            select(self.table).distinct(self.table.c.a),
             "SELECT DISTINCT ON (t.a) t.id, t.a, t.b FROM t",
         )
 

@@ -125,7 +125,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1,)])
 
         result2 = connection.execute(
-            select([table.c.id, table.c.full]).order_by(table.c.id)
+            select(table.c.id, table.c.full).order_by(table.c.id)
         )
         eq_(result2.fetchall(), [(1, True), (2, False)])
 
@@ -215,7 +215,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1,)])
 
         result2 = connection.execute(
-            select([table.c.id, table.c.full]).order_by(table.c.id)
+            select(table.c.id, table.c.full).order_by(table.c.id)
         )
         eq_(result2.fetchall(), [(2, False)])
 
@@ -241,7 +241,7 @@ class CompositeStatementTest(fixtures.TestBase):
 
         stmt = (
             t2.insert()
-            .values(x=select([t1.c.x]).scalar_subquery())
+            .values(x=select(t1.c.x).scalar_subquery())
             .returning(t2.c.x)
         )
 

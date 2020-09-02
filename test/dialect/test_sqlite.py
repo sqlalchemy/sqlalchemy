@@ -332,9 +332,7 @@ class JSONTest(fixtures.TestBase):
         with testing.db.connect() as conn:
             conn.execute(sqlite_json.insert(), foo=value)
 
-            eq_(
-                conn.scalar(select([sqlite_json.c.foo["json"]])), value["json"]
-            )
+            eq_(conn.scalar(select(sqlite_json.c.foo["json"])), value["json"])
 
     @testing.provide_metadata
     def test_deprecated_serializer_args(self):

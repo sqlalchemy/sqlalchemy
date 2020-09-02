@@ -1269,10 +1269,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        max_orders_by_user = sa.select(
-            [sa.func.max(orders.c.id).label("order_id")],
-            group_by=[orders.c.user_id],
-        ).alias("max_orders_by_user")
+        max_orders_by_user = (
+            sa.select(sa.func.max(orders.c.id).label("order_id"))
+            .group_by(orders.c.user_id)
+            .alias("max_orders_by_user")
+        )
 
         max_orders = orders.select(
             orders.c.id == max_orders_by_user.c.order_id

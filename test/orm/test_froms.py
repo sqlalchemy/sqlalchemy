@@ -161,9 +161,11 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
 
     def test_scalar_subquery_select_auto_correlate(self):
         addresses, users = self.tables.addresses, self.tables.users
-        query = select(
-            [func.count(addresses.c.id)], addresses.c.user_id == users.c.id
-        ).scalar_subquery()
+        query = (
+            select(func.count(addresses.c.id))
+            .where(addresses.c.user_id == users.c.id)
+            .scalar_subquery()
+        )
         query = select(users.c.name.label("users_name"), query)
         self.assert_compile(
             query, self.query_correlated, dialect=default.DefaultDialect()
@@ -172,9 +174,8 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
     def test_scalar_subquery_select_explicit_correlate(self):
         addresses, users = self.tables.addresses, self.tables.users
         query = (
-            select(
-                [func.count(addresses.c.id)], addresses.c.user_id == users.c.id
-            )
+            select(func.count(addresses.c.id))
+            .where(addresses.c.user_id == users.c.id)
             .correlate(users)
             .scalar_subquery()
         )
@@ -186,9 +187,8 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
     def test_scalar_subquery_select_correlate_off(self):
         addresses, users = self.tables.addresses, self.tables.users
         query = (
-            select(
-                [func.count(addresses.c.id)], addresses.c.user_id == users.c.id
-            )
+            select(func.count(addresses.c.id))
+            .where(addresses.c.user_id == users.c.id)
             .correlate(None)
             .scalar_subquery()
         )
@@ -224,13 +224,14 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
             query, self.query_correlated, dialect=default.DefaultDialect()
         )
 
-    def test_scalar_subquery_query_correlate_off(self):
+    @testing.combinations(False, None)
+    def test_scalar_subquery_query_correlate_off(self, value):
         sess = create_session()
         Address, User = self.classes.Address, self.classes.User
         query = (
             sess.query(func.count(Address.id))
             .filter(Address.user_id == User.id)
-            .correlate(None)
+            .correlate(value)
             .scalar_subquery()
         )
         query = sess.query(User.name, query)
@@ -2381,15 +2382,15 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         assert q.all() == expected
 
         # test with a straight statement
-        s = select(
-            [
+        s = (
+            select(
                 users,
                 func.count(addresses.c.id).label("count"),
                 ("Name:" + users.c.name).label("concat"),
-            ],
-            from_obj=[users.outerjoin(addresses)],
-            group_by=[c for c in users.c],
-            order_by=[users.c.id],
+            )
+            .select_from(users.outerjoin(addresses))
+            .group_by(*[c for c in users.c])
+            .order_by(users.c.id)
         )
         q = create_session().query(User)
         result = (
@@ -3422,10 +3423,8 @@ class ExternalColumnsTest(QueryTest):
             properties={
                 "concat": column_property((users.c.id * 2)),
                 "count": column_property(
-                    select(
-                        [func.count(addresses.c.id)],
-                        users.c.id == addresses.c.user_id,
-                    )
+                    select(func.count(addresses.c.id))
+                    .where(users.c.id == addresses.c.user_id,)
                     .correlate(users)
                     .scalar_subquery()
                 ),
@@ -3585,10 +3584,8 @@ class ExternalColumnsTest(QueryTest):
                 ),
                 "concat": column_property((users.c.id * 2)),
                 "count": column_property(
-                    select(
-                        [func.count(addresses.c.id)],
-                        users.c.id == addresses.c.user_id,
-                    )
+                    select(func.count(addresses.c.id))
+                    .where(users.c.id == addresses.c.user_id,)
                     .correlate(users)
                     .scalar_subquery()
                 ),

@@ -914,7 +914,7 @@ class Insert(ValuesBase):
 
         e.g.::
 
-            sel = select([table1.c.a, table1.c.b]).where(table1.c.c > 5)
+            sel = select(table1.c.a, table1.c.b).where(table1.c.c > 5)
             ins = table2.insert().from_select(['a', 'b'], sel)
 
         :param names: a sequence of string column names or
@@ -1116,7 +1116,7 @@ class Update(DMLWhereBase, ValuesBase):
          subquery::
 
             users.update().values(name='ed').where(
-                    users.c.name==select([addresses.c.email_address]).\
+                    users.c.name==select(addresses.c.email_address).\
                                 where(addresses.c.user_id==users.c.id).\
                                 scalar_subquery()
                     )
@@ -1183,7 +1183,7 @@ class Update(DMLWhereBase, ValuesBase):
         the subquery to the outer table being updated::
 
             users.update().values(
-                    name=select([addresses.c.email_address]).\
+                    name=select(addresses.c.email_address).\
                             where(addresses.c.user_id==users.c.id).\
                             scalar_subquery()
                 )
@@ -1334,7 +1334,7 @@ class Delete(DMLWhereBase, UpdateBase):
          subquery::
 
             users.delete().where(
-                    users.c.name==select([addresses.c.email_address]).\
+                    users.c.name==select(addresses.c.email_address).\
                                 where(addresses.c.user_id==users.c.id).\
                                 scalar_subquery()
                     )

@@ -745,10 +745,11 @@ class MappedSelectTest(fixtures.MappedTest):
             def __composite_values__(self):
                 return self
 
-        desc_values = select(
-            [values, descriptions.c.d1, descriptions.c.d2],
-            descriptions.c.id == values.c.description_id,
-        ).alias("descriptions_values")
+        desc_values = (
+            select(values, descriptions.c.d1, descriptions.c.d2)
+            .where(descriptions.c.id == values.c.description_id,)
+            .alias("descriptions_values")
+        )
 
         mapper(
             Descriptions,

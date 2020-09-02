@@ -749,7 +749,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The SelectBase.select\(\) method is deprecated"
         ):
             self.assert_compile(
-                select([col]).select(),
+                select(col).select(),
                 'SELECT anon_1."NEEDS QUOTES_" FROM '
                 '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_") AS anon_1',
             )
@@ -761,7 +761,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The SelectBase.select\(\) method is deprecated"
         ):
             self.assert_compile(
-                select([col]).select(),
+                select(col).select(),
                 'SELECT anon_1."NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
                 '"NEEDS QUOTES_") AS anon_1',
             )
@@ -773,7 +773,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The SelectBase.select\(\) method is deprecated"
         ):
             self.assert_compile(
-                select([col]).select(),
+                select(col).select(),
                 'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
                 '"NEEDS QUOTES") AS anon_1',
             )
@@ -800,7 +800,7 @@ class TextualSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The SelectBase.c and SelectBase.columns", "Implicit coercion"
         ):
-            stmt = select([table1.c.myid]).select_from(
+            stmt = select(table1.c.myid).select_from(
                 table1.join(t, table1.c.myid == t.c.id)
             )
         compiled = stmt.compile()
@@ -1468,10 +1468,8 @@ class CursorResultTest(fixtures.TablesTest):
             ).connect() as ins_conn:
                 row = ins_conn.execute(
                     select(
-                        [
-                            literal_column("1").label("case_insensitive"),
-                            literal_column("2").label("CaseSensitive"),
-                        ]
+                        literal_column("1").label("case_insensitive"),
+                        literal_column("2").label("CaseSensitive"),
                     )
                 ).first()
 
@@ -1498,11 +1496,9 @@ class CursorResultTest(fixtures.TablesTest):
             ).connect() as ins_conn:
                 row = ins_conn.execute(
                     select(
-                        [
-                            literal_column("1").label("case_insensitive"),
-                            literal_column("2").label("CaseSensitive"),
-                            text("3 AS screw_up_the_cols"),
-                        ]
+                        literal_column("1").label("case_insensitive"),
+                        literal_column("2").label("CaseSensitive"),
+                        text("3 AS screw_up_the_cols"),
                     )
                 ).first()
 

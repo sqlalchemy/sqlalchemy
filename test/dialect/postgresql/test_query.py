@@ -863,21 +863,19 @@ class TupleTest(fixtures.TestBase):
             eq_(
                 connection.execute(
                     select(
-                        [
-                            tuple_(
-                                literal_column("'a'"), literal_column("'b'")
-                            ).in_(
-                                [
-                                    tuple_(
-                                        *[
-                                            literal_column("'%s'" % letter)
-                                            for letter in elem
-                                        ]
-                                    )
-                                    for elem in test
-                                ]
-                            )
-                        ]
+                        tuple_(
+                            literal_column("'a'"), literal_column("'b'")
+                        ).in_(
+                            [
+                                tuple_(
+                                    *[
+                                        literal_column("'%s'" % letter)
+                                        for letter in elem
+                                    ]
+                                )
+                                for elem in test
+                            ]
+                        )
                     )
                 ).scalar(),
                 exp,

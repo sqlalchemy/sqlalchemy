@@ -550,8 +550,8 @@ base :class:`.AliasedReturnsRows`.
 
 That is, this will now raise::
 
-    stmt1 = select([user.c.id, user.c.name])
-    stmt2 = select([addresses, stmt1]).select_from(addresses.join(stmt1))
+    stmt1 = select(user.c.id, user.c.name)
+    stmt2 = select(addresses, stmt1).select_from(addresses.join(stmt1))
 
 Raising::
 
@@ -630,7 +630,7 @@ people hope that ``.c`` does (but does not), which is to reference the columns
 that are in the columns clause of the SELECT statement.   A common beginner mistake
 is code such as the following::
 
-    stmt = select([users])
+    stmt = select(users)
     stmt = stmt.where(stmt.c.name == 'foo')
 
 The above code appears intuitive and that it would generate
@@ -642,7 +642,7 @@ The new :attr:`_expression.SelectBase.selected_columns` attribute however **does
 the use case above, as in a case like the above it links directly to the columns
 present in the ``users.c`` collection::
 
-    stmt = select([users])
+    stmt = select(users)
     stmt = stmt.where(stmt.selected_columns.name == 'foo')
 
 
@@ -993,7 +993,7 @@ feature represents a simpler approach to building expressions in any case,
 it's now invoked automatically whenever a list of values is passed to
 an IN expression::
 
-    stmt = select([A.id, A.data]).where(A.id.in_([1, 2, 3]))
+    stmt = select(A.id, A.data).where(A.id.in_([1, 2, 3]))
 
 The pre-execution string representation is::
 
@@ -1374,7 +1374,7 @@ the 2.0 transition::
 
     >>> from sqlalchemy import column, select
     >>> c1, c2, c3, c4 = column('c1'), column('c2'), column('c3'), column('c4')
-    >>> stmt = select([c1, c2, c3.label('c2'), c2, c4])
+    >>> stmt = select(c1, c2, c3.label('c2'), c2, c4)
     >>> print(stmt)
     SELECT c1, c2, c3 AS c2, c2, c4
 
@@ -1418,7 +1418,7 @@ deduplication of implicitly generated labels::
 
     >>> from sqlalchemy import table
     >>> user = table('user', column('id'), column('name'))
-    >>> stmt = select([user.c.id, user.c.name, user.c.id]).apply_labels()
+    >>> stmt = select(user.c.id, user.c.name, user.c.id).apply_labels()
     >>> print(stmt)
     SELECT "user".id AS user_id, "user".name AS user_name, "user".id AS id_1
     FROM "user"
@@ -1428,8 +1428,8 @@ Finally, the change makes it easier to create UNION and other
 of columns in a SELECT statement mirrors what was given, in a use case such
 as::
 
-    >>> s1 = select([user, user.c.id])
-    >>> s2 = select([c1, c2, c3])
+    >>> s1 = select(user, user.c.id)
+    >>> s2 = select(c1, c2, c3)
     >>> from sqlalchemy import union
     >>> u = union(s1, s2)
     >>> print(u)
@@ -1476,7 +1476,7 @@ In SQLAlchemy Core expressions, we never deal with a raw generated name like
 the above, as SQLAlchemy applies auto-labeling to expressions like these, which
 are up until now always a so-called "anonymous" expression::
 
-    >>> print(select([cast(foo.c.data, String)]))
+    >>> print(select(cast(foo.c.data, String)))
     SELECT CAST(foo.data AS VARCHAR) AS anon_1     # old behavior
     FROM foo
 
@@ -1494,14 +1494,14 @@ or label names such as in :ref:`change_4753`.  So we now emulate PostgreSQL's
 reasonable behavior for simple modifications to a single column, most
 prominently with CAST::
 
-    >>> print(select([cast(foo.c.data, String)]))
+    >>> print(select(cast(foo.c.data, String)))
     SELECT CAST(foo.data AS VARCHAR) AS data
     FROM foo
 
 For CAST against expressions that don't have a name, the previous logic is used
 to generate the usual "anonymous" labels::
 
-    >>> print(select([cast('hi there,' + foo.c.data, String)]))
+    >>> print(select(cast('hi there,' + foo.c.data, String)))
     SELECT CAST(:data_1 + foo.data AS VARCHAR) AS anon_1
     FROM foo
 
@@ -1509,14 +1509,14 @@ A :func:`.cast` against a :class:`.Label`, despite having to omit the label
 expression as these don't render inside of a CAST, will nonetheless make use of
 the given name::
 
-    >>> print(select([cast(('hi there,' + foo.c.data).label('hello_data'), String)]))
+    >>> print(select(cast(('hi there,' + foo.c.data).label('hello_data'), String)))
     SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
     FROM foo
 
 And of course as was always the case, :class:`.Label` can be applied to the
 expression on the outside to apply an "AS <name>" label directly::
 
-    >>> print(select([cast(('hi there,' + foo.c.data), String).label('hello_data')]))
+    >>> print(select(cast(('hi there,' + foo.c.data), String).label('hello_data')))
     SELECT CAST(:data_1 + foo.data AS VARCHAR) AS hello_data
     FROM foo
 

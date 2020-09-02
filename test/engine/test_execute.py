@@ -1425,7 +1425,7 @@ class EngineEventsTest(fixtures.TestBase):
         m1 = Mock()
 
         def select1(db):
-            return str(select([1]).compile(dialect=db.dialect))
+            return str(select(1).compile(dialect=db.dialect))
 
         with testing.db.connect() as conn:
             event.listen(conn, "before_execute", m1.before_execute)

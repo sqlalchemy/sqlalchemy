@@ -603,7 +603,7 @@ class DefaultDialect(interfaces.Dialect):
 
     @util.memoized_property
     def _dialect_specific_select_one(self):
-        return str(expression.select([1]).compile(dialect=self))
+        return str(expression.select(1).compile(dialect=self))
 
     def do_ping(self, dbapi_connection):
         cursor = None
@@ -1586,9 +1586,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             default_arg = expression.type_coerce(default.arg, type_)
         else:
             default_arg = default.arg
-        compiled = expression.select([default_arg]).compile(
-            dialect=self.dialect
-        )
+        compiled = expression.select(default_arg).compile(dialect=self.dialect)
         compiled_params = compiled.construct_params()
         processors = compiled._bind_processors
         if compiled.positional:

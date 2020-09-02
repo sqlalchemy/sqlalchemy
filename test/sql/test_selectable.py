@@ -372,8 +372,8 @@ class SelectableTest(
     def test_distance_on_aliases(self):
         a1 = table1.alias("a1")
         for s in (
-            select([a1, table1], use_labels=True).subquery(),
-            select([table1, a1], use_labels=True).subquery(),
+            select(a1, table1).apply_labels().subquery(),
+            select(table1, a1).apply_labels().subquery(),
         ):
             assert s.corresponding_column(table1.c.col1) is s.c.table1_col1
             assert s.corresponding_column(a1.c.col1) is s.c.a1_col1
@@ -506,7 +506,7 @@ class SelectableTest(
         self.assert_compile(group, "b / (y * w)")
 
     def test_subquery_on_table(self):
-        sel = select([table1, table2], use_labels=True).subquery()
+        sel = select(table1, table2).apply_labels().subquery()
 
         assert sel.corresponding_column(table1.c.col1) is sel.c.table1_col1
         assert (
@@ -523,8 +523,8 @@ class SelectableTest(
 
     def test_join_against_join(self):
         j = outerjoin(table1, table2, table1.c.col1 == table2.c.col2)
-        jj = select([table1.c.col1.label("bar_col1")], from_obj=[j]).alias(
-            "foo"
+        jj = (
+            select(table1.c.col1.label("bar_col1")).select_from(j).alias("foo")
         )
         jjj = join(table1, jj, table1.c.col1 == jj.c.bar_col1)
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
@@ -1044,7 +1044,7 @@ class SelectableTest(
         t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
         t3 = Table("t3", m2, Column("id", Integer, ForeignKey("t1.id2")))
 
-        s = select([t2, t3], use_labels=True).subquery()
+        s = select(t2, t3).apply_labels().subquery()
 
         assert_raises(exc.NoReferencedTableError, s.join, t1)
 
@@ -2363,7 +2363,7 @@ class AnnotationsTest(fixtures.TestBase):
         """
         t = table("t", column("x"))
 
-        stmt = select([t.c.x])
+        stmt = select(t.c.x)
 
         whereclause = annotation._deep_annotate(t.c.x == 5, {"foo": "bar"})
 
@@ -2740,7 +2740,7 @@ class AnnotationsTest(fixtures.TestBase):
         a1 = table1.alias()
         s = select(a1.c.x).select_from(a1.join(table2, a1.c.x == table2.c.y))
 
-        assert_s = select([select(s.subquery()).subquery()])
+        assert_s = select(select(s.subquery()).subquery())
         for fn in (
             sql_util._deep_deannotate,
             lambda s: sql_util._deep_annotate(s, {"foo": "bar"}),
@@ -2748,7 +2748,7 @@ class AnnotationsTest(fixtures.TestBase):
             lambda s: visitors.replacement_traverse(s, {}, lambda x: None),
         ):
 
-            sel = fn(select([fn(select(fn(s.subquery())).subquery())]))
+            sel = fn(select(fn(select(fn(s.subquery())).subquery())))
             eq_(str(assert_s), str(sel))
 
     def test_bind_unique_test(self):
@@ -3100,7 +3100,7 @@ class ResultMapTest(fixtures.TestBase):
 
     def test_unary_boolean(self):
 
-        s1 = select([not_(True)], use_labels=True)
+        s1 = select(not_(True)).apply_labels()
         eq_(
             [type(entry[-1]) for entry in s1.compile()._result_columns],
             [Boolean],

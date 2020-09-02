@@ -38,7 +38,7 @@ class DeferredLambdaTest(
         y = 5
 
         def go():
-            return select([t1]).where(lambda: and_(t1.c.q == x, t1.c.p == y))
+            return select(t1).where(lambda: and_(t1.c.q == x, t1.c.p == y))
 
         self.assert_compile(
             go(), "SELECT t1.q, t1.p FROM t1 WHERE t1.q = :x_1 AND t1.p = :y_1"
@@ -57,7 +57,7 @@ class DeferredLambdaTest(
         global_y = 17
 
         def go():
-            return select([t1]).where(
+            return select(t1).where(
                 lambda: and_(t1.c.q == global_x, t1.c.p == global_y)
             )
 
@@ -567,7 +567,7 @@ class DeferredLambdaTest(
         assert_raises_message(
             exc.ArgumentError,
             "SQL expression for WHERE/HAVING role expected, got 5",
-            select([column("q")]).where,
+            select(column("q")).where,
             5,
         )
 
@@ -577,7 +577,7 @@ class DeferredLambdaTest(
             {"compile_state_plugin": "x", "plugin_subject": "y"}
         )
 
-        stmt = lambdas.lambda_stmt(lambda: select([col]))
+        stmt = lambdas.lambda_stmt(lambda: select(col))
 
         eq_(
             stmt._propagate_attrs,
@@ -590,7 +590,7 @@ class DeferredLambdaTest(
             {"compile_state_plugin": "x", "plugin_subject": "y"}
         )
 
-        stmt = select([lambda: col])
+        stmt = select(lambda: col)
 
         eq_(
             stmt._propagate_attrs,
@@ -616,7 +616,7 @@ class DeferredLambdaTest(
     def test_select_legacy_expanding_columns(self):
         q, p, r = column("q"), column("p"), column("r")
 
-        stmt = select([lambda: (q, p, r)])
+        stmt = select(lambda: (q, p, r))
 
         self.assert_compile(stmt, "SELECT q, p, r")
 
@@ -632,7 +632,7 @@ class DeferredLambdaTest(
         t2 = table("t2", column("y"))
 
         def go():
-            return select([t1]).select_from(
+            return select(t1).select_from(
                 lambda: join(t1, t2, lambda: t1.c.q == t2.c.y)
             )
 
@@ -646,7 +646,7 @@ class DeferredLambdaTest(
 
     def test_in_parameters_one(self):
 
-        expr1 = select([1]).where(column("q").in_(["a", "b", "c"]))
+        expr1 = select(1).where(column("q").in_(["a", "b", "c"]))
         self.assert_compile(expr1, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
 
         self.assert_compile(
@@ -657,7 +657,7 @@ class DeferredLambdaTest(
         )
 
     def test_in_parameters_two(self):
-        expr2 = select([1]).where(lambda: column("q").in_(["a", "b", "c"]))
+        expr2 = select(1).where(lambda: column("q").in_(["a", "b", "c"]))
         self.assert_compile(expr2, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
         self.assert_compile(
             expr2,
@@ -668,7 +668,7 @@ class DeferredLambdaTest(
 
     def test_in_parameters_three(self):
         expr3 = lambdas.lambda_stmt(
-            lambda: select([1]).where(column("q").in_(["a", "b", "c"]))
+            lambda: select(1).where(column("q").in_(["a", "b", "c"]))
         )
         self.assert_compile(expr3, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
         self.assert_compile(
@@ -681,7 +681,7 @@ class DeferredLambdaTest(
     def test_in_parameters_four(self):
         def go(names):
             return lambdas.lambda_stmt(
-                lambda: select([1]).where(column("q").in_(names))
+                lambda: select(1).where(column("q").in_(names))
             )
 
         expr4 = go(["a", "b", "c"])
@@ -698,7 +698,7 @@ class DeferredLambdaTest(
     def test_in_parameters_five(self):
         def go(n1, n2):
             stmt = lambdas.lambda_stmt(
-                lambda: select([1]).where(column("q").in_(n1))
+                lambda: select(1).where(column("q").in_(n1))
             )
             stmt += lambda s: s.where(column("y").in_(n2))
             return stmt
@@ -725,7 +725,7 @@ class DeferredLambdaTest(
         g = 5
 
         def go():
-            return select([lambda: t1.c.q, lambda: t1.c.p + g])
+            return select(lambda: t1.c.q, lambda: t1.c.p + g)
 
         stmt = go()
         self.assert_compile(
@@ -765,7 +765,7 @@ class DeferredLambdaTest(
         users, addresses = user_address_fixture
 
         stmt = (
-            select([users])
+            select(users)
             .select_from(
                 users.join(
                     addresses, lambda: users.c.id == addresses.c.user_id
@@ -962,7 +962,7 @@ class DeferredLambdaTest(
         users, addresses = user_address_fixture
 
         def go(name):
-            stmt = select([lambda: users.c.id]).where(
+            stmt = select(lambda: users.c.id).where(
                 lambda: users.c.name == name
             )
             with testing.db.connect().execution_options(
@@ -1000,9 +1000,7 @@ class DeferredLambdaTest(
 
         def go(name):
             stmt = lambda_stmt(
-                lambda: select([users.c.id]).where(  # noqa
-                    users.c.name == name
-                )
+                lambda: select(users.c.id).where(users.c.name == name)  # noqa
             )
 
             with testing.db.connect().execution_options(
@@ -1041,7 +1039,7 @@ class DeferredLambdaTest(
         cache = {}
 
         def go(name):
-            stmt = select([lambda: users.c.id]).where(
+            stmt = select(lambda: users.c.id).where(
                 lambda: users.c.name == name
             )
 
@@ -1082,9 +1080,7 @@ class DeferredLambdaTest(
 
         def go(name):
             stmt = lambda_stmt(
-                lambda: select([users.c.id]).where(  # noqa
-                    users.c.name == name
-                )
+                lambda: select(users.c.id).where(users.c.name == name)  # noqa
             )
 
             with testing.db.connect().execution_options(
