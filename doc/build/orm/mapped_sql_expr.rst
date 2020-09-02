@@ -289,7 +289,20 @@ The :func:`.query_expression` mapping has these caveats:
 
 * On an object where :func:`.query_expression` were not used to populate
   the attribute, the attribute on an object instance will have the value
-  ``None``.
+  ``None``, unless the :paramref:`_orm.query_expression.default_expr`
+  parameter is set to an alternate SQL expression.
+
+* The query_expression value **does not populate on an object that is
+  already loaded**.  That is, this will **not work**::
+
+    obj = session.query(A).first()
+
+    obj = session.query(A).options(with_expression(A.expr, some_expr)).first()
+
+  To ensure the attribute is re-loaded, use :meth:`_orm.Query.populate_existing`::
+
+    obj = session.query(A).populate_existing().options(
+        with_expression(A.expr, some_expr)).first()
 
 * The query_expression value **does not refresh when the object is
   expired**.  Once the object is expired, either via :meth:`.Session.expire`

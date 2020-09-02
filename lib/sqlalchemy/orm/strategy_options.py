@@ -1682,6 +1682,12 @@ def with_expression(loadopt, key, expression):
 
     :param expr: SQL expression to be applied to the attribute.
 
+    .. note:: the target attribute is populated only if the target object
+       is **not currently loaded** in the current :class:`_orm.Session`
+       unless the :meth:`_orm.Query.populate_existing` method is used.
+       Please refer to :ref:`mapper_querytime_expression` for complete
+       usage details.
+
     .. seealso::
 
         :ref:`mapper_querytime_expression`

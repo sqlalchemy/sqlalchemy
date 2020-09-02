@@ -1815,6 +1815,38 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
             q.all(), [A(bs=[B(b_expr=25)]), A(bs=[B(b_expr=38), B(b_expr=10)])]
         )
 
+    def test_no_refresh_unless_populate_existing(self):
+        A = self.classes.A
+
+        s = Session()
+        a1 = s.query(A).first()
+
+        def go():
+            eq_(a1.my_expr, None)
+
+        self.assert_sql_count(testing.db, go, 0)
+
+        a1 = s.query(A).options(with_expression(A.my_expr, A.x + A.y)).first()
+
+        eq_(a1.my_expr, None)
+
+        a1 = (
+            s.query(A)
+            .populate_existing()
+            .options(with_expression(A.my_expr, A.x + A.y))
+            .first()
+        )
+
+        eq_(a1.my_expr, 3)
+
+        a1 = s.query(A).first()
+
+        eq_(a1.my_expr, 3)
+
+        s.expire(a1)
+
+        eq_(a1.my_expr, None)
+
     def test_no_sql_not_set_up(self):
         A = self.classes.A
 
