@@ -755,6 +755,13 @@ def _parse_rfc1738_args(name):
             query = None
         components["query"] = query
 
+        if components["query"]:
+            if "host" in components["query"]:
+                if not isinstance(components["query"]["host"], str):
+                    components["query"]["host"] = ",".join(
+                        components["query"]["host"]
+                    )
+
         if components["username"] is not None:
             components["username"] = _rfc_1738_unquote(components["username"])
 
