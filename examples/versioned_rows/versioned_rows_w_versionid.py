@@ -39,7 +39,7 @@ class Versioned(object):
     def __declare_last__(cls):
         alias = cls.__table__.alias()
         cls.calc_is_current_version = column_property(
-            select([func.max(alias.c.version_id) == cls.version_id]).where(
+            select(func.max(alias.c.version_id) == cls.version_id).where(
                 alias.c.id == cls.id
             )
         )

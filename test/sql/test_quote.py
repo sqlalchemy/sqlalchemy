@@ -405,7 +405,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         # Note that the names are quoted b/c they are reserved words
-        x = select([table.c.col1, table.c["from"], table.c.order])
+        x = select(table.c.col1, table.c["from"], table.c.order)
         self.assert_compile(
             x,
             "SELECT "
@@ -429,7 +429,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         # Note that the names are now unquoted
-        x = select([table.c.col1, table.c["from"], table.c.order])
+        x = select(table.c.col1, table.c["from"], table.c.order)
         self.assert_compile(
             x,
             "SELECT "
@@ -444,7 +444,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         t1 = Table("t1", metadata, Column("col1", Integer), schema="foo")
         a = t1.select().alias("anon")
-        b = select([1], a.c.col1 == 2, from_obj=a)
+        b = select(1).where(a.c.col1 == 2).select_from(a)
         self.assert_compile(
             b,
             "SELECT 1 "
@@ -469,7 +469,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             quote_schema=True,
         )
         a = t1.select().alias("anon")
-        b = select([1], a.c.col1 == 2, from_obj=a)
+        b = select(1).where(a.c.col1 == 2).select_from(a)
         self.assert_compile(
             b,
             "SELECT 1 "
@@ -487,7 +487,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         metadata = MetaData()
         t1 = Table("T1", metadata, Column("Col1", Integer), schema="Foo")
         a = t1.select().alias("Anon")
-        b = select([1], a.c.Col1 == 2, from_obj=a)
+        b = select(1).where(a.c.Col1 == 2).select_from(a)
         self.assert_compile(
             b,
             "SELECT 1 "
@@ -514,7 +514,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
             quote_schema=False,
         )
         a = t1.select().alias("Anon")
-        b = select([1], a.c.Col1 == 2, from_obj=a)
+        b = select(1).where(a.c.Col1 == 2).select_from(a)
         self.assert_compile(
             b,
             "SELECT 1 "
@@ -533,7 +533,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("t1", m, Column("col1", Integer))
         cl = t1.c.col1.label("ShouldQuote")
         self.assert_compile(
-            select([cl]).order_by(cl),
+            select(cl).order_by(cl),
             'SELECT t1.col1 AS "ShouldQuote" FROM t1 ORDER BY "ShouldQuote"',
         )
 
@@ -645,9 +645,9 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         # Lower case names, should not quote
         metadata = MetaData()
         table = Table("t1", metadata, Column("col1", Integer))
-        x = select([table.c.col1.label("label1")]).alias("alias1")
+        x = select(table.c.col1.label("label1")).alias("alias1")
         self.assert_compile(
-            select([x.c.label1]),
+            select(x.c.label1),
             "SELECT "
             "alias1.label1 "
             "FROM ("
@@ -660,9 +660,9 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         # Not lower case names, should quote
         metadata = MetaData()
         table = Table("T1", metadata, Column("Col1", Integer))
-        x = select([table.c.Col1.label("Label1")]).alias("Alias1")
+        x = select(table.c.Col1.label("Label1")).alias("Alias1")
         self.assert_compile(
-            select([x.c.Label1]),
+            select(x.c.Label1),
             "SELECT "
             '"Alias1"."Label1" '
             "FROM ("
@@ -715,7 +715,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES")
 
         self.assert_compile(
-            select([col]).alias().select(),
+            select(col).alias().select(),
             'SELECT anon_1."NEEDS QUOTES" FROM (SELECT NEEDS QUOTES AS '
             '"NEEDS QUOTES") AS anon_1',
         )
@@ -724,7 +724,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         col = sql.literal_column("NEEDS QUOTES").label("NEEDS QUOTES_")
 
         self.assert_compile(
-            select([col]).alias().select(),
+            select(col).alias().select(),
             'SELECT anon_1."NEEDS QUOTES_" FROM (SELECT NEEDS QUOTES AS '
             '"NEEDS QUOTES_") AS anon_1',
         )
@@ -735,7 +735,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select([col]).alias().select(),
+            select(col).alias().select(),
             'SELECT anon_1."NEEDS QUOTES" FROM '
             '(SELECT NEEDS QUOTES AS "NEEDS QUOTES") AS anon_1',
         )
@@ -746,7 +746,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select([col]).alias().select(),
+            select(col).alias().select(),
             'SELECT anon_1."NEEDS QUOTES_" FROM '
             '(SELECT NEEDS QUOTES AS "NEEDS QUOTES_") AS anon_1',
         )
@@ -760,7 +760,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         col = sql.literal_column('"NEEDS QUOTES"')
 
         self.assert_compile(
-            select([col]).alias().select(),
+            select(col).alias().select(),
             'SELECT anon_1."NEEDS QUOTES" FROM '
             '(SELECT "NEEDS QUOTES") AS anon_1',
         )
@@ -819,14 +819,13 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table("t", m, Column("x", Integer, quote=True))
 
         self.assert_compile(
-            select([t.alias()]).apply_labels(),
+            select(t.alias()).apply_labels(),
             'SELECT t_1."x" AS "t_1_x" FROM t AS t_1',
         )
 
         t2 = Table("t2", m, Column("x", Integer), quote=True)
         self.assert_compile(
-            select([t2.c.x]).apply_labels(),
-            'SELECT "t2".x AS "t2_x" FROM "t2"',
+            select(t2.c.x).apply_labels(), 'SELECT "t2".x AS "t2_x" FROM "t2"',
         )
 
 

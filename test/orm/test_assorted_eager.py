@@ -188,25 +188,25 @@ class EagerTest(fixtures.MappedTest):
         # not orm style correct query
         print("Obtaining correct results without orm")
         result = (
-            sa.select(
-                [tests.c.id, categories.c.name],
+            sa.select(tests.c.id, categories.c.name)
+            .where(
                 sa.and_(
                     tests.c.owner_id == 1,
                     sa.or_(
                         options.c.someoption == None,  # noqa
                         options.c.someoption == False,
                     ),
-                ),
-                order_by=[tests.c.id],
-                from_obj=[
-                    tests.join(categories).outerjoin(
-                        options,
-                        sa.and_(
-                            tests.c.id == options.c.test_id,
-                            tests.c.owner_id == options.c.owner_id,
-                        ),
-                    )
-                ],
+                )
+            )
+            .order_by(tests.c.id)
+            .select_from(
+                tests.join(categories).outerjoin(
+                    options,
+                    sa.and_(
+                        tests.c.id == options.c.test_id,
+                        tests.c.owner_id == options.c.owner_id,
+                    ),
+                )
             )
             .execute()
             .fetchall()
@@ -530,10 +530,12 @@ class EagerTest3(fixtures.MappedTest):
         )
         session.flush()
 
-        arb_data = sa.select(
-            [stats.c.data_id, sa.func.max(stats.c.somedata).label("max")],
-            stats.c.data_id <= 5,
-            group_by=[stats.c.data_id],
+        arb_data = (
+            sa.select(
+                stats.c.data_id, sa.func.max(stats.c.somedata).label("max")
+            )
+            .where(stats.c.data_id <= 5)
+            .group_by(stats.c.data_id)
         )
 
         arb_result = arb_data.execute().fetchall()
@@ -1150,14 +1152,15 @@ class EagerTest8(fixtures.MappedTest):
         mapper(Task_Type, task_type)
 
         j = sa.outerjoin(task, msg, task.c.id == msg.c.task_id)
-        jj = sa.select(
-            [
+        jj = (
+            sa.select(
                 task.c.id.label("task_id"),
                 sa.func.count(msg.c.id).label("props_cnt"),
-            ],
-            from_obj=[j],
-            group_by=[task.c.id],
-        ).alias("prop_c_s")
+            )
+            .select_from(j)
+            .group_by(task.c.id)
+            .alias("prop_c_s")
+        )
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
         mapper(

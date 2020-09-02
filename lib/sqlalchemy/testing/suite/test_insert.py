@@ -55,7 +55,7 @@ class LastrowidTest(fixtures.TablesTest):
         r = connection.execute(
             self.tables.autoinc_pk.insert(), data="some data"
         )
-        pk = connection.scalar(select([self.tables.autoinc_pk.c.id]))
+        pk = connection.scalar(select(self.tables.autoinc_pk.c.id))
         eq_(r.inserted_primary_key, (pk,))
 
     @requirements.dbapi_lastrowid
@@ -64,7 +64,7 @@ class LastrowidTest(fixtures.TablesTest):
             self.tables.autoinc_pk.insert(), data="some data"
         )
         lastrowid = r.lastrowid
-        pk = connection.scalar(select([self.tables.autoinc_pk.c.id]))
+        pk = connection.scalar(select(self.tables.autoinc_pk.c.id))
         eq_(lastrowid, pk)
 
 
@@ -178,7 +178,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         result = connection.execute(
             dest_table.insert().from_select(
                 ("data",),
-                select([src_table.c.data]).where(
+                select(src_table.c.data).where(
                     src_table.c.data.in_(["data2", "data3"])
                 ),
             )
@@ -187,7 +187,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         eq_(result.inserted_primary_key, (None,))
 
         result = connection.execute(
-            select([dest_table.c.data]).order_by(dest_table.c.data)
+            select(dest_table.c.data).order_by(dest_table.c.data)
         )
         eq_(result.fetchall(), [("data2",), ("data3",)])
 
@@ -199,7 +199,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         result = connection.execute(
             dest_table.insert().from_select(
                 ("data",),
-                select([src_table.c.data]).where(
+                select(src_table.c.data).where(
                     src_table.c.data.in_(["data2", "data3"])
                 ),
             )
@@ -207,7 +207,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         eq_(result.inserted_primary_key, (None,))
 
         result = connection.execute(
-            select([dest_table.c.data]).order_by(dest_table.c.data)
+            select(dest_table.c.data).order_by(dest_table.c.data)
         )
 
         eq_(result.fetchall(), [])
@@ -227,7 +227,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         connection.execute(
             table.insert(inline=True).from_select(
                 ("id", "data"),
-                select([table.c.id + 5, table.c.data]).where(
+                select(table.c.id + 5, table.c.data).where(
                     table.c.data.in_(["data2", "data3"])
                 ),
             )
@@ -235,7 +235,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
         eq_(
             connection.execute(
-                select([table.c.data]).order_by(table.c.data)
+                select(table.c.data).order_by(table.c.data)
             ).fetchall(),
             [("data1",), ("data2",), ("data2",), ("data3",), ("data3",)],
         )
@@ -255,7 +255,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
         connection.execute(
             table.insert(inline=True).from_select(
                 ("id", "data"),
-                select([table.c.id + 5, table.c.data]).where(
+                select(table.c.id + 5, table.c.data).where(
                     table.c.data.in_(["data2", "data3"])
                 ),
             )
@@ -263,7 +263,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
         eq_(
             connection.execute(
-                select([table]).order_by(table.c.data, table.c.id)
+                select(table).order_by(table.c.data, table.c.id)
             ).fetchall(),
             [
                 (1, "data1", 5, 4),
@@ -306,7 +306,7 @@ class ReturningTest(fixtures.TablesTest):
             table.insert().returning(table.c.id), data="some data"
         )
         pk = r.first()[0]
-        fetched_pk = connection.scalar(select([table.c.id]))
+        fetched_pk = connection.scalar(select(table.c.id))
         eq_(fetched_pk, pk)
 
     def test_explicit_returning_pk_no_autocommit(self, connection):
@@ -315,7 +315,7 @@ class ReturningTest(fixtures.TablesTest):
             table.insert().returning(table.c.id), data="some data"
         )
         pk = r.first()[0]
-        fetched_pk = connection.scalar(select([table.c.id]))
+        fetched_pk = connection.scalar(select(table.c.id))
         eq_(fetched_pk, pk)
 
     def test_autoincrement_on_insert_implicit_returning(self, connection):
@@ -328,7 +328,7 @@ class ReturningTest(fixtures.TablesTest):
         r = connection.execute(
             self.tables.autoinc_pk.insert(), data="some data"
         )
-        pk = connection.scalar(select([self.tables.autoinc_pk.c.id]))
+        pk = connection.scalar(select(self.tables.autoinc_pk.c.id))
         eq_(r.inserted_primary_key, (pk,))
 
 

@@ -38,8 +38,8 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
 
     def test_plain_union(self, connection):
         table = self.tables.some_table
-        s1 = select([table]).where(table.c.id == 2)
-        s2 = select([table]).where(table.c.id == 3)
+        s1 = select(table).where(table.c.id == 2)
+        s2 = select(table).where(table.c.id == 3)
 
         u1 = union(s1, s2)
         with testing.expect_deprecated(
@@ -59,8 +59,8 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
     # it before.
     def _dont_test_select_from_plain_union(self, connection):
         table = self.tables.some_table
-        s1 = select([table]).where(table.c.id == 2)
-        s2 = select([table]).where(table.c.id == 3)
+        s1 = select(table).where(table.c.id == 2)
+        s2 = select(table).where(table.c.id == 3)
 
         u1 = union(s1, s2).alias().select()
         with testing.expect_deprecated(
@@ -75,18 +75,8 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
     @testing.requires.parens_in_union_contained_select_w_limit_offset
     def test_limit_offset_selectable_in_unions(self, connection):
         table = self.tables.some_table
-        s1 = (
-            select([table])
-            .where(table.c.id == 2)
-            .limit(1)
-            .order_by(table.c.id)
-        )
-        s2 = (
-            select([table])
-            .where(table.c.id == 3)
-            .limit(1)
-            .order_by(table.c.id)
-        )
+        s1 = select(table).where(table.c.id == 2).limit(1).order_by(table.c.id)
+        s2 = select(table).where(table.c.id == 3).limit(1).order_by(table.c.id)
 
         u1 = union(s1, s2).limit(2)
         with testing.expect_deprecated(
@@ -100,8 +90,8 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
     @testing.requires.parens_in_union_contained_select_wo_limit_offset
     def test_order_by_selectable_in_unions(self, connection):
         table = self.tables.some_table
-        s1 = select([table]).where(table.c.id == 2).order_by(table.c.id)
-        s2 = select([table]).where(table.c.id == 3).order_by(table.c.id)
+        s1 = select(table).where(table.c.id == 2).order_by(table.c.id)
+        s2 = select(table).where(table.c.id == 3).order_by(table.c.id)
 
         u1 = union(s1, s2).limit(2)
         with testing.expect_deprecated(
@@ -114,8 +104,8 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
 
     def test_distinct_selectable_in_unions(self, connection):
         table = self.tables.some_table
-        s1 = select([table]).where(table.c.id == 2).distinct()
-        s2 = select([table]).where(table.c.id == 3).distinct()
+        s1 = select(table).where(table.c.id == 2).distinct()
+        s2 = select(table).where(table.c.id == 3).distinct()
 
         u1 = union(s1, s2).limit(2)
         with testing.expect_deprecated(
@@ -129,7 +119,7 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
     def test_limit_offset_aliased_selectable_in_unions(self, connection):
         table = self.tables.some_table
         s1 = (
-            select([table])
+            select(table)
             .where(table.c.id == 2)
             .limit(1)
             .order_by(table.c.id)
@@ -137,7 +127,7 @@ class DeprecatedCompoundSelectTest(fixtures.TablesTest):
             .select()
         )
         s2 = (
-            select([table])
+            select(table)
             .where(table.c.id == 3)
             .limit(1)
             .order_by(table.c.id)

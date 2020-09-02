@@ -384,7 +384,7 @@ we can adjust our ``SavingsAccount`` example to aggregate the balances for
 
         @balance.expression
         def balance(cls):
-            return select([func.sum(SavingsAccount.balance)]).\
+            return select(func.sum(SavingsAccount.balance)).\
                     where(SavingsAccount.user_id==cls.id).\
                     label('total_balance')
 

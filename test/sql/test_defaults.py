@@ -384,11 +384,11 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
         def myupdate_with_ctx(ctx):
             conn = ctx.connection
-            return conn.execute(sa.select([sa.text("13")])).scalar()
+            return conn.execute(sa.select(sa.text("13"))).scalar()
 
         def mydefault_using_connection(ctx):
             conn = ctx.connection
-            return conn.execute(sa.select([sa.text("12")])).scalar()
+            return conn.execute(sa.select(sa.text("12"))).scalar()
 
         use_function_defaults = testing.against("postgresql", "mssql")
         is_oracle = testing.against("oracle")
@@ -413,13 +413,11 @@ class DefaultRoundTripTest(fixtures.TablesTest):
             if is_oracle:
                 ts = conn.scalar(
                     sa.select(
-                        [
-                            func.trunc(
-                                func.current_timestamp(),
-                                sa.literal_column("'DAY'"),
-                                type_=sa.Date,
-                            )
-                        ]
+                        func.trunc(
+                            func.current_timestamp(),
+                            sa.literal_column("'DAY'"),
+                            type_=sa.Date,
+                        )
                     )
                 )
                 currenttime = cls.currenttime = func.trunc(
@@ -530,7 +528,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         connection.execute(t.insert())
 
         ctexec = connection.execute(
-            sa.select([self.currenttime.label("now")])
+            sa.select(self.currenttime.label("now"))
         ).scalar()
         result = connection.execute(t.select().order_by(t.c.col1))
         today = datetime.date.today()
@@ -897,14 +895,14 @@ class CTEDefaultTest(fixtures.TablesTest):
             expected = (7, 5)
         elif a == "select":
             conn.execute(q.insert().values(x=5, y=10, z=1))
-            cte = sa.select([q.c.z]).cte("c")
+            cte = sa.select(q.c.z).cte("c")
             expected = (5, 10)
 
         if b == "select":
             conn.execute(p.insert().values(s=1))
-            stmt = select([p.c.s, cte.c.z]).where(p.c.s == cte.c.z)
+            stmt = select(p.c.s, cte.c.z).where(p.c.s == cte.c.z)
         elif b == "insert":
-            sel = select([1, cte.c.z])
+            sel = select(1, cte.c.z)
             stmt = (
                 p.insert().from_select(["s", "t"], sel).returning(p.c.s, p.c.t)
             )
@@ -920,7 +918,7 @@ class CTEDefaultTest(fixtures.TablesTest):
             )
         eq_(list(conn.execute(stmt)), [(1, 1)])
 
-        eq_(conn.execute(select([q.c.x, q.c.y])).first(), expected)
+        eq_(conn.execute(select(q.c.x, q.c.y)).first(), expected)
 
 
 class PKDefaultTest(fixtures.TablesTest):
@@ -938,7 +936,7 @@ class PKDefaultTest(fixtures.TablesTest):
                 "id",
                 Integer,
                 primary_key=True,
-                default=sa.select([func.max(t2.c.nextid)]).scalar_subquery(),
+                default=sa.select(func.max(t2.c.nextid)).scalar_subquery(),
             ),
             Column("data", String(30)),
         )
@@ -1079,7 +1077,7 @@ class EmptyInsertTest(fixtures.TestBase):
         connection.execute(t1.insert())
         eq_(
             1,
-            connection.scalar(select([func.count(text("*"))]).select_from(t1)),
+            connection.scalar(select(func.count(text("*"))).select_from(t1)),
         )
         eq_(True, connection.scalar(t1.select()))
 
@@ -1098,7 +1096,7 @@ class AutoIncrementTest(fixtures.TestBase):
         r = connection.execute(single.insert())
         id_ = r.inserted_primary_key[0]
         eq_(id_, 1)
-        eq_(connection.scalar(sa.select([single.c.id])), 1)
+        eq_(connection.scalar(sa.select(single.c.id)), 1)
 
     def test_autoinc_detection_no_affinity(self):
         class MyType(TypeDecorator):
@@ -1191,7 +1189,7 @@ class AutoIncrementTest(fixtures.TestBase):
         connection.execute(dataset_no_autoinc.insert())
         eq_(
             connection.scalar(
-                select([func.count("*")]).select_from(dataset_no_autoinc)
+                select(func.count("*")).select_from(dataset_no_autoinc)
             ),
             1,
         )
@@ -1209,7 +1207,7 @@ class AutoIncrementTest(fixtures.TestBase):
         connection.execute(dataset_no_autoinc.insert())
         eq_(
             connection.scalar(
-                select([func.count("*")]).select_from(dataset_no_autoinc)
+                select(func.count("*")).select_from(dataset_no_autoinc)
             ),
             1,
         )
@@ -1312,7 +1310,7 @@ class SpecialTypePKTest(fixtures.TestBase):
         self._run_test(server_default="1", autoincrement=False)
 
     def test_clause(self):
-        stmt = select([cast("INT_1", type_=self.MyInteger)]).scalar_subquery()
+        stmt = select(cast("INT_1", type_=self.MyInteger)).scalar_subquery()
         self._run_test(default=stmt)
 
     @testing.requires.returning
@@ -1500,7 +1498,7 @@ class InsertFromSelectTest(fixtures.TablesTest):
 
         table.create(connection)
 
-        sel = select([data.c.x, data.c.y])
+        sel = select(data.c.x, data.c.y)
 
         ins = table.insert().from_select(["x", "y"], sel)
         connection.execute(ins)
@@ -1529,7 +1527,7 @@ class InsertFromSelectTest(fixtures.TablesTest):
 
         table.create(connection)
 
-        sel = select([data.c.x, data.c.y])
+        sel = select(data.c.x, data.c.y)
 
         ins = table.insert().from_select(["x", "y"], sel)
         connection.execute(ins)

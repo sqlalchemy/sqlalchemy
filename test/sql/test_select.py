@@ -57,6 +57,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_legacy_calling_style_col_seq_only(self):
+        # keep [] here
         stmt = select([table1.c.myid]).where(table1.c.myid == table2.c.otherid)
 
         self.assert_compile(

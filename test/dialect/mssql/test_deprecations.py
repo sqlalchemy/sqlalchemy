@@ -144,7 +144,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_column_subquery_to_alias(self):
         a1 = self.t2.alias("a1")
-        s = select([self.t2, select(a1.c.a).scalar_subquery()])
+        s = select(self.t2, select(a1.c.a).scalar_subquery())
         self._assert_sql(
             s,
             "SELECT t2_1.a, t2_1.b, t2_1.c, "

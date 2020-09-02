@@ -22,7 +22,7 @@ class aggregate_order_by(expression.ColumnElement):
 
         from sqlalchemy.dialects.postgresql import aggregate_order_by
         expr = func.array_agg(aggregate_order_by(table.c.a, table.c.b.desc()))
-        stmt = select([expr])
+        stmt = select(expr)
 
     would represent the expression::
 
@@ -34,7 +34,7 @@ class aggregate_order_by(expression.ColumnElement):
             table.c.a,
             aggregate_order_by(literal_column("','"), table.c.a)
         )
-        stmt = select([expr])
+        stmt = select(expr)
 
     Would represent::
 

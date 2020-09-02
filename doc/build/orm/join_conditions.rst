@@ -807,12 +807,12 @@ ten items for each collection::
         id = Column(Integer, primary_key=True)
         a_id = Column(ForeignKey("a.id"))
 
-    partition = select([
+    partition = select(
         B,
         func.row_number().over(
             order_by=B.id, partition_by=B.a_id
         ).label('index')
-    ]).alias()
+    ).alias()
 
     partitioned_b = aliased(B, partition)
 

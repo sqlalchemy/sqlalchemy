@@ -150,7 +150,7 @@ class LegacySequenceExecTest(fixtures.TestBase):
         """test can use next_value() in select column expr"""
 
         s = Sequence("my_sequence")
-        self._assert_seq_result(testing.db.scalar(select([s.next_value()])))
+        self._assert_seq_result(testing.db.scalar(select(s.next_value())))
 
 
 class SequenceExecTest(fixtures.TestBase):
@@ -201,7 +201,7 @@ class SequenceExecTest(fixtures.TestBase):
         """test can use next_value() in select column expr"""
 
         s = Sequence("my_sequence")
-        self._assert_seq_result(connection.scalar(select([s.next_value()])))
+        self._assert_seq_result(connection.scalar(select(s.next_value())))
 
     @testing.requires.sequences_in_other_clauses
     @testing.provide_metadata
@@ -446,7 +446,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
 
         eq_(
             connection.scalar(
-                sa.select([cartitems.c.cart_id]).where(
+                sa.select(cartitems.c.cart_id).where(
                     cartitems.c.description == "lala"
                 ),
             ),
@@ -526,7 +526,7 @@ class SequenceAsServerDefaultTest(
         t_seq_test = self.tables.t_seq_test
         connection.execute(t_seq_test.insert().values(data="some data"))
 
-        eq_(connection.scalar(select([t_seq_test.c.id])), 1)
+        eq_(connection.scalar(select(t_seq_test.c.id)), 1)
 
     def test_default_textual_server_only(self, connection):
         connection.exec_driver_sql(
@@ -542,7 +542,7 @@ class SequenceAsServerDefaultTest(
         t_seq_test = self.tables.t_seq_test_2
         connection.execute(t_seq_test.insert().values(data="some data"))
 
-        eq_(connection.scalar(select([t_seq_test.c.id])), 1)
+        eq_(connection.scalar(select(t_seq_test.c.id)), 1)
 
     def test_drop_ordering(self):
         with self.sql_execution_asserter(testing.db) as asserter:

@@ -425,12 +425,13 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = self.__dialect__
 
         def gen(distinct=None, prefixes=None):
-            kw = {}
-            if distinct is not None:
-                kw["distinct"] = distinct
+            stmt = select(column("q"))
+            if distinct:
+                stmt = stmt.distinct()
             if prefixes is not None:
-                kw["prefixes"] = prefixes
-            return str(select([column("q")], **kw).compile(dialect=dialect))
+                stmt = stmt.prefix_with(*prefixes)
+
+            return str(stmt.compile(dialect=dialect))
 
         eq_(gen(None), "SELECT q")
         eq_(gen(True), "SELECT DISTINCT q")

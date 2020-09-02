@@ -604,7 +604,7 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
         self._data_fixture()
 
         stmt = (
-            select([users.c.user_id, users.c.goofy8])
+            select(users.c.user_id, users.c.goofy8)
             .where(users.c.goofy8.in_([15, 9]))
             .order_by(users.c.user_id)
         )
@@ -616,7 +616,7 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
         self._data_fixture()
 
         stmt = (
-            select([users.c.user_id, users.c.goofy8])
+            select(users.c.user_id, users.c.goofy8)
             .where(users.c.goofy8.in_(bindparam("goofy", expanding=True)))
             .order_by(users.c.user_id)
         )
@@ -642,7 +642,7 @@ class UserDefinedTest(
                 return "HI->%s<-THERE" % value
 
         self.assert_compile(
-            select([literal("test", MyType)]),
+            select(literal("test", MyType)),
             "SELECT 'HI->test<-THERE' AS anon_1",
             dialect="default",
             literal_binds=True,
@@ -674,7 +674,7 @@ class UserDefinedTest(
                 return "HI->%s<-THERE" % value
 
         self.assert_compile(
-            select([literal("test", MyType)]),
+            select(literal("test", MyType)),
             "SELECT 'HI->test<-THERE' AS anon_1",
             dialect="default",
             literal_binds=True,
@@ -866,7 +866,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         conn.execute(t.insert().values(data=coerce_fn("d1", MyType)))
 
         eq_(
-            conn.execute(select([coerce_fn(t.c.data, MyType)])).fetchall(),
+            conn.execute(select(coerce_fn(t.c.data, MyType))).fetchall(),
             [("BIND_INd1BIND_OUT",)],
         )
 
@@ -890,7 +890,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         conn.execute(t.insert().values(data=coerce_fn(MyObj(), MyType)))
 
         eq_(
-            conn.execute(select([coerce_fn(t.c.data, MyType)])).fetchall(),
+            conn.execute(select(coerce_fn(t.c.data, MyType))).fetchall(),
             [("BIND_INTHISISMYOBJBIND_OUT",)],
         )
 
@@ -908,7 +908,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(t.c.data, MyType)])
+                select(t.c.data, coerce_fn(t.c.data, MyType))
             ).fetchall(),
             [("BIND_INd1", "BIND_INd1BIND_OUT")],
         )
@@ -927,7 +927,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(
-                select([t.c.data.label("x"), coerce_fn(t.c.data, MyType)])
+                select(t.c.data.label("x"), coerce_fn(t.c.data, MyType))
                 .alias()
                 .select()
             ).fetchall(),
@@ -949,7 +949,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         # coerce on left side
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(t.c.data, MyType)]).where(
+                select(t.c.data, coerce_fn(t.c.data, MyType)).where(
                     coerce_fn(t.c.data, MyType) == "d1"
                 )
             ).fetchall(),
@@ -959,7 +959,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         # coerce on right side
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(t.c.data, MyType)]).where(
+                select(t.c.data, coerce_fn(t.c.data, MyType)).where(
                     t.c.data == coerce_fn("d1", MyType)
                 )
             ).fetchall(),
@@ -979,7 +979,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         conn.execute(t.insert().values(data=coerce_fn("d1", MyType)))
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(t.c.data, MyType)]).where(
+                select(t.c.data, coerce_fn(t.c.data, MyType)).where(
                     t.c.data == coerce_fn(None, MyType)
                 )
             ).fetchall(),
@@ -988,7 +988,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(t.c.data, MyType)]).where(
+                select(t.c.data, coerce_fn(t.c.data, MyType)).where(
                     coerce_fn(t.c.data, MyType) == None
                 )
             ).fetchall(),  # noqa
@@ -1013,7 +1013,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         eq_(
             conn.execute(
-                select([t.c.data, coerce_fn(MyFoob(), MyType)])
+                select(t.c.data, coerce_fn(MyFoob(), MyType))
             ).fetchall(),
             [("BIND_INd1", "BIND_INd1BIND_OUT")],
         )
@@ -1030,7 +1030,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         t = self.tables.t
         conn.execute(t.insert().values(data=coerce_fn("d1", MyType)))
 
-        stmt = select([t.c.data, coerce_fn(t.c.data, MyType)])
+        stmt = select(t.c.data, coerce_fn(t.c.data, MyType))
 
         def col_to_bind(col):
             if col is t.c.data:
@@ -1071,12 +1071,8 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         conn.execute(t.insert().values(data=coerce_fn("d1", MyType)))
 
         stmt = select(
-            [
-                bindparam(None, "x", String(50), unique=True),
-                coerce_fn(
-                    bindparam(None, "x", String(50), unique=True), MyType
-                ),
-            ]
+            bindparam(None, "x", String(50), unique=True),
+            coerce_fn(bindparam(None, "x", String(50), unique=True), MyType),
         )
 
         eq_(
@@ -1093,7 +1089,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         # when cast() is given an already typed value,
         # the type does not take effect on the value itself.
         eq_(
-            connection.scalar(select([coerce_fn(literal("d1"), MyType)])),
+            connection.scalar(select(coerce_fn(literal("d1"), MyType))),
             "d1BIND_OUT",
         )
 
@@ -1110,9 +1106,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         )
 
         eq_(
-            connection.execute(
-                select([coerce_fn(t.c.data, MyType)])
-            ).fetchall(),
+            connection.execute(select(coerce_fn(t.c.data, MyType))).fetchall(),
             [("BIND_INd1BIND_OUT",)],
         )
 
@@ -1240,7 +1234,7 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
 
             conn.execute(t.insert(), x="foo")
 
-            eq_(conn.scalar(select([t.c.x]).where(t.c.x == "foo")), "fooUTWO")
+            eq_(conn.scalar(select(t.c.x).where(t.c.x == "foo")), "fooUTWO")
 
     @testing.only_on("sqlite")
     @testing.provide_metadata
@@ -1259,7 +1253,7 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
 
             eq_(
                 conn.scalar(
-                    select([t.c.x]).where(
+                    select(t.c.x).where(
                         t.c.x
                         == datetime.datetime(2015, 4, 18, 10, 15, 17, 1059)
                     )
@@ -1620,9 +1614,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
 
         eq_(
             connection.execute(
-                select(["foo" + enum_table.c.someenum]).order_by(
-                    enum_table.c.id
-                )
+                select("foo" + enum_table.c.someenum).order_by(enum_table.c.id)
             ).fetchall(),
             [("footwo",), ("footwo",), ("fooone",)],
         )
@@ -1651,14 +1643,12 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         non_native_enum_table = self.tables.non_native_enum_table
 
         connection.execute(enum_table.insert(), {"id": 1, "someenum": None})
-        eq_(connection.scalar(select([enum_table.c.someenum])), None)
+        eq_(connection.scalar(select(enum_table.c.someenum)), None)
 
         connection.execute(
             non_native_enum_table.insert(), {"id": 1, "someenum": None}
         )
-        eq_(
-            connection.scalar(select([non_native_enum_table.c.someenum])), None
-        )
+        eq_(connection.scalar(select(non_native_enum_table.c.someenum)), None)
 
     @testing.requires.enforces_check_constraints
     def test_check_constraint(self, connection):
@@ -1783,7 +1773,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 "'four' is not among the defined enum values. "
                 "Enum name: None. Possible values: one, two, three",
                 conn.scalar,
-                select([self.tables.non_native_enum_table.c.someotherenum]),
+                select(self.tables.non_native_enum_table.c.someotherenum),
             )
 
     def test_non_native_round_trip(self, connection):
@@ -1801,10 +1791,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(
             connection.execute(
                 select(
-                    [
-                        non_native_enum_table.c.id,
-                        non_native_enum_table.c.someenum,
-                    ]
+                    non_native_enum_table.c.id,
+                    non_native_enum_table.c.someenum,
                 ).order_by(non_native_enum_table.c.id)
             ).fetchall(),
             [(1, "two"), (2, "two"), (3, "one")],
@@ -2218,7 +2206,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
         connection.execute(binary_table.insert(), data=data)
         eq_(
             connection.scalar(
-                select([func.count("*")])
+                select(func.count("*"))
                 .select_from(binary_table)
                 .where(binary_table.c.data == data)
             ),
@@ -2227,7 +2215,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.requires.binary_literals
     def test_literal_roundtrip(self, connection):
-        compiled = select([cast(literal(util.b("foo")), LargeBinary)]).compile(
+        compiled = select(cast(literal(util.b("foo")), LargeBinary)).compile(
             dialect=testing.db.dialect, compile_kwargs={"literal_binds": True}
         )
         result = connection.execute(compiled)
@@ -2532,11 +2520,9 @@ class ExpressionTest(
         eq_(
             connection.execute(
                 select(
-                    [
-                        test_table.c.id,
-                        test_table.c.data,
-                        test_table.c.atimestamp,
-                    ]
+                    test_table.c.id,
+                    test_table.c.data,
+                    test_table.c.atimestamp,
                 ).where(expr),
                 {"thedate": datetime.date(2007, 10, 15)},
             ).fetchall(),
@@ -2650,7 +2636,7 @@ class ExpressionTest(
         assert expr.right.type.__class__ is MyTypeDec
 
         eq_(
-            connection.execute(select([expr.label("foo")])).scalar(),
+            connection.execute(select(expr.label("foo"))).scalar(),
             "BIND_INfooBIND_INhiBIND_OUT",
         )
 
@@ -2712,7 +2698,7 @@ class ExpressionTest(
         is_(expr.type.__class__, MyTypeDec)
 
         eq_(
-            connection.execute(select([expr.label("foo")])).scalar(),
+            connection.execute(select(expr.label("foo"))).scalar(),
             "BIND_INfooBIND_IN6BIND_OUT",
         )
 
@@ -2861,10 +2847,10 @@ class ExpressionTest(
         eq_(expr.type, types.NULLTYPE)
 
     def test_distinct(self, connection):
-        s = select([distinct(test_table.c.avalue)])
+        s = select(distinct(test_table.c.avalue))
         eq_(connection.execute(s).scalar(), 25)
 
-        s = select([test_table.c.avalue.distinct()])
+        s = select(test_table.c.avalue.distinct())
         eq_(connection.execute(s).scalar(), 25)
 
         assert distinct(test_table.c.data).type == test_table.c.data.type
@@ -3250,8 +3236,7 @@ class BooleanTest(
             )
 
             eq_(
-                conn.scalar(select([boolean_table.c.unconstrained_value])),
-                True,
+                conn.scalar(select(boolean_table.c.unconstrained_value)), True,
             )
 
     def test_bind_processor_coercion_native_true(self):

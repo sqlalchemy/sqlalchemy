@@ -572,7 +572,7 @@ SQLAlchemy makes available the PostgreSQL ``@@`` operator via the
 method on any textual column expression.
 On a PostgreSQL dialect, an expression like the following::
 
-    select([sometable.c.text.match("search string")])
+    select(sometable.c.text.match("search string"))
 
 will emit to the database::
 
@@ -582,9 +582,7 @@ The PostgreSQL text search functions such as ``to_tsquery()``
 and ``to_tsvector()`` are available
 explicitly using the standard :data:`.func` construct.  For example::
 
-    select([
-        func.to_tsvector('fat cats ate rats').match('cat & rat')
-    ])
+    select(func.to_tsvector('fat cats ate rats').match('cat & rat'))
 
 Emits the equivalent of::
 
@@ -594,7 +592,7 @@ The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 
     from sqlalchemy.dialects.postgresql import TSVECTOR
     from sqlalchemy import select, cast
-    select([cast("some text", TSVECTOR)])
+    select(cast("some text", TSVECTOR))
 
 produces a statement equivalent to::
 
@@ -615,7 +613,7 @@ In order to provide for this explicit query planning, or to use different
 search strategies, the ``match`` method accepts a ``postgresql_regconfig``
 keyword argument::
 
-    select([mytable.c.id]).where(
+    select(mytable.c.id).where(
         mytable.c.title.match('somestring', postgresql_regconfig='english')
     )
 
@@ -627,7 +625,7 @@ Emits the equivalent of::
 One can also specifically pass in a `'regconfig'` value to the
 ``to_tsvector()`` command as the initial argument::
 
-    select([mytable.c.id]).where(
+    select(mytable.c.id).where(
             func.to_tsvector('english', mytable.c.title )\
             .match('somestring', postgresql_regconfig='english')
         )
@@ -927,7 +925,7 @@ is not available yet in sqlalchemy, however the
 :func:`_expression.literal_column` function with the name of the table may be
 used in its place::
 
-    select(['*']).select_from(func.my_function(literal_column('my_table')))
+    select('*').select_from(func.my_function(literal_column('my_table')))
 
 Will generate the SQL::
 

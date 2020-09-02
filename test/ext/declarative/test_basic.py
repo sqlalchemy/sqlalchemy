@@ -1481,7 +1481,7 @@ class DeclarativeTest(DeclarativeTestBase):
             user_id = Column("user_id", Integer, ForeignKey("users.id"))
 
         User.address_count = sa.orm.column_property(
-            sa.select([sa.func.count(Address.id)])
+            sa.select(sa.func.count(Address.id))
             .where(Address.user_id == User.id)
             .scalar_subquery()
         )
@@ -1528,7 +1528,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 # this doesn't really gain us anything.  but if
                 # one is used, lets have it function as expected...
                 return sa.orm.column_property(
-                    sa.select([sa.func.count(Address.id)])
+                    sa.select(sa.func.count(Address.id))
                     .where(Address.user_id == cls.id)
                     .scalar_subquery()
                 )
@@ -1628,9 +1628,9 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column("name", String(50))
 
             adr_count = sa.orm.column_property(
-                sa.select(
-                    [sa.func.count(Address.id)], Address.user_id == id
-                ).scalar_subquery()
+                sa.select(sa.func.count(Address.id))
+                .where(Address.user_id == id)
+                .scalar_subquery()
             )
             addresses = relationship(Address)
 
@@ -1932,7 +1932,7 @@ class DeclarativeTest(DeclarativeTestBase):
             )
 
         User.address_count = sa.orm.column_property(
-            sa.select([sa.func.count(Address.id)])
+            sa.select(sa.func.count(Address.id))
             .where(Address.user_id == User.id)
             .scalar_subquery()
         )

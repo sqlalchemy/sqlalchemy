@@ -590,7 +590,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (3,)],
         )
@@ -607,7 +607,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (2,), (3,)],
         )
@@ -637,7 +637,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (4,)],
         )
@@ -663,7 +663,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.close()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (2,)],
         )
@@ -695,7 +695,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
         eq_(
             connection.execute(
-                select([users.c.user_id]).order_by(users.c.user_id)
+                select(users.c.user_id).order_by(users.c.user_id)
             ).fetchall(),
             [(1,), (2,), (5,)],
         )
@@ -722,7 +722,7 @@ class TransactionTest(fixtures.TestBase):
         with testing.db.connect() as connection2:
             eq_(
                 connection2.execution_options(autocommit=True)
-                .execute(select([users.c.user_id]).order_by(users.c.user_id))
+                .execute(select(users.c.user_id).order_by(users.c.user_id))
                 .fetchall(),
                 [],
             )
@@ -731,7 +731,7 @@ class TransactionTest(fixtures.TestBase):
             connection2.commit_prepared(transaction.xid, recover=True)
             eq_(
                 connection2.execute(
-                    select([users.c.user_id]).order_by(users.c.user_id)
+                    select(users.c.user_id).order_by(users.c.user_id)
                 ).fetchall(),
                 [(1,)],
             )
@@ -755,7 +755,7 @@ class TransactionTest(fixtures.TestBase):
         xa.prepare()
         xa.commit()
         result = conn.execute(
-            select([users.c.user_name]).order_by(users.c.user_id)
+            select(users.c.user_name).order_by(users.c.user_id)
         )
         eq_(result.fetchall(), [("user1",), ("user4",)])
 
@@ -786,7 +786,7 @@ class TransactionTest(fixtures.TestBase):
 
         with eng.connect() as conn:
             result = conn.execute(
-                select([users.c.user_name]).order_by(users.c.user_id)
+                select(users.c.user_name).order_by(users.c.user_id)
             )
             eq_(result.fetchall(), [])
 
@@ -1060,13 +1060,13 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
 
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
-        conn1.execute(select([func.insert_foo("data1")]))
-        assert conn2.execute(select([foo.c.data])).fetchall() == []
+        conn1.execute(select(func.insert_foo("data1")))
+        assert conn2.execute(select(foo.c.data)).fetchall() == []
         conn1.execute(text("select insert_foo('moredata')"))
-        assert conn2.execute(select([foo.c.data])).fetchall() == []
+        assert conn2.execute(select(foo.c.data)).fetchall() == []
         trans = conn1.begin()
         trans.commit()
-        assert conn2.execute(select([foo.c.data])).fetchall() == [
+        assert conn2.execute(select(foo.c.data)).fetchall() == [
             ("data1",),
             ("moredata",),
         ]
@@ -1077,11 +1077,9 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         conn1.execute(
-            select([func.insert_foo("data1")]).execution_options(
-                autocommit=True
-            )
+            select(func.insert_foo("data1")).execution_options(autocommit=True)
         )
-        assert conn2.execute(select([foo.c.data])).fetchall() == [("data1",)]
+        assert conn2.execute(select(foo.c.data)).fetchall() == [("data1",)]
         conn1.close()
         conn2.close()
 
@@ -1089,28 +1087,26 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         conn1.execution_options(autocommit=True).execute(
-            select([func.insert_foo("data1")])
+            select(func.insert_foo("data1"))
         )
-        eq_(conn2.execute(select([foo.c.data])).fetchall(), [("data1",)])
+        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
 
         # connection supersedes statement
 
         conn1.execution_options(autocommit=False).execute(
-            select([func.insert_foo("data2")]).execution_options(
-                autocommit=True
-            )
+            select(func.insert_foo("data2")).execution_options(autocommit=True)
         )
-        eq_(conn2.execute(select([foo.c.data])).fetchall(), [("data1",)])
+        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
 
         # ditto
 
         conn1.execution_options(autocommit=True).execute(
-            select([func.insert_foo("data3")]).execution_options(
+            select(func.insert_foo("data3")).execution_options(
                 autocommit=False
             )
         )
         eq_(
-            conn2.execute(select([foo.c.data])).fetchall(),
+            conn2.execute(select(foo.c.data)).fetchall(),
             [("data1",), ("data2",), ("data3",)],
         )
         conn1.close()
@@ -1124,9 +1120,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
                 autocommit=True
             )
         )
-        assert conn2.execute(select([foo.c.data])).fetchall() == [
-            ("moredata",)
-        ]
+        assert conn2.execute(select(foo.c.data)).fetchall() == [("moredata",)]
         conn1.close()
         conn2.close()
 
@@ -1134,7 +1128,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         conn1.execute(text("insert into foo (data) values ('implicitdata')"))
-        assert conn2.execute(select([foo.c.data])).fetchall() == [
+        assert conn2.execute(select(foo.c.data)).fetchall() == [
             ("implicitdata",)
         ]
         conn1.close()
@@ -1330,7 +1324,7 @@ class IsolationLevelTest(fixtures.TestBase):
             r"on Connection.execution_options\(\), or "
             r"per-engine using the isolation_level "
             r"argument to create_engine\(\).",
-            select([1]).execution_options,
+            select(1).execution_options,
             isolation_level=self._non_default_isolation_level(),
         )
 
@@ -1793,7 +1787,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         canary = mock.Mock()
         with testing.db.connect() as conn:
             event.listen(conn, "rollback", canary)
-            conn.execute(select([1]))
+            conn.execute(select(1))
             assert conn.in_transaction()
 
         eq_(canary.mock_calls, [mock.call(conn)])
@@ -1802,7 +1796,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         canary = mock.Mock()
         with testing.db.connect() as conn:
             event.listen(conn, "rollback", canary)
-            conn.execute(select([1]))
+            conn.execute(select(1))
             conn.rollback()
             assert not conn.in_transaction()
 
@@ -1813,7 +1807,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         try:
             with testing.db.connect() as conn:
                 event.listen(conn, "rollback", canary)
-                conn.execute(select([1]))
+                conn.execute(select(1))
                 assert conn.in_transaction()
                 raise Exception("some error")
             assert False
@@ -1866,7 +1860,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
                 exc.PendingRollbackError,
                 "Can't reconnect",
                 conn.execute,
-                select([1]),
+                select(1),
             )
 
             conn.rollback()

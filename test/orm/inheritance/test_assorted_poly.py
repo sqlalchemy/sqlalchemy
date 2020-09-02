@@ -1420,11 +1420,10 @@ class MultiLevelTest(fixtures.MappedTest):
                 "Manager": table_Employee.join(table_Engineer).join(
                     table_Manager
                 ),
-                "Engineer": select(
-                    [table_Employee, table_Engineer.c.machine],
-                    table_Employee.c.atype == "Engineer",
-                    from_obj=[table_Employee.join(table_Engineer)],
-                ).subquery(),
+                "Engineer": select(table_Employee, table_Engineer.c.machine)
+                .where(table_Employee.c.atype == "Engineer")
+                .select_from(table_Employee.join(table_Engineer))
+                .subquery(),
                 "Employee": table_Employee.select(
                     table_Employee.c.atype == "Employee"
                 ).subquery(),
@@ -1446,11 +1445,10 @@ class MultiLevelTest(fixtures.MappedTest):
                 "Manager": table_Employee.join(table_Engineer).join(
                     table_Manager
                 ),
-                "Engineer": select(
-                    [table_Employee, table_Engineer.c.machine],
-                    table_Employee.c.atype == "Engineer",
-                    from_obj=[table_Employee.join(table_Engineer)],
-                ).subquery(),
+                "Engineer": select(table_Employee, table_Engineer.c.machine)
+                .where(table_Employee.c.atype == "Engineer")
+                .select_from(table_Employee.join(table_Engineer))
+                .subquery(),
             },
             None,
             "pu_engineer",
@@ -1839,10 +1837,11 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
             self.classes.C,
             self.classes.D,
         )
-        poly_select = select(
-            [tablea, tableb.c.data.label("discriminator")],
-            from_obj=tablea.join(tableb),
-        ).alias("poly")
+        poly_select = (
+            select(tablea, tableb.c.data.label("discriminator"))
+            .select_from(tablea.join(tableb))
+            .alias("poly")
+        )
 
         mapper(B, tableb)
         mapper(

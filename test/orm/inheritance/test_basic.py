@@ -395,10 +395,10 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_not_present_col(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent = self.classes.Parent
-        t1t2_join = select([t1.c.x], from_obj=[t1.join(t2)]).alias()
+        t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
 
         def go():
-            t1t2_join_2 = select([t1.c.q], from_obj=[t1.join(t2)]).alias()
+            t1t2_join_2 = select(t1.c.q).select_from(t1.join(t2)).alias()
             mapper(
                 Parent,
                 t2,
@@ -417,7 +417,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_only_in_with_poly(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent = self.classes.Parent
-        t1t2_join = select([t1.c.x], from_obj=[t1.join(t2)]).alias()
+        t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
         # if its in the with_polymorphic, then its OK
         mapper(
             Parent,
@@ -431,11 +431,11 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent = self.classes.Parent
 
-        t1t2_join = select([t1.c.x], from_obj=[t1.join(t2)]).alias()
+        t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
 
         # if with_polymorphic, but its not present, not OK
         def go():
-            t1t2_join_2 = select([t1.c.q], from_obj=[t1.join(t2)]).alias()
+            t1t2_join_2 = select(t1.c.q).select_from(t1.join(t2)).alias()
             mapper(
                 Parent,
                 t2,

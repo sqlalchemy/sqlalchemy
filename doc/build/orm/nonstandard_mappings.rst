@@ -125,17 +125,15 @@ subquery::
 
     from sqlalchemy import select, func
 
-    subq = select([
+    subq = select(
                 func.count(orders.c.id).label('order_count'),
                 func.max(orders.c.price).label('highest_order'),
                 orders.c.customer_id
-                ]).group_by(orders.c.customer_id).alias()
+                ).group_by(orders.c.customer_id).alias()
 
-    customer_select = select([customers, subq]).\
-                select_from(
-                    join(customers, subq,
-                            customers.c.id == subq.c.customer_id)
-                ).alias()
+    customer_select = select(customers, subq).select_from(
+        join(customers, subq, customers.c.id == subq.c.customer_id)
+    ).alias()
 
     class Customer(Base):
         __table__ = customer_select

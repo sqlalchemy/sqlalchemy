@@ -453,7 +453,7 @@ Glossary
         as an ORDER BY clause by calling upon the :meth:`_expression.Select.where`
         and :meth:`_expression.Select.order_by` methods::
 
-            stmt = select([user.c.name]).\
+            stmt = select(user.c.name).\
                         where(user.c.id > 5).\
                         where(user.c.name.like('e%').\
                         order_by(user.c.name)

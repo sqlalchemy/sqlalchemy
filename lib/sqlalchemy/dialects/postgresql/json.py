@@ -219,7 +219,7 @@ class JSON(sqltypes.JSON):
 
             E.g.::
 
-                select([data_table.c.data['some key'].astext])
+                select(data_table.c.data['some key'].astext)
 
             .. seealso::
 

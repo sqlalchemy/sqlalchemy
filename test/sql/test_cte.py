@@ -34,21 +34,19 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         regional_sales = (
             select(
-                [
-                    orders.c.region,
-                    func.sum(orders.c.amount).label("total_sales"),
-                ]
+                orders.c.region,
+                func.sum(orders.c.amount).label("total_sales"),
             )
             .group_by(orders.c.region)
             .cte("regional_sales")
         )
 
         top_regions = (
-            select([regional_sales.c.region])
+            select(regional_sales.c.region)
             .where(
                 regional_sales.c.total_sales
                 > select(
-                    [func.sum(regional_sales.c.total_sales) / 10]
+                    func.sum(regional_sales.c.total_sales) / 10
                 ).scalar_subquery()
             )
             .cte("top_regions")
@@ -56,14 +54,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = (
             select(
-                [
-                    orders.c.region,
-                    orders.c.product,
-                    func.sum(orders.c.quantity).label("product_units"),
-                    func.sum(orders.c.amount).label("product_sales"),
-                ]
+                orders.c.region,
+                orders.c.product,
+                func.sum(orders.c.quantity).label("product_units"),
+                func.sum(orders.c.amount).label("product_sales"),
             )
-            .where(orders.c.region.in_(select([top_regions.c.region])))
+            .where(orders.c.region.in_(select(top_regions.c.region)))
             .group_by(orders.c.region, orders.c.product)
         )
 
@@ -93,7 +89,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         included_parts = (
-            select([parts.c.sub_part, parts.c.part, parts.c.quantity])
+            select(parts.c.sub_part, parts.c.part, parts.c.quantity)
             .where(parts.c.part == "our part")
             .cte(recursive=True)
         )
@@ -102,22 +98,16 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         parts_alias = parts.alias()
         included_parts = included_parts.union(
             select(
-                [
-                    parts_alias.c.sub_part,
-                    parts_alias.c.part,
-                    parts_alias.c.quantity,
-                ]
+                parts_alias.c.sub_part,
+                parts_alias.c.part,
+                parts_alias.c.quantity,
             ).where(parts_alias.c.part == incl_alias.c.sub_part)
         )
 
         s = (
             select(
-                [
-                    included_parts.c.sub_part,
-                    func.sum(included_parts.c.quantity).label(
-                        "total_quantity"
-                    ),
-                ]
+                included_parts.c.sub_part,
+                func.sum(included_parts.c.quantity).label("total_quantity"),
             )
             .select_from(
                 included_parts.join(
@@ -167,7 +157,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         included_parts = (
-            select([parts.c.sub_part, parts.c.part, parts.c.quantity])
+            select(parts.c.sub_part, parts.c.part, parts.c.quantity)
             .where(parts.c.part == "our part")
             .cte(recursive=True)
         )
@@ -176,22 +166,16 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         parts_alias = parts.alias()
         included_parts = incl_alias.union(
             select(
-                [
-                    parts_alias.c.sub_part,
-                    parts_alias.c.part,
-                    parts_alias.c.quantity,
-                ]
+                parts_alias.c.sub_part,
+                parts_alias.c.part,
+                parts_alias.c.quantity,
             ).where(parts_alias.c.part == incl_alias.c.sub_part)
         )
 
         s = (
             select(
-                [
-                    included_parts.c.sub_part,
-                    func.sum(included_parts.c.quantity).label(
-                        "total_quantity"
-                    ),
-                ]
+                included_parts.c.sub_part,
+                func.sum(included_parts.c.quantity).label("total_quantity"),
             )
             .select_from(
                 included_parts.join(
@@ -217,10 +201,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_union_no_alias_one(self):
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10))
-        s2 = select([cte])
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10))
+        s2 = select(cte)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -231,12 +215,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_union_alias_one(self):
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10)).alias(
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
             "cr1"
         )
-        s2 = select([cte])
+        s2 = select(cte)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -263,9 +247,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # I know, this is the PG VALUES keyword,
         # we're cheating here.  also yes we need the SELECT,
         # sorry PG.
-        t = select([func.values(1).label("n")]).cte("t", recursive=True)
-        t = t.union_all(select([t.c.n + 1]).where(t.c.n < 100))
-        s = select([func.sum(t.c.n)])
+        t = select(func.values(1).label("n")).cte("t", recursive=True)
+        t = t.union_all(select(t.c.n + 1).where(t.c.n < 100))
+        s = select(func.sum(t.c.n))
         self.assert_compile(
             s,
             "WITH RECURSIVE t(n) AS "
@@ -284,9 +268,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # I know, this is the PG VALUES keyword,
         # we're cheating here.  also yes we need the SELECT,
         # sorry PG.
-        t = select([func.values(1).label("n")]).cte("t", recursive=True)
-        t = t.union_all(select([t.c.n + 1]).where(t.c.n < 100)).alias("ta")
-        s = select([func.sum(t.c.n)])
+        t = select(func.values(1).label("n")).cte("t", recursive=True)
+        t = t.union_all(select(t.c.n + 1).where(t.c.n < 100)).alias("ta")
+        s = select(func.sum(t.c.n))
         self.assert_compile(
             s,
             "WITH RECURSIVE t(n) AS "
@@ -301,15 +285,15 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # like test one, but let's refer to the CTE
         # in a sibling CTE.
 
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
 
         # can't do it here...
-        # bar = select([cte]).cte('bar')
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10))
-        bar = select([cte]).cte("bar")
+        # bar = select(cte).cte('bar')
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10))
+        bar = select(cte).cte("bar")
 
-        s2 = select([cte, bar])
+        s2 = select(cte, bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -324,17 +308,17 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # like test one, but let's refer to the CTE
         # in a sibling CTE.
 
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
 
         # can't do it here...
-        # bar = select([cte]).cte('bar')
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10)).alias(
+        # bar = select(cte).cte('bar')
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
             "cs1"
         )
-        bar = select([cte]).cte("bar").alias("cs2")
+        bar = select(cte).cte("bar").alias("cs2")
 
-        s2 = select([cte, bar])
+        s2 = select(cte, bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -351,15 +335,15 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # how the compiler resolves multiple instances
         # of "cte".
 
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
 
-        bar = select([cte]).cte("bar")
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10))
+        bar = select(cte).cte("bar")
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10))
 
         # outer cte rendered first, then bar, which
         # includes "inner" cte
-        s2 = select([cte, bar])
+        s2 = select(cte, bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -372,7 +356,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # bar rendered, only includes "inner" cte,
         # "outer" cte isn't present
-        s2 = select([bar])
+        s2 = select(bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -383,7 +367,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # bar rendered, but then the "outer"
         # cte is rendered.
-        s2 = select([bar, cte])
+        s2 = select(bar, cte)
         self.assert_compile(
             s2,
             "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
@@ -400,17 +384,17 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         # how the compiler resolves multiple instances
         # of "cte".
 
-        s1 = select([literal(0).label("x")])
+        s1 = select(literal(0).label("x"))
         cte = s1.cte(name="cte", recursive=True)
 
-        bar = select([cte]).cte("bar").alias("cs1")
-        cte = cte.union_all(select([cte.c.x + 1]).where(cte.c.x < 10)).alias(
+        bar = select(cte).cte("bar").alias("cs1")
+        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
             "cs2"
         )
 
         # outer cte rendered first, then bar, which
         # includes "inner" cte
-        s2 = select([cte, bar])
+        s2 = select(cte, bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -423,7 +407,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # bar rendered, only includes "inner" cte,
         # "outer" cte isn't present
-        s2 = select([bar])
+        s2 = select(bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -434,7 +418,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # bar rendered, but then the "outer"
         # cte is rendered.
-        s2 = select([bar, cte])
+        s2 = select(bar, cte)
         self.assert_compile(
             s2,
             "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
@@ -448,12 +432,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_conflicting_names(self):
         """test a flat out name conflict."""
 
-        s1 = select([1])
+        s1 = select(1)
         c1 = s1.cte(name="cte1", recursive=True)
-        s2 = select([1])
+        s2 = select(1)
         c2 = s2.cte(name="cte1", recursive=True)
 
-        s = select([c1, c2])
+        s = select(c1, c2)
         assert_raises_message(
             CompileError,
             "Multiple, unrelated CTEs found " "with the same name: 'cte1'",
@@ -463,11 +447,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_union(self):
         orders = table("orders", column("region"), column("amount"))
 
-        regional_sales = select([orders.c.region, orders.c.amount]).cte(
+        regional_sales = select(orders.c.region, orders.c.amount).cte(
             "regional_sales"
         )
 
-        s = select([regional_sales.c.region]).where(
+        s = select(regional_sales.c.region).where(
             regional_sales.c.amount > 500
         )
 
@@ -482,7 +466,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         s = s.union_all(
-            select([regional_sales.c.region]).where(
+            select(regional_sales.c.region).where(
                 regional_sales.c.amount < 300
             )
         )
@@ -502,12 +486,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         orders = table("orders", column("region"), column("amount"))
 
         regional_sales = (
-            select([orders.c.region, orders.c.amount])
+            select(orders.c.region, orders.c.amount)
             .cte("regional_sales")
             .alias("rs")
         )
 
-        s = select([regional_sales.c.region]).where(
+        s = select(regional_sales.c.region).where(
             regional_sales.c.amount > 500
         )
 
@@ -522,7 +506,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         s = s.union_all(
-            select([regional_sales.c.region]).where(
+            select(regional_sales.c.region).where(
                 regional_sales.c.amount < 300
             )
         )
@@ -558,7 +542,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         tag = table("tag", column("tag"), column("entity_id"))
 
         tags = (
-            select([tag.c.entity_id, func.array_agg(tag.c.tag).label("tags")])
+            select(tag.c.entity_id, func.array_agg(tag.c.tag).label("tags"))
             .group_by(tag.c.entity_id)
             .cte("unaliased_tags")
         )
@@ -567,7 +551,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         employer_tags = tags.alias(name="employer_tags")
 
         q = (
-            select([entity.c.name])
+            select(entity.c.name)
             .select_from(
                 entity.outerjoin(
                     entity_tags, tags.c.entity_id == entity.c.id
@@ -612,8 +596,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reserved_quote(self):
         orders = table("orders", column("order"))
-        s = select([orders.c.order]).cte("regional_sales", recursive=True)
-        s = select([s.c.order])
+        s = select(orders.c.order).cte("regional_sales", recursive=True)
+        s = select(s.c.order)
         self.assert_compile(
             s,
             'WITH RECURSIVE regional_sales("order") AS '
@@ -624,12 +608,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_multi_subq_quote(self):
-        cte = select([literal(1).label("id")]).cte(name="CTE")
+        cte = select(literal(1).label("id")).cte(name="CTE")
 
-        s1 = select([cte.c.id]).alias()
-        s2 = select([cte.c.id]).alias()
+        s1 = select(cte.c.id).alias()
+        s2 = select(cte.c.id).alias()
 
-        s = select([s1, s2])
+        s = select(s1, s2)
         self.assert_compile(
             s,
             'WITH "CTE" AS (SELECT :param_1 AS id) '
@@ -639,12 +623,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_multi_subq_alias(self):
-        cte = select([literal(1).label("id")]).cte(name="cte1").alias("aa")
+        cte = select(literal(1).label("id")).cte(name="cte1").alias("aa")
 
-        s1 = select([cte.c.id]).alias()
-        s2 = select([cte.c.id]).alias()
+        s1 = select(cte.c.id).alias()
+        s2 = select(cte.c.id).alias()
 
-        s = select([s1, s2])
+        s = select(s1, s2)
         self.assert_compile(
             s,
             "WITH cte1 AS (SELECT :param_1 AS id) "
@@ -659,23 +643,23 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         b = table("b", column("id"), column("fid"))
         c = table("c", column("id"), column("fid"))
 
-        cte1 = select([a.c.id]).cte(name="cte1")
+        cte1 = select(a.c.id).cte(name="cte1")
 
         aa = cte1.alias("aa")
 
         cte2 = (
-            select([b.c.id])
+            select(b.c.id)
             .select_from(b.join(aa, b.c.fid == aa.c.id))
             .cte(name="cte2")
         )
 
         cte3 = (
-            select([c.c.id])
+            select(c.c.id)
             .select_from(c.join(aa, c.c.fid == aa.c.id))
             .cte(name="cte3")
         )
 
-        stmt = select([cte3.c.id, cte2.c.id]).select_from(
+        stmt = select(cte3.c.id, cte2.c.id).select_from(
             cte2.join(cte3, cte2.c.id == cte3.c.id)
         )
         self.assert_compile(
@@ -689,11 +673,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_alias_no_quote(self):
-        cte = select([literal(1).label("id")]).cte(name="CTE")
+        cte = select(literal(1).label("id")).cte(name="CTE")
 
-        s1 = select([cte.c.id]).alias(name="no_quotes")
+        s1 = select(cte.c.id).alias(name="no_quotes")
 
-        s = select([s1])
+        s = select(s1)
         self.assert_compile(
             s,
             'WITH "CTE" AS (SELECT :param_1 AS id) '
@@ -702,11 +686,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_alias_quote(self):
-        cte = select([literal(1).label("id")]).cte(name="CTE")
+        cte = select(literal(1).label("id")).cte(name="CTE")
 
-        s1 = select([cte.c.id]).alias(name="Quotes Required")
+        s1 = select(cte.c.id).alias(name="Quotes Required")
 
-        s = select([s1])
+        s = select(s1)
         self.assert_compile(
             s,
             'WITH "CTE" AS (SELECT :param_1 AS id) '
@@ -715,15 +699,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_named_alias_disable_quote(self):
-        cte = select([literal(1).label("id")]).cte(
+        cte = select(literal(1).label("id")).cte(
             name=quoted_name("CTE", quote=False)
         )
 
-        s1 = select([cte.c.id]).alias(
-            name=quoted_name("DontQuote", quote=False)
-        )
+        s1 = select(cte.c.id).alias(name=quoted_name("DontQuote", quote=False))
 
-        s = select([s1])
+        s = select(s1)
         self.assert_compile(
             s,
             "WITH CTE AS (SELECT :param_1 AS id) "
@@ -733,8 +715,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_positional_binds(self):
         orders = table("orders", column("order"))
-        s = select([orders.c.order, literal("x")]).cte("regional_sales")
-        s = select([s.c.order, literal("y")])
+        s = select(orders.c.order, literal("x")).cte("regional_sales")
+        s = select(s.c.order, literal("y"))
         dialect = default.DefaultDialect()
         dialect.positional = True
         dialect.paramstyle = "numeric"
@@ -759,11 +741,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         s = (
-            select([orders.c.order])
+            select(orders.c.order)
             .where(orders.c.order == "x")
             .cte("regional_sales")
         )
-        s = select([s.c.order]).where(s.c.order == "y")
+        s = select(s.c.order).where(s.c.order == "y")
         self.assert_compile(
             s,
             'WITH regional_sales AS (SELECT orders."order" AS '
@@ -776,13 +758,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_positional_binds_2(self):
         orders = table("orders", column("order"))
-        s = select([orders.c.order, literal("x")]).cte("regional_sales")
-        s = select([s.c.order, literal("y")])
+        s = select(orders.c.order, literal("x")).cte("regional_sales")
+        s = select(s.c.order, literal("y"))
         dialect = default.DefaultDialect()
         dialect.positional = True
         dialect.paramstyle = "numeric"
         s1 = (
-            select([orders.c.order])
+            select(orders.c.order)
             .where(orders.c.order == "x")
             .cte("regional_sales_1")
         )
@@ -791,18 +773,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s2 = (
             select(
-                [
-                    orders.c.order == "y",
-                    s1a.c.order,
-                    orders.c.order,
-                    s1.c.order,
-                ]
+                orders.c.order == "y", s1a.c.order, orders.c.order, s1.c.order,
             )
             .where(orders.c.order == "z")
             .cte("regional_sales_2")
         )
 
-        s3 = select([s2])
+        s3 = select(s2)
 
         self.assert_compile(
             s3,
@@ -823,13 +800,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_positional_binds_2_asliteral(self):
         orders = table("orders", column("order"))
-        s = select([orders.c.order, literal("x")]).cte("regional_sales")
-        s = select([s.c.order, literal("y")])
+        s = select(orders.c.order, literal("x")).cte("regional_sales")
+        s = select(s.c.order, literal("y"))
         dialect = default.DefaultDialect()
         dialect.positional = True
         dialect.paramstyle = "numeric"
         s1 = (
-            select([orders.c.order])
+            select(orders.c.order)
             .where(orders.c.order == "x")
             .cte("regional_sales_1")
         )
@@ -838,18 +815,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s2 = (
             select(
-                [
-                    orders.c.order == "y",
-                    s1a.c.order,
-                    orders.c.order,
-                    s1.c.order,
-                ]
+                orders.c.order == "y", s1a.c.order, orders.c.order, s1.c.order,
             )
             .where(orders.c.order == "z")
             .cte("regional_sales_2")
         )
 
-        s3 = select([s2])
+        s3 = select(s2)
 
         self.assert_compile(
             s3,
@@ -873,12 +845,12 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_all_aliases(self):
         orders = table("order", column("order"))
-        s = select([orders.c.order]).cte("regional_sales")
+        s = select(orders.c.order).cte("regional_sales")
 
         r1 = s.alias()
         r2 = s.alias()
 
-        s2 = select([r1, r2]).where(r1.c.order > r2.c.order)
+        s2 = select(r1, r2).where(r1.c.order > r2.c.order)
 
         self.assert_compile(
             s2,
@@ -889,7 +861,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'regional_sales AS anon_2 WHERE anon_1."order" > anon_2."order"',
         )
 
-        s3 = select([orders]).select_from(
+        s3 = select(orders).select_from(
             orders.join(r1, r1.c.order == orders.c.order)
         )
 
@@ -905,9 +877,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_prefixes(self):
         orders = table("order", column("order"))
-        s = select([orders.c.order]).cte("regional_sales")
+        s = select(orders.c.order).cte("regional_sales")
         s = s.prefix_with("NOT MATERIALIZED", dialect="postgresql")
-        stmt = select([orders]).where(orders.c.order > s.c.order)
+        stmt = select(orders).where(orders.c.order > s.c.order)
 
         self.assert_compile(
             stmt,
@@ -927,10 +899,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_suffixes(self):
         orders = table("order", column("order"))
-        s = select([orders.c.order]).cte("regional_sales")
+        s = select(orders.c.order).cte("regional_sales")
         s = s.suffix_with("pg suffix", dialect="postgresql")
         s = s.suffix_with("oracle suffix", dialect="oracle")
-        stmt = select([orders]).where(orders.c.order > s.c.order)
+        stmt = select(orders).where(orders.c.order > s.c.order)
 
         self.assert_compile(
             stmt,
@@ -976,12 +948,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         insert = orders.insert().from_select(
             orders.c.keys(),
             select(
-                [
-                    literal("Region1"),
-                    literal(1.0),
-                    literal("Product1"),
-                    literal(1),
-                ]
+                literal("Region1"),
+                literal(1.0),
+                literal("Product1"),
+                literal(1),
             ).where(~exists(upsert.select())),
         )
 
@@ -1115,7 +1085,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         parts = table("parts", column("part"), column("sub_part"))
 
         included_parts = (
-            select([parts.c.sub_part, parts.c.part])
+            select(parts.c.sub_part, parts.c.part)
             .where(parts.c.part == "our part")
             .cte("included_parts", recursive=True)
         )
@@ -1123,11 +1093,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         pr = included_parts.alias("pr")
         p = parts.alias("p")
         included_parts = included_parts.union_all(
-            select([p.c.sub_part, p.c.part]).where(p.c.part == pr.c.sub_part)
+            select(p.c.sub_part, p.c.part).where(p.c.part == pr.c.sub_part)
         )
         stmt = (
             parts.delete()
-            .where(parts.c.part.in_(select([included_parts.c.part])))
+            .where(parts.c.part.in_(select(included_parts.c.part)))
             .returning(parts.c.part)
         )
 
@@ -1156,7 +1126,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             .cte("pd")
         )
 
-        stmt = select([cte])
+        stmt = select(cte)
 
         assert "autocommit" not in stmt._execution_options
         eq_(stmt.compile().execution_options["autocommit"], True)
@@ -1192,9 +1162,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_standalone_function(self):
         a = table("a", column("x"))
-        a_stmt = select([a])
+        a_stmt = select(a)
 
-        stmt = select([cte(a_stmt)])
+        stmt = select(cte(a_stmt))
 
         self.assert_compile(
             stmt,
@@ -1204,7 +1174,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_no_alias_construct(self):
         a = table("a", column("x"))
-        a_stmt = select([a])
+        a_stmt = select(a)
 
         assert_raises_message(
             NotImplementedError,

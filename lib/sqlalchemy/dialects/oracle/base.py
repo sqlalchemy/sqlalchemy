@@ -1057,7 +1057,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 # Wrap the middle select and add the hint
                 inner_subquery = select.alias()
                 limitselect = sql.select(
-                    [
+                    *[
                         c
                         for c in inner_subquery.c
                         if orig_select.selected_columns.corresponding_column(c)
@@ -1140,7 +1140,7 @@ class OracleCompiler(compiler.SQLCompiler):
                     limit_subquery = limitselect.alias()
                     origselect_cols = orig_select.selected_columns
                     offsetselect = sql.select(
-                        [
+                        *[
                             c
                             for c in limit_subquery.c
                             if origselect_cols.corresponding_column(c)

@@ -114,23 +114,19 @@ class QueryTest(fixtures.TestBase):
 
         concat = ("test: " + users.c.user_name).label("thedata")
         eq_(
-            connection.execute(
-                select([concat]).order_by("thedata")
-            ).fetchall(),
+            connection.execute(select(concat).order_by("thedata")).fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)],
         )
 
         eq_(
-            connection.execute(
-                select([concat]).order_by("thedata")
-            ).fetchall(),
+            connection.execute(select(concat).order_by("thedata")).fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)],
         )
 
         concat = ("test: " + users.c.user_name).label("thedata")
         eq_(
             connection.execute(
-                select([concat]).order_by(desc("thedata"))
+                select(concat).order_by(desc("thedata"))
             ).fetchall(),
             [("test: jack",), ("test: fred",), ("test: ed",)],
         )
@@ -147,7 +143,7 @@ class QueryTest(fixtures.TestBase):
         concat = ("test: " + users.c.user_name).label("thedata")
         eq_(
             connection.execute(
-                select([concat]).order_by(literal_column("thedata") + "x")
+                select(concat).order_by(literal_column("thedata") + "x")
             ).fetchall(),
             [("test: ed",), ("test: fred",), ("test: jack",)],
         )
@@ -156,25 +152,22 @@ class QueryTest(fixtures.TestBase):
     def test_or_and_as_columns(self, connection):
         true, false = literal(True), literal(False)
 
-        eq_(connection.execute(select([and_(true, false)])).scalar(), False)
-        eq_(connection.execute(select([and_(true, true)])).scalar(), True)
-        eq_(connection.execute(select([or_(true, false)])).scalar(), True)
-        eq_(connection.execute(select([or_(false, false)])).scalar(), False)
+        eq_(connection.execute(select(and_(true, false))).scalar(), False)
+        eq_(connection.execute(select(and_(true, true))).scalar(), True)
+        eq_(connection.execute(select(or_(true, false))).scalar(), True)
+        eq_(connection.execute(select(or_(false, false))).scalar(), False)
         eq_(
-            connection.execute(select([not_(or_(false, false))])).scalar(),
-            True,
+            connection.execute(select(not_(or_(false, false)))).scalar(), True,
         )
 
         row = connection.execute(
-            select(
-                [or_(false, false).label("x"), and_(true, false).label("y")]
-            )
+            select(or_(false, false).label("x"), and_(true, false).label("y"))
         ).first()
         assert row.x == False  # noqa
         assert row.y == False  # noqa
 
         row = connection.execute(
-            select([or_(true, false).label("x"), and_(true, false).label("y")])
+            select(or_(true, false).label("x"), and_(true, false).label("y"))
         ).first()
         assert row.x == True  # noqa
         assert row.y == False  # noqa
@@ -203,25 +196,25 @@ class QueryTest(fixtures.TestBase):
 
         for expr, result in (
             (
-                select([users.c.user_id]).where(
+                select(users.c.user_id).where(
                     users.c.user_name.startswith("apple")
                 ),
                 [(1,)],
             ),
             (
-                select([users.c.user_id]).where(
+                select(users.c.user_id).where(
                     users.c.user_name.contains("i % t")
                 ),
                 [(5,)],
             ),
             (
-                select([users.c.user_id]).where(
+                select(users.c.user_id).where(
                     users.c.user_name.endswith("anas")
                 ),
                 [(3,)],
             ),
             (
-                select([users.c.user_id]).where(
+                select(users.c.user_id).where(
                     users.c.user_name.contains("i % t", escape="&")
                 ),
                 [(5,)],
@@ -253,14 +246,14 @@ class QueryTest(fixtures.TestBase):
 
         eq_(
             connection.execute(
-                select([users.c.user_id]).where(users.c.user_name.ilike("one"))
+                select(users.c.user_id).where(users.c.user_name.ilike("one"))
             ).fetchall(),
             [(1,), (3,), (4,)],
         )
 
         eq_(
             connection.execute(
-                select([users.c.user_id]).where(users.c.user_name.ilike("TWO"))
+                select(users.c.user_id).where(users.c.user_name.ilike("TWO"))
             ).fetchall(),
             [(2,)],
         )
@@ -268,7 +261,7 @@ class QueryTest(fixtures.TestBase):
         if testing.against("postgresql"):
             eq_(
                 connection.execute(
-                    select([users.c.user_id]).where(
+                    select(users.c.user_id).where(
                         users.c.user_name.like("one")
                     )
                 ).fetchall(),
@@ -276,7 +269,7 @@ class QueryTest(fixtures.TestBase):
             )
             eq_(
                 connection.execute(
-                    select([users.c.user_id]).where(
+                    select(users.c.user_id).where(
                         users.c.user_name.like("TWO")
                     )
                 ).fetchall(),
@@ -285,14 +278,14 @@ class QueryTest(fixtures.TestBase):
 
     def test_compiled_execute(self, connection):
         connection.execute(users.insert(), user_id=7, user_name="jack")
-        s = select([users], users.c.user_id == bindparam("id")).compile()
+        s = select(users).where(users.c.user_id == bindparam("id")).compile()
         eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_compiled_insert_execute(self, connection):
         connection.execute(
             users.insert().compile(), user_id=7, user_name="jack"
         )
-        s = select([users], users.c.user_id == bindparam("id")).compile()
+        s = select(users).where(users.c.user_id == bindparam("id")).compile()
         eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_repeated_bindparams(self, connection):
@@ -358,12 +351,11 @@ class QueryTest(fixtures.TestBase):
                 return "INT_%d" % value
 
         eq_(
-            connection.scalar(select([cast("INT_5", type_=MyInteger)])),
-            "INT_5",
+            connection.scalar(select(cast("INT_5", type_=MyInteger))), "INT_5",
         )
         eq_(
             connection.scalar(
-                select([cast("INT_5", type_=MyInteger).label("foo")])
+                select(cast("INT_5", type_=MyInteger).label("foo"))
             ),
             "INT_5",
         )
@@ -383,6 +375,12 @@ class QueryTest(fixtures.TestBase):
             eq_(got, wanted)
 
         for labels in False, True:
+
+            def go(stmt):
+                if labels:
+                    stmt = stmt.apply_labels()
+                return stmt
+
             a_eq(
                 users.select(order_by=[users.c.user_id], use_labels=labels),
                 [(1, "c"), (2, "b"), (3, "a")],
@@ -397,19 +395,19 @@ class QueryTest(fixtures.TestBase):
             )
 
             a_eq(
-                select(
-                    [users.c.user_id.label("foo")],
-                    use_labels=labels,
-                    order_by=[users.c.user_id],
+                go(
+                    select(users.c.user_id.label("foo")).order_by(
+                        users.c.user_id
+                    )
                 ),
                 [(1,), (2,), (3,)],
             )
 
             a_eq(
-                select(
-                    [users.c.user_id.label("foo"), users.c.user_name],
-                    use_labels=labels,
-                    order_by=[users.c.user_name, users.c.user_id],
+                go(
+                    select(
+                        users.c.user_id.label("foo"), users.c.user_name
+                    ).order_by(users.c.user_name, users.c.user_id),
                 ),
                 [(3, "a"), (2, "b"), (1, "c")],
             )
@@ -424,24 +422,21 @@ class QueryTest(fixtures.TestBase):
             )
 
             a_eq(
-                select(
-                    [users.c.user_id.label("foo")],
-                    distinct=True,
-                    use_labels=labels,
-                    order_by=[users.c.user_id],
+                go(
+                    select(users.c.user_id.label("foo"))
+                    .distinct()
+                    .order_by(users.c.user_id),
                 ),
                 [(1,), (2,), (3,)],
             )
 
             a_eq(
-                select(
-                    [
+                go(
+                    select(
                         users.c.user_id.label("a"),
                         users.c.user_id.label("b"),
                         users.c.user_name,
-                    ],
-                    use_labels=labels,
-                    order_by=[users.c.user_id],
+                    ).order_by(users.c.user_id),
                 ),
                 [(1, 1, "c"), (2, 2, "b"), (3, 3, "a")],
             )
@@ -456,11 +451,10 @@ class QueryTest(fixtures.TestBase):
             )
 
             a_eq(
-                select(
-                    [users.c.user_id.label("foo")],
-                    distinct=True,
-                    use_labels=labels,
-                    order_by=[users.c.user_id.desc()],
+                go(
+                    select(users.c.user_id.label("foo"))
+                    .distinct()
+                    .order_by(users.c.user_id.desc()),
                 ),
                 [(3,), (2,), (1,)],
             )
@@ -596,7 +590,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(users.c.user_name.in_(bindparam("uname", expanding=True)))
             .order_by(users.c.user_id)
         )
@@ -634,7 +628,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(users.c.user_name.in_(bindparam("u35", expanding=True)))
             .where(users.c.user_id == bindparam("u46"))
             .order_by(users.c.user_id)
@@ -648,7 +642,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(users.c.user_name.in_(bindparam("u.35", expanding=True)))
             .where(users.c.user_id == bindparam("u.46"))
             .order_by(users.c.user_id)
@@ -672,7 +666,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(users.c.user_name.in_(bindparam("uname", expanding=True)))
             .where(users.c.user_id.in_(bindparam("userid", expanding=True)))
             .order_by(users.c.user_id)
@@ -696,7 +690,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(
                 users.c.user_name.in_(bindparam("uname", expanding=True))
                 | users.c.user_name.in_(bindparam("uname2", expanding=True))
@@ -704,7 +698,7 @@ class QueryTest(fixtures.TestBase):
             .where(users.c.user_id == 8)
         )
         stmt = stmt.union(
-            select([users])
+            select(users)
             .where(
                 users.c.user_name.in_(bindparam("uname", expanding=True))
                 | users.c.user_name.in_(bindparam("uname2", expanding=True))
@@ -736,7 +730,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(
                 tuple_(users.c.user_id, users.c.user_name).in_(
                     bindparam("uname", expanding=True)
@@ -783,7 +777,7 @@ class QueryTest(fixtures.TestBase):
         )
 
         stmt = (
-            select([users])
+            select(users)
             .where(users.c.user_name.in_(bindparam("uname", expanding=True)))
             .order_by(users.c.user_id)
         )
@@ -901,7 +895,7 @@ class RequiredBindTest(fixtures.TablesTest):
 
     def test_select_where(self):
         stmt = (
-            select([self.tables.foo])
+            select(self.tables.foo)
             .where(self.tables.foo.c.data == bindparam("data"))
             .where(self.tables.foo.c.x == bindparam("x"))
         )
@@ -909,7 +903,7 @@ class RequiredBindTest(fixtures.TablesTest):
 
     @testing.requires.standalone_binds
     def test_select_columns(self):
-        stmt = select([bindparam("data"), bindparam("x")])
+        stmt = select(bindparam("data"), bindparam("x"))
         self._assert_raises(stmt, {"data": "data"})
 
     def test_text(self):
@@ -1012,7 +1006,7 @@ class LimitTest(fixtures.TestBase):
             [
                 x[0]
                 for x in connection.execute(
-                    select([addresses.c.address]).distinct().limit(3)
+                    select(addresses.c.address).distinct().limit(3)
                 )
             ]
         )
@@ -1027,7 +1021,7 @@ class LimitTest(fixtures.TestBase):
             [
                 x[0]
                 for x in connection.execute(
-                    select([addresses.c.address])
+                    select(addresses.c.address)
                     .distinct()
                     .offset(1)
                     .order_by(addresses.c.address)
@@ -1042,7 +1036,7 @@ class LimitTest(fixtures.TestBase):
         """Test the interaction between limit and limit/offset"""
 
         r = connection.execute(
-            select([addresses.c.address])
+            select(addresses.c.address)
             .order_by(addresses.c.address)
             .distinct()
             .offset(2)
@@ -1144,12 +1138,10 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.subqueries
     def test_union(self, connection):
         (s1, s2) = (
-            select(
-                [t1.c.col3.label("col3"), t1.c.col4.label("col4")],
+            select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
             ),
-            select(
-                [t2.c.col3.label("col3"), t2.c.col4.label("col4")],
+            select(t2.c.col3.label("col3"), t2.c.col4.label("col4")).where(
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
@@ -1172,12 +1164,10 @@ class CompoundTest(fixtures.TestBase):
     @testing.fails_on("firebird", "doesn't like ORDER BY with UNIONs")
     def test_union_ordered(self, connection):
         (s1, s2) = (
-            select(
-                [t1.c.col3.label("col3"), t1.c.col4.label("col4")],
+            select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
             ),
-            select(
-                [t2.c.col3.label("col3"), t2.c.col4.label("col4")],
+            select(t2.c.col3.label("col3"), t2.c.col4.label("col4")).where(
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
@@ -1195,12 +1185,10 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.subqueries
     def test_union_ordered_alias(self, connection):
         (s1, s2) = (
-            select(
-                [t1.c.col3.label("col3"), t1.c.col4.label("col4")],
+            select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
             ),
-            select(
-                [t2.c.col3.label("col3"), t2.c.col4.label("col4")],
+            select(t2.c.col3.label("col3"), t2.c.col4.label("col4")).where(
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
@@ -1225,8 +1213,7 @@ class CompoundTest(fixtures.TestBase):
     @testing.fails_on("sqlite", "FIXME: unknown")
     def test_union_all(self, connection):
         e = union_all(
-            select([t1.c.col3]),
-            union(select([t1.c.col3]), select([t1.c.col3])),
+            select(t1.c.col3), union(select(t1.c.col3), select(t1.c.col3)),
         )
 
         wanted = [("aaa",), ("aaa",), ("bbb",), ("bbb",), ("ccc",), ("ccc",)]
@@ -1245,9 +1232,9 @@ class CompoundTest(fixtures.TestBase):
 
         """
 
-        u = union(select([t1.c.col3]), select([t1.c.col3])).alias()
+        u = union(select(t1.c.col3), select(t1.c.col3)).alias()
 
-        e = union_all(select([t1.c.col3]), select([u.c.col3]))
+        e = union_all(select(t1.c.col3), select(u.c.col3))
 
         wanted = [("aaa",), ("aaa",), ("bbb",), ("bbb",), ("ccc",), ("ccc",)]
         found1 = self._fetchall_sorted(connection.execute(e))
@@ -1261,8 +1248,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.intersect
     def test_intersect(self, connection):
         i = intersect(
-            select([t2.c.col3, t2.c.col4]),
-            select([t2.c.col3, t2.c.col4], t2.c.col4 == t3.c.col3),
+            select(t2.c.col3, t2.c.col4),
+            select(t2.c.col3, t2.c.col4).where(t2.c.col4 == t3.c.col3),
         )
 
         wanted = [("aaa", "bbb"), ("bbb", "ccc"), ("ccc", "aaa")]
@@ -1280,11 +1267,11 @@ class CompoundTest(fixtures.TestBase):
     def test_except_style1(self, connection):
         e = except_(
             union(
-                select([t1.c.col3, t1.c.col4]),
-                select([t2.c.col3, t2.c.col4]),
-                select([t3.c.col3, t3.c.col4]),
+                select(t1.c.col3, t1.c.col4),
+                select(t2.c.col3, t2.c.col4),
+                select(t3.c.col3, t3.c.col4),
             ),
-            select([t2.c.col3, t2.c.col4]),
+            select(t2.c.col3, t2.c.col4),
         )
 
         wanted = [
@@ -1306,13 +1293,13 @@ class CompoundTest(fixtures.TestBase):
 
         e = except_(
             union(
-                select([t1.c.col3, t1.c.col4]),
-                select([t2.c.col3, t2.c.col4]),
-                select([t3.c.col3, t3.c.col4]),
+                select(t1.c.col3, t1.c.col4),
+                select(t2.c.col3, t2.c.col4),
+                select(t3.c.col3, t3.c.col4),
             )
             .alias()
             .select(),
-            select([t2.c.col3, t2.c.col4]),
+            select(t2.c.col3, t2.c.col4),
         )
 
         wanted = [
@@ -1338,10 +1325,10 @@ class CompoundTest(fixtures.TestBase):
     def test_except_style3(self, connection):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
-            select([t1.c.col3]),  # aaa, bbb, ccc
+            select(t1.c.col3),  # aaa, bbb, ccc
             except_(
-                select([t2.c.col3]),  # aaa, bbb, ccc
-                select([t3.c.col3], t3.c.col3 == "ccc"),  # ccc
+                select(t2.c.col3),  # aaa, bbb, ccc
+                select(t3.c.col3).where(t3.c.col3 == "ccc"),  # ccc
             ),
         )
         eq_(connection.execute(e).fetchall(), [("ccc",)])
@@ -1351,10 +1338,10 @@ class CompoundTest(fixtures.TestBase):
     def test_except_style4(self, connection):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
         e = except_(
-            select([t1.c.col3]),  # aaa, bbb, ccc
+            select(t1.c.col3),  # aaa, bbb, ccc
             except_(
-                select([t2.c.col3]),  # aaa, bbb, ccc
-                select([t3.c.col3], t3.c.col3 == "ccc"),  # ccc
+                select(t2.c.col3),  # aaa, bbb, ccc
+                select(t3.c.col3).where(t3.c.col3 == "ccc"),  # ccc
             )
             .alias()
             .select(),
@@ -1370,12 +1357,8 @@ class CompoundTest(fixtures.TestBase):
     )
     def test_intersect_unions(self, connection):
         u = intersect(
-            union(
-                select([t1.c.col3, t1.c.col4]), select([t3.c.col3, t3.c.col4])
-            ),
-            union(
-                select([t2.c.col3, t2.c.col4]), select([t3.c.col3, t3.c.col4])
-            )
+            union(select(t1.c.col3, t1.c.col4), select(t3.c.col3, t3.c.col4)),
+            union(select(t2.c.col3, t2.c.col4), select(t3.c.col3, t3.c.col4))
             .alias()
             .select(),
         )
@@ -1387,14 +1370,10 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.intersect
     def test_intersect_unions_2(self, connection):
         u = intersect(
-            union(
-                select([t1.c.col3, t1.c.col4]), select([t3.c.col3, t3.c.col4])
-            )
+            union(select(t1.c.col3, t1.c.col4), select(t3.c.col3, t3.c.col4))
             .alias()
             .select(),
-            union(
-                select([t2.c.col3, t2.c.col4]), select([t3.c.col3, t3.c.col4])
-            )
+            union(select(t2.c.col3, t2.c.col4), select(t3.c.col3, t3.c.col4))
             .alias()
             .select(),
         )
@@ -1406,11 +1385,11 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.intersect
     def test_intersect_unions_3(self, connection):
         u = intersect(
-            select([t2.c.col3, t2.c.col4]),
+            select(t2.c.col3, t2.c.col4),
             union(
-                select([t1.c.col3, t1.c.col4]),
-                select([t2.c.col3, t2.c.col4]),
-                select([t3.c.col3, t3.c.col4]),
+                select(t1.c.col3, t1.c.col4),
+                select(t2.c.col3, t2.c.col4),
+                select(t3.c.col3, t3.c.col4),
             )
             .alias()
             .select(),
@@ -1423,11 +1402,11 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.intersect
     def test_composite_alias(self, connection):
         ua = intersect(
-            select([t2.c.col3, t2.c.col4]),
+            select(t2.c.col3, t2.c.col4),
             union(
-                select([t1.c.col3, t1.c.col4]),
-                select([t2.c.col3, t2.c.col4]),
-                select([t3.c.col3, t3.c.col4]),
+                select(t1.c.col3, t1.c.col4),
+                select(t2.c.col3, t2.c.col4),
+                select(t3.c.col3, t3.c.col4),
             )
             .alias()
             .select(),
@@ -1518,8 +1497,8 @@ class JoinTest(fixtures.TestBase):
         """Joins t1->t2."""
 
         for criteria in (t1.c.t1_id == t2.c.t1_id, t2.c.t1_id == t1.c.t1_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id], from_obj=[t1.join(t2, criteria)]
+            expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
+                t1.join(t2, criteria)
             )
             self.assertRows(expr, [(10, 20), (11, 21)])
 
@@ -1527,8 +1506,8 @@ class JoinTest(fixtures.TestBase):
         """Joins t1->t2->t3."""
 
         for criteria in (t1.c.t1_id == t2.c.t1_id, t2.c.t1_id == t1.c.t1_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id], from_obj=[t1.join(t2, criteria)]
+            expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
+                t1.join(t2, criteria)
             )
             self.assertRows(expr, [(10, 20), (11, 21)])
 
@@ -1536,9 +1515,8 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id],
-                from_obj=[t1.join(t2).join(t3, criteria)],
+            expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
+                t1.join(t2).join(t3, criteria)
             )
             self.assertRows(expr, [(10, 20)])
 
@@ -1546,13 +1524,10 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                from_obj=[
-                    t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
-                        t3, criteria
-                    )
-                ],
+            expr = select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id).select_from(
+                t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
+                    t3, criteria
+                )
             )
             self.assertRows(
                 expr, [(10, 20, 30), (11, 21, None), (12, None, None)]
@@ -1562,29 +1537,29 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t1."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.name == "t1 #10",
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t1.c.name == "t1 #10")
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.t1_id < 12,
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t1.c.t1_id < 12)
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
@@ -1592,29 +1567,29 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t2."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.name == "t2 #20",
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t2.c.name == "t2 #20")
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.t2_id < 29,
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t2.c.t2_id < 29)
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
@@ -1622,29 +1597,29 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t3."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.name == "t3 #30",
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t3.c.name == "t3 #30")
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.t3_id < 39,
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t3.c.t3_id < 39)
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
@@ -1652,29 +1627,28 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t1 and t3."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == "t1 #10", t3.c.name == "t3 #30"),
-                from_obj=[
-                    (
-                        t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
-                            t3, criteria
-                        )
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.name == "t1 #10", t3.c.name == "t3 #30"))
+                .select_from(
+                    t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
+                        t3, criteria
                     )
-                ],
+                )
             )
+
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 19, t3.c.t3_id < 39),
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.t1_id < 19, t3.c.t3_id < 39))
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
@@ -1682,29 +1656,29 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t1 and t2."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"),
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"))
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 12, t2.c.t2_id < 39),
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.t1_id < 12, t2.c.t2_id < 39))
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
 
@@ -1712,33 +1686,35 @@ class JoinTest(fixtures.TestBase):
         """Outer joins t1->t2,t3, where on t1, t2 and t3."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(
-                    t1.c.name == "t1 #10",
-                    t2.c.name == "t2 #20",
-                    t3.c.name == "t3 #30",
-                ),
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(
+                    and_(
+                        t1.c.name == "t1 #10",
+                        t2.c.name == "t2 #20",
+                        t3.c.name == "t3 #30",
+                    )
+                )
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.t1_id < 19, t2.c.t2_id < 29, t3.c.t3_id < 39),
-                from_obj=[
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.t1_id < 19, t2.c.t2_id < 29, t3.c.t3_id < 39))
+                .select_from(
                     (
                         t1.outerjoin(t2, t1.c.t1_id == t2.c.t1_id).outerjoin(
                             t3, criteria
                         )
                     )
-                ],
+                )
             )
             self.assertRows(expr, [(10, 20, 30)])
 
@@ -1746,9 +1722,8 @@ class JoinTest(fixtures.TestBase):
         """Joins t1->t2, outer t2->t3."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id).select_from(
+                (t1.join(t2).outerjoin(t3, criteria)),
             )
             print(expr)
             self.assertRows(expr, [(10, 20, 30), (11, 21, None)])
@@ -1757,49 +1732,51 @@ class JoinTest(fixtures.TestBase):
         """Joins t1->t2, outer t2->t3, plus a where on each table in turn."""
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t1.c.name == "t1 #10",
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t1.c.name == "t1 #10",)
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t2.c.name == "t2 #20",
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t2.c.name == "t2 #20",)
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                t3.c.name == "t3 #30",
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(t3.c.name == "t3 #30",)
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"),
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"),)
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(t2.c.name == "t2 #20", t3.c.name == "t3 #30"),
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(and_(t2.c.name == "t2 #20", t3.c.name == "t3 #30"),)
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
-            expr = select(
-                [t1.c.t1_id, t2.c.t2_id, t3.c.t3_id],
-                and_(
-                    t1.c.name == "t1 #10",
-                    t2.c.name == "t2 #20",
-                    t3.c.name == "t3 #30",
-                ),
-                from_obj=[(t1.join(t2).outerjoin(t3, criteria))],
+            expr = (
+                select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
+                .where(
+                    and_(
+                        t1.c.name == "t1 #10",
+                        t2.c.name == "t2 #20",
+                        t3.c.name == "t3 #30",
+                    ),
+                )
+                .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
@@ -1842,7 +1819,7 @@ class OperatorTest(fixtures.TestBase):
     def test_modulo(self, connection):
         eq_(
             connection.execute(
-                select([flds.c.intcol % 3], order_by=flds.c.idcol)
+                select(flds.c.intcol % 3).order_by(flds.c.idcol)
             ).fetchall(),
             [(2,), (1,)],
         )
@@ -1852,10 +1829,8 @@ class OperatorTest(fixtures.TestBase):
         eq_(
             connection.execute(
                 select(
-                    [
-                        flds.c.intcol,
-                        func.row_number().over(order_by=flds.c.strcol),
-                    ]
+                    flds.c.intcol,
+                    func.row_number().over(order_by=flds.c.strcol),
                 )
             ).fetchall(),
             [(13, 1), (5, 2)],

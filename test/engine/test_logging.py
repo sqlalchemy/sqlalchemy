@@ -308,7 +308,7 @@ class LogParamsTest(fixtures.TestBase):
                 r"foo.data = \? OR foo.data = \?\]\n"
                 r"\[SQL parameters hidden due to hide_parameters=True\]",
                 conn.execute,
-                select([foo]).where(
+                select(foo).where(
                     or_(
                         foo.c.data == bindparam("the_data_1"),
                         foo.c.data == bindparam("the_data_2"),
@@ -492,7 +492,7 @@ class LoggingNameTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
 
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
-        eng.execute(select([1]))
+        eng.execute(select(1))
         assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
@@ -502,7 +502,7 @@ class LoggingNameTest(fixtures.TestBase):
             )
 
     def _assert_no_name_in_execute(self, eng):
-        eng.execute(select([1]))
+        eng.execute(select(1))
         assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
@@ -545,7 +545,7 @@ class LoggingNameTest(fixtures.TestBase):
 
     def test_named_logger_names_after_dispose(self):
         eng = self._named_engine()
-        eng.execute(select([1]))
+        eng.execute(select(1))
         eng.dispose()
         eq_(eng.logging_name, "myenginename")
         eq_(eng.pool.logging_name, "mypoolname")
@@ -565,7 +565,7 @@ class LoggingNameTest(fixtures.TestBase):
 
     def test_named_logger_execute_after_dispose(self):
         eng = self._named_engine()
-        eng.execute(select([1]))
+        eng.execute(select(1))
         eng.dispose()
         self._assert_names_in_execute(eng, "myenginename", "mypoolname")
 
@@ -596,7 +596,7 @@ class EchoTest(fixtures.TestBase):
 
         # do an initial execute to clear out 'first connect'
         # messages
-        e.execute(select([10])).close()
+        e.execute(select(10)).close()
         self.buf.flush()
 
         return e
@@ -634,16 +634,16 @@ class EchoTest(fixtures.TestBase):
         e2 = self._testing_engine()
 
         e1.echo = True
-        e1.execute(select([1])).close()
-        e2.execute(select([2])).close()
+        e1.execute(select(1)).close()
+        e2.execute(select(2)).close()
 
         e1.echo = False
-        e1.execute(select([3])).close()
-        e2.execute(select([4])).close()
+        e1.execute(select(3)).close()
+        e2.execute(select(4)).close()
 
         e2.echo = True
-        e1.execute(select([5])).close()
-        e2.execute(select([6])).close()
+        e1.execute(select(5)).close()
+        e2.execute(select(6)).close()
 
         assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
         assert self.buf.buffer[2].getMessage().startswith("SELECT 6")

@@ -239,7 +239,7 @@ class String(Concatenable, TypeEngine):
           E.g.::
 
             >>> from sqlalchemy import cast, select, String
-            >>> print(select([cast('some string', String(collation='utf8'))]))
+            >>> print(select(cast('some string', String(collation='utf8'))))
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
         :param convert_unicode: When set to ``True``, the
@@ -2394,9 +2394,9 @@ class JSON(Indexable, TypeEngine):
 
             e.g.::
 
-                stmt = select([
+                stmt = select(
                     mytable.c.json_column['some_data'].as_boolean()
-                ]).where(
+                ).where(
                     mytable.c.json_column['some_data'].as_boolean() == True
                 )
 
@@ -2410,9 +2410,9 @@ class JSON(Indexable, TypeEngine):
 
             e.g.::
 
-                stmt = select([
+                stmt = select(
                     mytable.c.json_column['some_data'].as_string()
-                ]).where(
+                ).where(
                     mytable.c.json_column['some_data'].as_string() ==
                     'some string'
                 )
@@ -2427,9 +2427,9 @@ class JSON(Indexable, TypeEngine):
 
             e.g.::
 
-                stmt = select([
+                stmt = select(
                     mytable.c.json_column['some_data'].as_integer()
-                ]).where(
+                ).where(
                     mytable.c.json_column['some_data'].as_integer() == 5
                 )
 
@@ -2443,9 +2443,9 @@ class JSON(Indexable, TypeEngine):
 
             e.g.::
 
-                stmt = select([
+                stmt = select(
                     mytable.c.json_column['some_data'].as_float()
-                ]).where(
+                ).where(
                     mytable.c.json_column['some_data'].as_float() == 29.75
                 )
 
@@ -2460,9 +2460,7 @@ class JSON(Indexable, TypeEngine):
 
             e.g.::
 
-                stmt = select([
-                    mytable.c.json_column['some_data'].as_json()
-                ])
+                stmt = select(mytable.c.json_column['some_data'].as_json())
 
             This is typically the default behavior of indexed elements in any
             case.
@@ -2614,7 +2612,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     constructs which will produce the appropriate SQL, both for
     SELECT statements::
 
-        select([mytable.c.data[5], mytable.c.data[2:7]])
+        select(mytable.c.data[5], mytable.c.data[2:7])
 
     as well as UPDATE statements when the :meth:`_expression.Update.values`
     method
@@ -2693,7 +2691,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 from sqlalchemy.sql import operators
 
                 conn.execute(
-                    select([table.c.data]).where(
+                    select(table.c.data).where(
                             table.c.data.any(7, operator=operators.lt)
                         )
                 )
@@ -2733,7 +2731,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
                 from sqlalchemy.sql import operators
 
                 conn.execute(
-                    select([table.c.data]).where(
+                    select(table.c.data).where(
                             table.c.data.all(7, operator=operators.lt)
                         )
                 )

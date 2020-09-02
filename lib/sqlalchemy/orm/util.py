@@ -245,22 +245,18 @@ def polymorphic_union(
     result = []
     for type_, table in table_map.items():
         if typecolname is not None:
-            result.append(
-                sql.select(
-                    [col(name, table) for name in colnames]
-                    + [
-                        sql.literal_column(
-                            sql_util._quote_ddl_expr(type_)
-                        ).label(typecolname)
-                    ],
-                    from_obj=[table],
-                )
+            cols = [col(name, table) for name in colnames]
+            cols.append(
+                sql.literal_column(sql_util._quote_ddl_expr(type_)).label(
+                    typecolname
+                ),
             )
+            result.append(sql.select(*cols).select_from(table))
         else:
             result.append(
                 sql.select(
-                    [col(name, table) for name in colnames], from_obj=[table]
-                )
+                    *[col(name, table) for name in colnames]
+                ).select_from(table)
             )
     return sql.union_all(*result).alias(aliasname)
 

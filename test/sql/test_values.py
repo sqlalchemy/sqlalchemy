@@ -59,7 +59,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             name="Spaces and Cases",
         ).data([(1, "textA", 99), (2, "textB", 88)])
         self.assert_compile(
-            select([v1]),
+            select(v1),
             'SELECT "Spaces and Cases"."CaseSensitive", '
             '"Spaces and Cases"."has spaces" FROM '
             "(VALUES (:param_1, :param_2, :param_3), "
@@ -83,7 +83,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_bound_parameters(self, literal_parameter_fixture):
         literal_parameter_fixture = literal_parameter_fixture(False)
 
-        stmt = select([literal_parameter_fixture])
+        stmt = select(literal_parameter_fixture)
 
         self.assert_compile(
             stmt,
@@ -104,7 +104,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_literal_parameters(self, literal_parameter_fixture):
         literal_parameter_fixture = literal_parameter_fixture(True)
 
-        stmt = select([literal_parameter_fixture])
+        stmt = select(literal_parameter_fixture)
 
         self.assert_compile(
             stmt,
@@ -119,7 +119,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
         values = Values(
             column("column1", Integer), column("column2", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select([people, values]).select_from(
+        stmt = select(people, values).select_from(
             people.join(values, values.c.column2 == people.c.people_id)
         )
         self.assert_compile(
@@ -148,7 +148,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             column("bookcase_owner_id", Integer),
             name="bookcases",
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select([people, values]).select_from(
+        stmt = select(people, values).select_from(
             people.join(
                 values, values.c.bookcase_owner_id == people.c.people_id
             )
@@ -183,7 +183,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             .data([(1, 1), (2, 1), (3, 2), (3, 3)])
             .alias("bookcases")
         )
-        stmt = select([people, values]).select_from(
+        stmt = select(people, values).select_from(
             people.join(
                 values, values.c.bookcase_owner_id == people.c.people_id
             )
@@ -216,7 +216,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
         values = alias(values, "bookcases")
 
-        stmt = select([people, values]).select_from(
+        stmt = select(people, values).select_from(
             people.join(
                 values, values.c.bookcase_owner_id == people.c.people_id
             )
@@ -252,9 +252,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             .data([(1, 1), (2, 1), (3, 2), (3, 3)])
             .lateral()
         )
-        stmt = select([people, values]).select_from(
-            people.join(values, true())
-        )
+        stmt = select(people, values).select_from(people.join(values, true()))
         self.assert_compile(
             stmt,
             "SELECT people.people_id, people.age, people.name, "
@@ -282,7 +280,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             column("bookcase_owner_id", Integer),
             name="bookcases",
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select([people, values])
+        stmt = select(people, values)
 
         with testing.expect_warnings(
             r"SELECT statement has a cartesian product between FROM "
@@ -297,7 +295,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             column("bookcase_id", Integer),
             column("bookcase_owner_id", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
-        stmt = select([people, values])
+        stmt = select(people, values)
 
         with testing.expect_warnings(
             r"SELECT statement has a cartesian product between FROM "
