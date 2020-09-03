@@ -1770,3 +1770,13 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt, "UPDATE foo SET bar=%s LIMIT 10", dialect="mysql"
         )
+
+
+class TableDeprecationTest(fixtures.TestBase):
+    def test_mustexists(self):
+        with testing.expect_deprecated("Deprecated alias of .*must_exist"):
+
+            with testing.expect_raises_message(
+                exc.InvalidRequestError, "Table 'foo' not defined"
+            ):
+                Table("foo", MetaData(), mustexist=True)

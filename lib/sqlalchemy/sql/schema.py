@@ -412,7 +412,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     ('column_reflect', listen_for_reflect)
                 ])
 
-    :param mustexist: When ``True``, indicates that this Table must already
+    :param must_exist: When ``True``, indicates that this Table must already
         be present in the given :class:`_schema.MetaData` collection, else
         an exception is raised.
 
@@ -484,6 +484,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         else:
             return (self,)
 
+    @util.deprecated_params(
+        mustexist=(
+            "1.4",
+            "Deprecated alias of :paramref:`_schema.Table.must_exist`",
+        )
+    )
     def __new__(cls, *args, **kw):
         if not args:
             # python3k pickle seems to call this
@@ -506,7 +512,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             msg = "keep_existing and extend_existing are mutually exclusive."
             raise exc.ArgumentError(msg)
 
-        mustexist = kw.pop("mustexist", False)
+        must_exist = kw.pop("must_exist", kw.pop("mustexist", False))
         key = _get_table_key(name, schema)
         if key in metadata.tables:
             if not keep_existing and not extend_existing and bool(args):
@@ -522,7 +528,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table._init_existing(*args, **kw)
             return table
         else:
-            if mustexist:
+            if must_exist:
                 raise exc.InvalidRequestError("Table '%s' not defined" % (key))
             table = object.__new__(cls)
             table.dispatch.before_parent_attach(table, metadata)
