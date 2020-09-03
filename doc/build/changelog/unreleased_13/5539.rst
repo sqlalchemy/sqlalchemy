@@ -1,0 +1,10 @@
+.. change::
+    :tags: change, mysql
+    :tickets: 5539
+
+	Add new MySQL reserved words: `cube`, `lateral`.
+
+	Reference https://dev.mysql.com/doc/refman/8.0/en/keywords.html :
+
+	* CUBE (R); became reserved in 8.0.1
+	* LATERAL (R); added in 8.0.14 (reserved)
