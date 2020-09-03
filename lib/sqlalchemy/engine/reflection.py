@@ -898,7 +898,7 @@ class Inspector(object):
 
         if col.key in table.primary_key:
             col.primary_key = True
-        table.append_column(col)
+        table.append_column(col, replace_existing=True)
 
     def _reflect_col_sequence(self, col_d, colargs):
         if "sequence" in col_d:

@@ -956,12 +956,12 @@ class SchemaEventTarget(object):
 
     """
 
-    def _set_parent(self, parent):
+    def _set_parent(self, parent, **kw):
         """Associate with this SchemaEvent's parent object."""
 
-    def _set_parent_with_dispatch(self, parent):
+    def _set_parent_with_dispatch(self, parent, **kw):
         self.dispatch.before_parent_attach(self, parent)
-        self._set_parent(parent)
+        self._set_parent(parent, **kw)
         self.dispatch.after_parent_attach(self, parent)
 
 
@@ -1185,7 +1185,16 @@ class ColumnCollection(object):
         )
 
     def contains_column(self, col):
-        return col in self._colset
+        """Checks if a column object exists in this collection"""
+        if col not in self._colset:
+            if isinstance(col, util.string_types):
+                raise exc.ArgumentError(
+                    "contains_column cannot be used with string arguments. "
+                    "Use ``col_name in table.c`` instead."
+                )
+            return False
+        else:
+            return True
 
     def as_immutable(self):
         return ImmutableColumnCollection(self)
@@ -1302,6 +1311,7 @@ class DedupeColumnCollection(ColumnCollection):
     """
 
     def add(self, column, key=None):
+
         if key is not None and column.key != key:
             raise exc.ArgumentError(
                 "DedupeColumnCollection requires columns be under "

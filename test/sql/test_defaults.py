@@ -294,13 +294,6 @@ class DefaultObjectTest(fixtures.TestBase):
             Column("col3", Integer, Sequence("foo"), server_default="x"),
             Column("col4", Integer, ColumnDefault("x"), DefaultClause("y")),
             Column(
-                "col4",
-                Integer,
-                ColumnDefault("x"),
-                DefaultClause("y"),
-                DefaultClause("y", for_update=True),
-            ),
-            Column(
                 "col5",
                 Integer,
                 ColumnDefault("x"),
@@ -325,6 +318,16 @@ class DefaultObjectTest(fixtures.TestBase):
                 server_default="y",
                 onupdate="z",
             ),
+        )
+        tbl.append_column(
+            Column(
+                "col4",
+                Integer,
+                ColumnDefault("x"),
+                DefaultClause("y"),
+                DefaultClause("y", for_update=True),
+            ),
+            replace_existing=True,
         )
         has_(tbl, "col1", "default")
         has_(tbl, "col2", "default", "server_default")

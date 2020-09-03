@@ -460,6 +460,23 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         is_true(cc.contains_column(c1))
         is_false(cc.contains_column(c3))
 
+    def test_contains_column_not_column(self):
+        c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")
+        cc = self._column_collection(columns=[("c1", c1), ("c2", c2)])
+
+        is_false(cc.contains_column(c3 == 2))
+
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            "contains_column cannot be used with string arguments",
+        ):
+            cc.contains_column("c1")
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            "contains_column cannot be used with string arguments",
+        ):
+            cc.contains_column("foo")
+
     def test_in(self):
         col1 = sql.column("col1")
         cc = self._column_collection(

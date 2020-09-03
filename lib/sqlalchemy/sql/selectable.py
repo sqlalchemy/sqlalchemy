@@ -2167,7 +2167,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         else:
             return self.name.encode("ascii", "backslashreplace")
 
-    def append_column(self, c):
+    def append_column(self, c, **kw):
         existing = c.table
         if existing is not None and existing is not self:
             raise exc.ArgumentError(

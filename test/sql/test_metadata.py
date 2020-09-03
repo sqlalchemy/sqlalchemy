@@ -1683,6 +1683,50 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         is_(t2.c.contains_column(z), True)
         is_(t2.c.contains_column(g), False)
 
+    def test_table_ctor_duplicated_column_name(self):
+        def go():
+            return Table(
+                "t",
+                MetaData(),
+                Column("a", Integer),
+                Column("col", Integer),
+                Column("col", String),
+            )
+
+        with testing.expect_deprecated(
+            "A column with name 'col' is already present in table 't'",
+        ):
+            t = go()
+        is_true(isinstance(t.c.col.type, String))
+        # when it will raise
+        # with testing.expect_raises_message(
+        #     exc.ArgumentError,
+        #     "A column with name 'col' is already present in table 't'",
+        # ):
+        #     go()
+
+    def test_append_column_existing_name(self):
+        t = Table("t", MetaData(), Column("col", Integer))
+
+        with testing.expect_deprecated(
+            "A column with name 'col' is already present in table 't'",
+        ):
+            t.append_column(Column("col", String))
+        is_true(isinstance(t.c.col.type, String))
+        # when it will raise
+        # col = t.c.col
+        # with testing.expect_raises_message(
+        #     exc.ArgumentError,
+        #     "A column with name 'col' is already present in table 't'",
+        # ):
+        #     t.append_column(Column("col", String))
+        # is_true(t.c.col is col)
+
+    def test_append_column_replace_existing(self):
+        t = Table("t", MetaData(), Column("col", Integer))
+        t.append_column(Column("col", String), replace_existing=True)
+        is_true(isinstance(t.c.col.type, String))
+
     def test_autoincrement_replace(self):
         m = MetaData()
 
@@ -2392,19 +2436,21 @@ class UseExistingTest(fixtures.TablesTest):
             Column("name", String(30)),
         )
 
-    def _useexisting_fixture(self):
+    @testing.fixture
+    def existing_meta(self):
         meta2 = MetaData(testing.db)
         Table("users", meta2, autoload=True)
         return meta2
 
-    def _notexisting_fixture(self):
+    @testing.fixture
+    def empty_meta(self):
         return MetaData(testing.db)
 
-    def test_exception_no_flags(self):
-        meta2 = self._useexisting_fixture()
-
+    def test_exception_no_flags(self, existing_meta):
         def go():
-            Table("users", meta2, Column("name", Unicode), autoload=True)
+            Table(
+                "users", existing_meta, Column("name", Unicode), autoload=True
+            )
 
         assert_raises_message(
             exc.InvalidRequestError,
@@ -2412,22 +2458,20 @@ class UseExistingTest(fixtures.TablesTest):
             go,
         )
 
-    def test_keep_plus_existing_raises(self):
-        meta2 = self._useexisting_fixture()
+    def test_keep_plus_existing_raises(self, existing_meta):
         assert_raises(
             exc.ArgumentError,
             Table,
             "users",
-            meta2,
+            existing_meta,
             keep_existing=True,
             extend_existing=True,
         )
 
-    def test_keep_existing_no_dupe_constraints(self):
-        meta2 = self._notexisting_fixture()
+    def test_keep_existing_no_dupe_constraints(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("id", Integer),
             Column("name", Unicode),
             UniqueConstraint("name"),
@@ -2439,7 +2483,7 @@ class UseExistingTest(fixtures.TablesTest):
 
         u2 = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("id", Integer),
             Column("name", Unicode),
             UniqueConstraint("name"),
@@ -2447,11 +2491,10 @@ class UseExistingTest(fixtures.TablesTest):
         )
         eq_(len(u2.constraints), 2)
 
-    def test_extend_existing_dupes_constraints(self):
-        meta2 = self._notexisting_fixture()
+    def test_extend_existing_dupes_constraints(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("id", Integer),
             Column("name", Unicode),
             UniqueConstraint("name"),
@@ -2463,7 +2506,7 @@ class UseExistingTest(fixtures.TablesTest):
 
         u2 = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("id", Integer),
             Column("name", Unicode),
             UniqueConstraint("name"),
@@ -2472,40 +2515,46 @@ class UseExistingTest(fixtures.TablesTest):
         # constraint got duped
         eq_(len(u2.constraints), 3)
 
-    def test_keep_existing_coltype(self):
-        meta2 = self._useexisting_fixture()
+    def test_autoload_replace_column(self, empty_meta):
+        users = Table(
+            "users", empty_meta, Column("name", Unicode), autoload=True
+        )
+        assert isinstance(users.c.name.type, Unicode)
+
+    def test_keep_existing_coltype(self, existing_meta):
         users = Table(
             "users",
-            meta2,
+            existing_meta,
             Column("name", Unicode),
             autoload=True,
             keep_existing=True,
         )
         assert not isinstance(users.c.name.type, Unicode)
 
-    def test_keep_existing_quote(self):
-        meta2 = self._useexisting_fixture()
+    def test_keep_existing_quote(self, existing_meta):
         users = Table(
-            "users", meta2, quote=True, autoload=True, keep_existing=True
+            "users",
+            existing_meta,
+            quote=True,
+            autoload=True,
+            keep_existing=True,
         )
         assert not users.name.quote
 
-    def test_keep_existing_add_column(self):
-        meta2 = self._useexisting_fixture()
+    def test_keep_existing_add_column(self, existing_meta):
         users = Table(
             "users",
-            meta2,
+            existing_meta,
             Column("foo", Integer),
             autoload=True,
             keep_existing=True,
         )
         assert "foo" not in users.c
 
-    def test_keep_existing_coltype_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_keep_existing_coltype_no_orig(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("name", Unicode),
             autoload=True,
             keep_existing=True,
@@ -2516,83 +2565,74 @@ class UseExistingTest(fixtures.TablesTest):
         lambda: testing.db.dialect.requires_name_normalize,
         "test depends on lowercase as case insensitive",
     )
-    def test_keep_existing_quote_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_keep_existing_quote_no_orig(self, empty_meta):
         users = Table(
-            "users", meta2, quote=True, autoload=True, keep_existing=True
+            "users", empty_meta, quote=True, autoload=True, keep_existing=True
         )
         assert users.name.quote
 
-    def test_keep_existing_add_column_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_keep_existing_add_column_no_orig(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("foo", Integer),
             autoload=True,
             keep_existing=True,
         )
         assert "foo" in users.c
 
-    def test_keep_existing_coltype_no_reflection(self):
-        meta2 = self._useexisting_fixture()
+    def test_keep_existing_coltype_no_reflection(self, existing_meta):
         users = Table(
-            "users", meta2, Column("name", Unicode), keep_existing=True
+            "users", existing_meta, Column("name", Unicode), keep_existing=True
         )
         assert not isinstance(users.c.name.type, Unicode)
 
-    def test_keep_existing_quote_no_reflection(self):
-        meta2 = self._useexisting_fixture()
-        users = Table("users", meta2, quote=True, keep_existing=True)
+    def test_keep_existing_quote_no_reflection(self, existing_meta):
+        users = Table("users", existing_meta, quote=True, keep_existing=True)
         assert not users.name.quote
 
-    def test_keep_existing_add_column_no_reflection(self):
-        meta2 = self._useexisting_fixture()
+    def test_keep_existing_add_column_no_reflection(self, existing_meta):
         users = Table(
-            "users", meta2, Column("foo", Integer), keep_existing=True
+            "users", existing_meta, Column("foo", Integer), keep_existing=True
         )
         assert "foo" not in users.c
 
-    def test_extend_existing_coltype(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_coltype(self, existing_meta):
         users = Table(
             "users",
-            meta2,
+            existing_meta,
             Column("name", Unicode),
             autoload=True,
             extend_existing=True,
         )
         assert isinstance(users.c.name.type, Unicode)
 
-    def test_extend_existing_quote(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_quote(self, existing_meta):
         assert_raises_message(
             tsa.exc.ArgumentError,
             "Can't redefine 'quote' or 'quote_schema' arguments",
             Table,
             "users",
-            meta2,
+            existing_meta,
             quote=True,
             autoload=True,
             extend_existing=True,
         )
 
-    def test_extend_existing_add_column(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_add_column(self, existing_meta):
         users = Table(
             "users",
-            meta2,
+            existing_meta,
             Column("foo", Integer),
             autoload=True,
             extend_existing=True,
         )
         assert "foo" in users.c
 
-    def test_extend_existing_coltype_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_extend_existing_coltype_no_orig(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("name", Unicode),
             autoload=True,
             extend_existing=True,
@@ -2603,47 +2643,52 @@ class UseExistingTest(fixtures.TablesTest):
         lambda: testing.db.dialect.requires_name_normalize,
         "test depends on lowercase as case insensitive",
     )
-    def test_extend_existing_quote_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_extend_existing_quote_no_orig(self, empty_meta):
         users = Table(
-            "users", meta2, quote=True, autoload=True, extend_existing=True
+            "users",
+            empty_meta,
+            quote=True,
+            autoload=True,
+            extend_existing=True,
         )
         assert users.name.quote
 
-    def test_extend_existing_add_column_no_orig(self):
-        meta2 = self._notexisting_fixture()
+    def test_extend_existing_add_column_no_orig(self, empty_meta):
         users = Table(
             "users",
-            meta2,
+            empty_meta,
             Column("foo", Integer),
             autoload=True,
             extend_existing=True,
         )
         assert "foo" in users.c
 
-    def test_extend_existing_coltype_no_reflection(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_coltype_no_reflection(self, existing_meta):
         users = Table(
-            "users", meta2, Column("name", Unicode), extend_existing=True
+            "users",
+            existing_meta,
+            Column("name", Unicode),
+            extend_existing=True,
         )
         assert isinstance(users.c.name.type, Unicode)
 
-    def test_extend_existing_quote_no_reflection(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_quote_no_reflection(self, existing_meta):
         assert_raises_message(
             tsa.exc.ArgumentError,
             "Can't redefine 'quote' or 'quote_schema' arguments",
             Table,
             "users",
-            meta2,
+            existing_meta,
             quote=True,
             extend_existing=True,
         )
 
-    def test_extend_existing_add_column_no_reflection(self):
-        meta2 = self._useexisting_fixture()
+    def test_extend_existing_add_column_no_reflection(self, existing_meta):
         users = Table(
-            "users", meta2, Column("foo", Integer), extend_existing=True
+            "users",
+            existing_meta,
+            Column("foo", Integer),
+            extend_existing=True,
         )
         assert "foo" in users.c
 

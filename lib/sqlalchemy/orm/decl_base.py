@@ -909,13 +909,13 @@ def _add_attribute(cls, key, value):
     if "__mapper__" in cls.__dict__:
         if isinstance(value, Column):
             _undefer_column_name(key, value)
-            cls.__table__.append_column(value)
+            cls.__table__.append_column(value, replace_existing=True)
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, ColumnProperty):
             for col in value.columns:
                 if isinstance(col, Column) and col.table is None:
                     _undefer_column_name(key, col)
-                    cls.__table__.append_column(col)
+                    cls.__table__.append_column(col, replace_existing=True)
             cls.__mapper__.add_property(key, value)
         elif isinstance(value, MapperProperty):
             cls.__mapper__.add_property(key, value)

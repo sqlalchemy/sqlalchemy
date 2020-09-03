@@ -205,7 +205,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
         if where is not None:
             self.where = coercions.expect(roles.StatementOptionRole, where)
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         super(ExcludeConstraint, self)._set_parent(table)
 
         self._render_exprs = [

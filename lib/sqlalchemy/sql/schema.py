@@ -100,9 +100,8 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
     __visit_name__ = "schema_item"
 
-    def _init_items(self, *args):
+    def _init_items(self, *args, **kw):
         """Initialize the list of child items for this SchemaItem."""
-
         for item in args:
             if item is not None:
                 try:
@@ -116,7 +115,7 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
                         replace_context=err,
                     )
                 else:
-                    spwd(self)
+                    spwd(self, **kw)
 
     def __repr__(self):
         return util.generic_repr(self, omit_kwarg=["info"])
@@ -202,14 +201,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :class:`.PrimaryKeyConstraint`, and
         :class:`_schema.ForeignKeyConstraint`.
 
-    :param autoload: Defaults to False, unless
+    :param autoload: Defaults to ``False``, unless
         :paramref:`_schema.Table.autoload_with`
-        is set in which case it defaults to True; :class:`_schema.Column`
-        objects
+        is set in which case it defaults to ``True``;
+        :class:`_schema.Column` objects
         for this table should be reflected from the database, possibly
-        augmenting or replacing existing :class:`_schema.Column`
-        objects that were
-        explicitly specified.
+        augmenting objects that were explicitly specified.
+        :class:`_schema.Column` and other objects explicitly set on the
+        table will replace corresponding reflected objects.
 
         .. deprecated:: 1.4
 
@@ -501,8 +500,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             schema = metadata.schema
         elif schema is BLANK_SCHEMA:
             schema = None
-        keep_existing = kw.pop("keep_existing", False)
-        extend_existing = kw.pop("extend_existing", False)
+        keep_existing = kw.get("keep_existing", False)
+        extend_existing = kw.get("extend_existing", False)
 
         if keep_existing and extend_existing:
             msg = "keep_existing and extend_existing are mutually exclusive."
@@ -533,7 +532,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 table._init(name, metadata, *args, **kw)
                 table.dispatch.after_parent_attach(table, metadata)
                 return table
-            except:
+            except Exception:
                 with util.safe_reraise():
                     metadata._remove_table(name, schema)
 
@@ -565,7 +564,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         self.indexes = set()
         self.constraints = set()
-        self._columns = DedupeColumnCollection()
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
@@ -580,6 +578,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         autoload = kwargs.pop("autoload", autoload_with is not None)
         # this argument is only used with _init_existing()
         kwargs.pop("autoload_replace", True)
+        keep_existing = kwargs.pop("keep_existing", False)
+        extend_existing = kwargs.pop("extend_existing", False)
         _extend_on = kwargs.pop("_extend_on", None)
 
         resolve_fks = kwargs.pop("resolve_fks", True)
@@ -614,7 +614,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         # initialize all the column, etc. objects.  done after reflection to
         # allow user-overrides
-        self._init_items(*args)
+
+        self._init_items(
+            *args,
+            allow_replacements=extend_existing or keep_existing or autoload
+        )
 
     def _autoload(
         self,
@@ -670,6 +674,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         autoload_replace = kwargs.pop("autoload_replace", True)
         schema = kwargs.pop("schema", None)
         _extend_on = kwargs.pop("_extend_on", None)
+        # these arguments are only used with _init()
+        kwargs.pop("extend_existing", False)
+        kwargs.pop("keep_existing", False)
 
         if schema and schema != self.schema:
             raise exc.ArgumentError(
@@ -776,7 +783,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """
         self._extra_dependencies.add(table)
 
-    def append_column(self, column):
+    def append_column(self, column, replace_existing=False):
         """Append a :class:`_schema.Column` to this :class:`_schema.Table`.
 
         The "key" of the newly added :class:`_schema.Column`, i.e. the
@@ -794,9 +801,17 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         emitted for an already-existing table that doesn't contain
         the newly added column.
 
+        :param replace_existing: When ``True``, allows replacing existing
+            columns. When ``False``, the default, an warning will be raised
+            if a column with the same ``.key`` already exists. A future
+            version of sqlalchemy will instead rise a warning.
+
+            .. versionadded:: 1.4.0
         """
 
-        column._set_parent_with_dispatch(self)
+        column._set_parent_with_dispatch(
+            self, allow_replacements=replace_existing
+        )
 
     def append_constraint(self, constraint):
         """Append a :class:`_schema.Constraint` to this
@@ -819,7 +834,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         constraint._set_parent_with_dispatch(self)
 
-    def _set_parent(self, metadata):
+    def _set_parent(self, metadata, **kw):
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
 
@@ -1495,7 +1510,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             + ["%s=%s" % (k, repr(getattr(self, k))) for k in kwarg]
         )
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, allow_replacements=True):
         if not self.name:
             raise exc.ArgumentError(
                 "Column must be constructed with a non-blank name or "
@@ -1517,6 +1532,15 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         if self.key in table._columns:
             col = table._columns.get(self.key)
             if col is not self:
+                if not allow_replacements:
+                    util.warn_deprecated(
+                        "A column with name '%s' is already present "
+                        "in table '%s'. Please use method "
+                        ":meth:`_schema.Table.append_column` with the "
+                        "parameter ``replace_existing=True`` to replace an "
+                        "existing column." % (self.key, table.name),
+                        "1.4",
+                    )
                 for fk in col.foreign_keys:
                     table.foreign_keys.remove(fk)
                     if fk.constraint in table.constraints:
@@ -2129,7 +2153,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             _column = self._colspec
             return _column
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         if self.parent is not None and self.parent is not column:
             raise exc.InvalidRequestError(
                 "This ForeignKey already has a parent !"
@@ -2204,7 +2228,7 @@ class DefaultGenerator(SchemaItem):
     def __init__(self, for_update=False):
         self.for_update = for_update
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         self.column = column
         if self.for_update:
             self.column.onupdate = self
@@ -2653,7 +2677,7 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
             self, bind=self.bind
         )
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         super(Sequence, self)._set_parent(column)
         column._on_table_attach(self._set_table)
 
@@ -2736,7 +2760,7 @@ class FetchedValue(SchemaEventTarget):
         n.for_update = for_update
         return n
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         self.column = column
         if self.for_update:
             self.column.server_onupdate = self
@@ -2862,7 +2886,7 @@ class Constraint(DialectKWArgs, SchemaItem):
             "mean to call table.append_constraint(constraint) ?"
         )
 
-    def _set_parent(self, parent):
+    def _set_parent(self, parent, **kw):
         self.parent = parent
         parent.constraints.add(self)
 
@@ -2965,7 +2989,7 @@ class ColumnCollectionMixin(object):
             for col in self._pending_colargs
         ]
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         for col in self._col_expressions(table):
             if col is not None:
                 self.columns.add(col)
@@ -3007,7 +3031,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
     """
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         Constraint._set_parent(self, table)
         ColumnCollectionMixin._set_parent(self, table)
 
@@ -3394,7 +3418,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
     def _col_description(self):
         return ", ".join(self.column_keys)
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         Constraint._set_parent(self, table)
 
         try:
@@ -3522,7 +3546,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         self._implicit_generated = kw.pop("_implicit_generated", False)
         super(PrimaryKeyConstraint, self).__init__(*columns, **kw)
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         super(PrimaryKeyConstraint, self)._set_parent(table)
 
         if table.primary_key is not self:
@@ -3809,7 +3833,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         if table is not None:
             self._set_parent(table)
 
-    def _set_parent(self, table):
+    def _set_parent(self, table, **kw):
         ColumnCollectionMixin._set_parent(self, table)
 
         if self.table is not None and table is not self.table:
@@ -4607,7 +4631,7 @@ class Computed(FetchedValue, SchemaItem):
         self.persisted = persisted
         self.column = None
 
-    def _set_parent(self, parent):
+    def _set_parent(self, parent, **kw):
         if not isinstance(
             parent.server_default, (type(None), Computed)
         ) or not isinstance(parent.server_onupdate, (type(None), Computed)):
@@ -4734,7 +4758,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         self.on_null = on_null
         self.column = None
 
-    def _set_parent(self, parent):
+    def _set_parent(self, parent, **kw):
         if not isinstance(
             parent.server_default, (type(None), Identity)
         ) or not isinstance(parent.server_onupdate, type(None)):
