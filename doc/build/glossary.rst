@@ -460,6 +460,7 @@ Glossary
             :doc:`orm/session`
 
     expire
+    expired
     expires
     expiring
     Expiring
