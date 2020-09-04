@@ -953,6 +953,11 @@ class Session(_SessionClassMethods):
            so that all attribute/object access subsequent to a completed
            transaction will load from the most recent database state.
 
+            .. seealso::
+
+                :ref:`session_committing`
+
+
         :param future: if True, use 2.0 style behavior for the
           :meth:`_orm.Session.execute` method.   Future mode includes the
           following behaviors:
@@ -3838,8 +3843,10 @@ class sessionmaker(_SessionClassMethods):
          :class:`.Session` objects.
         :param autocommit: The autocommit setting to use with newly created
          :class:`.Session` objects.
-        :param expire_on_commit=True: the expire_on_commit setting to use
+        :param expire_on_commit=True: the
+         :paramref:`_orm.Session.expire_on_commit` setting to use
          with newly created :class:`.Session` objects.
+
         :param info: optional dictionary of information that will be available
          via :attr:`.Session.info`.  Note this dictionary is *updated*, not
          replaced, when the ``info`` parameter is specified to the specific

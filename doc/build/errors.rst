@@ -854,14 +854,24 @@ Mitigation of this error is via two general techniques:
   to pass objects off to other systems that can't run in the same context
   even though they're in the same process.  In this case, the application
   should try to make appropriate use of :term:`eager loading` to ensure
-  that objects have what they need up front.   As an additional measure,
-  special directives like the :func:`.raiseload` option can ensure that
-  systems don't call upon lazy loading when its not expected.
+  that objects have what they need up front.
+
+  When using this approach, it is usually necessary that the
+  :paramref:`_orm.Session.expire_on_commit` parameter be set to ``False``, so
+  that after a :meth:`_orm.Session.commit` operation, the objects within the
+  session aren't :term:`expired`, which would incur a lazy load if their
+  attributes were subsequently accessed.  Additionally, the
+  :meth:`_orm.Session.rollback` method unconditionally expires all contents in
+  the :class:`_orm.Session` and should also be avoided in non-error scenarios.
 
   .. seealso::
 
     :ref:`loading_toplevel` - detailed documentation on eager loading and other
     relationship-oriented loading techniques
+
+    :ref:`session_committing` - background on session commit
+
+    :ref:`session_expire` - background on attribute expiry
 
 
 .. _error_7s2a:
