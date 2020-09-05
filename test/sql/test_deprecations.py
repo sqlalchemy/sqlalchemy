@@ -811,6 +811,7 @@ class TextualSelectTest(fixtures.TestBase, AssertsCompiledSQL):
                     "myid",
                     (table1.c.myid, "myid", "myid", "mytable_myid"),
                     table1.c.myid.type,
+                    0,
                 )
             },
         )

@@ -545,7 +545,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = select(type_coerce(column("x"), MyType).label("foo")).limit(1)
         dialect = oracle.dialect()
         compiled = stmt.compile(dialect=dialect)
-        assert isinstance(compiled._create_result_map()["foo"][-1], MyType)
+        assert isinstance(compiled._create_result_map()["foo"][-2], MyType)
 
     def test_use_binds_for_limits_disabled_one(self):
         t = table("sometable", column("col1"), column("col2"))
@@ -1061,8 +1061,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(
             compiled._create_result_map(),
             {
-                "c3": ("c3", (t1.c.c3, "c3", "c3"), t1.c.c3.type),
-                "lower": ("lower", (fn, "lower", None), fn.type),
+                "c3": ("c3", (t1.c.c3, "c3", "c3"), t1.c.c3.type, 1),
+                "lower": ("lower", (fn, "lower", None), fn.type, 0),
             },
         )
 

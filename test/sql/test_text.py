@@ -435,6 +435,8 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             column("id", Integer), column("name")
         )
 
+        col_pos = {col.name: idx for idx, col in enumerate(t.selected_columns)}
+
         compiled = t.compile()
         eq_(
             compiled._create_result_map(),
@@ -443,11 +445,13 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
                     "id",
                     (t.selected_columns.id, "id", "id", "id"),
                     t.selected_columns.id.type,
+                    col_pos["id"],
                 ),
                 "name": (
                     "name",
                     (t.selected_columns.name, "name", "name", "name"),
                     t.selected_columns.name.type,
+                    col_pos["name"],
                 ),
             },
         )
@@ -455,6 +459,8 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_basic_toplevel_resultmap(self):
         t = text("select id, name from user").columns(id=Integer, name=String)
 
+        col_pos = {col.name: idx for idx, col in enumerate(t.selected_columns)}
+
         compiled = t.compile()
         eq_(
             compiled._create_result_map(),
@@ -463,11 +469,13 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
                     "id",
                     (t.selected_columns.id, "id", "id", "id"),
                     t.selected_columns.id.type,
+                    col_pos["id"],
                 ),
                 "name": (
                     "name",
                     (t.selected_columns.name, "name", "name", "name"),
                     t.selected_columns.name.type,
+                    col_pos["name"],
                 ),
             },
         )
@@ -490,6 +498,7 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
                     "myid",
                     (table1.c.myid, "myid", "myid", "mytable_myid"),
                     table1.c.myid.type,
+                    0,
                 )
             },
         )

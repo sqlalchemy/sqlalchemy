@@ -4716,6 +4716,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                         "here_yetagain_anotherid",
                     ),
                     t1.c.anotherid.type,
+                    0,
                 )
             },
         )
@@ -5200,8 +5201,8 @@ class ResultMapTest(fixtures.TestBase):
         eq_(
             comp._create_result_map(),
             {
-                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type),
-                "b": ("b", (t.c.b, "b", "b", "t_b"), t.c.b.type),
+                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0),
+                "b": ("b", (t.c.b, "b", "b", "t_b"), t.c.b.type, 1),
             },
         )
 
@@ -5212,7 +5213,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile()
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type)},
+            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0)},
         )
 
     def test_compound_only_top_populates(self):
@@ -5221,7 +5222,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile()
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type)},
+            {"a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0)},
         )
 
     def test_label_plus_element(self):
@@ -5234,12 +5235,13 @@ class ResultMapTest(fixtures.TestBase):
         eq_(
             comp._create_result_map(),
             {
-                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type),
-                "bar": ("bar", (l1, "bar"), l1.type),
+                "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0),
+                "bar": ("bar", (l1, "bar"), l1.type, 1),
                 "anon_1": (
                     tc.anon_label,
                     (tc_anon_label, "anon_1", tc),
                     tc.type,
+                    2,
                 ),
             },
         )
@@ -5279,7 +5281,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type)},
+            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type, 0)},
         )
 
     def test_insert_from_select(self):
@@ -5293,7 +5295,7 @@ class ResultMapTest(fixtures.TestBase):
         comp = stmt.compile(dialect=postgresql.dialect())
         eq_(
             comp._create_result_map(),
-            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type)},
+            {"a": ("a", (aint, "a", "a", "t2_a"), aint.type, 0)},
         )
 
     def test_nested_api(self):
@@ -5339,6 +5341,7 @@ class ResultMapTest(fixtures.TestBase):
                         "myothertable_otherid",
                     ),
                     table2.c.otherid.type,
+                    0,
                 ),
                 "othername": (
                     "othername",
@@ -5349,8 +5352,9 @@ class ResultMapTest(fixtures.TestBase):
                         "myothertable_othername",
                     ),
                     table2.c.othername.type,
+                    1,
                 ),
-                "k1": ("k1", (1, 2, 3), int_),
+                "k1": ("k1", (1, 2, 3), int_, 2),
             },
         )
         eq_(
@@ -5360,12 +5364,14 @@ class ResultMapTest(fixtures.TestBase):
                     "myid",
                     (table1.c.myid, "myid", "myid", "mytable_myid"),
                     table1.c.myid.type,
+                    0,
                 ),
-                "k2": ("k2", (3, 4, 5), int_),
+                "k2": ("k2", (3, 4, 5), int_, 3),
                 "name": (
                     "name",
                     (table1.c.name, "name", "name", "mytable_name"),
                     table1.c.name.type,
+                    1,
                 ),
                 "description": (
                     "description",
@@ -5376,6 +5382,7 @@ class ResultMapTest(fixtures.TestBase):
                         "mytable_description",
                     ),
                     table1.c.description.type,
+                    2,
                 ),
             },
         )

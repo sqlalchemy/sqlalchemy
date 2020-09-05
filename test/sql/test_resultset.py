@@ -1475,6 +1475,16 @@ class KeyTargetingTest(fixtures.TablesTest):
                 schema=testing.config.test_schema,
             )
 
+        Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("team_id", metadata, ForeignKey("teams.id")),
+        )
+        Table(
+            "teams", metadata, Column("id", Integer, primary_key=True),
+        )
+
     @classmethod
     def insert_data(cls, connection):
         conn = connection
@@ -1483,6 +1493,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
         conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
         conn.execute(cls.tables.content.insert(), dict(type="t1"))
+
+        conn.execute(cls.tables.teams.insert(), dict(id=1))
+        conn.execute(cls.tables.users.insert(), dict(id=1, team_id=1))
 
         if testing.requires.schemas.enabled:
             conn.execute(
@@ -1815,7 +1828,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 
     def _adapt_result_columns_fixture_two(self):
         return text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
-            keyed2_a=CHAR, keyed2_b=CHAR
+            column("keyed2_a", CHAR), column("keyed2_b", CHAR)
         )
 
     def _adapt_result_columns_fixture_three(self):
@@ -1834,11 +1847,34 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         return stmt2
 
+    def _adapt_result_columns_fixture_five(self):
+        users, teams = self.tables("users", "teams")
+        return select([users.c.id, teams.c.id]).select_from(
+            users.outerjoin(teams)
+        )
+
+    def _adapt_result_columns_fixture_six(self):
+        # this has _result_columns structure that is not ordered
+        # the same as the cursor.description.
+        return text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
+            keyed2_b=CHAR, keyed2_a=CHAR,
+        )
+
+    def _adapt_result_columns_fixture_seven(self):
+        # this has _result_columns structure that is not ordered
+        # the same as the cursor.description.
+        return text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
+            keyed2_b=CHAR, bogus_col=CHAR
+        )
+
     @testing.combinations(
         _adapt_result_columns_fixture_one,
         _adapt_result_columns_fixture_two,
         _adapt_result_columns_fixture_three,
         _adapt_result_columns_fixture_four,
+        _adapt_result_columns_fixture_five,
+        _adapt_result_columns_fixture_six,
+        _adapt_result_columns_fixture_seven,
         argnames="stmt_fn",
     )
     def test_adapt_result_columns(self, connection, stmt_fn):
@@ -1863,31 +1899,41 @@ class KeyTargetingTest(fixtures.TablesTest):
             zip(stmt1.selected_columns, stmt2.selected_columns)
         )
 
-        result = connection.execute(stmt1)
+        for i in range(2):
+            try:
+                result = connection.execute(stmt1)
 
-        mock_context = Mock(
-            compiled=result.context.compiled, invoked_statement=stmt2
-        )
-        existing_metadata = result._metadata
-        adapted_metadata = existing_metadata._adapt_to_context(mock_context)
+                mock_context = Mock(
+                    compiled=result.context.compiled, invoked_statement=stmt2
+                )
+                existing_metadata = result._metadata
+                adapted_metadata = existing_metadata._adapt_to_context(
+                    mock_context
+                )
 
-        eq_(existing_metadata.keys, adapted_metadata.keys)
+                eq_(existing_metadata.keys, adapted_metadata.keys)
 
-        for k in existing_metadata._keymap:
-            if isinstance(k, ColumnElement) and k in column_linkage:
-                other_k = column_linkage[k]
-            else:
-                other_k = k
+                for k in existing_metadata._keymap:
+                    if isinstance(k, ColumnElement) and k in column_linkage:
+                        other_k = column_linkage[k]
+                    else:
+                        other_k = k
 
-            is_(
-                existing_metadata._keymap[k], adapted_metadata._keymap[other_k]
-            )
+                    is_(
+                        existing_metadata._keymap[k],
+                        adapted_metadata._keymap[other_k],
+                    )
+            finally:
+                result.close()
 
     @testing.combinations(
         _adapt_result_columns_fixture_one,
         _adapt_result_columns_fixture_two,
         _adapt_result_columns_fixture_three,
         _adapt_result_columns_fixture_four,
+        _adapt_result_columns_fixture_five,
+        _adapt_result_columns_fixture_six,
+        _adapt_result_columns_fixture_seven,
         argnames="stmt_fn",
     )
     def test_adapt_result_columns_from_cache(self, connection, stmt_fn):
@@ -1909,7 +1955,10 @@ class KeyTargetingTest(fixtures.TablesTest):
 
         row = result.first()
         for col in stmt2.selected_columns:
-            assert col in row._mapping
+            if "bogus" in col.name:
+                assert col not in row._mapping
+            else:
+                assert col in row._mapping
 
 
 class PositionalTextTest(fixtures.TablesTest):

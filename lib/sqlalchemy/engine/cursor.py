@@ -34,11 +34,12 @@ _UNPICKLED = util.symbol("unpickled")
 # metadata entry tuple indexes.
 # using raw tuple is faster than namedtuple.
 MD_INDEX = 0  # integer index in cursor.description
-MD_OBJECTS = 1  # other string keys and ColumnElement obj that can match
-MD_LOOKUP_KEY = 2  # string key we usually expect for key-based lookup
-MD_RENDERED_NAME = 3  # name that is usually in cursor.description
-MD_PROCESSOR = 4  # callable to process a result value into a row
-MD_UNTRANSLATED = 5  # raw name from cursor.description
+MD_RESULT_MAP_INDEX = 1  # integer index in compiled._result_columns
+MD_OBJECTS = 2  # other string keys and ColumnElement obj that can match
+MD_LOOKUP_KEY = 3  # string key we usually expect for key-based lookup
+MD_RENDERED_NAME = 4  # name that is usually in cursor.description
+MD_PROCESSOR = 5  # callable to process a result value into a row
+MD_UNTRANSLATED = 6  # raw name from cursor.description
 
 
 class CursorResultMetaData(ResultMetaData):
@@ -49,6 +50,7 @@ class CursorResultMetaData(ResultMetaData):
         "case_sensitive",
         "_processors",
         "_keys",
+        "_keymap_by_result_column_idx",
         "_tuplefilter",
         "_translated_indexes",
         "_safe_for_cache"
@@ -112,6 +114,7 @@ class CursorResultMetaData(ResultMetaData):
         as matched to those of the cached statement.
 
         """
+
         if not context.compiled._result_columns:
             return self
 
@@ -127,13 +130,19 @@ class CursorResultMetaData(ResultMetaData):
 
         md._keymap = dict(self._keymap)
 
-        # match up new columns positionally to the result columns
-        for existing, new in zip(
-            context.compiled._result_columns,
-            invoked_statement._exported_columns_iterator(),
+        keymap_by_position = self._keymap_by_result_column_idx
+
+        for idx, new in enumerate(
+            invoked_statement._exported_columns_iterator()
         ):
-            if existing[RM_NAME] in md._keymap:
-                md._keymap[new] = md._keymap[existing[RM_NAME]]
+            try:
+                rec = keymap_by_position[idx]
+            except KeyError:
+                # this can happen when there are bogus column entries
+                # in a TextualSelect
+                pass
+            else:
+                md._keymap[new] = rec
 
         md.case_sensitive = self.case_sensitive
         md._processors = self._processors
@@ -141,6 +150,8 @@ class CursorResultMetaData(ResultMetaData):
         md._tuplefilter = None
         md._translated_indexes = None
         md._keys = self._keys
+        md._keymap_by_result_column_idx = self._keymap_by_result_column_idx
+        md._safe_for_cache = self._safe_for_cache
         return md
 
     def __init__(self, parent, cursor_description):
@@ -185,6 +196,12 @@ class CursorResultMetaData(ResultMetaData):
         self._processors = [
             metadata_entry[MD_PROCESSOR] for metadata_entry in raw
         ]
+
+        if context.compiled:
+            self._keymap_by_result_column_idx = {
+                metadata_entry[MD_RESULT_MAP_INDEX]: metadata_entry
+                for metadata_entry in raw
+            }
 
         # keymap by primary string...
         by_key = dict(
@@ -237,7 +254,7 @@ class CursorResultMetaData(ResultMetaData):
 
                 # then for the dupe keys, put the "ambiguous column"
                 # record into by_key.
-                by_key.update({key: (None, (), key) for key in dupes})
+                by_key.update({key: (None, None, (), key) for key in dupes})
 
             else:
                 # no dupes - copy secondary elements from compiled
@@ -351,6 +368,7 @@ class CursorResultMetaData(ResultMetaData):
             return [
                 (
                     idx,
+                    idx,
                     rmap_entry[RM_OBJECTS],
                     rmap_entry[RM_NAME].lower()
                     if not case_sensitive
@@ -399,6 +417,7 @@ class CursorResultMetaData(ResultMetaData):
             return [
                 (
                     idx,
+                    ridx,
                     obj,
                     cursor_colname,
                     cursor_colname,
@@ -409,6 +428,7 @@ class CursorResultMetaData(ResultMetaData):
                 )
                 for (
                     idx,
+                    ridx,
                     cursor_colname,
                     mapped_type,
                     coltype,
@@ -480,6 +500,7 @@ class CursorResultMetaData(ResultMetaData):
             if idx < num_ctx_cols:
                 ctx_rec = result_columns[idx]
                 obj = ctx_rec[RM_OBJECTS]
+                ridx = idx
                 mapped_type = ctx_rec[RM_TYPE]
                 if obj[0] in seen:
                     raise exc.InvalidRequestError(
@@ -490,7 +511,8 @@ class CursorResultMetaData(ResultMetaData):
             else:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
-            yield idx, colname, mapped_type, coltype, obj, untranslated
+                ridx = None
+            yield idx, ridx, colname, mapped_type, coltype, obj, untranslated
 
     def _merge_cols_by_name(
         self,
@@ -504,7 +526,6 @@ class CursorResultMetaData(ResultMetaData):
         match_map = self._create_description_match_map(
             result_columns, case_sensitive, loose_column_name_matching
         )
-
         for (
             idx,
             colname,
@@ -516,10 +537,20 @@ class CursorResultMetaData(ResultMetaData):
             except KeyError:
                 mapped_type = sqltypes.NULLTYPE
                 obj = None
+                result_columns_idx = None
             else:
                 obj = ctx_rec[1]
                 mapped_type = ctx_rec[2]
-            yield idx, colname, mapped_type, coltype, obj, untranslated
+                result_columns_idx = ctx_rec[3]
+            yield (
+                idx,
+                result_columns_idx,
+                colname,
+                mapped_type,
+                coltype,
+                obj,
+                untranslated,
+            )
 
     @classmethod
     def _create_description_match_map(
@@ -534,7 +565,7 @@ class CursorResultMetaData(ResultMetaData):
         """
 
         d = {}
-        for elem in result_columns:
+        for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
 
             if not case_sensitive:
@@ -544,10 +575,10 @@ class CursorResultMetaData(ResultMetaData):
                 # to the existing record.  if there is a duplicate column
                 # name in the cursor description, this will allow all of those
                 # objects to raise an ambiguous column error
-                e_name, e_obj, e_type = d[key]
-                d[key] = e_name, e_obj + elem[RM_OBJECTS], e_type
+                e_name, e_obj, e_type, e_ridx = d[key]
+                d[key] = e_name, e_obj + elem[RM_OBJECTS], e_type, ridx
             else:
-                d[key] = (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE])
+                d[key] = (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE], ridx)
 
             if loose_column_name_matching:
                 # when using a textual statement with an unordered set
@@ -557,7 +588,8 @@ class CursorResultMetaData(ResultMetaData):
                 # duplicate keys that are ambiguous will be fixed later.
                 for r_key in elem[RM_OBJECTS]:
                     d.setdefault(
-                        r_key, (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE])
+                        r_key,
+                        (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE], ridx),
                     )
 
         return d
@@ -569,7 +601,15 @@ class CursorResultMetaData(ResultMetaData):
             untranslated,
             coltype,
         ) in self._colnames_from_description(context, cursor_description):
-            yield idx, colname, sqltypes.NULLTYPE, coltype, None, untranslated
+            yield (
+                idx,
+                None,
+                colname,
+                sqltypes.NULLTYPE,
+                coltype,
+                None,
+                untranslated,
+            )
 
     def _key_fallback(self, key, err, raiseerr=True):
         if raiseerr:
@@ -637,7 +677,7 @@ class CursorResultMetaData(ResultMetaData):
     def __getstate__(self):
         return {
             "_keymap": {
-                key: (rec[MD_INDEX], _UNPICKLED, key)
+                key: (rec[MD_INDEX], rec[MD_RESULT_MAP_INDEX], _UNPICKLED, key)
                 for key, rec in self._keymap.items()
                 if isinstance(key, util.string_types + util.int_types)
             },
@@ -651,6 +691,9 @@ class CursorResultMetaData(ResultMetaData):
         self._processors = [None for _ in range(len(state["_keys"]))]
         self._keymap = state["_keymap"]
 
+        self._keymap_by_result_column_idx = {
+            rec[MD_RESULT_MAP_INDEX]: rec for rec in self._keymap.values()
+        }
         self._keys = state["_keys"]
         self.case_sensitive = state["case_sensitive"]
 
@@ -1220,6 +1263,7 @@ class BaseCursorResult(object):
             self._metadata = _NO_RESULT_METADATA
 
     def _init_metadata(self, context, cursor_description):
+
         if context.compiled:
             if context.compiled._cached_metadata:
                 metadata = self.context.compiled._cached_metadata
