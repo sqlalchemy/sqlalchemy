@@ -790,13 +790,8 @@ class JSONTest(fixtures.TestBase):
 class EnumSetTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
-    # mariadb connector having issues with stability
-    __only_on__ = (
-        "mysql+mysqldb",
-        "mysql+pymysql",
-        "mariadb+mysqldb",
-        "mariadb+pymysql",
-    )
+
+    __only_on__ = "mysql", "mariadb"
     __dialect__ = mysql.dialect()
     __backend__ = True
 
