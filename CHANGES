@@ -4,13 +4,10 @@ MOVED
 
 Please see:
 
-    /doc/changelog/index.html
+    /doc/build/changelog/
 
 or
 
     http://www.sqlalchemy.org/docs/latest/changelog/
 
 for an index of all changelogs.
-
-
-
