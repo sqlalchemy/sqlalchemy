@@ -803,6 +803,18 @@ class PGDialect_psycopg2(PGDialect):
 
         connection.set_isolation_level(level)
 
+    def set_readonly(self, connection, value):
+        connection.readonly = value
+
+    def get_readonly(self, connection):
+        return connection.readonly
+
+    def set_deferrable(self, connection, value):
+        connection.deferrable = value
+
+    def get_deferrable(self, connection):
+        return connection.deferrable
+
     def on_connect(self):
         extras = self._psycopg2_extras()
         extensions = self._psycopg2_extensions()

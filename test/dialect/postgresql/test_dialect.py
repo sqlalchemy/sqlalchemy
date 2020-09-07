@@ -735,6 +735,112 @@ class MiscBackendTest(
             ".".join(str(x) for x in v)
         )
 
+    def test_readonly_flag_connection(self):
+        with testing.db.connect() as conn:
+            # asyncpg requires serializable for readonly..
+            conn = conn.execution_options(
+                isolation_level="SERIALIZABLE", postgresql_readonly=True
+            )
+
+            dbapi_conn = conn.connection.connection
+
+            cursor = dbapi_conn.cursor()
+            cursor.execute("show transaction_read_only")
+            val = cursor.fetchone()[0]
+            cursor.close()
+            eq_(val, "on")
+
+        cursor = dbapi_conn.cursor()
+        try:
+            cursor.execute("show transaction_read_only")
+            val = cursor.fetchone()[0]
+        finally:
+            cursor.close()
+            dbapi_conn.rollback()
+        eq_(val, "off")
+
+    def test_deferrable_flag_connection(self):
+        with testing.db.connect() as conn:
+            # asyncpg but not for deferrable?  which the PG docs actually
+            # state.  weird
+            conn = conn.execution_options(
+                isolation_level="SERIALIZABLE", postgresql_deferrable=True
+            )
+
+            dbapi_conn = conn.connection.connection
+
+            cursor = dbapi_conn.cursor()
+            cursor.execute("show transaction_deferrable")
+            val = cursor.fetchone()[0]
+            cursor.close()
+            eq_(val, "on")
+
+        cursor = dbapi_conn.cursor()
+        try:
+            cursor.execute("show transaction_deferrable")
+            val = cursor.fetchone()[0]
+        finally:
+            cursor.close()
+            dbapi_conn.rollback()
+        eq_(val, "off")
+
+    def test_readonly_flag_engine(self):
+        engine = engines.testing_engine(
+            options={
+                "execution_options": dict(
+                    isolation_level="SERIALIZABLE", postgresql_readonly=True
+                )
+            }
+        )
+        for i in range(2):
+            with engine.connect() as conn:
+                dbapi_conn = conn.connection.connection
+
+                cursor = dbapi_conn.cursor()
+                cursor.execute("show transaction_read_only")
+                val = cursor.fetchone()[0]
+                cursor.close()
+                eq_(val, "on")
+
+            cursor = dbapi_conn.cursor()
+            try:
+                cursor.execute("show transaction_read_only")
+                val = cursor.fetchone()[0]
+            finally:
+                cursor.close()
+                dbapi_conn.rollback()
+            eq_(val, "off")
+
+    def test_deferrable_flag_engine(self):
+        engine = engines.testing_engine(
+            options={
+                "execution_options": dict(
+                    isolation_level="SERIALIZABLE", postgresql_deferrable=True
+                )
+            }
+        )
+
+        for i in range(2):
+            with engine.connect() as conn:
+                # asyncpg but not for deferrable?  which the PG docs actually
+                # state.  weird
+                dbapi_conn = conn.connection.connection
+
+                cursor = dbapi_conn.cursor()
+                cursor.execute("show transaction_deferrable")
+                val = cursor.fetchone()[0]
+                cursor.close()
+                eq_(val, "on")
+
+            cursor = dbapi_conn.cursor()
+            try:
+                cursor.execute("show transaction_deferrable")
+                val = cursor.fetchone()[0]
+            finally:
+                cursor.close()
+                dbapi_conn.rollback()
+            eq_(val, "off")
+
     @testing.requires.psycopg2_compatibility
     def test_psycopg2_non_standard_err(self):
         # note that psycopg2 is sometimes called psycopg2cffi
