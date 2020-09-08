@@ -382,10 +382,10 @@ Instead, each statement invoked upon the connection will commit any changes
 automatically; it sometimes also means that the connection itself will use
 fewer server-side database resources. For this reason and others, "autocommit"
 mode is often desirable for non-transactional applications that need to read
-individual tables or rows in isolation of a true ACID transaction.
+individual tables or rows outside the scope of a true ACID transaction.
 
-SQLAlchemy dialects can support these isolation levels as well as autocommit to
-as great a degree as possible.   The levels are set via family of
+SQLAlchemy dialects should support these isolation levels as well as autocommit
+to as great a degree as possible.   The levels are set via family of
 "execution_options" parameters and methods that are throughout the Core, such
 as the :meth:`_engine.Connection.execution_options` method.   The parameter is
 known as :paramref:`_engine.Connection.execution_options.isolation_level` and
@@ -402,30 +402,39 @@ the values are strings which are typically a subset of the following names::
 Not every DBAPI supports every value; if an unsupported value is used for a
 certain backend, an error is raised.
 
-For example, to force REPEATABLE READ on a specific connection::
+For example, to force REPEATABLE READ on a specific connection, then
+begin a transaction::
 
   with engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
-      connection.execute(<statement>)
+      with connection.begin():
+          connection.execute(<statement>)
 
-The :paramref:`_engine.Connection.execution_options.isolation_level` option
-may also be set engine wide, as is often preferable.   It can be set either
-within :func:`_sa.create_engine` directly via the :paramref:`_sa.create_engine.execution_options`
-parameter::
+The :paramref:`_engine.Connection.execution_options.isolation_level` option may
+also be set engine wide, as is often preferable.  This is achieved by
+passing it within the :paramref:`_sa.create_engine.execution_options`
+parameter to :func:`_sa.create_engine`::
 
 
     from sqlalchemy import create_engine
 
     eng = create_engine(
         "postgresql://scott:tiger@localhost/test",
-        isolation_level='REPEATABLE READ'
+        execution_options={
+            "isolation_level": "REPEATABLE READ"
+        }
     )
 
-Or for an application that chooses between multiple levels, as may be the case
-for the use of "AUTOCOMMIT" to switch between "transactional" and "read-only"
-engines, the :meth:`_engine.Engine.execution_options` method will provide a shallow
-copy of the :class:`_engine.Engine` that will apply the given isolation
-level to all connections::
+With the above setting, the DBAPI connection will be set to use a
+``"REPEATABLE READ"`` isolation level setting for each new transaction
+begun.
 
+An application that frequently chooses to run operations within different
+isolation levels may wish to create multiple "sub-engines" of a lead
+:class:`_engine.Engine`, each of which will be configured to a different
+isolation level.  One such use case is an application that has operations
+that break into "transactional" and "read-only" operations, a separate
+:class:`_engine.Engine` that makes use of ``"AUTOCOMMIT"`` may be
+separated off from the main engine::
 
     from sqlalchemy import create_engine
 
@@ -434,9 +443,11 @@ level to all connections::
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
 
 
-Above, both ``eng`` and ``autocommit_engine`` share the same dialect
-and connection pool.  However the "AUTOCOMMIT" mode will be set upon connections
-when they are acquired from the ``autocommit_engine``.
+Above, the :meth:`_engine.Engine.execution_options` method creates a shallow
+copy of the original :class:`_engine.Engine`.  Both ``eng`` and
+``autocommit_engine`` share the same dialect and connection pool.  However, the
+"AUTOCOMMIT" mode will be set upon connections when they are acquired from the
+``autocommit_engine``.
 
 The isolation level setting, regardless of which one it is, is unconditionally
 reverted when a connection is returned to the connection pool.
