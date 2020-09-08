@@ -190,13 +190,10 @@ def setup_ddl_events():
                 for c in gis_cols:
                     bind.execute(
                         select(
-                            [
-                                func.DropGeometryColumn(
-                                    "public", table.name, c.name
-                                )
-                            ],
-                            autocommit=True,
-                        )
+                            func.DropGeometryColumn(
+                                "public", table.name, c.name
+                            )
+                        ).execution_options(autocommit=True)
                     )
 
         elif event == "after-create":
@@ -205,17 +202,14 @@ def setup_ddl_events():
                 if isinstance(c.type, Geometry):
                     bind.execute(
                         select(
-                            [
-                                func.AddGeometryColumn(
-                                    table.name,
-                                    c.name,
-                                    c.type.srid,
-                                    c.type.name,
-                                    c.type.dimension,
-                                )
-                            ],
-                            autocommit=True,
-                        )
+                            func.AddGeometryColumn(
+                                table.name,
+                                c.name,
+                                c.type.srid,
+                                c.type.name,
+                                c.type.dimension,
+                            )
+                        ).execution_options(autocommit=True)
                     )
         elif event == "after-drop":
             table.columns = table.info.pop("_saved_columns")
@@ -319,7 +313,7 @@ if __name__ == "__main__":
     # core usage just fine:
 
     road_table = Road.__table__
-    stmt = select([road_table]).where(
+    stmt = select(road_table).where(
         road_table.c.road_geom.intersects(r1.road_geom)
     )
     print(session.execute(stmt).fetchall())
@@ -329,7 +323,7 @@ if __name__ == "__main__":
 
     # look up the hex binary version, using SQLAlchemy casts
     as_binary = session.scalar(
-        select([type_coerce(r.road_geom, Geometry(coerce_="binary"))])
+        select(type_coerce(r.road_geom, Geometry(coerce_="binary")))
     )
     assert as_binary.as_hex == (
         "01020000000200000000000000b832084100000000"
@@ -338,7 +332,7 @@ if __name__ == "__main__":
 
     # back again, same method !
     as_text = session.scalar(
-        select([type_coerce(as_binary, Geometry(coerce_="text"))])
+        select(type_coerce(as_binary, Geometry(coerce_="text")))
     )
     assert as_text.desc == "LINESTRING(198231 263418,198213 268322)"
 

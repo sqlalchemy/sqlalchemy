@@ -956,7 +956,7 @@ class Query(
         """
 
         self._auto_correlate = False
-        if fromclauses and fromclauses[0] is None:
+        if fromclauses and fromclauses[0] in {None, False}:
             self._correlate = ()
         else:
             self._correlate = set(self._correlate).union(
@@ -2374,7 +2374,7 @@ class Query(
         Given a case for :func:`.aliased` such as selecting ``User``
         objects from a SELECT statement::
 
-            select_stmt = select([User]).where(User.id == 7)
+            select_stmt = select(User).where(User.id == 7)
             user_alias = aliased(User, select_stmt)
 
             q = session.query(user_alias).\

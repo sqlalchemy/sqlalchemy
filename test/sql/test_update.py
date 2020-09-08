@@ -216,9 +216,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         u = update(
             table1,
             values={
-                table1.c.name: select(
-                    [mt.c.name], mt.c.myid == table1.c.myid
-                ).scalar_subquery()
+                table1.c.name: select(mt.c.name)
+                .where(mt.c.myid == table1.c.myid)
+                .scalar_subquery()
             },
         )
         self.assert_compile(
@@ -233,9 +233,11 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table2 = self.tables.myothertable
 
         # test against a regular constructed subquery
-        s = select(
-            [table2], table2.c.otherid == table1.c.myid
-        ).scalar_subquery()
+        s = (
+            select(table2)
+            .where(table2.c.otherid == table1.c.myid)
+            .scalar_subquery()
+        )
         u = update(table1, table1.c.name == "jack", values={table1.c.name: s})
         self.assert_compile(
             u,
@@ -250,7 +252,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table2 = self.tables.myothertable
 
         # test a non-correlated WHERE clause
-        s = select([table2.c.othername], table2.c.otherid == 7)
+        s = select(table2.c.othername).where(table2.c.otherid == 7)
         u = update(table1, table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
@@ -265,7 +267,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table2 = self.tables.myothertable
 
         # test one that is actually correlated...
-        s = select([table2.c.othername], table2.c.otherid == table1.c.myid)
+        s = select(table2.c.othername).where(table2.c.otherid == table1.c.myid)
         u = table1.update(table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
@@ -395,7 +397,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column(
                 "col2",
                 Integer,
-                onupdate=select([func.coalesce(func.max(foo.c.id))]),
+                onupdate=select(func.coalesce(func.max(foo.c.id))),
             ),
             Column("col3", String(30)),
         )
@@ -1005,7 +1007,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         cte = (
             q.update().where(q.c.z == 1).values(x=7).returning(q.c.z).cte("c")
         )
-        stmt = select([p.c.s, cte.c.z]).where(p.c.s == cte.c.z)
+        stmt = select(p.c.s, cte.c.z).where(p.c.s == cte.c.z)
 
         dialect = default.StrCompileDialect()
         dialect.paramstyle = "qmark"
@@ -1026,7 +1028,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         """
         table1 = self.tables.mytable
         table2 = self.tables.myothertable
-        sel = select([table2]).where(table2.c.otherid == 5).alias()
+        sel = select(table2).where(table2.c.otherid == 5).alias()
         upd = (
             table1.update()
             .where(table1.c.name == sel.c.othername)

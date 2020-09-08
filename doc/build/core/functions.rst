@@ -11,7 +11,7 @@ SQL functions which are known to SQLAlchemy with regards to database-specific
 rendering, return types and argument behavior. Generic functions are invoked
 like all SQL functions, using the :attr:`func` attribute::
 
-    select([func.count()]).select_from(sometable)
+    select(func.count()).select_from(sometable)
 
 Note that any name not known to :attr:`func` generates the function name as is
 - there is no restriction on what SQL functions can be called, known or

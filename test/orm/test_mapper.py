@@ -1316,15 +1316,16 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        s = sa.select(
-            [
+        s = (
+            sa.select(
                 users,
                 (users.c.id * 2).label("concat"),
                 sa.func.count(addresses.c.id).label("count"),
-            ],
-            users.c.id == addresses.c.user_id,
-            group_by=[c for c in users.c],
-        ).alias("myselect")
+            )
+            .where(users.c.id == addresses.c.user_id)
+            .group_by(*[c for c in users.c])
+            .alias("myselect")
+        )
 
         mapper(User, s)
         sess = create_session()

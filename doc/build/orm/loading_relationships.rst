@@ -1185,11 +1185,11 @@ Below it is linked to a :func:`_expression.select` which links a set of column o
 to a string SQL statement::
 
     # label the columns of the addresses table
-    eager_columns = select([
+    eager_columns = select(
         addresses.c.address_id.label('a1'),
         addresses.c.email_address.label('a2'),
         addresses.c.user_id.label('a3')
-    ])
+    )
 
     # select from a raw SQL statement which uses those label names for the
     # addresses table.  contains_eager() matches them up.

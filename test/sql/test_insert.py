@@ -131,7 +131,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column(
                 "col2",
                 Integer,
-                default=select([func.coalesce(func.max(foo.c.id))]),
+                default=select(func.coalesce(func.max(foo.c.id))),
             ),
         )
 
@@ -332,7 +332,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_from_select_returning(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = (
@@ -351,7 +351,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_from_select_select(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = self.tables.myothertable.insert().from_select(
@@ -375,7 +375,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("data", String),
         )
 
-        stmt = t1.insert().from_select(("data",), select([t1.c.data]))
+        stmt = t1.insert().from_select(("data",), select(t1.c.data))
 
         self.assert_compile(
             stmt,
@@ -387,9 +387,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_from_select_cte_one(self):
         table1 = self.tables.mytable
 
-        cte = select([table1.c.name]).where(table1.c.name == "bar").cte()
+        cte = select(table1.c.name).where(table1.c.name == "bar").cte()
 
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == cte.c.name
         )
 
@@ -413,9 +413,9 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         table1 = self.tables.mytable
 
-        cte = select([table1.c.name]).where(table1.c.name == "bar").cte()
+        cte = select(table1.c.name).where(table1.c.name == "bar").cte()
 
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == cte.c.name
         )
 
@@ -469,7 +469,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_from_select_select_alt_ordering(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.name, table1.c.myid]).where(
+        sel = select(table1.c.name, table1.c.myid).where(
             table1.c.name == "foo"
         )
         ins = self.tables.myothertable.insert().from_select(
@@ -492,7 +492,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=func.foobar()),
         )
         table1 = self.tables.mytable
-        sel = select([table1.c.myid]).where(table1.c.name == "foo")
+        sel = select(table1.c.myid).where(table1.c.name == "foo")
         ins = table.insert().from_select(["id"], sel, include_defaults=False)
         self.assert_compile(
             ins,
@@ -510,7 +510,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=func.foobar()),
         )
         table1 = self.tables.mytable
-        sel = select([table1.c.myid]).where(table1.c.name == "foo")
+        sel = select(table1.c.myid).where(table1.c.name == "foo")
         ins = table.insert().from_select(["id"], sel)
         self.assert_compile(
             ins,
@@ -529,7 +529,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=12),
         )
         table1 = self.tables.mytable
-        sel = select([table1.c.myid]).where(table1.c.name == "foo")
+        sel = select(table1.c.myid).where(table1.c.name == "foo")
         ins = table.insert().from_select(["id"], sel)
         self.assert_compile(
             ins,
@@ -549,7 +549,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=12),
         )
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.myid.label("q")]).where(
+        sel = select(table1.c.myid, table1.c.myid.label("q")).where(
             table1.c.name == "foo"
         )
         ins = table.insert().from_select(["id", "foo"], sel)
@@ -574,7 +574,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=foo),
         )
         table1 = self.tables.mytable
-        sel = select([table1.c.myid]).where(table1.c.name == "foo")
+        sel = select(table1.c.myid).where(table1.c.name == "foo")
         ins = table.insert().from_select(["id"], sel)
         self.assert_compile(
             ins,
@@ -595,7 +595,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("bar", String, default="baz"),
         )
 
-        stmt = select([table_.c.foo])
+        stmt = select(table_.c.foo)
         insert = table_.insert().from_select(["foo"], stmt)
 
         self.assert_compile(stmt, "SELECT mytable.foo FROM mytable")
@@ -613,7 +613,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_mix_select_values_exception(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = self.tables.myothertable.insert().from_select(
@@ -628,7 +628,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_insert_mix_values_select_exception(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = self.tables.myothertable.insert().values(othername="5")
@@ -659,8 +659,8 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         name = column("name")
         description = column("desc")
-        sel = select([name, mytable.c.description]).union(
-            select([name, description])
+        sel = select(name, mytable.c.description).union(
+            select(name, description)
         )
         ins = mytable.insert().from_select(
             [mytable.c.name, mytable.c.description], sel
@@ -675,7 +675,7 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_from_select_col_values(self):
         table1 = self.tables.mytable
         table2 = self.tables.myothertable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = table2.insert().from_select(
@@ -831,7 +831,7 @@ class InsertImplicitReturningTest(
 
     def test_insert_select(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = self.tables.myothertable.insert().from_select(
@@ -847,7 +847,7 @@ class InsertImplicitReturningTest(
 
     def test_insert_select_return_defaults(self):
         table1 = self.tables.mytable
-        sel = select([table1.c.myid, table1.c.name]).where(
+        sel = select(table1.c.myid, table1.c.name).where(
             table1.c.name == "foo"
         )
         ins = (

@@ -81,7 +81,7 @@ def between(expr, lower_bound, upper_bound, symmetric=False):
     E.g.::
 
         from sqlalchemy import between
-        stmt = select([users_table]).where(between(users_table.c.id, 5, 7))
+        stmt = select(users_table).where(between(users_table.c.id, 5, 7))
 
     Would produce SQL resembling::
 
@@ -91,7 +91,7 @@ def between(expr, lower_bound, upper_bound, symmetric=False):
     :meth:`_expression.ColumnElement.between` method available on all
     SQL expressions, as in::
 
-        stmt = select([users_table]).where(users_table.c.id.between(5, 7))
+        stmt = select(users_table).where(users_table.c.id.between(5, 7))
 
     All arguments passed to :func:`.between`, including the left side
     column expression, are coerced from Python scalar values if a
@@ -470,7 +470,7 @@ class ClauseElement(
 
                 t = table('t', column('x'))
 
-                s = select([t]).where(t.c.x == 5)
+                s = select(t).where(t.c.x == 5)
 
                 print(s.compile(compile_kwargs={"literal_binds": True}))
 
@@ -1037,7 +1037,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
         from sqlalchemy import bindparam
 
-        stmt = select([users_table]).\
+        stmt = select(users_table).\
                     where(users_table.c.name == bindparam('username'))
 
     Detailed discussion of how :class:`.BindParameter` is used is
@@ -1107,7 +1107,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
             from sqlalchemy import bindparam
 
-            stmt = select([users_table]).\
+            stmt = select(users_table).\
                         where(users_table.c.name == bindparam('username'))
 
         The above statement, when rendered, will produce SQL similar to::
@@ -1161,7 +1161,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         along where it is later used within statement execution.  If we
         invoke a statement like the following::
 
-            stmt = select([users_table]).where(users_table.c.name == 'Wendy')
+            stmt = select(users_table).where(users_table.c.name == 'Wendy')
             result = connection.execute(stmt)
 
         We would see SQL logging output as::
@@ -1625,7 +1625,7 @@ class TextClause(
         a literal string SQL fragment is specified as part of a larger query,
         such as for the WHERE clause of a SELECT statement::
 
-            s = select([users.c.id, users.c.name]).where(text("id=:user_id"))
+            s = select(users.c.id, users.c.name).where(text("id=:user_id"))
             result = connection.execute(s, user_id=12)
 
         :func:`_expression.text` is also used for the construction
@@ -1821,7 +1821,7 @@ class TextClause(
             stmt = text("SELECT id, name FROM some_table")
             stmt = stmt.columns(column('id'), column('name')).subquery('st')
 
-            stmt = select([mytable]).\
+            stmt = select(mytable).\
                     select_from(
                         mytable.join(stmt, mytable.c.name == stmt.c.name)
                     ).where(stmt.c.id > 5)
@@ -1901,7 +1901,7 @@ class TextClause(
 
             stmt = stmt.columns(id=Integer, name=String).cte('st')
 
-            stmt = select([sometable]).where(sometable.c.id == stmt.c.id)
+            stmt = select(sometable).where(sometable.c.id == stmt.c.id)
 
         :param \*cols: A series of :class:`_expression.ColumnElement` objects,
          typically
@@ -2000,23 +2000,23 @@ class False_(SingletonConstant, roles.ConstExprRole, ColumnElement):
         E.g.::
 
             >>> from sqlalchemy import false
-            >>> print(select([t.c.x]).where(false()))
+            >>> print(select(t.c.x).where(false()))
             SELECT x FROM t WHERE false
 
         A backend which does not support true/false constants will render as
         an expression against 1 or 0::
 
-            >>> print(select([t.c.x]).where(false()))
+            >>> print(select(t.c.x).where(false()))
             SELECT x FROM t WHERE 0 = 1
 
         The :func:`.true` and :func:`.false` constants also feature
         "short circuit" operation within an :func:`.and_` or :func:`.or_`
         conjunction::
 
-            >>> print(select([t.c.x]).where(or_(t.c.x > 5, true())))
+            >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
             SELECT x FROM t WHERE true
 
-            >>> print(select([t.c.x]).where(and_(t.c.x > 5, false())))
+            >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
             SELECT x FROM t WHERE false
 
         .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
@@ -2068,23 +2068,23 @@ class True_(SingletonConstant, roles.ConstExprRole, ColumnElement):
         E.g.::
 
             >>> from sqlalchemy import true
-            >>> print(select([t.c.x]).where(true()))
+            >>> print(select(t.c.x).where(true()))
             SELECT x FROM t WHERE true
 
         A backend which does not support true/false constants will render as
         an expression against 1 or 0::
 
-            >>> print(select([t.c.x]).where(true()))
+            >>> print(select(t.c.x).where(true()))
             SELECT x FROM t WHERE 1 = 1
 
         The :func:`.true` and :func:`.false` constants also feature
         "short circuit" operation within an :func:`.and_` or :func:`.or_`
         conjunction::
 
-            >>> print(select([t.c.x]).where(or_(t.c.x > 5, true())))
+            >>> print(select(t.c.x).where(or_(t.c.x > 5, true())))
             SELECT x FROM t WHERE true
 
-            >>> print(select([t.c.x]).where(and_(t.c.x > 5, false())))
+            >>> print(select(t.c.x).where(and_(t.c.x > 5, false())))
             SELECT x FROM t WHERE false
 
         .. versionchanged:: 0.9 :func:`.true` and :func:`.false` feature
@@ -2327,7 +2327,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
             from sqlalchemy import and_
 
-            stmt = select([users_table]).where(
+            stmt = select(users_table).where(
                             and_(
                                 users_table.c.name == 'wendy',
                                 users_table.c.enrolled == True
@@ -2339,7 +2339,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
         need to be parenthesized in order to function with Python
         operator precedence behavior)::
 
-            stmt = select([users_table]).where(
+            stmt = select(users_table).where(
                             (users_table.c.name == 'wendy') &
                             (users_table.c.enrolled == True)
                         )
@@ -2350,7 +2350,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
         times against a statement, which will have the effect of each
         clause being combined using :func:`.and_`::
 
-            stmt = select([users_table]).\
+            stmt = select(users_table).\
                     where(users_table.c.name == 'wendy').\
                     where(users_table.c.enrolled == True)
 
@@ -2390,7 +2390,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
 
             from sqlalchemy import or_
 
-            stmt = select([users_table]).where(
+            stmt = select(users_table).where(
                             or_(
                                 users_table.c.name == 'wendy',
                                 users_table.c.name == 'jack'
@@ -2402,7 +2402,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
         need to be parenthesized in order to function with Python
         operator precedence behavior)::
 
-            stmt = select([users_table]).where(
+            stmt = select(users_table).where(
                             (users_table.c.name == 'wendy') |
                             (users_table.c.name == 'jack')
                         )
@@ -2536,7 +2536,7 @@ class Case(ColumnElement):
 
         from sqlalchemy import case
 
-        stmt = select([users_table]).\
+        stmt = select(users_table).\
                     where(
                         case(
                             (users_table.c.name == 'wendy', 'W'),
@@ -2576,7 +2576,7 @@ class Case(ColumnElement):
 
             from sqlalchemy import case
 
-            stmt = select([users_table]).\
+            stmt = select(users_table).\
                         where(
                             case(
                                 (users_table.c.name == 'wendy', 'W'),
@@ -2603,7 +2603,7 @@ class Case(ColumnElement):
         compared against keyed to result expressions.  The statement below is
         equivalent to the preceding statement::
 
-            stmt = select([users_table]).\
+            stmt = select(users_table).\
                         where(
                             case(
                                 {"wendy": "W", "jack": "J"},
@@ -2800,9 +2800,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
         from sqlalchemy import cast, Numeric
 
-        stmt = select([
-                    cast(product_table.c.unit_price, Numeric(10, 4))
-                ])
+        stmt = select(cast(product_table.c.unit_price, Numeric(10, 4)))
 
     Details on :class:`.Cast` usage is at :func:`.cast`.
 
@@ -2834,9 +2832,7 @@ class Cast(WrapsColumnExpression, ColumnElement):
 
             from sqlalchemy import cast, Numeric
 
-            stmt = select([
-                        cast(product_table.c.unit_price, Numeric(10, 4))
-                    ])
+            stmt = select(cast(product_table.c.unit_price, Numeric(10, 4)))
 
         The above statement will produce SQL resembling::
 
@@ -2930,7 +2926,7 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
 
             from sqlalchemy import type_coerce
 
-            stmt = select([type_coerce(log_table.date_string, StringDateTime())])
+            stmt = select(type_coerce(log_table.date_string, StringDateTime()))
 
         The above construct will produce a :class:`.TypeCoerce` object, which
         does not modify the rendering in any way on the SQL side, with the
@@ -2950,9 +2946,9 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
         In order to provide a named label for the expression, use
         :meth:`_expression.ColumnElement.label`::
 
-            stmt = select([
+            stmt = select(
                 type_coerce(log_table.date_string, StringDateTime()).label('date')
-            ])
+            )
 
 
         A type that features bound-value handling will also have that behavior
@@ -2966,7 +2962,7 @@ class TypeCoerce(WrapsColumnExpression, ColumnElement):
 
             # bound-value handling of MyStringType will be applied to the
             # literal value "some string"
-            stmt = select([type_coerce("some string", MyStringType)])
+            stmt = select(type_coerce("some string", MyStringType))
 
         When using :func:`.type_coerce` with composed expressions, note that
         **parenthesis are not applied**.   If :func:`.type_coerce` is being
@@ -3145,7 +3141,7 @@ class UnaryExpression(ColumnElement):
 
             from sqlalchemy import desc, nullsfirst
 
-            stmt = select([users_table]).order_by(
+            stmt = select(users_table).order_by(
                 nullsfirst(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
@@ -3158,7 +3154,7 @@ class UnaryExpression(ColumnElement):
         rather than as its standalone
         function version, as in::
 
-            stmt = select([users_table]).order_by(
+            stmt = select(users_table).order_by(
                 users_table.c.name.desc().nullsfirst())
 
         .. seealso::
@@ -3189,7 +3185,7 @@ class UnaryExpression(ColumnElement):
 
             from sqlalchemy import desc, nullslast
 
-            stmt = select([users_table]).order_by(
+            stmt = select(users_table).order_by(
                 nullslast(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
@@ -3202,7 +3198,7 @@ class UnaryExpression(ColumnElement):
         rather than as its standalone
         function version, as in::
 
-            stmt = select([users_table]).order_by(
+            stmt = select(users_table).order_by(
                 users_table.c.name.desc().nullslast())
 
         .. seealso::
@@ -3230,7 +3226,7 @@ class UnaryExpression(ColumnElement):
 
             from sqlalchemy import desc
 
-            stmt = select([users_table]).order_by(desc(users_table.c.name))
+            stmt = select(users_table).order_by(desc(users_table.c.name))
 
         will produce SQL as::
 
@@ -3242,7 +3238,7 @@ class UnaryExpression(ColumnElement):
         e.g.::
 
 
-            stmt = select([users_table]).order_by(users_table.c.name.desc())
+            stmt = select(users_table).order_by(users_table.c.name.desc())
 
         :param column: A :class:`_expression.ColumnElement` (e.g.
          scalar SQL expression)
@@ -3272,7 +3268,7 @@ class UnaryExpression(ColumnElement):
         e.g.::
 
             from sqlalchemy import asc
-            stmt = select([users_table]).order_by(asc(users_table.c.name))
+            stmt = select(users_table).order_by(asc(users_table.c.name))
 
         will produce SQL as::
 
@@ -3284,7 +3280,7 @@ class UnaryExpression(ColumnElement):
         e.g.::
 
 
-            stmt = select([users_table]).order_by(users_table.c.name.asc())
+            stmt = select(users_table).order_by(users_table.c.name.asc())
 
         :param column: A :class:`_expression.ColumnElement` (e.g.
          scalar SQL expression)
@@ -3316,7 +3312,7 @@ class UnaryExpression(ColumnElement):
         as in::
 
             from sqlalchemy import distinct, func
-            stmt = select([func.count(distinct(users_table.c.name))])
+            stmt = select(func.count(distinct(users_table.c.name)))
 
         The above would produce an expression resembling::
 
@@ -3325,7 +3321,7 @@ class UnaryExpression(ColumnElement):
         The :func:`.distinct` function is also available as a column-level
         method, e.g. :meth:`_expression.ColumnElement.distinct`, as in::
 
-            stmt = select([func.count(users_table.c.name.distinct())])
+            stmt = select(func.count(users_table.c.name.distinct()))
 
         The :func:`.distinct` operator is different from the
         :meth:`_expression.Select.distinct` method of
@@ -3403,7 +3399,7 @@ class CollectionAggregate(UnaryExpression):
             expr = 5 == any_(mytable.c.somearray)
 
             # mysql '5 = ANY (SELECT value FROM table)'
-            expr = 5 == any_(select([table.c.value]))
+            expr = 5 == any_(select(table.c.value))
 
         .. versionadded:: 1.1
 
@@ -3434,7 +3430,7 @@ class CollectionAggregate(UnaryExpression):
             expr = 5 == all_(mytable.c.somearray)
 
             # mysql '5 = ALL (SELECT value FROM table)'
-            expr = 5 == all_(select([table.c.value]))
+            expr = 5 == all_(select(table.c.value))
 
         .. versionadded:: 1.1
 
@@ -3933,12 +3929,12 @@ class WithinGroup(ColumnElement):
         the :meth:`.FunctionElement.within_group` method, e.g.::
 
             from sqlalchemy import within_group
-            stmt = select([
+            stmt = select(
                 department.c.id,
                 func.percentile_cont(0.5).within_group(
                     department.c.salary.desc()
                 )
-            ])
+            )
 
         The above statement would produce SQL similar to
         ``SELECT department.id, percentile_cont(0.5)
@@ -4279,7 +4275,7 @@ class ColumnClause(
         from sqlalchemy import column
 
         id, name = column("id"), column("name")
-        stmt = select([id, name]).select_from("user")
+        stmt = select(id, name).select_from("user")
 
     The above statement would produce SQL like::
 
@@ -4331,7 +4327,7 @@ class ColumnClause(
             from sqlalchemy import column
 
             id, name = column("id"), column("name")
-            stmt = select([id, name]).select_from("user")
+            stmt = select(id, name).select_from("user")
 
         The above statement would produce SQL like::
 
@@ -4345,7 +4341,7 @@ class ColumnClause(
             from sqlalchemy.sql import column
 
             id, name = column("id"), column("name")
-            stmt = select([id, name]).select_from("user")
+            stmt = select(id, name).select_from("user")
 
         The text handled by :func:`_expression.column`
         is assumed to be handled
@@ -4375,7 +4371,7 @@ class ColumnClause(
                     column("description"),
             )
 
-            stmt = select([user.c.description]).where(user.c.name == 'wendy')
+            stmt = select(user.c.description).where(user.c.name == 'wendy')
 
         A :func:`_expression.column` / :func:`.table`
         construct like that illustrated

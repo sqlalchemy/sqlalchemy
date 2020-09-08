@@ -643,7 +643,7 @@ that is not associated with any :class:`_engine.Engine`::
  metadata = MetaData()
  table = Table('t', metadata, Column('q', Integer))
 
- stmt = select([table])
+ stmt = select(table)
  result = stmt.execute()   # <--- raises
 
 What the logic is expecting is that the :class:`_schema.MetaData` object has
@@ -681,7 +681,7 @@ This error occurs when a statement makes use of :func:`.bindparam` either
 implicitly or explicitly and does not provide a value when the statement
 is executed::
 
- stmt = select([table.c.column]).where(table.c.id == bindparam('my_param'))
+ stmt = select(table.c.column).where(table.c.id == bindparam('my_param'))
 
  result = conn.execute(stmt)
 
@@ -762,17 +762,17 @@ Given an example as::
        Column('b', Integer),
        Column('c', Integer)
     )
-    stmt = select([t])
+    stmt = select(t)
 
 Above, ``stmt`` represents a SELECT statement.  The error is produced when we want
 to use ``stmt`` directly as a FROM clause in another SELECT, such as if we
 attempted to select from it::
 
-    new_stmt_1 = select([stmt])
+    new_stmt_1 = select(stmt)
 
 Or if we wanted to use it in a FROM clause such as in a JOIN::
 
-    new_stmt_2 = select([some_table]).select_from(some_table.join(stmt))
+    new_stmt_2 = select(some_table).select_from(some_table.join(stmt))
 
 In previous versions of SQLAlchemy, using a SELECT inside of another SELECT
 would produce a parenthesized, unnamed subquery.   In most cases, this form of
@@ -789,9 +789,9 @@ therefore requires that :meth:`_expression.SelectBase.subquery` is used::
 
     subq = stmt.subquery()
 
-    new_stmt_1 = select([subq])
+    new_stmt_1 = select(subq)
 
-    new_stmt_2 = select([some_table]).select_from(some_table.join(subq))
+    new_stmt_2 = select(some_table).select_from(some_table.join(subq))
 
 .. seealso::
 

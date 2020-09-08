@@ -262,6 +262,6 @@ class AnyAllTest(fixtures.TablesTest):
 
     def test_any_literal(self, connection):
         stuff = self.tables.stuff
-        stmt = select([4 == any_(select(stuff.c.value).scalar_subquery())])
+        stmt = select(4 == any_(select(stuff.c.value).scalar_subquery()))
 
         is_(connection.execute(stmt).scalar(), True)

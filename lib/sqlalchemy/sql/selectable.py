@@ -263,7 +263,7 @@ class HasPrefixes(object):
             stmt = table.insert().prefix_with("LOW_PRIORITY", dialect="mysql")
 
             # MySQL 5.7 optimizer hints
-            stmt = select([table]).prefix_with(
+            stmt = select(table).prefix_with(
                 "/*+ BKA(t1) */", dialect="mysql")
 
         Multiple prefixes can be specified by multiple calls
@@ -315,7 +315,7 @@ class HasSuffixes(object):
 
         E.g.::
 
-            stmt = select([col1, col2]).cte().suffix_with(
+            stmt = select(col1, col2).cte().suffix_with(
                 "cycle empno set y_cycle to 1 default 0", dialect="oracle")
 
         Multiple suffixes can be specified by multiple calls
@@ -396,7 +396,7 @@ class HasHints(object):
         the table or alias. E.g. when using Oracle, the
         following::
 
-            select([mytable]).\
+            select(mytable).\
                 with_hint(mytable, "index(%(name)s ix_mytable)")
 
         Would render SQL as::
@@ -407,7 +407,7 @@ class HasHints(object):
         hint to a particular backend. Such as, to add hints for both Oracle
         and Sybase simultaneously::
 
-            select([mytable]).\
+            select(mytable).\
                 with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
                 with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
 
@@ -523,7 +523,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
             j = user_table.join(address_table,
                             user_table.c.id == address_table.c.user_id)
-            stmt = select([user_table]).select_from(j)
+            stmt = select(user_table).select_from(j)
 
         would emit SQL along the lines of::
 
@@ -709,7 +709,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         to the construction of SQL expressions using table-bound or
         other selectable-bound columns::
 
-            select([mytable]).where(mytable.c.somecolumn == 5)
+            select(mytable).where(mytable.c.somecolumn == 5)
 
         """
 
@@ -923,7 +923,7 @@ class Join(roles.DMLTableRole, FromClause):
 
             j = join(user_table, address_table,
                      user_table.c.id == address_table.c.user_id)
-            stmt = select([user_table]).select_from(j)
+            stmt = select(user_table).select_from(j)
 
         would emit SQL along the lines of::
 
@@ -1251,9 +1251,9 @@ class Join(roles.DMLTableRole, FromClause):
 
             from sqlalchemy import select, alias
             j = alias(
-                select([j.left, j.right]).\
+                select(j.left, j.right).\
                     select_from(j).\
-                    with_labels(True).\
+                    apply_labels().\
                     correlate(False),
                 name=name
             )
@@ -1635,7 +1635,7 @@ class TableSample(AliasedReturnsRows):
                         func.bernoulli(1),
                         name='alias',
                         seed=func.random())
-            stmt = select([selectable.c.people_id])
+            stmt = select(selectable.c.people_id)
 
         Assuming ``people`` with a column ``people_id``, the above
         statement would render as::
@@ -1836,27 +1836,27 @@ class HasCTE(roles.HasCTERole):
                 Column('quantity', Integer)
             )
 
-            regional_sales = select([
+            regional_sales = select(
                                 orders.c.region,
                                 func.sum(orders.c.amount).label('total_sales')
-                            ]).group_by(orders.c.region).cte("regional_sales")
+                            ).group_by(orders.c.region).cte("regional_sales")
 
 
-            top_regions = select([regional_sales.c.region]).\
+            top_regions = select(regional_sales.c.region).\
                     where(
                         regional_sales.c.total_sales >
-                        select([
-                            func.sum(regional_sales.c.total_sales)/10
-                        ])
+                        select(
+                            func.sum(regional_sales.c.total_sales) / 10
+                        )
                     ).cte("top_regions")
 
-            statement = select([
+            statement = select(
                         orders.c.region,
                         orders.c.product,
                         func.sum(orders.c.quantity).label("product_units"),
                         func.sum(orders.c.amount).label("product_sales")
-                ]).where(orders.c.region.in_(
-                    select([top_regions.c.region])
+                ).where(orders.c.region.in_(
+                    select(top_regions.c.region)
                 )).group_by(orders.c.region, orders.c.product)
 
             result = conn.execute(statement).fetchall()
@@ -1874,30 +1874,29 @@ class HasCTE(roles.HasCTERole):
                 Column('quantity', Integer),
             )
 
-            included_parts = select([
-                                parts.c.sub_part,
-                                parts.c.part,
-                                parts.c.quantity]).\
-                                where(parts.c.part=='our part').\
-                                cte(recursive=True)
+            included_parts = select(\
+                parts.c.sub_part, parts.c.part, parts.c.quantity\
+                ).\
+                where(parts.c.part=='our part').\
+                cte(recursive=True)
 
 
             incl_alias = included_parts.alias()
             parts_alias = parts.alias()
             included_parts = included_parts.union_all(
-                select([
+                select(
                     parts_alias.c.sub_part,
                     parts_alias.c.part,
                     parts_alias.c.quantity
-                ]).
-                    where(parts_alias.c.part==incl_alias.c.sub_part)
+                ).\
+                where(parts_alias.c.part==incl_alias.c.sub_part)
             )
 
-            statement = select([
+            statement = select(
                         included_parts.c.sub_part,
                         func.sum(included_parts.c.quantity).
                           label('total_quantity')
-                    ]).\
+                    ).\
                     group_by(included_parts.c.sub_part)
 
             result = conn.execute(statement).fetchall()
@@ -1932,7 +1931,7 @@ class HasCTE(roles.HasCTERole):
 
             upsert = visitors.insert().from_select(
                 [visitors.c.product_id, visitors.c.date, visitors.c.count],
-                select([literal(product_id), literal(day), literal(count)])
+                select(literal(product_id), literal(day), literal(count))
                     .where(~exists(update_cte.select()))
             )
 
@@ -2585,7 +2584,7 @@ class SelectBase(
 
         Given a SELECT statement such as::
 
-            stmt = select([table.c.id, table.c.name])
+            stmt = select(table.c.id, table.c.name)
 
         The above statement might look like::
 
@@ -2596,7 +2595,7 @@ class SelectBase(
         a named sub-element::
 
             subq = stmt.subquery()
-            new_stmt = select([subq])
+            new_stmt = select(subq)
 
         The above renders as::
 
@@ -2831,7 +2830,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         E.g.::
 
-            stmt = select([table]).with_for_update(nowait=True)
+            stmt = select(table).with_for_update(nowait=True)
 
         On a database like PostgreSQL or Oracle, the above would render a
         statement like::
@@ -3035,7 +3034,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         e.g.::
 
-            stmt = select([table]).order_by(table.c.id, table.c.name)
+            stmt = select(table).order_by(table.c.id, table.c.name)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
          constructs
@@ -3062,7 +3061,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         e.g.::
 
-            stmt = select([table.c.name, func.max(table.c.stat)]).\
+            stmt = select(table.c.name, func.max(table.c.stat)).\
             group_by(table.c.name)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
@@ -4740,7 +4739,7 @@ class Select(
 
             table1 = table('t1', column('a'))
             table2 = table('t2', column('b'))
-            s = select([table1.c.a]).\
+            s = select(table1.c.a).\
                 select_from(
                     table1.join(table2, table1.c.a==table2.c.b)
                 )
@@ -4762,7 +4761,7 @@ class Select(
         if desired, in the case that the FROM clause cannot be fully
         derived from the columns clause::
 
-            select([func.count('*')]).select_from(table1)
+            select(func.count('*')).select_from(table1)
 
         """
 
@@ -4827,7 +4826,7 @@ class Select(
         """
 
         self._auto_correlate = False
-        if fromclauses and fromclauses[0] is None:
+        if fromclauses and fromclauses[0] in {None, False}:
             self._correlate = ()
         else:
             self._correlate = self._correlate + tuple(
@@ -4865,7 +4864,7 @@ class Select(
         """
 
         self._auto_correlate = False
-        if fromclauses and fromclauses[0] is None:
+        if fromclauses and fromclauses[0] in {None, False}:
             self._correlate_except = ()
         else:
             self._correlate_except = (self._correlate_except or ()) + tuple(
@@ -4894,7 +4893,7 @@ class Select(
 
             col1 = column('q', Integer)
             col2 = column('p', Integer)
-            stmt = select([col1, col2])
+            stmt = select(col1, col2)
 
         Above, ``stmt.selected_columns`` would be a collection that contains
         the ``col1`` and ``col2`` objects directly.    For a statement that is

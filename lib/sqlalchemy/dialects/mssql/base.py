@@ -296,7 +296,7 @@ For statements that specify only LIMIT and no OFFSET, all versions of SQL
 Server support the TOP keyword.   This syntax is used for all SQL Server
 versions when no OFFSET clause is present.  A statement such as::
 
-    select([some_table]).limit(5)
+    select(some_table).limit(5)
 
 will render similarly to::
 
@@ -306,7 +306,7 @@ For versions of SQL Server prior to SQL Server 2012, a statement that uses
 LIMIT and OFFSET, or just OFFSET alone, will be rendered using the
 ``ROW_NUMBER()`` window function.   A statement such as::
 
-    select([some_table]).order_by(some_table.c.col3).limit(5).offset(10)
+    select(some_table).order_by(some_table.c.col3).limit(5).offset(10)
 
 will render similarly to::
 
@@ -1277,9 +1277,9 @@ class TryCast(sql.elements.Cast):
             from sqlalchemy import Numeric
             from sqlalchemy.dialects.mssql import try_cast
 
-            stmt = select([
+            stmt = select(
                 try_cast(product_table.c.unit_price, Numeric(10, 4))
-            ])
+            )
 
         The above would render::
 
@@ -1816,7 +1816,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
             mssql_rn = sql.column("mssql_rn")
             limitselect = sql.select(
-                [c for c in select.c if c.key != "mssql_rn"]
+                *[c for c in select.c if c.key != "mssql_rn"]
             )
             if offset_clause is not None:
                 limitselect = limitselect.where(mssql_rn > offset_clause)
@@ -2793,9 +2793,8 @@ class MSDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):
-        s = sql.select(
-            [ischema.schemata.c.schema_name],
-            order_by=[ischema.schemata.c.schema_name],
+        s = sql.select(ischema.schemata.c.schema_name).order_by(
+            ischema.schemata.c.schema_name
         )
         schema_names = [r[0] for r in connection.execute(s)]
         return schema_names

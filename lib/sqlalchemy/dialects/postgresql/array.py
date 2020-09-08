@@ -53,9 +53,7 @@ class array(expression.ClauseList, expression.ColumnElement):
         from sqlalchemy.dialects import postgresql
         from sqlalchemy import select, func
 
-        stmt = select([
-                        array([1,2]) + array([3,4,5])
-                    ])
+        stmt = select(array([1,2]) + array([3,4,5]))
 
         print(stmt.compile(dialect=postgresql.dialect()))
 
@@ -76,11 +74,11 @@ class array(expression.ClauseList, expression.ColumnElement):
     recursively adding the dimensions of the inner :class:`_types.ARRAY`
     type::
 
-        stmt = select([
+        stmt = select(
             array([
                 array([1, 2]), array([3, 4]), array([column('q'), column('x')])
             ])
-        ])
+        )
         print(stmt.compile(dialect=postgresql.dialect()))
 
     Produces::

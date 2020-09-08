@@ -159,7 +159,7 @@ def test_core_new_stmt_each_time(n):
 
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
-            stmt = select([Customer.__table__]).where(Customer.id == id_)
+            stmt = select(Customer.__table__).where(Customer.id == id_)
             row = conn.execute(stmt).first()
             tuple(row)
 
@@ -173,7 +173,7 @@ def test_core_new_stmt_each_time_compiled_cache(n):
         compiled_cache=compiled_cache
     ) as conn:
         for id_ in random.sample(ids, n):
-            stmt = select([Customer.__table__]).where(Customer.id == id_)
+            stmt = select(Customer.__table__).where(Customer.id == id_)
             row = conn.execute(stmt).first()
             tuple(row)
 
@@ -182,7 +182,7 @@ def test_core_new_stmt_each_time_compiled_cache(n):
 def test_core_reuse_stmt(n):
     """test core, reusing the same statement (but recompiling each time)."""
 
-    stmt = select([Customer.__table__]).where(Customer.id == bindparam("id"))
+    stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
     with engine.connect() as conn:
         for id_ in random.sample(ids, n):
 
@@ -194,7 +194,7 @@ def test_core_reuse_stmt(n):
 def test_core_reuse_stmt_compiled_cache(n):
     """test core, reusing the same statement + compiled cache."""
 
-    stmt = select([Customer.__table__]).where(Customer.id == bindparam("id"))
+    stmt = select(Customer.__table__).where(Customer.id == bindparam("id"))
     compiled_cache = {}
     with engine.connect().execution_options(
         compiled_cache=compiled_cache

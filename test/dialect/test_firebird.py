@@ -515,8 +515,8 @@ class MiscTest(fixtures.TestBase):
         metadata.create_all()
         t.insert(values=dict(name="dante")).execute()
         t.insert(values=dict(name="alighieri")).execute()
-        select(
-            [func.count(t.c.id)], func.length(t.c.name) == 5
+        select(func.count(t.c.id)).where(
+            func.length(t.c.name) == 5
         ).execute().first()[0] == 1
 
     def test_version_parsing(self):

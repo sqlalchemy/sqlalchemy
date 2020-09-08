@@ -213,13 +213,13 @@ class CoreFixtures(object):
                 {"orm": True, "parententity": MyEntity("b", table_a)}
             ),
             table_a.c.a._annotate(
-                {"orm": True, "parententity": MyEntity("b", select([table_a]))}
+                {"orm": True, "parententity": MyEntity("b", select(table_a))}
             ),
             table_a.c.a._annotate(
                 {
                     "orm": True,
                     "parententity": MyEntity(
-                        "b", select([table_a]).where(table_a.c.a == 5)
+                        "b", select(table_a).where(table_a.c.a == 5)
                     ),
                 }
             ),
@@ -235,7 +235,7 @@ class CoreFixtures(object):
                 {"orm": True, "parententity": MyEntity("b", table_a)}
             ),
             table_a._annotate(
-                {"orm": True, "parententity": MyEntity("b", select([table_a]))}
+                {"orm": True, "parententity": MyEntity("b", select(table_a))}
             ),
         ),
         lambda: (
@@ -350,25 +350,25 @@ class CoreFixtures(object):
             Slice(2, 10, 15),
         ),
         lambda: (
-            select([table_a.c.a]),
-            select([table_a.c.a, table_a.c.b]),
-            select([table_a.c.b, table_a.c.a]),
-            select([table_a.c.b, table_a.c.a]).limit(5),
-            select([table_a.c.b, table_a.c.a]).limit(5).offset(10),
-            select([table_a.c.b, table_a.c.a])
+            select(table_a.c.a),
+            select(table_a.c.a, table_a.c.b),
+            select(table_a.c.b, table_a.c.a),
+            select(table_a.c.b, table_a.c.a).limit(5),
+            select(table_a.c.b, table_a.c.a).limit(5).offset(10),
+            select(table_a.c.b, table_a.c.a)
             .limit(literal_column("foobar"))
             .offset(10),
-            select([table_a.c.b, table_a.c.a]).apply_labels(),
-            select([table_a.c.a]).where(table_a.c.b == 5),
-            select([table_a.c.a])
+            select(table_a.c.b, table_a.c.a).apply_labels(),
+            select(table_a.c.a).where(table_a.c.b == 5),
+            select(table_a.c.a)
             .where(table_a.c.b == 5)
             .where(table_a.c.a == 10),
-            select([table_a.c.a]).where(table_a.c.b == 5).with_for_update(),
-            select([table_a.c.a])
+            select(table_a.c.a).where(table_a.c.b == 5).with_for_update(),
+            select(table_a.c.a)
             .where(table_a.c.b == 5)
             .with_for_update(nowait=True),
-            select([table_a.c.a]).where(table_a.c.b == 5).correlate(table_b),
-            select([table_a.c.a])
+            select(table_a.c.a).where(table_a.c.b == 5).correlate(table_b),
+            select(table_a.c.a)
             .where(table_a.c.b == 5)
             .correlate_except(table_b),
         ),
@@ -389,19 +389,19 @@ class CoreFixtures(object):
             select(table_a.c.a).join(table_c, table_a.c.a == table_c.c.x),
         ),
         lambda: (
-            select([table_a.c.a]).cte(),
-            select([table_a.c.a]).cte(recursive=True),
-            select([table_a.c.a]).cte(name="some_cte", recursive=True),
-            select([table_a.c.a]).cte(name="some_cte"),
-            select([table_a.c.a]).cte(name="some_cte").alias("other_cte"),
-            select([table_a.c.a])
+            select(table_a.c.a).cte(),
+            select(table_a.c.a).cte(recursive=True),
+            select(table_a.c.a).cte(name="some_cte", recursive=True),
+            select(table_a.c.a).cte(name="some_cte"),
+            select(table_a.c.a).cte(name="some_cte").alias("other_cte"),
+            select(table_a.c.a)
             .cte(name="some_cte")
-            .union_all(select([table_a.c.a])),
-            select([table_a.c.a])
+            .union_all(select(table_a.c.a)),
+            select(table_a.c.a)
             .cte(name="some_cte")
-            .union_all(select([table_a.c.b])),
-            select([table_a.c.a]).lateral(),
-            select([table_a.c.a]).lateral(name="bar"),
+            .union_all(select(table_a.c.b)),
+            select(table_a.c.a).lateral(),
+            select(table_a.c.a).lateral(name="bar"),
             table_a.tablesample(func.bernoulli(1)),
             table_a.tablesample(func.bernoulli(1), seed=func.random()),
             table_a.tablesample(func.bernoulli(1), seed=func.other_random()),
@@ -416,12 +416,12 @@ class CoreFixtures(object):
             table_a.insert().values({})._annotate({"nocache": True}),
             table_b.insert(),
             table_b.insert().with_dialect_options(sqlite_foo="some value"),
-            table_b.insert().from_select(["a", "b"], select([table_a])),
+            table_b.insert().from_select(["a", "b"], select(table_a)),
             table_b.insert().from_select(
-                ["a", "b"], select([table_a]).where(table_a.c.a > 5)
+                ["a", "b"], select(table_a).where(table_a.c.a > 5)
             ),
-            table_b.insert().from_select(["a", "b"], select([table_b])),
-            table_b.insert().from_select(["c", "d"], select([table_a])),
+            table_b.insert().from_select(["a", "b"], select(table_b)),
+            table_b.insert().from_select(["c", "d"], select(table_a)),
             table_b.insert().returning(table_b.c.a),
             table_b.insert().returning(table_b.c.a, table_b.c.b),
             table_b.insert().inline(),
@@ -524,31 +524,31 @@ class CoreFixtures(object):
             # ),
         ),
         lambda: (
-            select([table_a.c.a]),
-            select([table_a.c.a]).prefix_with("foo"),
-            select([table_a.c.a]).prefix_with("foo", dialect="mysql"),
-            select([table_a.c.a]).prefix_with("foo", dialect="postgresql"),
-            select([table_a.c.a]).prefix_with("bar"),
-            select([table_a.c.a]).suffix_with("bar"),
+            select(table_a.c.a),
+            select(table_a.c.a).prefix_with("foo"),
+            select(table_a.c.a).prefix_with("foo", dialect="mysql"),
+            select(table_a.c.a).prefix_with("foo", dialect="postgresql"),
+            select(table_a.c.a).prefix_with("bar"),
+            select(table_a.c.a).suffix_with("bar"),
         ),
         lambda: (
-            select([table_a_2.c.a]),
-            select([table_a_2_fs.c.a]),
-            select([table_a_2_bs.c.a]),
+            select(table_a_2.c.a),
+            select(table_a_2_fs.c.a),
+            select(table_a_2_bs.c.a),
         ),
         lambda: (
-            select([table_a.c.a]),
-            select([table_a.c.a]).with_hint(None, "some hint"),
-            select([table_a.c.a]).with_hint(None, "some other hint"),
-            select([table_a.c.a]).with_hint(table_a, "some hint"),
-            select([table_a.c.a])
+            select(table_a.c.a),
+            select(table_a.c.a).with_hint(None, "some hint"),
+            select(table_a.c.a).with_hint(None, "some other hint"),
+            select(table_a.c.a).with_hint(table_a, "some hint"),
+            select(table_a.c.a)
             .with_hint(table_a, "some hint")
             .with_hint(None, "some other hint"),
-            select([table_a.c.a]).with_hint(table_a, "some other hint"),
-            select([table_a.c.a]).with_hint(
+            select(table_a.c.a).with_hint(table_a, "some other hint"),
+            select(table_a.c.a).with_hint(
                 table_a, "some hint", dialect_name="mysql"
             ),
-            select([table_a.c.a]).with_hint(
+            select(table_a.c.a).with_hint(
                 table_a, "some hint", dialect_name="postgresql"
             ),
         ),
@@ -564,32 +564,32 @@ class CoreFixtures(object):
             table_a.alias("b"),
             table_a.alias(),
             table_b.alias("a"),
-            select([table_a.c.a]).alias("a"),
+            select(table_a.c.a).alias("a"),
         ),
         lambda: (
             FromGrouping(table_a.alias("a")),
             FromGrouping(table_a.alias("b")),
         ),
         lambda: (
-            SelectStatementGrouping(select([table_a])),
-            SelectStatementGrouping(select([table_b])),
+            SelectStatementGrouping(select(table_a)),
+            SelectStatementGrouping(select(table_b)),
         ),
         lambda: (
-            select([table_a.c.a]).scalar_subquery(),
-            select([table_a.c.a]).where(table_a.c.b == 5).scalar_subquery(),
+            select(table_a.c.a).scalar_subquery(),
+            select(table_a.c.a).where(table_a.c.b == 5).scalar_subquery(),
         ),
         lambda: (
             exists().where(table_a.c.a == 5),
             exists().where(table_a.c.b == 5),
         ),
         lambda: (
-            union(select([table_a.c.a]), select([table_a.c.b])),
-            union(select([table_a.c.a]), select([table_a.c.b])).order_by("a"),
-            union_all(select([table_a.c.a]), select([table_a.c.b])),
-            union(select([table_a.c.a])),
+            union(select(table_a.c.a), select(table_a.c.b)),
+            union(select(table_a.c.a), select(table_a.c.b)).order_by("a"),
+            union_all(select(table_a.c.a), select(table_a.c.b)),
+            union(select(table_a.c.a)),
             union(
-                select([table_a.c.a]),
-                select([table_a.c.b]).where(table_a.c.b > 5),
+                select(table_a.c.a),
+                select(table_a.c.b).where(table_a.c.b > 5),
             ),
         ),
         lambda: (
@@ -626,7 +626,7 @@ class CoreFixtures(object):
             a2 = table_b_like_a.alias()
 
             stmt = (
-                select([table_a.c.a, a1.c.b, a2.c.b])
+                select(table_a.c.a, a1.c.b, a2.c.b)
                 .where(table_a.c.b == a1.c.b)
                 .where(a1.c.b == a2.c.b)
                 .where(a1.c.a == 5)
@@ -639,7 +639,7 @@ class CoreFixtures(object):
             a2 = table_a.alias()
 
             stmt = (
-                select([table_a.c.a, a1.c.b, a2.c.b])
+                select(table_a.c.a, a1.c.b, a2.c.b)
                 .where(table_a.c.b == a1.c.b)
                 .where(a1.c.b == a2.c.b)
                 .where(a1.c.a == 5)
@@ -650,7 +650,7 @@ class CoreFixtures(object):
         def two():
             inner = one().subquery()
 
-            stmt = select([table_b.c.a, inner.c.a, inner.c.b]).select_from(
+            stmt = select(table_b.c.a, inner.c.a, inner.c.b).select_from(
                 table_b.join(inner, table_b.c.b == inner.c.b)
             )
 
@@ -663,7 +663,7 @@ class CoreFixtures(object):
             ex = exists().where(table_b.c.b == a1.c.a)
 
             stmt = (
-                select([a1.c.a, a2.c.a])
+                select(a1.c.a, a2.c.a)
                 .select_from(a1.join(a2, a1.c.b == a2.c.b))
                 .where(ex)
             )
@@ -676,15 +676,15 @@ class CoreFixtures(object):
     def _statements_w_context_options_fixtures():
 
         return [
-            select([table_a])._add_context_option(opt1, True),
-            select([table_a])._add_context_option(opt1, 5),
-            select([table_a])
+            select(table_a)._add_context_option(opt1, True),
+            select(table_a)._add_context_option(opt1, 5),
+            select(table_a)
             ._add_context_option(opt1, True)
             ._add_context_option(opt2, True),
-            select([table_a])
+            select(table_a)
             ._add_context_option(opt1, True)
             ._add_context_option(opt2, 5),
-            select([table_a])._add_context_option(opt3, True),
+            select(table_a)._add_context_option(opt3, True),
         ]
 
     fixtures.append(_statements_w_context_options_fixtures)
@@ -696,7 +696,7 @@ class CoreFixtures(object):
             l = c.label(None)
 
             # new case as of Id810f485c5f7ed971529489b84694e02a3356d6d
-            subq = select([l]).subquery()
+            subq = select(l).subquery()
 
             # this creates a ColumnClause as a proxy to the Label() that has
             # an anoymous name, so the column has one too.
@@ -712,7 +712,7 @@ class CoreFixtures(object):
             l = c.label(None)
 
             # new case as of Id810f485c5f7ed971529489b84694e02a3356d6d
-            subq = select([l]).subquery()
+            subq = select(l).subquery()
 
             # this creates a ColumnClause as a proxy to the Label() that has
             # an anoymous name, so the column has one too.
@@ -726,10 +726,10 @@ class CoreFixtures(object):
 
             l1, l2 = table_a.c.a.label(None), table_a.c.b.label(None)
 
-            stmt = select([table_a.c.a, table_a.c.b, l1, l2])
+            stmt = select(table_a.c.a, table_a.c.b, l1, l2)
 
             subq = stmt.subquery()
-            return select([subq]).where(subq.c[2] == 10)
+            return select(subq).where(subq.c[2] == 10)
 
         return (
             one(),
@@ -1060,7 +1060,7 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         f2 = Foobar2()
         eq_(f2._generate_cache_key(), None)
 
-        s1 = select([column("q"), Foobar2()])
+        s1 = select(column("q"), Foobar2())
 
         eq_(s1._generate_cache_key(), None)
 
@@ -1093,7 +1093,7 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
     def test_generative_cache_key_regen(self):
         t1 = table("t1", column("a"), column("b"))
 
-        s1 = select([t1])
+        s1 = select(t1)
 
         ck1 = s1._generate_cache_key()
 
@@ -1108,7 +1108,7 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
     def test_generative_cache_key_regen_w_del(self):
         t1 = table("t1", column("a"), column("b"))
 
-        s1 = select([t1])
+        s1 = select(t1)
 
         ck1 = s1._generate_cache_key()
 
@@ -1196,17 +1196,17 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
 
     def test_compare_col_identity(self):
         stmt1 = (
-            select([table_a.c.a, table_b.c.b])
+            select(table_a.c.a, table_b.c.b)
             .where(table_a.c.a == table_b.c.b)
             .alias()
         )
         stmt1_c = (
-            select([table_a.c.a, table_b.c.b])
+            select(table_a.c.a, table_b.c.b)
             .where(table_a.c.a == table_b.c.b)
             .alias()
         )
 
-        stmt2 = union(select([table_a]), select([table_b]))
+        stmt2 = union(select(table_a), select(table_b))
 
         equivalents = {table_a.c.a: [table_b.c.a]}
 
@@ -1389,12 +1389,12 @@ class CompareClausesTest(fixtures.TestBase):
         is_false(l1.compare(l2))
 
     def test_cache_key_limit_offset_values(self):
-        s1 = select([column("q")]).limit(10)
-        s2 = select([column("q")]).limit(25)
-        s3 = select([column("q")]).limit(25).offset(5)
-        s4 = select([column("q")]).limit(25).offset(18)
-        s5 = select([column("q")]).limit(7).offset(12)
-        s6 = select([column("q")]).limit(literal_column("q")).offset(12)
+        s1 = select(column("q")).limit(10)
+        s2 = select(column("q")).limit(25)
+        s3 = select(column("q")).limit(25).offset(5)
+        s4 = select(column("q")).limit(25).offset(18)
+        s5 = select(column("q")).limit(7).offset(12)
+        s6 = select(column("q")).limit(literal_column("q")).offset(12)
 
         for should_eq_left, should_eq_right in [(s1, s2), (s3, s4), (s3, s5)]:
             eq_(
@@ -1481,8 +1481,8 @@ class CompareClausesTest(fixtures.TestBase):
             x_a.compare(x_b._annotate({"bar": True}), compare_annotations=True)
         )
 
-        s1 = select([t.c.x])._annotate({"foo": True})
-        s2 = select([t.c.x])._annotate({"foo": True})
+        s1 = select(t.c.x)._annotate({"foo": True})
+        s2 = select(t.c.x)._annotate({"foo": True})
 
         is_true(s1.compare(s2, compare_annotations=True))
 
@@ -1504,7 +1504,7 @@ class CompareClausesTest(fixtures.TestBase):
         is_true((t.c.x == 5).compare(x_a == 5))
         is_false((t.c.y == 5).compare(x_a == 5))
 
-        s = select([t]).subquery()
+        s = select(t).subquery()
         x_p = s.c.x
         is_false(x_a.compare(x_p))
         is_false(t.c.x.compare(x_p))

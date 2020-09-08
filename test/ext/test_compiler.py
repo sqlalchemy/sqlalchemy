@@ -41,11 +41,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return ">>%s<<" % thingy.name
 
         self.assert_compile(
-            select([column("foo"), MyThingy()]), "SELECT foo, >>MYTHINGY!<<"
+            select(column("foo"), MyThingy()), "SELECT foo, >>MYTHINGY!<<"
         )
 
         self.assert_compile(
-            select([MyThingy("x"), MyThingy("y")]).where(MyThingy() == 5),
+            select(MyThingy("x"), MyThingy("y")).where(MyThingy() == 5),
             "SELECT >>x<<, >>y<< WHERE >>MYTHINGY!<< = :MYTHINGY!_1",
         )
 
@@ -103,12 +103,12 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return str(compiler.counter)
 
         self.assert_compile(
-            select([column("foo"), MyThingy()]).order_by(desc(MyThingy())),
+            select(column("foo"), MyThingy()).order_by(desc(MyThingy())),
             "SELECT foo, 1 ORDER BY 2 DESC",
         )
 
         self.assert_compile(
-            select([MyThingy(), MyThingy()]).where(MyThingy() == 5),
+            select(MyThingy(), MyThingy()).where(MyThingy() == 5),
             "SELECT 1, 2 WHERE 3 = :MYTHINGY!_1",
         )
 
@@ -127,7 +127,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t1 = table("mytable", column("x"), column("y"), column("z"))
         self.assert_compile(
-            InsertFromSelect(t1, select([t1]).where(t1.c.x > 5)),
+            InsertFromSelect(t1, select(t1).where(t1.c.x > 5)),
             "INSERT INTO mytable (SELECT mytable.x, mytable.y, mytable.z "
             "FROM mytable WHERE mytable.x > :x_1)",
         )
@@ -203,7 +203,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             def compile_(element, compiler, **kw):
                 return "OVERRIDE"
 
-            s1 = select([t1])
+            s1 = select(t1)
             self.assert_compile(s1, "OVERRIDE")
             self.assert_compile(s1._annotate({}), "OVERRIDE")
         finally:
@@ -341,7 +341,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return "FOO" + element.name
 
         self.assert_compile(
-            select([Sub1(), Sub2()]),
+            select(Sub1(), Sub2()),
             "SELECT FOOsub1 AS sub1_1, sub2 AS sub2_1",
             use_default_dialect=True,
         )
@@ -364,7 +364,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             name = "subsub1"
 
         self.assert_compile(
-            select([Sub1(), Sub2(), SubSub1()]),
+            select(Sub1(), Sub2(), SubSub1()),
             "SELECT sub1 AS sub1_1, sub2 AS sub2_1, subsub1 AS subsub1_1",
             use_default_dialect=True,
         )
@@ -374,7 +374,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return "FOO" + element.name
 
         self.assert_compile(
-            select([Sub1(), Sub2(), SubSub1()]),
+            select(Sub1(), Sub2(), SubSub1()),
             "SELECT FOOsub1 AS sub1_1, sub2 AS sub2_1, "
             "FOOsubsub1 AS subsub1_1",
             use_default_dialect=True,
@@ -383,7 +383,7 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
     def _test_result_map_population(self, expression):
         lc1 = literal_column("1")
         lc2 = literal_column("2")
-        stmt = select([lc1, expression, lc2])
+        stmt = select(lc1, expression, lc2)
 
         compiled = stmt.compile()
         eq_(
@@ -437,7 +437,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
         def compile_(element, compiler, **kw):
             return "OVERRIDE"
 
-        s1 = select([t1])
+        s1 = select(t1)
         self.assert_compile(s1, "SELECT t1.c1, t1.c2 FROM t1")
 
         from sqlalchemy.dialects.sqlite import base as sqlite

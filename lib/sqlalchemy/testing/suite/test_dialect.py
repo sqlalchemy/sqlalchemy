@@ -65,7 +65,7 @@ class ExceptionTest(fixtures.TablesTest):
                 # there's no way to make this happen with some drivers like
                 # mysqlclient, pymysql.  this at least does produce a non-
                 # ascii error message for cx_oracle, psycopg2
-                conn.execute(select([literal_column(u"méil")]))
+                conn.execute(select(literal_column(u"méil")))
                 assert False
             except exc.DBAPIError as err:
                 err_str = str(err)
@@ -146,7 +146,7 @@ class AutocommitTest(fixtures.TablesTest):
         trans.rollback()
 
         eq_(
-            conn.scalar(select([self.tables.some_table.c.id])),
+            conn.scalar(select(self.tables.some_table.c.id)),
             1 if autocommit else None,
         )
 
@@ -194,7 +194,7 @@ class EscapingTest(fixtures.TestBase):
 
             eq_(
                 conn.scalar(
-                    select([t.c.data]).where(
+                    select(t.c.data).where(
                         t.c.data == literal_column("'some % value'")
                     )
                 ),
@@ -203,7 +203,7 @@ class EscapingTest(fixtures.TestBase):
 
             eq_(
                 conn.scalar(
-                    select([t.c.data]).where(
+                    select(t.c.data).where(
                         t.c.data == literal_column("'some %% other value'")
                     )
                 ),

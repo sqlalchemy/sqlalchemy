@@ -55,16 +55,13 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.requires.subqueries
     def test_case(self):
         inner = select(
-            [
-                case(
-                    (info_table.c.pk < 3, "lessthan3"),
-                    (and_(info_table.c.pk >= 3, info_table.c.pk < 7), "gt3"),
-                ).label("x"),
-                info_table.c.pk,
-                info_table.c.info,
-            ],
-            from_obj=[info_table],
-        )
+            case(
+                (info_table.c.pk < 3, "lessthan3"),
+                (and_(info_table.c.pk >= 3, info_table.c.pk < 7), "gt3"),
+            ).label("x"),
+            info_table.c.pk,
+            info_table.c.info,
+        ).select_from(info_table)
 
         inner_result = inner.execute().fetchall()
 
@@ -87,7 +84,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ],
         )
 
-        outer = select([inner.alias("q_inner")])
+        outer = select(inner.alias("q_inner"))
 
         outer_result = outer.execute().fetchall()
 
@@ -101,17 +98,14 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         ]
 
         w_else = select(
-            [
-                case(
-                    [info_table.c.pk < 3, cast(3, Integer)],
-                    [and_(info_table.c.pk >= 3, info_table.c.pk < 6), 6],
-                    else_=0,
-                ).label("x"),
-                info_table.c.pk,
-                info_table.c.info,
-            ],
-            from_obj=[info_table],
-        )
+            case(
+                [info_table.c.pk < 3, cast(3, Integer)],
+                [and_(info_table.c.pk >= 3, info_table.c.pk < 6), 6],
+                else_=0,
+            ).label("x"),
+            info_table.c.pk,
+            info_table.c.info,
+        ).select_from(info_table)
 
         else_result = w_else.execute().fetchall()
 
@@ -159,23 +153,19 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         for s in [
             select(
-                [
-                    case(
-                        (info_table.c.info == "pk_4_data", text("'yes'")),
-                        else_=text("'no'"),
-                    )
-                ]
+                case(
+                    (info_table.c.info == "pk_4_data", text("'yes'")),
+                    else_=text("'no'"),
+                )
             ).order_by(info_table.c.info),
             select(
-                [
-                    case(
-                        (
-                            info_table.c.info == "pk_4_data",
-                            literal_column("'yes'"),
-                        ),
-                        else_=literal_column("'no'"),
-                    )
-                ]
+                case(
+                    (
+                        info_table.c.info == "pk_4_data",
+                        literal_column("'yes'"),
+                    ),
+                    else_=literal_column("'no'"),
+                )
             ).order_by(info_table.c.info),
         ]:
             eq_(
@@ -185,19 +175,16 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def testcase_with_dict(self):
         query = select(
-            [
-                case(
-                    {
-                        info_table.c.pk < 3: "lessthan3",
-                        info_table.c.pk >= 3: "gt3",
-                    },
-                    else_="other",
-                ),
-                info_table.c.pk,
-                info_table.c.info,
-            ],
-            from_obj=[info_table],
-        )
+            case(
+                {
+                    info_table.c.pk < 3: "lessthan3",
+                    info_table.c.pk >= 3: "gt3",
+                },
+                else_="other",
+            ),
+            info_table.c.pk,
+            info_table.c.info,
+        ).select_from(info_table)
         eq_(
             query.execute().fetchall(),
             [

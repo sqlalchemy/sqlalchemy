@@ -2253,10 +2253,15 @@ class ManyToOneTest(_fixtures.FixtureTest):
             ),
         )
 
-        result = sa.select(
-            [users, addresses],
-            sa.and_(users.c.id == addresses.c.user_id, addresses.c.id == a.id),
-        ).execute()
+        result = (
+            sa.select(users, addresses)
+            .where(
+                sa.and_(
+                    users.c.id == addresses.c.user_id, addresses.c.id == a.id
+                ),
+            )
+            .execute()
+        )
         eq_(
             list(result.first()),
             [a.user.id, "asdf8d", a.id, a.user_id, "theater@foo.com"],

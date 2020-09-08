@@ -95,7 +95,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_use_labels(self):
         self.assert_compile(
-            select([func.foo()], use_labels=True), "SELECT foo() AS foo_1"
+            select(func.foo()).apply_labels(), "SELECT foo() AS foo_1"
         )
 
     def test_use_labels_function_element(self):
@@ -109,7 +109,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             return "max(%s)" % compiler.process(element.clauses, **kw)
 
         self.assert_compile(
-            select([max_(5, 6)], use_labels=True),
+            select(max_(5, 6)).apply_labels(),
             "SELECT max(:max_2, :max_3) AS max_1",
         )
 
@@ -187,7 +187,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("q"),
         )
 
-        stmt = select([func.sum(t.c.value)])
+        stmt = select(func.sum(t.c.value))
 
         self.assert_compile(
             stmt.group_by(func.cube(t.c.x, t.c.y)),
@@ -440,20 +440,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test it in a SELECT
         self.assert_compile(
-            select([func.count(table1.c.myid)]),
+            select(func.count(table1.c.myid)),
             "SELECT count(mytable.myid) AS count_1 FROM mytable",
         )
 
         # test a "dotted" function name
         self.assert_compile(
-            select([func.foo.bar.lala(table1.c.myid)]),
+            select(func.foo.bar.lala(table1.c.myid)),
             "SELECT foo.bar.lala(mytable.myid) AS lala_1 FROM mytable",
         )
 
         # test the bind parameter name with a "dotted" function name is
         # only the name (limits the length of the bind param name)
         self.assert_compile(
-            select([func.foo.bar.lala(12)]),
+            select(func.foo.bar.lala(12)),
             "SELECT foo.bar.lala(:lala_2) AS lala_1",
         )
 
@@ -487,23 +487,23 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         users = table(
             "users", column("id"), column("name"), column("fullname")
         )
-        calculate = select(
-            [column("q"), column("z"), column("r")],
-            from_obj=[
+        calculate = (
+            select(column("q"), column("z"), column("r"))
+            .select_from(
                 func.calculate(bindparam("x", None), bindparam("y", None))
-            ],
-        ).subquery()
+            )
+            .subquery()
+        )
 
         self.assert_compile(
-            select([users], users.c.id > calculate.c.z),
+            select(users).where(users.c.id > calculate.c.z),
             "SELECT users.id, users.name, users.fullname "
             "FROM users, (SELECT q, z, r "
             "FROM calculate(:x, :y)) AS anon_1 "
             "WHERE users.id > anon_1.z",
         )
 
-        s = select(
-            [users],
+        s = select(users).where(
             users.c.id.between(
                 calculate.alias("c1").unique_params(x=17, y=45).c.z,
                 calculate.alias("c2").unique_params(x=5, y=12).c.z,
@@ -538,21 +538,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_method_two(self):
         expr = func.rows("foo")
         self.assert_compile(
-            select(["*"]).select_from(expr.select().subquery()),
+            select("*").select_from(expr.select().subquery()),
             "SELECT * FROM (SELECT rows(:rows_2) AS rows_1) AS anon_1",
         )
 
     def test_select_method_three(self):
         expr = func.rows("foo")
         self.assert_compile(
-            select([column("foo")]).select_from(expr),
+            select(column("foo")).select_from(expr),
             "SELECT foo FROM rows(:rows_1)",
         )
 
     def test_alias_method_two(self):
         expr = func.rows("foo")
         self.assert_compile(
-            select(["*"]).select_from(expr.alias("bar")),
+            select("*").select_from(expr.alias("bar")),
             "SELECT * FROM rows(:rows_1) AS bar",
         )
 
@@ -564,7 +564,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # testing here that the expression exports its column
         # list in a way that at least doesn't break.
         self.assert_compile(
-            select([expr]), "SELECT bar.rows_1 FROM rows(:rows_2) AS bar"
+            select(expr), "SELECT bar.rows_1 FROM rows(:rows_2) AS bar"
         )
 
     def test_alias_method_columns_two(self):
@@ -601,11 +601,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_label(self):
         self.assert_compile(
             select(
-                [
-                    func.count(1)
-                    .filter(table1.c.description != None)  # noqa
-                    .label("foo")
-                ]
+                func.count(1)
+                .filter(table1.c.description != None)  # noqa
+                .label("foo")
             ),
             "SELECT count(:count_1) FILTER (WHERE mytable.description "
             "IS NOT NULL) AS foo FROM mytable",
@@ -616,11 +614,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # from func:
         self.assert_compile(
             select(
-                [
-                    func.max(table1.c.name).filter(
-                        literal_column("description") != None  # noqa
-                    )
-                ]
+                func.max(table1.c.name).filter(
+                    literal_column("description") != None  # noqa
+                )
             ),
             "SELECT max(mytable.name) FILTER (WHERE description "
             "IS NOT NULL) AS anon_1 FROM mytable",
@@ -629,7 +625,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_fromobj_fromcriterion(self):
         # from criterion:
         self.assert_compile(
-            select([func.count(1).filter(table1.c.name == "name")]),
+            select(func.count(1).filter(table1.c.name == "name")),
             "SELECT count(:count_1) FILTER (WHERE mytable.name = :name_1) "
             "AS anon_1 FROM mytable",
         )
@@ -638,11 +634,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # test chaining:
         self.assert_compile(
             select(
-                [
-                    func.count(1)
-                    .filter(table1.c.name == "name")
-                    .filter(table1.c.description == "description")
-                ]
+                func.count(1)
+                .filter(table1.c.name == "name")
+                .filter(table1.c.description == "description")
             ),
             "SELECT count(:count_1) FILTER (WHERE "
             "mytable.name = :name_1 AND mytable.description = :description_1) "
@@ -653,11 +647,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         # test filtered windowing:
         self.assert_compile(
             select(
-                [
-                    func.rank()
-                    .filter(table1.c.name > "foo")
-                    .over(order_by=table1.c.name)
-                ]
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(order_by=table1.c.name)
             ),
             "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
             "OVER (ORDER BY mytable.name) AS anon_1 FROM mytable",
@@ -666,11 +658,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_windowing_orderby_partitionby(self):
         self.assert_compile(
             select(
-                [
-                    func.rank()
-                    .filter(table1.c.name > "foo")
-                    .over(order_by=table1.c.name, partition_by=["description"])
-                ]
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(order_by=table1.c.name, partition_by=["description"])
             ),
             "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
             "OVER (PARTITION BY mytable.description ORDER BY mytable.name) "
@@ -680,11 +670,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_windowing_range(self):
         self.assert_compile(
             select(
-                [
-                    func.rank()
-                    .filter(table1.c.name > "foo")
-                    .over(range_=(1, 5), partition_by=["description"])
-                ]
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(range_=(1, 5), partition_by=["description"])
             ),
             "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
             "OVER (PARTITION BY mytable.description RANGE BETWEEN :param_1 "
@@ -695,11 +683,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_funcfilter_windowing_rows(self):
         self.assert_compile(
             select(
-                [
-                    func.rank()
-                    .filter(table1.c.name > "foo")
-                    .over(rows=(1, 5), partition_by=["description"])
-                ]
+                func.rank()
+                .filter(table1.c.name > "foo")
+                .over(rows=(1, 5), partition_by=["description"])
             ),
             "SELECT rank() FILTER (WHERE mytable.name > :name_1) "
             "OVER (PARTITION BY mytable.description ROWS BETWEEN :param_1 "
@@ -709,10 +695,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_funcfilter_within_group(self):
         stmt = select(
-            [
-                table1.c.myid,
-                func.percentile_cont(0.5).within_group(table1.c.name),
-            ]
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(table1.c.name),
         )
         self.assert_compile(
             stmt,
@@ -725,12 +709,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_funcfilter_within_group_multi(self):
         stmt = select(
-            [
-                table1.c.myid,
-                func.percentile_cont(0.5).within_group(
-                    table1.c.name, table1.c.description
-                ),
-            ]
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(
+                table1.c.name, table1.c.description
+            ),
         )
         self.assert_compile(
             stmt,
@@ -743,10 +725,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_funcfilter_within_group_desc(self):
         stmt = select(
-            [
-                table1.c.myid,
-                func.percentile_cont(0.5).within_group(table1.c.name.desc()),
-            ]
+            table1.c.myid,
+            func.percentile_cont(0.5).within_group(table1.c.name.desc()),
         )
         self.assert_compile(
             stmt,
@@ -759,12 +739,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_funcfilter_within_group_w_over(self):
         stmt = select(
-            [
-                table1.c.myid,
-                func.percentile_cont(0.5)
-                .within_group(table1.c.name.desc())
-                .over(partition_by=table1.c.description),
-            ]
+            table1.c.myid,
+            func.percentile_cont(0.5)
+            .within_group(table1.c.name.desc())
+            .over(partition_by=table1.c.description),
         )
         self.assert_compile(
             stmt,
@@ -1031,7 +1009,7 @@ class ExecuteTest(fixtures.TestBase):
             stuff="hi",
         )
 
-        res = sorted(connection.execute(select([t2.c.value, t2.c.stuff])))
+        res = sorted(connection.execute(select(t2.c.value, t2.c.stuff)))
         eq_(res, [(-14, "hi"), (3, None), (7, None)])
 
         connection.execute(
@@ -1039,7 +1017,7 @@ class ExecuteTest(fixtures.TestBase):
             stuff="some stuff",
         )
         eq_(
-            connection.execute(select([t2.c.value, t2.c.stuff])).fetchall(),
+            connection.execute(select(t2.c.value, t2.c.stuff)).fetchall(),
             [(9, "some stuff"), (9, "some stuff"), (9, "some stuff")],
         )
 
@@ -1052,7 +1030,7 @@ class ExecuteTest(fixtures.TestBase):
 
         connection.execute(t2.update(values=dict(value=func.length("asfda"))))
         eq_(
-            connection.execute(select([t2.c.value, t2.c.stuff])).first(),
+            connection.execute(select(t2.c.value, t2.c.stuff)).first(),
             (5, "thisisstuff"),
         )
 
@@ -1066,7 +1044,7 @@ class ExecuteTest(fixtures.TestBase):
         )
 
         eq_(
-            connection.execute(select([t2.c.value, t2.c.stuff])).first(),
+            connection.execute(select(t2.c.value, t2.c.stuff)).first(),
             (9, "foo"),
         )
 
@@ -1079,7 +1057,7 @@ class ExecuteTest(fixtures.TestBase):
         ).scalar()
         z = connection.scalar(func.current_date(bind=testing.db))
         w = connection.scalar(
-            select(["*"], from_obj=[func.current_date(bind=testing.db)])
+            select("*").select_from(func.current_date(bind=testing.db))
         )
 
         assert x == y == z == w
@@ -1090,7 +1068,7 @@ class ExecuteTest(fixtures.TestBase):
         date = datetime.date(2010, 5, 1)
 
         def execute(field):
-            return connection.execute(select([extract(field, date)])).scalar()
+            return connection.execute(select(extract(field, date))).scalar()
 
         assert execute("year") == 2010
         assert execute("month") == 5
@@ -1115,7 +1093,7 @@ class ExecuteTest(fixtures.TestBase):
             },
         )
         rs = connection.execute(
-            select([extract("year", table.c.dt), extract("month", table.c.d)])
+            select(extract("year", table.c.dt), extract("month", table.c.d))
         )
         row = rs.first()
         assert row[0] == 2010

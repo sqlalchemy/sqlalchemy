@@ -112,7 +112,7 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
         ):
             testing.db.execute(stmt)
 
-        stmt = select([table])
+        stmt = select(table)
         with testing.expect_deprecated_20(
             r"The Engine.execute\(\) function/method is considered legacy",
         ):
@@ -129,7 +129,7 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
         ):
             stmt.execute()
 
-        stmt = select([table])
+        stmt = select(table)
         with testing.expect_deprecated_20(
             r"The Executable.execute\(\) function/method is considered legacy",
         ):
@@ -342,7 +342,7 @@ class PoolTestBase(fixtures.TestBase):
 
 
 def select1(db):
-    return str(select([1]).compile(dialect=db.dialect))
+    return str(select(1).compile(dialect=db.dialect))
 
 
 class DeprecatedEngineFeatureTest(fixtures.TablesTest):
@@ -947,7 +947,7 @@ class EngineEventsTest(fixtures.TestBase):
             r"The argument signature for the "
             r"\"ConnectionEvents.before_execute\" event listener",
         ):
-            engine.execute(select([1]))
+            engine.execute(select(1))
         eq_(canary, ["execute", "cursor_execute"])
 
     def test_argument_format_execute(self):
@@ -969,4 +969,4 @@ class EngineEventsTest(fixtures.TestBase):
             r"The argument signature for the "
             r"\"ConnectionEvents.after_execute\" event listener",
         ):
-            e1.execute(select([1]))
+            e1.execute(select(1))

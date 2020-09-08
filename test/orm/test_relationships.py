@@ -1894,10 +1894,11 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
         class LineItem(fixtures.BasicEntity):
             pass
 
-        container_select = sa.select(
-            [items.c.policyNum, items.c.policyEffDate, items.c.type],
-            distinct=True,
-        ).alias("container_select")
+        container_select = (
+            sa.select(items.c.policyNum, items.c.policyEffDate, items.c.type)
+            .distinct()
+            .alias("container_select")
+        )
 
         mapper(LineItem, items)
 

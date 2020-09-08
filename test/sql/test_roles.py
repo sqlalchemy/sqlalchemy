@@ -443,7 +443,7 @@ class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):
         table1, table2 = update_from_fixture
 
         # test against a regular constructed subquery
-        s = select([table2], table2.c.otherid == table1.c.myid)
+        s = select(table2).where(table2.c.otherid == table1.c.myid)
         with testing.expect_warnings(
             "implicitly coercing SELECT object to scalar subquery"
         ):

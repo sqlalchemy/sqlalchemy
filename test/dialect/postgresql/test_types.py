@@ -991,7 +991,7 @@ class TimezoneTest(fixtures.TestBase):
         assert somedate.tzinfo
         connection.execute(tztable.insert(), id=1, name="row1", date=somedate)
         row = connection.execute(
-            select([tztable.c.date], tztable.c.id == 1)
+            select(tztable.c.date).where(tztable.c.id == 1)
         ).first()
         eq_(row[0], somedate)
         eq_(
@@ -1015,7 +1015,7 @@ class TimezoneTest(fixtures.TestBase):
             notztable.insert(), id=1, name="row1", date=somedate
         )
         row = connection.execute(
-            select([notztable.c.date], notztable.c.id == 1)
+            select(notztable.c.date).where(notztable.c.id == 1)
         ).first()
         eq_(row[0], somedate)
         eq_(row[0].tzinfo, None)
@@ -1171,7 +1171,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_int_index(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col[3]]),
+            select(col[3]),
             "SELECT x[%(x_1)s] AS anon_1",
             checkparams={"x_1": 3},
         )
@@ -1195,7 +1195,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_contains(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col.contains(array([4, 5, 6]))]),
+            select(col.contains(array([4, 5, 6]))),
             "SELECT x @> ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
             "AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
@@ -1213,7 +1213,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_contained_by(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col.contained_by(array([4, 5, 6]))]),
+            select(col.contained_by(array([4, 5, 6]))),
             "SELECT x <@ ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
             "AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
@@ -1222,7 +1222,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_overlap(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col.overlap(array([4, 5, 6]))]),
+            select(col.overlap(array([4, 5, 6]))),
             "SELECT x && ARRAY[%(param_1)s, %(param_2)s, %(param_3)s] "
             "AS anon_1",
             checkparams={"param_1": 4, "param_3": 6, "param_2": 5},
@@ -1231,7 +1231,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_slice_index(self):
         col = column("x", postgresql.ARRAY(Integer))
         self.assert_compile(
-            select([col[5:10]]),
+            select(col[5:10]),
             "SELECT x[%(x_1)s:%(x_2)s] AS anon_1",
             checkparams={"x_2": 10, "x_1": 5},
         )
@@ -1239,7 +1239,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_array_dim_index(self):
         col = column("x", postgresql.ARRAY(Integer, dimensions=2))
         self.assert_compile(
-            select([col[3][5]]),
+            select(col[3][5]),
             "SELECT x[%(x_1)s][%(param_1)s] AS anon_1",
             checkparams={"x_1": 3, "param_1": 5},
         )
@@ -1298,13 +1298,11 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         """
         stmt = select(
-            [
-                func.array_cat(
-                    array([1, 2, 3]),
-                    array([4, 5, 6]),
-                    type_=postgresql.ARRAY(Integer),
-                )[2:5]
-            ]
+            func.array_cat(
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=postgresql.ARRAY(Integer),
+            )[2:5]
         )
         self.assert_compile(
             stmt,
@@ -1412,53 +1410,47 @@ class ArrayRoundTripTest(object):
         stmt = select(func.array_agg(values_table.c.value))
         eq_(connection.execute(stmt).scalar(), list(range(1, 10)))
 
-        stmt = select([func.array_agg(values_table.c.value)[3]])
+        stmt = select(func.array_agg(values_table.c.value)[3])
         eq_(connection.execute(stmt).scalar(), 3)
 
-        stmt = select([func.array_agg(values_table.c.value)[2:4]])
+        stmt = select(func.array_agg(values_table.c.value)[2:4])
         eq_(connection.execute(stmt).scalar(), [2, 3, 4])
 
     def test_array_index_slice_exprs(self, connection):
         """test a variety of expressions that sometimes need parenthesizing"""
 
-        stmt = select([array([1, 2, 3, 4])[2:3]])
+        stmt = select(array([1, 2, 3, 4])[2:3])
         eq_(connection.execute(stmt).scalar(), [2, 3])
 
-        stmt = select([array([1, 2, 3, 4])[2]])
+        stmt = select(array([1, 2, 3, 4])[2])
         eq_(connection.execute(stmt).scalar(), 2)
 
-        stmt = select([(array([1, 2]) + array([3, 4]))[2:3]])
+        stmt = select((array([1, 2]) + array([3, 4]))[2:3])
         eq_(connection.execute(stmt).scalar(), [2, 3])
 
-        stmt = select([array([1, 2]) + array([3, 4])[2:3]])
+        stmt = select(array([1, 2]) + array([3, 4])[2:3])
         eq_(connection.execute(stmt).scalar(), [1, 2, 4])
 
-        stmt = select([array([1, 2])[2:3] + array([3, 4])])
+        stmt = select(array([1, 2])[2:3] + array([3, 4]))
         eq_(connection.execute(stmt).scalar(), [2, 3, 4])
 
         stmt = select(
-            [
-                func.array_cat(
-                    array([1, 2, 3]),
-                    array([4, 5, 6]),
-                    type_=self.ARRAY(Integer),
-                )[2:5]
-            ]
+            func.array_cat(
+                array([1, 2, 3]), array([4, 5, 6]), type_=self.ARRAY(Integer),
+            )[2:5]
         )
         eq_(connection.execute(stmt).scalar(), [2, 3, 4, 5])
 
     def test_any_all_exprs_array(self, connection):
         stmt = select(
-            [
-                3
-                == any_(
-                    func.array_cat(
-                        array([1, 2, 3]),
-                        array([4, 5, 6]),
-                        type_=self.ARRAY(Integer),
-                    )
+            3
+            == any_(
+                func.array_cat(
+                    array([1, 2, 3]),
+                    array([4, 5, 6]),
+                    type_=self.ARRAY(Integer),
                 )
-            ]
+            )
         )
         eq_(connection.execute(stmt).scalar(), True)
 
@@ -1510,7 +1502,7 @@ class ArrayRoundTripTest(object):
             strarr=[util.u("abc"), util.u("def")],
         )
         results = connection.execute(
-            select([arrtable.c.intarr + [4, 5, 6]])
+            select(arrtable.c.intarr + [4, 5, 6])
         ).fetchall()
         eq_(len(results), 1)
         eq_(results[0][0], [1, 2, 3, 4, 5, 6])
@@ -1554,9 +1546,7 @@ class ArrayRoundTripTest(object):
     def test_array_literal_roundtrip(self, connection):
         eq_(
             connection.scalar(
-                select(
-                    [postgresql.array([1, 2]) + postgresql.array([3, 4, 5])]
-                )
+                select(postgresql.array([1, 2]) + postgresql.array([3, 4, 5]))
             ),
             [1, 2, 3, 4, 5],
         )
@@ -1564,12 +1554,7 @@ class ArrayRoundTripTest(object):
         eq_(
             connection.scalar(
                 select(
-                    [
-                        (
-                            postgresql.array([1, 2])
-                            + postgresql.array([3, 4, 5])
-                        )[3]
-                    ]
+                    (postgresql.array([1, 2]) + postgresql.array([3, 4, 5]))[3]
                 )
             ),
             3,
@@ -1578,11 +1563,8 @@ class ArrayRoundTripTest(object):
         eq_(
             connection.scalar(
                 select(
-                    [
-                        (
-                            postgresql.array([1, 2])
-                            + postgresql.array([3, 4, 5])
-                        )[2:4]
+                    (postgresql.array([1, 2]) + postgresql.array([3, 4, 5]))[
+                        2:4
                     ]
                 )
             ),
@@ -1593,14 +1575,9 @@ class ArrayRoundTripTest(object):
         eq_(
             connection.scalar(
                 select(
-                    [
-                        postgresql.array(
-                            [
-                                postgresql.array([1, 2]),
-                                postgresql.array([3, 4]),
-                            ]
-                        )
-                    ]
+                    postgresql.array(
+                        [postgresql.array([1, 2]), postgresql.array([3, 4])]
+                    )
                 )
             ),
             [[1, 2], [3, 4]],
@@ -1609,14 +1586,9 @@ class ArrayRoundTripTest(object):
         eq_(
             connection.scalar(
                 select(
-                    [
-                        postgresql.array(
-                            [
-                                postgresql.array([1, 2]),
-                                postgresql.array([3, 4]),
-                            ]
-                        )[2][1]
-                    ]
+                    postgresql.array(
+                        [postgresql.array([1, 2]), postgresql.array([3, 4])]
+                    )[2][1]
                 )
             ),
             3,
@@ -1624,16 +1596,16 @@ class ArrayRoundTripTest(object):
 
     def test_array_literal_compare(self, connection):
         eq_(
-            connection.scalar(select([postgresql.array([1, 2]) < [3, 4, 5]])),
+            connection.scalar(select(postgresql.array([1, 2]) < [3, 4, 5])),
             True,
         )
 
     def test_array_getitem_single_exec(self, connection):
         arrtable = self.tables.arrtable
         self._fixture_456(arrtable)
-        eq_(connection.scalar(select([arrtable.c.intarr[2]])), 5)
+        eq_(connection.scalar(select(arrtable.c.intarr[2])), 5)
         connection.execute(arrtable.update().values({arrtable.c.intarr[2]: 7}))
-        eq_(connection.scalar(select([arrtable.c.intarr[2]])), 7)
+        eq_(connection.scalar(select(arrtable.c.intarr[2])), 7)
 
     def test_array_getitem_slice_exec(self, connection):
         arrtable = self.tables.arrtable
@@ -1642,11 +1614,11 @@ class ArrayRoundTripTest(object):
             intarr=[4, 5, 6],
             strarr=[util.u("abc"), util.u("def")],
         )
-        eq_(connection.scalar(select([arrtable.c.intarr[2:3]])), [5, 6])
+        eq_(connection.scalar(select(arrtable.c.intarr[2:3])), [5, 6])
         connection.execute(
             arrtable.update().values({arrtable.c.intarr[2:3]: [7, 8]})
         )
-        eq_(connection.scalar(select([arrtable.c.intarr[2:3]])), [7, 8])
+        eq_(connection.scalar(select(arrtable.c.intarr[2:3])), [7, 8])
 
     def test_multi_dim_roundtrip(self, connection):
         arrtable = self.tables.arrtable
@@ -1791,7 +1763,7 @@ class PGArrayRoundTripTest(
         connection.execute(arrtable.insert(), intarr=[6, 5, 4])
         eq_(
             connection.scalar(
-                select([arrtable.c.intarr.contained_by([4, 5, 6, 7])])
+                select(arrtable.c.intarr.contained_by([4, 5, 6, 7]))
             ),
             True,
         )
@@ -2591,12 +2563,10 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def _test_fixed_round_trip(self, engine):
         with engine.begin() as conn:
             s = select(
-                [
-                    hstore(
-                        array(["key1", "key2", "key3"]),
-                        array(["value1", "value2", "value3"]),
-                    )
-                ]
+                hstore(
+                    array(["key1", "key2", "key3"]),
+                    array(["value1", "value2", "value3"]),
+                )
             )
             eq_(
                 conn.scalar(s),
@@ -2615,24 +2585,14 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def _test_unicode_round_trip(self, engine):
         with engine.begin() as conn:
             s = select(
-                [
-                    hstore(
-                        array(
-                            [
-                                util.u("réveillé"),
-                                util.u("drôle"),
-                                util.u("S’il"),
-                            ]
-                        ),
-                        array(
-                            [
-                                util.u("réveillé"),
-                                util.u("drôle"),
-                                util.u("S’il"),
-                            ]
-                        ),
-                    )
-                ]
+                hstore(
+                    array(
+                        [util.u("réveillé"), util.u("drôle"), util.u("S’il")]
+                    ),
+                    array(
+                        [util.u("réveillé"), util.u("drôle"), util.u("S’il")]
+                    ),
+                )
             )
             eq_(
                 conn.scalar(s),
@@ -3303,7 +3263,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         self._fixture_data(engine)
         data_table = self.tables.data_table
         result = connection.execute(
-            select([data_table.c.data["k1"].astext])
+            select(data_table.c.data["k1"].astext)
         ).first()
         if engine.dialect.returns_unicode_strings:
             assert isinstance(result[0], util.text_type)
@@ -3315,7 +3275,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         self._fixture_data(engine)
         data_table = self.tables.data_table
         result = connection.execute(
-            select([data_table.c.data["k3"].astext.cast(Integer)]).where(
+            select(data_table.c.data["k3"].astext.cast(Integer)).where(
                 data_table.c.name == "r5"
             )
         ).first()

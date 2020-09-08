@@ -59,7 +59,7 @@ class TableSampleTest(fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.people
 
         self.assert_compile(
-            select([table1.tablesample(text("1"), name="alias").c.people_id]),
+            select(table1.tablesample(text("1"), name="alias").c.people_id),
             "SELECT alias.people_id FROM "
             "people AS alias TABLESAMPLE system(1)",
         )

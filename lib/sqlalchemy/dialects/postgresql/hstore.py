@@ -278,14 +278,14 @@ class hstore(sqlfunc.GenericFunction):
 
         from sqlalchemy.dialects.postgresql import array, hstore
 
-        select([hstore('key1', 'value1')])
+        select(hstore('key1', 'value1'))
 
-        select([
-                hstore(
-                    array(['key1', 'key2', 'key3']),
-                    array(['value1', 'value2', 'value3'])
-                )
-            ])
+        select(
+            hstore(
+                array(['key1', 'key2', 'key3']),
+                array(['value1', 'value2', 'value3'])
+            )
+        )
 
     .. seealso::
 

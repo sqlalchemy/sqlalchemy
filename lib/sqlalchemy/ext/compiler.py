@@ -31,7 +31,7 @@ when the object is compiled to a string::
 
     from sqlalchemy import select
 
-    s = select([MyColumn('x'), MyColumn('y')])
+    s = select(MyColumn('x'), MyColumn('y'))
     print(str(s))
 
 Produces::
@@ -89,7 +89,7 @@ method which can be used for compilation of embedded attributes::
             compiler.process(element.select, **kw)
         )
 
-    insert = InsertFromSelect(t1, select([t1]).where(t1.c.x>5))
+    insert = InsertFromSelect(t1, select(t1).where(t1.c.x>5))
     print(insert)
 
 Produces::
@@ -393,8 +393,8 @@ Example usage::
     from sqlalchemy import select, union_all
 
     exp = union_all(
-        select([users.c.name, sql_false().label("enrolled")]),
-        select([customers.c.name, customers.c.enrolled])
+        select(users.c.name, sql_false().label("enrolled")),
+        select(customers.c.name, customers.c.enrolled)
     )
 
 """

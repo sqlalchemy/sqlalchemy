@@ -396,10 +396,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("description", String),
         )
 
-        q = select([table1.c.myid], order_by=[table1.c.myid]).alias("foo")
+        q = select(table1.c.myid).order_by(table1.c.myid).alias("foo")
         crit = q.c.myid == table1.c.myid
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS "
             "myid FROM mytable) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
@@ -417,13 +417,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         q = (
-            select([table1.c.myid], order_by=[table1.c.myid])
+            select(table1.c.myid)
+            .order_by(table1.c.myid)
             .limit(10)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT TOP [POSTCOMPILE_param_1] mytable.myid AS "
             "myid FROM mytable ORDER BY mytable.myid) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
@@ -441,13 +442,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         q = (
-            select([table1.c.myid], order_by=[table1.c.myid])
+            select(table1.c.myid)
+            .order_by(table1.c.myid)
             .offset(10)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT anon_1.myid AS myid FROM "
             "(SELECT mytable.myid AS myid, ROW_NUMBER() OVER (ORDER BY "
             "mytable.myid) AS mssql_rn FROM mytable) AS anon_1 "
@@ -467,7 +469,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         q = (
-            select([table1.c.myid], order_by=[table1.c.myid])
+            select(table1.c.myid)
+            .order_by(table1.c.myid)
             .offset(10)
             .alias("foo")
         )
@@ -475,7 +478,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = mssql.dialect()
         dialect._supports_offset_fetch = True
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
             "ORDER BY mytable.myid OFFSET :param_1 ROWS) AS foo, "
             "mytable WHERE foo.myid = mytable.myid",
@@ -494,7 +497,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         q = (
-            select([table1.c.myid], order_by=[table1.c.myid])
+            select(table1.c.myid)
+            .order_by(table1.c.myid)
             .limit(10)
             .offset(10)
             .alias("foo")
@@ -503,7 +507,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect = mssql.dialect()
         dialect._supports_offset_fetch = True
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
             "ORDER BY mytable.myid OFFSET :param_1 ROWS "
             "FETCH NEXT :param_2 ROWS ONLY ) AS foo, "
@@ -522,16 +526,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("description", String),
         )
 
-        q = select(
-            [table1.c.myid, sql.literal("bar").label("c1")],
-            order_by=[table1.c.name + "-"],
-        ).alias("foo")
+        q = (
+            select(table1.c.myid, sql.literal("bar").label("c1"))
+            .order_by(table1.c.name + "-")
+            .alias("foo")
+        )
         crit = q.c.myid == table1.c.myid
         dialect = mssql.dialect()
         dialect.paramstyle = "qmark"
         dialect.positional = True
         self.assert_compile(
-            select(["*"], crit),
+            select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS "
             "myid, ? AS c1 FROM mytable) AS foo, mytable WHERE "
             "foo.myid = mytable.myid",
@@ -753,12 +758,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("col4"),
         )
         s1, s2 = (
-            select(
-                [t1.c.col3.label("col3"), t1.c.col4.label("col4")],
+            select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
             ),
-            select(
-                [t2.c.col3.label("col3"), t2.c.col4.label("col4")],
+            select(t2.c.col3.label("col3"), t2.c.col4.label("col4")).where(
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )

@@ -913,7 +913,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             autoload_with=testing.db,
         )
         u2 = Table("users", meta2, autoload_with=testing.db)
-        s = sa.select([a2]).subquery()
+        s = sa.select(a2).subquery()
 
         assert s.c.user_id is not None
         assert len(a2.foreign_keys) == 1
@@ -938,7 +938,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
             Column("user_id", sa.Integer, sa.ForeignKey("users.id")),
             autoload_with=testing.db,
         )
-        s = sa.select([a2]).subquery()
+        s = sa.select(a2).subquery()
 
         assert s.c.user_id is not None
         assert len(a2.foreign_keys) == 1

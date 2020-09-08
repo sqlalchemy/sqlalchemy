@@ -745,17 +745,19 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_outer_join_one(self):
         table1, table2, table3 = self._test_outer_join_fixture()
 
-        query = select(
-            [table1, table2],
-            or_(
-                table1.c.name == "fred",
-                table1.c.myid == 10,
-                table2.c.othername != "jack",
-                text("EXISTS (select yay from foo where boo = lar)"),
-            ),
-            from_obj=[
+        query = (
+            select(table1, table2)
+            .where(
+                or_(
+                    table1.c.name == "fred",
+                    table1.c.myid == 10,
+                    table2.c.othername != "jack",
+                    text("EXISTS (select yay from foo where boo = lar)"),
+                )
+            )
+            .select_from(
                 outerjoin(table1, table2, table1.c.myid == table2.c.otherid)
-            ],
+            )
         )
         self.assert_compile(
             query,

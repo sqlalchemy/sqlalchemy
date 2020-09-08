@@ -460,10 +460,10 @@ class TestVersioning(TestCase, AssertsCompiledSQL):
         sess.commit()
 
         actual_changed_base = sess.scalar(
-            select([BaseClass.__history_mapper__.local_table.c.changed])
+            select(BaseClass.__history_mapper__.local_table.c.changed)
         )
         actual_changed_sub = sess.scalar(
-            select([SubClass.__history_mapper__.local_table.c.changed])
+            select(SubClass.__history_mapper__.local_table.c.changed)
         )
         h1 = sess.query(BaseClassHistory).first()
         eq_(h1.changed, actual_changed_base)

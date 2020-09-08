@@ -851,7 +851,7 @@ class SuiteRequirements(Requirements):
             expr = decimal.Decimal("15.7563")
 
             value = e.scalar(
-                select([literal(expr)])
+                select(literal(expr))
             )
 
             assert value == expr

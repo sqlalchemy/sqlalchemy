@@ -87,10 +87,8 @@ class RowFetchTest(fixtures.TablesTest):
     def test_row_with_dupe_names(self, connection):
         result = connection.execute(
             select(
-                [
-                    self.tables.plain_pk.c.data,
-                    self.tables.plain_pk.c.data.label("data"),
-                ]
+                self.tables.plain_pk.c.data,
+                self.tables.plain_pk.c.data.label("data"),
             ).order_by(self.tables.plain_pk.c.id)
         )
         row = result.first()
@@ -106,8 +104,8 @@ class RowFetchTest(fixtures.TablesTest):
 
         """
         datetable = self.tables.has_dates
-        s = select([datetable.alias("x").c.today]).scalar_subquery()
-        s2 = select([datetable.c.id, s.label("somelabel")])
+        s = select(datetable.alias("x").c.today).scalar_subquery()
+        s2 = select(datetable.c.id, s.label("somelabel"))
         row = connection.execute(s2).first()
 
         eq_(row.somelabel, datetime.datetime(2006, 5, 12, 12, 0, 0))
@@ -256,21 +254,21 @@ class ServerSideCursorsTest(
     @testing.combinations(
         ("global_string", True, "select 1", True),
         ("global_text", True, text("select 1"), True),
-        ("global_expr", True, select([1]), True),
+        ("global_expr", True, select(1), True),
         ("global_off_explicit", False, text("select 1"), False),
         (
             "stmt_option",
             False,
-            select([1]).execution_options(stream_results=True),
+            select(1).execution_options(stream_results=True),
             True,
         ),
         (
             "stmt_option_disabled",
             True,
-            select([1]).execution_options(stream_results=False),
+            select(1).execution_options(stream_results=False),
             False,
         ),
-        ("for_update_expr", True, select([1]).with_for_update(), True),
+        ("for_update_expr", True, select(1).with_for_update(), True),
         ("for_update_string", True, "SELECT 1 FOR UPDATE", True),
         ("text_no_ss", False, text("select 42"), False),
         (
@@ -308,7 +306,7 @@ class ServerSideCursorsTest(
     def test_stmt_enabled_conn_option_disabled(self):
         engine = self._fixture(False)
 
-        s = select([1]).execution_options(stream_results=True)
+        s = select(1).execution_options(stream_results=True)
 
         # not this one
         result = (
@@ -318,7 +316,7 @@ class ServerSideCursorsTest(
 
     def test_aliases_and_ss(self):
         engine = self._fixture(False)
-        s1 = select([1]).execution_options(stream_results=True).alias()
+        s1 = select(1).execution_options(stream_results=True).alias()
         with engine.begin() as conn:
             result = conn.execute(s1)
             assert self._is_server_side(result.cursor)
@@ -326,7 +324,7 @@ class ServerSideCursorsTest(
 
         # s1's options shouldn't affect s2 when s2 is used as a
         # from_obj.
-        s2 = select([1], from_obj=s1)
+        s2 = select(1).select_from(s1)
         with engine.begin() as conn:
             result = conn.execute(s2)
             assert not self._is_server_side(result.cursor)
@@ -368,7 +366,7 @@ class ServerSideCursorsTest(
             connection.execute(test_table.delete())
             eq_(
                 connection.scalar(
-                    select([func.count("*")]).select_from(test_table)
+                    select(func.count("*")).select_from(test_table)
                 ),
                 0,
             )

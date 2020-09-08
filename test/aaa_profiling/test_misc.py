@@ -99,7 +99,7 @@ class CacheKeyTest(fixtures.TestBase):
 
         return [
             (
-                select([Parent.id, Child.id])
+                select(Parent.id, Child.id)
                 .select_from(ormjoin(Parent, Child, Parent.children))
                 .where(Child.id == 5)
             )

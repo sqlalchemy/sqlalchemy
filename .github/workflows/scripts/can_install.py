@@ -1,4 +1,5 @@
 import sys
+
 from packaging import tags
 
 to_check = "--"

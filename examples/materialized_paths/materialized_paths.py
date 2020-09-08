@@ -62,17 +62,15 @@ class Node(Base):
     # Finding the ancestors is a little bit trickier. We need to create a fake
     # secondary table since this behaves like a many-to-many join.
     secondary = select(
-        [
-            id.label("id"),
-            func.unnest(
-                cast(
-                    func.string_to_array(
-                        func.regexp_replace(path, r"\.?\d+$", ""), "."
-                    ),
-                    ARRAY(Integer),
-                )
-            ).label("ancestor_id"),
-        ]
+        id.label("id"),
+        func.unnest(
+            cast(
+                func.string_to_array(
+                    func.regexp_replace(path, r"\.?\d+$", ""), "."
+                ),
+                ARRAY(Integer),
+            )
+        ).label("ancestor_id"),
     ).alias()
     ancestors = relationship(
         "Node",

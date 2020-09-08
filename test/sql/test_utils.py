@@ -35,7 +35,7 @@ class MiscTest(fixtures.TestBase):
             Column("extra", String(45)),
         )
 
-        subset_select = select([common.c.id, common.c.data]).alias()
+        subset_select = select(common.c.id, common.c.data).alias()
 
         eq_(set(sql_util.find_tables(subset_select)), {common})
 
@@ -50,7 +50,7 @@ class MiscTest(fixtures.TestBase):
         )
 
         calias = common.alias()
-        subset_select = select([common.c.id, calias.c.data]).subquery()
+        subset_select = select(common.c.id, calias.c.data).subquery()
 
         eq_(
             set(sql_util.find_tables(subset_select, include_aliases=True)),
@@ -103,12 +103,12 @@ class MiscTest(fixtures.TestBase):
         (column("q").label(None).desc().label(None), [column("q")]),
         ("foo", []),  # textual label reference
         (
-            select([column("q")]).scalar_subquery().label(None),
-            [select([column("q")]).scalar_subquery().label(None)],
+            select(column("q")).scalar_subquery().label(None),
+            [select(column("q")).scalar_subquery().label(None)],
         ),
         (
-            select([column("q")]).scalar_subquery().label(None).desc(),
-            [select([column("q")]).scalar_subquery().label(None)],
+            select(column("q")).scalar_subquery().label(None).desc(),
+            [select(column("q")).scalar_subquery().label(None)],
         ),
     )
     def test_unwrap_order_by(self, expr, expected):

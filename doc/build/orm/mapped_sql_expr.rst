@@ -123,14 +123,14 @@ objects available for a particular ``User``::
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
         address_count = column_property(
-            select([func.count(Address.id)]).\
+            select(func.count(Address.id)).\
                 where(Address.user_id==id).\
                 correlate_except(Address)
         )
 
 In the above example, we define a :func:`_expression.select` construct like the following::
 
-    select([func.count(Address.id)]).\
+    select(func.count(Address.id)).\
         where(Address.user_id==id).\
         correlate_except(Address)
 
@@ -154,7 +154,7 @@ are configured.   In Declarative this has the effect of calling :meth:`_orm.Mapp
 to add an additional property after the fact::
 
     User.address_count = column_property(
-            select([func.count(Address.id)]).\
+            select(func.count(Address.id)).\
                 where(Address.user_id==User.id)
         )
 
@@ -168,8 +168,7 @@ association table to both tables in a relationship::
         # ...
 
         book_count = column_property(
-            select(
-                [func.count(books.c.id)]
+            select(func.count(books.c.id)
             ).where(
                 and_(
                     book_authors.c.author_id==authors.c.id,
@@ -239,7 +238,7 @@ which is then used to emit a query::
         def address_count(self):
             return object_session(self).\
                 scalar(
-                    select([func.count(Address.id)]).\
+                    select(func.count(Address.id)).\
                         where(Address.user_id==self.id)
                 )
 
