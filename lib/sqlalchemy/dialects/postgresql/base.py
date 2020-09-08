@@ -117,38 +117,46 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
 Transaction Isolation Level
 ---------------------------
 
-All PostgreSQL dialects support setting of transaction isolation level
-both via a dialect-specific parameter
-:paramref:`_sa.create_engine.isolation_level` accepted by
-:func:`_sa.create_engine`,
-as well as the :paramref:`.Connection.execution_options.isolation_level`
-argument as passed to :meth:`_engine.Connection.execution_options`.
-When using a non-psycopg2 dialect, this feature works by issuing the command
-``SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL <level>`` for
-each new connection.  For the special AUTOCOMMIT isolation level,
-DBAPI-specific techniques are used.
+Most SQLAlchemy dialects support setting of transaction isolation level
+using the :paramref:`_sa.create_engine.execution_options` parameter
+at the :func:`_sa.create_engine` level, and at the :class:`_engine.Connection`
+level via the :paramref:`.Connection.execution_options.isolation_level`
+parameter.
+
+For PostgreSQL dialects, this feature works either by making use of the
+DBAPI-specific features, such as psycopg2's isolation level flags which will
+embed the isolation level setting inline with the ``"BEGIN"`` statement, or for
+DBAPIs with no direct support by emitting ``SET SESSION CHARACTERISTICS AS
+TRANSACTION ISOLATION LEVEL <level>`` ahead of the ``"BEGIN"`` statement
+emitted by the DBAPI.   For the special AUTOCOMMIT isolation level,
+DBAPI-specific techniques are used which is typically an ``.autocommit``
+flag on the DBAPI connection object.
 
 To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
         "postgresql+pg8000://scott:tiger@localhost/test",
-        isolation_level="READ UNCOMMITTED"
+        execution_options={
+            "isolation_level": "REPEATABLE READ"
+        }
     )
 
 To set using per-connection execution options::
 
-    connection = engine.connect()
-    connection = connection.execution_options(
-        isolation_level="READ COMMITTED"
-    )
+    with engine.connect() as conn:
+        conn = conn.execution_options(
+            isolation_level="REPEATABLE READ"
+        )
+        with conn.begin():
+            # ... work with transaction
 
-Valid values for ``isolation_level`` include:
+Valid values for ``isolation_level`` on most PostgreSQL dialects include:
 
 * ``READ COMMITTED``
 * ``READ UNCOMMITTED``
 * ``REPEATABLE READ``
 * ``SERIALIZABLE``
-* ``AUTOCOMMIT`` - on psycopg2 / pg8000 only
+* ``AUTOCOMMIT``
 
 .. seealso::
 
@@ -2684,6 +2692,10 @@ class PGDialect(default.DefaultDialect):
         **kwargs
     ):
         default.DefaultDialect.__init__(self, **kwargs)
+
+        # the isolation_level parameter to the PGDialect itself is legacy.
+        # still works however the execution_options method is the one that
+        # is documented.
         self.isolation_level = isolation_level
         self._json_deserializer = json_deserializer
         self._json_serializer = json_serializer
