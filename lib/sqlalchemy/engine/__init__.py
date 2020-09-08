@@ -290,8 +290,8 @@ def create_engine(*args, **kwargs):
     :param isolation_level: this string parameter is interpreted by various
         dialects in order to affect the transaction isolation level of the
         database connection.   The parameter essentially accepts some subset of
-        these string arguments: ``"SERIALIZABLE"``, ``"REPEATABLE_READ"``,
-        ``"READ_COMMITTED"``, ``"READ_UNCOMMITTED"`` and ``"AUTOCOMMIT"``.
+        these string arguments: ``"SERIALIZABLE"``, ``"REPEATABLE READ"``,
+        ``"READ COMMITTED"``, ``"READ UNCOMMITTED"`` and ``"AUTOCOMMIT"``.
         Behavior here varies per backend, and
         individual dialects should be consulted directly.
 
