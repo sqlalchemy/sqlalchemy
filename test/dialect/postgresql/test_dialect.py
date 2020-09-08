@@ -39,6 +39,7 @@ from sqlalchemy.engine import url
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -749,6 +750,7 @@ class MiscBackendTest(
             val = cursor.fetchone()[0]
             cursor.close()
             eq_(val, "on")
+            is_true(testing.db.dialect.get_readonly(dbapi_conn))
 
         cursor = dbapi_conn.cursor()
         try:
@@ -774,6 +776,7 @@ class MiscBackendTest(
             val = cursor.fetchone()[0]
             cursor.close()
             eq_(val, "on")
+            is_true(testing.db.dialect.get_deferrable(dbapi_conn))
 
         cursor = dbapi_conn.cursor()
         try:

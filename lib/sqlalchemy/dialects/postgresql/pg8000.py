@@ -378,7 +378,7 @@ class PGDialect_pg8000(PGDialect):
         finally:
             cursor.close()
 
-        return val == "yes"
+        return val == "on"
 
     def set_deferrable(self, connection, value):
         cursor = connection.cursor()
@@ -399,7 +399,7 @@ class PGDialect_pg8000(PGDialect):
         finally:
             cursor.close()
 
-        return val == "yes"
+        return val == "on"
 
     def set_client_encoding(self, connection, client_encoding):
         # adjust for ConnectionFairy possibly being present
