@@ -193,6 +193,9 @@ if py3k:
 
     # Unused. Kept for backwards compatibility.
     callable = callable  # noqa
+
+    from abc import ABC
+
 else:
     import base64
     import ConfigParser as configparser  # noqa
@@ -207,6 +210,11 @@ else:
     from urllib import unquote  # noqa
     from urllib import unquote_plus  # noqa
     from urlparse import parse_qsl  # noqa
+
+    from abc import ABCMeta
+
+    class ABC(object):
+        __metaclass__ = ABCMeta
 
     try:
         import cPickle as pickle

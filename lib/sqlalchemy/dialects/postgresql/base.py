@@ -160,11 +160,43 @@ Valid values for ``isolation_level`` on most PostgreSQL dialects include:
 
 .. seealso::
 
+    :ref:`postgresql_readonly_deferrable`
+
     :ref:`dbapi_autocommit`
 
     :ref:`psycopg2_isolation_level`
 
     :ref:`pg8000_isolation_level`
+
+.. _postgresql_readonly_deferrable:
+
+Setting READ ONLY / DEFERRABLE
+------------------------------
+
+Most PostgreSQL dialects support setting the "READ ONLY" and "DEFERRABLE"
+characteristics of the transaction, which is in addition to the isolation level
+setting. These two attributes can be established either in conjunction with or
+independently of the isolation level by passing the ``postgresql_readonly`` and
+``postgresql_deferrable`` flags with
+:meth:`_engine.Connection.execution_options`.  The example below illustrates
+passing the ``"SERIALIZABLE"`` isolation level at the same time as setting
+"READ ONLY" and "DEFERRABLE"::
+
+    with engine.connect() as conn:
+        conn = conn.execution_options(
+            isolation_level="SERIALIZABLE",
+            postgresql_readonly=True,
+            postgresql_deferrable=True
+        )
+        with conn.begin():
+            #  ... work with transaction
+
+Note that some DBAPIs such as asyncpg only support "readonly" with
+SERIALIZABLE isolation.
+
+.. versionadded:: 1.4 added support for the ``postgresql_readonly``
+   and ``postgresql_deferrable`` execution options.
+
 
 .. _postgresql_schema_reflection:
 
@@ -1045,6 +1077,7 @@ from ... import exc
 from ... import schema
 from ... import sql
 from ... import util
+from ...engine import characteristics
 from ...engine import default
 from ...engine import reflection
 from ...sql import coercions
@@ -2618,6 +2651,36 @@ class PGExecutionContext(default.DefaultExecutionContext):
         return AUTOCOMMIT_REGEXP.match(statement)
 
 
+class PGReadOnlyConnectionCharacteristic(
+    characteristics.ConnectionCharacteristic
+):
+    transactional = True
+
+    def reset_characteristic(self, dialect, dbapi_conn):
+        dialect.set_readonly(dbapi_conn, False)
+
+    def set_characteristic(self, dialect, dbapi_conn, value):
+        dialect.set_readonly(dbapi_conn, value)
+
+    def get_characteristic(self, dialect, dbapi_conn):
+        return dialect.get_readonly(dbapi_conn)
+
+
+class PGDeferrableConnectionCharacteristic(
+    characteristics.ConnectionCharacteristic
+):
+    transactional = True
+
+    def reset_characteristic(self, dialect, dbapi_conn):
+        dialect.set_deferrable(dbapi_conn, False)
+
+    def set_characteristic(self, dialect, dbapi_conn, value):
+        dialect.set_deferrable(dbapi_conn, value)
+
+    def get_characteristic(self, dialect, dbapi_conn):
+        return dialect.get_deferrable(dbapi_conn)
+
+
 class PGDialect(default.DefaultDialect):
     name = "postgresql"
     supports_alter = True
@@ -2652,6 +2715,16 @@ class PGDialect(default.DefaultDialect):
 
     implicit_returning = True
     full_returning = True
+
+    connection_characteristics = (
+        default.DefaultDialect.connection_characteristics
+    )
+    connection_characteristics = connection_characteristics.union(
+        {
+            "postgresql_readonly": PGReadOnlyConnectionCharacteristic(),
+            "postgresql_deferrable": PGDeferrableConnectionCharacteristic(),
+        }
+    )
 
     construct_arguments = [
         (
@@ -2773,6 +2846,18 @@ class PGDialect(default.DefaultDialect):
         val = cursor.fetchone()[0]
         cursor.close()
         return val.upper()
+
+    def set_readonly(self, connection, value):
+        raise NotImplementedError()
+
+    def get_readonly(self, connection):
+        raise NotImplementedError()
+
+    def set_deferrable(self, connection, value):
+        raise NotImplementedError()
+
+    def get_deferrable(self, connection):
+        raise NotImplementedError()
 
     def do_begin_twophase(self, connection, xid):
         self.do_begin(connection.connection)

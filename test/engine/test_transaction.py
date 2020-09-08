@@ -7,12 +7,17 @@ from sqlalchemy import func
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import pool as _pool
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+from sqlalchemy.engine import base
+from sqlalchemy.engine import characteristics
+from sqlalchemy.engine import default
+from sqlalchemy.engine import url
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -1374,6 +1379,150 @@ class IsolationLevelTest(fixtures.TestBase):
             eq_(c2.get_isolation_level(), self._non_default_isolation_level())
 
 
+class ConnectionCharacteristicTest(fixtures.TestBase):
+    @testing.fixture
+    def characteristic_fixture(self):
+        class FooCharacteristic(characteristics.ConnectionCharacteristic):
+            transactional = True
+
+            def reset_characteristic(self, dialect, dbapi_conn):
+
+                dialect.reset_foo(dbapi_conn)
+
+            def set_characteristic(self, dialect, dbapi_conn, value):
+
+                dialect.set_foo(dbapi_conn, value)
+
+            def get_characteristic(self, dialect, dbapi_conn):
+                return dialect.get_foo(dbapi_conn)
+
+        class FooDialect(default.DefaultDialect):
+            connection_characteristics = util.immutabledict(
+                {"foo": FooCharacteristic()}
+            )
+
+            def reset_foo(self, dbapi_conn):
+                dbapi_conn.foo = "original_value"
+
+            def set_foo(self, dbapi_conn, value):
+                dbapi_conn.foo = value
+
+            def get_foo(self, dbapi_conn):
+                return dbapi_conn.foo
+
+        connection = mock.Mock()
+
+        def creator():
+            connection.foo = "original_value"
+            return connection
+
+        pool = _pool.SingletonThreadPool(creator=creator)
+        u = url.make_url("foo://")
+        return base.Engine(pool, FooDialect(), u), connection
+
+    def test_engine_param_stays(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        foo_level = engine.dialect.get_foo(engine.connect().connection)
+
+        new_level = "new_level"
+
+        ne_(foo_level, new_level)
+
+        eng = engine.execution_options(foo=new_level)
+        eq_(eng.dialect.get_foo(eng.connect().connection), new_level)
+
+        # check that it stays
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), new_level)
+        conn.close()
+
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), new_level)
+        conn.close()
+
+    def test_default_level(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        eq_(
+            engine.dialect.get_foo(engine.connect().connection),
+            "original_value",
+        )
+
+    def test_connection_invalidated(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        conn = engine.connect()
+        c2 = conn.execution_options(foo="new_value")
+        eq_(connection.foo, "new_value")
+        c2.invalidate()
+        c2.connection
+
+        eq_(connection.foo, "original_value")
+
+    def test_warning_in_transaction(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        c1 = engine.connect()
+        with expect_warnings(
+            "Connection is already established with a Transaction; "
+            "setting foo may implicitly rollback or commit "
+            "the existing transaction, or have no effect until next "
+            "transaction"
+        ):
+            with c1.begin():
+                c1 = c1.execution_options(foo="new_foo")
+
+                eq_(
+                    engine.dialect.get_foo(c1.connection), "new_foo",
+                )
+        # stays outside of transaction
+        eq_(engine.dialect.get_foo(c1.connection), "new_foo")
+
+    @testing.fails("no error is raised yet here.")
+    def test_per_statement_bzzt(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        # this would need some on-execute mechanism to look inside of
+        # the characteristics list.   unfortunately this would
+        # add some latency.
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"'foo' execution option may only be specified "
+            r"on Connection.execution_options\(\), or "
+            r"per-engine using the isolation_level "
+            r"argument to create_engine\(\).",
+            connection.execute,
+            select([1]).execution_options(foo="bar"),
+        )
+
+    def test_per_engine(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        pool, dialect, url = engine.pool, engine.dialect, engine.url
+
+        eng = base.Engine(
+            pool, dialect, url, execution_options={"foo": "new_value"}
+        )
+
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), "new_value")
+
+    def test_per_option_engine(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        eng = engine.execution_options(foo="new_value")
+
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_foo(conn.connection), "new_value",
+        )
+
+
 class FutureResetAgentTest(fixtures.FutureEngineMixin, fixtures.TestBase):
     """Still some debate over if the "reset agent" should apply to the
     future connection or not.
@@ -1586,7 +1735,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             assert_raises_message(
                 exc.InvalidRequestError,
                 "This connection has already begun a transaction; "
-                "isolation level may not be altered until transaction end",
+                "isolation_level may not be altered until transaction end",
                 conn.execution_options,
                 isolation_level="AUTOCOMMIT",
             )
@@ -1600,7 +1749,7 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             assert_raises_message(
                 exc.InvalidRequestError,
                 "This connection has already begun a transaction; "
-                "isolation level may not be altered until transaction end",
+                "isolation_level may not be altered until transaction end",
                 conn.execution_options,
                 isolation_level="AUTOCOMMIT",
             )

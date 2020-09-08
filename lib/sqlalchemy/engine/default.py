@@ -14,10 +14,12 @@ as the base class for their own corresponding classes.
 """
 
 import codecs
+import functools
 import random
 import re
 import weakref
 
+from . import characteristics
 from . import cursor as _cursor
 from . import interfaces
 from .. import event
@@ -84,6 +86,10 @@ class DefaultDialect(interfaces.Dialect):
     supports_simple_order_by_label = True
 
     tuple_in_values = False
+
+    connection_characteristics = util.immutabledict(
+        {"isolation_level": characteristics.IsolationLevelCharacteristic()}
+    )
 
     engine_config_types = util.immutabledict(
         [
@@ -513,37 +519,75 @@ class DefaultDialect(interfaces.Dialect):
         return [[], opts]
 
     def set_engine_execution_options(self, engine, opts):
-        if "isolation_level" in opts:
-            isolation_level = opts["isolation_level"]
+        supported_names = set(self.connection_characteristics).intersection(
+            opts
+        )
+        if supported_names:
+            characteristics = util.immutabledict(
+                (name, opts[name]) for name in supported_names
+            )
 
             @event.listens_for(engine, "engine_connect")
-            def set_isolation(connection, branch):
+            def set_connection_characteristics(connection, branch):
                 if not branch:
-                    self._set_connection_isolation(connection, isolation_level)
+                    self._set_connection_characteristics(
+                        connection, characteristics
+                    )
 
     def set_connection_execution_options(self, connection, opts):
-        if "isolation_level" in opts:
-            self._set_connection_isolation(connection, opts["isolation_level"])
-
-    def _set_connection_isolation(self, connection, level):
-        if connection.in_transaction():
-            if connection._is_future:
-                raise exc.InvalidRequestError(
-                    "This connection has already begun a transaction; "
-                    "isolation level may not be altered until transaction end"
-                )
-            else:
-                util.warn(
-                    "Connection is already established with a Transaction; "
-                    "setting isolation_level may implicitly rollback or "
-                    "commit "
-                    "the existing transaction, or have no effect until "
-                    "next transaction"
-                )
-        self.set_isolation_level(connection.connection, level)
-        connection.connection._connection_record.finalize_callback.append(
-            self.reset_isolation_level
+        supported_names = set(self.connection_characteristics).intersection(
+            opts
         )
+        if supported_names:
+            characteristics = util.immutabledict(
+                (name, opts[name]) for name in supported_names
+            )
+            self._set_connection_characteristics(connection, characteristics)
+
+    def _set_connection_characteristics(self, connection, characteristics):
+
+        characteristic_values = [
+            (name, self.connection_characteristics[name], value)
+            for name, value in characteristics.items()
+        ]
+
+        if connection.in_transaction():
+            trans_objs = [
+                (name, obj)
+                for name, obj, value in characteristic_values
+                if obj.transactional
+            ]
+            if trans_objs:
+                if connection._is_future:
+                    raise exc.InvalidRequestError(
+                        "This connection has already begun a transaction; "
+                        "%s may not be altered until transaction end"
+                        % (", ".join(name for name, obj in trans_objs))
+                    )
+                else:
+                    util.warn(
+                        "Connection is already established with a "
+                        "Transaction; "
+                        "setting %s may implicitly rollback or "
+                        "commit "
+                        "the existing transaction, or have no effect until "
+                        "next transaction"
+                        % (", ".join(name for name, obj in trans_objs))
+                    )
+
+        dbapi_connection = connection.connection.connection
+        for name, characteristic, value in characteristic_values:
+            characteristic.set_characteristic(self, dbapi_connection, value)
+        connection.connection._connection_record.finalize_callback.append(
+            functools.partial(self._reset_characteristics, characteristics)
+        )
+
+    def _reset_characteristics(self, characteristics, dbapi_connection):
+        for characteristic_name in characteristics:
+            characteristic = self.connection_characteristics[
+                characteristic_name
+            ]
+            characteristic.reset_characteristic(self, dbapi_connection)
 
     def do_begin(self, dbapi_connection):
         pass

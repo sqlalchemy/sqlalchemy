@@ -359,6 +359,48 @@ class PGDialect_pg8000(PGDialect):
                 % (level, self.name, ", ".join(self._isolation_lookup))
             )
 
+    def set_readonly(self, connection, value):
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                "SET SESSION CHARACTERISTICS AS TRANSACTION %s"
+                % ("READ ONLY" if value else "READ WRITE")
+            )
+            cursor.execute("COMMIT")
+        finally:
+            cursor.close()
+
+    def get_readonly(self, connection):
+        cursor = connection.cursor()
+        try:
+            cursor.execute("show transaction_read_only")
+            val = cursor.fetchone()[0]
+        finally:
+            cursor.close()
+
+        return val == "yes"
+
+    def set_deferrable(self, connection, value):
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                "SET SESSION CHARACTERISTICS AS TRANSACTION %s"
+                % ("DEFERRABLE" if value else "NOT DEFERRABLE")
+            )
+            cursor.execute("COMMIT")
+        finally:
+            cursor.close()
+
+    def get_deferrable(self, connection):
+        cursor = connection.cursor()
+        try:
+            cursor.execute("show transaction_deferrable")
+            val = cursor.fetchone()[0]
+        finally:
+            cursor.close()
+
+        return val == "yes"
+
     def set_client_encoding(self, connection, client_encoding):
         # adjust for ConnectionFairy possibly being present
         if hasattr(connection, "connection"):

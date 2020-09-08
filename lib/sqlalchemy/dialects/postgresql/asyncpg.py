@@ -465,6 +465,8 @@ class AsyncAdapt_asyncpg_connection:
         "dbapi",
         "_connection",
         "isolation_level",
+        "readonly",
+        "deferrable",
         "_transaction",
         "_started",
     )
@@ -475,6 +477,8 @@ class AsyncAdapt_asyncpg_connection:
         self.dbapi = dbapi
         self._connection = connection
         self.isolation_level = "read_committed"
+        self.readonly = False
+        self.deferrable = False
         self._transaction = None
         self._started = False
         self.await_(self._setup_type_codecs())
@@ -530,7 +534,9 @@ class AsyncAdapt_asyncpg_connection:
 
         try:
             self._transaction = self._connection.transaction(
-                isolation=self.isolation_level
+                isolation=self.isolation_level,
+                readonly=self.readonly,
+                deferrable=self.deferrable,
             )
             await self._transaction.start()
         except Exception as error:
@@ -762,6 +768,18 @@ class PGDialect_asyncpg(PGDialect):
             )
 
         connection.set_isolation_level(level)
+
+    def set_readonly(self, connection, value):
+        connection.readonly = value
+
+    def get_readonly(self, connection):
+        return connection.readonly
+
+    def set_deferrable(self, connection, value):
+        connection.deferrable = value
+
+    def get_deferrable(self, connection):
+        return connection.deferrable
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
