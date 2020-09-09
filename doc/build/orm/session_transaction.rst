@@ -653,7 +653,7 @@ entire database interaction is rolled back.
 
 .. versionchanged:: 1.4  This section introduces a new version of the
    "join into an external transaction" recipe that will work equally well
-   for both :term:`2.0 style` and :term:`1.x style`engines and sessions.
+   for both :term:`2.0 style` and :term:`1.x style` engines and sessions.
    The recipe here from previous versions such as 1.3 will also continue to
    work for 1.x engines and sessions.
 

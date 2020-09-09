@@ -94,9 +94,11 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
         :param target:
           Optional, defaults to None.  The target :class:`_schema.SchemaItem`
-          for the execute call.  Will be passed to the ``on`` callable if any,
-          and may also provide string expansion data for the statement.
-          See ``execute_at`` for more information.
+          for the execute call.   This is equivalent to passing the
+          :class:`_schema.SchemaItem` to the :meth:`.DDLElement.against`
+          method and then invoking :meth:`_schema.DDLElement.execute`
+          upon the resulting :class:`_schema.DDLElement` object.  See
+          :meth:`.DDLElement.against` for further detail.
 
         """
 
@@ -110,7 +112,37 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
     @_generative
     def against(self, target):
-        """Return a copy of this DDL against a specific schema item."""
+        """Return a copy of this :class:`_schema.DDLElement` which will include
+        the given target.
+
+        This essentially applies the given item to the ``.target`` attribute
+        of the returned :class:`_schema.DDLElement` object.  This target
+        is then usable by event handlers and compilation routines in order to
+        provide services such as tokenization of a DDL string in terms of a
+        particular :class:`_schema.Table`.
+
+        When a :class:`_schema.DDLElement` object is established as an event
+        handler for the :meth:`_events.DDLEvents.before_create` or
+        :meth:`_events.DDLEvents.after_create` events, and the event
+        then occurs for a given target such as a :class:`_schema.Constraint`
+        or :class:`_schema.Table`, that target is established with a copy
+        of the :class:`_schema.DDLElement` object using this method, which
+        then proceeds to the :meth:`_schema.DDLElement.execute` method
+        in order to invoke the actual DDL instruction.
+
+        :param target: a :class:`_schema.SchemaItem` that will be the subject
+         of a DDL operation.
+
+        :return: a copy of this :class:`_schema.DDLElement` with the
+         ``.target`` attribute assigned to the given
+         :class:`_schema.SchemaItem`.
+
+        .. seealso::
+
+            :class:`_schema.DDL` - uses tokenization against the "target" when
+            processing the DDL string.
+
+        """
 
         self.target = target
 
