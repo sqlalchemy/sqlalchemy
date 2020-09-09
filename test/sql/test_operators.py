@@ -848,7 +848,7 @@ class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col2 = Column("y", Integer())
 
         self.assert_compile(
-            col[col2 : col2 + 5], "x[y:y + :y_1]", checkparams={"y_1": 5}
+            col[col2: col2 + 5], "x[y:y + :y_1]", checkparams={"y_1": 5}
         )
 
     def test_getindex_literal_zeroind(self):
@@ -884,7 +884,7 @@ class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         col2 = Column("y", Integer())
 
         self.assert_compile(
-            col[col2 : col2 + 5],
+            col[col2: col2 + 5],
             "x[y + :y_1:y + :y_2 + :param_1]",
             checkparams={"y_1": 1, "y_2": 5, "param_1": 1},
         )
