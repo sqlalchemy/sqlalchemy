@@ -111,11 +111,11 @@ class ScopedSessionTest(fixtures.MappedTest):
         Session = scoped_session(sa.orm.sessionmaker(), mock_scope_func)
 
         s0 = SessionMaker()
-        assert s0.autocommit == False
+        assert not s0.autocommit
 
         mock_scope_func.return_value = 0
         s1 = Session()
-        assert s1.autocommit == False
+        assert not s1.autocommit
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
@@ -126,4 +126,4 @@ class ScopedSessionTest(fixtures.MappedTest):
 
         mock_scope_func.return_value = 1
         s2 = Session(autocommit=True)
-        assert s2.autocommit == True
+        assert s2.autocommit
