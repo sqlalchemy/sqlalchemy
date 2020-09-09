@@ -4108,9 +4108,11 @@ class Select(
           column with its parent table's (or aliases) name so that name
           conflicts between columns in different tables don't occur.
           The format of the label is ``<tablename>_<column>``.  The "c"
-          collection of the resulting :class:`_expression.Select`
-          object will use these
-          names as well for targeting column members.
+          collection of a :class:`_expression.Subquery` created
+          against this :class:`_expression.Select`
+          object, as well as the :attr:`_expression.Select.selected_columns`
+          collection of the :class:`_expression.Select` itself, will use these
+          names for targeting column members.
 
           This parameter can also be specified on an existing
           :class:`_expression.Select` object using the
