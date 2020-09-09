@@ -10,6 +10,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -111,11 +113,11 @@ class ScopedSessionTest(fixtures.MappedTest):
         Session = scoped_session(sa.orm.sessionmaker(), mock_scope_func)
 
         s0 = SessionMaker()
-        assert not s0.autocommit
+        is_false(s0.autocommit)
 
         mock_scope_func.return_value = 0
         s1 = Session()
-        assert not s1.autocommit
+        is_false(s1.autocommit)
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
@@ -126,4 +128,4 @@ class ScopedSessionTest(fixtures.MappedTest):
 
         mock_scope_func.return_value = 1
         s2 = Session(autocommit=True)
-        assert s2.autocommit
+        is_true(s2.autocommit)
