@@ -1639,7 +1639,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                     value=("singular%d" % ii) if ii % 4 == 0 else None
                 )
             session.add(user)
-            for jj in words[(ii % len(words)) : ((ii + 3) % len(words))]:
+            for jj in words[(ii % len(words)):((ii + 3) % len(words))]:
                 k = Keyword(jj)
                 user.keywords.append(k)
                 if ii % 2 == 0:
