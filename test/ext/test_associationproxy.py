@@ -2230,11 +2230,11 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         Singular = self.classes.Singular
 
         self._equivalent(
-            self.session.query(User).filter(User.singular_value == None),
+            self.session.query(User).filter(User.singular_value is None),
             self.session.query(User).filter(
                 or_(
-                    User.singular.has(Singular.value == None),
-                    User.singular == None,
+                    User.singular.has(Singular.value is None),
+                    User.singular is None,
                 )
             ),
         )
