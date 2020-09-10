@@ -40,6 +40,9 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                 sa.schema.FetchedValue(for_update=True),
             ),
         )
+
+        dialect_name = testing.db.dialect.name
+
         for ins in (
             sa.DDL(
                 "CREATE TRIGGER dt_ins AFTER INSERT ON dt "
@@ -60,17 +63,37 @@ class TriggerDefaultsTest(fixtures.MappedTest):
                 ":NEW.col2 := 'ins'; :NEW.col4 := 'ins'; END;"
             ).execute_if(dialect="oracle"),
             sa.DDL(
+                "CREATE TRIGGER dt_ins BEFORE INSERT "
+                "ON dt "
+                "FOR EACH ROW "
+                "EXECUTE PROCEDURE my_func_ins();"
+            ).execute_if(dialect="postgresql"),
+            sa.DDL(
                 "CREATE TRIGGER dt_ins BEFORE INSERT ON dt "
                 "FOR EACH ROW BEGIN "
                 "SET NEW.col2='ins'; SET NEW.col4='ins'; END"
             ).execute_if(
                 callable_=lambda ddl, target, bind, **kw: bind.engine.name
-                not in ("oracle", "mssql", "sqlite")
+                not in ("oracle", "mssql", "sqlite", "postgresql")
             ),
         ):
-            event.listen(dt, "after_create", ins)
+            my_func_ins = sa.DDL(
+                "CREATE OR REPLACE FUNCTION my_func_ins() "
+                "RETURNS TRIGGER AS $$ "
+                "BEGIN "
+                "NEW.col2 := 'ins'; NEW.col4 := 'ins'; "
+                "RETURN NEW; "
+                "END; $$ LANGUAGE PLPGSQL"
+            ).execute_if(dialect="postgresql")
+            event.listen(dt, "after_create", my_func_ins)
 
-        event.listen(dt, "before_drop", sa.DDL("DROP TRIGGER dt_ins"))
+            event.listen(dt, "after_create", ins)
+        if dialect_name == "postgresql":
+            event.listen(
+                dt, "before_drop", sa.DDL("DROP TRIGGER dt_ins ON dt")
+            )
+        else:
+            event.listen(dt, "before_drop", sa.DDL("DROP TRIGGER dt_ins"))
 
         for up in (
             sa.DDL(
@@ -91,16 +114,34 @@ class TriggerDefaultsTest(fixtures.MappedTest):
             ).execute_if(dialect="oracle"),
             sa.DDL(
                 "CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
+                "FOR EACH ROW "
+                "EXECUTE PROCEDURE my_func_up();"
+            ).execute_if(dialect="postgresql"),
+            sa.DDL(
+                "CREATE TRIGGER dt_up BEFORE UPDATE ON dt "
                 "FOR EACH ROW BEGIN "
                 "SET NEW.col3='up'; SET NEW.col4='up'; END"
             ).execute_if(
                 callable_=lambda ddl, target, bind, **kw: bind.engine.name
-                not in ("oracle", "mssql", "sqlite")
+                not in ("oracle", "mssql", "sqlite", "postgresql")
             ),
         ):
+            my_func_up = sa.DDL(
+                "CREATE OR REPLACE FUNCTION my_func_up() "
+                "RETURNS TRIGGER AS $$ "
+                "BEGIN "
+                "NEW.col3 := 'up'; NEW.col4 := 'up'; "
+                "RETURN NEW; "
+                "END; $$ LANGUAGE PLPGSQL"
+            ).execute_if(dialect="postgresql")
+            event.listen(dt, "after_create", my_func_up)
+
             event.listen(dt, "after_create", up)
 
-        event.listen(dt, "before_drop", sa.DDL("DROP TRIGGER dt_up"))
+        if dialect_name == "postgresql":
+            event.listen(dt, "before_drop", sa.DDL("DROP TRIGGER dt_up ON dt"))
+        else:
+            event.listen(dt, "before_drop", sa.DDL("DROP TRIGGER dt_up"))
 
     @classmethod
     def setup_classes(cls):
