@@ -1188,6 +1188,11 @@ class Query(object):
         after rollback or commit handles object state automatically.
         This method is not intended for general use.
 
+        .. seealso::
+
+            :ref:`session_expire` - in the ORM :class:`_orm.Session`
+            documentation
+
         """
         self._populate_existing = True
 
@@ -1786,7 +1791,7 @@ class Query(object):
 
         E.g.::
 
-            q = sess.query(User).with_for_update(nowait=True, of=User)
+            q = sess.query(User).populate_existing().with_for_update(nowait=True, of=User)
 
         The above query on a PostgreSQL backend will render like::
 
@@ -1796,13 +1801,24 @@ class Query(object):
            supersedes
            the :meth:`_query.Query.with_lockmode` method.
 
+        .. note::  It is generally a good idea to combine the use of the
+           :meth:`_orm.Query.populate_existing` method when using the
+           :meth:`_orm.Query.with_for_update` method.   The purpose of
+           :meth:`_orm.Query.populate_existing` is to force all the data read
+           from the SELECT to be populated into the ORM objects returned,
+           even if these objects are already in the :term:`identity map`.
+
         .. seealso::
 
             :meth:`_expression.GenerativeSelect.with_for_update`
             - Core level method with
             full argument and behavioral description.
 
-        """
+            :meth:`_orm.Query.populate_existing` - overwrites attributes of
+            objects already loaded in the identity map.
+
+        """  # noqa: E501
+
         self._for_update_arg = LockmodeArg(
             read=read,
             nowait=nowait,

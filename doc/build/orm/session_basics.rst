@@ -732,6 +732,74 @@ required after a flush fails, even though the underlying transaction will have
 been rolled back already - this is so that the overall nesting pattern of
 so-called "subtransactions" is consistently maintained.
 
+Expiring / Refreshing
+---------------------
+
+An important consideration that will often come up when using the
+:class:`_orm.Session` is that of dealing with the state that is present on
+objects that have been loaded from the database, in terms of keeping them
+synchronized with the current state of the transaction.   The SQLAlchemy
+ORM is based around the concept of an :term:`identity map` such that when
+an object is "loaded" from a SQL query, there will be a unique Python
+object instance maintained corresponding to a particular database identity.
+This means if we emit two separate queries, each for the same row, and get
+a mapped object back, the two queries will have returned the same Python
+object::
+
+  >>> u1 = session.query(User).filter(id=5).first()
+  >>> u2 = session.query(User).filter(id=5).first()
+  >>> u1 is u2
+  True
+
+Following from this, when the ORM gets rows back from a query, it will
+**skip the population of attributes** for an object that's already loaded.
+The design assumption here is to assume a transaction that's perfectly
+isolated, and then to the degree that the transaction isn't isolated, the
+application can take steps on an as-needed basis to refresh objects
+from the database transaction.  The FAQ entry at :ref:`faq_session_identity`
+discusses this concept in more detail.
+
+When an ORM mapped object is loaded into memory, there are three general
+ways to refresh its contents with new data from the current transaction:
+
+* **the expire() method** - the :meth:`_orm.Session.expire` method will
+  erase the contents of selected or all attributes of an object, such that they
+  will be loaded from the database when they are next accessed, e.g. using
+  a :term:`lazy loading` pattern::
+
+    session.expire(u1)
+    u1.some_attribute  # <-- lazy loads from the transaction
+  ..
+
+* **the refresh() method** - closely related is the :meth:`_orm.Session.refresh`
+  method, which does everything the :meth:`_orm.Session.expire` method does
+  but also emits one or more SQL queries immediately to actually refresh
+  the contents of the object::
+
+    session.refresh(u1)  # <-- emits a SQL query
+    u1.some_attribute  # <-- is refreshed from the transaction
+
+  ..
+
+* **the populate_existing() method** - this method is actually on the
+  :class:`_orm.Query` object as :meth:`_orm.Query.populate_existing`
+  and indicates that it should return objects that are unconditionally
+  re-populated from their contents in the database::
+
+    u2 = session.query(User).populate_existing().filter(id=5).first()
+
+  ..
+
+Further discussion on the refresh / expire concept can be found at
+:ref:`session_expire`.
+
+.. seealso::
+
+  :ref:`session_expire`
+
+  :ref:`faq_session_identity`
+
+
 .. _session_committing:
 
 Committing

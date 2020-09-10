@@ -6,6 +6,7 @@ Sessions / Queries
     :class: faq
     :backlinks: none
 
+.. _faq_session_identity:
 
 I'm re-loading data with my Session but it isn't seeing changes that I committed elsewhere
 ------------------------------------------------------------------------------------------
