@@ -506,6 +506,12 @@ attributes to be marked as expired::
     # expire only attributes obj1.attr1, obj1.attr2
     session.expire(obj1, ['attr1', 'attr2'])
 
+The :meth:`.Session.expire_all` method allows us to essentially call
+:meth:`.Session.expire` on all objects contained within the :class:`.Session`
+at once::
+
+    session.expire_all()
+
 The :meth:`~.Session.refresh` method has a similar interface, but instead
 of expiring, it emits an immediate SELECT for the object's row immediately::
 
@@ -519,11 +525,14 @@ be that of a column-mapped attribute::
     # reload obj1.attr1, obj1.attr2
     session.refresh(obj1, ['attr1', 'attr2'])
 
-The :meth:`.Session.expire_all` method allows us to essentially call
-:meth:`.Session.expire` on all objects contained within the :class:`.Session`
-at once::
+An alternative method of refreshing which is often more flexible is to
+use the :meth:`_orm.Query.populate_existing` method of :class:`_orm.Query`.
+With this option, all of the ORM objects returned by the :class:`_orm.Query`
+will be refreshed with the contents of what was loaded in the SELECT::
 
-    session.expire_all()
+    for user in session.query(User).populate_existing().filter(User.name.in_(['a', 'b', 'c'])):
+        print(user)  # will be refreshed for those columns that came back from the query
+
 
 What Actually Loads
 ~~~~~~~~~~~~~~~~~~~
@@ -630,6 +639,10 @@ transactions, an understanding of the isolation behavior in effect is essential.
     :meth:`.Session.expire_all`
 
     :meth:`.Session.refresh`
+
+    :meth:`_orm.Query.populate_existing` - :class:`_orm.Query` method that refreshes
+    all matching objects in the identity map against the results of a
+    SELECT statement.
 
     :term:`isolation` - glossary explanation of isolation which includes links
     to Wikipedia.
