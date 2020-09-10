@@ -2137,6 +2137,8 @@ class Session(_SessionClassMethods):
 
             :meth:`.Session.expire_all`
 
+            :meth:`_orm.Query.populate_existing`
+
         """
         try:
             state = attributes.instance_state(instance)
@@ -2201,6 +2203,8 @@ class Session(_SessionClassMethods):
 
             :meth:`.Session.refresh`
 
+            :meth:`_orm.Query.populate_existing`
+
         """
         for state in self.identity_map.all_states():
             state._expire(state.dict, self.identity_map._modified)
@@ -2238,6 +2242,8 @@ class Session(_SessionClassMethods):
             :meth:`.Session.expire`
 
             :meth:`.Session.refresh`
+
+            :meth:`_orm.Query.populate_existing`
 
         """
         try:
