@@ -31,6 +31,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import classproperty
 
 Base = None
@@ -1666,8 +1667,6 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_singleton_gc(self):
         counter = mock.Mock()
 
-        Base.registry._class_registry.clear()
-
         class Mixin(object):
             @declared_attr
             def my_prop(cls):
@@ -1683,29 +1682,16 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
                 return column_property(cls.my_prop + 5)
 
         eq_(counter.mock_calls, [mock.call("A")])
-        import gc
-
         del A
-
-        status = ""
-        for i in range(8):
-            status += " %s" % (gc.collect(),)
+        gc_collect()
 
         from sqlalchemy.orm.clsregistry import _key_is_empty
 
-        if not _key_is_empty(
+        assert _key_is_empty(
             "A",
             Base.registry._class_registry,
             lambda cls: hasattr(cls, "my_other_prop"),
-        ):
-            actual_a = Base.registry._class_registry["A"]
-            refs = gc.get_referents(actual_a)
-            assert False, "registry keys: %s, obj: %s %s referents: %s" % (
-                list(Base.registry._class_registry.keys()),
-                Base.registry._class_registry["A"],
-                status,
-                refs,
-            )
+        )
 
     def test_can_we_access_the_mixin_straight(self):
         class Mixin(object):
