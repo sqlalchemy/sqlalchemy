@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym_for
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.orm.decl_base import _DeferredMapperConfig
+from sqlalchemy.orm.events import InstrumentationEvents
 from sqlalchemy.orm.events import MapperEvents
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -2091,6 +2092,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     @testing.teardown_events(MapperEvents)
+    @testing.teardown_events(InstrumentationEvents)
     def test_instrument_class_before_instrumentation(self):
         # test #3388
 
