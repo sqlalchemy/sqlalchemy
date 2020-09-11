@@ -1,0 +1,9 @@
+.. change::
+    :tags: change, orm
+    :tickets: 5573
+
+    Passing keyword arguments to methods such as :meth:`_orm.Session.execute`
+    to be passed into the :meth:`_orm.Session.get_bind` method is deprecated;
+    the new :paramref:`_orm.Session.execute.bind_arguments` dictionary should
+    be passed instead.
+

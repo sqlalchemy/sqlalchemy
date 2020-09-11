@@ -562,7 +562,8 @@ class SessionStateTest(_fixtures.FixtureTest):
             assert u2 is u
             assert (
                 sess.execute(
-                    "select count(1) from users", mapper=User
+                    "select count(1) from users",
+                    bind_arguments=dict(mapper=User),
                 ).scalar()
                 == 1
             )
@@ -575,7 +576,8 @@ class SessionStateTest(_fixtures.FixtureTest):
             sess.commit()
             assert (
                 sess.execute(
-                    "select count(1) from users", mapper=User
+                    "select count(1) from users",
+                    bind_arguments=dict(mapper=User),
                 ).scalar()
                 == 1
             )
@@ -1928,13 +1930,13 @@ class SessionInterface(fixtures.TestBase):
                     sa.exc.NoInspectionAvailable, callable_, *args, **kw
                 )
 
-        raises_("connection", mapper=user_arg)
+        raises_("connection", bind_arguments=dict(mapper=user_arg))
 
-        raises_("execute", "SELECT 1", mapper=user_arg)
+        raises_("execute", "SELECT 1", bind_arguments=dict(mapper=user_arg))
 
         raises_("get_bind", mapper=user_arg)
 
-        raises_("scalar", "SELECT 1", mapper=user_arg)
+        raises_("scalar", "SELECT 1", bind_arguments=dict(mapper=user_arg))
 
         eq_(
             watchdog,

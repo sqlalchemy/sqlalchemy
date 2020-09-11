@@ -1561,10 +1561,18 @@ class Session(_SessionClassMethods):
         """
         statement = coercions.expect(roles.CoerceTextStatementRole, statement)
 
-        if not bind_arguments:
-            bind_arguments = kw
-        elif kw:
-            bind_arguments.update(kw)
+        if kw:
+            util.warn_deprecated_20(
+                "Passing bind arguments to Session.execute() as keyword "
+                "arguments is deprecated and will be removed SQLAlchemy 2.0. "
+                "Please use the bind_arguments parameter."
+            )
+            if not bind_arguments:
+                bind_arguments = kw
+            else:
+                bind_arguments.update(kw)
+        elif not bind_arguments:
+            bind_arguments = {}
 
         if future and (
             statement._propagate_attrs.get("compile_state_plugin", None)
@@ -1645,15 +1653,18 @@ class Session(_SessionClassMethods):
         self,
         statement,
         params=None,
-        execution_options=None,
-        mapper=None,
-        bind=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
         **kw
     ):
         """Like :meth:`~.Session.execute` but return a scalar result."""
 
         return self.execute(
-            statement, params=params, mapper=mapper, bind=bind, **kw
+            statement,
+            params=params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            **kw
         ).scalar()
 
     def close(self):
