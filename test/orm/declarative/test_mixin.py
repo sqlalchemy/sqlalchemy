@@ -1,3 +1,5 @@
+import sys
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -1693,6 +1695,13 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             "A",
             Base.registry._class_registry,
             lambda cls: hasattr(cls, "my_other_prop"),
+        ), (
+            "registry keys: %s, obj: %s refcount: %s"
+            % (
+                list(Base.registry._class_registry.keys()),
+                Base.registry._class_registry["A"],
+                sys.getrefcount(Base.registry._class_registry["A"]),
+            )
         )
 
     def test_can_we_access_the_mixin_straight(self):
