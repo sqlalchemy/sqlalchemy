@@ -33,7 +33,6 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.util import classproperty
 
 Base = None
@@ -1686,8 +1685,20 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call("A")])
         del A
-        gc_collect()
-        gc_collect()
+        import gc
+
+        for i in range(8):
+            gc.collect()
+
+        import sysconfig
+
+        if hasattr(sysconfig, "get_config_vars"):
+            config_vars = "\n".join(
+                "%s=%s" % (x, sysconfig.get_config_vars()[x])
+                for x in sorted(sysconfig.get_config_vars())
+            )
+        else:
+            config_vars = ""
 
         from sqlalchemy.orm.clsregistry import _key_is_empty
 
@@ -1696,11 +1707,12 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             Base.registry._class_registry,
             lambda cls: hasattr(cls, "my_other_prop"),
         ), (
-            "registry keys: %s, obj: %s refcount: %s"
+            "registry keys: %s, obj: %s refcount: %s  %s"
             % (
                 list(Base.registry._class_registry.keys()),
                 Base.registry._class_registry["A"],
                 sys.getrefcount(Base.registry._class_registry["A"]),
+                config_vars,
             )
         )
 
