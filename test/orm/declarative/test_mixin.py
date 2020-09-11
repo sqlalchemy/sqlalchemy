@@ -1,5 +1,3 @@
-import sys
-
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -1667,6 +1665,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     @testing.requires.predictable_gc
     def test_singleton_gc(self):
         counter = mock.Mock()
+
         Base.registry._class_registry.clear()
 
         class Mixin(object):
@@ -1684,37 +1683,29 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
                 return column_property(cls.my_prop + 5)
 
         eq_(counter.mock_calls, [mock.call("A")])
-        del A
         import gc
 
+        del A
+
+        status = ""
         for i in range(8):
-            gc.collect()
-
-        import sysconfig
-
-        if hasattr(sysconfig, "get_config_vars"):
-            config_vars = "\n".join(
-                "%s=%s" % (x, sysconfig.get_config_vars()[x])
-                for x in sorted(sysconfig.get_config_vars())
-            )
-        else:
-            config_vars = ""
+            status += " %s" % (gc.collect(),)
 
         from sqlalchemy.orm.clsregistry import _key_is_empty
 
-        assert _key_is_empty(
+        if not _key_is_empty(
             "A",
             Base.registry._class_registry,
             lambda cls: hasattr(cls, "my_other_prop"),
-        ), (
-            "registry keys: %s, obj: %s refcount: %s  %s"
-            % (
+        ):
+            actual_a = Base.registry._class_registry["A"]
+            refs = gc.get_referents(actual_a)
+            assert False, "registry keys: %s, obj: %s %s referents: %s" % (
                 list(Base.registry._class_registry.keys()),
                 Base.registry._class_registry["A"],
-                sys.getrefcount(Base.registry._class_registry["A"]),
-                config_vars,
+                status,
+                refs,
             )
-        )
 
     def test_can_we_access_the_mixin_straight(self):
         class Mixin(object):
