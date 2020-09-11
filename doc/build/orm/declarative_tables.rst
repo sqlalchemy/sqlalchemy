@@ -6,7 +6,7 @@ Table Configuration with Declarative
 =============================================
 
 As introduced at :ref:`orm_declarative_mapping`, the Declarative style
-includses the ability to generate a mapped :class:`_schema.Table` object
+includes the ability to generate a mapped :class:`_schema.Table` object
 at the same time, or to accommodate a :class:`_schema.Table` or other
 :class:`_sql.FromClause` object directly.
 
@@ -51,7 +51,7 @@ collection of this :class:`_schema.Table` object.   The :class:`_schema.Column`
 objects can omit their "name" field, which is usually the first positional
 argument to the :class:`_schema.Column` constructor; the declarative system
 will assign the key associated with each :class:`_schema.Column` as the name,
-to produce a :class:`_schema.Table` that is equvialent to::
+to produce a :class:`_schema.Table` that is equivalent to::
 
     # equivalent Table object produced
     user_table = Table(
