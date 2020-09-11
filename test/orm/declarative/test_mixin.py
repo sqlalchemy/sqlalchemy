@@ -1666,6 +1666,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     @testing.requires.predictable_gc
     def test_singleton_gc(self):
         counter = mock.Mock()
+        Base.registry._class_registry.clear()
 
         class Mixin(object):
             @declared_attr
@@ -1683,6 +1684,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call("A")])
         del A
+        gc_collect()
         gc_collect()
 
         from sqlalchemy.orm.clsregistry import _key_is_empty
