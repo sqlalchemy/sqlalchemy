@@ -571,7 +571,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         addresses = Table(
             "email_addresses", meta2, autoload=True, schema="test_schema"
         )
-        users = Table("users", meta2, mustexist=True, schema="test_schema")
+        users = Table("users", meta2, must_exist=True, schema="test_schema")
         j = join(users, addresses)
         self.assert_(
             (users.c.user_id == addresses.c.remote_user_id).compare(j.onclause)

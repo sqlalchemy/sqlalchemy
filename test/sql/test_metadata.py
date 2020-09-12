@@ -1788,6 +1788,12 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not t2.c.x.nullable
         assert not t1.c.x.nullable
 
+    def test_must_exist(self):
+        with testing.expect_raises_message(
+            exc.InvalidRequestError, "Table 'foo' not defined"
+        ):
+            Table("foo", MetaData(), must_exist=True)
+
 
 class PKAutoIncrementTest(fixtures.TestBase):
     def test_multi_integer_no_autoinc(self):
