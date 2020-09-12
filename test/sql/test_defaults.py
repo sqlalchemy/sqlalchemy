@@ -996,7 +996,7 @@ class PKIncrementTest(fixtures.TablesTest):
             metadata,
             Column(
                 "id",
-                testing.db.dialect.sequence_default_column_type,
+                Integer,
                 Sequence("ai_id_seq", optional=True),
                 primary_key=True,
             ),
@@ -1227,7 +1227,7 @@ class SpecialTypePKTest(fixtures.TestBase):
     @classmethod
     def setup_class(cls):
         class MyInteger(TypeDecorator):
-            impl = testing.db.dialect.sequence_default_column_type
+            impl = Integer
 
             def process_bind_param(self, value, dialect):
                 if value is None:

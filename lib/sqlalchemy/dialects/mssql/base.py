@@ -242,9 +242,8 @@ SEQUENCE support
 
 The :class:`.Sequence` object now creates "real" sequences, i.e.,
 ``CREATE SEQUENCE``. To provide compatibility with other dialects,
-:class:`.Sequence` defaults to a data type of Integer and a start value of 1,
-even though the T-SQL defaults are BIGINT and -9223372036854775808,
-respectively.
+:class:`.Sequence` defaults to a start value of 1, even though the
+T-SQL defaults is -9223372036854775808.
 
 .. versionadded:: 1.4.0
 
@@ -757,7 +756,6 @@ from ...sql import func
 from ...sql import quoted_name
 from ...sql import roles
 from ...sql import util as sql_util
-from ...sql.type_api import to_instance
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -1639,6 +1637,16 @@ class MSExecutionContext(default.DefaultExecutionContext):
             type_,
         )
 
+    def get_insert_default(self, column):
+        if (
+            isinstance(column, sa_schema.Column)
+            and column is column.table._autoincrement_column
+            and isinstance(column.default, sa_schema.Sequence)
+            and column.default.optional
+        ):
+            return None
+        return super(MSExecutionContext, self).get_insert_default(column)
+
 
 class MSSQLCompiler(compiler.SQLCompiler):
     returning_precedes_values = True
@@ -2204,11 +2212,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
         elif (
             column is column.table._autoincrement_column
             or column.autoincrement is True
+        ) and (
+            not isinstance(column.default, Sequence) or column.default.optional
         ):
-            if not isinstance(column.default, Sequence):
-                colspec += self.process(
-                    Identity(start=start, increment=increment)
-                )
+            colspec += self.process(Identity(start=start, increment=increment))
         else:
             default = self.get_column_default_string(column)
             if default is not None:
@@ -2332,13 +2339,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
         return text
 
     def visit_create_sequence(self, create, **kw):
-
+        prefix = None
         if create.element.data_type is not None:
             data_type = create.element.data_type
-        else:
-            data_type = to_instance(self.dialect.sequence_default_column_type)
-
-        prefix = " AS %s" % self.type_compiler.process(data_type)
+            prefix = " AS %s" % self.type_compiler.process(data_type)
         return super(MSDDLCompiler, self).visit_create_sequence(
             create, prefix=prefix, **kw
         )
@@ -2547,8 +2551,7 @@ class MSDialect(default.DefaultDialect):
     ischema_names = ischema_names
 
     supports_sequences = True
-    # T-SQL's actual default is BIGINT
-    sequence_default_column_type = INTEGER
+    sequences_optional = True
     # T-SQL's actual default is -9223372036854775808
     default_sequence_base = 1
 
@@ -3148,7 +3151,6 @@ class MSDialect(default.DefaultDialect):
         RR = ischema.ref_constraints
         C = ischema.key_constraints.alias("C")
         R = ischema.key_constraints.alias("R")
-
         # Foreign key constraints
         s = (
             sql.select(

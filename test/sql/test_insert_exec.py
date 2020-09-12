@@ -369,12 +369,7 @@ class TableInsertTest(fixtures.TablesTest):
         Table(
             "foo",
             metadata,
-            Column(
-                "id",
-                testing.db.dialect.sequence_default_column_type,
-                Sequence("t_id_seq"),
-                primary_key=True,
-            ),
+            Column("id", Integer, Sequence("t_id_seq"), primary_key=True,),
             Column("data", String(50)),
             Column("x", Integer),
         )

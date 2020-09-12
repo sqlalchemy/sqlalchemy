@@ -21,7 +21,9 @@ class SequenceTest(fixtures.TablesTest):
         Table(
             "int_seq_t",
             metadata,
-            Column("id", Integer, default=Sequence("int_seq")),
+            Column(
+                "id", Integer, default=Sequence("int_seq", data_type=Integer())
+            ),
             Column("txt", String(50)),
         )
 
@@ -29,11 +31,7 @@ class SequenceTest(fixtures.TablesTest):
             "bigint_seq_t",
             metadata,
             Column(
-                "id",
-                BIGINT,
-                default=Sequence(
-                    "bigint_seq", data_type=BIGINT, start=3000000000
-                ),
+                "id", BIGINT, default=Sequence("bigint_seq", start=3000000000),
             ),
             Column("txt", String(50)),
         )
