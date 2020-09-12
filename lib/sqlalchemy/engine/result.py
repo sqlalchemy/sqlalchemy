@@ -561,7 +561,11 @@ class ResultInternal(InPlaceGenerative):
         else:
             make_row = self._row_getter
 
-        row = make_row(row) if make_row else row
+        try:
+            row = make_row(row) if make_row else row
+        except:
+            self._soft_close(hard=True)
+            raise
 
         if raise_for_second_row:
             if self._unique_filter_state:
@@ -577,15 +581,19 @@ class ResultInternal(InPlaceGenerative):
                         next_row = _NO_ROW
                         break
 
-                    next_row = make_row(next_row) if make_row else next_row
+                    try:
+                        next_row = make_row(next_row) if make_row else next_row
 
-                    if strategy:
-                        if existing_row_hash == strategy(next_row):
+                        if strategy:
+                            if existing_row_hash == strategy(next_row):
+                                continue
+                        elif row == next_row:
                             continue
-                    elif row == next_row:
-                        continue
-                    # here, we have a row and it's different
-                    break
+                        # here, we have a row and it's different
+                        break
+                    except:
+                        self._soft_close(hard=True)
+                        raise
             else:
                 next_row = onerow(hard_close=True)
                 if next_row is None:
