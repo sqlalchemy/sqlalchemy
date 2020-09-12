@@ -2,6 +2,7 @@ import operator
 import re
 
 import sqlalchemy as sa
+from sqlalchemy import func
 from .. import config
 from .. import engines
 from .. import eq_
@@ -1013,31 +1014,61 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.indexes_with_expressions
     @testing.provide_metadata
     def test_reflect_expression_based_indexes(self):
-        Table(
+        t = Table(
             "t",
             self.metadata,
             Column("x", String(30)),
             Column("y", String(30)),
         )
-        event.listen(
-            self.metadata,
-            "after_create",
-            DDL("CREATE INDEX t_idx ON t(lower(x), lower(y))"),
-        )
-        event.listen(
-            self.metadata, "after_create", DDL("CREATE INDEX t_idx_2 ON t(x)")
-        )
-        self.metadata.create_all()
 
-        insp = inspect(self.metadata.bind)
+        Index("t_idx", func.lower(t.c.x), func.lower(t.c.y))
+
+        Index("t_idx_2", t.c.x)
+
+        self.metadata.create_all(testing.db)
+
+        insp = inspect(testing.db)
+
+        expected = [
+            {"name": "t_idx_2", "column_names": ["x"], "unique": False}
+        ]
+        if testing.requires.index_reflects_included_columns.enabled:
+            expected[0]["include_columns"] = []
 
         with expect_warnings(
             "Skipped unsupported reflection of expression-based index t_idx"
         ):
             eq_(
-                insp.get_indexes("t"),
-                [{"name": "t_idx_2", "column_names": ["x"], "unique": 0}],
+                insp.get_indexes("t"), expected,
             )
+
+    @testing.requires.index_reflects_included_columns
+    @testing.provide_metadata
+    def test_reflect_covering_index(self):
+        t = Table(
+            "t",
+            self.metadata,
+            Column("x", String(30)),
+            Column("y", String(30)),
+        )
+        idx = Index("t_idx", t.c.x)
+        idx.dialect_options[testing.db.name]["include"] = ["y"]
+
+        self.metadata.create_all(testing.db)
+
+        insp = inspect(testing.db)
+
+        eq_(
+            insp.get_indexes("t"),
+            [
+                {
+                    "name": "t_idx",
+                    "column_names": ["x"],
+                    "include_columns": ["y"],
+                    "unique": False,
+                }
+            ],
+        )
 
     @testing.requires.unique_constraint_reflection
     def test_get_unique_constraints(self):
@@ -1061,17 +1092,13 @@ class ComponentReflectionTest(fixtures.TablesTest):
         indexes = insp.get_indexes(table_name)
         for ind in indexes:
             ind.pop("dialect_options", None)
+        expected = [
+            {"unique": False, "column_names": ["foo"], "name": "user_tmp_ix"}
+        ]
+        if testing.requires.index_reflects_included_columns.enabled:
+            expected[0]["include_columns"] = []
         eq_(
-            # TODO: we need to add better filtering for indexes/uq constraints
-            # that are doubled up
-            [idx for idx in indexes if idx["name"] == "user_tmp_ix"],
-            [
-                {
-                    "unique": False,
-                    "column_names": ["foo"],
-                    "name": "user_tmp_ix",
-                }
-            ],
+            [idx for idx in indexes if idx["name"] == "user_tmp_ix"], expected,
         )
 
     @testing.requires.unique_constraint_reflection

@@ -1734,6 +1734,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(INCREMENT BY 7 START WITH 4))",
         )
 
+    def test_index_extra_include_1(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+        )
+        idx = Index("foo", tbl.c.x, postgresql_include=["y"])
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE INDEX foo ON test (x) INCLUDE (y)"
+        )
+
+    def test_index_extra_include_2(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+        )
+        idx = Index("foo", tbl.c.x, postgresql_include=[tbl.c.y])
+        self.assert_compile(
+            schema.CreateIndex(idx), "CREATE INDEX foo ON test (x) INCLUDE (y)"
+        )
+
 
 class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()

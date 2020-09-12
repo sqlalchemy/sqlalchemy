@@ -599,6 +599,10 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def index_reflects_included_columns(self):
+        return exclusions.closed()
+
+    @property
     def indexes_with_ascdesc(self):
         """target database supports CREATE INDEX with per-column ASC/DESC."""
         return exclusions.open()
