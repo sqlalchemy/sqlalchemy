@@ -45,6 +45,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
@@ -533,6 +534,40 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
             "and will be removed in SQLAlchemy version 2.0."
         ):
             Session(autocommit=True)
+
+    @testing.combinations(
+        {"mapper": None},
+        {"clause": None},
+        {"bind_arguments": {"mapper": None}, "clause": None},
+        {"bind_arguments": {}, "clause": None},
+    )
+    def test_bind_kwarg_deprecated(self, kw):
+        s1 = Session(testing.db)
+
+        for meth in s1.execute, s1.scalar:
+            m1 = mock.Mock(side_effect=s1.get_bind)
+            with mock.patch.object(s1, "get_bind", m1):
+                expr = text("select 1")
+
+                with testing.expect_deprecated_20(
+                    r"Passing bind arguments to Session.execute\(\) as "
+                    "keyword "
+                    "arguments is deprecated and will be removed SQLAlchemy "
+                    "2.0"
+                ):
+                    meth(expr, **kw)
+
+                bind_arguments = kw.pop("bind_arguments", None)
+                if bind_arguments:
+                    bind_arguments.update(kw)
+
+                    if "clause" not in kw:
+                        bind_arguments["clause"] = expr
+                    eq_(m1.mock_calls, [call(**bind_arguments)])
+                else:
+                    if "clause" not in kw:
+                        kw["clause"] = expr
+                    eq_(m1.mock_calls, [call(**kw)])
 
     @testing.requires.independent_connections
     @testing.emits_warning(".*previous exception")
