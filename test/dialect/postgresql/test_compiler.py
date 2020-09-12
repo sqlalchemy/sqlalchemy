@@ -454,7 +454,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+        idx3 = Index(
+            "test_idx2",
+            tbl.c.data,
+            postgresql_where="data > 'a' AND data < 'b''s'",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx3),
+            "CREATE INDEX test_idx2 ON testtbl (data) "
+            "WHERE data > 'a' AND data < 'b''s'",
+            dialect=postgresql.dialect(),
+        )
+
     def test_create_index_with_ops(self):
+
         m = MetaData()
         tbl = Table(
             "testtbl",

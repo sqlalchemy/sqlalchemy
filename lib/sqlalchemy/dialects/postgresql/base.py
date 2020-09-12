@@ -2255,6 +2255,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
         whereclause = index.dialect_options["postgresql"]["where"]
 
         if whereclause is not None:
+            whereclause = coercions.expect(
+                roles.DDLExpressionRole, whereclause
+            )
+
             where_compiled = self.sql_compiler.process(
                 whereclause, include_table=False, literal_binds=True
             )
@@ -3638,9 +3642,10 @@ class PGDialect(default.DefaultDialect):
             IDX_SQL = """
               SELECT
                   i.relname as relname,
-                  ix.indisunique, ix.indexprs, ix.indpred,
+                  ix.indisunique, ix.indexprs,
                   a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
                   ix.indoption::varchar, i.reloptions, am.amname,
+                  pg_get_expr(ix.indpred, ix.indrelid),
                   %s as indnkeyatts
               FROM
                   pg_class t
@@ -3683,7 +3688,6 @@ class PGDialect(default.DefaultDialect):
                 idx_name,
                 unique,
                 expr,
-                prd,
                 col,
                 col_num,
                 conrelid,
@@ -3691,6 +3695,7 @@ class PGDialect(default.DefaultDialect):
                 idx_option,
                 options,
                 amname,
+                filter_definition,
                 indnkeyatts,
             ) = row
 
@@ -3702,13 +3707,6 @@ class PGDialect(default.DefaultDialect):
                     )
                 sv_idx_name = idx_name
                 continue
-
-            if prd and not idx_name == sv_idx_name:
-                util.warn(
-                    "Predicate of partial index %s ignored during reflection"
-                    % idx_name
-                )
-                sv_idx_name = idx_name
 
             has_idx = idx_name in indexes
             index = indexes[idx_name]
@@ -3765,6 +3763,9 @@ class PGDialect(default.DefaultDialect):
                 if amname and amname != "btree":
                     index["amname"] = amname
 
+                if filter_definition:
+                    index["postgresql_where"] = filter_definition
+
         result = []
         for name, idx in indexes.items():
             entry = {
@@ -3787,6 +3788,10 @@ class PGDialect(default.DefaultDialect):
                 entry.setdefault("dialect_options", {})[
                     "postgresql_using"
                 ] = idx["amname"]
+            if "postgresql_where" in idx:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_where"
+                ] = idx["postgresql_where"]
             result.append(entry)
         return result
 

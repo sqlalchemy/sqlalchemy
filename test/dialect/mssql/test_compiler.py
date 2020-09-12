@@ -1215,6 +1215,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE INDEX test_idx_data_1 ON test (data) WHERE data > 1",
         )
 
+        idx = Index("test_idx_data_1", tbl.c.data, mssql_where="data > 1")
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx_data_1 ON test (data) WHERE data > 1",
+        )
+
     def test_index_ordering(self):
         metadata = MetaData()
         tbl = Table(

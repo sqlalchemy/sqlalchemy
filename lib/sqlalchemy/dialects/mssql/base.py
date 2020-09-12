@@ -749,11 +749,13 @@ from ... import util
 from ...engine import cursor as _cursor
 from ...engine import default
 from ...engine import reflection
+from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
 from ...sql import expression
 from ...sql import func
 from ...sql import quoted_name
+from ...sql import roles
 from ...sql import util as sql_util
 from ...sql.type_api import to_instance
 from ...types import BIGINT
@@ -2244,6 +2246,10 @@ class MSDDLCompiler(compiler.DDLCompiler):
         whereclause = index.dialect_options["mssql"]["where"]
 
         if whereclause is not None:
+            whereclause = coercions.expect(
+                roles.DDLExpressionRole, whereclause
+            )
+
             where_compiled = self.sql_compiler.process(
                 whereclause, include_table=False, literal_binds=True
             )
@@ -2843,7 +2849,8 @@ class MSDialect(default.DefaultDialect):
 
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
-                "select ind.index_id, ind.is_unique, ind.name "
+                "select ind.index_id, ind.is_unique, ind.name, "
+                "ind.filter_definition "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
@@ -2864,6 +2871,12 @@ class MSDialect(default.DefaultDialect):
                 "unique": row["is_unique"] == 1,
                 "column_names": [],
             }
+
+            if row["filter_definition"] is not None:
+                indexes[row["index_id"]].setdefault("dialect_options", {})[
+                    "mssql_where"
+                ] = row["filter_definition"]
+
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind_col.index_id, ind_col.object_id, col.name "
