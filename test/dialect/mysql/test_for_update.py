@@ -9,15 +9,18 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 
 
@@ -363,3 +366,35 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "LOCK IN SHARE MODE OF mytable",
             dialect=self.for_update_of_dialect,
         )
+
+
+class SkipLockedTest(fixtures.TablesTest):
+    __only_on__ = ("mysql", "mariadb")
+
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "stuff",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("value", Integer),
+        )
+
+    @testing.only_on("mysql>=8")
+    def test_skip_locked(self, connection):
+        stuff = self.tables.stuff
+        stmt = stuff.select().with_for_update(skip_locked=True)
+
+        connection.execute(stmt).fetchall()
+
+    @testing.only_on(["mysql<8", "mariadb"])
+    def test_unsupported_skip_locked(self, connection):
+        stuff = self.tables.stuff
+        stmt = stuff.select().with_for_update(skip_locked=True)
+
+        with expect_raises_message(
+            ProgrammingError, "You have an error in your SQL syntax"
+        ):
+            connection.execute(stmt).fetchall()

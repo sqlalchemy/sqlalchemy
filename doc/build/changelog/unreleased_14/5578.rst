@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 5568
+
+    The "skip_locked" keyword used with ``with_for_update()`` will render "SKIP
+    LOCKED" on all MySQL backends, meaning it will fail for MySQL less than
+    version 8 and on current MariaDB backends.  This is because those backends
+    do not support "SKIP LOCKED" or any equivalent, so this error should not be
+    silently ignored.   This is upgraded from a warning in the 1.3 series.
+

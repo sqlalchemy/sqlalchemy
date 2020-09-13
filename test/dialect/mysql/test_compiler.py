@@ -352,23 +352,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(expr, "concat('x', 'y')", literal_binds=True)
 
     def test_mariadb_for_update(self):
-
         table1 = table(
             "mytable", column("myid"), column("name"), column("description")
         )
 
         self.assert_compile(
             table1.select(table1.c.myid == 7).with_for_update(of=table1),
-            "SELECT mytable.myid, mytable.name, mytable.description "
-            "FROM mytable WHERE mytable.myid = %s "
-            "FOR UPDATE",
-            dialect="mariadb",
-        )
-
-        self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                skip_locked=True
-            ),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE",
