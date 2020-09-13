@@ -9,15 +9,19 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.dialects.mysql import base as mysql
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
+from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
 
@@ -356,4 +360,57 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE OF mytable",
             dialect=self.for_update_of_dialect,
+        )
+
+
+class SkipLockedTest(fixtures.TablesTest):
+    __only_on__ = ("mysql",)
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+
+        Table(
+            "stuff",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("value", Integer),
+        )
+
+    @testing.only_on("mysql>=8")
+    @testing.skip_if(lambda config: testing.db.dialect._is_mariadb)
+    def test_skip_locked(self, connection):
+
+        stuff = self.tables.stuff
+
+        stmt = stuff.select().with_for_update(skip_locked=True)
+
+        connection.execute(stmt).fetchall()
+
+    @testing.only_on(lambda config: testing.db.dialect._is_mariadb)
+    def test_warning_skip_locked(self, connection):
+
+        stuff = self.tables.stuff
+
+        stmt = stuff.select().with_for_update(skip_locked=True)
+
+        with expect_warnings(
+            "SKIP LOCKED ignored on non-supporting MariaDB backend. "
+            "This will raise an error in SQLAlchemy 1.4."
+        ):
+
+            connection.execute(stmt).fetchall()
+
+    @testing.only_on("mysql<8")
+    def test_unsupported_skip_locked(self, connection):
+
+        stuff = self.tables.stuff
+
+        stmt = stuff.select().with_for_update(skip_locked=True)
+
+        assert_raises_message(
+            ProgrammingError,
+            "You have an error in your SQL syntax",
+            connection.execute,
+            stmt,
         )

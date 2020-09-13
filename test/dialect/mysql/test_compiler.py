@@ -369,15 +369,16 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-        self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                skip_locked=True
-            ),
-            "SELECT mytable.myid, mytable.name, mytable.description "
-            "FROM mytable WHERE mytable.myid = %s "
-            "FOR UPDATE",
-            dialect=dialect,
-        )
+        with testing.expect_warnings("SKIP LOCKED ignored on non-supporting"):
+            self.assert_compile(
+                table1.select(table1.c.myid == 7).with_for_update(
+                    skip_locked=True
+                ),
+                "SELECT mytable.myid, mytable.name, mytable.description "
+                "FROM mytable WHERE mytable.myid = %s "
+                "FOR UPDATE",
+                dialect=dialect,
+            )
 
     def test_delete_extra_froms(self):
         t1 = table("t1", column("c1"))

@@ -1590,8 +1590,14 @@ class MySQLCompiler(compiler.SQLCompiler):
         if select._for_update_arg.nowait:
             tmp += " NOWAIT"
 
-        if select._for_update_arg.skip_locked and self.dialect._is_mysql:
-            tmp += " SKIP LOCKED"
+        if select._for_update_arg.skip_locked:
+            if self.dialect._is_mysql:
+                tmp += " SKIP LOCKED"
+            else:
+                util.warn(
+                    "SKIP LOCKED ignored on non-supporting MariaDB backend. "
+                    "This will raise an error in SQLAlchemy 1.4."
+                )
 
         return tmp
 
