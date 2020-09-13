@@ -1434,95 +1434,29 @@ class Session(_SessionClassMethods):
         _add_event=None,
         **kw
     ):
-        r"""Execute a SQL expression construct or string statement within
-        the current transaction.
+        r"""Execute a SQL expression construct.
 
-        Returns a :class:`_engine.CursorResult` representing
-        results of the statement execution, in the same manner as that of an
-        :class:`_engine.Engine` or
-        :class:`_engine.Connection`.
+        Returns a :class:`_engine.Result` object representing
+        results of the statement execution.
 
         E.g.::
 
+            from sqlalchemy import select
             result = session.execute(
-                        user_table.select().where(user_table.c.id == 5)
-                    )
+                select(User).where(User.id == 5)
+            )
 
-        :meth:`~.Session.execute` accepts any executable clause construct,
-        such as :func:`_expression.select`,
-        :func:`_expression.insert`,
-        :func:`_expression.update`,
-        :func:`_expression.delete`, and
-        :func:`_expression.text`.  Plain SQL strings can be passed
-        as well, which in the case of :meth:`.Session.execute` only
-        will be interpreted the same as if it were passed via a
-        :func:`_expression.text` construct.  That is, the following usage::
+        The API contract of :meth:`_orm.Session.execute` is similar to that
+        of :meth:`_future.Connection.execute`, the :term:`2.0 style` version
+        of :class:`_future.Connection`.
 
-            result = session.execute(
-                        "SELECT * FROM user WHERE id=:param",
-                        {"param":5}
-                    )
-
-        is equivalent to::
-
-            from sqlalchemy import text
-            result = session.execute(
-                        text("SELECT * FROM user WHERE id=:param"),
-                        {"param":5}
-                    )
-
-        The second positional argument to :meth:`.Session.execute` is an
-        optional parameter set.  Similar to that of
-        :meth:`_engine.Connection.execute`, whether this is passed as a single
-        dictionary, or a sequence of dictionaries, determines whether the DBAPI
-        cursor's ``execute()`` or ``executemany()`` is used to execute the
-        statement.   An INSERT construct may be invoked for a single row::
-
-            result = session.execute(
-                users.insert(), {"id": 7, "name": "somename"})
-
-        or for multiple rows::
-
-            result = session.execute(users.insert(), [
-                                    {"id": 7, "name": "somename7"},
-                                    {"id": 8, "name": "somename8"},
-                                    {"id": 9, "name": "somename9"}
-                                ])
-
-        The statement is executed within the current transactional context of
-        this :class:`.Session`.   The :class:`_engine.Connection`
-        which is used
-        to execute the statement can also be acquired directly by
-        calling the :meth:`.Session.connection` method.  Both methods use
-        a rule-based resolution scheme in order to determine the
-        :class:`_engine.Connection`,
-        which in the average case is derived directly
-        from the "bind" of the :class:`.Session` itself, and in other cases
-        can be based on the :func:`.mapper`
-        and :class:`_schema.Table` objects passed to the method; see the
-        documentation for :meth:`.Session.get_bind` for a full description of
-        this scheme.
-
-        The :meth:`.Session.execute` method does *not* invoke autoflush.
-
-        The :class:`_engine.CursorResult` returned by the
-        :meth:`.Session.execute`
-        method is returned with the "close_with_result" flag set to true;
-        the significance of this flag is that if this :class:`.Session` is
-        autocommitting and does not have a transaction-dedicated
-        :class:`_engine.Connection` available, a temporary
-        :class:`_engine.Connection` is
-        established for the statement execution, which is closed (meaning,
-        returned to the connection pool) when the :class:`_engine.CursorResult`
-        has
-        consumed all available data. This applies *only* when the
-        :class:`.Session` is configured with autocommit=True and no
-        transaction has been started.
+        .. versionchanged:: 1.4 the :meth:`_orm.Session.execute` method is
+           now the primary point of ORM statement execution when using
+           :term:`2.0 style` ORM usage.
 
         :param statement:
             An executable statement (i.e. an :class:`.Executable` expression
-            such as :func:`_expression.select`) or string SQL statement
-            to be executed.
+            such as :func:`_expression.select`).
 
         :param params:
             Optional dictionary, or list of dictionaries, containing
@@ -1530,6 +1464,12 @@ class Session(_SessionClassMethods):
             execution occurs; if a list of dictionaries, an
             "executemany" will be invoked.  The keys in each dictionary
             must correspond to parameter names present in the statement.
+
+        :param execution_options: optional dictionary of execution options,
+         which will be associated with the statement execution.  This
+         dictionary can provide a subset of the options that are accepted
+         by :meth:`_future.Connection.execution_options`, and may also
+         provide additional options understood only in an ORM context.
 
         :param bind_arguments: dictionary of additional arguments to determine
          the bind.  May include "mapper", "bind", or other custom arguments.
@@ -1545,18 +1485,8 @@ class Session(_SessionClassMethods):
         :param \**kw:
           deprecated; use the bind_arguments dictionary
 
-        .. seealso::
+        :return: a :class:`_engine.Result` object.
 
-            :ref:`sqlexpression_toplevel` - Tutorial on using Core SQL
-            constructs.
-
-            :ref:`connections_toplevel` - Further information on direct
-            statement execution.
-
-            :meth:`_engine.Connection.execute`
-            - core level statement execution
-            method, which is :meth:`.Session.execute` ultimately uses
-            in order to execute the statement.
 
         """
         statement = coercions.expect(roles.CoerceTextStatementRole, statement)
@@ -1657,7 +1587,13 @@ class Session(_SessionClassMethods):
         bind_arguments=None,
         **kw
     ):
-        """Like :meth:`~.Session.execute` but return a scalar result."""
+        """Execute a statement and return a scalar result.
+
+        Usage and parameters are the same as that of
+        :meth:`_orm.Session.execute`; the return result is a scalar Python
+        value.
+
+        """
 
         return self.execute(
             statement,
