@@ -255,7 +255,7 @@ class Connection(_LegacyConnection):
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.Result`.
 
-        :param object: The statement to be executed.  This is always
+        :param statement: The statement to be executed.  This is always
          an object that is in both the :class:`_expression.ClauseElement` and
          :class:`_expression.Executable` hierarchies, including:
 

@@ -1011,11 +1011,11 @@ class Connection(Connectable):
 
         return self.execute(object_, *multiparams, **params).scalar()
 
-    def execute(self, object_, *multiparams, **params):
+    def execute(self, statement, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
 
-        :param object: The statement to be executed.  May be
+        :param statement: The statement to be executed.  May be
          one of:
 
          * a plain string (deprecated)
@@ -1085,7 +1085,7 @@ class Connection(Connectable):
 
         """
 
-        if isinstance(object_, util.string_types):
+        if isinstance(statement, util.string_types):
             util.warn_deprecated_20(
                 "Passing a string to Connection.execute() is "
                 "deprecated and will be removed in version 2.0.  Use the "
@@ -1095,7 +1095,7 @@ class Connection(Connectable):
             )
 
             return self._exec_driver_sql(
-                object_,
+                statement,
                 multiparams,
                 params,
                 _EMPTY_EXECUTION_OPTS,
@@ -1103,10 +1103,10 @@ class Connection(Connectable):
             )
 
         try:
-            meth = object_._execute_on_connection
+            meth = statement._execute_on_connection
         except AttributeError as err:
             util.raise_(
-                exc.ObjectNotExecutableError(object_), replace_context=err
+                exc.ObjectNotExecutableError(statement), replace_context=err
             )
         else:
             return meth(self, multiparams, params, _EMPTY_EXECUTION_OPTS)
