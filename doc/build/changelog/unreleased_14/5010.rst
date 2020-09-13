@@ -1,0 +1,8 @@
+.. change::
+    :tags: change, sql
+    :tickets: 5010
+
+    The :meth:`_sql.Join.alias` method is deprecated and will be removed in
+    SQLAlchemy 2.0.   An explicit select + subquery, or aliasing of the inner
+    tables, should be used instead.
+

@@ -487,7 +487,7 @@ class AliasedClass(object):
 
         if alias is None:
             alias = mapper._with_polymorphic_selectable._anonymous_fromclause(
-                name=name, flat=flat
+                name=name, flat=flat,
             )
 
         self._aliased_insp = AliasedInsp(
@@ -1089,17 +1089,15 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     :param name: optional string name to use for the alias, if not specified
      by the ``alias`` parameter.  The name, among other things, forms the
      attribute name that will be accessible via tuples returned by a
-     :class:`_query.Query` object.
+     :class:`_query.Query` object.  Not supported when creating aliases
+     of :class:`_sql.Join` objects.
 
     :param flat: Boolean, will be passed through to the
      :meth:`_expression.FromClause.alias` call so that aliases of
-     :class:`_expression.Join` objects
-     don't include an enclosing SELECT.  This can lead to more efficient
-     queries in many circumstances.  A JOIN against a nested JOIN will be
-     rewritten as a JOIN against an aliased SELECT subquery on backends that
-     don't support this syntax.
-
-     .. seealso:: :meth:`_expression.Join.alias`
+     :class:`_expression.Join` objects will alias the individual tables
+     inside the join, rather than creating a subquery.  This is generally
+     supported by all modern databases with regards to right-nested joins
+     and generally produces more efficient queries.
 
     :param adapt_on_names: if True, more liberal "matching" will be used when
      mapping the mapped columns of the ORM entity to those of the
@@ -1180,31 +1178,18 @@ def with_polymorphic(
         Alternatively, it may also be the string ``'*'``, in which case
         all descending mapped classes will be added to the FROM clause.
 
-    :param aliased: when True, the selectable will be wrapped in an
-        alias, that is ``(SELECT * FROM <fromclauses>) AS anon_1``.
-        This can be important when using the with_polymorphic()
-        to create the target of a JOIN on a backend that does not
-        support parenthesized joins, such as SQLite and older
-        versions of MySQL.   However if the
-        :paramref:`.with_polymorphic.selectable` parameter is in use
-        with an existing :class:`_expression.Alias` construct,
-        then you should not
-        set this flag.
+    :param aliased: when True, the selectable will be aliased.   For a
+        JOIN, this means the JOIN will be SELECTed from inside of a subquery
+        unless the :paramref:`_orm.with_polymorphic.flat` flag is set to
+        True, which is recommended for simpler use cases.
 
     :param flat: Boolean, will be passed through to the
      :meth:`_expression.FromClause.alias` call so that aliases of
-     :class:`_expression.Join`
-     objects don't include an enclosing SELECT.  This can lead to more
-     efficient queries in many circumstances.  A JOIN against a nested JOIN
-     will be rewritten as a JOIN against an aliased SELECT subquery on
-     backends that don't support this syntax.
-
-     Setting ``flat`` to ``True`` implies the ``aliased`` flag is
-     also ``True``.
-
-     .. versionadded:: 0.9.0
-
-     .. seealso:: :meth:`_expression.Join.alias`
+     :class:`_expression.Join` objects will alias the individual tables
+     inside the join, rather than creating a subquery.  This is generally
+     supported by all modern databases with regards to right-nested joins
+     and generally produces more efficient queries.  Setting this flag is
+     recommended as long as the resulting SQL is functional.
 
     :param selectable: a table or subquery that will
         be used in place of the generated FROM clause. This argument is

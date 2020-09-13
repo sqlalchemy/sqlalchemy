@@ -55,7 +55,7 @@ def _deep_is_literal(element):
     return (
         not isinstance(
             element,
-            (Visitable, schema.SchemaEventTarget, HasCacheKey, Options,),
+            (Visitable, schema.SchemaEventTarget, HasCacheKey, Options),
         )
         and not hasattr(element, "__clause_element__")
         and (
@@ -881,7 +881,9 @@ class AnonymizedFromClauseImpl(StrictFromClauseImpl):
     __slots__ = ()
 
     def _post_coercion(self, element, flat=False, name=None, **kw):
-        return element.alias(name=name, flat=flat)
+        assert name is None
+
+        return element._anonymous_fromclause(flat=flat)
 
 
 class DMLTableImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):

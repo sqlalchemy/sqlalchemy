@@ -1,6 +1,5 @@
 """Test various algorithmic properties of selectables."""
 
-from sqlalchemy import alias
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
@@ -386,11 +385,11 @@ class SelectableTest(
 
         # joins necessarily have to prefix column names with the name
         # of the selectable, else the same-named columns will overwrite
-        # one another.  In this case, we unfortunately have this unfriendly
-        # "anonymous" name, whereas before when select() could be a FROM
-        # the "bar_col1" label would be directly in the join() object.  However
-        # this was a useless join() object because PG and MySQL don't accept
-        # unnamed subqueries in joins in any case.
+        # one another.  In this case, we unfortunately have this
+        # unfriendly "anonymous" name, whereas before when select() could
+        # be a FROM the "bar_col1" label would be directly in the join()
+        # object.  However this was a useless join() object because PG and
+        # MySQL don't accept unnamed subqueries in joins in any case.
         name = "%s_bar_col1" % (jj.name,)
 
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
@@ -398,7 +397,7 @@ class SelectableTest(
 
         # test alias of the join
 
-        j2 = jjj.alias("foo")
+        j2 = jjj.select().apply_labels().subquery("foo")
         assert j2.corresponding_column(table1.c.col1) is j2.c.table1_col1
 
     def test_clone_append_column(self):
@@ -522,13 +521,16 @@ class SelectableTest(
         )
 
     def test_join_against_join(self):
+
         j = outerjoin(table1, table2, table1.c.col1 == table2.c.col2)
         jj = (
-            select(table1.c.col1.label("bar_col1")).select_from(j).alias("foo")
+            select(table1.c.col1.label("bar_col1"))
+            .select_from(j)
+            .alias(name="foo")
         )
         jjj = join(table1, jj, table1.c.col1 == jj.c.bar_col1)
         assert jjj.corresponding_column(jjj.c.table1_col1) is jjj.c.table1_col1
-        j2 = jjj.alias("foo")
+        j2 = jjj._anonymous_fromclause("foo")
         assert j2.corresponding_column(jjj.c.table1_col1) is j2.c.table1_col1
         assert jjj.corresponding_column(jj.c.bar_col1) is jj.c.bar_col1
 
@@ -1459,7 +1461,15 @@ class AnonLabelTest(fixtures.TestBase):
         eq_(str(select(c1.label("y"))), "SELECT x AS y")
 
 
-class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
+class JoinAnonymizingTest(fixtures.TestBase, AssertsCompiledSQL):
+    """test anonymous_fromclause for aliases.
+
+    In 1.4 this function is only for ORM internal use.   The public version
+    join.alias() is deprecated.
+
+
+    """
+
     __dialect__ = "default"
 
     def test_flat_ok_on_non_join(self):
@@ -1474,7 +1484,7 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         a = table("a", column("a"))
         b = table("b", column("b"))
         self.assert_compile(
-            a.join(b, a.c.a == b.c.b).alias(),
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(),
             "SELECT a.a AS a_a, b.b AS b_b FROM a JOIN b ON a.a = b.b",
         )
 
@@ -1482,7 +1492,7 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         a = table("a", column("a"))
         b = table("b", column("b"))
         self.assert_compile(
-            alias(a.join(b, a.c.a == b.c.b)),
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(),
             "SELECT a.a AS a_a, b.b AS b_b FROM a JOIN b ON a.a = b.b",
         )
 
@@ -1490,7 +1500,7 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         a = table("a", column("a"))
         b = table("b", column("b"))
         self.assert_compile(
-            a.join(b, a.c.a == b.c.b).alias(flat=True),
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(flat=True),
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b",
         )
 
@@ -1498,7 +1508,7 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         a = table("a", column("a"))
         b = table("b", column("b"))
         self.assert_compile(
-            alias(a.join(b, a.c.a == b.c.b), flat=True),
+            a.join(b, a.c.a == b.c.b)._anonymous_fromclause(flat=True),
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b",
         )
 
@@ -1510,10 +1520,14 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
         j1 = a.join(b, a.c.a == b.c.b)
         j2 = c.join(d, c.c.c == d.c.d)
+
+        # note in 1.4 the flat=True flag now descends into the whole join,
+        # as it should
         self.assert_compile(
-            j1.join(j2, b.c.b == c.c.c).alias(flat=True),
+            j1.join(j2, b.c.b == c.c.c)._anonymous_fromclause(flat=True),
             "a AS a_1 JOIN b AS b_1 ON a_1.a = b_1.b JOIN "
-            "(c AS c_1 JOIN d AS d_1 ON c_1.c = d_1.d) ON b_1.b = c_1.c",
+            "(c AS c_1 JOIN d AS d_1 ON c_1.c = d_1.d) "
+            "ON b_1.b = c_1.c",
         )
 
     def test_composed_join_alias(self):
@@ -1525,7 +1539,7 @@ class JoinAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         j1 = a.join(b, a.c.a == b.c.b)
         j2 = c.join(d, c.c.c == d.c.d)
         self.assert_compile(
-            select(j1.join(j2, b.c.b == c.c.c).alias()),
+            select(j1.join(j2, b.c.b == c.c.c)._anonymous_fromclause()),
             "SELECT anon_1.a_a, anon_1.b_b, anon_1.c_c, anon_1.d_d "
             "FROM (SELECT a.a AS a_a, b.b AS b_b, c.c AS c_c, d.d AS d_d "
             "FROM a JOIN b ON a.a = b.b "
@@ -1616,7 +1630,10 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         t1 = Table("t1", m, Column("id", Integer))
         t2 = Table(
-            "t2", m, Column("id", Integer), Column("t1id", ForeignKey("t1.id"))
+            "t2",
+            m,
+            Column("id", Integer),
+            Column("t1id", ForeignKey("t1.id")),
         )
         t3 = Table(
             "t3",
@@ -1626,11 +1643,14 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("t2id", ForeignKey("t2.id")),
         )
         t4 = Table(
-            "t4", m, Column("id", Integer), Column("t2id", ForeignKey("t2.id"))
+            "t4",
+            m,
+            Column("id", Integer),
+            Column("t2id", ForeignKey("t2.id")),
         )
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
-        als = t2t3.alias()
+        als = t2t3._anonymous_fromclause()
         # test join's behavior, including natural
         for left, right, expected in [
             (t1, t2, t1.c.id == t2.c.t1id),

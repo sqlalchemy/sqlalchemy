@@ -3636,10 +3636,11 @@ class JoinCondition(object):
 
 
 class _ColInAnnotations(object):
-    """Seralizable equivalent to:
+    """Seralizable object that tests for a name in c._annotations.
 
-        lambda c: "name" in c._annotations
     """
+
+    __slots__ = ("name",)
 
     def __init__(self, name):
         self.name = name

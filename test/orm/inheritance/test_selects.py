@@ -48,7 +48,7 @@ class InheritingSelectablesTest(fixtures.MappedTest):
             baz,
             with_polymorphic=(
                 "*",
-                foo.join(baz, foo.c.b == "baz").alias("baz"),
+                foo.join(baz, foo.c.b == "baz").select().subquery("baz"),
             ),
             inherits=Foo,
             inherit_condition=(foo.c.a == baz.c.a),
@@ -61,7 +61,7 @@ class InheritingSelectablesTest(fixtures.MappedTest):
             bar,
             with_polymorphic=(
                 "*",
-                foo.join(bar, foo.c.b == "bar").alias("bar"),
+                foo.join(bar, foo.c.b == "bar").select().subquery("bar"),
             ),
             inherits=Foo,
             inherit_condition=(foo.c.a == bar.c.a),
@@ -70,13 +70,6 @@ class InheritingSelectablesTest(fixtures.MappedTest):
         )
 
         s = Session()
-
-        #        assert [Baz(), Baz(), Bar(), Bar()] == s.query(Foo).order_by(
-        #            Foo.b.desc()
-        #       ).all()
-
-        #      import pdb
-        #      pdb.set_trace()
         assert [Bar(), Bar()] == s.query(Bar).all()
 
 

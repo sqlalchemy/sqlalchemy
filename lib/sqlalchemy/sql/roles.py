@@ -144,19 +144,7 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
     # calls .alias() as a post processor
 
     def _anonymous_fromclause(self, name=None, flat=False):
-        """A synonym for ``.alias()`` that is only present on objects of this
-        role.
-
-        This is an implicit assurance of the target object being part of the
-        role where anonymous aliasing without any warnings is allowed,
-        as opposed to other kinds of SELECT objects that may or may not have
-        an ``.alias()`` method.
-
-        The method is used by the ORM but is currently semi-private to
-        preserve forwards-compatibility.
-
-        """
-        return self.alias(name=name, flat=flat)
+        raise NotImplementedError()
 
 
 class CoerceTextStatementRole(SQLRole):

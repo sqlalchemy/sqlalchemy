@@ -43,7 +43,7 @@ def expect_warnings(*messages, **kw):
 
     """  # noqa
     return _expect_warnings(
-        (sa_exc.SAWarning, sa_exc.RemovedIn20Warning), messages, **kw
+        (sa_exc.RemovedIn20Warning, sa_exc.SAWarning), messages, **kw
     )
 
 
@@ -305,7 +305,7 @@ def assert_raises(except_cls, callable_, *args, **kw):
 
 
 def assert_raises_context_ok(except_cls, callable_, *args, **kw):
-    return _assert_raises(except_cls, callable_, args, kw,)
+    return _assert_raises(except_cls, callable_, args, kw)
 
 
 def assert_raises_message(except_cls, msg, callable_, *args, **kwargs):
@@ -347,7 +347,7 @@ def _expect_raises(except_cls, msg=None, check_context=False):
         if msg is not None:
             assert re.search(
                 msg, util.text_type(err), re.UNICODE
-            ), "%r !~ %s" % (msg, err,)
+            ), "%r !~ %s" % (msg, err)
         if check_context and not are_we_already_in_a_traceback:
             _assert_proper_exception_context(err)
         print(util.text_type(err).encode("utf-8"))

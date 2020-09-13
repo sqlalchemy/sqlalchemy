@@ -1730,7 +1730,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN b ON a.id = b.aid) AS anon_1 ON anon_1.b_id = c.bid "
             "LEFT OUTER JOIN d ON anon_1.a_id = d.aid",
         )
-        j5 = j3.alias("foo")
+        j5 = j3.select().apply_labels().subquery("foo")
         j6 = sql_util.ClauseAdapter(j5).copy_and_process([j4])[0]
 
         # this statement takes c join(a join b), wraps it inside an

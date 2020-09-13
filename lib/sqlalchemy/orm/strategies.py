@@ -1929,7 +1929,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         if idx >= len(self._aliased_class_pool):
             to_adapt = orm_util.AliasedClass(
                 self.mapper,
-                alias=alt_selectable.alias(flat=True)
+                alias=alt_selectable._anonymous_fromclause(flat=True)
                 if alt_selectable is not None
                 else None,
                 flat=True,
@@ -2690,7 +2690,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             ).apply_labels(),
             lambda_cache=self._query_cache,
             global_track_bound_values=False,
-            track_on=(self, effective_entity,) + tuple(pk_cols),
+            track_on=(self, effective_entity) + tuple(pk_cols),
         )
 
         if not self.parent_property.bake_queries:

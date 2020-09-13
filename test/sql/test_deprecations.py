@@ -693,6 +693,31 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             assert u.corresponding_column(s2.c.table2_coly) is u.c.coly
             assert s2.c.corresponding_column(u.c.coly) is s2.c.table2_coly
 
+    def test_join_alias(self):
+        j1 = self.table1.join(self.table2)
+
+        with testing.expect_deprecated_20(
+            r"The Join.alias\(\) function/method is considered legacy"
+        ):
+            self.assert_compile(
+                j1.alias(),
+                "SELECT table1.col1 AS table1_col1, table1.col2 AS "
+                "table1_col2, table1.col3 AS table1_col3, table1.colx "
+                "AS table1_colx, table2.col1 AS table2_col1, "
+                "table2.col2 AS table2_col2, table2.col3 AS table2_col3, "
+                "table2.coly AS table2_coly FROM table1 JOIN table2 "
+                "ON table1.col1 = table2.col2",
+            )
+
+        with testing.expect_deprecated_20(
+            r"The Join.alias\(\) function/method is considered legacy"
+        ):
+            self.assert_compile(
+                j1.alias(flat=True),
+                "table1 AS table1_1 JOIN table2 AS table2_1 "
+                "ON table1_1.col1 = table2_1.col2",
+            )
+
     def test_join_against_self_implicit_subquery(self):
         jj = select(self.table1.c.col1.label("bar_col1"))
         with testing.expect_deprecated(
@@ -716,8 +741,13 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test alias of the join
 
-        j2 = jjj.alias("foo")
-        assert j2.corresponding_column(self.table1.c.col1) is j2.c.table1_col1
+        with testing.expect_deprecated(
+            r"The Join.alias\(\) function/method is considered legacy"
+        ):
+            j2 = jjj.alias("foo")
+            assert (
+                j2.corresponding_column(self.table1.c.col1) is j2.c.table1_col1
+            )
 
     def test_select_labels(self):
         a = self.table1.select().apply_labels()

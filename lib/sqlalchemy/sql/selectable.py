@@ -155,9 +155,7 @@ class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
 
 
 class Selectable(ReturnsRows):
-    """Mark a class as being selectable.
-
-    """
+    """Mark a class as being selectable."""
 
     __visit_name__ = "selectable"
 
@@ -825,6 +823,9 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
         self._reset_column_collection()
 
+    def _anonymous_fromclause(self, name=None, flat=False):
+        return self.alias(name=name)
+
 
 class Join(roles.DMLTableRole, FromClause):
     """Represent a ``JOIN`` construct between two
@@ -1224,6 +1225,33 @@ class Join(roles.DMLTableRole, FromClause):
         return self.left.bind or self.right.bind
 
     @util.preload_module("sqlalchemy.sql.util")
+    def _anonymous_fromclause(self, name=None, flat=False):
+        sqlutil = util.preloaded.sql_util
+        if flat:
+            if name is not None:
+                raise exc.ArgumentError("Can't send name argument with flat")
+            left_a, right_a = (
+                self.left._anonymous_fromclause(flat=True),
+                self.right._anonymous_fromclause(flat=True),
+            )
+            adapter = sqlutil.ClauseAdapter(left_a).chain(
+                sqlutil.ClauseAdapter(right_a)
+            )
+
+            return left_a.join(
+                right_a,
+                adapter.traverse(self.onclause),
+                isouter=self.isouter,
+                full=self.full,
+            )
+        else:
+            return self.select().apply_labels().correlate(None).alias(name)
+
+    @util.deprecated_20(
+        ":meth:`_sql.Join.alias`",
+        alternative="Create a select + subquery, or alias the "
+        "individual tables inside the join, instead.",
+    )
     def alias(self, name=None, flat=False):
         r"""Return an alias of this :class:`_expression.Join`.
 
@@ -1246,8 +1274,7 @@ class Join(roles.DMLTableRole, FromClause):
                 JOIN table_b ON table_a.id = table_b.a_id) AS anon_1
 
         The equivalent long-hand form, given a :class:`_expression.Join`
-        object
-        ``j``, is::
+        object ``j``, is::
 
             from sqlalchemy import select, alias
             j = alias(
@@ -1322,25 +1349,7 @@ class Join(roles.DMLTableRole, FromClause):
             :func:`_expression.alias`
 
         """
-        sqlutil = util.preloaded.sql_util
-        if flat:
-            assert name is None, "Can't send name argument with flat"
-            left_a, right_a = (
-                self.left.alias(flat=True),
-                self.right.alias(flat=True),
-            )
-            adapter = sqlutil.ClauseAdapter(left_a).chain(
-                sqlutil.ClauseAdapter(right_a)
-            )
-
-            return left_a.join(
-                right_a,
-                adapter.traverse(self.onclause),
-                isouter=self.isouter,
-                full=self.full,
-            )
-        else:
-            return self.select().apply_labels().correlate(None).alias(name)
+        return self._anonymous_fromclause(flat=flat, name=name)
 
     @property
     def _hide_froms(self):
@@ -1983,9 +1992,7 @@ class Subquery(AliasedReturnsRows):
 
     @classmethod
     def _factory(cls, selectable, name=None):
-        """Return a :class:`.Subquery` object.
-
-        """
+        """Return a :class:`.Subquery` object."""
         return coercions.expect(
             roles.SelectStatementRole, selectable
         ).subquery(name=name)
@@ -2034,6 +2041,9 @@ class FromGrouping(GroupedElement, FromClause):
 
     def alias(self, **kw):
         return FromGrouping(self.element.alias(**kw))
+
+    def _anonymous_fromclause(self, **kw):
+        return FromGrouping(self.element._anonymous_fromclause(**kw))
 
     @property
     def _hide_froms(self):
@@ -2294,7 +2304,7 @@ class Values(Generative, FromClause):
     _data = ()
 
     _traverse_internals = [
-        ("_column_args", InternalTraversal.dp_clauseelement_list,),
+        ("_column_args", InternalTraversal.dp_clauseelement_list),
         ("_data", InternalTraversal.dp_dml_multi_values),
         ("name", InternalTraversal.dp_string),
         ("literal_binds", InternalTraversal.dp_boolean),
@@ -3741,7 +3751,7 @@ class SelectState(util.MemoizedSlots, CompileState):
             else:
 
                 self.from_clauses = self.from_clauses + (
-                    Join(left, right, onclause, isouter=isouter, full=full,),
+                    Join(left, right, onclause, isouter=isouter, full=full),
                 )
 
     @util.preload_module("sqlalchemy.sql.util")
@@ -3908,12 +3918,12 @@ class Select(
             ("_from_obj", InternalTraversal.dp_clauseelement_list),
             ("_where_criteria", InternalTraversal.dp_clauseelement_tuple),
             ("_having_criteria", InternalTraversal.dp_clauseelement_tuple),
-            ("_order_by_clauses", InternalTraversal.dp_clauseelement_tuple,),
-            ("_group_by_clauses", InternalTraversal.dp_clauseelement_tuple,),
-            ("_setup_joins", InternalTraversal.dp_setup_join_tuple,),
-            ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple,),
+            ("_order_by_clauses", InternalTraversal.dp_clauseelement_tuple),
+            ("_group_by_clauses", InternalTraversal.dp_clauseelement_tuple),
+            ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
+            ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple),
             ("_correlate", InternalTraversal.dp_clauseelement_tuple),
-            ("_correlate_except", InternalTraversal.dp_clauseelement_tuple,),
+            ("_correlate_except", InternalTraversal.dp_clauseelement_tuple),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
             ("_offset_clause", InternalTraversal.dp_clauseelement),
             ("_for_update_arg", InternalTraversal.dp_clauseelement),
@@ -4312,7 +4322,7 @@ class Select(
         else:
             return cls._create_future_select(*args)
 
-    def __init__(self,):
+    def __init__(self):
         raise NotImplementedError()
 
     def _scalar_type(self):
@@ -4537,7 +4547,7 @@ class Select(
             :meth:`_expression.Select.join`
 
         """
-        return self.join(target, onclause=onclause, isouter=True, full=full,)
+        return self.join(target, onclause=onclause, isouter=True, full=full)
 
     @property
     def froms(self):
@@ -4762,7 +4772,7 @@ class Select(
         for c in coercions._expression_collection_was_a_list(
             "columns", "Select.with_only_columns", columns
         ):
-            c = coercions.expect(roles.ColumnsClauseRole, c,)
+            c = coercions.expect(roles.ColumnsClauseRole, c)
             # TODO: why are we doing this here?
             if isinstance(c, ScalarSelect):
                 c = c.self_group(against=operators.comma_op)
@@ -5312,9 +5322,7 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
 
 
 class Exists(UnaryExpression):
-    """Represent an ``EXISTS`` clause.
-
-    """
+    """Represent an ``EXISTS`` clause."""
 
     _from_objects = []
     inherit_cache = True

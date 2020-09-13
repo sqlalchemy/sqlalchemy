@@ -1,6 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
@@ -60,8 +61,11 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         #   'table1' : table1.select(table1.c.type.in_(['table1', 'table1b'])),
         #   }, None, 'pjoin')
 
-        join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
-        # join = None
+        with testing.expect_deprecated_20(
+            r"The Join.alias\(\) function/method is considered legacy"
+        ):
+            join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
+            # join = None
 
         class Table1(object):
             def __init__(self, name, data=None):
