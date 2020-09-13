@@ -44,10 +44,6 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     supports_unicode_statements = True
     supports_unicode_binds = True
 
-    def __init__(self, server_side_cursors=False, **kwargs):
-        super(MySQLDialect_pymysql, self).__init__(**kwargs)
-        self.server_side_cursors = server_side_cursors
-
     @langhelpers.memoized_property
     def supports_server_side_cursors(self):
         try:

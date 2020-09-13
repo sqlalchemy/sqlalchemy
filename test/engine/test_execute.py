@@ -3103,9 +3103,7 @@ class DialectEventTest(fixtures.TestBase):
         eq_(conn.info["boom"], "one")
 
 
-class AutocommitTextTest(fixtures.TestBase):
-    __backend__ = True
-
+class AutocommitKeywordFixture(object):
     def _test_keyword(self, keyword, expected=True):
         dbapi = Mock(
             connect=Mock(
@@ -3122,10 +3120,17 @@ class AutocommitTextTest(fixtures.TestBase):
         with engine.connect() as conn:
             conn.exec_driver_sql("%s something table something" % keyword)
 
+            for _call in dbapi.connect().mock_calls:
+                _call.kwargs.clear()
+
             if expected:
                 eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
             else:
                 eq_(dbapi.connect().mock_calls, [call.cursor()])
+
+
+class AutocommitTextTest(AutocommitKeywordFixture, fixtures.TestBase):
+    __backend__ = True
 
     def test_update(self):
         self._test_keyword("UPDATE")

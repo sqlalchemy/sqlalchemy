@@ -475,6 +475,95 @@ reverted when a connection is returned to the connection pool.
 
       :ref:`session_transaction_isolation` - for the ORM
 
+.. _engine_stream_results:
+
+Using Server Side Cursors (a.k.a. stream results)
+==================================================
+
+A limited number of dialects have explicit support for the concept of "server
+side cursors" vs. "buffered cursors".    While a server side cursor implies a
+variety of different capabilities, within SQLAlchemy's engine and dialect
+implementation, it refers only to whether or not a particular set of results is
+fully buffered in memory before they are fetched from the cursor, using a
+method such as ``cursor.fetchall()``.   SQLAlchemy has no direct support
+for cursor behaviors such as scrolling; to make use of these features for
+a particular DBAPI, use the cursor directly as documented at
+:ref:`dbapi_connections`.
+
+Some DBAPIs, such as the cx_Oracle DBAPI, exclusively use server side cursors
+internally.  All result sets are essentially unbuffered across the total span
+of a result set, utilizing only a smaller buffer that is of a fixed size such
+as 100 rows at a time.
+
+For those dialects that have conditional support for buffered or unbuffered
+results, there are usually caveats to the use of the "unbuffered", or server
+side cursor mode.   When using the psycopg2 dialect for example, an error is
+raised if a server side cursor is used with any kind of DML or DDL statement.
+When using MySQL drivers with a server side cursor, the DBAPI connection is in
+a more fragile state and does not recover as gracefully from error conditions
+nor will it allow a rollback to proceed until the cursor is fully closed.
+
+For this reason, SQLAlchemy's dialects will always default to the less error
+prone version of a cursor, which means for PostgreSQL and MySQL dialects
+it defaults to a buffered, "client side" cursor where the full set of results
+is pulled into memory before any fetch methods are called from the cursor.
+This mode of operation is appropriate in the **vast majority** of cases;
+unbuffered cursors are not generally useful except in the uncommon case
+of an application fetching a very large number of rows in chunks, where
+the processing of these rows can be complete before more rows are fetched.
+
+To make use of a server side cursor for a particular execution, the
+:paramref:`_engine.Connection.execution_options.stream_results` option
+is used, which may be called on the :class:`_engine.Connection` object,
+on the statement object, or in the ORM-level contexts mentioned below.
+
+When using this option for a statement, it's usually appropriate to use
+a method like :meth:`_engine.Result.partitions` to work on small sections
+of the result set at a time, while also fetching enough rows for each
+pull so that the operation is efficient::
+
+
+    with engine.connect() as conn:
+        result = conn.execution_options(stream_results=True).execute(text("select * from table"))
+
+        for partition in result.partitions(100):
+            _process_rows(partition)
+
+If the :class:`_engine.Result` is iterated directly, rows are fetched internally
+using a default buffering scheme that buffers first a small set of rows,
+then a larger and larger buffer on each fetch up to a pre-configured limit
+of 1000 rows.   This can be affected using the ``max_row_buffer`` execution
+option::
+
+    with engine.connect() as conn:
+        conn = conn.execution_options(stream_results=True, max_row_buffer=100)
+        result = conn.execute(text("select * from table"))
+
+        for row in result:
+            _process_row(row)
+
+The option may also be set on statements.   Such as when using
+:term:`1.x style` ORM use with :class:`_orm.Query`, the internal buffering
+approach will be used while iterating::
+
+    for row in session.query(User).execution_options(stream_results=True):
+        # process row
+
+The option may also be passed to :meth:`_future.Connection.execute` for a
+:term:`2.0 style` connection as well as to :meth:`_orm.Session.execute`::
+
+
+    with engine_20.connect() as conn:
+        result = engine.execute(text("select * from table"), execution_options={"stream_results": True})
+
+
+    with orm.Session(engine) as session:
+        result = session.execute(
+            select(User).order_by(User_id),
+            execution_options={"stream_results": True}
+        )
+
+
 .. _dbengine_implicit:
 
 

@@ -227,7 +227,14 @@ class DialectTest(fixtures.TestBase):
         )[1]
         assert "raise_on_warnings" not in kw
 
-    @testing.only_on(["mysql", "mariadb"])
+    @testing.only_on(
+        [
+            "mysql+mysqldb",
+            "mysql+pymysql",
+            "mariadb+mysqldb",
+            "mariadb+pymysql",
+        ]
+    )
     def test_random_arg(self):
         dialect = testing.db.dialect
         kw = dialect.create_connect_args(
@@ -235,9 +242,14 @@ class DialectTest(fixtures.TestBase):
         )[1]
         eq_(kw["foo"], "true")
 
-    @testing.only_on(["mysql", "mariadb"])
-    @testing.skip_if("mysql+mysqlconnector", "totally broken for the moment")
-    @testing.fails_on("mysql+oursql", "unsupported")
+    @testing.only_on(
+        [
+            "mysql+mysqldb",
+            "mysql+pymysql",
+            "mariadb+mysqldb",
+            "mariadb+pymysql",
+        ]
+    )
     def test_special_encodings(self):
 
         for enc in ["utf8mb4", "utf8"]:
@@ -487,7 +499,9 @@ class ExecutionTest(fixtures.TestBase):
         assert isinstance(d, datetime.datetime)
 
 
-class AutocommitTextTest(test_execute.AutocommitTextTest):
+class AutocommitTextTest(
+    test_execute.AutocommitKeywordFixture, fixtures.TestBase
+):
     __only_on__ = "mysql", "mariadb"
 
     def test_load_data(self):

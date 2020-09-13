@@ -236,15 +236,28 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
+        elif self.engine.dialect.driver == "mariadbconnector":
+            return not cursor.buffered
         elif self.engine.dialect.driver == "asyncpg":
             return cursor.server_side
         else:
             return False
 
     def _fixture(self, server_side_cursors):
-        self.engine = engines.testing_engine(
-            options={"server_side_cursors": server_side_cursors}
-        )
+        if server_side_cursors:
+            with testing.expect_deprecated(
+                "The create_engine.server_side_cursors parameter is "
+                "deprecated and will be removed in a future release.  "
+                "Please use the Connection.execution_options.stream_results "
+                "parameter."
+            ):
+                self.engine = engines.testing_engine(
+                    options={"server_side_cursors": server_side_cursors}
+                )
+        else:
+            self.engine = engines.testing_engine(
+                options={"server_side_cursors": server_side_cursors}
+            )
         return self.engine
 
     def tearDown(self):

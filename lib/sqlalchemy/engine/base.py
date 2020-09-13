@@ -307,8 +307,13 @@ class Connection(Connectable):
         :param stream_results: Available on: Connection, statement.
           Indicate to the dialect that results should be
           "streamed" and not pre-buffered, if possible.  This is a limitation
-          of many DBAPIs.  The flag is currently understood only by the
-          psycopg2, mysqldb and pymysql dialects.
+          of many DBAPIs.  The flag is currently understood within a subset
+          of dialects within the PostgreSQL and MySQL categories, and
+          may be supported by other third party dialects as well.
+
+          .. seealso::
+
+            :ref:`engine_stream_results`
 
         :param schema_translate_map: Available on: Connection, Engine.
           A dictionary mapping schema names to schema names, that will be

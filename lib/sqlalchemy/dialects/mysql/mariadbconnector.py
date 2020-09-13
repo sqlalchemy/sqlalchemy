@@ -40,7 +40,11 @@ mariadb_cpy_minimum_version = (1, 0, 1)
 
 
 class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
-    pass
+    def create_server_side_cursor(self):
+        return self._dbapi_connection.cursor(buffered=False)
+
+    def create_default_cursor(self):
+        return self._dbapi_connection.cursor(buffered=True)
 
 
 class MySQLCompiler_mariadbconnector(MySQLCompiler):
@@ -75,6 +79,8 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     statement_compiler = MySQLCompiler_mariadbconnector
     preparer = MySQLIdentifierPreparer_mariadbconnector
 
+    supports_server_side_cursors = True
+
     @util.memoized_property
     def _dbapi_version(self):
         if self.dbapi and hasattr(self.dbapi, "__version__"):
@@ -89,9 +95,8 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
         else:
             return (99, 99, 99)
 
-    def __init__(self, server_side_cursors=False, **kwargs):
+    def __init__(self, **kwargs):
         super(MySQLDialect_mariadbconnector, self).__init__(**kwargs)
-        self.server_side_cursors = True
         self.paramstyle = "qmark"
         if self.dbapi is not None:
             if self._dbapi_version < mariadb_cpy_minimum_version:

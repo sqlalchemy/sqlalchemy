@@ -803,7 +803,7 @@ class Query(
 
         .. seealso::
 
-            :meth:`_query.Query.enable_eagerloads`
+            :ref:`engine_stream_results`
 
         """
         self.load_options += {"_yield_per": count}
@@ -1527,6 +1527,8 @@ class Query(
            :meth:`_orm.Query.execution_options`
 
         .. seealso::
+
+            :ref:`engine_stream_results`
 
             :meth:`_query.Query.get_execution_options`
 

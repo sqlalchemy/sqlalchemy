@@ -144,6 +144,8 @@ class DefaultDialect(interfaces.Dialect):
 
     supports_server_side_cursors = False
 
+    server_side_cursors = False
+
     # extra record-level locking features (#4860)
     supports_for_update_of = False
 
@@ -235,6 +237,14 @@ class DefaultDialect(interfaces.Dialect):
             "Applications should work with result column names in a case "
             "sensitive fashion.",
         ),
+        server_side_cursors=(
+            "1.4",
+            "The :paramref:`_sa.create_engine.server_side_cursors` parameter "
+            "is deprecated and will be removed in a future release.  Please "
+            "use the "
+            ":paramref:`_engine.Connection.execution_options.stream_results` "
+            "parameter.",
+        ),
     )
     def __init__(
         self,
@@ -250,6 +260,7 @@ class DefaultDialect(interfaces.Dialect):
         # int() is because the @deprecated_params decorator cannot accommodate
         # the direct reference to the "NO_LINTING" object
         compiler_linting=int(compiler.NO_LINTING),
+        server_side_cursors=False,
         **kwargs
     ):
 
@@ -258,6 +269,14 @@ class DefaultDialect(interfaces.Dialect):
                 "The %s dialect is not yet ported to the 0.6 format"
                 % self.name
             )
+
+        if server_side_cursors:
+            if not self.supports_server_side_cursors:
+                raise exc.ArgumentError(
+                    "Dialect %s does not support server side cursors" % self
+                )
+            else:
+                self.server_side_cursors = True
 
         self.convert_unicode = convert_unicode
         self.encoding = encoding
@@ -1189,6 +1208,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return False
 
         if self.dialect.server_side_cursors:
+            # this is deprecated
             use_server_side = self.execution_options.get(
                 "stream_results", True
             ) and (
@@ -1232,7 +1252,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return self.create_server_side_cursor()
         else:
             self._is_server_side = False
-            return self._dbapi_connection.cursor()
+            return self.create_default_cursor()
+
+    def create_default_cursor(self):
+        return self._dbapi_connection.cursor()
 
     def create_server_side_cursor(self):
         raise NotImplementedError()

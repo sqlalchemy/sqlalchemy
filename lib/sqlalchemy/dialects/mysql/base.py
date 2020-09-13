@@ -271,16 +271,31 @@ multi-column key for some storage engines::
 Server Side Cursors
 -------------------
 
-Server-side cursor support is available for the MySQLdb and PyMySQL dialects.
-From a database driver point of view this means that the ``MySQLdb.cursors.SSCursor`` or
-``pymysql.cursors.SSCursor`` class is used when building up the cursor which
-will receive results.  The most typical way of invoking this feature is via the
-:paramref:`.Connection.execution_options.stream_results` connection execution
-option.   Server side cursors can also be enabled for all SELECT statements
-unconditionally by passing ``server_side_cursors=True`` to
-:func:`_sa.create_engine`.
+Server-side cursor support is available for the mysqlclient, PyMySQL,
+maridbconnector dialects and may also be available in others.   This makes use
+of either the "buffered=True/False" flag if available or by using a class such
+as ``MySQLdb.cursors.SSCursor`` or ``pymysql.cursors.SSCursor`` internally.
 
-.. versionadded:: 1.1.4 - added server-side cursor support.
+
+Server side cursors are enabled on a per-statement basis by using the
+:paramref:`.Connection.execution_options.stream_results` connection execution
+option::
+
+    with engine.connect() as conn:
+        result = conn.execution_options(stream_resuls=True).execute(text("select * from table"))
+
+Note that some kinds of SQL statements may not be supported with
+server side cursors; generally, only SQL statements that return rows should be
+used with this option.
+
+.. deprecated:: 1.4  The dialect-level server_side_cursors flag is deprecated
+   and will be removed in a future release.  Please use the
+   :paramref:`_engine.Connection.stream_results` execution option for
+   unbuffered cursor support.
+
+.. seealso::
+
+    :ref:`engine_stream_results`
 
 .. _mysql_unicode:
 

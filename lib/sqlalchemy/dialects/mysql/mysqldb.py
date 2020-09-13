@@ -88,9 +88,8 @@ class MySQLDialect_mysqldb(MySQLDialect):
     statement_compiler = MySQLCompiler_mysqldb
     preparer = MySQLIdentifierPreparer_mysqldb
 
-    def __init__(self, server_side_cursors=False, **kwargs):
+    def __init__(self, **kwargs):
         super(MySQLDialect_mysqldb, self).__init__(**kwargs)
-        self.server_side_cursors = server_side_cursors
         self._mysql_dbapi_version = (
             self._parse_dbapi_version(self.dbapi.__version__)
             if self.dbapi is not None and hasattr(self.dbapi, "__version__")

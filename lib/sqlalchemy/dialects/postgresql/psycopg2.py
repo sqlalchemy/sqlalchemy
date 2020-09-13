@@ -17,18 +17,6 @@ psycopg2 Connect Arguments
 psycopg2-specific keyword arguments which are accepted by
 :func:`_sa.create_engine()` are:
 
-* ``server_side_cursors``: Enable the usage of "server side cursors" for SQL
-  statements which support this feature. What this essentially means from a
-  psycopg2 point of view is that the cursor is created using a name, e.g.
-  ``connection.cursor('some name')``, which has the effect that result rows
-  are not immediately pre-fetched and buffered after statement execution, but
-  are instead left on the server and only retrieved as needed. SQLAlchemy's
-  :class:`~sqlalchemy.engine.CursorResult` uses special row-buffering
-  behavior when this feature is enabled, such that groups of 100 rows at a
-  time are fetched over the wire to reduce conversational overhead.
-  Note that the :paramref:`.Connection.execution_options.stream_results`
-  execution option is a more targeted
-  way of enabling this mode on a per-execution basis.
 
 * ``use_native_unicode``: Enable the usage of Psycopg2 "native unicode" mode
   per connection.  True by default.
@@ -129,8 +117,7 @@ in addition to those not specific to DBAPIs:
 * ``stream_results`` - Enable or disable usage of psycopg2 server side
   cursors - this feature makes use of "named" cursors in combination with
   special result handling methods so that result rows are not fully buffered.
-  If ``None`` or not set, the ``server_side_cursors`` option of the
-  :class:`_engine.Engine` is used.
+  Defaults to False, meaning cursors are buffered by default.
 
 * ``max_row_buffer`` - when using ``stream_results``, an integer value that
   specifies the maximum number of rows to buffer at a time.  This is
@@ -691,7 +678,6 @@ class PGDialect_psycopg2(PGDialect):
 
     def __init__(
         self,
-        server_side_cursors=False,
         use_native_unicode=True,
         client_encoding=None,
         use_native_hstore=True,
@@ -702,7 +688,6 @@ class PGDialect_psycopg2(PGDialect):
         **kwargs
     ):
         PGDialect.__init__(self, **kwargs)
-        self.server_side_cursors = server_side_cursors
         self.use_native_unicode = use_native_unicode
         if not use_native_hstore:
             self._has_native_hstore = False

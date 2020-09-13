@@ -723,10 +723,6 @@ class PGDialect_asyncpg(PGDialect):
         },
     )
 
-    def __init__(self, server_side_cursors=False, **kwargs):
-        PGDialect.__init__(self, **kwargs)
-        self.server_side_cursors = server_side_cursors
-
     @util.memoized_property
     def _dbapi_version(self):
         if self.dbapi and hasattr(self.dbapi, "__version__"):

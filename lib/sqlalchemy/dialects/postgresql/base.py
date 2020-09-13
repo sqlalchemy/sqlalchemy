@@ -112,6 +112,34 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
            PRIMARY KEY (id)
        )
 
+.. _postgresql_ss_cursors:
+
+Server Side Cursors
+-------------------
+
+Server-side cursor support is available for the psycopg2, asyncpg
+dialects and may also be available in others.
+
+Server side cursors are enabled on a per-statement basis by using the
+:paramref:`.Connection.execution_options.stream_results` connection execution
+option::
+
+    with engine.connect() as conn:
+        result = conn.execution_options(stream_resuls=True).execute(text("select * from table"))
+
+Note that some kinds of SQL statements may not be supported with
+server side cursors; generally, only SQL statements that return rows should be
+used with this option.
+
+.. deprecated:: 1.4  The dialect-level server_side_cursors flag is deprecated
+   and will be removed in a future release.  Please use the
+   :paramref:`_engine.Connection.stream_results` execution option for
+   unbuffered cursor support.
+
+.. seealso::
+
+    :ref:`engine_stream_results`
+
 .. _postgresql_isolation_level:
 
 Transaction Isolation Level
@@ -1075,7 +1103,8 @@ E.g.::
     )
 
 
-"""
+"""  # noqa E501
+
 from collections import defaultdict
 import datetime as dt
 import re

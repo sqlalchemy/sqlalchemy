@@ -852,6 +852,15 @@ class EnumSetTest(
         )
         enum_table.create(connection)
 
+        assert_raises(
+            exc.DBAPIError,
+            enum_table.insert().execute,
+            e1=None,
+            e2=None,
+            e3=None,
+            e4=None,
+        )
+
         assert enum_table.c.e2generic.type.validate_strings
 
         assert_raises(
