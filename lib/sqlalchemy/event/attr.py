@@ -41,6 +41,7 @@ from . import registry
 from .. import exc
 from .. import util
 from ..util import threading
+from ..util.concurrency import AsyncAdaptedLock
 
 
 class RefCollection(util.MemoizedSlots):
@@ -276,6 +277,9 @@ class _EmptyListener(_InstanceLevelDispatch):
 
 class _CompoundListener(_InstanceLevelDispatch):
     __slots__ = "_exec_once_mutex", "_exec_once"
+
+    def _set_asyncio(self):
+        self._exec_once_mutex = AsyncAdaptedLock()
 
     def _memoized_attr__exec_once_mutex(self):
         return threading.Lock()

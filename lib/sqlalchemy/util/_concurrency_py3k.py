@@ -96,6 +96,17 @@ try:
             del context.driver
         return result
 
+    class AsyncAdaptedLock:
+        def __init__(self):
+            self.mutex = asyncio.Lock()
+
+        def __enter__(self):
+            await_fallback(self.mutex.acquire())
+            return self
+
+        def __exit__(self, *arg, **kw):
+            self.mutex.release()
+
 
 except ImportError:  # pragma: no cover
     greenlet = None

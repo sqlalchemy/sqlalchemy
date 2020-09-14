@@ -244,21 +244,26 @@ class _EventKey(object):
         return self._key in _key_to_collection
 
     def base_listen(
-        self, propagate=False, insert=False, named=False, retval=None
+        self,
+        propagate=False,
+        insert=False,
+        named=False,
+        retval=None,
+        asyncio=False,
     ):
 
         target, identifier = self.dispatch_target, self.identifier
 
         dispatch_collection = getattr(target.dispatch, identifier)
 
+        for_modify = dispatch_collection.for_modify(target.dispatch)
+        if asyncio:
+            for_modify._set_asyncio()
+
         if insert:
-            dispatch_collection.for_modify(target.dispatch).insert(
-                self, propagate
-            )
+            for_modify.insert(self, propagate)
         else:
-            dispatch_collection.for_modify(target.dispatch).append(
-                self, propagate
-            )
+            for_modify.append(self, propagate)
 
     @property
     def _listen_fn(self):

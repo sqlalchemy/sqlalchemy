@@ -218,6 +218,7 @@ class QueuePool(Pool):
 
 
 class AsyncAdaptedQueuePool(QueuePool):
+    _is_asyncio = True
     _queue_class = sqla_queue.AsyncAdaptedQueue
 
 

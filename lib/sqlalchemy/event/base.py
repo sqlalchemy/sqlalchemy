@@ -241,8 +241,17 @@ class Events(util.with_metaclass(_EventMeta, object)):
                 return target
 
     @classmethod
-    def _listen(cls, event_key, propagate=False, insert=False, named=False):
-        event_key.base_listen(propagate=propagate, insert=insert, named=named)
+    def _listen(
+        cls,
+        event_key,
+        propagate=False,
+        insert=False,
+        named=False,
+        asyncio=False,
+    ):
+        event_key.base_listen(
+            propagate=propagate, insert=insert, named=named, asyncio=asyncio
+        )
 
     @classmethod
     def _remove(cls, event_key):

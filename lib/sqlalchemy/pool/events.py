@@ -54,6 +54,12 @@ class PoolEvents(event.Events):
         else:
             return target
 
+    @classmethod
+    def _listen(cls, event_key, **kw):
+        target = event_key.dispatch_target
+
+        event_key.base_listen(asyncio=target._is_asyncio)
+
     def connect(self, dbapi_connection, connection_record):
         """Called at the moment a particular DBAPI connection is first
         created for a given :class:`_pool.Pool`.

@@ -59,6 +59,8 @@ class Pool(log.Identified):
 
     _dialect = _ConnDialect()
 
+    _is_asyncio = False
+
     def __init__(
         self,
         creator,

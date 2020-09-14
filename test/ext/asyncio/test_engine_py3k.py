@@ -51,6 +51,12 @@ class AsyncEngineTest(EngineFixture):
     __backend__ = True
 
     @async_test
+    async def test_init_once_concurrency(self, async_engine):
+        c1 = async_engine.connect()
+        c2 = async_engine.connect()
+        await asyncio.wait([c1, c2])
+
+    @async_test
     async def test_connect_ctxmanager(self, async_engine):
         async with async_engine.connect() as conn:
             result = await conn.execute(select(1))
