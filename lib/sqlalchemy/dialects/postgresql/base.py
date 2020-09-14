@@ -409,12 +409,12 @@ this row.
 
 Conflicts are determined using existing unique constraints and indexes.  These
 constraints may be identified either using their name as stated in DDL,
-or they may be *inferred* by stating the columns and conditions that comprise
+or they may be inferred by stating the columns and conditions that comprise
 the indexes.
 
 SQLAlchemy provides ``ON CONFLICT`` support via the PostgreSQL-specific
 :func:`_postgresql.insert()` function, which provides
-the generative methods :meth:`~.postgresql.Insert.on_conflict_do_update`
+the generative methods :meth:`_postgresql.Insert.on_conflict_do_update`
 and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
 
 .. sourcecode:: pycon+sql
@@ -439,10 +439,21 @@ and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
     {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT ON CONSTRAINT pk_my_table DO UPDATE SET data = %(param_1)s
 
+.. versionadded:: 1.1
+
+.. seealso::
+
+    `INSERT .. ON CONFLICT
+    <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
+    - in the PostgreSQL documentation.
+
+Specifying the Target
+^^^^^^^^^^^^^^^^^^^^^
+
 Both methods supply the "target" of the conflict using either the
 named constraint or by column inference:
 
-* The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
+* The :paramref:`_postgresql.Insert.on_conflict_do_update.index_elements` argument
   specifies a sequence containing string column names, :class:`_schema.Column`
   objects, and/or SQL expression elements, which would identify a unique
   index:
@@ -466,9 +477,9 @@ named constraint or by column inference:
     {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
-* When using :paramref:`.Insert.on_conflict_do_update.index_elements` to
+* When using :paramref:`_postgresql.Insert.on_conflict_do_update.index_elements` to
   infer an index, a partial index can be inferred by also specifying the
-  use the :paramref:`.Insert.on_conflict_do_update.index_where` parameter:
+  use the :paramref:`_postgresql.Insert.on_conflict_do_update.index_where` parameter:
 
   .. sourcecode:: pycon+sql
 
@@ -483,7 +494,7 @@ named constraint or by column inference:
     VALUES (%(data)s, %(user_email)s) ON CONFLICT (user_email)
     WHERE user_email LIKE %(user_email_1)s DO UPDATE SET data = excluded.data
 
-* The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
+* The :paramref:`_postgresql.Insert.on_conflict_do_update.constraint` argument is
   used to specify an index directly rather than inferring it.  This can be
   the name of a UNIQUE constraint, a PRIMARY KEY constraint, or an INDEX:
 
@@ -507,7 +518,7 @@ named constraint or by column inference:
     ON CONFLICT ON CONSTRAINT my_table_pk DO UPDATE SET data = %(param_1)s
     {stop}
 
-* The :paramref:`.Insert.on_conflict_do_update.constraint` argument may
+* The :paramref:`_postgresql.Insert.on_conflict_do_update.constraint` argument may
   also refer to a SQLAlchemy construct representing a constraint,
   e.g. :class:`.UniqueConstraint`, :class:`.PrimaryKeyConstraint`,
   :class:`.Index`, or :class:`.ExcludeConstraint`.   In this use,
@@ -529,10 +540,13 @@ named constraint or by column inference:
     {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
+The SET Clause
+^^^^^^^^^^^^^^^
+
 ``ON CONFLICT...DO UPDATE`` is used to perform an update of the already
 existing row, using any combination of new values as well as values
 from the proposed insertion.   These values are specified using the
-:paramref:`.Insert.on_conflict_do_update.set_` parameter.  This
+:paramref:`_postgresql.Insert.on_conflict_do_update.set_` parameter.  This
 parameter accepts a dictionary which consists of direct values
 for UPDATE:
 
@@ -555,7 +569,10 @@ for UPDATE:
     those specified using :paramref:`_schema.Column.onupdate`.
     These values will not be exercised for an ON CONFLICT style of UPDATE,
     unless they are manually specified in the
-    :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
+    :paramref:`_postgresql.Insert.on_conflict_do_update.set_` dictionary.
+
+Updating using the Excluded INSERT Values
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In order to refer to the proposed insertion row, the special alias
 :attr:`~.postgresql.Insert.excluded` is available as an attribute on
@@ -580,8 +597,11 @@ table:
     VALUES (%(id)s, %(data)s, %(author)s)
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
 
+Additional WHERE Criteria
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The :meth:`_expression.Insert.on_conflict_do_update` method also accepts
-a WHERE clause using the :paramref:`.Insert.on_conflict_do_update.where`
+a WHERE clause using the :paramref:`_postgresql.Insert.on_conflict_do_update.where`
 parameter, which will limit those rows which receive an UPDATE:
 
 .. sourcecode:: pycon+sql
@@ -602,7 +622,10 @@ parameter, which will limit those rows which receive an UPDATE:
     ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
     WHERE my_table.status = %(status_1)s
 
-``ON CONFLICT`` may also be used to skip inserting a row entirely
+Skipping Rows with DO NOTHING
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``ON CONFLICT`` may be used to skip inserting a row entirely
 if any conflict with a unique or exclusion constraint occurs; below
 this is illustrated using the
 :meth:`~.postgresql.Insert.on_conflict_do_nothing` method:
@@ -626,14 +649,6 @@ constraint violation which occurs:
     >>> print(stmt)
     {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
     ON CONFLICT DO NOTHING
-
-.. versionadded:: 1.1 Added support for PostgreSQL ON CONFLICT clauses
-
-.. seealso::
-
-    `INSERT .. ON CONFLICT
-    <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
-    - in the PostgreSQL documentation.
 
 .. _postgresql_match:
 

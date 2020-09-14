@@ -27,6 +27,14 @@ they originate from :mod:`sqlalchemy.types` or from the local dialect::
 
 .. autoclass:: TIME
 
+SQLite DML Constructs
+-------------------------
+
+.. autofunction:: sqlalchemy.dialects.sqlite.insert
+
+.. autoclass:: sqlalchemy.dialects.sqlite.Insert
+  :members:
+
 Pysqlite
 --------
 

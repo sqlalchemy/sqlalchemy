@@ -482,7 +482,7 @@ an error or to skip performing an UPDATE.
 existing row, using any combination of new values as well as values
 from the proposed insertion.   These values are normally specified using
 keyword arguments passed to the
-:meth:`~.mysql.Insert.on_duplicate_key_update`
+:meth:`_mysql.Insert.on_duplicate_key_update`
 given column key values (usually the name of the column, unless it
 specifies :paramref:`_schema.Column.key`
 ) as keys and literal or SQL expressions
@@ -537,7 +537,7 @@ this context is unambiguous:
 
 .. warning::
 
-    The :meth:`_expression.Insert.on_duplicate_key_update`
+    The :meth:`_mysql.Insert.on_duplicate_key_update`
     method does **not** take into
     account Python-side default UPDATE values or generation functions, e.g.
     e.g. those specified using :paramref:`_schema.Column.onupdate`.
@@ -547,8 +547,8 @@ this context is unambiguous:
 
 
 In order to refer to the proposed insertion row, the special alias
-:attr:`~.mysql.Insert.inserted` is available as an attribute on
-the :class:`.mysql.Insert` object; this object is a
+:attr:`_mysql.Insert.inserted` is available as an attribute on
+the :class:`_mysql.Insert` object; this object is a
 :class:`_expression.ColumnCollection` which contains all columns of the target
 table:
 

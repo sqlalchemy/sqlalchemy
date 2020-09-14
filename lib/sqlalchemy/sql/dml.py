@@ -863,11 +863,12 @@ class Insert(ValuesBase):
          backends that support "returning", this turns off the "implicit
          returning" feature for the statement.
 
-        If both `values` and compile-time bind parameters are present, the
-        compile-time bind parameters override the information specified
-        within `values` on a per-key basis.
+        If both :paramref:`_expression.Insert.values` and compile-time bind
+        parameters are present, the compile-time bind parameters override the
+        information specified within :paramref:`_expression.Insert.values` on a
+        per-key basis.
 
-        The keys within `values` can be either
+        The keys within :paramref:`_expression.Insert.values` can be either
         :class:`~sqlalchemy.schema.Column` objects or their string
         identifiers. Each key may reference one of:
 
