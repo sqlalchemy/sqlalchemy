@@ -19,5 +19,5 @@ This section is moved to :ref:`orm_declarative_relationship_eval`.
 Configuring Many-to-Many Relationships
 ======================================
 
-this section is moved to :ref:`orm_declarative_relationship_secondary_eval`.
+This section is moved to :ref:`orm_declarative_relationship_secondary_eval`.
 

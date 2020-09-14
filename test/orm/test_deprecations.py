@@ -14,6 +14,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
@@ -21,6 +22,8 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import eagerload
@@ -2126,3 +2129,30 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 User.name.like("%j%")
             )
         eq_(list(q2), [(True,), (False,), (False,), (False,)])
+
+
+class DeclarativeBind(fixtures.TestBase):
+    def test_declarative_base(self):
+        with testing.expect_deprecated_20(
+            'The "bind" argument to declarative_base is'
+            "deprecated and will be removed in SQLAlchemy 2.0.",
+        ):
+            Base = declarative_base(bind=testing.db)
+
+        is_true(Base.metadata.bind is testing.db)
+
+    def test_as_declarative(self):
+        with testing.expect_deprecated_20(
+            'The "bind" argument to declarative_base is'
+            "deprecated and will be removed in SQLAlchemy 2.0.",
+        ):
+
+            @as_declarative(bind=testing.db)
+            class Base(object):
+                @declared_attr
+                def __tablename__(cls):
+                    return cls.__name__.lower()
+
+                id = Column(Integer, primary_key=True)
+
+        is_true(Base.metadata.bind is testing.db)

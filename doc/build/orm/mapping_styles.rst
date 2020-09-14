@@ -350,7 +350,7 @@ that a :meth:`_orm.registry` is present.
 
 In "classical" form, the table metadata is created separately with the
 :class:`_schema.Table` construct, then associated with the ``User`` class via
-the :func:`.mapper` function::
+the :meth:`_orm.registry.map_imperatively` method::
 
     from sqlalchemy import Table, Column, Integer, String, ForeignKey
     from sqlalchemy.orm import registry
@@ -505,7 +505,7 @@ When mapping with the :ref:`imperative <orm_imperative_mapping>` style, the
 class is passed directly as the
 :paramref:`_orm.registry.map_imperatively.class_` argument.
 
-the table, or other from clause object
+The table, or other from clause object
 --------------------------------------
 
 In the vast majority of common cases this is an instance of
@@ -594,8 +594,8 @@ Default Constructor
 The :class:`_orm.registry` applies a default constructor, i.e. ``__init__``
 method, to all mapped classes that don't explicitly have their own
 ``__init__`` method.   The behavior of this method is such that it provides
-a convenient keyword constructor that will accept as keywords the attributes
-that are named.   E.g.::
+a convenient keyword constructor that will accept as optional keyword arguments
+all the attributes that are named.   E.g.::
 
     from sqlalchemy.orm import declarative_base
 
