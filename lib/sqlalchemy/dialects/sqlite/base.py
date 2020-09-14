@@ -402,6 +402,253 @@ resolution algorithm is applied to the constraint itself::
         PRIMARY KEY (id) ON CONFLICT FAIL
     )
 
+.. _sqlite_insert_on_conflict
+
+INSERT...ON CONFLICT (Upsert)
+-----------------------------------
+From version 3.24.0 onwards, SQLite supports "upserts" (update or insert)
+of rows into a table via the ``ON CONFLICT`` clause of the ``INSERT``
+statement. A candidate row will only be inserted if that row does not violate
+any unique constraints. In the case of a unique constraint violation, a
+secondary action can occur which can be either “DO UPDATE”, indicating that
+the data in the target row should be updated, or “DO NOTHING”, which indicates
+to silently skip this row.
+
+Conflicts are determined using existing uniqueness constraints.
+These constraints may be identified either using their column name as stated
+in DDL, or they may be *inferred* by stating the columns and conditions that
+comprise the indexes.
+
+A "uniqueness constraint" is an explicit UNIQUE or PRIMARY KEY constraint
+within the CREATE TABLE statement, or a unique index.
+
+SQLAlchemy provides ``ON CONFLICT`` support via the SQLite-specific
+:func:`_sqlite.insert()` function, which provides
+the generative methods :meth:`~.sqlite.Insert.on_conflict_do_update`
+and :meth:`~.sqlite.Insert.on_conflict_do_nothing`::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    insert_stmt = insert(my_table).values(
+        id='some_existing_id',
+        data='inserted value')
+
+    do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
+        index_elements=['id']
+    )
+
+    conn.execute(do_nothing_stmt)
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint='id',
+        set_=dict(data='updated value')
+    )
+
+    conn.execute(do_update_stmt)
+
+Both methods supply the "target" of the conflict using either the
+named constraint or by column inference:
+
+* The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
+  specifies a sequence containing string column names, :class:`_schema.Column`
+  objects, and/or SQL expression elements, which would identify a unique
+  index::
+
+
+    unique_index = schema.Index(
+        "unique_index_name",
+        my_table.c.id,
+        unique=True,
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value')
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=[my_table.c.id],
+        set_=dict(data='updated value')
+    )
+
+* When using :paramref:`.Insert.on_conflict_do_update.index_elements` to
+  infer an index, a partial index can be inferred by also specifying the
+  use the :paramref:`.Insert.on_conflict_do_update.index_where` parameter::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    unique_partial_index = schema.Index(
+        "unique_partial_index_name",
+        my_table.c.user_email,
+        unique=True,
+        sqlite_where=my_table.c.user_email.like('@gmail.com'),
+    )
+
+    stmt = insert(my_table).values(user_email='a@b.com', data='inserted data')
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[my_table.c.user_email],
+        index_where=my_table.c.user_email.like('%@gmail.com'),
+        set_=dict(data=stmt.excluded.data)
+        )
+    conn.execute(stmt)
+
+* The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
+  used to specify a constraint directly rather than inferring it.  This can
+  either be the name of the underlying columns of a UNIQUE constraint or
+  a PRIMARY KEY constraint. SQLite does not support specifying the names of
+  an UNIQUE or PRIMARY KEY constraint and INDEX within the ON CONFLICT Clause.
+
+  That is, the following will not work::
+    unique_constraint_pk = schema.PrimaryKeyConstraint(
+        my_table.c.id, name="uq_user_pk"
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint='uq_user_pk',
+        set_=dict(data='updated value')
+    )
+
+ But the statements below will work::
+    do_update_stmt_A = insert_stmt.on_conflict_do_update(
+        constraint=unique_constraint_pk,
+        set_=dict(id=1, data='updated value')
+    )
+
+    do_update_stmt_B = insert_stmt.on_conflict_do_update(
+        constraint='id',
+        set_=dict(id=1, data='updated value')
+    )
+
+* The :paramref:`.Insert.on_conflict_do_update.constraint` argument may
+  also refer to a SQLAlchemy construct representing a constraint,
+  e.g. :class:`.UniqueConstraint` or :class:`.PrimaryKeyConstraint`.
+  In this use, only the name of the constraint's first column is used directly.
+  If the constraint is unnamed, then inference will be used,
+  where the expressions and optional WHERE clause of the constraint will
+  be spelled out in the construct::
+
+    unique_constraint = schema.UniqueConstraint(
+        my_table.c.user_email, name="uq_user_email"
+    )
+
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        constraint=unique_constraint,
+        set_=dict(data='updated value')
+    )
+
+``ON CONFLICT...DO UPDATE`` is used to perform an update of the already
+existing row, using any combination of new values as well as values
+from the proposed insertion.   These values are specified using the
+:paramref:`.Insert.on_conflict_do_update.set_` parameter.  This
+parameter accepts a dictionary which consists of direct values
+for UPDATE::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    do_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value')
+        )
+    conn.execute(do_update_stmt)
+
+.. warning::
+
+    The :meth:`_expression.Insert.on_conflict_do_update`
+    method does **not** take into
+    account Python-side default UPDATE values or generation functions, e.g.
+    those specified using :paramref:`_schema.Column.onupdate`.
+    These values will not be exercised for an ON CONFLICT style of UPDATE,
+    unless they are manually specified in the
+    :paramref:`.Insert.on_conflict_do_update.set_` dictionary.
+
+In order to refer to the proposed insertion row, the special alias
+:attr:`~.sqlite.Insert.excluded` is available as an attribute on
+the :class:`_sqlite.Insert` object; this object creates an "excluded." prefix
+on a column, that informs the DO UPDATE to update the row with the value that
+would have been inserted had the constraint not failed::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(my_table).values(
+        id='some_id',
+        data='inserted value',
+        author='jlh')
+    do_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value', author=stmt.excluded.author)
+        )
+    conn.execute(do_update_stmt)
+
+The :meth:`_expression.Insert.on_conflict_do_update` method also accepts
+a WHERE clause using the :paramref:`.Insert.on_conflict_do_update.where`
+parameter, which will limit those rows which receive an UPDATE::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(my_table).values(
+        id='some_id',
+        data='inserted value',
+        author='jlh')
+    on_update_stmt = stmt.on_conflict_do_update(
+        index_elements=['id'],
+        set_=dict(data='updated value', author=stmt.excluded.author)
+        where=(my_table.c.status == 2)
+        )
+    conn.execute(on_update_stmt)
+
+``ON CONFLICT`` may also be used to skip inserting a row entirely
+if any conflict with a unique constraint occurs; below
+this is illustrated using the
+:meth:`~.sqlite.Insert.on_conflict_do_nothing` method::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+    conn.execute(stmt)
+
+If ``DO NOTHING`` is used without specifying any columns or constraint,
+it has the effect of skipping the INSERT for any unique violation which
+occurs::
+
+    from sqlalchemy.dialects.sqlite import insert
+
+    stmt = insert(my_table).values(id='some_id', data='inserted value')
+    stmt = stmt.on_conflict_do_nothing()
+    conn.execute(stmt)
+
+The SQLite ``ON CONFLICT`` also supports multiple conflict targets. For example
+a unique index can be created over multiple columns, then this constraint will
+be inferred by listing the columns in index_elements::
+
+    unique_index = schema.Index(
+        "unique_index_name",
+        my_table.c.id,
+        my_table.c.data,
+        unique=True,
+    )
+
+    insert_stmt = insert(my_table).values(id='some_id', data='old_value')
+    do_update_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=['id', 'data'],
+        set_=dict(data='new_value')
+    )
+
+This will render the following ``ON CONFLICT...DO UPDATE`` statement::
+    INSERT INTO my_table (id, data) VALUES ('some_id', 'old_value')
+    ON CONFLICT (id, date)
+    DO UPDATE SET data = 'new_value';
+
+
+.. versionadded:: 1.4 Added support for SQLite ON CONFLICT clauses
+
+.. seealso::
+
+    `Upsert
+    <https://sqlite.org/lang_UPSERT.htmlT>`_
+    - in the SQLite documentation.
+
 .. _sqlite_type_reflection:
 
 Type Reflection
@@ -600,8 +847,11 @@ from ... import types as sqltypes
 from ... import util
 from ...engine import default
 from ...engine import reflection
+from ...sql import coercions
 from ...sql import ColumnElement
 from ...sql import compiler
+from ...sql import elements
+from ...sql import roles
 from ...types import BLOB  # noqa
 from ...types import BOOLEAN  # noqa
 from ...types import CHAR  # noqa
@@ -1082,6 +1332,101 @@ class SQLiteCompiler(compiler.SQLCompiler):
 
     def visit_not_regexp_match_op_binary(self, binary, operator, **kw):
         return self._generate_generic_binary(binary, " NOT REGEXP ", **kw)
+
+    def _on_conflict_target(self, clause, **kw):
+        if clause.constraint_target is not None:
+            target_text = "(%s)" % clause.constraint_target
+        elif clause.inferred_target_elements is not None:
+            target_text = "(%s)" % ", ".join(
+                (
+                    self.preparer.quote(c)
+                    if isinstance(c, util.string_types)
+                    else self.process(c, include_table=False, use_schema=False)
+                )
+                for c in clause.inferred_target_elements
+            )
+            if clause.inferred_target_whereclause is not None:
+                target_text += " WHERE %s" % self.process(
+                    clause.inferred_target_whereclause,
+                    include_table=False,
+                    use_schema=False,
+                    literal_binds=True,
+                )
+
+        else:
+            target_text = ""
+
+        return target_text
+
+    def visit_on_conflict_do_nothing(self, on_conflict, **kw):
+
+        target_text = self._on_conflict_target(on_conflict, **kw)
+
+        if target_text:
+            return "ON CONFLICT %s DO NOTHING" % target_text
+        else:
+            return "ON CONFLICT DO NOTHING"
+
+    def visit_on_conflict_do_update(self, on_conflict, **kw):
+        clause = on_conflict
+
+        target_text = self._on_conflict_target(on_conflict, **kw)
+
+        action_set_ops = []
+
+        set_parameters = dict(clause.update_values_to_set)
+        # create a list of column assignment clauses as tuples
+
+        insert_statement = self.stack[-1]["selectable"]
+        cols = insert_statement.table.c
+        for c in cols:
+            col_key = c.key
+            if col_key in set_parameters:
+                value = set_parameters.pop(col_key)
+                if coercions._is_literal(value):
+                    value = elements.BindParameter(None, value, type_=c.type)
+
+                else:
+                    if (
+                        isinstance(value, elements.BindParameter)
+                        and value.type._isnull
+                    ):
+                        value = value._clone()
+                        value.type = c.type
+                value_text = self.process(value.self_group(), use_schema=False)
+
+                key_text = self.preparer.quote(col_key)
+                action_set_ops.append("%s = %s" % (key_text, value_text))
+
+        # check for names that don't match columns
+        if set_parameters:
+            util.warn(
+                "Additional column names not matching "
+                "any column keys in table '%s': %s"
+                % (
+                    self.statement.table.name,
+                    (", ".join("'%s'" % c for c in set_parameters)),
+                )
+            )
+            for k, v in set_parameters.items():
+                key_text = (
+                    self.preparer.quote(k)
+                    if isinstance(k, util.string_types)
+                    else self.process(k, use_schema=False)
+                )
+                value_text = self.process(
+                    coercions.expect(roles.ExpressionElementRole, v),
+                    use_schema=False,
+                )
+                action_set_ops.append("%s = %s" % (key_text, value_text))
+
+        action_text = ", ".join(action_set_ops)
+        if clause.update_whereclause is not None:
+            action_text += " WHERE %s" % self.process(
+                clause.update_whereclause, include_table=True, use_schema=False
+            )
+
+        return "ON CONFLICT %s DO UPDATE SET %s" % (target_text, action_text)
 
 
 class SQLiteDDLCompiler(compiler.DDLCompiler):

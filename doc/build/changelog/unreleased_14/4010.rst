@@ -1,0 +1,7 @@
+.. change::
+    :tags: sqlite, usecase
+    :tickets: 4010
+
+    Implemented DO NOTHING and DO UPDATE SET (Upsert) for the
+    INSERT.. ON CONFLICT Clause as understood by the SQLite dialect.
+    Pull request courtesy Ramon Williams.

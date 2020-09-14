@@ -24,7 +24,8 @@ from .base import TEXT
 from .base import TIME
 from .base import TIMESTAMP
 from .base import VARCHAR
-
+from .dml import Insert
+from .dml import insert
 
 # default dialect
 base.dialect = dialect = pysqlite.dialect
@@ -47,5 +48,7 @@ __all__ = (
     "TIMESTAMP",
     "VARCHAR",
     "REAL",
+    "Insert",
+    "insert",
     "dialect",
 )
