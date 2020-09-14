@@ -2688,7 +2688,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class OnConflictTest(fixtures.TablesTest):
 
-    __only_on__ = "sqlite"
+    __only_on__ = ("sqlite >= 3.24.0",)
 
     @classmethod
     def define_tables(cls, metadata):
