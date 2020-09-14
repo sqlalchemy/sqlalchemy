@@ -209,6 +209,7 @@ class AsyncAdaptedQueue:
             self._queue = asyncio.LifoQueue(maxsize=maxsize)
         else:
             self._queue = asyncio.Queue(maxsize=maxsize)
+        self.use_lifo = use_lifo
         self.maxsize = maxsize
         self.empty = self._queue.empty
         self.full = self._queue.full
