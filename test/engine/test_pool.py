@@ -9,6 +9,7 @@ from sqlalchemy import event
 from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import testing
+from sqlalchemy.engine import default
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
 from sqlalchemy.testing import assert_raises_message
@@ -17,6 +18,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import ANY
 from sqlalchemy.testing.mock import call
@@ -24,7 +26,6 @@ from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import lazy_gc
-
 
 join_timeout = 10
 
@@ -219,6 +220,60 @@ class PoolTest(PoolTestBase):
         is_(c2, r1.connection)
 
         eq_(c2.mock_calls, [])
+
+    @testing.combinations(
+        (
+            pool.QueuePool,
+            dict(pool_size=8, max_overflow=10, timeout=25, use_lifo=True),
+        ),
+        (pool.QueuePool, {}),
+        (pool.NullPool, {}),
+        (pool.SingletonThreadPool, {}),
+        (pool.StaticPool, {}),
+        (pool.AssertionPool, {}),
+    )
+    def test_recreate_state(self, pool_cls, pool_args):
+        creator = object()
+        pool_args["pre_ping"] = True
+        pool_args["reset_on_return"] = "commit"
+        pool_args["recycle"] = 35
+        pool_args["logging_name"] = "somepool"
+        pool_args["dialect"] = default.DefaultDialect()
+        pool_args["echo"] = "debug"
+
+        p1 = pool_cls(creator=creator, **pool_args)
+
+        cls_keys = dir(pool_cls)
+
+        d1 = dict(p1.__dict__)
+
+        p2 = p1.recreate()
+
+        d2 = dict(p2.__dict__)
+
+        for k in cls_keys:
+            d1.pop(k, None)
+            d2.pop(k, None)
+
+        for k in (
+            "_threadconns",
+            "_invoke_creator",
+            "_pool",
+            "_overflow_lock",
+            "_fairy",
+            "_conn",
+            "logger",
+        ):
+            if k in d2:
+                d2[k] = mock.ANY
+
+        eq_(d1, d2)
+
+        eq_(p1.echo, p2.echo)
+        is_(p1._dialect, p2._dialect)
+
+        if "use_lifo" in pool_args:
+            eq_(p1._pool.use_lifo, p2._pool.use_lifo)
 
 
 class PoolDialectTest(PoolTestBase):
