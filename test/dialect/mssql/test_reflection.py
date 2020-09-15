@@ -25,6 +25,7 @@ from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -255,45 +256,48 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         ("global_temp", "##tmp", True),
         ("nonexistent", "#no_es_bueno", False),
         id_="iaa",
+        argnames="table_name, exists",
     )
-    def test_temporary_table(self, table_name, exists):
+    def test_temporary_table(self, connection, table_name, exists):
         metadata = self.metadata
         if exists:
-            # TODO: why this test hangs when using the connection fixture?
-            with testing.db.connect() as conn:
-                tran = conn.begin()
-                conn.execute(
-                    (
-                        "CREATE TABLE %s "
-                        "(id int primary key, txt nvarchar(50), dt2 datetime2)"  # noqa
-                    )
-                    % table_name
+            tt = Table(
+                table_name,
+                self.metadata,
+                Column("id", Integer, primary_key=True),
+                Column("txt", mssql.NVARCHAR(50)),
+                Column("dt2", mssql.DATETIME2),
+            )
+            tt.create(connection)
+            connection.execute(
+                tt.insert(),
+                [
+                    {
+                        "id": 1,
+                        "txt": u"foo",
+                        "dt2": datetime.datetime(2020, 1, 1, 1, 1, 1),
+                    },
+                    {
+                        "id": 2,
+                        "txt": u"bar",
+                        "dt2": datetime.datetime(2020, 2, 2, 2, 2, 2),
+                    },
+                ],
+            )
+
+        if not exists:
+            with expect_raises(exc.NoSuchTableError):
+                Table(
+                    table_name, metadata, autoload_with=connection,
                 )
-                conn.execute(
-                    (
-                        "INSERT INTO %s (id, txt, dt2) VALUES "
-                        "(1, N'foo', '2020-01-01 01:01:01'), "
-                        "(2, N'bar', '2020-02-02 02:02:02') "
-                    )
-                    % table_name
-                )
-                tran.commit()
-                tran = conn.begin()
-                try:
-                    tmp_t = Table(
-                        table_name, metadata, autoload_with=testing.db,
-                    )
-                    tran.commit()
-                    result = conn.execute(
-                        tmp_t.select().where(tmp_t.c.id == 2)
-                    ).fetchall()
-                    eq_(
-                        result,
-                        [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
-                    )
-                except exc.NoSuchTableError:
-                    if exists:
-                        raise
+        else:
+            tmp_t = Table(table_name, metadata, autoload_with=connection)
+            result = connection.execute(
+                tmp_t.select().where(tmp_t.c.id == 2)
+            ).fetchall()
+            eq_(
+                result, [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
+            )
 
     @testing.provide_metadata
     def test_db_qualified_items(self):

@@ -2938,45 +2938,54 @@ class MSDialect(default.DefaultDialect):
             return view_def
 
     def _get_internal_temp_table_name(self, connection, tablename):
-        result = connection.execute(
-            sql.text(
-                "select table_name "
-                "from tempdb.information_schema.tables "
-                "where table_name like :p1"
-            ),
-            {
-                "p1": tablename
-                + (("___%") if not tablename.startswith("##") else "")
-            },
-        ).fetchall()
-        if len(result) > 1:
-            raise exc.UnreflectableTableError(
-                "Found more than one temporary table named '%s' in tempdb "
-                "at this time. Cannot reliably resolve that name to its "
-                "internal table name." % tablename
+        # it's likely that schema is always "dbo", but since we can
+        # get it here, let's get it.
+        # see https://stackoverflow.com/questions/8311959/
+        # specifying-schema-for-temporary-tables
+
+        try:
+            return connection.execute(
+                sql.text(
+                    "select table_schema, table_name "
+                    "from tempdb.information_schema.tables "
+                    "where table_name like :p1"
+                ),
+                {
+                    "p1": tablename
+                    + (("___%") if not tablename.startswith("##") else "")
+                },
+            ).one()
+        except exc.MultipleResultsFound as me:
+            util.raise_(
+                exc.UnreflectableTableError(
+                    "Found more than one temporary table named '%s' in tempdb "
+                    "at this time. Cannot reliably resolve that name to its "
+                    "internal table name." % tablename
+                ),
+                replace_context=me,
             )
-        elif len(result) == 0:
-            raise exc.NoSuchTableError(
-                "Unable to find a temporary table named '%s' in tempdb."
-                % tablename
+        except exc.NoResultFound as ne:
+            util.raise_(
+                exc.NoSuchTableError(
+                    "Unable to find a temporary table named '%s' in tempdb."
+                    % tablename
+                ),
+                replace_context=ne,
             )
-        else:
-            return result[0][0]
 
     @reflection.cache
     @_db_plus_owner
     def get_columns(self, connection, tablename, dbname, owner, schema, **kw):
         is_temp_table = tablename.startswith("#")
         if is_temp_table:
-            tablename = self._get_internal_temp_table_name(
+            owner, tablename = self._get_internal_temp_table_name(
                 connection, tablename
             )
-        # Get base columns
-        columns = (
-            ischema.mssql_temp_table_columns
-            if is_temp_table
-            else ischema.columns
-        )
+
+            columns = ischema.mssql_temp_table_columns
+        else:
+            columns = ischema.columns
+
         computed_cols = ischema.computed_columns
         if owner:
             whereclause = sql.and_(
@@ -3016,6 +3025,7 @@ class MSDialect(default.DefaultDialect):
         )
 
         c = connection.execution_options(future_result=True).execute(s)
+
         cols = []
         for row in c.mappings():
             name = row[columns.c.column_name]
