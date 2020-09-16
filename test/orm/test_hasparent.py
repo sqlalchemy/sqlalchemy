@@ -132,6 +132,7 @@ class ParentRemovalTest(fixtures.MappedTest):
         s, u1, a1 = self._fixture()
 
         s._expunge_states([attributes.instance_state(u1)])
+
         del u1
         gc_collect()
 
@@ -140,8 +141,9 @@ class ParentRemovalTest(fixtures.MappedTest):
         # primary key change.  now we
         # can't rely on state.key as the
         # identifier.
-        u1.id = 5
-        a1.user_id = 5
+        new_id = u1.id + 10
+        u1.id = new_id
+        a1.user_id = new_id
         s.flush()
 
         assert_raises_message(
