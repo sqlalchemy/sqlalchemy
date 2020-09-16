@@ -1,0 +1,7 @@
+.. change::
+    :tags: mysql, sql
+    :tickets: 5696
+
+    Added missing keywords to the `RESERVED_WORDS` list for the mysql dialect:
+    action, level, mode, status, text, time.
+    Pull request courtesy Oscar Batori.
