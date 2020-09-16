@@ -225,7 +225,9 @@ class InsertBehaviorTest(fixtures.TablesTest):
         )
 
         connection.execute(
-            table.insert(inline=True).from_select(
+            table.insert()
+            .inline()
+            .from_select(
                 ("id", "data"),
                 select(table.c.id + 5, table.c.data).where(
                     table.c.data.in_(["data2", "data3"])
@@ -253,7 +255,9 @@ class InsertBehaviorTest(fixtures.TablesTest):
         )
 
         connection.execute(
-            table.insert(inline=True).from_select(
+            table.insert()
+            .inline()
+            .from_select(
                 ("id", "data"),
                 select(table.c.id + 5, table.c.data).where(
                     table.c.data.in_(["data2", "data3"])

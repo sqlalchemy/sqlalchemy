@@ -4612,7 +4612,7 @@ class Select(
 
         """
         return self.with_only_columns(
-            util.preloaded.sql_util.reduce_columns(
+            *util.preloaded.sql_util.reduce_columns(
                 self._exported_columns_iterator(),
                 only_synonyms=only_synonyms,
                 *(self._where_criteria + self._from_obj)

@@ -2915,7 +2915,7 @@ class Query(
             self.enable_eagerloads(False)
             .add_columns(sql.literal_column("1"))
             .with_labels()
-            .statement.with_only_columns([1])
+            .statement.with_only_columns(1)
         )
 
         ezero = self._entity_from_pre_ent_zero()
@@ -3098,7 +3098,16 @@ class Query(
                     bulk_ud.query = new_query
             self = bulk_ud.query
 
-        upd = sql.update(*self._raw_columns, **update_args).values(values)
+        upd = sql.update(*self._raw_columns)
+
+        ppo = update_args.pop("preserve_parameter_order", False)
+        if ppo:
+            upd = upd.ordered_values(*values)
+        else:
+            upd = upd.values(values)
+        if update_args:
+            upd = upd.with_dialect_options(**update_args)
+
         upd._where_criteria = self._where_criteria
         result = self.session.execute(
             upd,

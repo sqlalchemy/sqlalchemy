@@ -27,7 +27,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @classmethod
     def setup_class(cls):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
         global info_table
         info_table = Table(
             "infos",
@@ -36,24 +36,29 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("info", String(30)),
         )
 
-        info_table.create()
+        with testing.db.begin() as conn:
+            info_table.create(conn)
 
-        info_table.insert().execute(
-            {"pk": 1, "info": "pk_1_data"},
-            {"pk": 2, "info": "pk_2_data"},
-            {"pk": 3, "info": "pk_3_data"},
-            {"pk": 4, "info": "pk_4_data"},
-            {"pk": 5, "info": "pk_5_data"},
-            {"pk": 6, "info": "pk_6_data"},
-        )
+            conn.execute(
+                info_table.insert(),
+                [
+                    {"pk": 1, "info": "pk_1_data"},
+                    {"pk": 2, "info": "pk_2_data"},
+                    {"pk": 3, "info": "pk_3_data"},
+                    {"pk": 4, "info": "pk_4_data"},
+                    {"pk": 5, "info": "pk_5_data"},
+                    {"pk": 6, "info": "pk_6_data"},
+                ],
+            )
 
     @classmethod
     def teardown_class(cls):
-        info_table.drop()
+        with testing.db.begin() as conn:
+            info_table.drop(conn)
 
     @testing.fails_on("firebird", "FIXME: unknown")
     @testing.requires.subqueries
-    def test_case(self):
+    def test_case(self, connection):
         inner = select(
             case(
                 (info_table.c.pk < 3, "lessthan3"),
@@ -63,7 +68,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             info_table.c.info,
         ).select_from(info_table)
 
-        inner_result = inner.execute().fetchall()
+        inner_result = connection.execute(inner).all()
 
         # Outputs:
         # lessthan3 1 pk_1_data
@@ -86,7 +91,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         outer = select(inner.alias("q_inner"))
 
-        outer_result = outer.execute().fetchall()
+        outer_result = connection.execute(outer).all()
 
         assert outer_result == [
             ("lessthan3", 1, "pk_1_data"),
@@ -107,7 +112,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             info_table.c.info,
         ).select_from(info_table)
 
-        else_result = w_else.execute().fetchall()
+        else_result = connection.execute(w_else).all()
 
         eq_(
             else_result,
@@ -149,7 +154,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END",
         )
 
-    def test_text_doesnt_explode(self):
+    def test_text_doesnt_explode(self, connection):
 
         for s in [
             select(
@@ -169,7 +174,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             ).order_by(info_table.c.info),
         ]:
             eq_(
-                s.execute().fetchall(),
+                connection.execute(s).all(),
                 [("no",), ("no",), ("no",), ("yes",), ("no",), ("no",)],
             )
 

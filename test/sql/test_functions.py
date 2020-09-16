@@ -990,30 +990,32 @@ class ExecuteTest(fixtures.TestBase):
             Column("stuff", String(20), onupdate="thisisstuff"),
         )
         meta.create_all(connection)
-        connection.execute(t.insert(values=dict(value=func.length("one"))))
+        connection.execute(t.insert().values(value=func.length("one")))
         eq_(connection.execute(t.select()).first().value, 3)
-        connection.execute(t.update(values=dict(value=func.length("asfda"))))
+        connection.execute(t.update().values(value=func.length("asfda")))
         eq_(connection.execute(t.select()).first().value, 5)
 
         r = connection.execute(
-            t.insert(values=dict(value=func.length("sfsaafsda")))
+            t.insert().values(value=func.length("sfsaafsda"))
         )
         id_ = r.inserted_primary_key[0]
-        eq_(connection.execute(t.select(t.c.id == id_)).first().value, 9)
-        connection.execute(t.update(values={t.c.value: func.length("asdf")}))
+        eq_(
+            connection.execute(t.select().where(t.c.id == id_)).first().value,
+            9,
+        )
+        connection.execute(t.update().values({t.c.value: func.length("asdf")}))
         eq_(connection.execute(t.select()).first().value, 4)
         connection.execute(t2.insert())
-        connection.execute(t2.insert(values=dict(value=func.length("one"))))
+        connection.execute(t2.insert().values(value=func.length("one")))
         connection.execute(
-            t2.insert(values=dict(value=func.length("asfda") + -19)),
-            stuff="hi",
+            t2.insert().values(value=func.length("asfda") + -19), stuff="hi",
         )
 
         res = sorted(connection.execute(select(t2.c.value, t2.c.stuff)))
         eq_(res, [(-14, "hi"), (3, None), (7, None)])
 
         connection.execute(
-            t2.update(values=dict(value=func.length("asdsafasd"))),
+            t2.update().values(value=func.length("asdsafasd")),
             stuff="some stuff",
         )
         eq_(
@@ -1023,23 +1025,18 @@ class ExecuteTest(fixtures.TestBase):
 
         connection.execute(t2.delete())
 
-        connection.execute(
-            t2.insert(values=dict(value=func.length("one") + 8))
-        )
+        connection.execute(t2.insert().values(value=func.length("one") + 8))
         eq_(connection.execute(t2.select()).first().value, 11)
 
-        connection.execute(t2.update(values=dict(value=func.length("asfda"))))
+        connection.execute(t2.update().values(value=func.length("asfda")))
         eq_(
             connection.execute(select(t2.c.value, t2.c.stuff)).first(),
             (5, "thisisstuff"),
         )
 
         connection.execute(
-            t2.update(
-                values={
-                    t2.c.value: func.length("asfdaasdf"),
-                    t2.c.stuff: "foo",
-                }
+            t2.update().values(
+                {t2.c.value: func.length("asfdaasdf"), t2.c.stuff: "foo"}
             )
         )
 

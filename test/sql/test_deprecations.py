@@ -1,5 +1,8 @@
 #! coding: utf-8
 
+import itertools
+import random
+
 from sqlalchemy import alias
 from sqlalchemy import and_
 from sqlalchemy import bindparam
@@ -28,9 +31,11 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
+from sqlalchemy.sql import literal
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
+from sqlalchemy.sql import update
 from sqlalchemy.sql import visitors
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
@@ -46,6 +51,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from .test_update import _UpdateFromTestBase
 
 
 class ToMetaDataTest(fixtures.TestBase):
@@ -1675,7 +1681,7 @@ class DefaultTest(fixtures.TestBase):
             eq_(conn.execute(select(table)).first(), (5, 12))
 
 
-class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
+class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def test_insert_inline_kw_defaults(self):
@@ -1768,6 +1774,259 @@ class DMLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt, "UPDATE foo SET bar=%s LIMIT 10", dialect="mysql"
+        )
+
+    def test_update_whereclause(self):
+        table1 = table(
+            "mytable", Column("myid", Integer), Column("name", String(30)),
+        )
+
+        with testing.expect_deprecated_20(
+            "The update.whereclause parameter will be "
+            "removed in SQLAlchemy 2.0"
+        ):
+            self.assert_compile(
+                table1.update(table1.c.myid == 7),
+                "UPDATE mytable SET myid=:myid, name=:name "
+                "WHERE mytable.myid = :myid_1",
+            )
+
+    def test_update_values(self):
+        table1 = table(
+            "mytable", Column("myid", Integer), Column("name", String(30)),
+        )
+
+        with testing.expect_deprecated_20(
+            "The update.values parameter will be removed in SQLAlchemy 2.0"
+        ):
+            self.assert_compile(
+                table1.update(values={table1.c.myid: 7}),
+                "UPDATE mytable SET myid=:myid",
+            )
+
+    def test_delete_whereclause(self):
+        table1 = table("mytable", Column("myid", Integer),)
+
+        with testing.expect_deprecated_20(
+            "The delete.whereclause parameter will be "
+            "removed in SQLAlchemy 2.0"
+        ):
+            self.assert_compile(
+                table1.delete(table1.c.myid == 7),
+                "DELETE FROM mytable WHERE mytable.myid = :myid_1",
+            )
+
+    def test_update_ordered_parameters_fire_onupdate(self):
+        table = self.tables.update_w_default
+
+        values = [(table.c.y, table.c.x + 5), ("x", 10)]
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            self.assert_compile(
+                table.update(preserve_parameter_order=True).values(values),
+                "UPDATE update_w_default "
+                "SET ycol=(update_w_default.x + :x_1), "
+                "x=:x, data=:data",
+            )
+
+    def test_update_ordered_parameters_override_onupdate(self):
+        table = self.tables.update_w_default
+
+        values = [
+            (table.c.y, table.c.x + 5),
+            (table.c.data, table.c.x + 10),
+            ("x", 10),
+        ]
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            self.assert_compile(
+                table.update(preserve_parameter_order=True).values(values),
+                "UPDATE update_w_default "
+                "SET ycol=(update_w_default.x + :x_1), "
+                "data=(update_w_default.x + :x_2), x=:x",
+            )
+
+    def test_update_ordered_parameters_oldstyle_1(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + "lala"),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
+        ]
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0.",
+            "The update.whereclause parameter will be "
+            "removed in SQLAlchemy 2.0",
+            "The update.values parameter will be removed in SQLAlchemy 2.0",
+        ):
+            self.assert_compile(
+                update(
+                    table1,
+                    (table1.c.myid == func.hoho(4))
+                    & (
+                        table1.c.name
+                        == literal("foo") + table1.c.name + literal("lala")
+                    ),
+                    preserve_parameter_order=True,
+                    values=values,
+                ),
+                "UPDATE mytable "
+                "SET "
+                "name=(mytable.name || :name_1), "
+                "myid=do_stuff(mytable.myid, :param_1) "
+                "WHERE "
+                "mytable.myid = hoho(:hoho_1) AND "
+                "mytable.name = :param_2 || mytable.name || :param_3",
+            )
+
+    def test_update_ordered_parameters_oldstyle_2(self):
+        table1 = self.tables.mytable
+
+        # Confirm that we can pass values as list value pairs
+        # note these are ordered *differently* from table.c
+        values = [
+            (table1.c.name, table1.c.name + "lala"),
+            ("description", "some desc"),
+            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
+        ]
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0.",
+            "The update.whereclause parameter will be "
+            "removed in SQLAlchemy 2.0",
+        ):
+            self.assert_compile(
+                update(
+                    table1,
+                    (table1.c.myid == func.hoho(4))
+                    & (
+                        table1.c.name
+                        == literal("foo") + table1.c.name + literal("lala")
+                    ),
+                    preserve_parameter_order=True,
+                ).values(values),
+                "UPDATE mytable "
+                "SET "
+                "name=(mytable.name || :name_1), "
+                "description=:description, "
+                "myid=do_stuff(mytable.myid, :param_1) "
+                "WHERE "
+                "mytable.myid = hoho(:hoho_1) AND "
+                "mytable.name = :param_2 || mytable.name || :param_3",
+            )
+
+    def test_update_preserve_order_reqs_listtups(self):
+        table1 = self.tables.mytable
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            testing.assert_raises_message(
+                ValueError,
+                r"When preserve_parameter_order is True, values\(\) "
+                r"only accepts a list of 2-tuples",
+                table1.update(preserve_parameter_order=True).values,
+                {"description": "foo", "name": "bar"},
+            )
+
+    @testing.fixture
+    def randomized_param_order_update(self):
+        from sqlalchemy.sql.dml import UpdateDMLState
+
+        super_process_ordered_values = UpdateDMLState._process_ordered_values
+
+        # this fixture is needed for Python 3.6 and above to work around
+        # dictionaries being insert-ordered.  in python 2.7 the previous
+        # logic fails pretty easily without this fixture.
+        def _process_ordered_values(self, statement):
+            super_process_ordered_values(self, statement)
+
+            tuples = list(self._dict_parameters.items())
+            random.shuffle(tuples)
+            self._dict_parameters = dict(tuples)
+
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+
+        with mock.patch.object(
+            UpdateDMLState, "_process_ordered_values", _process_ordered_values
+        ):
+            yield
+
+    def random_update_order_parameters():
+        from sqlalchemy import ARRAY
+
+        t = table(
+            "foo",
+            column("data1", ARRAY(Integer)),
+            column("data2", ARRAY(Integer)),
+            column("data3", ARRAY(Integer)),
+            column("data4", ARRAY(Integer)),
+        )
+
+        idx_to_value = [
+            (t.c.data1, 5, 7),
+            (t.c.data2, 10, 18),
+            (t.c.data3, 8, 4),
+            (t.c.data4, 12, 14),
+        ]
+
+        def combinations():
+            while True:
+                random.shuffle(idx_to_value)
+                yield list(idx_to_value)
+
+        return testing.combinations(
+            *[
+                (t, combination)
+                for i, combination in zip(range(10), combinations())
+            ],
+            argnames="t, idx_to_value"
+        )
+
+    @random_update_order_parameters()
+    def test_update_to_expression_ppo(
+        self, randomized_param_order_update, t, idx_to_value
+    ):
+        dialect = default.StrCompileDialect()
+        dialect.paramstyle = "qmark"
+        dialect.positional = True
+
+        with testing.expect_deprecated_20(
+            "The update.preserve_parameter_order parameter will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            stmt = t.update(preserve_parameter_order=True).values(
+                [(col[idx], val) for col, idx, val in idx_to_value]
+            )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE foo SET %s"
+            % (
+                ", ".join(
+                    "%s[?]=?" % col.key for col, idx, val in idx_to_value
+                )
+            ),
+            dialect=dialect,
+            checkpositional=tuple(
+                itertools.chain.from_iterable(
+                    (idx, val) for col, idx, val in idx_to_value
+                )
+            ),
         )
 
 

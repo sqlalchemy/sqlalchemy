@@ -19,7 +19,6 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
@@ -43,6 +42,7 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -194,7 +194,7 @@ class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
             child_id = Column(Integer, ForeignKey("a.id"))
             child = relationship("A")
 
-            p_a = case([(discriminator == "a", "a")], else_="b")
+            p_a = case((discriminator == "a", "a"), else_="b")
 
             __mapper_args__ = {
                 "polymorphic_identity": "a",
@@ -455,7 +455,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_expr_explicit_map(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         mapper(
             Parent,
             t1,
@@ -470,7 +470,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_expr_implicit_map_no_label_joined(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
         mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
 
@@ -479,9 +479,9 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_expr_implicit_map_w_label_joined(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case(
-            [(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")]
-        ).label(None)
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child")).label(
+            None
+        )
         mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
         mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
 
@@ -492,7 +492,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         with a standalone expr"""
         t1 = self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
         mapper(Child, inherits=Parent, polymorphic_identity="child")
 
@@ -503,9 +503,9 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         with a standalone expr"""
         t1 = self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case(
-            [(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")]
-        ).label(None)
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child")).label(
+            None
+        )
         mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
         mapper(Child, inherits=Parent, polymorphic_identity="child")
 
@@ -514,7 +514,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_column_prop(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         cprop = column_property(expr)
         mapper(
             Parent,
@@ -530,7 +530,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
     def test_polymorphic_on_column_str_prop(self):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
-        expr = case([(t1.c.x == "p", "parent"), (t1.c.x == "c", "child")])
+        expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         cprop = column_property(expr)
         mapper(
             Parent,
@@ -1158,13 +1158,10 @@ class GetTest(fixtures.MappedTest):
         class Blub(Bar):
             pass
 
-    def test_get_polymorphic(self):
-        self._do_get_test(True)
-
-    def test_get_nonpolymorphic(self):
-        self._do_get_test(False)
-
-    def _do_get_test(self, polymorphic):
+    @testing.combinations(
+        ("polymorphic", True), ("test_get_nonpolymorphic", False), id_="ia"
+    )
+    def test_get(self, polymorphic):
         foo, Bar, Blub, blub, bar, Foo = (
             self.tables.foo,
             self.classes.Bar,
@@ -1197,18 +1194,18 @@ class GetTest(fixtures.MappedTest):
         if polymorphic:
 
             def go():
-                assert sess.query(Foo).get(f.id) is f
-                assert sess.query(Foo).get(b.id) is b
-                assert sess.query(Foo).get(bl.id) is bl
-                assert sess.query(Bar).get(b.id) is b
-                assert sess.query(Bar).get(bl.id) is bl
-                assert sess.query(Blub).get(bl.id) is bl
+                assert sess.get(Foo, f.id) is f
+                assert sess.get(Foo, b.id) is b
+                assert sess.get(Foo, bl.id) is bl
+                assert sess.get(Bar, b.id) is b
+                assert sess.get(Bar, bl.id) is bl
+                assert sess.get(Blub, bl.id) is bl
 
                 # test class mismatches - item is present
                 # in the identity map but we requested a subclass
-                assert sess.query(Blub).get(f.id) is None
-                assert sess.query(Blub).get(b.id) is None
-                assert sess.query(Bar).get(f.id) is None
+                assert sess.get(Blub, f.id) is None
+                assert sess.get(Blub, b.id) is None
+                assert sess.get(Bar, f.id) is None
 
             self.assert_sql_count(testing.db, go, 0)
         else:
@@ -1217,20 +1214,20 @@ class GetTest(fixtures.MappedTest):
             # polymorphic.  the important part being that get() always
             # returns an instance of the query's type.
             def go():
-                assert sess.query(Foo).get(f.id) is f
+                assert sess.get(Foo, f.id) is f
 
-                bb = sess.query(Foo).get(b.id)
+                bb = sess.get(Foo, b.id)
                 assert isinstance(b, Foo) and bb.id == b.id
 
-                bll = sess.query(Foo).get(bl.id)
+                bll = sess.get(Foo, bl.id)
                 assert isinstance(bll, Foo) and bll.id == bl.id
 
-                assert sess.query(Bar).get(b.id) is b
+                assert sess.get(Bar, b.id) is b
 
-                bll = sess.query(Bar).get(bl.id)
+                bll = sess.get(Bar, bl.id)
                 assert isinstance(bll, Bar) and bll.id == bl.id
 
-                assert sess.query(Blub).get(bl.id) is bl
+                assert sess.get(Blub, bl.id) is bl
 
             self.assert_sql_count(testing.db, go, 3)
 
@@ -1241,8 +1238,7 @@ class EagerLazyTest(fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        global foo, bar, bar_foo
-        foo = Table(
+        Table(
             "foo",
             metadata,
             Column(
@@ -1250,22 +1246,25 @@ class EagerLazyTest(fixtures.MappedTest):
             ),
             Column("data", String(30)),
         )
-        bar = Table(
+        Table(
             "bar",
             metadata,
             Column("id", Integer, ForeignKey("foo.id"), primary_key=True),
             Column("bar_data", String(30)),
         )
 
-        bar_foo = Table(
+        Table(
             "bar_foo",
             metadata,
             Column("bar_id", Integer, ForeignKey("bar.id")),
             Column("foo_id", Integer, ForeignKey("foo.id")),
         )
 
-    def test_basic(self):
-        class Foo(object):
+    @classmethod
+    def setup_mappers(cls):
+        foo, bar, bar_foo = cls.tables("foo", "bar", "bar_foo")
+
+        class Foo(cls.Comparable):
             pass
 
         class Bar(Foo):
@@ -1278,17 +1277,24 @@ class EagerLazyTest(fixtures.MappedTest):
             "eager", relationship(foos, bar_foo, lazy="joined", viewonly=True)
         )
 
-        foo.insert().execute(data="foo1")
-        bar.insert().execute(id=1, data="bar1")
+    @classmethod
+    def insert_data(cls, connection):
+        foo, bar, bar_foo = cls.tables("foo", "bar", "bar_foo")
 
-        foo.insert().execute(data="foo2")
-        bar.insert().execute(id=2, data="bar2")
+        connection.execute(foo.insert(), dict(data="foo1"))
+        connection.execute(bar.insert(), dict(id=1, data="bar1"))
 
-        foo.insert().execute(data="foo3")  # 3
-        foo.insert().execute(data="foo4")  # 4
+        connection.execute(foo.insert(), dict(data="foo2"))
+        connection.execute(bar.insert(), dict(id=2, data="bar2"))
 
-        bar_foo.insert().execute(bar_id=1, foo_id=3)
-        bar_foo.insert().execute(bar_id=2, foo_id=4)
+        connection.execute(foo.insert(), dict(data="foo3"))  # 3
+        connection.execute(foo.insert(), dict(data="foo4"))  # 4
+
+        connection.execute(bar_foo.insert(), dict(bar_id=1, foo_id=3))
+        connection.execute(bar_foo.insert(), dict(bar_id=2, foo_id=4))
+
+    def test_basic(self):
+        Bar = self.classes.Bar
 
         sess = create_session()
         q = sess.query(Bar)
@@ -1464,7 +1470,7 @@ class FlushTest(fixtures.MappedTest):
         sess.add(a)
         sess.flush()
 
-        eq_(select(func.count("*")).select_from(user_roles).scalar(), 1)
+        eq_(sess.scalar(select(func.count("*")).select_from(user_roles)), 1)
 
     def test_two(self):
         admins, users, roles, user_roles = (
@@ -1514,7 +1520,7 @@ class FlushTest(fixtures.MappedTest):
 
         a.password = "sadmin"
         sess.flush()
-        eq_(select(func.count("*")).select_from(user_roles).scalar(), 1)
+        eq_(sess.scalar(select(func.count("*")).select_from(user_roles)), 1)
 
 
 class PassiveDeletesTest(fixtures.MappedTest):
@@ -2095,16 +2101,15 @@ class DistinctPKTest(fixtures.MappedTest):
 
     def _do_test(self, composite):
         session = create_session()
-        query = session.query(Employee)
 
         if composite:
-            alice1 = query.get([1, 2])
-            bob = query.get([2, 3])
-            alice2 = query.get([1, 2])
+            alice1 = session.get(Employee, [1, 2])
+            bob = session.get(Employee, [2, 3])
+            alice2 = session.get(Employee, [1, 2])
         else:
-            alice1 = query.get(1)
-            bob = query.get(2)
-            alice2 = query.get(1)
+            alice1 = session.get(Employee, 1)
+            bob = session.get(Employee, 2)
+            alice2 = session.get(Employee, 1)
 
             assert alice1.name == alice2.name == "alice"
             assert bob.name == "bob"
@@ -2142,22 +2147,23 @@ class SyncCompileTest(fixtures.MappedTest):
             Column("data3", String(128)),
         )
 
-    def test_joins(self):
-        for j1 in (
-            None,
-            _b_table.c.a_id == _a_table.c.id,
-            _a_table.c.id == _b_table.c.a_id,
-        ):
-            for j2 in (
-                None,
-                _b_table.c.a_id == _c_table.c.b_a_id,
-                _c_table.c.b_a_id == _b_table.c.a_id,
-            ):
-                self._do_test(j1, j2)
-                for t in reversed(_a_table.metadata.sorted_tables):
-                    t.delete().execute().close()
+    @testing.combinations(
+        lambda _a_table, _b_table: None,
+        lambda _a_table, _b_table: _b_table.c.a_id == _a_table.c.id,
+        lambda _a_table, _b_table: _a_table.c.id == _b_table.c.a_id,
+        argnames="j1",
+    )
+    @testing.combinations(
+        lambda _b_table, _c_table: None,
+        lambda _b_table, _c_table: _b_table.c.a_id == _c_table.c.b_a_id,
+        lambda _b_table, _c_table: _c_table.c.b_a_id == _b_table.c.a_id,
+        argnames="j2",
+    )
+    def test_joins(self, j1, j2):
+        _a_table, _b_table, _c_table = self.tables("a", "b", "c")
+        j1 = testing.resolve_lambda(j1, **locals())
+        j2 = testing.resolve_lambda(j2, **locals())
 
-    def _do_test(self, j1, j2):
         class A(object):
             def __init__(self, **kwargs):
                 for key, value in list(kwargs.items()):
@@ -2282,7 +2288,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         sess = create_session()
         sess.add(s1)
         sess.flush()
-        assert sess.query(Sub).get(10) is s1
+        assert sess.get(Sub, 10) is s1
 
     def test_override_onlyinparent(self):
         class Base(object):
@@ -2312,7 +2318,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         sess.flush()
 
         # s1 gets '10'
-        assert sess.query(Sub).get(10) is s1
+        assert sess.get(Sub, 10) is s1
 
         # s2 gets a new id, base_id is overwritten by the ultimate
         # PK col
@@ -2432,8 +2438,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        assert sess.query(Base).get(b1.base_id).subdata == "this is base"
-        assert sess.query(Sub).get(s1.base_id).subdata == "this is sub"
+        assert sess.get(Base, b1.base_id).subdata == "this is base"
+        assert sess.get(Sub, s1.base_id).subdata == "this is sub"
 
     def test_base_descriptors_over_base_cols(self):
         class Base(object):
@@ -2457,8 +2463,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        assert sess.query(Base).get(b1.base_id).data == "this is base"
-        assert sess.query(Sub).get(s1.base_id).data == "this is base"
+        assert sess.get(Base, b1.base_id).data == "this is base"
+        assert sess.get(Sub, s1.base_id).data == "this is base"
 
 
 class OptimizedLoadTest(fixtures.MappedTest):
@@ -2587,7 +2593,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             polymorphic_identity="sub",
             with_polymorphic=(
                 "*",
-                base.outerjoin(sub).select(use_labels=True).alias("foo"),
+                base.outerjoin(sub).select().apply_labels().alias("foo"),
             ),
         )
         sess = Session()
@@ -3602,4 +3608,4 @@ class NameConflictTest(fixtures.MappedTest):
         sess.flush()
         f_id = f.id
         sess.expunge_all()
-        assert sess.query(Content).get(f_id).content_type == "bar"
+        assert sess.get(Content, f_id).content_type == "bar"

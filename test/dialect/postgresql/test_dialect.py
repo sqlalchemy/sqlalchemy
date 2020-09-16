@@ -556,13 +556,17 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         t = self.tables.data
 
-        ins = t.insert(inline=True).values(
-            id=bindparam("id"),
-            x=select(literal_column("5"))
-            .select_from(self.tables.data)
-            .scalar_subquery(),
-            y=bindparam("y"),
-            z=bindparam("z"),
+        ins = (
+            t.insert()
+            .inline()
+            .values(
+                id=bindparam("id"),
+                x=select(literal_column("5"))
+                .select_from(self.tables.data)
+                .scalar_subquery(),
+                y=bindparam("y"),
+                z=bindparam("z"),
+            )
         )
         # compiled SQL has a newline in it
         eq_(
@@ -608,13 +612,17 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
 
         t = self.tables.data
 
-        ins = t.insert(inline=True).values(
-            id=bindparam("id"),
-            x=select(literal_column("5"))
-            .select_from(self.tables.data)
-            .scalar_subquery(),
-            y=bindparam("y"),
-            z=bindparam("z"),
+        ins = (
+            t.insert()
+            .inline()
+            .values(
+                id=bindparam("id"),
+                x=select(literal_column("5"))
+                .select_from(self.tables.data)
+                .scalar_subquery(),
+                y=bindparam("y"),
+                z=bindparam("z"),
+            )
         )
         # compiled SQL has a newline in it
         eq_(

@@ -195,13 +195,12 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         # test against a straight text subquery
-        u = update(
-            table1,
-            values={
+        u = update(table1).values(
+            {
                 table1.c.name: text(
                     "(select name from mytable where id=mytable.id)"
                 )
-            },
+            }
         )
         self.assert_compile(
             u,
@@ -213,13 +212,12 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         mt = table1.alias()
-        u = update(
-            table1,
-            values={
+        u = update(table1).values(
+            {
                 table1.c.name: select(mt.c.name)
                 .where(mt.c.myid == table1.c.myid)
                 .scalar_subquery()
-            },
+            }
         )
         self.assert_compile(
             u,
@@ -238,7 +236,11 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             .where(table2.c.otherid == table1.c.myid)
             .scalar_subquery()
         )
-        u = update(table1, table1.c.name == "jack", values={table1.c.name: s})
+        u = (
+            update(table1)
+            .where(table1.c.name == "jack")
+            .values({table1.c.name: s})
+        )
         self.assert_compile(
             u,
             "UPDATE mytable SET name=(SELECT myothertable.otherid, "
@@ -253,7 +255,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         # test a non-correlated WHERE clause
         s = select(table2.c.othername).where(table2.c.otherid == 7)
-        u = update(table1, table1.c.name == s.scalar_subquery())
+        u = update(table1).where(table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
             "UPDATE mytable SET myid=:myid, name=:name, "
@@ -268,7 +270,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
         # test one that is actually correlated...
         s = select(table2.c.othername).where(table2.c.otherid == table1.c.myid)
-        u = table1.update(table1.c.name == s.scalar_subquery())
+        u = table1.update().where(table1.c.name == s.scalar_subquery())
         self.assert_compile(
             u,
             "UPDATE mytable SET myid=:myid, name=:name, "
@@ -420,7 +422,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, table1.c.myid == 7),
+            update(table1).where(table1.c.myid == 7),
             "UPDATE mytable SET name=:name WHERE mytable.myid = :myid_1",
             params={table1.c.name: "fred"},
         )
@@ -440,7 +442,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, table1.c.myid == 7),
+            update(table1).where(table1.c.myid == 7),
             "UPDATE mytable SET name=:name WHERE mytable.myid = :myid_1",
             params={"name": "fred"},
         )
@@ -449,7 +451,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, values={table1.c.name: table1.c.myid}),
+            update(table1).values({table1.c.name: table1.c.myid}),
             "UPDATE mytable SET name=mytable.myid",
         )
 
@@ -457,11 +459,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(
-                table1,
-                whereclause=table1.c.name == bindparam("crit"),
-                values={table1.c.name: "hi"},
-            ),
+            update(table1)
+            .where(table1.c.name == bindparam("crit"))
+            .values({table1.c.name: "hi"},),
             "UPDATE mytable SET name=:name WHERE mytable.name = :crit",
             params={"crit": "notthere"},
             checkparams={"crit": "notthere", "name": "hi"},
@@ -471,11 +471,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(
-                table1,
-                table1.c.myid == 12,
-                values={table1.c.name: table1.c.myid},
-            ),
+            update(table1)
+            .where(table1.c.myid == 12)
+            .values({table1.c.name: table1.c.myid},),
             "UPDATE mytable "
             "SET name=mytable.myid, description=:description "
             "WHERE mytable.myid = :myid_1",
@@ -487,7 +485,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, table1.c.myid == 12, values={table1.c.myid: 9}),
+            update(table1)
+            .where(table1.c.myid == 12)
+            .values({table1.c.myid: 9}),
             "UPDATE mytable "
             "SET myid=:myid, description=:description "
             "WHERE mytable.myid = :myid_1",
@@ -498,7 +498,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         self.assert_compile(
-            update(table1, table1.c.myid == 12),
+            update(table1).where(table1.c.myid == 12),
             "UPDATE mytable SET myid=:myid WHERE mytable.myid = :myid_1",
             params={"myid": 18},
             checkparams={"myid": 18, "myid_1": 12},
@@ -507,7 +507,11 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_9(self):
         table1 = self.tables.mytable
 
-        s = table1.update(table1.c.myid == 12, values={table1.c.name: "lala"})
+        s = (
+            table1.update()
+            .where(table1.c.myid == 12)
+            .values({table1.c.name: "lala"})
+        )
         c = s.compile(column_keys=["id", "name"])
         eq_(str(s), str(c))
 
@@ -517,7 +521,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         v1 = {table1.c.name: table1.c.myid}
         v2 = {table1.c.name: table1.c.name + "foo"}
         self.assert_compile(
-            update(table1, table1.c.myid == 12, values=v1).values(v2),
+            update(table1).where(table1.c.myid == 12).values(v1).values(v2),
             "UPDATE mytable "
             "SET "
             "name=(mytable.name || :name_1), "
@@ -535,15 +539,15 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         }
 
         self.assert_compile(
-            update(
-                table1,
+            update(table1)
+            .where(
                 (table1.c.myid == func.hoho(4))
                 & (
                     table1.c.name
                     == literal("foo") + table1.c.name + literal("lala")
-                ),
-                values=values,
-            ),
+                )
+            )
+            .values(values),
             "UPDATE mytable "
             "SET "
             "myid=do_stuff(mytable.myid, :param_1), "
@@ -586,35 +590,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             column_keys=["j"],
         )
 
-    def test_update_ordered_parameters_oldstyle_1(self):
-        table1 = self.tables.mytable
-
-        # Confirm that we can pass values as list value pairs
-        # note these are ordered *differently* from table.c
-        values = [
-            (table1.c.name, table1.c.name + "lala"),
-            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
-        ]
-        self.assert_compile(
-            update(
-                table1,
-                (table1.c.myid == func.hoho(4))
-                & (
-                    table1.c.name
-                    == literal("foo") + table1.c.name + literal("lala")
-                ),
-                preserve_parameter_order=True,
-                values=values,
-            ),
-            "UPDATE mytable "
-            "SET "
-            "name=(mytable.name || :name_1), "
-            "myid=do_stuff(mytable.myid, :param_1) "
-            "WHERE "
-            "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
-        )
-
     def test_update_ordered_parameters_newstyle_1(self):
         table1 = self.tables.mytable
 
@@ -643,36 +618,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "mytable.name = :param_2 || mytable.name || :param_3",
         )
 
-    def test_update_ordered_parameters_oldstyle_2(self):
-        table1 = self.tables.mytable
-
-        # Confirm that we can pass values as list value pairs
-        # note these are ordered *differently* from table.c
-        values = [
-            (table1.c.name, table1.c.name + "lala"),
-            ("description", "some desc"),
-            (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
-        ]
-        self.assert_compile(
-            update(
-                table1,
-                (table1.c.myid == func.hoho(4))
-                & (
-                    table1.c.name
-                    == literal("foo") + table1.c.name + literal("lala")
-                ),
-                preserve_parameter_order=True,
-            ).values(values),
-            "UPDATE mytable "
-            "SET "
-            "name=(mytable.name || :name_1), "
-            "description=:description, "
-            "myid=do_stuff(mytable.myid, :param_1) "
-            "WHERE "
-            "mytable.myid = hoho(:hoho_1) AND "
-            "mytable.name = :param_2 || mytable.name || :param_3",
-        )
-
     def test_update_ordered_parameters_newstyle_2(self):
         table1 = self.tables.mytable
 
@@ -684,14 +629,15 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             (table1.c.myid, func.do_stuff(table1.c.myid, literal("hoho"))),
         ]
         self.assert_compile(
-            update(
-                table1,
+            update(table1)
+            .where(
                 (table1.c.myid == func.hoho(4))
                 & (
                     table1.c.name
                     == literal("foo") + table1.c.name + literal("lala")
                 ),
-            ).ordered_values(*values),
+            )
+            .ordered_values(*values),
             "UPDATE mytable "
             "SET "
             "name=(mytable.name || :name_1), "
@@ -741,42 +687,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt.compile,
         )
 
-    def test_update_ordered_parameters_fire_onupdate(self):
-        table = self.tables.update_w_default
-
-        values = [(table.c.y, table.c.x + 5), ("x", 10)]
-
-        self.assert_compile(
-            table.update(preserve_parameter_order=True).values(values),
-            "UPDATE update_w_default SET ycol=(update_w_default.x + :x_1), "
-            "x=:x, data=:data",
-        )
-
-    def test_update_ordered_parameters_override_onupdate(self):
-        table = self.tables.update_w_default
-
-        values = [
-            (table.c.y, table.c.x + 5),
-            (table.c.data, table.c.x + 10),
-            ("x", 10),
-        ]
-
-        self.assert_compile(
-            table.update(preserve_parameter_order=True).values(values),
-            "UPDATE update_w_default SET ycol=(update_w_default.x + :x_1), "
-            "data=(update_w_default.x + :x_2), x=:x",
-        )
-
-    def test_update_preserve_order_reqs_listtups(self):
-        table1 = self.tables.mytable
-        testing.assert_raises_message(
-            ValueError,
-            r"When preserve_parameter_order is True, values\(\) "
-            r"only accepts a list of 2-tuples",
-            table1.update(preserve_parameter_order=True).values,
-            {"description": "foo", "name": "bar"},
-        )
-
     def test_update_ordereddict(self):
         table1 = self.tables.mytable
 
@@ -790,15 +700,15 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            update(
-                table1,
+            update(table1)
+            .where(
                 (table1.c.myid == func.hoho(4))
                 & (
                     table1.c.name
                     == literal("foo") + table1.c.name + literal("lala")
                 ),
-                values=values,
-            ),
+            )
+            .values(values),
             "UPDATE mytable "
             "SET "
             "myid=do_stuff(mytable.myid, :param_1), "
@@ -954,35 +864,6 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             ),
         )
 
-    @random_update_order_parameters()
-    def test_update_to_expression_ppo(
-        self, randomized_param_order_update, t, idx_to_value
-    ):
-        dialect = default.StrCompileDialect()
-        dialect.paramstyle = "qmark"
-        dialect.positional = True
-
-        # deprecated pattern here
-        stmt = t.update(preserve_parameter_order=True).values(
-            [(col[idx], val) for col, idx, val in idx_to_value]
-        )
-
-        self.assert_compile(
-            stmt,
-            "UPDATE foo SET %s"
-            % (
-                ", ".join(
-                    "%s[?]=?" % col.key for col, idx, val in idx_to_value
-                )
-            ),
-            dialect=dialect,
-            checkpositional=tuple(
-                itertools.chain.from_iterable(
-                    (idx, val) for col, idx, val in idx_to_value
-                )
-            ),
-        )
-
     def test_update_to_expression_three(self):
         # this test is from test_defaults but exercises a particular
         # parameter ordering issue
@@ -1076,9 +957,9 @@ class UpdateFromCompileTest(
         # against the alias, but we name the table-bound column
         # in values.   The behavior here isn't really defined
         self.assert_compile(
-            update(talias1, talias1.c.myid == 7).values(
-                {table1.c.name: "fred"}
-            ),
+            update(talias1)
+            .where(talias1.c.myid == 7)
+            .values({table1.c.name: "fred"}),
             "UPDATE mytable AS t1 "
             "SET name=:name "
             "WHERE t1.myid = :myid_1",
@@ -1093,9 +974,9 @@ class UpdateFromCompileTest(
         # which is causing the "table1.c.name" param to be handled
         # as an "extra table", hence we see the full table name rendered.
         self.assert_compile(
-            update(talias1, table1.c.myid == 7).values(
-                {table1.c.name: "fred"}
-            ),
+            update(talias1)
+            .where(table1.c.myid == 7)
+            .values({table1.c.name: "fred"}),
             "UPDATE mytable AS t1 "
             "SET name=:mytable_name "
             "FROM mytable "
@@ -1108,9 +989,9 @@ class UpdateFromCompileTest(
         talias1 = table1.alias("t1")
 
         self.assert_compile(
-            update(talias1, table1.c.myid == 7).values(
-                {table1.c.name: "fred"}
-            ),
+            update(talias1)
+            .where(table1.c.myid == 7)
+            .values({table1.c.name: "fred"}),
             "UPDATE mytable AS t1, mytable SET mytable.name=%s "
             "WHERE mytable.myid = %s",
             checkparams={"mytable_name": "fred", "myid_1": 7},
@@ -1212,9 +1093,13 @@ class UpdateFromCompileTest(
 
         checkparams = {"email_address_1": "e1", "id_1": 7, "name": "newname"}
 
-        cols = [addresses.c.id, addresses.c.user_id, addresses.c.email_address]
-
-        subq = select(cols).where(addresses.c.id == 7).alias()
+        subq = (
+            select(
+                addresses.c.id, addresses.c.user_id, addresses.c.email_address
+            )
+            .where(addresses.c.id == 7)
+            .alias()
+        )
         self.assert_compile(
             users.update()
             .values(name="newname")

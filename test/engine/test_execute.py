@@ -351,6 +351,7 @@ class ExecuteTest(fixtures.TablesTest):
 
     def test_stmt_exception_bytestring_raised(self):
         name = util.u("méil")
+        users = self.tables.users
         with testing.db.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
@@ -3120,13 +3121,15 @@ class AutocommitKeywordFixture(object):
         with engine.connect() as conn:
             conn.exec_driver_sql("%s something table something" % keyword)
 
-            for _call in dbapi.connect().mock_calls:
-                _call.kwargs.clear()
-
             if expected:
-                eq_(dbapi.connect().mock_calls, [call.cursor(), call.commit()])
+                eq_(
+                    [n for (n, k, s) in dbapi.connect().mock_calls],
+                    ["cursor", "commit"],
+                )
             else:
-                eq_(dbapi.connect().mock_calls, [call.cursor()])
+                eq_(
+                    [n for (n, k, s) in dbapi.connect().mock_calls], ["cursor"]
+                )
 
 
 class AutocommitTextTest(AutocommitKeywordFixture, fixtures.TestBase):

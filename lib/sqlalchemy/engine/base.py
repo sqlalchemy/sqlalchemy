@@ -1350,6 +1350,7 @@ class Connection(Connectable):
             )
 
         dialect = self.dialect
+
         ret = self._execute_context(
             dialect,
             dialect.execution_ctx_cls._init_compiled,

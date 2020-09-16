@@ -5,7 +5,6 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
@@ -15,6 +14,7 @@ from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import create_session
 from ._poly_fixtures import _Polymorphic
 from ._poly_fixtures import _PolymorphicAliasedJoins
 from ._poly_fixtures import _PolymorphicJoins
@@ -148,18 +148,18 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 3)
 
         eq_(
-            select(func.count("*"))
-            .select_from(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .options(joinedload(Engineer.machines))
-                .order_by(Person.person_id)
-                .limit(2)
-                .offset(1)
-                .with_labels()
-                .subquery()
-            )
-            .scalar(),
+            sess.scalar(
+                select(func.count("*")).select_from(
+                    sess.query(Person)
+                    .with_polymorphic("*")
+                    .options(joinedload(Engineer.machines))
+                    .order_by(Person.person_id)
+                    .limit(2)
+                    .offset(1)
+                    .with_labels()
+                    .subquery()
+                )
+            ),
             2,
         )
 
@@ -170,21 +170,21 @@ class _PolymorphicTestBase(object):
         """
         sess = create_session()
         eq_(
-            sess.query(Person).get(e1.person_id),
+            sess.get(Person, e1.person_id),
             Engineer(name="dilbert", primary_language="java"),
         )
 
     def test_get_two(self):
         sess = create_session()
         eq_(
-            sess.query(Engineer).get(e1.person_id),
+            sess.get(Engineer, e1.person_id),
             Engineer(name="dilbert", primary_language="java"),
         )
 
     def test_get_three(self):
         sess = create_session()
         eq_(
-            sess.query(Manager).get(b1.person_id),
+            sess.get(Manager, b1.person_id),
             Boss(name="pointy haired boss", golf_swing="fore"),
         )
 
@@ -230,7 +230,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_multi_join_future(self):
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
         e = aliased(Person)
         c = aliased(Company)
 
@@ -283,7 +283,7 @@ class _PolymorphicTestBase(object):
         eq_(sess.query(Engineer).all()[0], Engineer(name="dilbert"))
 
     def test_filter_on_subclass_one_future(self):
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
         eq_(
             sess.execute(select(Engineer)).scalar(), Engineer(name="dilbert"),
         )
@@ -337,7 +337,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_nonaliased_one_future(self):
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
         eq_(
             sess.execute(
                 select(Person)
@@ -396,7 +396,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_polymorphic_flag_aliased_one_future(self):
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
 
         pa = aliased(Paperwork)
         eq_(
@@ -496,7 +496,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_from_with_polymorphic_nonaliased_one_future(self):
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
 
         pm = with_polymorphic(Person, [Manager])
         eq_(
@@ -1552,16 +1552,19 @@ class _PolymorphicTestBase(object):
         palias = aliased(Person)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
-        eq_(
-            sess.query(Person, palias)
-            .filter(Person.company_id == palias.company_id)
-            .filter(Person.name == "dogbert")
-            .filter(Person.person_id > palias.person_id)
-            .from_self()
-            .order_by(Person.person_id, palias.person_id)
-            .all(),
-            expected,
-        )
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            eq_(
+                sess.query(Person, palias)
+                .filter(Person.company_id == palias.company_id)
+                .filter(Person.name == "dogbert")
+                .filter(Person.person_id > palias.person_id)
+                .from_self()
+                .order_by(Person.person_id, palias.person_id)
+                .all(),
+                expected,
+            )
 
     def test_self_referential_two_point_five(self):
         """Using two aliases, the above case works.
@@ -1572,21 +1575,24 @@ class _PolymorphicTestBase(object):
 
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
-        eq_(
-            sess.query(palias, palias2)
-            .filter(palias.company_id == palias2.company_id)
-            .filter(palias.name == "dogbert")
-            .filter(palias.person_id > palias2.person_id)
-            .from_self()
-            .order_by(palias.person_id, palias2.person_id)
-            .all(),
-            expected,
-        )
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            eq_(
+                sess.query(palias, palias2)
+                .filter(palias.company_id == palias2.company_id)
+                .filter(palias.name == "dogbert")
+                .filter(palias.person_id > palias2.person_id)
+                .from_self()
+                .order_by(palias.person_id, palias2.person_id)
+                .all(),
+                expected,
+            )
 
     def test_self_referential_two_future(self):
         # TODO: this is the SECOND test *EVER* of an aliased class of
         # an aliased class.
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
         # not aliasing the first class
@@ -1615,7 +1621,7 @@ class _PolymorphicTestBase(object):
         # TODO: this is the first test *EVER* of an aliased class of
         # an aliased class.  we should add many more tests for this.
         # new case added in Id810f485c5f7ed971529489b84694e02a3356d6d
-        sess = create_session(testing.db, future=True)
+        sess = create_session(future=True)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
         # aliasing the first class

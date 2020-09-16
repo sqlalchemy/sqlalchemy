@@ -215,7 +215,7 @@ class UpdateBase(
                 "The :paramref:`%(func)s.whereclause` parameter "
                 "will be removed "
                 "in SQLAlchemy 2.0.  Please refer to the "
-                ":meth:`.%(classname)s.where` method."
+                ":meth:`%(classname)s.where` method."
             ),
             values=(
                 "The :paramref:`%(func)s.values` parameter will be removed "
@@ -308,8 +308,9 @@ class UpdateBase(
     def _validate_dialect_kwargs_deprecated(self, dialect_kw):
         util.warn_deprecated_20(
             "Passing dialect keyword arguments directly to the "
-            "constructor is deprecated and will be removed in SQLAlchemy "
+            "%s constructor is deprecated and will be removed in SQLAlchemy "
             "2.0.  Please use the ``with_dialect_options()`` method."
+            % (self.__class__.__name__)
         )
         self._validate_dialect_kwargs(dialect_kw)
 

@@ -366,7 +366,7 @@ def declarative_base(
     if bind is not None:
         # util.deprecated_params does not work
         util.warn_deprecated_20(
-            'The "bind" argument to declarative_base is'
+            "The ``bind`` argument to declarative_base is "
             "deprecated and will be removed in SQLAlchemy 2.0.",
         )
 
@@ -701,7 +701,7 @@ class registry(object):
 @util.deprecated_params(
     bind=(
         "2.0",
-        'The "bind" argument to declarative_base is'
+        "The ``bind`` argument to as_declarative is "
         "deprecated and will be removed in SQLAlchemy 2.0.",
     )
 )

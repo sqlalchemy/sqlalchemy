@@ -7,7 +7,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
@@ -18,6 +17,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -359,7 +359,7 @@ class ConcreteTest(fixtures.MappedTest):
         eq_(test_calls.mock_calls, [mock.call.engineer_info_instance()])
 
         session.add(tom)
-        session.flush()
+        session.commit()
 
         session.close()
 
@@ -443,9 +443,9 @@ class ConcreteTest(fixtures.MappedTest):
 
         assert (
             len(
-                testing.db.execute(
-                    session.query(Employee).with_labels().statement
-                ).fetchall()
+                session.connection()
+                .execute(session.query(Employee).with_labels().statement)
+                .fetchall()
             )
             == 3
         )
@@ -518,17 +518,19 @@ class ConcreteTest(fixtures.MappedTest):
         session.flush()
         eq_(
             len(
-                testing.db.execute(
+                session.connection()
+                .execute(
                     session.query(Employee)
                     .with_polymorphic("*", pjoin, pjoin.c.type)
                     .with_labels()
                     .statement
-                ).fetchall()
+                )
+                .fetchall()
             ),
             4,
         )
-        eq_(session.query(Employee).get(jdoe.employee_id), jdoe)
-        eq_(session.query(Engineer).get(jerry.employee_id), jerry)
+        eq_(session.get(Employee, jdoe.employee_id), jdoe)
+        eq_(session.get(Engineer, jerry.employee_id), jerry)
         eq_(
             set(
                 [
@@ -575,33 +577,41 @@ class ConcreteTest(fixtures.MappedTest):
         # test adaption of the column by wrapping the query in a
         # subquery
 
-        eq_(
-            len(
-                testing.db.execute(
-                    session.query(Engineer)
-                    .with_polymorphic("*", pjoin2, pjoin2.c.type)
-                    .from_self()
-                    .statement
-                ).fetchall()
-            ),
-            2,
-        )
-        eq_(
-            set(
-                [
-                    repr(x)
-                    for x in session.query(Engineer)
-                    .with_polymorphic("*", pjoin2, pjoin2.c.type)
-                    .from_self()
-                ]
-            ),
-            set(
-                [
-                    "Engineer Jerry knows how to program",
-                    "Hacker Kurt 'Badass' knows how to hack",
-                ]
-            ),
-        )
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            eq_(
+                len(
+                    session.connection()
+                    .execute(
+                        session.query(Engineer)
+                        .with_polymorphic("*", pjoin2, pjoin2.c.type)
+                        .from_self()
+                        .statement
+                    )
+                    .fetchall()
+                ),
+                2,
+            )
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            eq_(
+                set(
+                    [
+                        repr(x)
+                        for x in session.query(Engineer)
+                        .with_polymorphic("*", pjoin2, pjoin2.c.type)
+                        .from_self()
+                    ]
+                ),
+                set(
+                    [
+                        "Engineer Jerry knows how to program",
+                        "Hacker Kurt 'Badass' knows how to hack",
+                    ]
+                ),
+            )
 
     def test_relationship(self):
         pjoin = polymorphic_union(
@@ -638,7 +648,7 @@ class ConcreteTest(fixtures.MappedTest):
         session.expunge_all()
 
         def go():
-            c2 = session.query(Company).get(c.id)
+            c2 = session.get(Company, c.id)
             assert set([repr(x) for x in c2.employees]) == set(
                 [
                     "Engineer Kurt knows how to hack",
@@ -650,10 +660,8 @@ class ConcreteTest(fixtures.MappedTest):
         session.expunge_all()
 
         def go():
-            c2 = (
-                session.query(Company)
-                .options(joinedload(Company.employees))
-                .get(c.id)
+            c2 = session.get(
+                Company, c.id, options=[joinedload(Company.employees)]
             )
             assert set([repr(x) for x in c2.employees]) == set(
                 [
@@ -1174,13 +1182,17 @@ class ColKeysTest(fixtures.MappedTest):
     def insert_data(cls, connection):
         connection.execute(
             refugees_table.insert(),
-            dict(refugee_fid=1, name="refugee1"),
-            dict(refugee_fid=2, name="refugee2"),
+            [
+                dict(refugee_fid=1, name="refugee1"),
+                dict(refugee_fid=2, name="refugee2"),
+            ],
         )
         connection.execute(
             offices_table.insert(),
-            dict(office_fid=1, name="office1"),
-            dict(office_fid=2, name="office2"),
+            [
+                dict(office_fid=1, name="office1"),
+                dict(office_fid=2, name="office2"),
+            ],
         )
 
     def test_keys(self):
@@ -1220,7 +1232,7 @@ class ColKeysTest(fixtures.MappedTest):
             polymorphic_identity="refugee",
         )
         sess = create_session()
-        eq_(sess.query(Refugee).get(1).name, "refugee1")
-        eq_(sess.query(Refugee).get(2).name, "refugee2")
-        eq_(sess.query(Office).get(1).name, "office1")
-        eq_(sess.query(Office).get(2).name, "office2")
+        eq_(sess.get(Refugee, 1).name, "refugee1")
+        eq_(sess.get(Refugee, 2).name, "refugee2")
+        eq_(sess.get(Office, 1).name, "office1")
+        eq_(sess.get(Office, 2).name, "office2")

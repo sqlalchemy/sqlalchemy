@@ -351,9 +351,9 @@ class DefaultObjectTest(fixtures.TestBase):
             assert_raises_message(
                 sa.exc.ArgumentError,
                 r"SQL expression for WHERE/HAVING role expected, "
-                r"got \[(?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)\]",
-                t.select,
-                [const],
+                r"got (?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)",
+                t.select().where,
+                const,
             )
             assert_raises_message(
                 sa.exc.ArgumentError,
@@ -1006,29 +1006,31 @@ class PKIncrementTest(fixtures.TablesTest):
 
     # TODO: add coverage for increment on a secondary column in a key
     @testing.fails_on("firebird", "Data type unknown")
-    def _test_autoincrement(self, bind):
+    def _test_autoincrement(self, connection):
         aitable = self.tables.aitable
 
         ids = set()
-        rs = bind.execute(aitable.insert(), int1=1)
+        rs = connection.execute(aitable.insert(), int1=1)
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
-        rs = bind.execute(aitable.insert(), str1="row 2")
+        rs = connection.execute(aitable.insert(), str1="row 2")
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
-        rs = bind.execute(aitable.insert(), int1=3, str1="row 3")
+        rs = connection.execute(aitable.insert(), int1=3, str1="row 3")
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
-        rs = bind.execute(aitable.insert(values={"int1": func.length("four")}))
+        rs = connection.execute(
+            aitable.insert().values({"int1": func.length("four")})
+        )
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
@@ -1045,7 +1047,7 @@ class PKIncrementTest(fixtures.TablesTest):
         )
 
         eq_(
-            list(bind.execute(aitable.select().order_by(aitable.c.id))),
+            list(connection.execute(aitable.select().order_by(aitable.c.id))),
             [
                 (testing.db.dialect.default_sequence_base, 1, None),
                 (testing.db.dialect.default_sequence_base + 1, None, "row 2"),
@@ -1055,7 +1057,8 @@ class PKIncrementTest(fixtures.TablesTest):
         )
 
     def test_autoincrement_autocommit(self):
-        self._test_autoincrement(testing.db)
+        with testing.db.connect() as conn:
+            self._test_autoincrement(conn)
 
     def test_autoincrement_transaction(self):
         with testing.db.begin() as conn:

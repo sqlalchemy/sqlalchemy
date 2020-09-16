@@ -8,12 +8,12 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -21,6 +21,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.entities import ComparableEntity
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -589,10 +590,9 @@ class M2MFilterTest(fixtures.MappedTest):
         e4 = Engineer(name="e4")
         org1 = Organization(name="org1", engineers=[e1, e2])
         org2 = Organization(name="org2", engineers=[e3, e4])
-        sess = create_session(connection)
-        sess.add(org1)
-        sess.add(org2)
-        sess.flush()
+        with sessionmaker(connection).begin() as sess:
+            sess.add(org1)
+            sess.add(org2)
 
     def test_not_contains(self):
         Organization = self.classes.Organization
@@ -838,9 +838,11 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # another way to check
         eq_(
-            select(func.count("*"))
-            .select_from(q.limit(1).with_labels().subquery())
-            .scalar(),
+            sess.scalar(
+                select(func.count("*")).select_from(
+                    q.limit(1).with_labels().subquery()
+                )
+            ),
             1,
         )
         assert q.first() is c1
@@ -1134,15 +1136,16 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         global p1, p2
 
         Sub, Subparent = cls.classes.Sub, cls.classes.Subparent
-        sess = create_session(connection)
-        p1 = Subparent(
-            data="p1",
-            children=[Sub(data="s1"), Sub(data="s2"), Sub(data="s3")],
-        )
-        p2 = Subparent(data="p2", children=[Sub(data="s4"), Sub(data="s5")])
-        sess.add(p1)
-        sess.add(p2)
-        sess.flush()
+        with sessionmaker(connection).begin() as sess:
+            p1 = Subparent(
+                data="p1",
+                children=[Sub(data="s1"), Sub(data="s2"), Sub(data="s3")],
+            )
+            p2 = Subparent(
+                data="p2", children=[Sub(data="s4"), Sub(data="s5")]
+            )
+            sess.add(p1)
+            sess.add(p2)
 
     def test_joinedload(self):
         Subparent = self.classes.Subparent
@@ -1725,7 +1728,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep2 ON base2.id = ep2.base2_id",
         )
 
-    def test_six(self):
+    def test_six_legacy(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
         s = Session()
@@ -1735,8 +1738,38 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         # this query is coming out instead which is equivalent, but not
         # totally sure where this happens
 
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            self.assert_compile(
+                s.query(Sub2).from_self().join(Sub2.ep1).join(Sub2.ep2),
+                "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
+                "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
+                "anon_1.base2_data AS anon_1_base2_data, "
+                "anon_1.sub2_subdata AS anon_1_sub2_subdata "
+                "FROM (SELECT sub2.id AS sub2_id, base2.id AS base2_id, "
+                "base2.base1_id AS base2_base1_id, base2.data AS base2_data, "
+                "sub2.subdata AS sub2_subdata "
+                "FROM base2 JOIN sub2 ON base2.id = sub2.id) AS anon_1 "
+                "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
+                "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
+            )
+
+    def test_six(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        # as of from_self() changing in
+        # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
+        # this query is coming out instead which is equivalent, but not
+        # totally sure where this happens
+
+        stmt = select(Sub2)
+
+        subq = aliased(Sub2, stmt.apply_labels().subquery())
+
+        stmt = select(subq).join(subq.ep1).join(Sub2.ep2).apply_labels()
         self.assert_compile(
-            s.query(Sub2).from_self().join(Sub2.ep1).join(Sub2.ep2),
+            stmt,
             "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
             "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
             "anon_1.base2_data AS anon_1_base2_data, "
@@ -1749,7 +1782,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
         )
 
-    def test_seven(self):
+    def test_seven_legacy(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
         s = Session()
@@ -1758,16 +1791,74 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
         # this query is coming out instead which is equivalent, but not
         # totally sure where this happens
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+
+            self.assert_compile(
+                # adding Sub2 to the entities list helps it,
+                # otherwise the joins for Sub2.ep1/ep2 don't have columns
+                # to latch onto.   Can't really make it better than this
+                s.query(Parent, Sub2)
+                .join(Parent.sub1)
+                .join(Sub1.sub2)
+                .from_self()
+                .join(Sub2.ep1)
+                .join(Sub2.ep2),
+                "SELECT anon_1.parent_id AS anon_1_parent_id, "
+                "anon_1.parent_data AS anon_1_parent_data, "
+                "anon_1.sub2_id AS anon_1_sub2_id, "
+                "anon_1.base2_base1_id AS anon_1_base2_base1_id, "
+                "anon_1.base2_data AS anon_1_base2_data, "
+                "anon_1.sub2_subdata AS anon_1_sub2_subdata "
+                "FROM (SELECT parent.id AS parent_id, "
+                "parent.data AS parent_data, "
+                "sub2.id AS sub2_id, "
+                "base2.id AS base2_id, "
+                "base2.base1_id AS base2_base1_id, "
+                "base2.data AS base2_data, "
+                "sub2.subdata AS sub2_subdata "
+                "FROM parent JOIN (base1 JOIN sub1 ON base1.id = sub1.id) "
+                "ON parent.id = sub1.parent_id JOIN "
+                "(base2 JOIN sub2 ON base2.id = sub2.id) "
+                "ON base1.id = base2.base1_id) AS anon_1 "
+                "JOIN ep1 ON anon_1.sub2_id = ep1.base2_id "
+                "JOIN ep2 ON anon_1.sub2_id = ep2.base2_id",
+            )
+
+    def test_seven(self):
+        Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
+
+        # as of from_self() changing in
+        # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
+        # this query is coming out instead which is equivalent, but not
+        # totally sure where this happens
+
+        subq = (
+            select(Parent, Sub2)
+            .join(Parent.sub1)
+            .join(Sub1.sub2)
+            .apply_labels()
+            .subquery()
+        )
+
+        # another 1.4 supercharged select() statement ;)
+
+        palias = aliased(Parent, subq)
+        sub2alias = aliased(Sub2, subq)
+
+        stmt = (
+            select(palias, sub2alias)
+            .join(sub2alias.ep1)
+            .join(sub2alias.ep2)
+            .apply_labels()
+        )
+
         self.assert_compile(
             # adding Sub2 to the entities list helps it,
             # otherwise the joins for Sub2.ep1/ep2 don't have columns
             # to latch onto.   Can't really make it better than this
-            s.query(Parent, Sub2)
-            .join(Parent.sub1)
-            .join(Sub1.sub2)
-            .from_self()
-            .join(Sub2.ep1)
-            .join(Sub2.ep2),
+            stmt,
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
             "anon_1.sub2_id AS anon_1_sub2_id, "

@@ -12,7 +12,6 @@ from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -24,6 +23,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -280,12 +280,53 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             [e2id],
         )
 
-    def test_from_self(self):
+    def test_from_self_legacy(self):
         Engineer = self.classes.Engineer
 
         sess = create_session()
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            self.assert_compile(
+                sess.query(Engineer).from_self(),
+                "SELECT anon_1.employees_employee_id AS "
+                "anon_1_employees_employee_id, "
+                "anon_1.employees_name AS "
+                "anon_1_employees_name, "
+                "anon_1.employees_manager_data AS "
+                "anon_1_employees_manager_data, "
+                "anon_1.employees_engineer_info AS "
+                "anon_1_employees_engineer_info, "
+                "anon_1.employees_type AS "
+                "anon_1_employees_type FROM (SELECT "
+                "employees.employee_id AS "
+                "employees_employee_id, employees.name AS "
+                "employees_name, employees.manager_data AS "
+                "employees_manager_data, "
+                "employees.engineer_info AS "
+                "employees_engineer_info, employees.type "
+                "AS employees_type FROM employees WHERE "
+                "employees.type IN ([POSTCOMPILE_type_1])) AS "
+                "anon_1",
+                use_default_dialect=True,
+            )
+
+    def test_from_subq(self):
+        Engineer = self.classes.Engineer
+
+        stmt = select(Engineer)
+        subq = aliased(Engineer, stmt.apply_labels().subquery())
+
+        # so here we have an extra "WHERE type in ()", because
+        # both the inner and the outer queries have the Engineer entity.
+        # this is expected at the moment but it would be nice if
+        # _enable_single_crit or something similar could propagate here.
+        # legacy from_self() takes care of this because it applies
+        # _enable_single_crit at that moment.
+
+        stmt = select(subq).apply_labels()
         self.assert_compile(
-            sess.query(Engineer).from_self(),
+            stmt,
             "SELECT anon_1.employees_employee_id AS "
             "anon_1_employees_employee_id, "
             "anon_1.employees_name AS "
@@ -304,7 +345,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "employees_engineer_info, employees.type "
             "AS employees_type FROM employees WHERE "
             "employees.type IN ([POSTCOMPILE_type_1])) AS "
-            "anon_1",
+            "anon_1 WHERE anon_1.employees_type IN ([POSTCOMPILE_type_2])",
             use_default_dialect=True,
         )
 
@@ -382,14 +423,17 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         sess = create_session()
         col = func.count(literal_column("*"))
-        self.assert_compile(
-            sess.query(Engineer.employee_id).from_self(col),
-            "SELECT count(*) AS count_1 "
-            "FROM (SELECT employees.employee_id AS employees_employee_id "
-            "FROM employees "
-            "WHERE employees.type IN ([POSTCOMPILE_type_1])) AS anon_1",
-            use_default_dialect=True,
-        )
+        with testing.expect_deprecated(
+            r"The Query.from_self\(\) function/method"
+        ):
+            self.assert_compile(
+                sess.query(Engineer.employee_id).from_self(col),
+                "SELECT count(*) AS count_1 "
+                "FROM (SELECT employees.employee_id AS employees_employee_id "
+                "FROM employees "
+                "WHERE employees.type IN ([POSTCOMPILE_type_1])) AS anon_1",
+                use_default_dialect=True,
+            )
 
     def test_select_from_count(self):
         Manager, Engineer = (self.classes.Manager, self.classes.Engineer)

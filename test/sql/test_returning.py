@@ -370,7 +370,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
     def test_arg_insert_pk(self, connection):
         t1 = self.tables.t1
         result = connection.execute(
-            t1.insert(return_defaults=[t1.c.insdef]).values(upddef=1)
+            t1.insert().return_defaults(t1.c.insdef).values(upddef=1)
         )
         eq_(
             [
@@ -394,7 +394,7 @@ class ReturnDefaultsTest(fixtures.TablesTest):
         t1 = self.tables.t1
         connection.execute(t1.insert().values(upddef=1))
         result = connection.execute(
-            t1.update(return_defaults=[t1.c.upddef]).values(data="d1")
+            t1.update().return_defaults(t1.c.upddef).values(data="d1")
         )
         eq_(
             [result.returned_defaults._mapping[k] for k in (t1.c.upddef,)], [1]

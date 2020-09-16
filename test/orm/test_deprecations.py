@@ -2134,7 +2134,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 class DeclarativeBind(fixtures.TestBase):
     def test_declarative_base(self):
         with testing.expect_deprecated_20(
-            'The "bind" argument to declarative_base is'
+            "The ``bind`` argument to declarative_base is "
             "deprecated and will be removed in SQLAlchemy 2.0.",
         ):
             Base = declarative_base(bind=testing.db)
@@ -2143,7 +2143,7 @@ class DeclarativeBind(fixtures.TestBase):
 
     def test_as_declarative(self):
         with testing.expect_deprecated_20(
-            'The "bind" argument to declarative_base is'
+            "The ``bind`` argument to as_declarative is "
             "deprecated and will be removed in SQLAlchemy 2.0.",
         ):
 
