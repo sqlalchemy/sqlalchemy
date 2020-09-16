@@ -363,8 +363,15 @@ def declarative_base(
 
     """
 
+    if bind is not None:
+        # util.deprecated_params does not work
+        util.warn_deprecated_20(
+            'The "bind" argument to declarative_base is'
+            "deprecated and will be removed in SQLAlchemy 2.0.",
+        )
+
     return registry(
-        bind=bind,
+        _bind=bind,
         metadata=metadata,
         class_registry=class_registry,
         constructor=constructor,
@@ -406,10 +413,10 @@ class registry(object):
 
     def __init__(
         self,
-        bind=None,
         metadata=None,
         class_registry=None,
         constructor=_declarative_constructor,
+        _bind=None,
     ):
         r"""Construct a new :class:`_orm.registry`
 
@@ -435,19 +442,10 @@ class registry(object):
           to share the same registry of class names for simplified
           inter-base relationships.
 
-        :param bind: An optional
-          :class:`~sqlalchemy.engine.Connectable`, will be assigned
-          the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
-          instance.
-
-          .. deprecated:: 1.4  The "bind" argument to registry is
-             deprecated and will be removed in SQLAlchemy 2.0.
-
-
         """
         lcl_metadata = metadata or MetaData()
-        if bind:
-            lcl_metadata.bind = bind
+        if _bind:
+            lcl_metadata.bind = _bind
 
         if class_registry is None:
             class_registry = weakref.WeakValueDictionary()
@@ -700,6 +698,13 @@ class registry(object):
         return _mapper(self, class_, local_table, kw)
 
 
+@util.deprecated_params(
+    bind=(
+        "2.0",
+        'The "bind" argument to declarative_base is'
+        "deprecated and will be removed in SQLAlchemy 2.0.",
+    )
+)
 def as_declarative(**kw):
     """
     Class decorator which will adapt a given class into a
@@ -735,7 +740,7 @@ def as_declarative(**kw):
     )
 
     return registry(
-        bind=bind, metadata=metadata, class_registry=class_registry
+        _bind=bind, metadata=metadata, class_registry=class_registry
     ).as_declarative_base(**kw)
 
 

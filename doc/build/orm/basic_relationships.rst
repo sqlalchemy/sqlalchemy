@@ -487,7 +487,7 @@ other arguments which depend upon the columns present on an as-yet
 undefined class may also be specified either as Python functions, or more
 commonly as strings.   For most of these
 arguments except that of the main argument, string inputs are
-**evaluated as Python expressions using Python's built-in eval() function.**,
+**evaluated as Python expressions using Python's built-in eval() function**,
 as they are intended to recieve complete SQL expressions.
 
 .. warning:: As the Python ``eval()`` function is used to interpret the
@@ -629,10 +629,10 @@ class were available, we could also apply it afterwards::
 Late-Evaluation for a many-to-many relationship
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Many-to-many relationships include a reference to an additional, non-mapped
+Many-to-many relationships include a reference to an additional, typically non-mapped
 :class:`_schema.Table` object that is typically present in the :class:`_schema.MetaData`
 collection referred towards by the :class:`_orm.registry`.   The late-evaluation
-system includes support for having this attribute also be specified as a
+system also includes support for having this attribute be specified as a
 string argument which will be resolved from this :class:`_schema.MetaData`
 collection.  Below we specify an association table ``keyword_author``,
 sharing the :class:`_schema.MetaData` collection associated with our

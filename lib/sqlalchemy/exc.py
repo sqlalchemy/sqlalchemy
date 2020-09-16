@@ -645,7 +645,7 @@ class RemovedIn20Warning(SADeprecationWarning):
 
 
 class MovedIn20Warning(RemovedIn20Warning):
-    """subtype of RemovedIn20Warning to indicate an API that moved only."""
+    """Subtype of RemovedIn20Warning to indicate an API that moved only."""
 
 
 class SAPendingDeprecationWarning(PendingDeprecationWarning):

@@ -140,7 +140,8 @@ Things to note above:
   before the other, we can refer to the remote class using its string name.
   This functionality also extends into the area of other arguments specified
   on the :func:`_orm.relationship` such as the "primary join" and "order by"
-  arguments.   See the next section for details on this.
+  arguments.   See the section :ref:`orm_declarative_relationship_eval` for
+  details on this.
 
 
 .. _orm_declarative_mapper_options:

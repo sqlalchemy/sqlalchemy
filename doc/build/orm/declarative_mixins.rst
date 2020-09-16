@@ -194,7 +194,7 @@ Using Advanced Relationship Arguments (e.g. ``primaryjoin``, etc.)
 :func:`~sqlalchemy.orm.relationship` definitions which require explicit
 primaryjoin, order_by etc. expressions should in all but the most
 simplistic cases use **late bound** forms
-for these arguments, meaning, using either the string form or a lambda.
+for these arguments, meaning, using either the string form or a function/lambda.
 The reason for this is that the related :class:`_schema.Column` objects which are to
 be configured using ``@declared_attr`` are not available to another
 ``@declared_attr`` attribute; while the methods will work and return new
@@ -301,7 +301,7 @@ units such as :func:`.association_proxy`.   The usage of
 be tailored specifically to the target subclass.   An example is when
 constructing multiple :func:`.association_proxy` attributes which each
 target a different type of child object.  Below is an
-:func:`.association_proxy` / mixin example which provides a scalar list of
+:func:`.association_proxy` mixin example which provides a scalar list of
 string values to an implementing class::
 
     from sqlalchemy import Column, Integer, ForeignKey, String
