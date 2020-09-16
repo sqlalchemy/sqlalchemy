@@ -1,0 +1,7 @@
+.. change::
+    :tags: mysql, usecase
+    :tickets: 5462
+
+    Adjusted the :meth:`MySQLDDLCompiler.visit_create_index` to implement
+    indexing with expressions and functions on the MySQL dialect.
+    Pull request courtesy Ramon Williams.

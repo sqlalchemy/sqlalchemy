@@ -286,7 +286,40 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("foo", m, Column("x", Integer))
         self.assert_compile(
             schema.CreateIndex(Index("bar", t1.c.x > 5)),
-            "CREATE INDEX bar ON foo (x > 5)",
+            "CREATE INDEX bar ON foo ((x > 5))",
+        )
+
+    def test_create_index_expr_two(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("x", Integer), Column("y", Integer))
+        idx1 = Index("test_idx1", tbl.c.x + tbl.c.y)
+        idx2 = Index(
+            "test_idx2", tbl.c.x, tbl.c.x + tbl.c.y, tbl.c.y - tbl.c.x
+        )
+        idx3 = Index("test_idx3", tbl.c.x.desc())
+
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX test_idx1 ON testtbl ((x + y))",
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx2),
+            "CREATE INDEX test_idx2 ON testtbl (x, (x + y), (y - x))",
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx3),
+            "CREATE INDEX test_idx3 ON testtbl (x DESC)",
+        )
+
+    def test_create_index_expr_func(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", Integer))
+        idx1 = Index("test_idx1", func.radians(tbl.c.data))
+
+        self.assert_compile(
+            schema.CreateIndex(idx1),
+            "CREATE INDEX test_idx1 ON testtbl ((radians(data)))",
         )
 
     def test_deferrable_initially_kw_not_ignored(self):
