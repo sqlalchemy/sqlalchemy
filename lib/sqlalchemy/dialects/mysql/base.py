@@ -893,6 +893,7 @@ from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
 from ...sql import elements
+from ...sql import operators
 from ...sql import util as sql_util
 from ...types import BINARY
 from ...types import BLOB
@@ -1842,9 +1843,21 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         self._verify_index_table(index)
         preparer = self.preparer
         table = preparer.format_table(index.table)
+
         columns = [
             self.sql_compiler.process(
-                expr, include_table=False, literal_binds=True
+                elements.Grouping(expr)
+                if (
+                    not isinstance(expr, elements.ColumnClause)
+                    and (
+                        not isinstance(expr, elements.UnaryExpression)
+                        or expr.modifier
+                        not in (operators.desc_op, operators.asc_op)
+                    )
+                )
+                else expr,
+                include_table=False,
+                literal_binds=True,
             )
             for expr in index.expressions
         ]
