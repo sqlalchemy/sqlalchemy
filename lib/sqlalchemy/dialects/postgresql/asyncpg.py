@@ -486,27 +486,12 @@ class AsyncAdapt_asyncpg_connection:
     async def _setup_type_codecs(self):
         """set up type decoders at the asyncpg level.
 
-        this is first to accommodate the "char" value of
-        pg_catalog.pg_attribute.attgenerated being returned as bytes.
-        Even though the doc at
-        https://magicstack.github.io/asyncpg/current/usage.html#type-conversion
-        claims "char" is returned as "str", it looks like this is actually
-        the 'bpchar' datatype, blank padded.  'char' seems to be some
-        more obscure type (oid 18) and asyncpg codes this to bytea:
-        https://github.com/MagicStack/asyncpg/blob/master/asyncpg/protocol/
-        codecs/pgproto.pyx#L26
-
-        all the other drivers treat this as a string.
+        these are set_type_codec() calls to normalize
+        There was a tentative decoder for the "char" datatype here
+        to have it return strings however this type is actually a binary
+        type that other drivers are likely mis-interpreting.
 
         """
-
-        await self._connection.set_type_codec(
-            "char",
-            schema="pg_catalog",
-            encoder=lambda value: value,
-            decoder=lambda value: value,
-            format="text",
-        )
 
     def _handle_exception(self, error):
         if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):

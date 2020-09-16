@@ -3423,10 +3423,14 @@ class PGDialect(default.DefaultDialect):
             )
             coltype = sqltypes.NULLTYPE
 
-        # If a zero byte (''), then not a generated column.
-        # Otherwise, s = stored. (Other values might be added in the future.)
-        if generated:
-            computed = dict(sqltext=default, persisted=generated == "s")
+        # If a zero byte or blank string depending on driver (is also absent
+        # for older PG versions), then not a generated column. Otherwise, s =
+        # stored. (Other values might be added in the future.)
+        #
+        if generated not in (None, "", b"\x00"):
+            computed = dict(
+                sqltext=default, persisted=generated in ("s", b"s")
+            )
             default = None
         else:
             computed = None
