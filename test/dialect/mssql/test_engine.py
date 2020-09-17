@@ -156,6 +156,26 @@ class ParseConnectTest(fixtures.TestBase):
             True,
         )
 
+    def test_pyodbc_extra_connect_azure(self):
+        # issue #5592
+        dialect = pyodbc.dialect()
+        u = url.make_url(
+            "mssql+pyodbc://@server_name/db_name?"
+            "driver=ODBC+Driver+17+for+SQL+Server;"
+            "authentication=ActiveDirectoryIntegrated"
+        )
+        connection = dialect.create_connect_args(u)
+        eq_(connection[1], {})
+        eq_(
+            connection[0][0]
+            in (
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                "Server=server_name;Database=db_name;"
+                "Authentication=ActiveDirectoryIntegrated",
+            ),
+            True,
+        )
+
     def test_pyodbc_odbc_connect(self):
         dialect = pyodbc.dialect()
         u = url.make_url(

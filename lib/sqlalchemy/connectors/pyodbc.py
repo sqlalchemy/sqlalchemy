@@ -95,9 +95,15 @@ class PyODBCConnector(Connector):
             user = keys.pop("user", None)
             if user:
                 connectors.append("UID=%s" % user)
-                connectors.append("PWD=%s" % keys.pop("password", ""))
+                pwd = keys.pop("password", "")
+                if pwd:
+                    connectors.append("PWD=%s" % pwd)
             else:
-                connectors.append("Trusted_Connection=Yes")
+                authentication = keys.pop("authentication", None)
+                if authentication:
+                    connectors.append("Authentication=%s" % authentication)
+                else:
+                    connectors.append("Trusted_Connection=Yes")
 
             # if set to 'Yes', the ODBC layer will try to automagically
             # convert textual data from your database encoding to your

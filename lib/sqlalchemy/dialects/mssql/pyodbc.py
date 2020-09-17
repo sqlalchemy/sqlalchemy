@@ -52,7 +52,8 @@ name must be URL encoded which means using plus signs for spaces::
 
 Other keywords interpreted by the Pyodbc dialect to be passed to
 ``pyodbc.connect()`` in both the DSN and hostname cases include:
-``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``.
+``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``, 
+``authentication`` (e.g., ``authentication=ActiveDirectoryIntegrated``).
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
 
