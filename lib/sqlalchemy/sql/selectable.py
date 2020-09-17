@@ -4391,13 +4391,41 @@ class Select(
         and apply generatively, returning the newly resulting
         :class:`_expression.Select`.
 
-        .. versionchanged:: 1.4 :meth:`_expression.Select.join` now modifies
-           the FROM list of the :class:`.Select` object in place, rather than
-           implicitly producing a subquery.
+        E.g.::
+
+            stmt = select(user_table).join(address_table, user_table.c.id == address_table.c.user_id)
+
+        The above statement generages SQL similar to::
+
+            SELECT user.id, user.name FROM user JOIN address ON user.id = address.user_id
+
+        .. versionchanged:: 1.4 :meth:`_expression.Select.join` now creates
+           a :class:`_sql.Join` object between a :class:`_sql.FromClause`
+           source that is within the FROM clause of the existing SELECT,
+           and a given target :class:`_sql.FromClause`, and then adds
+           this :class:`_sql.Join` to the FROM clause of the newly generated
+           SELECT statement.    This is completely reworked from the behavior
+           in 1.3, which would instead create a subquery of the entire
+           :class:`_expression.Select` and then join that subquery to the
+           target.
+
+           This is a **backwards incompatible change** as the previous behavior
+           was mostly useless, producing an unnamed subquery rejected by
+           most databases in any case.   The new behavior is modeled after
+           that of the very successful :meth:`_orm.Query.join` method in the
+           ORM, in order to support the functionality of :class:`_orm.Query`
+           being available by using a :class:`_sql.Select` object with an
+           :class:`_orm.Session`.
+
+           See the notes for this change at :ref:`change_select_join`.
+
 
         :param target: target table to join towards
 
-        :param onclause: ON clause of the join.
+        :param onclause: ON clause of the join.  If omitted, an ON clause
+         is generated automatically based on the :class:`_schema.ForeignKey`
+         linkages between the two tables, if one can be unambiguously
+         determined, otherwise an error is raised.
 
         :param isouter: if True, generate LEFT OUTER join.  Same as
          :meth:`_expression.Select.outerjoin`.
@@ -4408,7 +4436,9 @@ class Select(
 
             :meth:`_expression.Select.join_from`
 
-        """
+            :meth:`_expression.Select.outerjoin`
+
+        """  # noqa: E501
         target = coercions.expect(
             roles.JoinTargetRole, target, apply_propagate_attrs=self
         )
@@ -4422,10 +4452,21 @@ class Select(
     def join_from(
         self, from_, target, onclause=None, isouter=False, full=False
     ):
-        r"""Create a SQL JOIN against this :class:`_expresson.Select`
+        r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
         and apply generatively, returning the newly resulting
         :class:`_expression.Select`.
+
+        E.g.::
+
+            stmt = select(user_table, address_table).join_from(
+                user_table, address_table, user_table.c.id == address_table.c.user_id
+            )
+
+        The above statement generages SQL similar to::
+
+            SELECT user.id, user.name, address.id, address.email, address.user_id
+            FROM user JOIN address ON user.id = address.user_id
 
         .. versionadded:: 1.4
 
@@ -4446,7 +4487,8 @@ class Select(
 
             :meth:`_expression.Select.join`
 
-        """
+        """  # noqa: E501
+
         # note the order of parsing from vs. target is important here, as we
         # are also deriving the source of the plugin (i.e. the subject mapper
         # in an ORM query) which should favor the "from_" over the "target"
@@ -4470,8 +4512,29 @@ class Select(
         Parameters are the same as that of :meth:`_expression.Select.join`.
 
         .. versionchanged:: 1.4 :meth:`_expression.Select.outerjoin` now
-           modifies the FROM list of the :class:`.Select` object in place,
-           rather than implicitly producing a subquery.
+           creates a :class:`_sql.Join` object between a
+           :class:`_sql.FromClause` source that is within the FROM clause of
+           the existing SELECT, and a given target :class:`_sql.FromClause`,
+           and then adds this :class:`_sql.Join` to the FROM clause of the
+           newly generated SELECT statement.    This is completely reworked
+           from the behavior in 1.3, which would instead create a subquery of
+           the entire
+           :class:`_expression.Select` and then join that subquery to the
+           target.
+
+           This is a **backwards incompatible change** as the previous behavior
+           was mostly useless, producing an unnamed subquery rejected by
+           most databases in any case.   The new behavior is modeled after
+           that of the very successful :meth:`_orm.Query.join` method in the
+           ORM, in order to support the functionality of :class:`_orm.Query`
+           being available by using a :class:`_sql.Select` object with an
+           :class:`_orm.Session`.
+
+           See the notes for this change at :ref:`change_select_join`.
+
+        .. seealso::
+
+            :meth:`_expression.Select.join`
 
         """
         return self.join(target, onclause=onclause, isouter=True, full=full,)

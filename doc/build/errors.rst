@@ -36,6 +36,10 @@ most common runtime errors as well as programming time errors.
 Legacy API Features
 ===================
 
+.. the reason we need this section here distinct from the migration notes
+   is because this is actually an ArgumentError that's raised by select()
+   when the "legacy" and "future" mode styles are used together.
+
 .. _error_c9ae:
 
 select() construct created in "legacy" mode; keyword arguments, etc.
@@ -75,11 +79,12 @@ as a list, but no further arguments::
     # this is how it's been documented since around version 1.0 or so
     stmt = select([table1.c.myid]).where(table1.c.myid == table2.c.otherid)
 
+The document at :ref:`migration_20_5284` describes this change in terms
+of :ref:`2.0 Migration <migration_20_toplevel>`.
+
 .. seealso::
 
-    :ref:`error_b8d9`
-
-    :ref:`change_5284`
+    :ref:`migration_20_5284`
 
     :ref:`migration_20_toplevel`
 

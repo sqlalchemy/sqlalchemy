@@ -1017,6 +1017,10 @@ class Query(
         self.load_options += {"_invoke_all_eagers": value}
 
     # TODO: removed in 2.0, use with_parent standalone in filter
+    @util.deprecated_20(
+        ":meth:`_orm.Query.with_parent`",
+        alternative="Use the :func:`_orm.with_parent` standalone construct.",
+    )
     @util.preload_module("sqlalchemy.orm.relationships")
     def with_parent(self, instance, property=None, from_entity=None):  # noqa
         """Add filtering criterion that relates the given instance
@@ -2377,6 +2381,10 @@ class Query(
 
         self._set_select_from(from_obj, False)
 
+    @util.deprecated_20(
+        ":meth:`_orm.Query.select_entity_from`",
+        alternative="Use the :func:`_orm.aliased` construct instead",
+    )
     @_generative
     @_assertions(_no_clauseelement_condition)
     def select_entity_from(self, from_obj):

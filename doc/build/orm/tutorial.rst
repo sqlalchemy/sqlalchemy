@@ -1,8 +1,8 @@
 .. _ormtutorial_toplevel:
 
-==========================
-Object Relational Tutorial
-==========================
+====================================
+Object Relational Tutorial (1.x API)
+====================================
 
 The SQLAlchemy Object Relational Mapper presents a method of associating
 user-defined Python classes with database tables, and instances of those

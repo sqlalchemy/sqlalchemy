@@ -218,9 +218,9 @@ class Connection(Connectable):
           connection will remain in a real transaction unless the
           "AUTOCOMMIT" isolation level is used.
 
-          .. deprecated:: 1.4  The library-level "autocommit" feature is being
-             removed in favor of database driver "autocommit" which is
-             now widely available.  See the section :ref:`dbapi_autocommit`.
+          .. deprecated:: 1.4  The "autocommit" execution option is deprecated
+             and will be removed in SQLAlchemy 2.0.  See
+             :ref:`migration_20_autocommit` for discussion.
 
         :param compiled_cache: Available on: Connection.
           A dictionary where :class:`.Compiled` objects

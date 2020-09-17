@@ -5,7 +5,7 @@
 SQL and Generic Functions
 =========================
 
-.. currentmodule:: sqlalchemy.sql.expression
+.. currentmodule:: sqlalchemy.sql.functions
 
 SQL functions which are known to SQLAlchemy with regards to database-specific
 rendering, return types and argument behavior. Generic functions are invoked

@@ -1,8 +1,8 @@
 .. _sqlexpression_toplevel:
 
-================================
-SQL Expression Language Tutorial
-================================
+==========================================
+SQL Expression Language Tutorial (1.x API)
+==========================================
 
 The SQLAlchemy Expression Language presents a system of representing
 relational database structures and expressions using Python constructs. These

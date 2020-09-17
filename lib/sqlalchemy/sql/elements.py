@@ -1641,12 +1641,9 @@ class TextClause(
             t = text("EXEC my_procedural_thing()").\
                     execution_options(autocommit=True)
 
-        Note that SQLAlchemy's usual "autocommit" behavior applies to
-        :func:`_expression.text` constructs implicitly - that is,
-        statements which begin
-        with a phrase such as ``INSERT``, ``UPDATE``, ``DELETE``,
-        or a variety of other phrases specific to certain backends, will
-        be eligible for autocommit if no transaction is in progress.
+        .. deprecated:: 1.4  The "autocommit" execution option is deprecated
+           and will be removed in SQLAlchemy 2.0.  See
+           :ref:`migration_20_autocommit` for discussion.
 
         :param text:
           the text of the SQL statement to be created.  Use ``:<param>``
@@ -3401,11 +3398,17 @@ class CollectionAggregate(UnaryExpression):
             # mysql '5 = ANY (SELECT value FROM table)'
             expr = 5 == any_(select(table.c.value))
 
-        .. versionadded:: 1.1
+        The operator is more conveniently available from any
+        :class:`_sql.ColumnElement` object that makes use of the
+        :class:`_types.ARRAY` datatype::
+
+            expr = mytable.c.somearray.any(5)
 
         .. seealso::
 
             :func:`_expression.all_`
+
+            :meth:`_types.ARRAY.any`
 
         """
 
@@ -3432,11 +3435,17 @@ class CollectionAggregate(UnaryExpression):
             # mysql '5 = ALL (SELECT value FROM table)'
             expr = 5 == all_(select(table.c.value))
 
-        .. versionadded:: 1.1
+        The operator is more conveniently available from any
+        :class:`_sql.ColumnElement` object that makes use of the
+        :class:`_types.ARRAY` datatype::
+
+            expr = mytable.c.somearray.all(5)
 
         .. seealso::
 
             :func:`_expression.any_`
+
+            :meth:`_types.ARRAY.Comparator.all`
 
         """
 

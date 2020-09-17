@@ -211,11 +211,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         objects that were
         explicitly specified.
 
-        .. versionchanged:: 1.0.0 setting the
-           :paramref:`_schema.Table.autoload_with`
-           parameter implies that :paramref:`_schema.Table.autoload`
-           will default
-           to True.
+        .. deprecated:: 1.4
+
+            The autoload parameter is deprecated and will be removed in
+            version 2.0.  Please use the
+            :paramref:`_schema.Table`autoload_with` parameter, passing an
+            engine or connection.
 
         .. seealso::
 
@@ -251,18 +252,8 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :func:`_sa.inspect`
         against one, with which this :class:`_schema.Table`
         object will be reflected.
-        When set to a non-None value, it implies that
-        :paramref:`_schema.Table.autoload` is ``True``.   If left unset, but
-        :paramref:`_schema.Table.autoload` is explicitly set to ``True``,
-        an autoload
-        operation will attempt to proceed by locating an
-        :class:`_engine.Engine` or
-        :class:`_engine.Connection` bound to the underlying
-        :class:`_schema.MetaData` object.
-
-        .. seealso::
-
-            :paramref:`_schema.Table.autoload`
+        When set to a non-None value, the autoload process will take place
+        for this table against the given engine or connection.
 
     :param extend_existing: When ``True``, indicates that if this
         :class:`_schema.Table` is already present in the given
@@ -311,7 +302,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             Table("mytable", metadata,
                         Column('y', Integer),
                         extend_existing=True,
-                        autoload=True,
                         autoload_with=engine
                     )
 
@@ -407,7 +397,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
             t = Table(
                 'sometable',
-                autoload=True,
+                autoload_with=engine,
                 listeners=[
                     ('column_reflect', listen_for_reflect)
                 ])
@@ -488,7 +478,13 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         mustexist=(
             "1.4",
             "Deprecated alias of :paramref:`_schema.Table.must_exist`",
-        )
+        ),
+        autoload=(
+            "2.0",
+            "The autoload parameter is deprecated and will be removed in "
+            "version 2.0.  Please use the "
+            "autoload_with parameter, passing an engine or connection.",
+        ),
     )
     def __new__(cls, *args, **kw):
         if not args:

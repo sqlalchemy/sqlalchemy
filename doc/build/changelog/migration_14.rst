@@ -203,7 +203,7 @@ The code above completes::
 This test indicates that using the newer "select()" style of ORM querying,
 in conjunction with a full "baked" style invocation that caches the entire
 construction, can run over many iterations in the range of **60% faster** and
-grants performace about the same as the baked query system which is now superseded
+grants performance about the same as the baked query system which is now superseded
 by the native caching system.
 
 The new system makes use of the existing
@@ -236,7 +236,7 @@ extensions.
 
 The new classes added to ``sqlalchemy.orm`` include:
 
-* :class:`_orm.registry` - a new class that supercedes the role of the
+* :class:`_orm.registry` - a new class that supersedes the role of the
   "declarative base" class, serving as a registry of mapped classes which
   can be referenced via string name within :func:`_orm.relationship` calls
   and is agnostic of the style in which any particular class was mapped.
@@ -288,7 +288,7 @@ unambiguously.
 
 The new approach interoperates with 3rd party class instrumentation systems
 which necessarily must take place on the class before the mapping process
-does, allowing declartive mapping to work via a decorator instead of a
+does, allowing declarative mapping to work via a decorator instead of a
 declarative base so that packages like dataclasses_ and attrs_ can be
 used with declarative mappings, in addition to working with classical
 mappings.
@@ -536,105 +536,13 @@ simple applications can generate a lot of warnings until appropriate API
 changes are made.   The warning mode is therefore turned off by default until
 the developer enables the environment variable ``SQLALCHEMY_WARN_20=1``.
 
-Given the example program below::
-
-  from sqlalchemy import column
-  from sqlalchemy import create_engine
-  from sqlalchemy import select
-  from sqlalchemy import table
-
-
-  engine = create_engine("sqlite://")
-
-  engine.execute("CREATE TABLE foo (id integer)")
-  engine.execute("INSERT INTO foo (id) VALUES (1)")
-
-
-  foo = table("foo", column("id"))
-  result = engine.execute(select([foo.c.id]))
-
-  print(result.fetchall())
-
-The above program uses several patterns that many users will already identify
-as "legacy", namely the use of the :meth:`_engine.Engine.execute` method
-that's part of the :ref:`connectionlesss execution <dbengine_implicit>`
-system.  When we run the above program against 1.4, it returns a single line::
-
-  $ python test3.py
-  [(1,)]
-
-To enable "2.0 deprecations mode", we enable the ``SQLALCHEMY_WARN_20=1``
-variable::
-
-    SQLALCHEMY_WARN_20=1 python test3.py
-
-**IMPORTANT** - older versions of Python may not emit deprecation warnings
-by default.   To guarantee deprecation warnings, use a `warnings filter`_
-that ensures warnings are printed::
-
-    SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
-
-.. _warnings filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
-
-With warnings turned on, our program now has a lot to say::
-
-  $ SQLALCHEMY_WARN_20=1 python2 -W always::DeprecationWarning test3.py
-  test3.py:9: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    engine.execute("CREATE TABLE foo (id integer)")
-  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:2856: RemovedIn20Warning: Passing a string to Connection.execute() is deprecated and will be removed in version 2.0.  Use the text() construct, or the Connection.exec_driver_sql() method to invoke a driver-level SQL string. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    return connection.execute(statement, *multiparams, **params)
-  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:1639: RemovedIn20Warning: The current statement is being autocommitted using implicit autocommit.Implicit autocommit will be removed in SQLAlchemy 2.0.   Use the .begin() method of Engine or Connection in order to use an explicit transaction for DML and DDL statements. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    self._commit_impl(autocommit=True)
-  test3.py:10: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    engine.execute("INSERT INTO foo (id) VALUES (1)")
-  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:2856: RemovedIn20Warning: Passing a string to Connection.execute() is deprecated and will be removed in version 2.0.  Use the text() construct, or the Connection.exec_driver_sql() method to invoke a driver-level SQL string. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    return connection.execute(statement, *multiparams, **params)
-  /home/classic/dev/sqlalchemy/lib/sqlalchemy/engine/base.py:1639: RemovedIn20Warning: The current statement is being autocommitted using implicit autocommit.Implicit autocommit will be removed in SQLAlchemy 2.0.   Use the .begin() method of Engine or Connection in order to use an explicit transaction for DML and DDL statements. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    self._commit_impl(autocommit=True)
-  /home/classic/dev/sqlalchemy/lib/sqlalchemy/sql/selectable.py:4271: RemovedIn20Warning: The legacy calling style of select() is deprecated and will be removed in SQLAlchemy 2.0.  Please use the new calling style described at select(). (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    return cls.create_legacy_select(*args, **kw)
-  test3.py:14: RemovedIn20Warning: The Engine.execute() function/method is considered legacy as of the 1.x series of SQLAlchemy and will be removed in 2.0. All statement execution in SQLAlchemy 2.0 is performed by the Connection.execute() method of Connection, or in the ORM by the Session.execute() method of Session. (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9) (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)
-    result = engine.execute(select([foo.c.id]))
-  [(1,)]
-
-With the above guidance, we can migrate our program to use 2.0 styles, and
-as a bonus our program is much clearer::
-
-  from sqlalchemy import column
-  from sqlalchemy import create_engine
-  from sqlalchemy import select
-  from sqlalchemy import table
-  from sqlalchemy import text
-
-
-  engine = create_engine("sqlite://")
-
-  # don't rely on autocommit for DML and DDL
-  with engine.begin() as connection:
-      # use connection.execute(), not engine.execute()
-      # use the text() construct to execute textual SQL
-      connection.execute(text("CREATE TABLE foo (id integer)"))
-      connection.execute(text("INSERT INTO foo (id) VALUES (1)"))
-
-
-  foo = table("foo", column("id"))
-
-  with engine.connect() as connection:
-      # use connection.execute(), not engine.execute()
-      # select() now accepts column / table expressions positionally
-      result = connection.execute(select(foo.c.id))
-
-  print(result.fetchall())
-
-
-The goal of "2.0 deprecations mode" is that a program which runs with no
-:class:`_exc.RemovedIn20Warning` warnings with "2.0 deprecations mode" turned
-on is then ready to run in SQLAlchemy 2.0.
-
+For a full walkthrough of using 2.0 Deprecations mode, see :ref:`migration_20_deprecations_mode`.
 
 .. seealso::
 
   :ref:`migration_20_toplevel`
+
+  :ref:`migration_20_deprecations_mode`
 
 
 
@@ -861,7 +769,7 @@ of Python's ``urllib.parse.urlparse()`` which returns the parsed object as a
 named tuple.
 
 The decision to change the API outright is based on a calculus weighing the
-infeasability of a deprecation path (which would involve changing the
+infeasibility of a deprecation path (which would involve changing the
 :attr:`_engine.URL.query` dictionary to be a special dictionary that emits deprecation
 warnings when any kind of standard library mutation methods are invoked, in
 addition that when the dictionary would hold any kind of list of elements, the
@@ -962,7 +870,7 @@ Changes to CreateEnginePlugin
 The :class:`_engine.CreateEnginePlugin` is also impacted by this change,
 as the documentation for custom plugins indicated that the ``dict.pop()``
 method should be used to remove consumed arguments from the URL object.  This
-should now be acheived using the :meth:`_engine.CreateEnginePlugin.update_url`
+should now be achieved using the :meth:`_engine.CreateEnginePlugin.update_url`
 method.  A backwards compatible approach would look like::
 
     from sqlalchemy.engine import CreateEnginePlugin
@@ -1053,6 +961,8 @@ structural specification, lists are used for data specification**.
 
 
 .. seealso::
+
+    :ref:`migration_20_5284`
 
     :ref:`error_c9ae`
 
@@ -1300,27 +1210,85 @@ method will not emit a warning unless the linting flag is supplied::
 New Result object
 -----------------
 
-The ``ResultProxy`` object has been replaced with the 2.0 -style
-:class:`_result.Result` object discussed at :ref:`change_result_20_core`.  This result object
-is fully compatible with ``ResultProxy`` and includes many new features,
-that are now applied to both Core and ORM results equally, including methods
-such as:
+A major goal of SQLAlchemy 2.0 is to unify how "results" are handled between
+the ORM and Core.   Towards this goal, version 1.4 introduces new versions
+of both the ``ResultProxy`` and ``RowProxy`` objects that have been part
+of SQLAlchemy since the beginning.
 
-    :meth:`_engine.Result.one`
+The new objects are documented at :class:`_engine.Result` and :class:`_engine.Row`,
+and are used not only for Core result sets but for :term:`2.0 style` results
+within the ORM as well.
 
-    :meth:`_engine.Result.one_or_none`
+This result object is fully compatible with ``ResultProxy`` and includes many
+new features, that are now applied to both Core and ORM results equally,
+including methods such as:
 
-    :meth:`_engine.Result.partitions`
+:meth:`_engine.Result.one` - returns exactly a single row, or raises:
 
-    :meth:`_engine.Result.columns`
+.. sourcecode::
 
-    :meth:`_engine.Result.scalars`
+    with engine.connect() as conn:
+        row = conn.execute(table.select().where(table.c.id == 5)).one()
 
-When using Core, the object returned is an instance of :class:`.CursorResult`,
-which continues to feature the same API features as ``ResultProxy`` regarding
-inserted primary keys, defaults, rowcounts, etc.   For ORM, a :class:`_result.Result`
-subclass will be returned that performs translation of Core rows into
-ORM rows, and then allows all the same operations to take place.
+
+:meth:`_engine.Result.one_or_none` - same, but also returns None for no rows
+
+:meth:`_engine.Result.all` - returns all rows
+
+:meth:`_engine.Result.partitions` - fetches rows in chunks:
+
+.. sourcecode::
+
+    with engine.connect() as conn:
+        result = conn.execute(
+            table.select().order_by(table.c.id),
+            execution_options={"stream_results": True}
+        )
+        for chunk in result.partitions(500):
+            # process up to 500 records
+
+:meth:`_engine.Result.columns` - allows slicing and reorganizing of rows:
+
+.. sourcecode::
+
+     with engine.connect() as conn:
+        # requests x, y, z
+        result = conn.execute(select(table.c.x, table.c.y, table.c.z))
+
+        # iterate rows as y, x
+        for y, x in result.columns("y", "x"):
+            print("Y: %s  X: %s" % (y, x))
+
+:meth:`_engine.Result.scalars` - returns lists of scalar objects, from the
+first column by default but can also be selected:
+
+.. sourcecode::
+
+    result = session.execute(select(User).order_by(User.id))
+    for user_obj in result.scalars():
+        # ...
+
+:meth:`_engine.Result.mappings` - instead of named-tuple rows, returns
+dictionaries:
+
+.. sourcecode::
+
+     with engine.connect() as conn:
+        result = conn.execute(select(table.c.x, table.c.y, table.c.z))
+
+        for map_ in result.mappings():
+            print("Y: %(y)s  X: %(x)s" % map_)
+
+When using Core, the object returned by :meth:`_engine.Connection.execute` is
+an instance of :class:`.CursorResult`, which continues to feature the same API
+features as ``ResultProxy`` regarding inserted primary keys, defaults,
+rowcounts, etc.   For ORM, a :class:`_result.Result` subclass will be returned
+that performs translation of Core rows into ORM rows, and then allows all the
+same operations to take place.
+
+.. seealso::
+
+    :ref:`migration_20_unify_select` - in the 2.0 migration documentation
 
 :ticket:`5087`
 
@@ -1374,7 +1342,7 @@ Rationale: To behave more like a named tuple rather than a mapping
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The difference between a named tuple and a mapping as far as boolean operators
-can be summarized.   Given a "named tuple" in pseudocode as::
+can be summarized.   Given a "named tuple" in pseudo code as::
 
     row = (id: 5,  name: 'some name')
 
@@ -1433,21 +1401,21 @@ processing functions would not be necessary, thus increasing performance.
 
 There are many reasons why the above assumptions do not hold:
 
-1. the vast majority of row-processing functions called were to unicode decode
-   a bytestring into a Python unicode string under Python 2.   This was right
+1. the vast majority of row-processing functions called were to Unicode decode
+   a bytestring into a Python Unicode string under Python 2.   This was right
    as Python Unicode was beginning to see use and before Python 3 existed.
    Once Python 3 was introduced, within a few years, all Python DBAPIs took
    on the proper role of supporting the delivering of Python Unicode objects directly, under
    both Python 2 and Python 3, as an option in the former case and as the only
    way forward in the latter case.  Eventually, in most cases it became
    the default for Python 2 as well.   SQLAlchemy's Python 2 support still
-   enables explicit string-to-unicode conversion for some DBAPIs such as
+   enables explicit string-to-Unicode conversion for some DBAPIs such as
    cx_Oracle, however it is now performed at the DBAPI level rather than
    as a standard SQLAlchemy result row processing function.
 
 2. The above string conversion, when it is used, was made to be extremely
    performant via the C extensions, so much so that even in 1.4, SQLAlchemy's
-   byte-to-unicode codec hook is plugged into cx_Oracle where it has been
+   byte-to-Unicode codec hook is plugged into cx_Oracle where it has been
    observed to be more performant than cx_Oracle's own hook; this meant that
    the overhead for converting all strings in a row was not as significant
    as it originally was in any case.
@@ -1933,7 +1901,7 @@ of emitting SELECT for the primary keys beforehand is still used::
 One of the intricate challenges of this change is to support cases such as the
 horizontal sharding extension, where a single bulk update or delete may be
 multiplexed among backends some of which support RETURNING and some don't.   The
-new 1.4 execution archiecture supports this case so that the "fetch" strategy
+new 1.4 execution architecture supports this case so that the "fetch" strategy
 can be left intact with a graceful degrade to using a SELECT, rather than having
 to add a new "returning" strategy that would not be backend-agnostic.
 
@@ -2004,8 +1972,8 @@ as entity / column should work::
 
 .. _change_5074:
 
-Session does not immediately create a new SessionTransaction object
-----------------------------------------------------------------------------
+Session features new "autobegin" behavior
+-----------------------------------------
 
 The :class:`.Session` object's default behavior of ``autocommit=False``
 historically has meant that there is always a :class:`.SessionTransaction`
