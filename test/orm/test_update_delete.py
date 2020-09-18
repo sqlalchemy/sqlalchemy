@@ -131,10 +131,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 s.query(User).select_from(Address),
                 r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)",
             ),
-            (
-                s.query(User).from_self(),
-                r"join\(\), outerjoin\(\), select_from\(\), or from_self\(\)",
-            ),
         ):
             assert_raises_message(
                 exc.InvalidRequestError,

@@ -100,7 +100,7 @@ def setup_filters():
         # ORM Query
         #
         r"The Query\.get\(\) function",
-        r"The Query\.from_self\(\) function",
+        # r"The Query\.from_self\(\) function",
         #
         # ORM Session
         #

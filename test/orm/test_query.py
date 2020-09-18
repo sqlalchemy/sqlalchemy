@@ -983,8 +983,9 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         q.enable_assertions(False).select_from(users)
 
-        # this is fine, however
-        q.from_self()
+        with testing.expect_deprecated("The Query.from_self"):
+            # this is fine, however
+            q.from_self()
 
     def test_invalid_select_from(self):
         User = self.classes.User
@@ -3917,22 +3918,24 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             "FROM users ORDER BY label DESC",
         )
 
-    def test_columns_augmented_roundtrip_one_from_self(self):
+    def test_columns_augmented_roundtrip_one_from_subq(self):
         """Test workaround for legacy style DISTINCT on extra column.
 
         See #5134
 
         """
         User, Address = self.classes.User, self.classes.Address
-
         sess = create_session()
-        q = (
+
+        subq = (
             sess.query(User, Address.email_address)
             .join("addresses")
             .distinct()
-            .from_self(User)
-            .order_by(desc(Address.email_address))
+            .subquery()
         )
+        ua = aliased(User, subq)
+        aa = aliased(Address, subq)
+        q = sess.query(ua).order_by(desc(aa.email_address))
 
         eq_([User(id=7), User(id=9), User(id=8)], q.all())
 
@@ -3999,7 +4002,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        q = (
+        subq = (
             sess.query(
                 User.id,
                 User.name.label("foo"),
@@ -4010,8 +4013,13 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             .filter(User.name == "jack")
             .filter(User.id + Address.user_id > 0)
             .distinct()
-            .from_self(User.id, User.name.label("foo"), Address.id)
-            .order_by(User.id, User.name, Address.email_address)
+            .subquery()
+        )
+
+        ua, aa = aliased(User, subq), aliased(Address, subq)
+
+        q = sess.query(ua.id, ua.name.label("foo"), aa.id).order_by(
+            ua.id, ua.name, aa.email_address
         )
 
         eq_(
@@ -4079,7 +4087,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        q = (
+        subq = (
             sess.query(
                 User.id,
                 User.name.label("foo"),
@@ -4088,8 +4096,13 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             )
             .distinct()
             .order_by(User.id, User.name, Address.email_address)
-            .from_self(User.id, User.name.label("foo"), Address.id)
+            .apply_labels()
+            .subquery()
         )
+
+        ua, aa = aliased(User, subq), aliased(Address, subq)
+
+        q = sess.query(ua.id, ua.name.label("foo"), aa.id)
 
         # Address.email_address is added because of DISTINCT,
         # however User.id, User.name are not b.c. they're already there,
@@ -4227,7 +4240,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         sess = create_session()
 
-        q = (
+        subq = (
             sess.query(
                 User.id,
                 User.name.label("foo"),
@@ -4236,8 +4249,13 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             )
             .distinct(Address.email_address)
             .order_by(User.id, User.name, Address.email_address)
-            .from_self(User.id, User.name.label("foo"), Address.id)
+            .apply_labels()
+            .subquery()
         )
+
+        ua = aliased(User, subq)
+        aa = aliased(Address, subq)
+        q = sess.query(ua.id, ua.name.label("foo"), aa.id)
 
         # Address.email_address is added because of DISTINCT,
         # however User.id, User.name are not b.c. they're already there,

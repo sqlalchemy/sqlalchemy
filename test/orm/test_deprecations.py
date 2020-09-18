@@ -1,21 +1,25 @@
 import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import cast
+from sqlalchemy import column
 from sqlalchemy import desc
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
+from sqlalchemy.orm import backref
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
@@ -34,6 +38,7 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
@@ -49,6 +54,8 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
@@ -516,6 +523,1216 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "AND order_items.item_id = items.id",
                 use_default_dialect=True,
             )
+
+
+class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+    __dialect__ = "default"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("parent_id", Integer, ForeignKey("nodes.id")),
+            Column("data", String(30)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Node(cls.Comparable):
+            def append(self, node):
+                self.children.append(node)
+
+    @classmethod
+    def setup_mappers(cls):
+        Node, nodes = cls.classes.Node, cls.tables.nodes
+
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node,
+                    lazy="select",
+                    join_depth=3,
+                    backref=backref("parent", remote_side=[nodes.c.id]),
+                )
+            },
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+
+        sess = create_session(connection)
+        n1 = Node(data="n1")
+        n1.append(Node(data="n11"))
+        n1.append(Node(data="n12"))
+        n1.append(Node(data="n13"))
+        n1.children[1].append(Node(data="n121"))
+        n1.children[1].append(Node(data="n122"))
+        n1.children[1].append(Node(data="n123"))
+        sess.add(n1)
+        sess.flush()
+        sess.close()
+
+    def test_from_self_inside_excludes_outside(self):
+        """test the propagation of aliased() from inside to outside
+        on a from_self()..
+        """
+
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        n1 = aliased(Node)
+
+        # n1 is not inside the from_self(), so all cols must be maintained
+        # on the outside
+        with self._from_self_deprecated():
+            self.assert_compile(
+                sess.query(Node)
+                .filter(Node.data == "n122")
+                .from_self(n1, Node.id),
+                "SELECT nodes_1.id AS nodes_1_id, "
+                "nodes_1.parent_id AS nodes_1_parent_id, "
+                "nodes_1.data AS nodes_1_data, anon_1.nodes_id "
+                "AS anon_1_nodes_id "
+                "FROM nodes AS nodes_1, (SELECT nodes.id AS nodes_id, "
+                "nodes.parent_id AS nodes_parent_id, "
+                "nodes.data AS nodes_data FROM "
+                "nodes WHERE nodes.data = :data_1) AS anon_1",
+                use_default_dialect=True,
+            )
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
+        with self._from_self_deprecated():
+            q = (
+                sess.query(Node, parent, grandparent)
+                .join(parent, Node.parent)
+                .join(grandparent, parent.parent)
+                .filter(Node.data == "n122")
+                .filter(parent.data == "n12")
+                .filter(grandparent.data == "n1")
+                .from_self()
+                .limit(1)
+            )
+
+        # parent, grandparent *are* inside the from_self(), so they
+        # should get aliased to the outside.
+        self.assert_compile(
+            q,
+            "SELECT anon_1.nodes_id AS anon_1_nodes_id, "
+            "anon_1.nodes_parent_id AS anon_1_nodes_parent_id, "
+            "anon_1.nodes_data AS anon_1_nodes_data, "
+            "anon_1.nodes_1_id AS anon_1_nodes_1_id, "
+            "anon_1.nodes_1_parent_id AS anon_1_nodes_1_parent_id, "
+            "anon_1.nodes_1_data AS anon_1_nodes_1_data, "
+            "anon_1.nodes_2_id AS anon_1_nodes_2_id, "
+            "anon_1.nodes_2_parent_id AS anon_1_nodes_2_parent_id, "
+            "anon_1.nodes_2_data AS anon_1_nodes_2_data "
+            "FROM (SELECT nodes.id AS nodes_id, nodes.parent_id "
+            "AS nodes_parent_id, nodes.data AS nodes_data, "
+            "nodes_1.id AS nodes_1_id, "
+            "nodes_1.parent_id AS nodes_1_parent_id, "
+            "nodes_1.data AS nodes_1_data, nodes_2.id AS nodes_2_id, "
+            "nodes_2.parent_id AS nodes_2_parent_id, nodes_2.data AS "
+            "nodes_2_data FROM nodes JOIN nodes AS nodes_1 ON "
+            "nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id "
+            "WHERE nodes.data = :data_1 AND nodes_1.data = :data_2 AND "
+            "nodes_2.data = :data_3) AS anon_1 LIMIT :param_1",
+            {"param_1": 1},
+            use_default_dialect=True,
+        )
+
+    def test_multiple_explicit_entities_two(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(Node, parent, grandparent)
+                .join(parent, Node.parent)
+                .join(grandparent, parent.parent)
+                .filter(Node.data == "n122")
+                .filter(parent.data == "n12")
+                .filter(grandparent.data == "n1")
+                .from_self()
+                .first(),
+                (Node(data="n122"), Node(data="n12"), Node(data="n1")),
+            )
+
+    def test_multiple_explicit_entities_three(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
+        # same, change order around
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(parent, grandparent, Node)
+                .join(parent, Node.parent)
+                .join(grandparent, parent.parent)
+                .filter(Node.data == "n122")
+                .filter(parent.data == "n12")
+                .filter(grandparent.data == "n1")
+                .from_self()
+                .first(),
+                (Node(data="n12"), Node(data="n1"), Node(data="n122")),
+            )
+
+    def test_multiple_explicit_entities_five(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+
+        parent = aliased(Node)
+        grandparent = aliased(Node)
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(Node, parent, grandparent)
+                .join(parent, Node.parent)
+                .join(grandparent, parent.parent)
+                .filter(Node.data == "n122")
+                .filter(parent.data == "n12")
+                .filter(grandparent.data == "n1")
+                .from_self()
+                .options(joinedload(Node.children))
+                .first(),
+                (Node(data="n122"), Node(data="n12"), Node(data="n1")),
+            )
+
+    def _from_self_deprecated(self):
+        return testing.expect_deprecated_20(
+            r"The Query.from_self\(\) function/method"
+        )
+
+
+class FromSelfTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _from_self_deprecated(self):
+        return testing.expect_deprecated_20(
+            r"The Query.from_self\(\) function/method"
+        )
+
+    def test_illegal_operations(self):
+
+        User = self.classes.User
+
+        s = Session()
+
+        with self._from_self_deprecated():
+            q = s.query(User).from_self()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Can't call Query.update\(\) or Query.delete\(\)",
+            q.update,
+            {},
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Can't call Query.update\(\) or Query.delete\(\)",
+            q.delete,
+            {},
+        )
+
+    def test_columns_augmented_distinct_on(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            q = (
+                sess.query(
+                    User.id,
+                    User.name.label("foo"),
+                    Address.id,
+                    Address.email_address,
+                )
+                .distinct(Address.email_address)
+                .order_by(User.id, User.name, Address.email_address)
+                .from_self(User.id, User.name.label("foo"), Address.id)
+            )
+
+        # Address.email_address is added because of DISTINCT,
+        # however User.id, User.name are not b.c. they're already there,
+        # even though User.name is labeled
+        self.assert_compile(
+            q,
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.foo AS foo, "
+            "anon_1.addresses_id AS anon_1_addresses_id "
+            "FROM ("
+            "SELECT DISTINCT ON (addresses.email_address) "
+            "users.id AS users_id, users.name AS foo, "
+            "addresses.id AS addresses_id, addresses.email_address AS "
+            "addresses_email_address FROM users, addresses ORDER BY "
+            "users.id, users.name, addresses.email_address"
+            ") AS anon_1",
+            dialect="postgresql",
+        )
+
+    def test_columns_augmented_roundtrip_one_from_self(self):
+        """Test workaround for legacy style DISTINCT on extra column.
+
+        See #5134
+
+        """
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        with self._from_self_deprecated():
+            q = (
+                sess.query(User, Address.email_address)
+                .join("addresses")
+                .distinct()
+                .from_self(User)
+                .order_by(desc(Address.email_address))
+            )
+
+        eq_([User(id=7), User(id=9), User(id=8)], q.all())
+
+    def test_columns_augmented_roundtrip_three_from_self(self):
+        """Test workaround for legacy style DISTINCT on extra column.
+
+        See #5134
+
+        """
+
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            q = (
+                sess.query(
+                    User.id,
+                    User.name.label("foo"),
+                    Address.id,
+                    Address.email_address,
+                )
+                .join(Address, true())
+                .filter(User.name == "jack")
+                .filter(User.id + Address.user_id > 0)
+                .distinct()
+                .from_self(User.id, User.name.label("foo"), Address.id)
+                .order_by(User.id, User.name, Address.email_address)
+            )
+
+        eq_(
+            q.all(),
+            [
+                (7, "jack", 3),
+                (7, "jack", 4),
+                (7, "jack", 2),
+                (7, "jack", 5),
+                (7, "jack", 1),
+            ],
+        )
+        for row in q:
+            eq_(row._mapping.keys(), ["id", "foo", "id"])
+
+    def test_clause_onclause(self):
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        # explicit onclause with from_self(), means
+        # the onclause must be aliased against the query's custom
+        # FROM object
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User)
+                .order_by(User.id)
+                .offset(2)
+                .from_self()
+                .join(Order, User.id == Order.user_id)
+                .all(),
+                [User(name="fred")],
+            )
+
+    def test_from_self_resets_joinpaths(self):
+        """test a join from from_self() doesn't confuse joins inside the subquery
+        with the outside.
+        """
+
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            self.assert_compile(
+                sess.query(Item)
+                .join(Item.keywords)
+                .from_self(Keyword)
+                .join(Item.keywords),
+                "SELECT keywords.id AS keywords_id, "
+                "keywords.name AS keywords_name "
+                "FROM (SELECT items.id AS items_id, "
+                "items.description AS items_description "
+                "FROM items JOIN item_keywords AS item_keywords_1 "
+                "ON items.id = "
+                "item_keywords_1.item_id JOIN keywords "
+                "ON keywords.id = item_keywords_1.keyword_id) "
+                "AS anon_1 JOIN item_keywords AS item_keywords_2 ON "
+                "anon_1.items_id = item_keywords_2.item_id "
+                "JOIN keywords ON "
+                "keywords.id = item_keywords_2.keyword_id",
+                use_default_dialect=True,
+            )
+
+    def test_single_prop_9(self):
+        User = self.classes.User
+
+        sess = create_session()
+        with self._from_self_deprecated():
+            self.assert_compile(
+                sess.query(User)
+                .filter(User.name == "ed")
+                .from_self()
+                .join(User.orders),
+                "SELECT anon_1.users_id AS anon_1_users_id, "
+                "anon_1.users_name AS anon_1_users_name "
+                "FROM (SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "WHERE users.name = :name_1) AS anon_1 JOIN orders "
+                "ON anon_1.users_id = orders.user_id",
+            )
+
+    def test_anonymous_expression_from_self_twice_oldstyle(self):
+        # relies upon _orm_only_from_obj_alias setting
+
+        sess = create_session()
+        c1, c2 = column("c1"), column("c2")
+        q1 = sess.query(c1, c2).filter(c1 == "dog")
+        with self._from_self_deprecated():
+            q1 = q1.from_self().from_self()
+        self.assert_compile(
+            q1.order_by(c1),
+            "SELECT anon_1.anon_2_c1 AS anon_1_anon_2_c1, anon_1.anon_2_c2 AS "
+            "anon_1_anon_2_c2 FROM (SELECT anon_2.c1 AS anon_2_c1, anon_2.c2 "
+            "AS anon_2_c2 "
+            "FROM (SELECT c1, c2 WHERE c1 = :c1_1) AS "
+            "anon_2) AS anon_1 ORDER BY anon_1.anon_2_c1",
+        )
+
+    def test_anonymous_expression_plus_flag_aliased_join(self):
+        """test that the 'dont alias non-ORM' rule remains for other
+        kinds of aliasing when _from_selectable() is used."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+        addresses = self.tables.addresses
+
+        sess = create_session()
+        q1 = sess.query(User.id).filter(User.id > 5)
+        with self._from_self_deprecated():
+            q1 = q1.from_self()
+
+        q1 = q1.join(User.addresses, aliased=True).order_by(
+            User.id, Address.id, addresses.c.id
+        )
+
+        self.assert_compile(
+            q1,
+            "SELECT anon_1.users_id AS anon_1_users_id "
+            "FROM (SELECT users.id AS users_id FROM users "
+            "WHERE users.id > :id_1) AS anon_1 JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_id, addresses_1.id, addresses.id",
+        )
+
+    def test_anonymous_expression_plus_explicit_aliased_join(self):
+        """test that the 'dont alias non-ORM' rule remains for other
+        kinds of aliasing when _from_selectable() is used."""
+
+        User = self.classes.User
+        Address = self.classes.Address
+        addresses = self.tables.addresses
+
+        sess = create_session()
+        q1 = sess.query(User.id).filter(User.id > 5)
+        with self._from_self_deprecated():
+            q1 = q1.from_self()
+
+        aa = aliased(Address)
+        q1 = q1.join(aa, User.addresses).order_by(
+            User.id, aa.id, addresses.c.id
+        )
+        self.assert_compile(
+            q1,
+            "SELECT anon_1.users_id AS anon_1_users_id "
+            "FROM (SELECT users.id AS users_id FROM users "
+            "WHERE users.id > :id_1) AS anon_1 JOIN addresses AS addresses_1 "
+            "ON anon_1.users_id = addresses_1.user_id "
+            "ORDER BY anon_1.users_id, addresses_1.id, addresses.id",
+        )
+
+    def test_table_anonymous_expression_from_self_twice_oldstyle(self):
+        # relies upon _orm_only_from_obj_alias setting
+        from sqlalchemy.sql import column
+
+        sess = create_session()
+        t1 = table("t1", column("c1"), column("c2"))
+        q1 = sess.query(t1.c.c1, t1.c.c2).filter(t1.c.c1 == "dog")
+        with self._from_self_deprecated():
+            q1 = q1.from_self().from_self()
+        self.assert_compile(
+            q1.order_by(t1.c.c1),
+            "SELECT anon_1.anon_2_t1_c1 "
+            "AS anon_1_anon_2_t1_c1, anon_1.anon_2_t1_c2 "
+            "AS anon_1_anon_2_t1_c2 "
+            "FROM (SELECT anon_2.t1_c1 AS anon_2_t1_c1, "
+            "anon_2.t1_c2 AS anon_2_t1_c2 FROM (SELECT t1.c1 AS t1_c1, t1.c2 "
+            "AS t1_c2 FROM t1 WHERE t1.c1 = :c1_1) AS anon_2) AS anon_1 "
+            "ORDER BY anon_1.anon_2_t1_c1",
+        )
+
+    def test_self_referential(self):
+        Order = self.classes.Order
+
+        sess = create_session()
+        oalias = aliased(Order)
+
+        with self._from_self_deprecated():
+            for q in [
+                sess.query(Order, oalias)
+                .filter(Order.user_id == oalias.user_id)
+                .filter(Order.user_id == 7)
+                .filter(Order.id > oalias.id)
+                .order_by(Order.id, oalias.id),
+                sess.query(Order, oalias)
+                .filter(Order.id > oalias.id)
+                .from_self()
+                .filter(Order.user_id == oalias.user_id)
+                .filter(Order.user_id == 7)
+                .order_by(Order.id, oalias.id),
+                # same thing, but reversed.
+                sess.query(oalias, Order)
+                .filter(Order.id < oalias.id)
+                .from_self()
+                .filter(oalias.user_id == Order.user_id)
+                .filter(oalias.user_id == 7)
+                .order_by(oalias.id, Order.id),
+                # here we go....two layers of aliasing
+                sess.query(Order, oalias)
+                .filter(Order.user_id == oalias.user_id)
+                .filter(Order.user_id == 7)
+                .filter(Order.id > oalias.id)
+                .from_self()
+                .order_by(Order.id, oalias.id)
+                .limit(10)
+                .options(joinedload(Order.items)),
+                # gratuitous four layers
+                sess.query(Order, oalias)
+                .filter(Order.user_id == oalias.user_id)
+                .filter(Order.user_id == 7)
+                .filter(Order.id > oalias.id)
+                .from_self()
+                .from_self()
+                .from_self()
+                .order_by(Order.id, oalias.id)
+                .limit(10)
+                .options(joinedload(Order.items)),
+            ]:
+
+                eq_(
+                    q.all(),
+                    [
+                        (
+                            Order(
+                                address_id=1,
+                                description="order 3",
+                                isopen=1,
+                                user_id=7,
+                                id=3,
+                            ),
+                            Order(
+                                address_id=1,
+                                description="order 1",
+                                isopen=0,
+                                user_id=7,
+                                id=1,
+                            ),
+                        ),
+                        (
+                            Order(
+                                address_id=None,
+                                description="order 5",
+                                isopen=0,
+                                user_id=7,
+                                id=5,
+                            ),
+                            Order(
+                                address_id=1,
+                                description="order 1",
+                                isopen=0,
+                                user_id=7,
+                                id=1,
+                            ),
+                        ),
+                        (
+                            Order(
+                                address_id=None,
+                                description="order 5",
+                                isopen=0,
+                                user_id=7,
+                                id=5,
+                            ),
+                            Order(
+                                address_id=1,
+                                description="order 3",
+                                isopen=1,
+                                user_id=7,
+                                id=3,
+                            ),
+                        ),
+                    ],
+                )
+
+    def test_from_self_internal_literals_oldstyle(self):
+        # relies upon _orm_only_from_obj_alias setting
+        Order = self.classes.Order
+
+        sess = create_session()
+
+        # ensure column expressions are taken from inside the subquery, not
+        # restated at the top
+        with self._from_self_deprecated():
+            q = (
+                sess.query(
+                    Order.id,
+                    Order.description,
+                    literal_column("'q'").label("foo"),
+                )
+                .filter(Order.description == "order 3")
+                .from_self()
+            )
+        self.assert_compile(
+            q,
+            "SELECT anon_1.orders_id AS "
+            "anon_1_orders_id, "
+            "anon_1.orders_description AS anon_1_orders_description, "
+            "anon_1.foo AS anon_1_foo FROM (SELECT "
+            "orders.id AS orders_id, "
+            "orders.description AS orders_description, "
+            "'q' AS foo FROM orders WHERE "
+            "orders.description = :description_1) AS "
+            "anon_1",
+        )
+        eq_(q.all(), [(3, "order 3", "q")])
+
+    def test_column_access_from_self(self):
+        User = self.classes.User
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            q = sess.query(User).from_self()
+        self.assert_compile(
+            q.filter(User.name == "ed"),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name AS "
+            "anon_1_users_name FROM (SELECT users.id AS users_id, users.name "
+            "AS users_name FROM users) AS anon_1 WHERE anon_1.users_name = "
+            ":name_1",
+        )
+
+    def test_column_access_from_self_twice(self):
+        User = self.classes.User
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            q = sess.query(User).from_self(User.id, User.name).from_self()
+        self.assert_compile(
+            q.filter(User.name == "ed"),
+            "SELECT anon_1.anon_2_users_id AS anon_1_anon_2_users_id, "
+            "anon_1.anon_2_users_name AS anon_1_anon_2_users_name FROM "
+            "(SELECT anon_2.users_id AS anon_2_users_id, anon_2.users_name "
+            "AS anon_2_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users) AS anon_2) AS anon_1 "
+            "WHERE anon_1.anon_2_users_name = :name_1",
+        )
+
+    def test_column_queries_nine(self):
+        Address, User = (
+            self.classes.Address,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        adalias = aliased(Address)
+        # select from aliasing + explicit aliasing
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User, adalias.email_address, adalias.id)
+                .outerjoin(adalias, User.addresses)
+                .from_self(User, adalias.email_address)
+                .order_by(User.id, adalias.id)
+                .all(),
+                [
+                    (User(name="jack", id=7), "jack@bean.com"),
+                    (User(name="ed", id=8), "ed@wood.com"),
+                    (User(name="ed", id=8), "ed@bettyboop.com"),
+                    (User(name="ed", id=8), "ed@lala.com"),
+                    (User(name="fred", id=9), "fred@fred.com"),
+                    (User(name="chuck", id=10), None),
+                ],
+            )
+
+    def test_column_queries_ten(self):
+        Address, User = (
+            self.classes.Address,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        # anon + select from aliasing
+        aa = aliased(Address)
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User)
+                .join(aa, User.addresses)
+                .filter(aa.email_address.like("%ed%"))
+                .from_self()
+                .all(),
+                [User(name="ed", id=8), User(name="fred", id=9)],
+            )
+
+    def test_column_queries_eleven(self):
+        Address, User = (
+            self.classes.Address,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        adalias = aliased(Address)
+        # test eager aliasing, with/without select_entity_from aliasing
+        with self._from_self_deprecated():
+            for q in [
+                sess.query(User, adalias.email_address)
+                .outerjoin(adalias, User.addresses)
+                .options(joinedload(User.addresses))
+                .order_by(User.id, adalias.id)
+                .limit(10),
+                sess.query(User, adalias.email_address, adalias.id)
+                .outerjoin(adalias, User.addresses)
+                .from_self(User, adalias.email_address)
+                .options(joinedload(User.addresses))
+                .order_by(User.id, adalias.id)
+                .limit(10),
+            ]:
+                eq_(
+                    q.all(),
+                    [
+                        (
+                            User(
+                                addresses=[
+                                    Address(
+                                        user_id=7,
+                                        email_address="jack@bean.com",
+                                        id=1,
+                                    )
+                                ],
+                                name="jack",
+                                id=7,
+                            ),
+                            "jack@bean.com",
+                        ),
+                        (
+                            User(
+                                addresses=[
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@wood.com",
+                                        id=2,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@bettyboop.com",
+                                        id=3,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@lala.com",
+                                        id=4,
+                                    ),
+                                ],
+                                name="ed",
+                                id=8,
+                            ),
+                            "ed@wood.com",
+                        ),
+                        (
+                            User(
+                                addresses=[
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@wood.com",
+                                        id=2,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@bettyboop.com",
+                                        id=3,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@lala.com",
+                                        id=4,
+                                    ),
+                                ],
+                                name="ed",
+                                id=8,
+                            ),
+                            "ed@bettyboop.com",
+                        ),
+                        (
+                            User(
+                                addresses=[
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@wood.com",
+                                        id=2,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@bettyboop.com",
+                                        id=3,
+                                    ),
+                                    Address(
+                                        user_id=8,
+                                        email_address="ed@lala.com",
+                                        id=4,
+                                    ),
+                                ],
+                                name="ed",
+                                id=8,
+                            ),
+                            "ed@lala.com",
+                        ),
+                        (
+                            User(
+                                addresses=[
+                                    Address(
+                                        user_id=9,
+                                        email_address="fred@fred.com",
+                                        id=5,
+                                    )
+                                ],
+                                name="fred",
+                                id=9,
+                            ),
+                            "fred@fred.com",
+                        ),
+                        (User(addresses=[], name="chuck", id=10), None),
+                    ],
+                )
+
+    def test_filter(self):
+        User = self.classes.User
+
+        with self._from_self_deprecated():
+            eq_(
+                [User(id=8), User(id=9)],
+                create_session()
+                .query(User)
+                .filter(User.id.in_([8, 9]))
+                .from_self()
+                .all(),
+            )
+
+        with self._from_self_deprecated():
+            eq_(
+                [User(id=8), User(id=9)],
+                create_session()
+                .query(User)
+                .order_by(User.id)
+                .slice(1, 3)
+                .from_self()
+                .all(),
+            )
+
+        with self._from_self_deprecated():
+            eq_(
+                [User(id=8)],
+                list(
+                    create_session()
+                    .query(User)
+                    .filter(User.id.in_([8, 9]))
+                    .from_self()
+                    .order_by(User.id)[0:1]
+                ),
+            )
+
+    def test_join(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        with self._from_self_deprecated():
+            eq_(
+                [
+                    (User(id=8), Address(id=2)),
+                    (User(id=8), Address(id=3)),
+                    (User(id=8), Address(id=4)),
+                    (User(id=9), Address(id=5)),
+                ],
+                create_session()
+                .query(User)
+                .filter(User.id.in_([8, 9]))
+                .from_self()
+                .join("addresses")
+                .add_entity(Address)
+                .order_by(User.id, Address.id)
+                .all(),
+            )
+
+    def test_group_by(self):
+        Address = self.classes.Address
+
+        eq_(
+            create_session()
+            .query(Address.user_id, func.count(Address.id).label("count"))
+            .group_by(Address.user_id)
+            .order_by(Address.user_id)
+            .all(),
+            [(7, 1), (8, 3), (9, 1)],
+        )
+
+        with self._from_self_deprecated():
+            eq_(
+                create_session()
+                .query(Address.user_id, Address.id)
+                .from_self(Address.user_id, func.count(Address.id))
+                .group_by(Address.user_id)
+                .order_by(Address.user_id)
+                .all(),
+                [(7, 1), (8, 3), (9, 1)],
+            )
+
+    def test_having(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        with self._from_self_deprecated():
+            self.assert_compile(
+                s.query(User.id)
+                .group_by(User.id)
+                .having(User.id > 5)
+                .from_self(),
+                "SELECT anon_1.users_id AS anon_1_users_id FROM "
+                "(SELECT users.id AS users_id FROM users GROUP "
+                "BY users.id HAVING users.id > :id_1) AS anon_1",
+            )
+
+    def test_no_joinedload(self):
+        """test that joinedloads are pushed outwards and not rendered in
+        subqueries."""
+
+        User = self.classes.User
+
+        s = create_session()
+
+        with self._from_self_deprecated():
+            q = s.query(User).options(joinedload(User.addresses)).from_self()
+
+        self.assert_compile(
+            q.statement,
+            "SELECT anon_1.users_id, anon_1.users_name, addresses_1.id, "
+            "addresses_1.user_id, addresses_1.email_address FROM "
+            "(SELECT users.id AS users_id, users.name AS "
+            "users_name FROM users) AS anon_1 LEFT OUTER JOIN "
+            "addresses AS addresses_1 ON anon_1.users_id = "
+            "addresses_1.user_id ORDER BY addresses_1.id",
+        )
+
+    def test_aliases(self):
+        """test that aliased objects are accessible externally to a from_self()
+        call."""
+
+        User, Address = self.classes.User, self.classes.Address
+
+        s = create_session()
+
+        ualias = aliased(User)
+
+        with self._from_self_deprecated():
+            eq_(
+                s.query(User, ualias)
+                .filter(User.id > ualias.id)
+                .from_self(User.name, ualias.name)
+                .order_by(User.name, ualias.name)
+                .all(),
+                [
+                    ("chuck", "ed"),
+                    ("chuck", "fred"),
+                    ("chuck", "jack"),
+                    ("ed", "jack"),
+                    ("fred", "ed"),
+                    ("fred", "jack"),
+                ],
+            )
+
+        with self._from_self_deprecated():
+            eq_(
+                s.query(User, ualias)
+                .filter(User.id > ualias.id)
+                .from_self(User.name, ualias.name)
+                .filter(ualias.name == "ed")
+                .order_by(User.name, ualias.name)
+                .all(),
+                [("chuck", "ed"), ("fred", "ed")],
+            )
+
+        with self._from_self_deprecated():
+            eq_(
+                s.query(User, ualias)
+                .filter(User.id > ualias.id)
+                .from_self(ualias.name, Address.email_address)
+                .join(ualias.addresses)
+                .order_by(ualias.name, Address.email_address)
+                .all(),
+                [
+                    ("ed", "fred@fred.com"),
+                    ("jack", "ed@bettyboop.com"),
+                    ("jack", "ed@lala.com"),
+                    ("jack", "ed@wood.com"),
+                    ("jack", "fred@fred.com"),
+                ],
+            )
+
+    def test_multiple_entities(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User, Address)
+                .filter(User.id == Address.user_id)
+                .filter(Address.id.in_([2, 5]))
+                .from_self()
+                .all(),
+                [(User(id=8), Address(id=2)), (User(id=9), Address(id=5))],
+            )
+
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User, Address)
+                .filter(User.id == Address.user_id)
+                .filter(Address.id.in_([2, 5]))
+                .from_self()
+                .options(joinedload("addresses"))
+                .first(),
+                (
+                    User(id=8, addresses=[Address(), Address(), Address()]),
+                    Address(id=2),
+                ),
+            )
+
+    def test_multiple_with_column_entities_oldstyle(self):
+        # relies upon _orm_only_from_obj_alias setting
+        User = self.classes.User
+
+        sess = create_session()
+
+        with self._from_self_deprecated():
+            eq_(
+                sess.query(User.id)
+                .from_self()
+                .add_columns(func.count().label("foo"))
+                .group_by(User.id)
+                .order_by(User.id)
+                .from_self()
+                .all(),
+                [(7, 1), (8, 1), (9, 1), (10, 1)],
+            )
+
+
+class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
+    def _from_self_deprecated(self):
+        return testing.expect_deprecated_20(
+            r"The Query.from_self\(\) function/method"
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base, ComparableEntity):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            cs = relationship("C", order_by="C.id")
+
+        class B(Base, ComparableEntity):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            a = relationship("A")
+            ds = relationship("D", order_by="D.id")
+
+        class C(Base, ComparableEntity):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        class D(Base, ComparableEntity):
+            __tablename__ = "d"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, C, D = cls.classes("A", "B", "C", "D")
+
+        s = Session(connection)
+
+        as_ = [A(id=i, cs=[C(), C()],) for i in range(1, 5)]
+
+        s.add_all(
+            [
+                B(a=as_[0], ds=[D()]),
+                B(a=as_[1], ds=[D()]),
+                B(a=as_[2]),
+                B(a=as_[3]),
+            ]
+        )
+
+        s.commit()
+
+    def test_subq_w_from_self_one(self):
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session()
+
+        cache = {}
+
+        for i in range(3):
+            with self._from_self_deprecated():
+                q = (
+                    s.query(B)
+                    .execution_options(compiled_cache=cache)
+                    .join(B.a)
+                    .filter(B.id < 4)
+                    .filter(A.id > 1)
+                    .from_self()
+                    .options(subqueryload(B.a).subqueryload(A.cs))
+                    .from_self()
+                )
+
+            def go():
+                results = q.all()
+                eq_(
+                    results,
+                    [
+                        B(
+                            a=A(cs=[C(a_id=2, id=3), C(a_id=2, id=4)], id=2),
+                            a_id=2,
+                            id=2,
+                        ),
+                        B(
+                            a=A(cs=[C(a_id=3, id=5), C(a_id=3, id=6)], id=3),
+                            a_id=3,
+                            id=3,
+                        ),
+                    ],
+                )
+
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT anon_1.anon_2_b_id AS anon_1_anon_2_b_id, "
+                    "anon_1.anon_2_b_a_id AS anon_1_anon_2_b_a_id FROM "
+                    "(SELECT anon_2.b_id AS anon_2_b_id, anon_2.b_a_id "
+                    "AS anon_2_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_2) AS anon_1"
+                ),
+                CompiledSQL(
+                    "SELECT a.id AS a_id, anon_1.anon_2_anon_3_b_a_id AS "
+                    "anon_1_anon_2_anon_3_b_a_id FROM (SELECT DISTINCT "
+                    "anon_2.anon_3_b_a_id AS anon_2_anon_3_b_a_id FROM "
+                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
+                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
+                    "AS anon_2) AS anon_1 JOIN a "
+                    "ON a.id = anon_1.anon_2_anon_3_b_a_id"
+                ),
+                CompiledSQL(
+                    "SELECT c.id AS c_id, c.a_id AS c_a_id, a_1.id "
+                    "AS a_1_id FROM (SELECT DISTINCT anon_2.anon_3_b_a_id AS "
+                    "anon_2_anon_3_b_a_id FROM "
+                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
+                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
+                    "AS anon_2) AS anon_1 JOIN a AS a_1 ON a_1.id = "
+                    "anon_1.anon_2_anon_3_b_a_id JOIN c ON a_1.id = c.a_id "
+                    "ORDER BY c.id"
+                ),
+            )
+
+            s.close()
+
+    def test_subq_w_from_self_two(self):
+
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session()
+        cache = {}
+
+        for i in range(3):
+
+            def go():
+                with self._from_self_deprecated():
+                    q = (
+                        s.query(B)
+                        .execution_options(compiled_cache=cache)
+                        .join(B.a)
+                        .from_self()
+                    )
+                q = q.options(subqueryload(B.ds))
+
+                q.all()
+
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS "
+                    "anon_1_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
+                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id) AS anon_1"
+                ),
+                CompiledSQL(
+                    "SELECT d.id AS d_id, d.b_id AS d_b_id, "
+                    "anon_1.anon_2_b_id AS anon_1_anon_2_b_id "
+                    "FROM (SELECT anon_2.b_id AS anon_2_b_id FROM "
+                    "(SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
+                    "JOIN a ON a.id = b.a_id) AS anon_2) AS anon_1 "
+                    "JOIN d ON anon_1.anon_2_b_id = d.b_id ORDER BY d.id"
+                ),
+            )
+            s.close()
 
 
 class SessionTest(fixtures.RemovesEvents, _LocalFixture):

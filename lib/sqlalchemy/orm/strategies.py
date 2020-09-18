@@ -1137,7 +1137,8 @@ class SubqueryLoader(PostLoader):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    def _get_leftmost(self, subq_path):
+    def _get_leftmost(self, subq_path, current_compile_state, is_root):
+        given_subq_path = subq_path
         subq_path = subq_path.path
         subq_mapper = orm_util._class_to_mapper(subq_path[0])
 
@@ -1150,16 +1151,29 @@ class SubqueryLoader(PostLoader):
         else:
             leftmost_mapper, leftmost_prop = subq_mapper, subq_path[1]
 
+        if is_root:
+            # the subq_path is also coming from cached state, so when we start
+            # building up this path, it has to also be converted to be in terms
+            # of the current state. this is for the specific case of the entity
+            # is an AliasedClass against a subquery that's not otherwise going
+            # to adapt
+            new_subq_path = current_compile_state._entities[
+                0
+            ].entity_zero._path_registry[leftmost_prop]
+        else:
+            new_subq_path = given_subq_path
+
         leftmost_cols = leftmost_prop.local_columns
 
         leftmost_attr = [
             getattr(
-                subq_path[0].entity, leftmost_mapper._columntoproperty[c].key
+                new_subq_path.path[0].entity,
+                leftmost_mapper._columntoproperty[c].key,
             )
             for c in leftmost_cols
         ]
 
-        return leftmost_mapper, leftmost_attr, leftmost_prop
+        return leftmost_mapper, leftmost_attr, leftmost_prop, new_subq_path
 
     def _generate_from_original_query(
         self,
@@ -1361,10 +1375,12 @@ class SubqueryLoader(PostLoader):
 
         return q
 
-    def _setup_options(self, q, subq_path, orig_query, effective_entity):
+    def _setup_options(
+        self, q, subq_path, rewritten_path, orig_query, effective_entity
+    ):
         # propagate loader options etc. to the new query.
         # these will fire relative to subq_path.
-        q = q._with_current_path(subq_path)
+        q = q._with_current_path(rewritten_path)
         q = q.options(*orig_query._with_options)
 
         return q
@@ -1462,11 +1478,13 @@ class SubqueryLoader(PostLoader):
         else:
             effective_entity = self.entity
 
-        subq_path = context.query._execution_options.get(
-            ("subquery_path", None), orm_util.PathRegistry.root
+        subq_path, rewritten_path = context.query._execution_options.get(
+            ("subquery_paths", None),
+            (orm_util.PathRegistry.root, orm_util.PathRegistry.root),
         )
-
+        is_root = subq_path is orm_util.PathRegistry.root
         subq_path = subq_path + path
+        rewritten_path = rewritten_path + path
 
         # if not via query option, check for
         # a cycle
@@ -1483,12 +1501,6 @@ class SubqueryLoader(PostLoader):
                     return
             elif subq_path.contains_mapper(self.mapper):
                 return
-
-        (
-            leftmost_mapper,
-            leftmost_attr,
-            leftmost_relationship,
-        ) = self._get_leftmost(subq_path)
 
         # use the current query being invoked, not the compile state
         # one.  this is so that we get the current parameters.  however,
@@ -1525,6 +1537,13 @@ class SubqueryLoader(PostLoader):
             orig_query
         )
 
+        (
+            leftmost_mapper,
+            leftmost_attr,
+            leftmost_relationship,
+            rewritten_path,
+        ) = self._get_leftmost(rewritten_path, orig_compile_state, is_root)
+
         # generate a new Query from the original, then
         # produce a subquery from it.
         left_alias = self._generate_from_original_query(
@@ -1547,7 +1566,7 @@ class SubqueryLoader(PostLoader):
         q._execution_options = q._execution_options.union(
             {
                 ("orig_query", SubqueryLoader): orig_query,
-                ("subquery_path", None): subq_path,
+                ("subquery_paths", None): (subq_path, rewritten_path),
             }
         )
 
@@ -1561,7 +1580,9 @@ class SubqueryLoader(PostLoader):
             q, to_join, left_alias, parent_alias, effective_entity
         )
 
-        q = self._setup_options(q, subq_path, orig_query, effective_entity)
+        q = self._setup_options(
+            q, subq_path, rewritten_path, orig_query, effective_entity
+        )
         q = self._setup_outermost_orderby(q)
 
         return q

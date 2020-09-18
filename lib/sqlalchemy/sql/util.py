@@ -12,7 +12,9 @@
 from collections import deque
 from itertools import chain
 
+from . import coercions
 from . import operators
+from . import roles
 from . import visitors
 from .annotation import _deep_annotate  # noqa
 from .annotation import _deep_deannotate  # noqa
@@ -980,3 +982,73 @@ class ColumnAdapter(ClauseAdapter):
     def __setstate__(self, state):
         self.__dict__.update(state)
         self.columns = util.WeakPopulateDict(self._locate_col)
+
+
+def _offset_or_limit_clause(element, name=None, type_=None):
+    """Convert the given value to an "offset or limit" clause.
+
+    This handles incoming integers and converts to an expression; if
+    an expression is already given, it is passed through.
+
+    """
+    return coercions.expect(
+        roles.LimitOffsetRole, element, name=name, type_=type_
+    )
+
+
+def _offset_or_limit_clause_asint_if_possible(clause):
+    """Return the offset or limit clause as a simple integer if possible,
+    else return the clause.
+
+    """
+    if clause is None:
+        return None
+    if hasattr(clause, "_limit_offset_value"):
+        value = clause._limit_offset_value
+        return util.asint(value)
+    else:
+        return clause
+
+
+def _make_slice(limit_clause, offset_clause, start, stop):
+    """Compute LIMIT/OFFSET in terms of slice start/end
+    """
+
+    # for calculated limit/offset, try to do the addition of
+    # values to offset in Python, however if a SQL clause is present
+    # then the addition has to be on the SQL side.
+    if start is not None and stop is not None:
+        offset_clause = _offset_or_limit_clause_asint_if_possible(
+            offset_clause
+        )
+        if offset_clause is None:
+            offset_clause = 0
+
+        if start != 0:
+            offset_clause = offset_clause + start
+
+        if offset_clause == 0:
+            offset_clause = None
+        else:
+            offset_clause = _offset_or_limit_clause(offset_clause)
+
+        limit_clause = _offset_or_limit_clause(stop - start)
+
+    elif start is None and stop is not None:
+        limit_clause = _offset_or_limit_clause(stop)
+    elif start is not None and stop is None:
+        offset_clause = _offset_or_limit_clause_asint_if_possible(
+            offset_clause
+        )
+        if offset_clause is None:
+            offset_clause = 0
+
+        if start != 0:
+            offset_clause = offset_clause + start
+
+        if offset_clause == 0:
+            offset_clause = None
+        else:
+            offset_clause = _offset_or_limit_clause(offset_clause)
+
+    return limit_clause, offset_clause

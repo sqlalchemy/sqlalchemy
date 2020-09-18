@@ -170,6 +170,10 @@ class Query(
         self.session = session
         self._set_entities(entities)
 
+    def _set_propagate_attrs(self, values):
+        self._propagate_attrs = util.immutabledict(values)
+        return self
+
     def _set_entities(self, entities):
         self._raw_columns = [
             coercions.expect(
@@ -2526,7 +2530,7 @@ class Query(
 
         """
 
-        self._limit_clause, self._offset_clause = orm_util._make_slice(
+        self._limit_clause, self._offset_clause = sql_util._make_slice(
             self._limit_clause, self._offset_clause, start, stop
         )
 
@@ -2537,7 +2541,7 @@ class Query(
         ``Query``.
 
         """
-        self._limit_clause = orm_util._offset_or_limit_clause(limit)
+        self._limit_clause = sql_util._offset_or_limit_clause(limit)
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2546,7 +2550,7 @@ class Query(
         ``Query``.
 
         """
-        self._offset_clause = orm_util._offset_or_limit_clause(offset)
+        self._offset_clause = sql_util._offset_or_limit_clause(offset)
 
     @_generative
     @_assertions(_no_statement_condition)

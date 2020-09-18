@@ -3028,6 +3028,45 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         self._offset_clause = self._offset_or_limit_clause(offset)
 
     @_generative
+    @util.preload_module("sqlalchemy.sql.util")
+    def slice(self, start, stop):
+        """Apply LIMIT / OFFSET to this statement based on a slice.
+
+        The start and stop indices behave like the argument to Python's
+        built-in :func:`range` function. This method provides an
+        alternative to using ``LIMIT``/``OFFSET`` to get a slice of the
+        query.
+
+        For example, ::
+
+            stmt = select(User).order_by(User).id.slice(1, 3)
+
+        renders as
+
+        .. sourcecode:: sql
+
+           SELECT users.id AS users_id,
+                  users.name AS users_name
+           FROM users ORDER BY users.id
+           LIMIT ? OFFSET ?
+           (2, 1)
+
+        .. versionadded:: 1.4  Added the :meth:`_sql.GenerativeSelect.slice`
+           method generalized from the ORM.
+
+        .. seealso::
+
+           :meth:`_sql.GenerativeSelect.limit`
+
+           :meth:`_sql.GenerativeSelect.offset`
+
+        """
+        sql_util = util.preloaded.sql_util
+        self._limit_clause, self._offset_clause = sql_util._make_slice(
+            self._limit_clause, self._offset_clause, start, stop
+        )
+
+    @_generative
     def order_by(self, *clauses):
         r"""Return a new selectable with the given list of ORDER BY
         criterion applied.

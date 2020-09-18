@@ -702,11 +702,18 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         sess = create_session()
-        self.assert_compile(
+
+        subq = (
             sess.query(User)
             .filter(User.name == "ed")
-            .from_self()
-            .join(User.orders),
+            .apply_labels()
+            .subquery()
+        )
+
+        ua = aliased(User, subq)
+
+        self.assert_compile(
+            sess.query(ua).join(ua.orders),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name "
             "FROM (SELECT users.id AS users_id, users.name AS users_name "
@@ -1661,13 +1668,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # explicit onclause with from_self(), means
         # the onclause must be aliased against the query's custom
         # FROM object
+        subq = sess.query(User).order_by(User.id).offset(2).subquery()
+        ua = aliased(User, subq)
         eq_(
-            sess.query(User)
-            .order_by(User.id)
-            .offset(2)
-            .from_self()
-            .join(Order, User.id == Order.user_id)
-            .all(),
+            sess.query(ua).join(Order, ua.id == Order.user_id).all(),
             [User(name="fred")],
         )
 
@@ -2300,34 +2304,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             .join(Item, User.id == Item.id),
             "SELECT items.id AS items_id FROM users JOIN items "
             "ON users.id = items.id",
-            use_default_dialect=True,
-        )
-
-    def test_from_self_resets_joinpaths(self):
-        """test a join from from_self() doesn't confuse joins inside the subquery
-        with the outside.
-        """
-
-        Item, Keyword = self.classes.Item, self.classes.Keyword
-
-        sess = create_session()
-
-        self.assert_compile(
-            sess.query(Item)
-            .join(Item.keywords)
-            .from_self(Keyword)
-            .join(Item.keywords),
-            "SELECT keywords.id AS keywords_id, "
-            "keywords.name AS keywords_name "
-            "FROM (SELECT items.id AS items_id, "
-            "items.description AS items_description "
-            "FROM items JOIN item_keywords AS item_keywords_1 ON items.id = "
-            "item_keywords_1.item_id JOIN keywords "
-            "ON keywords.id = item_keywords_1.keyword_id) "
-            "AS anon_1 JOIN item_keywords AS item_keywords_2 ON "
-            "anon_1.items_id = item_keywords_2.item_id "
-            "JOIN keywords ON "
-            "keywords.id = item_keywords_2.keyword_id",
             use_default_dialect=True,
         )
 
@@ -3246,10 +3222,18 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # n1 is not inside the from_self(), so all cols must be maintained
         # on the outside
-        self.assert_compile(
+
+        subq = (
             sess.query(Node)
             .filter(Node.data == "n122")
-            .from_self(n1, Node.id),
+            .apply_labels()
+            .subquery()
+        )
+
+        na = aliased(Node, subq)
+
+        self.assert_compile(
+            sess.query(n1, na.id),
             "SELECT nodes_1.id AS nodes_1_id, "
             "nodes_1.parent_id AS nodes_1_parent_id, "
             "nodes_1.data AS nodes_1_data, anon_1.nodes_id AS anon_1_nodes_id "
@@ -3262,16 +3246,21 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         parent = aliased(Node)
         grandparent = aliased(Node)
-        q = (
+        subq = (
             sess.query(Node, parent, grandparent)
             .join(parent, Node.parent)
             .join(grandparent, parent.parent)
             .filter(Node.data == "n122")
             .filter(parent.data == "n12")
             .filter(grandparent.data == "n1")
-            .from_self()
-            .limit(1)
+            .apply_labels()
+            .subquery()
         )
+        na = aliased(Node, subq)
+        pa = aliased(parent, subq)
+        ga = aliased(grandparent, subq)
+
+        q = sess.query(na, pa, ga).limit(1)
 
         # parent, grandparent *are* inside the from_self(), so they
         # should get aliased to the outside.
@@ -3517,15 +3506,23 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         parent = aliased(Node)
         grandparent = aliased(Node)
-        eq_(
+
+        subq = (
             sess.query(Node, parent, grandparent)
             .join(parent, Node.parent)
             .join(grandparent, parent.parent)
             .filter(Node.data == "n122")
             .filter(parent.data == "n12")
             .filter(grandparent.data == "n1")
-            .from_self()
-            .first(),
+            .subquery()
+        )
+
+        na = aliased(Node, subq)
+        pa = aliased(parent, subq)
+        ga = aliased(grandparent, subq)
+
+        eq_(
+            sess.query(na, pa, ga).first(),
             (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 
@@ -3537,15 +3534,22 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         parent = aliased(Node)
         grandparent = aliased(Node)
         # same, change order around
-        eq_(
+        subq = (
             sess.query(parent, grandparent, Node)
             .join(parent, Node.parent)
             .join(grandparent, parent.parent)
             .filter(Node.data == "n122")
             .filter(parent.data == "n12")
             .filter(grandparent.data == "n1")
-            .from_self()
-            .first(),
+            .subquery()
+        )
+
+        na = aliased(Node, subq)
+        pa = aliased(parent, subq)
+        ga = aliased(grandparent, subq)
+
+        eq_(
+            sess.query(pa, ga, na).first(),
             (Node(data="n12"), Node(data="n1"), Node(data="n122")),
         )
 
@@ -3575,16 +3579,23 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         parent = aliased(Node)
         grandparent = aliased(Node)
-        eq_(
+
+        subq = (
             sess.query(Node, parent, grandparent)
             .join(parent, Node.parent)
             .join(grandparent, parent.parent)
             .filter(Node.data == "n122")
             .filter(parent.data == "n12")
             .filter(grandparent.data == "n1")
-            .from_self()
-            .options(joinedload(Node.children))
-            .first(),
+            .subquery()
+        )
+
+        na = aliased(Node, subq)
+        pa = aliased(parent, subq)
+        ga = aliased(grandparent, subq)
+
+        eq_(
+            sess.query(na, pa, ga).options(joinedload(na.children)).first(),
             (Node(data="n122"), Node(data="n12"), Node(data="n1")),
         )
 

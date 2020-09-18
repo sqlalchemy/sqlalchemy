@@ -434,7 +434,7 @@ class Result(object):
         """
 
         col = func.count(literal_column("*"))
-        bq = self.bq.with_criteria(lambda q: q.from_self(col))
+        bq = self.bq.with_criteria(lambda q: q._from_self(col))
         return bq.for_session(self.session).params(self._params).scalar()
 
     def scalar(self):
