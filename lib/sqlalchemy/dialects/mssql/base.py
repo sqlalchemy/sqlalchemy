@@ -2756,21 +2756,34 @@ class MSDialect(default.DefaultDialect):
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
-        tables = ischema.tables
-
-        s = sql.select(tables.c.table_name).where(
-            sql.and_(
-                tables.c.table_type == "BASE TABLE",
-                tables.c.table_name == tablename,
+        if tablename.startswith("#"):  # temporary table
+            tables = ischema.mssql_temp_table_columns
+            result = connection.execute(
+                sql.select(tables.c.table_name)
+                .where(
+                    tables.c.table_name.like(
+                        self._temp_table_name_like_pattern(tablename)
+                    )
+                )
+                .limit(1)
             )
-        )
+            return result.scalar() is not None
+        else:
+            tables = ischema.tables
 
-        if owner:
-            s = s.where(tables.c.table_schema == owner)
+            s = sql.select(tables.c.table_name).where(
+                sql.and_(
+                    tables.c.table_type == "BASE TABLE",
+                    tables.c.table_name == tablename,
+                )
+            )
 
-        c = connection.execute(s)
+            if owner:
+                s = s.where(tables.c.table_schema == owner)
 
-        return c.first() is not None
+            c = connection.execute(s)
+
+            return c.first() is not None
 
     @_db_plus_owner
     def has_sequence(self, connection, sequencename, dbname, owner, schema):
@@ -2937,6 +2950,9 @@ class MSDialect(default.DefaultDialect):
             view_def = rp.scalar()
             return view_def
 
+    def _temp_table_name_like_pattern(self, tablename):
+        return tablename + (("___%") if not tablename.startswith("##") else "")
+
     def _get_internal_temp_table_name(self, connection, tablename):
         # it's likely that schema is always "dbo", but since we can
         # get it here, let's get it.
@@ -2950,10 +2966,7 @@ class MSDialect(default.DefaultDialect):
                     "from tempdb.information_schema.tables "
                     "where table_name like :p1"
                 ),
-                {
-                    "p1": tablename
-                    + (("___%") if not tablename.startswith("##") else "")
-                },
+                {"p1": self._temp_table_name_like_pattern(tablename)},
             ).one()
         except exc.MultipleResultsFound as me:
             util.raise_(

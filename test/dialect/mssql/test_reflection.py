@@ -300,6 +300,22 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             )
 
     @testing.provide_metadata
+    @testing.combinations(
+        ("local_temp", "#tmp", True),
+        ("global_temp", "##tmp", True),
+        ("nonexistent", "#no_es_bueno", False),
+        id_="iaa",
+        argnames="table_name, exists",
+    )
+    def test_has_table_temporary(self, connection, table_name, exists):
+        if exists:
+            tt = Table(table_name, self.metadata, Column("id", Integer),)
+            tt.create(connection)
+
+        found_it = testing.db.dialect.has_table(connection, table_name)
+        eq_(found_it, exists)
+
+    @testing.provide_metadata
     def test_db_qualified_items(self):
         metadata = self.metadata
         Table("foo", metadata, Column("id", Integer, primary_key=True))
