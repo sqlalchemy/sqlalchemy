@@ -3234,17 +3234,44 @@ class PGDialect(default.DefaultDialect):
             if self.server_version_info >= (12,)
             else "NULL as generated"
         )
-        SQL_COLS = (
-            """
+        if self.server_version_info >= (10,):
+            # a.attidentity != '' is required or it will reflect also
+            # serial columns as identity.
+            identity = """\
+                (SELECT json_build_object(
+                    'always', a.attidentity = 'a',
+                    'start', s.seqstart,
+                    'increment', s.seqincrement,
+                    'minvalue', s.seqmin,
+                    'maxvalue', s.seqmax,
+                    'cache', s.seqcache,
+                    'cycle', s.seqcycle)
+                FROM pg_catalog.pg_sequence s
+                JOIN pg_catalog.pg_class c on s.seqrelid = c."oid"
+                JOIN pg_catalog.pg_namespace n on n.oid = c.relnamespace
+                WHERE c.relkind = 'S'
+                AND a.attidentity != ''
+                AND n.nspname || '.' || c.relname =
+                pg_catalog.pg_get_serial_sequence(
+                    a.attrelid::regclass::text, a.attname)
+                ) as identity_options\
+                """
+        else:
+            identity = "NULL as identity"
+
+        SQL_COLS = """
             SELECT a.attname,
               pg_catalog.format_type(a.atttypid, a.atttypmod),
-              (SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+              (
+                SELECT pg_catalog.pg_get_expr(d.adbin, d.adrelid)
                 FROM pg_catalog.pg_attrdef d
-               WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
-               AND a.atthasdef)
-              AS DEFAULT,
-              a.attnotnull, a.attnum, a.attrelid as table_oid,
+                WHERE d.adrelid = a.attrelid AND d.adnum = a.attnum
+                AND a.atthasdef
+              ) AS DEFAULT,
+              a.attnotnull,
+              a.attrelid as table_oid,
               pgd.description as comment,
+              %s,
               %s
             FROM pg_catalog.pg_attribute a
             LEFT JOIN pg_catalog.pg_description pgd ON (
@@ -3252,8 +3279,9 @@ class PGDialect(default.DefaultDialect):
             WHERE a.attrelid = :table_oid
             AND a.attnum > 0 AND NOT a.attisdropped
             ORDER BY a.attnum
-        """
-            % generated
+        """ % (
+            generated,
+            identity,
         )
         s = (
             sql.text(SQL_COLS)
@@ -3284,10 +3312,10 @@ class PGDialect(default.DefaultDialect):
             format_type,
             default_,
             notnull,
-            attnum,
             table_oid,
             comment,
             generated,
+            identity,
         ) in rows:
             column_info = self._get_column_info(
                 name,
@@ -3299,6 +3327,7 @@ class PGDialect(default.DefaultDialect):
                 schema,
                 comment,
                 generated,
+                identity,
             )
             columns.append(column_info)
         return columns
@@ -3314,6 +3343,7 @@ class PGDialect(default.DefaultDialect):
         schema,
         comment,
         generated,
+        identity,
     ):
         def _handle_array_type(attype):
             return (
@@ -3428,7 +3458,6 @@ class PGDialect(default.DefaultDialect):
         # If a zero byte or blank string depending on driver (is also absent
         # for older PG versions), then not a generated column. Otherwise, s =
         # stored. (Other values might be added in the future.)
-        #
         if generated not in (None, "", b"\x00"):
             computed = dict(
                 sqltext=default, persisted=generated in ("s", b"s")
@@ -3463,11 +3492,13 @@ class PGDialect(default.DefaultDialect):
             type=coltype,
             nullable=nullable,
             default=default,
-            autoincrement=autoincrement,
+            autoincrement=autoincrement or identity is not None,
             comment=comment,
         )
         if computed is not None:
             column_info["computed"] = computed
+        if identity is not None:
+            column_info["identity"] = identity
         return column_info
 
     @reflection.cache

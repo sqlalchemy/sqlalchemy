@@ -14,6 +14,7 @@ from ...ext.compiler import compiles
 from ...sql import expression
 from ...types import Boolean
 from ...types import Integer
+from ...types import Numeric
 from ...types import String
 from ...types import TypeDecorator
 from ...types import Unicode
@@ -197,4 +198,33 @@ sequences = Table(
     Column("SEQUENCE_SCHEMA", CoerceUnicode, key="sequence_schema"),
     Column("SEQUENCE_NAME", CoerceUnicode, key="sequence_name"),
     schema="INFORMATION_SCHEMA",
+)
+
+
+class IdentitySqlVariant(TypeDecorator):
+    r"""This type casts sql_variant columns in the identity_columns view
+    to numeric. This is required because:
+
+    * pyodbc does not support sql_variant
+    * pymssql under python 2 return the byte representation of the number,
+      int 1 is returned as "\x01\x00\x00\x00". On python 3 it returns the
+      correct value as string.
+    """
+    impl = Unicode
+
+    def column_expression(self, colexpr):
+        return cast(colexpr, Numeric)
+
+
+identity_columns = Table(
+    "identity_columns",
+    ischema,
+    Column("object_id", Integer),
+    Column("name", CoerceUnicode),
+    Column("is_identity", Boolean),
+    Column("seed_value", IdentitySqlVariant),
+    Column("increment_value", IdentitySqlVariant),
+    Column("last_value", IdentitySqlVariant),
+    Column("is_not_for_replication", Boolean),
+    schema="sys",
 )

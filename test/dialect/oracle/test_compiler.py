@@ -28,6 +28,7 @@ from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
 from sqlalchemy.engine import default
 from sqlalchemy.sql import column
+from sqlalchemy.sql import ddl
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
@@ -1258,12 +1259,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table(
             "t",
             m,
-            Column("y", Integer, Identity(always=True, start=4, increment=7)),
+            Column(
+                "y",
+                Integer,
+                Identity(
+                    always=True,
+                    start=4,
+                    increment=7,
+                    nominvalue=True,
+                    nomaxvalue=True,
+                ),
+            ),
         )
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
-            "(INCREMENT BY 7 START WITH 4))",
+            "(INCREMENT BY 7 START WITH 4 NOMINVALUE NOMAXVALUE))",
         )
 
     def test_column_identity_no_generated(self):
@@ -1308,6 +1319,15 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
         assert (
             dialect.identifier_preparer.format_sequence(seq)
             == '"Some_Schema"."My_Seq"'
+        )
+
+    def test_compile(self):
+        self.assert_compile(
+            ddl.CreateSequence(
+                Sequence("my_seq", nomaxvalue=True, nominvalue=True)
+            ),
+            "CREATE SEQUENCE my_seq START WITH 1 NOMINVALUE NOMAXVALUE",
+            dialect=oracle.OracleDialect(),
         )
 
 

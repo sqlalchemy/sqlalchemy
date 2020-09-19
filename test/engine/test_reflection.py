@@ -5,6 +5,7 @@ from sqlalchemy import Computed
 from sqlalchemy import DefaultClause
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -2135,7 +2136,7 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
         cls.to_reflect = Table(
             "to_reflect",
             cls.metadata,
-            Column("x", sa.Integer, primary_key=True),
+            Column("x", sa.Integer, primary_key=True, autoincrement=False),
             Column("y", sa.Integer),
             test_needs_fk=True,
         )
@@ -2308,3 +2309,28 @@ class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
                 "normal-42",
                 True,
             )
+
+
+class IdentityColumnTest(fixtures.TablesTest):
+    run_inserts = run_deletes = None
+
+    __backend__ = True
+    __requires__ = ("identity_columns", "table_reflection")
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "t1",
+            metadata,
+            Column("normal", Integer),
+            Column("id1", Integer, Identity(start=2, increment=3)),
+        )
+
+    def test_table_reflection(self):
+        meta = MetaData()
+        table = Table("t1", meta, autoload_with=config.db)
+
+        eq_(table.c.normal.identity, None)
+        is_true(table.c.id1.identity is not None)
+        eq_(table.c.id1.identity.start, 2)
+        eq_(table.c.id1.identity.increment, 3)

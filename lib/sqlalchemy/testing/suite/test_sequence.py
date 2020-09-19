@@ -105,7 +105,9 @@ class HasSequenceTest(fixtures.TablesTest):
     @classmethod
     def define_tables(cls, metadata):
         Sequence("user_id_seq", metadata=metadata)
-        Sequence("other_seq", metadata=metadata)
+        Sequence(
+            "other_seq", metadata=metadata, nomaxvalue=True, nominvalue=True
+        )
         if testing.requires.schemas.enabled:
             Sequence(
                 "user_id_seq", schema=config.test_schema, metadata=metadata

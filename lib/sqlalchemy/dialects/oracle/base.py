@@ -536,7 +536,7 @@ from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import TIMESTAMP
 from ...types import VARCHAR
-
+from ...util import compat
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -979,7 +979,11 @@ class OracleCompiler(compiler.SQLCompiler):
         for i, column in enumerate(
             expression._select_iterables(returning_cols)
         ):
-            if self.isupdate and isinstance(column.server_default, Computed):
+            if (
+                self.isupdate
+                and isinstance(column.server_default, Computed)
+                and not self.dialect._supports_update_returning_computed_cols
+            ):
                 util.warn(
                     "Computed columns don't work with Oracle UPDATE "
                     "statements that use RETURNING; the value of the column "
@@ -1317,6 +1321,14 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         return "".join(table_opts)
 
+    def get_identity_options(self, identity_options):
+        text = super(OracleDDLCompiler, self).get_identity_options(
+            identity_options
+        )
+        return text.replace("NO MINVALUE", "NOMINVALUE").replace(
+            "NO MAXVALUE", "NOMAXVALUE"
+        )
+
     def visit_computed_column(self, generated):
         text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
             generated.sqltext, include_table=False, literal_binds=True
@@ -1492,6 +1504,12 @@ class OracleDialect(default.DefaultDialect):
     @property
     def _supports_char_length(self):
         return not self._is_oracle_8
+
+    @property
+    def _supports_update_returning_computed_cols(self):
+        # on version 18 this error is no longet present while it happens on 11
+        # it may work also on versions before the 18
+        return self.server_version_info and self.server_version_info >= (18,)
 
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT
@@ -1825,11 +1843,32 @@ class OracleDialect(default.DefaultDialect):
         else:
             char_length_col = "data_length"
 
+        if self.server_version_info >= (12,):
+            identity_cols = """\
+                col.default_on_null,
+                (
+                    SELECT id.generation_type || ',' || id.IDENTITY_OPTIONS
+                    FROM ALL_TAB_IDENTITY_COLS id
+                    WHERE col.table_name = id.table_name
+                    AND col.column_name = id.column_name
+                    AND col.owner = id.owner
+                ) AS identity_options"""
+        else:
+            identity_cols = "NULL as default_on_null, NULL as identity_options"
+
         params = {"table_name": table_name}
         text = """
-            SELECT col.column_name, col.data_type, col.%(char_length_col)s,
-              col.data_precision, col.data_scale, col.nullable,
-              col.data_default, com.comments, col.virtual_column\
+            SELECT
+                col.column_name,
+                col.data_type,
+                col.%(char_length_col)s,
+                col.data_precision,
+                col.data_scale,
+                col.nullable,
+                col.data_default,
+                com.comments,
+                col.virtual_column,
+                %(identity_cols)s
             FROM all_tab_cols%(dblink)s col
             LEFT JOIN all_col_comments%(dblink)s com
             ON col.table_name = com.table_name
@@ -1842,7 +1881,11 @@ class OracleDialect(default.DefaultDialect):
             params["owner"] = schema
             text += " AND col.owner = :owner "
         text += " ORDER BY col.column_id"
-        text = text % {"dblink": dblink, "char_length_col": char_length_col}
+        text = text % {
+            "dblink": dblink,
+            "char_length_col": char_length_col,
+            "identity_cols": identity_cols,
+        }
 
         c = connection.execute(sql.text(text), params)
 
@@ -1857,6 +1900,8 @@ class OracleDialect(default.DefaultDialect):
             default = row[6]
             comment = row[7]
             generated = row[8]
+            default_on_nul = row[9]
+            identity_options = row[10]
 
             if coltype == "NUMBER":
                 if precision is None and scale == 0:
@@ -1887,6 +1932,14 @@ class OracleDialect(default.DefaultDialect):
             else:
                 computed = None
 
+            if identity_options is not None:
+                identity = self._parse_identity_options(
+                    identity_options, default_on_nul
+                )
+                default = None
+            else:
+                identity = None
+
             cdict = {
                 "name": colname,
                 "type": coltype,
@@ -1899,9 +1952,43 @@ class OracleDialect(default.DefaultDialect):
                 cdict["quote"] = True
             if computed is not None:
                 cdict["computed"] = computed
+            if identity is not None:
+                cdict["identity"] = identity
 
             columns.append(cdict)
         return columns
+
+    def _parse_identity_options(self, identity_options, default_on_nul):
+        # identity_options is a string that starts with 'ALWAYS,' or
+        # 'BY DEFAULT,' and contues with
+        # START WITH: 1, INCREMENT BY: 1, MAX_VALUE: 123, MIN_VALUE: 1,
+        # CYCLE_FLAG: N, CACHE_SIZE: 1, ORDER_FLAG: N, SCALE_FLAG: N,
+        # EXTEND_FLAG: N, SESSION_FLAG: N, KEEP_VALUE: N
+        parts = [p.strip() for p in identity_options.split(",")]
+        identity = {
+            "always": parts[0] == "ALWAYS",
+            "on_null": default_on_nul == "YES",
+        }
+
+        for part in parts[1:]:
+            option, value = part.split(":")
+            value = value.strip()
+
+            if "START WITH" in option:
+                identity["start"] = compat.long_type(value)
+            elif "INCREMENT BY" in option:
+                identity["increment"] = compat.long_type(value)
+            elif "MAX_VALUE" in option:
+                identity["maxvalue"] = compat.long_type(value)
+            elif "MIN_VALUE" in option:
+                identity["minvalue"] = compat.long_type(value)
+            elif "CYCLE_FLAG" in option:
+                identity["cycle"] = value == "Y"
+            elif "CACHE_SIZE" in option:
+                identity["cache"] = compat.long_type(value)
+            elif "ORDER_FLAG" in option:
+                identity["order"] = value == "Y"
+        return identity
 
     @reflection.cache
     def get_table_comment(

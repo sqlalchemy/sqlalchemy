@@ -5,9 +5,11 @@ from operator import itemgetter
 import re
 
 import sqlalchemy as sa
+from sqlalchemy import BigInteger
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -15,6 +17,7 @@ from sqlalchemy import join
 from sqlalchemy import MetaData
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import Sequence
+from sqlalchemy import SmallInteger
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -33,6 +36,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import is_true
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -1770,7 +1774,7 @@ class CustomTypeReflectionTest(fixtures.TestBase):
             ("my_custom_type(ARG1, ARG2)", ("ARG1", "ARG2")),
         ]:
             column_info = dialect._get_column_info(
-                "colname", sch, None, False, {}, {}, "public", None, ""
+                "colname", sch, None, False, {}, {}, "public", None, "", None
             )
             assert isinstance(column_info["type"], self.CustomType)
             eq_(column_info["type"].arg1, args[0])
@@ -1845,3 +1849,74 @@ class IntervalReflectionTest(fixtures.TestBase):
         assert isinstance(columns["data1"]["type"], INTERVAL)
         eq_(columns["data1"]["type"].fields, None)
         eq_(columns["data1"]["type"].precision, 6)
+
+
+class IdentityReflectionTest(fixtures.TablesTest):
+    __only_on__ = "postgresql"
+    __backend__ = True
+    __requires__ = ("identity_columns",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "t1",
+            metadata,
+            Column(
+                "id1",
+                Integer,
+                Identity(
+                    always=True,
+                    start=2,
+                    increment=3,
+                    minvalue=-2,
+                    maxvalue=42,
+                    cycle=True,
+                    cache=4,
+                ),
+            ),
+            Column("id2", Integer, Identity()),
+            Column("id3", BigInteger, Identity()),
+            Column("id4", SmallInteger, Identity()),
+        )
+
+    def test_reflect_identity(self):
+        insp = inspect(testing.db)
+        default = dict(
+            always=False,
+            start=1,
+            increment=1,
+            minvalue=1,
+            cycle=False,
+            cache=1,
+        )
+        cols = insp.get_columns("t1")
+        for col in cols:
+            if col["name"] == "id1":
+                is_true("identity" in col)
+                eq_(
+                    col["identity"],
+                    dict(
+                        always=True,
+                        start=2,
+                        increment=3,
+                        minvalue=-2,
+                        maxvalue=42,
+                        cycle=True,
+                        cache=4,
+                    ),
+                )
+            elif col["name"] == "id2":
+                is_true("identity" in col)
+                exp = default.copy()
+                exp.update(maxvalue=2 ** 31 - 1)
+                eq_(col["identity"], exp)
+            elif col["name"] == "id3":
+                is_true("identity" in col)
+                exp = default.copy()
+                exp.update(maxvalue=2 ** 63 - 1)
+                eq_(col["identity"], exp)
+            elif col["name"] == "id4":
+                is_true("identity" in col)
+                exp = default.copy()
+                exp.update(maxvalue=2 ** 15 - 1)
+                eq_(col["identity"], exp)

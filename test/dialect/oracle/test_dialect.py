@@ -287,15 +287,21 @@ class ComputedReturningTest(fixtures.TablesTest):
         with testing.db.connect() as conn:
             conn.execute(test.insert(), {"id": 1, "foo": 5})
 
-            with testing.expect_warnings(
-                "Computed columns don't work with Oracle UPDATE"
-            ):
+            if testing.db.dialect._supports_update_returning_computed_cols:
                 result = conn.execute(
                     test.update().values(foo=10).return_defaults()
                 )
+                eq_(result.returned_defaults, (52,))
+            else:
+                with testing.expect_warnings(
+                    "Computed columns don't work with Oracle UPDATE"
+                ):
+                    result = conn.execute(
+                        test.update().values(foo=10).return_defaults()
+                    )
 
-                # returns the *old* value
-                eq_(result.returned_defaults, (47,))
+                    # returns the *old* value
+                    eq_(result.returned_defaults, (47,))
 
             eq_(conn.scalar(select(test.c.bar)), 52)
 

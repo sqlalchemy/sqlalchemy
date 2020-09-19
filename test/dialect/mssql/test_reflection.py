@@ -1,11 +1,13 @@
 # -*- encoding: utf-8
 import datetime
+import decimal
 
 from sqlalchemy import Column
 from sqlalchemy import DDL
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -29,6 +31,7 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 
 
@@ -146,8 +149,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         meta2 = MetaData(testing.db)
         table2 = Table("identity_test", meta2, autoload=True)
-        eq_(table2.c["col1"].dialect_options["mssql"]["identity_start"], 2)
-        eq_(table2.c["col1"].dialect_options["mssql"]["identity_increment"], 3)
+        eq_(table2.c["col1"].dialect_options["mssql"]["identity_start"], None)
+        eq_(
+            table2.c["col1"].dialect_options["mssql"]["identity_increment"],
+            None,
+        )
+        eq_(table2.c["col1"].identity.start, 2)
+        eq_(table2.c["col1"].identity.increment, 3)
 
     @testing.provide_metadata
     def test_skip_types(self, connection):
@@ -673,3 +681,76 @@ class OwnerPlusDBTest(fixtures.TestBase):
                 [mock.call.scalar()],
             )
         eq_(mock_lambda.mock_calls, [mock.call("x", y="bar")])
+
+
+class IdentityReflectionTest(fixtures.TablesTest):
+    __only_on__ = "mssql"
+    __backend__ = True
+    __requires__ = ("identity_columns",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+
+        for i, col in enumerate(
+            [
+                Column(
+                    "id1",
+                    Integer,
+                    Identity(
+                        always=True,
+                        start=2,
+                        increment=3,
+                        minvalue=-2,
+                        maxvalue=42,
+                        cycle=True,
+                        cache=4,
+                    ),
+                ),
+                Column("id2", Integer, Identity()),
+                Column("id3", sqltypes.BigInteger, Identity()),
+                Column("id4", sqltypes.SmallInteger, Identity()),
+                Column("id5", sqltypes.Numeric, Identity()),
+            ]
+        ):
+            Table("t%s" % i, metadata, col)
+
+    def test_reflect_identity(self):
+        insp = inspect(testing.db)
+        cols = []
+        for t in self.metadata.tables.keys():
+            cols.extend(insp.get_columns(t))
+        for col in cols:
+            is_true("dialect_options" not in col)
+            is_true("identity" in col)
+            if col["name"] == "id1":
+                eq_(col["identity"], {"start": 2, "increment": 3})
+            elif col["name"] == "id2":
+                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(type(col["identity"]["start"]), int)
+                eq_(type(col["identity"]["increment"]), int)
+            elif col["name"] == "id3":
+                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(type(col["identity"]["start"]), util.compat.long_type)
+                eq_(type(col["identity"]["increment"]), util.compat.long_type)
+            elif col["name"] == "id4":
+                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(type(col["identity"]["start"]), int)
+                eq_(type(col["identity"]["increment"]), int)
+            elif col["name"] == "id5":
+                eq_(col["identity"], {"start": 1, "increment": 1})
+                eq_(type(col["identity"]["start"]), decimal.Decimal)
+                eq_(type(col["identity"]["increment"]), decimal.Decimal)
+
+    @testing.requires.views
+    def test_reflect_views(self, connection):
+        try:
+            with testing.db.connect() as conn:
+                conn.exec_driver_sql("CREATE VIEW view1 AS SELECT * FROM t1")
+            insp = inspect(testing.db)
+            for col in insp.get_columns("view1"):
+                is_true("dialect_options" not in col)
+                is_true("identity" in col)
+                eq_(col["identity"], {})
+        finally:
+            with testing.db.connect() as conn:
+                conn.exec_driver_sql("DROP VIEW view1")

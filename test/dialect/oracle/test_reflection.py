@@ -6,6 +6,7 @@ from sqlalchemy import FLOAT
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import INTEGER
@@ -27,6 +28,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -448,7 +450,8 @@ def all_tables_compression_missing():
         if (
             "Enterprise Edition"
             not in exec_sql(testing.db, "select * from v$version").scalar()
-        ):
+            # this works in Oracle Database 18c Express Edition Release
+        ) and testing.db.dialect.server_version_info < (18,):
             return True
         return False
     except Exception:
@@ -819,3 +822,39 @@ class TypeReflectionTest(fixtures.TestBase):
             # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
         ]
         self._run_test(specs, ["precision"])
+
+
+class IdentityReflectionTest(fixtures.TablesTest):
+    __only_on__ = "oracle"
+    __backend__ = True
+    __requires__ = ("identity_columns",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("t1", metadata, Column("id1", Integer, Identity(on_null=True)))
+        Table("t2", metadata, Column("id2", Integer, Identity(order=True)))
+
+    def test_reflect_identity(self):
+        insp = inspect(testing.db)
+        common = {
+            "always": False,
+            "start": 1,
+            "increment": 1,
+            "on_null": False,
+            "maxvalue": 10 ** 28 - 1,
+            "minvalue": 1,
+            "cycle": False,
+            "cache": 20,
+            "order": False,
+        }
+        for col in insp.get_columns("t1") + insp.get_columns("t2"):
+            if col["name"] == "id1":
+                is_true("identity" in col)
+                exp = common.copy()
+                exp["on_null"] = True
+                eq_(col["identity"], exp)
+            if col["name"] == "id2":
+                is_true("identity" in col)
+                exp = common.copy()
+                exp["order"] = True
+                eq_(col["identity"], exp)

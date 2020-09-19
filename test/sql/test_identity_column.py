@@ -57,12 +57,16 @@ class _IdentityDDLFixture(testing.AssertsCompiledSQL):
             dict(always=False, cache=1000, order=True),
             "BY DEFAULT AS IDENTITY (CACHE 1000 ORDER)",
         ),
-        (
-            dict(order=True),
-            "BY DEFAULT AS IDENTITY (ORDER)",
-        ),
+        (dict(order=True), "BY DEFAULT AS IDENTITY (ORDER)"),
     )
     def test_create_ddl(self, identity_args, text):
+
+        if getattr(self, "__dialect__", None) != "default" and testing.against(
+            "oracle"
+        ):
+            text = text.replace("NO MINVALUE", "NOMINVALUE").replace(
+                "NO MAXVALUE", "NOMAXVALUE"
+            )
 
         t = Table(
             "foo_table",

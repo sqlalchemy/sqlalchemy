@@ -472,8 +472,13 @@ class Inspector(object):
 
           .. versionadded:: 1.3.16 - added support for computed reflection.
 
-        * ``dialect_options`` - (optional) a dict with dialect specific options
+        * ``identity`` - (optional) when present it indicates that this column
+          is a generated always column. Only some dialects return this key.
+          For a list of keywords on this dict see :class:`_schema.Identity`.
 
+          .. versionadded:: 1.4 - added support for identity column reflection.
+
+        * ``dialect_options`` - (optional) a dict with dialect specific options
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -878,6 +883,10 @@ class Inspector(object):
 
         if "computed" in col_d:
             computed = sa_schema.Computed(**col_d["computed"])
+            colargs.append(computed)
+
+        if "identity" in col_d:
+            computed = sa_schema.Identity(**col_d["identity"])
             colargs.append(computed)
 
         if "sequence" in col_d:

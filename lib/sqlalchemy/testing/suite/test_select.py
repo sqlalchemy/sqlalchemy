@@ -1047,7 +1047,9 @@ class IdentityColumnTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Identity(always=True, start=42),
+                Identity(
+                    always=True, start=42, nominvalue=True, nomaxvalue=True
+                ),
                 primary_key=True,
             ),
             Column("desc", String(100)),
@@ -1058,12 +1060,7 @@ class IdentityColumnTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Identity(
-                    increment=-5,
-                    start=0,
-                    minvalue=-1000,
-                    maxvalue=0,
-                ),
+                Identity(increment=-5, start=0, minvalue=-1000, maxvalue=0),
                 primary_key=True,
             ),
             Column("desc", String(100)),

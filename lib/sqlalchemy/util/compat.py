@@ -122,6 +122,7 @@ if py3k:
     text_type = str
     int_types = (int,)
     iterbytes = iter
+    long_type = int
 
     itertools_filterfalse = itertools.filterfalse
     itertools_filter = filter
@@ -226,6 +227,7 @@ else:
     binary_type = str
     text_type = unicode  # noqa
     int_types = int, long  # noqa
+    long_type = long  # noqa
 
     callable = callable  # noqa
     cmp = cmp  # noqa

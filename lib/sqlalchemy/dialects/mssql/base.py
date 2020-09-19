@@ -76,6 +76,9 @@ is set to ``False`` on any integer primary key column::
    to :class:`_schema.Column` are deprecated and should we replaced by
    an :class:`_schema.Identity` object. Specifying both ways of configuring
    an IDENTITY will result in a compile error.
+   These options are also no longer returned as part of the
+   ``dialect_options`` key in :meth:`_reflection.Inspector.get_columns`.
+   Use the information in the ``identity`` key instead.
 
 .. deprecated:: 1.3
 
@@ -770,6 +773,7 @@ from ...types import NVARCHAR
 from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
+from ...util import compat
 from ...util import update_wrapper
 from ...util.langhelpers import public_factory
 
@@ -2524,6 +2528,7 @@ def _schema_elements(schema):
 
 
 class MSDialect(default.DefaultDialect):
+    # will assume it's at least mssql2005
     name = "mssql"
     supports_default_values = True
     supports_empty_insert = False
@@ -2649,11 +2654,6 @@ class MSDialect(default.DefaultDialect):
             connection.commit()
 
     def get_isolation_level(self, connection):
-        if self.server_version_info < MS_2005_VERSION:
-            raise NotImplementedError(
-                "Can't fetch isolation level prior to SQL Server 2005"
-            )
-
         last_error = None
 
         views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
@@ -2719,9 +2719,6 @@ class MSDialect(default.DefaultDialect):
                 % ".".join(str(x) for x in self.server_version_info)
             )
 
-        if self.server_version_info < MS_2005_VERSION:
-            self.implicit_returning = self.full_returning = False
-
         if self.server_version_info >= MS_2008_VERSION:
             self.supports_multivalues_insert = True
         if self.deprecate_large_types is None:
@@ -2744,17 +2741,14 @@ class MSDialect(default.DefaultDialect):
             self._supports_nvarchar_max = True
 
     def _get_default_schema_name(self, connection):
-        if self.server_version_info < MS_2005_VERSION:
-            return self.schema_name
+        query = sql.text("SELECT schema_name()")
+        default_schema_name = connection.scalar(query)
+        if default_schema_name is not None:
+            # guard against the case where the default_schema_name is being
+            # fed back into a table reflection function.
+            return quoted_name(default_schema_name, quote=True)
         else:
-            query = sql.text("SELECT schema_name()")
-            default_schema_name = connection.scalar(query)
-            if default_schema_name is not None:
-                # guard against the case where the default_schema_name is being
-                # fed back into a table reflection function.
-                return quoted_name(default_schema_name, quote=True)
-            else:
-                return self.schema_name
+            return self.schema_name
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
@@ -2860,11 +2854,6 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     @_db_plus_owner
     def get_indexes(self, connection, tablename, dbname, owner, schema, **kw):
-        # using system catalogs, don't support index reflection
-        # below MS 2005
-        if self.server_version_info < MS_2005_VERSION:
-            return []
-
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind.index_id, ind.is_unique, ind.name, "
@@ -3002,25 +2991,32 @@ class MSDialect(default.DefaultDialect):
             columns = ischema.columns
 
         computed_cols = ischema.computed_columns
+        identity_cols = ischema.identity_columns
         if owner:
             whereclause = sql.and_(
                 columns.c.table_name == tablename,
                 columns.c.table_schema == owner,
             )
-            table_fullname = "%s.%s" % (owner, tablename)
             full_name = columns.c.table_schema + "." + columns.c.table_name
-            join_on = computed_cols.c.object_id == func.object_id(full_name)
         else:
             whereclause = columns.c.table_name == tablename
-            table_fullname = tablename
-            join_on = computed_cols.c.object_id == func.object_id(
-                columns.c.table_name
-            )
+            full_name = columns.c.table_name
 
-        join_on = sql.and_(
-            join_on, columns.c.column_name == computed_cols.c.name
+        join = columns.join(
+            computed_cols,
+            onclause=sql.and_(
+                computed_cols.c.object_id == func.object_id(full_name),
+                computed_cols.c.name == columns.c.column_name,
+            ),
+            isouter=True,
+        ).join(
+            identity_cols,
+            onclause=sql.and_(
+                identity_cols.c.object_id == func.object_id(full_name),
+                identity_cols.c.name == columns.c.column_name,
+            ),
+            isouter=True,
         )
-        join = columns.join(computed_cols, onclause=join_on, isouter=True)
 
         if self._supports_nvarchar_max:
             computed_definition = computed_cols.c.definition
@@ -3032,7 +3028,12 @@ class MSDialect(default.DefaultDialect):
 
         s = (
             sql.select(
-                columns, computed_definition, computed_cols.c.is_persisted
+                columns,
+                computed_definition,
+                computed_cols.c.is_persisted,
+                identity_cols.c.is_identity,
+                identity_cols.c.seed_value,
+                identity_cols.c.increment_value,
             )
             .where(whereclause)
             .select_from(join)
@@ -3053,6 +3054,9 @@ class MSDialect(default.DefaultDialect):
             collation = row[columns.c.collation_name]
             definition = row[computed_definition]
             is_persisted = row[computed_cols.c.is_persisted]
+            is_identity = row[identity_cols.c.is_identity]
+            identity_start = row[identity_cols.c.seed_value]
+            identity_increment = row[identity_cols.c.increment_value]
 
             coltype = self.ischema_names.get(type_, None)
 
@@ -3093,7 +3097,7 @@ class MSDialect(default.DefaultDialect):
                 "type": coltype,
                 "nullable": nullable,
                 "default": default,
-                "autoincrement": False,
+                "autoincrement": is_identity is not None,
             }
 
             if definition is not None and is_persisted is not None:
@@ -3102,50 +3106,28 @@ class MSDialect(default.DefaultDialect):
                     "persisted": is_persisted,
                 }
 
-            cols.append(cdict)
-        # autoincrement and identity
-        colmap = {}
-        for col in cols:
-            colmap[col["name"]] = col
-        # We also run an sp_columns to check for identity columns:
-        cursor = connection.execute(
-            sql.text(
-                "sp_columns @table_name = :table_name, "
-                "@table_owner = :table_owner",
-            ),
-            {"table_name": tablename, "table_owner": owner},
-        )
-        ic = None
-        while True:
-            row = cursor.fetchone()
-            if row is None:
-                break
-            (col_name, type_name) = row[3], row[5]
-            if type_name.endswith("identity") and col_name in colmap:
-                ic = col_name
-                colmap[col_name]["autoincrement"] = True
-                colmap[col_name]["dialect_options"] = {
-                    "mssql_identity_start": 1,
-                    "mssql_identity_increment": 1,
-                }
-                break
-        cursor.close()
+            if is_identity is not None:
+                # identity_start and identity_increment are Decimal or None
+                if identity_start is None or identity_increment is None:
+                    cdict["identity"] = {}
+                else:
+                    if isinstance(coltype, sqltypes.BigInteger):
+                        start = compat.long_type(identity_start)
+                        increment = compat.long_type(identity_increment)
+                    elif isinstance(coltype, sqltypes.Integer):
+                        start = int(identity_start)
+                        increment = int(identity_increment)
+                    else:
+                        start = identity_start
+                        increment = identity_increment
 
-        if ic is not None and self.server_version_info >= MS_2005_VERSION:
-            table_fullname = "%s.%s" % (owner, tablename)
-            cursor = connection.exec_driver_sql(
-                "select ident_seed('%s'), ident_incr('%s')"
-                % (table_fullname, table_fullname)
-            )
-
-            row = cursor.first()
-            if row is not None and row[0] is not None:
-                colmap[ic]["dialect_options"].update(
-                    {
-                        "mssql_identity_start": int(row[0]),
-                        "mssql_identity_increment": int(row[1]),
+                    cdict["identity"] = {
+                        "start": start,
+                        "increment": increment,
                     }
-                )
+
+            cols.append(cdict)
+
         return cols
 
     @reflection.cache
