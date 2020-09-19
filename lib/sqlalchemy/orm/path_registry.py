@@ -356,7 +356,7 @@ class PropRegistry(PathRegistry):
             parent.path + self.prop._wildcard_token,
         )
         self._default_path_loader_key = self.prop._default_path_loader_key
-        self._loader_key = ("loader", self.path)
+        self._loader_key = ("loader", self.natural_path)
 
     def __str__(self):
         return " -> ".join(str(elem) for elem in self.path)
@@ -418,7 +418,15 @@ class AbstractEntityRegistry(PathRegistry):
                 self.natural_path = parent.natural_path + (
                     parent.natural_path[-1].entity,
                 )
+        # it seems to make sense that since these paths get mixed up
+        # with statements that are cached or not, we should make
+        # sure the natural path is cachable across different occurrences
+        # of equivalent AliasedClass objects.  however, so far this
+        # does not seem to be needed for whatever reason.
+        # elif not parent.path and self.is_aliased_class:
+        #     self.natural_path = (self.entity._generate_cache_key()[0], )
         else:
+            # self.natural_path = parent.natural_path + (entity, )
             self.natural_path = self.path
 
     @property

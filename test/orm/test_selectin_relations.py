@@ -88,7 +88,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    def test_from_aliased(self):
+    def user_dingaling_fixture(self):
         users, Dingaling, User, dingalings, Address, addresses = (
             self.tables.users,
             self.classes.Dingaling,
@@ -113,60 +113,92 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 "addresses": relationship(Address, order_by=Address.id)
             },
         )
-        sess = create_session()
+        return User, Dingaling, Address
 
-        u = aliased(User)
+    def test_from_aliased_w_cache_one(self):
+        User, Dingaling, Address = self.user_dingaling_fixture()
 
-        q = sess.query(u).options(selectinload(u.addresses))
+        for i in range(3):
 
-        def go():
-            eq_(
-                [
-                    User(
-                        id=7,
-                        addresses=[
-                            Address(id=1, email_address="jack@bean.com")
-                        ],
-                    )
-                ],
-                q.filter(u.id == 7).all(),
-            )
+            def go():
 
-        self.assert_sql_count(testing.db, go, 2)
+                sess = create_session()
 
-        def go():
-            eq_(self.static.user_address_result, q.order_by(u.id).all())
+                u = aliased(User)
 
-        self.assert_sql_count(testing.db, go, 2)
+                q = sess.query(u).options(selectinload(u.addresses))
 
-        q = sess.query(u).options(
-            selectinload(u.addresses).selectinload(Address.dingalings)
-        )
+                eq_(
+                    [
+                        User(
+                            id=7,
+                            addresses=[
+                                Address(id=1, email_address="jack@bean.com")
+                            ],
+                        )
+                    ],
+                    q.filter(u.id == 7).all(),
+                )
 
-        def go():
-            eq_(
-                [
-                    User(
-                        id=8,
-                        addresses=[
-                            Address(
-                                id=2,
-                                email_address="ed@wood.com",
-                                dingalings=[Dingaling()],
-                            ),
-                            Address(id=3, email_address="ed@bettyboop.com"),
-                            Address(id=4, email_address="ed@lala.com"),
-                        ],
-                    ),
-                    User(
-                        id=9,
-                        addresses=[Address(id=5, dingalings=[Dingaling()])],
-                    ),
-                ],
-                q.filter(u.id.in_([8, 9])).all(),
-            )
+            self.assert_sql_count(testing.db, go, 2)
 
-        self.assert_sql_count(testing.db, go, 3)
+    def test_from_aliased_w_cache_two(self):
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        for i in range(3):
+
+            def go():
+                sess = create_session()
+
+                u = aliased(User)
+
+                q = sess.query(u).options(selectinload(u.addresses))
+
+                eq_(self.static.user_address_result, q.order_by(u.id).all())
+
+            self.assert_sql_count(testing.db, go, 2)
+
+    def test_from_aliased_w_cache_three(self):
+
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        for i in range(3):
+
+            def go():
+                sess = create_session()
+
+                u = aliased(User)
+
+                q = sess.query(u).options(
+                    selectinload(u.addresses).selectinload(Address.dingalings)
+                )
+                eq_(
+                    [
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(
+                                    id=2,
+                                    email_address="ed@wood.com",
+                                    dingalings=[Dingaling()],
+                                ),
+                                Address(
+                                    id=3, email_address="ed@bettyboop.com"
+                                ),
+                                Address(id=4, email_address="ed@lala.com"),
+                            ],
+                        ),
+                        User(
+                            id=9,
+                            addresses=[
+                                Address(id=5, dingalings=[Dingaling()])
+                            ],
+                        ),
+                    ],
+                    q.filter(u.id.in_([8, 9])).all(),
+                )
+
+            self.assert_sql_count(testing.db, go, 3)
 
     def test_from_get(self):
         users, Address, addresses, User = (

@@ -226,14 +226,19 @@ class RoleImpl(object):
         code=None,
         err=None,
     ):
+        if resolved is not None and resolved is not element:
+            got = "%r object resolved from %r object" % (resolved, element)
+        else:
+            got = repr(element)
+
         if argname:
-            msg = "%s expected for argument %r; got %r." % (
+            msg = "%s expected for argument %r; got %s." % (
                 self.name,
                 argname,
-                element,
+                got,
             )
         else:
-            msg = "%s expected, got %r." % (self.name, element)
+            msg = "%s expected, got %s." % (self.name, got)
 
         if advice:
             msg += " " + advice
@@ -369,7 +374,7 @@ class _SelectIsNotFrom(object):
             advice = (
                 "To create a "
                 "FROM clause from a %s object, use the .subquery() method."
-                % (element.__class__,)
+                % (resolved.__class__ if resolved is not None else element,)
             )
             code = "89ve"
         else:

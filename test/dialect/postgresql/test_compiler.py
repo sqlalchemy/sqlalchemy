@@ -2243,12 +2243,15 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
         mapper(Foo, self.table)
         sess = Session()
+        subq = sess.query(Foo).subquery()
+
+        f1 = aliased(Foo, subq)
         self.assert_compile(
-            sess.query(Foo).from_self().distinct(Foo.a, Foo.b),
-            "SELECT DISTINCT ON (anon_1.t_a, anon_1.t_b) anon_1.t_id "
-            "AS anon_1_t_id, anon_1.t_a AS anon_1_t_a, anon_1.t_b "
-            "AS anon_1_t_b FROM (SELECT t.id AS t_id, t.a AS t_a, "
-            "t.b AS t_b FROM t) AS anon_1",
+            sess.query(f1).distinct(f1.a, f1.b),
+            "SELECT DISTINCT ON (anon_1.a, anon_1.b) anon_1.id "
+            "AS anon_1_id, anon_1.a AS anon_1_a, anon_1.b "
+            "AS anon_1_b FROM (SELECT t.id AS id, t.a AS a, "
+            "t.b AS b FROM t) AS anon_1",
         )
 
     def test_query_distinct_on_aliased(self):

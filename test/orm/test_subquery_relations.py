@@ -124,7 +124,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         eq_(len(u1.addresses), 1)
         eq_(len(u2.addresses), 3)
 
-    def test_from_aliased(self):
+    def user_dingaling_fixture(self):
         users, Dingaling, User, dingalings, Address, addresses = (
             self.tables.users,
             self.classes.Dingaling,
@@ -149,60 +149,87 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 "addresses": relationship(Address, order_by=Address.id)
             },
         )
-        sess = create_session()
+        return User, Dingaling, Address
 
-        u = aliased(User)
+    def test_from_aliased_w_cache_one(self):
+        User, Dingaling, Address = self.user_dingaling_fixture()
 
-        q = sess.query(u).options(subqueryload(u.addresses))
+        for i in range(3):
+            sess = create_session()
 
-        def go():
-            eq_(
-                [
-                    User(
-                        id=7,
-                        addresses=[
-                            Address(id=1, email_address="jack@bean.com")
-                        ],
-                    )
-                ],
-                q.filter(u.id == 7).all(),
+            u = aliased(User)
+
+            q = sess.query(u).options(subqueryload(u.addresses))
+
+            def go():
+                eq_(
+                    [
+                        User(
+                            id=7,
+                            addresses=[
+                                Address(id=1, email_address="jack@bean.com")
+                            ],
+                        )
+                    ],
+                    q.filter(u.id == 7).all(),
+                )
+
+            self.assert_sql_count(testing.db, go, 2)
+
+    def test_from_aliased_w_cache_two(self):
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        for i in range(3):
+            sess = create_session()
+
+            u = aliased(User)
+
+            q = sess.query(u).options(subqueryload(u.addresses))
+
+            def go():
+                eq_(self.static.user_address_result, q.order_by(u.id).all())
+
+            self.assert_sql_count(testing.db, go, 2)
+
+    def test_from_aliased_w_cache_three(self):
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        for i in range(3):
+            sess = create_session()
+
+            u = aliased(User)
+            q = sess.query(u).options(
+                subqueryload(u.addresses).subqueryload(Address.dingalings)
             )
 
-        self.assert_sql_count(testing.db, go, 2)
+            def go():
+                eq_(
+                    [
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(
+                                    id=2,
+                                    email_address="ed@wood.com",
+                                    dingalings=[Dingaling()],
+                                ),
+                                Address(
+                                    id=3, email_address="ed@bettyboop.com"
+                                ),
+                                Address(id=4, email_address="ed@lala.com"),
+                            ],
+                        ),
+                        User(
+                            id=9,
+                            addresses=[
+                                Address(id=5, dingalings=[Dingaling()])
+                            ],
+                        ),
+                    ],
+                    q.filter(u.id.in_([8, 9])).all(),
+                )
 
-        def go():
-            eq_(self.static.user_address_result, q.order_by(u.id).all())
-
-        self.assert_sql_count(testing.db, go, 2)
-
-        q = sess.query(u).options(
-            subqueryload(u.addresses).subqueryload(Address.dingalings)
-        )
-
-        def go():
-            eq_(
-                [
-                    User(
-                        id=8,
-                        addresses=[
-                            Address(
-                                id=2,
-                                email_address="ed@wood.com",
-                                dingalings=[Dingaling()],
-                            ),
-                            Address(id=3, email_address="ed@bettyboop.com"),
-                            Address(id=4, email_address="ed@lala.com"),
-                        ],
-                    ),
-                    User(
-                        id=9,
-                        addresses=[Address(id=5, dingalings=[Dingaling()])],
-                    ),
-                ],
-                q.filter(u.id.in_([8, 9])).all(),
-            )
-
-        self.assert_sql_count(testing.db, go, 3)
+            self.assert_sql_count(testing.db, go, 3)
 
     def test_from_get(self):
         users, Address, addresses, User = (
@@ -3223,7 +3250,7 @@ class TestExistingRowPopulation(fixtures.DeclarativeMappedTest):
         is_true("c2_m2o" in a1.b.__dict__)
 
 
-class FromSelfTest(fixtures.DeclarativeMappedTest):
+class FromSubqTest(fixtures.DeclarativeMappedTest):
     """because subqueryloader relies upon the .subquery() method, this means
     if the original Query has a from_self() present, it needs to create
     .subquery() in terms of the Query class as a from_self() selectable
@@ -3295,15 +3322,25 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
         cache = {}
 
         for i in range(3):
-            q = (
+
+            subq = (
                 s.query(B)
-                .execution_options(compiled_cache=cache)
                 .join(B.a)
                 .filter(B.id < 4)
                 .filter(A.id > 1)
-                .from_self()
-                .options(subqueryload(B.a).subqueryload(A.cs))
-                .from_self()
+                .subquery()
+            )
+
+            bb = aliased(B, subq)
+
+            subq2 = s.query(bb).subquery()
+
+            bb2 = aliased(bb, subq2)
+
+            q = (
+                s.query(bb2)
+                .execution_options(compiled_cache=cache)
+                .options(subqueryload(bb2.a).subqueryload(A.cs))
             )
 
             def go():
@@ -3328,34 +3365,34 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
                 testing.db,
                 go,
                 CompiledSQL(
-                    "SELECT anon_1.anon_2_b_id AS anon_1_anon_2_b_id, "
-                    "anon_1.anon_2_b_a_id AS anon_1_anon_2_b_a_id FROM "
-                    "(SELECT anon_2.b_id AS anon_2_b_id, anon_2.b_a_id "
-                    "AS anon_2_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
-                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "SELECT anon_1.id AS anon_1_id, "
+                    "anon_1.a_id AS anon_1_a_id FROM "
+                    "(SELECT anon_2.id AS id, anon_2.a_id "
+                    "AS a_id FROM (SELECT b.id AS id, b.a_id "
+                    "AS a_id FROM b JOIN a ON a.id = b.a_id "
                     "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_2) AS anon_1"
                 ),
                 CompiledSQL(
-                    "SELECT a.id AS a_id, anon_1.anon_2_anon_3_b_a_id AS "
-                    "anon_1_anon_2_anon_3_b_a_id FROM (SELECT DISTINCT "
-                    "anon_2.anon_3_b_a_id AS anon_2_anon_3_b_a_id FROM "
-                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
-                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
-                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "SELECT a.id AS a_id, anon_1.anon_2_a_id AS "
+                    "anon_1_anon_2_a_id FROM (SELECT DISTINCT "
+                    "anon_2.a_id AS anon_2_a_id FROM "
+                    "(SELECT anon_3.id AS id, anon_3.a_id "
+                    "AS a_id FROM (SELECT b.id AS id, b.a_id "
+                    "AS a_id FROM b JOIN a ON a.id = b.a_id "
                     "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
                     "AS anon_2) AS anon_1 JOIN a "
-                    "ON a.id = anon_1.anon_2_anon_3_b_a_id"
+                    "ON a.id = anon_1.anon_2_a_id"
                 ),
                 CompiledSQL(
                     "SELECT c.id AS c_id, c.a_id AS c_a_id, a_1.id "
-                    "AS a_1_id FROM (SELECT DISTINCT anon_2.anon_3_b_a_id AS "
-                    "anon_2_anon_3_b_a_id FROM "
-                    "(SELECT anon_3.b_id AS anon_3_b_id, anon_3.b_a_id "
-                    "AS anon_3_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
-                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id "
+                    "AS a_1_id FROM (SELECT DISTINCT anon_2.a_id AS "
+                    "anon_2_a_id FROM "
+                    "(SELECT anon_3.id AS id, anon_3.a_id "
+                    "AS a_id FROM (SELECT b.id AS id, b.a_id "
+                    "AS a_id FROM b JOIN a ON a.id = b.a_id "
                     "WHERE b.id < :id_1 AND a.id > :id_2) AS anon_3) "
                     "AS anon_2) AS anon_1 JOIN a AS a_1 ON a_1.id = "
-                    "anon_1.anon_2_anon_3_b_a_id JOIN c ON a_1.id = c.a_id "
+                    "anon_1.anon_2_a_id JOIN c ON a_1.id = c.a_id "
                     "ORDER BY c.id"
                 ),
             )
@@ -3372,13 +3409,16 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
         for i in range(3):
 
             def go():
+
+                subq = s.query(B).join(B.a).subquery()
+
+                bq = aliased(B, subq)
+
                 q = (
-                    s.query(B)
+                    s.query(bq)
                     .execution_options(compiled_cache=cache)
-                    .join(B.a)
-                    .from_self()
+                    .options(subqueryload(bq.ds))
                 )
-                q = q.options(subqueryload(B.ds))
 
                 q.all()
 
@@ -3386,17 +3426,17 @@ class FromSelfTest(fixtures.DeclarativeMappedTest):
                 testing.db,
                 go,
                 CompiledSQL(
-                    "SELECT anon_1.b_id AS anon_1_b_id, anon_1.b_a_id AS "
-                    "anon_1_b_a_id FROM (SELECT b.id AS b_id, b.a_id "
-                    "AS b_a_id FROM b JOIN a ON a.id = b.a_id) AS anon_1"
+                    "SELECT anon_1.id AS anon_1_id, anon_1.a_id AS "
+                    "anon_1_a_id FROM (SELECT b.id AS id, b.a_id "
+                    "AS a_id FROM b JOIN a ON a.id = b.a_id) AS anon_1"
                 ),
                 CompiledSQL(
                     "SELECT d.id AS d_id, d.b_id AS d_b_id, "
-                    "anon_1.anon_2_b_id AS anon_1_anon_2_b_id "
-                    "FROM (SELECT anon_2.b_id AS anon_2_b_id FROM "
-                    "(SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
+                    "anon_1.anon_2_id AS anon_1_anon_2_id "
+                    "FROM (SELECT anon_2.id AS anon_2_id FROM "
+                    "(SELECT b.id AS id, b.a_id AS a_id FROM b "
                     "JOIN a ON a.id = b.a_id) AS anon_2) AS anon_1 "
-                    "JOIN d ON anon_1.anon_2_b_id = d.b_id ORDER BY d.id"
+                    "JOIN d ON anon_1.anon_2_id = d.b_id ORDER BY d.id"
                 ),
             )
             s.close()
