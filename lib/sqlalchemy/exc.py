@@ -56,10 +56,18 @@ class SQLAlchemyError(Exception):
         #
         if len(self.args) == 1:
             text = self.args[0]
+
             if as_unicode and isinstance(text, compat.binary_types):
-                return compat.decode_backslashreplace(text, "utf-8")
+                text = compat.decode_backslashreplace(text, "utf-8")
+            # This is for when the argument is not a string of any sort.
+            # Otherwise, converting this exception to string would fail for
+            # non-string arguments.
+            elif compat.py3k or not as_unicode:
+                text = str(text)
             else:
-                return self.args[0]
+                text = compat.text_type(text)
+
+            return text
         else:
             # this is not a normal case within SQLAlchemy but is here for
             # compatibility with Exception.args - the str() comes out as
