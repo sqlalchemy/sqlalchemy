@@ -287,10 +287,9 @@ intended for production use!
 
     # configure the database
     sleep 20
-    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -Q "sp_configure 'contained database authentication', 1; RECONFIGURE; CREATE DATABASE test CONTAINMENT = PARTIAL; ALTER DATABASE test SET ALLOW_SNAPSHOT_ISOLATION ON; ALTER DATABASE test SET READ_COMMITTED_SNAPSHOT ON"
+    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -Q "sp_configure 'contained database authentication', 1; RECONFIGURE; CREATE DATABASE test CONTAINMENT = PARTIAL; ALTER DATABASE test SET ALLOW_SNAPSHOT_ISOLATION ON; ALTER DATABASE test SET READ_COMMITTED_SNAPSHOT ON; CREATE LOGIN scott WITH PASSWORD = 'tiger^5HHH'; ALTER SERVER ROLE sysadmin ADD MEMBER scott;"
     docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE SCHEMA test_schema"
     docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE SCHEMA test_schema_2"
-    docker exec -it mssql /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'yourStrong(!)Password' -d test -Q "CREATE USER scott WITH PASSWORD = 'tiger^5HHH'; GRANT CONTROL TO scott"
 
     # To stop the container. It will also remove it.
     docker stop mssql
