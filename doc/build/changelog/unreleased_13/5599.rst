@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5599
+
+    Fixed issue where a non-string object sent to
+    :class:`_exc.SQLAlchemyError` or a subclass, as occurs with some third
+    party dialects, would fail to stringify correctly. Pull request
+    courtesy Andrzej Bartosiński.
