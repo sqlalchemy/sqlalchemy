@@ -654,7 +654,10 @@ class ResultInternal(InPlaceGenerative):
         )
 
         if not strategy and self._metadata._unique_filters:
-            if real_result._source_supports_scalars:
+            if (
+                real_result._source_supports_scalars
+                and not self._generate_rows
+            ):
                 strategy = self._metadata._unique_filters[0]
             else:
                 filters = self._metadata._unique_filters

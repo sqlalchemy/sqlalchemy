@@ -893,7 +893,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 obj = ORMCompileState.orm_setup_cursor_result(
                     sess, compile_state.statement, {}, exec_opts, {}, r,
                 )
-                list(obj)
+                list(obj.unique())
                 sess.close()
 
         go()

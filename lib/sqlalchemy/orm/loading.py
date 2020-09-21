@@ -142,9 +142,24 @@ def instances(cursor, context):
         dynamic_yield_per=cursor.context._is_server_side,
     )
 
+    # filtered and single_entity are used to indicate to legacy Query that the
+    # query has ORM entities, so legacy deduping and scalars should be called
+    # on the result.
     result._attributes = result._attributes.union(
         dict(filtered=filtered, is_single_entity=single_entity)
     )
+
+    # multi_row_eager_loaders OTOH is specific to joinedload.
+    if context.compile_state.multi_row_eager_loaders:
+
+        def require_unique(obj):
+            raise sa_exc.InvalidRequestError(
+                "The unique() method must be invoked on this Result, "
+                "as it contains results that include joined eager loads "
+                "against collections"
+            )
+
+        result._unique_filter_state = (None, require_unique)
 
     if context.yield_per:
         result.yield_per(context.yield_per)

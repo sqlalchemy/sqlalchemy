@@ -1031,6 +1031,45 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         eq_(r.all(), [1, 2, 1, 1, 4])
 
+    def test_scalar_mode_mfiltered_unique_rows_all(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(
+            ["a", "b", "c"], _unique_filters=[int]
+        )
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True,
+        )
+
+        r = r.unique()
+
+        eq_(r.all(), [(1,), (2,), (4,)])
+
+    def test_scalar_mode_mfiltered_unique_mappings_all(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(
+            ["a", "b", "c"], _unique_filters=[int]
+        )
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True,
+        )
+
+        r = r.unique()
+
+        eq_(r.mappings().all(), [{"a": 1}, {"a": 2}, {"a": 4}])
+
+    def test_scalar_mode_mfiltered_unique_scalars_all(self, no_tuple_fixture):
+        metadata = result.SimpleResultMetaData(
+            ["a", "b", "c"], _unique_filters=[int]
+        )
+
+        r = result.ChunkedIteratorResult(
+            metadata, no_tuple_fixture, source_supports_scalars=True,
+        )
+
+        r = r.scalars().unique()
+
+        eq_(r.all(), [1, 2, 4])
+
     def test_scalar_mode_unique_scalars_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
 

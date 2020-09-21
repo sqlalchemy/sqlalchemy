@@ -1092,6 +1092,8 @@ it will be fully transparent.   Applications that wish to reduce statement
 building latency even further to the levels currently offered by the "baked"
 system can opt to use the "lambda" constructs.
 
+.. _joinedload_not_uniqued:
+
 ORM Rows not uniquified by default
 ===================================
 

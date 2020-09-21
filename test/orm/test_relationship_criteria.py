@@ -697,6 +697,9 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
         else:
             loader_options = ()
 
+        is_joined = (
+            loader_strategy and loader_strategy.__name__ == "joinedload"
+        )
         p1 = sess.execute(
             select(Parent).filter(
                 Parent.timestamp == datetime.datetime(2009, 10, 15, 12, 00, 00)
@@ -712,42 +715,40 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
         ).scalar()
         c5 = p2.children[1]
 
-        parents = (
-            sess.execute(
-                select(Parent)
-                .execution_options(populate_existing=True)
-                .options(
-                    temporal_range(
-                        datetime.datetime(2009, 10, 16, 12, 00, 00),
-                        datetime.datetime(2009, 10, 18, 12, 00, 00),
-                    ),
-                    *loader_options
-                )
+        result = sess.execute(
+            select(Parent)
+            .execution_options(populate_existing=True)
+            .options(
+                temporal_range(
+                    datetime.datetime(2009, 10, 16, 12, 00, 00),
+                    datetime.datetime(2009, 10, 18, 12, 00, 00),
+                ),
+                *loader_options
             )
-            .scalars()
-            .all()
         )
+        if is_joined:
+            result = result.unique()
+        parents = result.scalars().all()
 
         assert parents[0] == p2
         assert parents[0].children == [c5]
 
-        parents = (
-            sess.execute(
-                select(Parent)
-                .execution_options(populate_existing=True)
-                .join(Parent.children)
-                .filter(Child.id == c2_id)
-                .options(
-                    temporal_range(
-                        datetime.datetime(2009, 10, 15, 11, 00, 00),
-                        datetime.datetime(2009, 10, 18, 12, 00, 00),
-                    ),
-                    *loader_options
-                )
+        result = sess.execute(
+            select(Parent)
+            .execution_options(populate_existing=True)
+            .join(Parent.children)
+            .filter(Child.id == c2_id)
+            .options(
+                temporal_range(
+                    datetime.datetime(2009, 10, 15, 11, 00, 00),
+                    datetime.datetime(2009, 10, 18, 12, 00, 00),
+                ),
+                *loader_options
             )
-            .scalars()
-            .all()
         )
+        if is_joined:
+            result = result.unique()
+        parents = result.scalars().all()
 
         assert parents[0] == p1
         assert parents[0].children == [c1, c2]

@@ -32,6 +32,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -2810,6 +2811,107 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     {"param_1": 7},
                 ),
             ],
+        )
+
+
+class SelectUniqueTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def test_many_to_one(self):
+        Address = self.classes.Address
+
+        stmt = (
+            select(Address)
+            .options(joinedload(Address.user))
+            .order_by(Address.id)
+        )
+
+        s = create_session()
+        result = s.execute(stmt)
+
+        eq_(result.scalars().all(), self.static.address_user_result)
+
+    def test_unique_error(self):
+        User = self.classes.User
+
+        stmt = select(User).options(joinedload(User.addresses))
+        s = create_session()
+        result = s.execute(stmt)
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"The unique\(\) method must be invoked on this Result",
+        ):
+            result.all()
+
+    def test_unique_tuples_single_entity(self):
+        User = self.classes.User
+
+        stmt = (
+            select(User).options(joinedload(User.addresses)).order_by(User.id)
+        )
+        s = create_session()
+        result = s.execute(stmt)
+
+        eq_(
+            result.unique().all(),
+            [(u,) for u in self.static.user_address_result],
+        )
+
+    def test_unique_scalars_single_entity(self):
+        User = self.classes.User
+
+        stmt = (
+            select(User).options(joinedload(User.addresses)).order_by(User.id)
+        )
+        s = create_session()
+        result = s.execute(stmt)
+
+        eq_(result.scalars().unique().all(), self.static.user_address_result)
+
+    def test_unique_tuples_multiple_entity(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        stmt = (
+            select(User, Address)
+            .join(User.addresses)
+            .options(joinedload(User.addresses))
+            .order_by(User.id, Address.id)
+        )
+        s = create_session()
+        result = s.execute(stmt)
+
+        eq_(
+            result.unique().all(),
+            [
+                (u, a)
+                for u in self.static.user_address_result
+                for a in u.addresses
+            ],
+        )
+
+    def test_unique_scalars_multiple_entity(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        stmt = (
+            select(User, Address)
+            .join(User.addresses)
+            .options(joinedload(User.addresses))
+            .order_by(User.id)
+        )
+        s = create_session()
+        result = s.execute(stmt)
+
+        eq_(
+            result.scalars().unique().all(),
+            [u for u in self.static.user_address_result if u.addresses],
         )
 
 

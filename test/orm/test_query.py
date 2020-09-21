@@ -909,7 +909,7 @@ class GetTest(QueryTest):
             .execution_options(populate_existing=True)
         )
 
-        s.execute(stmt).scalars().all()
+        s.execute(stmt).unique().scalars().all()
 
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
