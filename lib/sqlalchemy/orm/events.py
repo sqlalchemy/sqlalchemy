@@ -67,6 +67,9 @@ class InstrumentationEvents(event.Events):
 
         def listen(target_cls, *arg):
             listen_cls = target()
+            if listen_cls is None:
+                return None
+
             if propagate and issubclass(target_cls, listen_cls):
                 return fn(target_cls, *arg)
             elif not propagate and target_cls is listen_cls:
