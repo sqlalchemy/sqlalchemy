@@ -27,6 +27,7 @@ from .. import sql
 from .. import util
 from ..engine import result as _result
 from ..sql import selectable
+from ..sql import util as sql_util
 from ..sql.base import _generative
 from ..sql.base import Generative
 
@@ -511,18 +512,28 @@ class AppenderQuery(Generative):
         else:
             return orm_util._getitem(self, index)
 
+    @_generative
+    def limit(self, limit):
+        self._statement = self._statement.limit(limit)
+
+    @_generative
+    def offset(self, offset):
+        self._statement = self._statement.offset(offset)
+
+    @_generative
     def slice(self, start, stop):
         """Computes the "slice" represented by
         the given indices and apply as LIMIT/OFFSET.
 
 
         """
-        limit_clause, offset_clause = orm_util._make_slice(
+        limit_clause, offset_clause = sql_util._make_slice(
             self._statement._limit_clause,
             self._statement._offset_clause,
             start,
             stop,
         )
+
         self._statement = self._statement.limit(limit_clause).offset(
             offset_clause
         )
