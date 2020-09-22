@@ -61,6 +61,7 @@ from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -2414,6 +2415,39 @@ class SliceTest(QueryTest):
             create_session().query(User).filter(User.id == 27).first() is None
         )
 
+    def test_negative_indexes_raise(self):
+        User = self.classes.User
+
+        sess = create_session(future=True)
+        q = sess.query(User).order_by(User.id)
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            q[-5:-2]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            q[-1]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            q[-5]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            q[:-2]
+
+        # this doesn't evaluate anything because it's a net-negative
+        eq_(q[-2:-5], [])
+
     def test_limit_offset_applies(self):
         """Test that the expected LIMIT/OFFSET is applied for slices.
 
@@ -2470,30 +2504,6 @@ class SliceTest(QueryTest):
         self.assert_sql(testing.db, lambda: q[2:2], [])
 
         self.assert_sql(testing.db, lambda: q[-2:-5], [])
-
-        self.assert_sql(
-            testing.db,
-            lambda: q[-5:-2],
-            [
-                (
-                    "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users ORDER BY users.id",
-                    {},
-                )
-            ],
-        )
-
-        self.assert_sql(
-            testing.db,
-            lambda: q[-5:],
-            [
-                (
-                    "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users ORDER BY users.id",
-                    {},
-                )
-            ],
-        )
 
         self.assert_sql(
             testing.db,

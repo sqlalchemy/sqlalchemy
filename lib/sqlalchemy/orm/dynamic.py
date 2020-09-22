@@ -510,7 +510,9 @@ class AppenderQuery(Generative):
                 attributes.PASSIVE_NO_INITIALIZE,
             ).indexed(index)
         else:
-            return orm_util._getitem(self, index)
+            return orm_util._getitem(
+                self, index, allow_negative=not self.session.future
+            )
 
     @_generative
     def limit(self, limit):

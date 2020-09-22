@@ -1811,11 +1811,25 @@ def randomize_unitofwork():
     ) = session.set = mapper.set = dependency.set = RandomSet
 
 
-def _getitem(iterable_query, item):
+def _getitem(iterable_query, item, allow_negative):
     """calculate __getitem__ in terms of an iterable query object
     that also has a slice() method.
 
     """
+
+    def _no_negative_indexes():
+        if not allow_negative:
+            raise IndexError(
+                "negative indexes are not accepted by SQL "
+                "index / slice operators"
+            )
+        else:
+            util.warn_deprecated_20(
+                "Support for negative indexes for SQL index / slice operators "
+                "will be "
+                "removed in 2.0; these operators fetch the complete result "
+                "and do not work efficiently."
+            )
 
     if isinstance(item, slice):
         start, stop, step = util.decode_slice(item)
@@ -1827,11 +1841,10 @@ def _getitem(iterable_query, item):
         ):
             return []
 
-        # perhaps we should execute a count() here so that we
-        # can still use LIMIT/OFFSET ?
         elif (isinstance(start, int) and start < 0) or (
             isinstance(stop, int) and stop < 0
         ):
+            _no_negative_indexes()
             return list(iterable_query)[item]
 
         res = iterable_query.slice(start, stop)
@@ -1841,6 +1854,7 @@ def _getitem(iterable_query, item):
             return list(res)
     else:
         if item == -1:
+            _no_negative_indexes()
             return list(iterable_query)[-1]
         else:
             return list(iterable_query[item : item + 1])[0]
