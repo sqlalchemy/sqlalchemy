@@ -18,6 +18,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import CompiledSQL
 from test.orm import _fixtures
@@ -158,7 +159,35 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(u1.addresses[0], Address(id=2))
         eq_(u1.addresses[0:2], [Address(id=2), Address(id=3)])
-        eq_(u1.addresses[-1], Address(id=4))
+
+    def test_negative_slice_access_raises(self):
+        User, Address = self._user_address_fixture()
+        sess = create_session(testing.db, future=True)
+        u1 = sess.get(User, 8)
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            u1.addresses[-1]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            u1.addresses[-5:-2]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            u1.addresses[-2]
+
+        with expect_raises_message(
+            IndexError,
+            "negative indexes are not accepted by SQL index / slice operators",
+        ):
+            u1.addresses[:-2]
 
     def test_statement(self):
         """test that the .statement accessor returns the actual statement that

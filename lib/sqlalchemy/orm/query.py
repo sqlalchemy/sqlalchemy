@@ -2495,7 +2495,11 @@ class Query(
         self._compile_options += {"_enable_single_crit": False}
 
     def __getitem__(self, item):
-        return orm_util._getitem(self, item)
+        return orm_util._getitem(
+            self,
+            item,
+            allow_negative=not self.session or not self.session.future,
+        )
 
     @_generative
     @_assertions(_no_statement_condition)

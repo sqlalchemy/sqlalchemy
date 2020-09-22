@@ -62,6 +62,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
 from .inheritance import _poly_fixtures
+from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_query import QueryTest
@@ -87,6 +88,73 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "Core select or ORM Query object in order to produce a "
             "subquery object."
         )
+
+    def test_deprecated_negative_slices(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id)
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            eq_(q[-5:-2], [User(id=7), User(id=8)])
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            eq_(q[-1], User(id=10))
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            eq_(q[-2], User(id=9))
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            eq_(q[:-2], [User(id=7), User(id=8)])
+
+        # this doesn't evaluate anything because it's a net-negative
+        eq_(q[-2:-5], [])
+
+    def test_deprecated_negative_slices_compile(self):
+        User = self.classes.User
+
+        sess = create_session()
+        q = sess.query(User).order_by(User.id)
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            self.assert_sql(
+                testing.db,
+                lambda: q[-5:-2],
+                [
+                    (
+                        "SELECT users.id AS users_id, users.name "
+                        "AS users_name "
+                        "FROM users ORDER BY users.id",
+                        {},
+                    )
+                ],
+            )
+
+        with testing.expect_deprecated(
+            "Support for negative indexes for SQL index / slice operators"
+        ):
+            self.assert_sql(
+                testing.db,
+                lambda: q[-5:],
+                [
+                    (
+                        "SELECT users.id AS users_id, users.name "
+                        "AS users_name "
+                        "FROM users ORDER BY users.id",
+                        {},
+                    )
+                ],
+            )
 
     def test_invalid_column(self):
         User = self.classes.User
@@ -719,6 +787,33 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
         return testing.expect_deprecated_20(
             r"The Query.from_self\(\) function/method"
         )
+
+
+class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
+    def test_negative_slice_access_raises(self):
+        User, Address = self._user_address_fixture()
+        sess = create_session(testing.db)
+        u1 = sess.get(User, 8)
+
+        with testing.expect_deprecated_20(
+            "Support for negative indexes for SQL index / slice"
+        ):
+            eq_(u1.addresses[-1], Address(id=4))
+
+        with testing.expect_deprecated_20(
+            "Support for negative indexes for SQL index / slice"
+        ):
+            eq_(u1.addresses[-5:-2], [Address(id=2)])
+
+        with testing.expect_deprecated_20(
+            "Support for negative indexes for SQL index / slice"
+        ):
+            eq_(u1.addresses[-2], Address(id=3))
+
+        with testing.expect_deprecated_20(
+            "Support for negative indexes for SQL index / slice"
+        ):
+            eq_(u1.addresses[:-2], [Address(id=2)])
 
 
 class FromSelfTest(QueryTest, AssertsCompiledSQL):

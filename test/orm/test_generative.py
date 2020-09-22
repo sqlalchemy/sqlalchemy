@@ -57,8 +57,6 @@ class GenerativeQueryTest(fixtures.MappedTest):
         orig = query.all()
 
         assert query[1] == orig[1]
-        assert query[-4] == orig[-4]
-        assert query[-1] == orig[-1]
 
         assert list(query[10:20]) == orig[10:20]
         assert list(query[10:]) == orig[10:]
@@ -66,10 +64,9 @@ class GenerativeQueryTest(fixtures.MappedTest):
         assert list(query[:10]) == orig[:10]
         assert list(query[5:5]) == orig[5:5]
         assert list(query[10:40:3]) == orig[10:40:3]
-        assert list(query[-5:]) == orig[-5:]
-        assert list(query[-2:-5]) == orig[-2:-5]
-        assert list(query[-5:-2]) == orig[-5:-2]
-        assert list(query[:-2]) == orig[:-2]
+
+        # negative slices and indexes are deprecated and are tested
+        # in test_query.py and test_deprecations.py
 
         assert query[10:20][5] == orig[10:20][5]
 
