@@ -149,6 +149,17 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             q.filter_by(id=7).all(),
         )
 
+    def test_slice_access(self):
+        User, Address = self._user_address_fixture()
+        sess = create_session()
+        u1 = sess.get(User, 8)
+
+        eq_(u1.addresses.limit(1).one(), Address(id=2))
+
+        eq_(u1.addresses[0], Address(id=2))
+        eq_(u1.addresses[0:2], [Address(id=2), Address(id=3)])
+        eq_(u1.addresses[-1], Address(id=4))
+
     def test_statement(self):
         """test that the .statement accessor returns the actual statement that
         would render, without any _clones called."""
