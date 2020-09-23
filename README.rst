@@ -1,6 +1,21 @@
 SQLAlchemy
 ==========
 
+|PyPI| |Python| |Downloads|
+
+.. |PyPI| image:: https://img.shields.io/pypi/v/sqlalchemy
+    :target: https://pypi.org/project/sqlalchemy
+    :alt: PyPI
+
+.. |Python| image:: https://img.shields.io/pypi/pyversions/sqlalchemy
+    :target: https://pypi.org/project/sqlalchemy
+    :alt: PyPI - Python Version
+
+.. |Downloads| image:: https://img.shields.io/pypi/dm/sqlalchemy
+    :target: https://pypi.org/project/sqlalchemy
+    :alt: PyPI - Downloads
+
+
 The Python SQL Toolkit and Object Relational Mapper
 
 Introduction
