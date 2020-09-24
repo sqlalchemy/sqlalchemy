@@ -1926,16 +1926,69 @@ class ArrayJSON(fixtures.TestBase):
         connection.execute(
             tbl.insert(),
             [
-                {"json_col": ["foo"]},
-                {"json_col": [{"foo": "bar"}, [1]]},
-                {"json_col": [None]},
+                {"id": 1, "json_col": ["foo"]},
+                {"id": 2, "json_col": [{"foo": "bar"}, [1]]},
+                {"id": 3, "json_col": [None]},
+                {"id": 4, "json_col": [42]},
+                {"id": 5, "json_col": [True]},
+                {"id": 6, "json_col": None},
             ],
         )
 
         sel = select(tbl.c.json_col).order_by(tbl.c.id)
         eq_(
             connection.execute(sel).fetchall(),
-            [(["foo"],), ([{"foo": "bar"}, [1]],), ([None],)],
+            [
+                (["foo"],),
+                ([{"foo": "bar"}, [1]],),
+                ([None],),
+                ([42],),
+                ([True],),
+                (None,),
+            ],
+        )
+
+        eq_(
+            connection.exec_driver_sql(
+                """select json_col::text = array['"foo"']::json[]::text"""
+                " from json_table where id = 1"
+            ).scalar(),
+            True,
+        )
+        eq_(
+            connection.exec_driver_sql(
+                "select json_col::text = "
+                """array['{"foo": "bar"}', '[1]']::json[]::text"""
+                " from json_table where id = 2"
+            ).scalar(),
+            True,
+        )
+        eq_(
+            connection.exec_driver_sql(
+                """select json_col::text = array['null']::json[]::text"""
+                " from json_table where id = 3"
+            ).scalar(),
+            True,
+        )
+        eq_(
+            connection.exec_driver_sql(
+                """select json_col::text = array['42']::json[]::text"""
+                " from json_table where id = 4"
+            ).scalar(),
+            True,
+        )
+        eq_(
+            connection.exec_driver_sql(
+                """select json_col::text = array['true']::json[]::text"""
+                " from json_table where id = 5"
+            ).scalar(),
+            True,
+        )
+        eq_(
+            connection.exec_driver_sql(
+                "select json_col is null from json_table where id = 6"
+            ).scalar(),
+            True,
         )
 
 
@@ -3127,16 +3180,18 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def _fixture_data(self, engine):
         data_table = self.tables.data_table
+
+        data = [
+            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+            {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
+            {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
+            {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
+            {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
+            {"name": "r6", "data": {"k1": {"r6v1": {"subr": [1, 2, 3]}}}},
+        ]
         with engine.begin() as conn:
-            conn.execute(
-                data_table.insert(),
-                {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-                {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
-                {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
-                {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
-                {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
-                {"name": "r6", "data": {"k1": {"r6v1": {"subr": [1, 2, 3]}}}},
-            )
+            conn.execute(data_table.insert(), data)
+        return data
 
     def _assert_data(self, compare, conn, column="data"):
         col = self.tables.data_table.c[column]
@@ -3356,6 +3411,17 @@ class JSONRoundTripTest(fixtures.TablesTest):
             .first(),
             ("null", None),
         )
+
+    def test_literal(self, connection):
+        exp = self._fixture_data(testing.db)
+        result = connection.exec_driver_sql(
+            "select data from data_table order by name"
+        )
+        res = list(result)
+        eq_(len(res), len(exp))
+        for row, expected in zip(res, exp):
+            eq_(row[0], expected["data"])
+        result.close()
 
 
 class JSONBTest(JSONTest):
