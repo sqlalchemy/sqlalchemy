@@ -1311,6 +1311,9 @@ primary interface is now the :meth:`_orm.Session.get` method::
 
 **Migration to 2.0**
 
+In 1.4 / 2.0, the :class:`_orm.Session` object adds a new
+:meth:`_orm.Session.get` method::
+
     # 1.4 / 2.0 cross-compatible use
     user_obj = session.get(User, 5)
 
@@ -1440,8 +1443,7 @@ the ``from_joinpoint`` flag::
 
 **Migration to 2.0**
 
-Use explicit aliases instead.
-
+Use explicit aliases instead::
 
   n1 = aliased(Node)
   n2 = aliased(Node)
@@ -1694,9 +1696,13 @@ where the "joined eager loading" loader strategy is used with collections::
     stmt = select(User).options(joinedload(User.addresses))
 
 
-TODO
+**Migrating to 2.0**
 
-; this must be called explicitly::
+When using a joined load of a collection, it's required that the
+:meth:`_engine.Result.unique` method is called.  The ORM will actually set
+a default row handler that will raise an error if this is not done, to
+ensure that a joined eager load collection does not return duplicate rows
+while still maintaining explicitness::
 
     # 1.4 / 2.0 code
 
@@ -1706,17 +1712,25 @@ TODO
     # of a collection.  in all other cases, unique() is not needed
     rows = session.invoke(stmt).unique().execute().all()
 
-This includes when joined eager loading with collections is used.  It is
-advised that for eager loading of collections, "selectin" loading is used
-instead.   When collections that are set up to load as joined eager are present
-and ``unique()`` is not used, an exception is raised, as this will produce many
-duplicate rows and is not what the user intends.   Joined eager loading of
-many-to-one relationships does not present any issue, however.
+**Discussion**
 
-This change will also end the ancient issue of users being confused why
-``session.query(User).join(User.addresses).count()`` returns a different number
-than that of ``session.query(User).join(User.addresses).all()``.  The results
-will now be the same.
+The situation here is a little bit unusual, in that SQLAlchemy is requiring
+that a method be invoked that it is in fact entirely capable of doing
+automatically.   The reason for requiring that the method be called is to
+ensure the developer is "opting in" to the use of the
+:meth:`_engine.Result.unique` method, such that they will not be confused when
+a straight count of rows does not conflict with the count of
+records in the actual result set, which has been a long running source of
+user confusion and bug reports for many years.    That the uniquifying is
+not happening in any other case by default will improve performance and
+also improve clarity in those cases where automatic uniquing was causing
+confusing results.
+
+To the degree that having to call :meth:`_engine.Result.unique` when joined
+eager load collections are used is inconvenient, in modern SQLAlchemy
+the :func:`_orm.selectinload` strategy presents a collection-oriented
+eager loader that is superior in most respects to :func:`_orm.joinedload`
+and should be preferred.
 
 
 Autocommit mode removed from Session; autobegin support added
@@ -1745,7 +1759,7 @@ is, this pattern::
 The main reason a :class:`_orm.Session` is used in "autocommit" mode
 is so that the :meth:`_orm.Session.begin` method is available, so that framework
 integrations and event hooks can control when this event happens.  In 1.4,
-the :class:`_orm.Session` now features `autobegin behavior <change_5074>`
+the :class:`_orm.Session` now features :ref:`autobegin behavior <change_5074>`
 which resolves this issue; the :meth:`_orm.Session.begin` method may now
 be called::
 
