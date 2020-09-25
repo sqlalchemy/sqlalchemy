@@ -9,9 +9,13 @@ elements are themselves :class:`_expression.ColumnElement` subclasses).
 
 .. currentmodule:: sqlalchemy.sql.expression
 
-.. autofunction:: alias
+.. _selectable_foundational_constructors:
 
-.. autofunction:: cte
+Selectable Foundational Constructors
+--------------------------------------
+
+Top level "FROM clause" and "SELECT" constructors.
+
 
 .. autofunction:: except_
 
@@ -23,23 +27,46 @@ elements are themselves :class:`_expression.ColumnElement` subclasses).
 
 .. autofunction:: intersect_all
 
-.. autofunction:: join
-
-.. autofunction:: lateral
-
-.. autofunction:: outerjoin
-
 .. autofunction:: select
 
-.. autofunction:: sqlalchemy.sql.expression.table
-
-.. autofunction:: tablesample
+.. autofunction:: table
 
 .. autofunction:: union
 
 .. autofunction:: union_all
 
 .. autofunction:: values
+
+
+.. _fromclause_modifier_constructors:
+
+Selectable Modifier Constructors
+---------------------------------
+
+Functions listed here are more commonly available as methods from
+:class:`_sql.FromClause` and :class:`_sql.Selectable` elements, for example,
+the :func:`_sql.alias` function is usually invoked via the
+:meth:`_sql.FromClause.alias` method.
+
+.. autofunction:: alias
+
+.. autofunction:: cte
+
+.. autofunction:: join
+
+.. autofunction:: lateral
+
+.. autofunction:: outerjoin
+
+.. autofunction:: tablesample
+
+
+Selectable Class Documentation
+--------------------------------
+
+The classes here are generated using the constructors listed at
+:ref:`fromclause_foundational_constructors` and
+:ref:`fromclause_modifier_constructors`.
 
 .. autoclass:: Alias
    :members:

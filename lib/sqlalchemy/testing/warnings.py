@@ -58,6 +58,7 @@ def setup_filters():
         "dictionaries only.",
         r"The Connection.connect\(\) function/method is considered legacy",
         r".*DefaultGenerator.execute\(\)",
+        r"The autoload parameter is deprecated and will be removed ",
         #
         # result sets
         #
@@ -100,10 +101,14 @@ def setup_filters():
         # ORM Query
         #
         r"The Query\.get\(\) function",
-        # r"The Query\.from_self\(\) function",
+        r"The Query\.from_self\(\) function",
+        r"The Query\.with_parent\(\) function",
+        r"The Query\.with_parent\(\) function",
+        r"The Query\.select_entity_from\(\) function",
         #
         # ORM Session
         #
+        r"This Session located a target engine via bound metadata",
         r"The Session.autocommit parameter is deprecated ",
         r".*object is being merged into a Session along the backref "
         "cascade path",

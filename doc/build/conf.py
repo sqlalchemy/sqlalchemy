@@ -37,7 +37,7 @@ extensions = [
     "changelog",
     "sphinx_paramlinks",
 ]
-needs_extensions = {"zzzeeksphinx": "1.1.6"}
+needs_extensions = {"zzzeeksphinx": "1.2.0"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
@@ -76,6 +76,7 @@ changelog_inner_tag_sort = [
     "bug",
     "moved",
 ]
+
 
 # how to render changelog links
 changelog_render_ticket = "http://www.sqlalchemy.org/trac/ticket/%s"
@@ -149,6 +150,7 @@ zzzeeksphinx_module_prefixes = {
     "_ormevent": "sqlalchemy.orm.event",
     "_ormexc": "sqlalchemy.orm.exc",
     "_baked": "sqlalchemy.ext.baked",
+    "_horizontal": "sqlalchemy.ext.horizontal_shard",
     "_associationproxy": "sqlalchemy.ext.associationproxy",
     "_automap": "sqlalchemy.ext.automap",
     "_hybrid": "sqlalchemy.ext.hybrid",

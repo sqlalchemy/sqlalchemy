@@ -1914,6 +1914,12 @@ class Session(_SessionClassMethods):
                         "bind is ignored."
                     )
                 else:
+                    util.warn_deprecated_20(
+                        "This Session located a target engine via bound "
+                        "metadata; as this functionality will be removed in "
+                        "SQLAlchemy 2.0, an Engine object should be passed "
+                        "to the Session() constructor directly."
+                    )
                     return clause.bind
 
         if mapper:
@@ -1925,6 +1931,12 @@ class Session(_SessionClassMethods):
                         "bind is ignored."
                     )
                 else:
+                    util.warn_deprecated_20(
+                        "This Session located a target engine via bound "
+                        "metadata; as this functionality will be removed in "
+                        "SQLAlchemy 2.0, an Engine object should be passed "
+                        "to the Session() constructor directly."
+                    )
                     return mapper.persist_selectable.bind
 
         context = []
