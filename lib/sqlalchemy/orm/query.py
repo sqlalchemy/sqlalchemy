@@ -1019,7 +1019,6 @@ class Query(
         """
         self.load_options += {"_invoke_all_eagers": value}
 
-    # TODO: removed in 2.0, use with_parent standalone in filter
     @util.deprecated_20(
         ":meth:`_orm.Query.with_parent`",
         alternative="Use the :func:`_orm.with_parent` standalone construct.",
