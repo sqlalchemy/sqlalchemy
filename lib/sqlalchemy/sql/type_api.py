@@ -456,6 +456,28 @@ class TypeEngine(Traversible):
         else:
             return self.__class__
 
+    @classmethod
+    def _is_generic_type(cls):
+        n = cls.__name__
+        return n.upper() != n
+
+    def _generic_type_affinity(self):
+
+        for t in self.__class__.__mro__:
+            if (
+                t.__module__
+                in (
+                    "sqlalchemy.sql.sqltypes",
+                    "sqlalchemy.sql.type_api",
+                )
+                and t._is_generic_type()
+            ):
+                if t in (TypeEngine, UserDefinedType):
+                    return NULLTYPE.__class__
+                return t
+        else:
+            return self.__class__
+
     def dialect_impl(self, dialect):
         """Return a dialect-specific implementation for this
         :class:`.TypeEngine`.

@@ -38,10 +38,10 @@ ORM-Specific Query Constructs
 
 .. autoclass:: sqlalchemy.orm.util.AliasedInsp
 
-.. autoclass:: sqlalchemy.orm.util.Bundle
+.. autoclass:: sqlalchemy.orm.Bundle
     :members:
 
-.. autoclass:: sqlalchemy.orm.strategy_options.Load
+.. autoclass:: sqlalchemy.orm.Load
     :members:
 
 .. autofunction:: sqlalchemy.orm.with_loader_criteria

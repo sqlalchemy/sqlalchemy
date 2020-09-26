@@ -63,13 +63,25 @@ Glossary
 
             from sqlalchemy import select
 
+            # a Core select statement with ORM entities is
+            # now ORM-enabled at the compiler level
             stmt = select(User).join(User.addresses)
 
-            session = Session()  # make sure future=True is used for 1.4
+            session = Session(engine)
 
             result = session.execute(stmt)
 
+            # Session returns a Result that has ORM entities
             list_of_users = result.scalars().all()
+
+    facade
+
+        An object that serves as a front-facing interface masking more complex
+        underlying or structural code.
+
+        .. seealso::
+
+            `Facade pattern (via Wikipedia) <https://en.wikipedia.org/wiki/Facade_pattern>`_
 
     relational
     relational algebra
@@ -81,6 +93,25 @@ Glossary
 
             `Relational Algebra (via Wikipedia) <https://en.wikipedia.org/wiki/Relational_algebra>`_
 
+    cartesian product
+
+        Given two sets A and B, the cartesian product is the set of all ordered pairs (a, b)
+        where a is in A and b is in B.
+
+        In terms of SQL databases, a cartesian product occurs when we select from two
+        or more tables (or other subqueries) without establishing any kind of criteria
+        between the rows of one table to another (directly or indirectly).  If we
+        SELECT from table A and table B at the same time, we get every row of A matched
+        to the first row of B, then every row of A matched to the second row of B, and
+        so on until every row from A has been paired with every row of B.
+
+        Cartesian products cause enormous result sets to be generated and can easily
+        crash a client application if not prevented.
+
+        .. seealso::
+
+            `Cartesian Product (via Wikipedia) <https://en.wikipedia.org/wiki/Cartesian_product>`_
+
     cyclomatic complexity
         A measure of code complexity based on the number of possible paths
         through a program's source code.
@@ -88,6 +119,34 @@ Glossary
         .. seealso::
 
             `Cyclomatic Complexity <https://en.wikipedia.org/wiki/Cyclomatic_complexity>`_
+
+    bound parameter
+    bound parameters
+    bind parameter
+    bind parameters
+
+        Bound parameters are the primary means in which data is passed to the
+        :term:`DBAPI` database driver.    While the operation to be invoked is
+        based on the SQL statement string, the data values themselves are
+        passed separately, where the driver contains logic that will safely
+        process these strings and pass them to the backend database server,
+        which may either involve formatting the parameters into the SQL string
+        itself, or passing them to the database using separate protocols.
+
+        The specific system by which the database driver does this should not
+        matter to the caller; the point is that on the outside, data should
+        **always** be passed separately and not as part of the SQL string
+        itself.  This is integral both to having adequate security against
+        SQL injections as well as allowing the driver to have the best
+        performance.
+
+        .. seealso::
+
+            `Prepared Statement <https://en.wikipedia.org/wiki/Prepared_statement>`_ - at Wikipedia
+
+            `bind parameters <https://use-the-index-luke.com/sql/where-clause/bind-parameters>`_ - at Use The Index, Luke!
+
+
 
     selectable
         A term used in SQLAlchemy to describe a SQL construct that represents
@@ -216,6 +275,7 @@ Glossary
 
             :term:`DML`
 
+            :term:`DQL`
 
     DML
        An acronym for **Data Manipulation Language**.  DML is the subset of
@@ -230,7 +290,24 @@ Glossary
 
             :term:`DDL`
 
+            :term:`DQL`
+
+    DQL
+        An acronym for **Data Query Language**.  DQL is the subset of
+        SQL that relational databases use to *read* the data in tables.
+        DQL almost exclusively refers to the SQL SELECT construct as the
+        top level SQL statement in use.
+
+        .. seealso::
+
+            `DQL (via Wikipedia) <https://en.wikipedia.org/wiki/Data_query_language>`_
+
+            :term:`DML`
+
+            :term:`DDL`
+
     metadata
+    database metadata
     table metadata
         The term "metadata" generally refers to "data that describes data";
         data that itself represents the format and/or structure of some other
@@ -394,14 +471,19 @@ Glossary
 
     mapping
     mapped
+    mapped class
         We say a class is "mapped" when it has been passed through the
         :func:`_orm.mapper` function.   This process associates the
         class with a database table or other :term:`selectable`
         construct, so that instances of it can be persisted
-        using a :class:`.Session` as well as loaded using a
-        :class:`.query.Query`.
+        and loaded using a :class:`.Session`.
+
+        .. seealso::
+
+            :ref:`orm_mapping_classes_toplevel`
 
     N plus one problem
+    N plus one
         The N plus one problem is a common side effect of the
         :term:`lazy load` pattern, whereby an application wishes
         to iterate through a related attribute or collection on
@@ -418,6 +500,8 @@ Glossary
         The N plus one problem is alleviated using :term:`eager loading`.
 
         .. seealso::
+
+            :ref:`tutorial_orm_loader_strategies`
 
             :doc:`orm/loading_relationships`
 
@@ -627,6 +711,7 @@ Glossary
 
 
     subquery
+    scalar subquery
         Refers to a ``SELECT`` statement that is embedded within an enclosing
         ``SELECT``.
 
@@ -1135,6 +1220,19 @@ Glossary
 
             :ref:`relationship_config_toplevel`
 
+    cursor
+        A control structure that enables traversal over the records in a database.
+        In the Python DBAPI, the cursor object in fact the starting point
+        for statement execution as well as the interface used for fetching
+        results.
+
+        .. seealso::
+
+            `Cursor Objects (in pep-249) <https://www.python.org/dev/peps/pep-0249/#cursor-objects>`_
+
+            `Cursor (via Wikipedia) <https://en.wikipedia.org/wiki/Cursor_(databases)>`_
+
+
     association relationship
         A two-tiered :term:`relationship` which links two tables
         together using an association table in the middle.  The
@@ -1260,7 +1358,19 @@ Glossary
 
         .. seealso::
 
+            :term:`composite primary key`
+
             `Primary key (via Wikipedia) <http://en.wikipedia.org/wiki/Primary_Key>`_
+
+    composite primary key
+
+        A :term:`primary key` that has more than one column.   A particular
+        database row is unique based on two or more columns rather than just
+        a single value.
+
+        .. seealso::
+
+            :term:`primary key`
 
     foreign key constraint
         A referential constraint between two tables.  A foreign key is a field or set of fields in a

@@ -770,66 +770,18 @@ class Query(
         (e.g. approximately 1000) is used, even with DBAPIs that buffer
         rows (which are most).
 
-        The :meth:`_query.Query.yield_per` method **is not compatible
-        subqueryload eager loading or joinedload eager loading when
-        using collections**.  It is potentially compatible with "select in"
-        eager loading, **provided the database driver supports multiple,
-        independent cursors** (pysqlite and psycopg2 are known to work,
-        MySQL and SQL Server ODBC drivers do not).
-
-        Therefore in some cases, it may be helpful to disable
-        eager loads, either unconditionally with
-        :meth:`_query.Query.enable_eagerloads`::
-
-            q = sess.query(Object).yield_per(100).enable_eagerloads(False)
-
-        Or more selectively using :func:`.lazyload`; such as with
-        an asterisk to specify the default loader scheme::
-
-            q = sess.query(Object).yield_per(100).\
-                options(lazyload('*'), joinedload(Object.some_related))
-
-        .. warning::
-
-            Use this method with caution; if the same instance is
-            present in more than one batch of rows, end-user changes
-            to attributes will be overwritten.
-
-            In particular, it's usually impossible to use this setting
-            with eagerly loaded collections (i.e. any lazy='joined' or
-            'subquery') since those collections will be cleared for a
-            new load when encountered in a subsequent result batch.
-            In the case of 'subquery' loading, the full result for all
-            rows is fetched which generally defeats the purpose of
-            :meth:`~sqlalchemy.orm.query.Query.yield_per`.
-
-            Also note that while
-            :meth:`~sqlalchemy.orm.query.Query.yield_per` will set the
-            ``stream_results`` execution option to True, currently
-            this is only understood by
-            :mod:`~sqlalchemy.dialects.postgresql.psycopg2`,
-            :mod:`~sqlalchemy.dialects.mysql.mysqldb` and
-            :mod:`~sqlalchemy.dialects.mysql.pymysql` dialects
-            which will stream results using server side cursors
-            instead of pre-buffer all rows for this query. Other
-            DBAPIs **pre-buffer all rows** before making them
-            available.  The memory use of raw database rows is much less
-            than that of an ORM-mapped object, but should still be taken into
-            consideration when benchmarking.
-
-        .. seealso::
-
-            :ref:`engine_stream_results`
+        As of SQLAlchemy 1.4, the :meth:`_orm.Query.yield_per` method is
+        equvalent to using the ``yield_per`` execution option at the ORM level.
+        See the section :ref:`orm_queryguide_yield_per` for further background
+        on this option.
 
         """
         self.load_options += {"_yield_per": count}
-        self._execution_options = self._execution_options.union(
-            {"stream_results": True, "max_row_buffer": count}
-        )
 
     @util.deprecated_20(
         ":meth:`_orm.Query.get`",
         alternative="The method is now available as :meth:`_orm.Session.get`",
+        becomes_legacy=True,
     )
     def get(self, ident):
         """Return an instance based on the given primary key identifier,
@@ -983,10 +935,10 @@ class Query(
     def autoflush(self, setting):
         """Return a Query with a specific 'autoflush' setting.
 
-        Note that a Session with autoflush=False will
-        not autoflush, even if this flag is set to True at the
-        Query level.  Therefore this flag is usually used only
-        to disable autoflush for a specific Query.
+        As of SQLAlchemy 1.4, the :meth:`_orm.Query.autoflush` method
+        is equvalent to using the ``autoflush`` execution option at the
+        ORM level. See the section :ref:`orm_queryguide_autoflush` for
+        further background on this option.
 
         """
         self.load_options += {"_autoflush": setting}
@@ -997,22 +949,10 @@ class Query(
         that will expire and refresh all instances
         as they are loaded, or reused from the current :class:`.Session`.
 
-        :meth:`.populate_existing` does not improve behavior when
-        the ORM is used normally - the :class:`.Session` object's usual
-        behavior of maintaining a transaction and expiring all attributes
-        after rollback or commit handles object state automatically.
-        This method is not intended for general use.
-
-        .. versionadded:: 1.4
-
-            The :meth:`.populate_existing` method is equivalent to passing the
-            ``populate_existing=True`` option to the
-            :meth:`_orm.Query.execution_options` method.
-
-        .. seealso::
-
-            :ref:`session_expire` - in the ORM :class:`_orm.Session`
-            documentation
+        As of SQLAlchemy 1.4, the :meth:`_orm.Query.populate_existing` method
+        is equvalent to using the ``populate_existing`` execution option at the
+        ORM level. See the section :ref:`orm_queryguide_populate_existing` for
+        further background on this option.
 
         """
         self.load_options += {"_populate_existing": True}
@@ -1031,6 +971,7 @@ class Query(
     @util.deprecated_20(
         ":meth:`_orm.Query.with_parent`",
         alternative="Use the :func:`_orm.with_parent` standalone construct.",
+        becomes_legacy=True,
     )
     @util.preload_module("sqlalchemy.orm.relationships")
     def with_parent(self, instance, property=None, from_entity=None):  # noqa

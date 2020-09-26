@@ -492,6 +492,7 @@ ways to refresh its contents with new data from the current transaction:
 
     session.expire(u1)
     u1.some_attribute  # <-- lazy loads from the transaction
+
   ..
 
 * **the refresh() method** - closely related is the :meth:`_orm.Session.refresh`
@@ -539,7 +540,7 @@ time refresh locally present objects which match those rows.
 To emit an ORM-enabled UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` method
 may be used::
 
-    session.query(User).filter(User.nane == "squidward").\
+    session.query(User).filter(User.name == "squidward").\
         update({"name": "spongebob"}, synchronize_session="fetch")
 
 Above, an UPDATE will be emitted against all rows that match the name
@@ -551,10 +552,7 @@ objects locally present in memory will be updated in memory based on these
 primary key identities.
 
 For ORM-enabled UPDATEs in :term:`2.0 style`, :meth:`_orm.Session.execute` is used with the
-Core :class:`_sql.Update` construct.  The :meth:`_orm.Session` must
-be configured with :paramref:`_orm.Session.future` set to ``True``::
-
-    session = Session(future=True)
+Core :class:`_sql.Update` construct::
 
     from sqlalchemy import update
 
@@ -575,10 +573,8 @@ ORM-enabled delete, :term:`1.x style`::
     session.query(User).filter(User.nane == "squidward").\
         delete(synchronize_session="fetch")
 
-ORM-enabled delete, :term:`2.0 style`.  The :meth:`_orm.Session` must
-be configured with :paramref:`_orm.Session.future` set to ``True``::
+ORM-enabled delete, :term:`2.0 style`::
 
-    session = Session(future=True)
     from sqlalchemy import delete
 
     stmt = delete(User).where(User.nane == "squidward").execution_options(synchronize_session="fetch")

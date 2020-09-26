@@ -1221,7 +1221,7 @@ necessary when using joined eager loading, the :meth:`_engine.Result.unique`
 modifier must be called first.
 
 Documentation for all new features of :func:`_sql.select` including execution
-options, etc. are at :doc:`/queryguide`.
+options, etc. are at :doc:`/orm/queryguide`.
 
 Below are some examples of how to migrate to :func:`_sql.select`::
 

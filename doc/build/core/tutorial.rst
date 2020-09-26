@@ -4,6 +4,35 @@
 SQL Expression Language Tutorial (1.x API)
 ==========================================
 
+.. admonition:: About this document
+
+    This tutorial covers the well known SQLAlchemy Core API
+    that has been in use for many years.  As of SQLAlchemy 1.4, there are two
+    distinct styles of Core use known as :term:`1.x style` and :term:`2.0
+    style`, the latter of which makes some adjustments mostly in the area
+    of how transactions are controlled as well as narrows down the patterns
+    for how SQL statement constructs are executed.
+
+    The plan is that in SQLAlchemy 2.0, those elements of 1.x style
+    Core use will be removed, after a deprecation phase that continues
+    throughout the 1.4 series.   For ORM use, some elements of 1.x style
+    will still be available; see the :ref:`migration_20_toplevel` document
+    for a complete overview.
+
+    The tutorial here is applicable to users who want to learn how SQLAlchemy
+    Core has been used for many years, particularly those users working with
+    existing applications or related learning material that is in 1.x style.
+
+    For an introduction to SQLAlchemy Core from the new 1.4/2.0 perspective,
+    see :ref:`unified_tutorial`.
+
+    .. seealso::
+
+        :ref:`migration_20_toplevel`
+
+        :ref:`unified_tutorial`
+
+
 The SQLAlchemy Expression Language presents a system of representing
 relational database structures and expressions using Python constructs. These
 constructs are modeled to resemble those of the underlying database as closely
@@ -157,10 +186,7 @@ each table first before creating, so it's safe to call multiple times:
         fullname VARCHAR,
         PRIMARY KEY (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
-    <BLANKLINE>
     CREATE TABLE addresses (
         id INTEGER NOT NULL,
         user_id INTEGER,
@@ -168,8 +194,6 @@ each table first before creating, so it's safe to call multiple times:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
     COMMIT
 

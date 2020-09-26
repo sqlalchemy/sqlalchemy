@@ -710,6 +710,10 @@ class Result(_WithKeys, ResultInternal):
        :class:`.ResultProxy` interface.   When using the ORM, a higher level
        object called :class:`.ChunkedIteratorResult` is normally used.
 
+    .. seealso::
+
+        :ref:`tutorial_fetching_rows` - in the :doc:`/tutorial/index`
+
     """
 
     _process_row = Row

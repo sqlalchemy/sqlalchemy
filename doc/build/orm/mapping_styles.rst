@@ -588,6 +588,8 @@ Mapped Class Behavior
 Across all styles of mapping using the :class:`_orm.registry` object,
 the following behaviors are common:
 
+.. _mapped_class_default_constructor:
+
 Default Constructor
 -------------------
 

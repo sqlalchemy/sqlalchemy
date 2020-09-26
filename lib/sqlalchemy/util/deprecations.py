@@ -81,10 +81,18 @@ def deprecated_cls(version, message, constructor="__init__"):
     return decorate
 
 
-def deprecated_20_cls(clsname, alternative=None, constructor="__init__"):
+def deprecated_20_cls(
+    clsname, alternative=None, constructor="__init__", becomes_legacy=False
+):
     message = (
         ".. deprecated:: 1.4 The %s class is considered legacy as of the "
-        "1.x series of SQLAlchemy and will be removed in 2.0." % clsname
+        "1.x series of SQLAlchemy and %s in 2.0."
+        % (
+            clsname,
+            "will be removed"
+            if not becomes_legacy
+            else "becomes a legacy construct",
+        )
     )
 
     if alternative:
@@ -161,7 +169,7 @@ def moved_20(message, **kw):
     )
 
 
-def deprecated_20(api_name, alternative=None, **kw):
+def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
     type_reg = re.match("^:(attr|func|meth):", api_name)
     if type_reg:
         type_ = {"attr": "attribute", "func": "function", "meth": "method"}[
@@ -171,8 +179,14 @@ def deprecated_20(api_name, alternative=None, **kw):
         type_ = "construct"
     message = (
         "The %s %s is considered legacy as of the "
-        "1.x series of SQLAlchemy and will be removed in 2.0."
-        % (api_name, type_)
+        "1.x series of SQLAlchemy and %s in 2.0."
+        % (
+            api_name,
+            type_,
+            "will be removed"
+            if not becomes_legacy
+            else "becomes a legacy construct",
+        )
     )
 
     if alternative:

@@ -582,14 +582,6 @@ class ValuesBase(UpdateBase):
 
               :meth:`_expression.Update.ordered_values`
 
-        .. seealso::
-
-            :ref:`inserts_and_updates` - SQL Expression
-            Language Tutorial
-
-            :func:`_expression.insert` - produce an ``INSERT`` statement
-
-            :func:`_expression.update` - produce an ``UPDATE`` statement
 
         """
         if self._select_names:
@@ -777,9 +769,7 @@ class Insert(ValuesBase):
     The :class:`_expression.Insert` object is created using the
     :func:`_expression.insert()` function.
 
-    .. seealso::
-
-        :ref:`coretutorial_insert_expressions`
+    .. note - the __init__() method delivers the docstring for this object
 
     """
 
@@ -834,9 +824,25 @@ class Insert(ValuesBase):
     ):
         """Construct an :class:`_expression.Insert` object.
 
+        E.g.::
+
+            from sqlalchemy import insert
+
+            stmt = (
+                insert(user_table).
+                values(name='username', fullname='Full Username')
+            )
+
         Similar functionality is available via the
         :meth:`_expression.TableClause.insert` method on
         :class:`_schema.Table`.
+
+        .. seealso::
+
+            :ref:`coretutorial_insert_expressions` - in the 1.x tutorial
+
+            :ref:`tutorial_core_insert` - in the 2.0 tutorial
+
 
         :param table: :class:`_expression.TableClause`
          which is the subject of the
@@ -976,15 +982,15 @@ class DMLWhereBase(object):
     _where_criteria = ()
 
     @_generative
-    def where(self, whereclause):
-        """Return a new construct with the given expression added to
+    def where(self, *whereclause):
+        """Return a new construct with the given expression(s) added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
         """
 
-        self._where_criteria += (
-            coercions.expect(roles.WhereHavingRole, whereclause),
-        )
+        for criterion in list(whereclause):
+            where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
+            self._where_criteria += (where_criteria,)
 
     def filter(self, *criteria):
         """A synonym for the :meth:`_dml.DMLWhereBase.where` method.
@@ -1032,9 +1038,7 @@ class DMLWhereBase(object):
 class Update(DMLWhereBase, ValuesBase):
     """Represent an Update construct.
 
-    The :class:`_expression.Update`
-    object is created using the :func:`update()`
-    function.
+    .. note - the __init__() method delivers the docstring for this object
 
     """
 
@@ -1090,16 +1094,23 @@ class Update(DMLWhereBase, ValuesBase):
 
             from sqlalchemy import update
 
-            stmt = update(users).where(users.c.id==5).\
-                    values(name='user #5')
+            stmt = (
+                update(user_table).
+                where(user_table.c.id == 5).
+                values(name='user #5')
+            )
 
         Similar functionality is available via the
         :meth:`_expression.TableClause.update` method on
-        :class:`_schema.Table`::
+        :class:`_schema.Table`.
 
-            stmt = users.update().\
-                        where(users.c.id==5).\
-                        values(name='user #5')
+        .. seealso::
+
+            :ref:`inserts_and_updates` - in the 1.x tutorial
+
+            :ref:`tutorial_core_update_delete` - in the 2.0 tutorial
+
+
 
         :param table: A :class:`_schema.Table`
          object representing the database
@@ -1279,9 +1290,7 @@ class Update(DMLWhereBase, ValuesBase):
 class Delete(DMLWhereBase, UpdateBase):
     """Represent a DELETE construct.
 
-    The :class:`_expression.Delete`
-    object is created using the :func:`delete()`
-    function.
+    .. note - the __init__() method delivers the docstring for this object
 
     """
 
@@ -1317,9 +1326,25 @@ class Delete(DMLWhereBase, UpdateBase):
     ):
         r"""Construct :class:`_expression.Delete` object.
 
+        E.g.::
+
+            from sqlalchemy import delete
+
+            stmt = (
+                delete(user_table).
+                where(user_table.c.id == 5)
+            )
+
         Similar functionality is available via the
         :meth:`_expression.TableClause.delete` method on
         :class:`_schema.Table`.
+
+        .. seealso::
+
+            :ref:`inserts_and_updates` - in the 1.x tutorial
+
+            :ref:`tutorial_core_update_delete` - in the 2.0 tutorial
+
 
         :param table: The table to delete rows from.
 

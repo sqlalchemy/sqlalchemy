@@ -13,6 +13,7 @@ see :ref:`sqlexpression_toplevel`.
     :maxdepth: 3
 
     sqlelement
+    operators
     selectable
     dml
     functions

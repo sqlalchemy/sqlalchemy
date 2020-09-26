@@ -186,6 +186,8 @@ PostgreSQL DML Constructs
 .. autoclass:: sqlalchemy.dialects.postgresql.Insert
   :members:
 
+.. _postgresql_psycopg2:
+
 psycopg2
 --------
 

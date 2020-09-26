@@ -957,18 +957,8 @@ class Session(_SessionClassMethods):
 
                 :ref:`session_committing`
 
-
-        :param future: if True, use 2.0 style behavior for the
-          :meth:`_orm.Session.execute` method.   Future mode includes the
-          following behaviors:
-
-          * The :class:`_engine.Result` object returned by the
-            :meth:`_orm.Session.execute` method will return new-style tuple
-            :class:`_engine.Row` objects
-
-          * The :meth:`_orm.Session.execute` method will invoke ORM style
-            queries given objects like :class:`_sql.Select`,
-            :class:`_sql.Update` and :class:`_sql.Delete` against ORM entities
+        :param future: if True, use 2.0 style transactional and engine
+          behavior.  Future mode includes the following behaviors:
 
           * The :class:`_orm.Session` will not use "bound" metadata in order
             to locate an :class:`_engine.Engine`; the engine or engines in use
@@ -983,9 +973,6 @@ class Session(_SessionClassMethods):
           * The behavior of the :paramref:`_orm.relationship.cascade_backrefs`
             flag on a :func:`_orm.relationship` will always assume
             "False" behavior.
-
-          The "future" flag is also available on a per-execution basis
-          using the :paramref:`_orm.Session.execute.future` flag.
 
           .. versionadded:: 1.4
 
@@ -1929,7 +1916,9 @@ class Session(_SessionClassMethods):
 
     def query(self, *entities, **kwargs):
         """Return a new :class:`_query.Query` object corresponding to this
-        :class:`.Session`."""
+        :class:`_orm.Session`.
+
+        """
 
         return self._query_cls(entities, self, **kwargs)
 

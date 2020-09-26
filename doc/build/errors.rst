@@ -168,7 +168,7 @@ engine::
     session.add(MyClass())
     session.commit()
 
-In SQLAlchemy 1.4, this :term:`2.x style` behavior is enabled when the
+In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
 :paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
 or :class:`_orm.Session`.
 

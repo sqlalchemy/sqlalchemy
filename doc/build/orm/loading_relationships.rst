@@ -66,6 +66,7 @@ The primary forms of relationship loading are:
   uncommon loader option.
 
 
+.. _relationship_lazy_option:
 
 Configuring Loader Strategies at Mapping Time
 ---------------------------------------------
@@ -776,7 +777,7 @@ order to load related associations:
 .. sourcecode:: python+sql
 
     >>> jack = session.query(User).\
-    ... options(selectinload('addresses')).\
+    ... options(selectinload(User.addresses)).\
     ... filter(or_(User.name == 'jack', User.name == 'ed')).all()
     {opensql}SELECT
         users.id AS users_id,
@@ -818,7 +819,7 @@ loaded on the parent objects and would otherwise need to be loaded:
 .. sourcecode:: python+sql
 
     >>> session.query(Address).\
-    ... options(selectinload('user')).all()
+    ... options(selectinload(Address.user)).all()
     {opensql}SELECT
         addresses.id AS addresses_id,
         addresses.email_address AS addresses_email_address,
@@ -1204,7 +1205,7 @@ to a string SQL statement::
 Creating Custom Load Rules
 --------------------------
 
-.. warning::  This is an advanced technique!   Great care and testing
+.. deepalchemy::  This is an advanced technique!   Great care and testing
    should be applied.
 
 The ORM has various edge cases where the value of an attribute is locally
