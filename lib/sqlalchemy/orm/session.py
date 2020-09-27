@@ -29,7 +29,6 @@ from .base import state_str
 from .unitofwork import UOWTransaction
 from .. import engine
 from .. import exc as sa_exc
-from .. import future
 from .. import sql
 from .. import util
 from ..inspection import inspect
@@ -124,7 +123,6 @@ class ORMExecuteState(util.MemoizedSlots):
         "_compile_state_cls",
         "_starting_event_idx",
         "_events_todo",
-        "_future",
         "_update_execution_options",
     )
 
@@ -137,7 +135,6 @@ class ORMExecuteState(util.MemoizedSlots):
         bind_arguments,
         compile_state_cls,
         events_todo,
-        future,
     ):
         self.session = session
         self.statement = statement
@@ -149,7 +146,6 @@ class ORMExecuteState(util.MemoizedSlots):
         self.bind_arguments = bind_arguments
         self._compile_state_cls = compile_state_cls
         self._events_todo = list(events_todo)
-        self._future = future
 
     def _remaining_events(self):
         return self._events_todo[self._starting_event_idx + 1 :]
@@ -1504,7 +1500,7 @@ class Session(_SessionClassMethods):
         elif not bind_arguments:
             bind_arguments = {}
 
-        if future and (
+        if (
             statement._propagate_attrs.get("compile_state_plugin", None)
             == "orm"
         ):
@@ -1551,7 +1547,6 @@ class Session(_SessionClassMethods):
                 bind_arguments,
                 compile_state_cls,
                 events_todo,
-                future,
             )
             for idx, fn in enumerate(events_todo):
                 orm_exec_state._starting_event_idx = idx
@@ -2117,7 +2112,7 @@ class Session(_SessionClassMethods):
 
         with_for_update = query.ForUpdateArg._from_argument(with_for_update)
 
-        stmt = future.select(object_mapper(instance))
+        stmt = sql.select(object_mapper(instance))
         if (
             loading.load_on_ident(
                 self,
