@@ -218,6 +218,31 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MyModelA.__table__.c.foo.type.__class__, String)
         eq_(MyModelB.__table__.c.foo.type.__class__, Integer)
 
+    def test_same_base_multiple_times(self):
+        class User(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            surname = Column(String)
+
+        class SpecialUser(User):
+            __abstract__ = True
+
+        class ConvenienceStuff(User):
+            __abstract__ = True
+
+            def fullname(self):
+                return self.name + " " + self.surname
+
+        class Manager(SpecialUser, ConvenienceStuff, User):
+            __tablename__ = "manager"
+
+            id = Column(Integer, ForeignKey("user.id"), primary_key=True)
+            title = Column(String)
+
+        eq_(Manager.__table__.name, "manager")
+
     def test_not_allowed(self):
         class MyMixin:
             foo = Column(Integer, ForeignKey("bar.id"))
