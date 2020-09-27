@@ -143,8 +143,9 @@ def pytest_collection_modifyitems(session, config, items):
             if sub_cls is not test_class.cls:
                 list_ = rebuilt_items[test_class.cls]
 
-                for inst in pytest.Class(
-                    sub_cls.__name__, parent=test_class.parent.parent
+                ctor = getattr(pytest.Class, "from_parent", pytest.Class)
+                for inst in ctor(
+                    name=sub_cls.__name__, parent=test_class.parent.parent
                 ).collect():
                     list_.extend(inst.collect())
 
