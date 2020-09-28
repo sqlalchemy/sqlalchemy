@@ -17,6 +17,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.selectable import Join as core_join
 from sqlalchemy.sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -30,7 +31,7 @@ from .test_query import QueryTest
 # composites / unions, etc.
 
 
-class BuilderTest(QueryTest, AssertsCompiledSQL):
+class SelectableTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def test_filter_by(self):
@@ -43,6 +44,76 @@ class BuilderTest(QueryTest, AssertsCompiledSQL):
             "SELECT users.id, users.name FROM users "
             "WHERE users.name = :name_1",
         )
+
+    def test_froms_single_table(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User).filter_by(name="ed")
+
+        eq_(stmt.froms, [self.tables.users])
+
+    def test_froms_join(self):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        stmt = select(User).join(User.addresses)
+
+        assert stmt.froms[0].compare(users.join(addresses))
+
+    @testing.combinations(
+        (
+            lambda User: (User,),
+            lambda User: [
+                {
+                    "name": "User",
+                    "type": User,
+                    "aliased": False,
+                    "expr": User,
+                    "entity": User,
+                }
+            ],
+        ),
+        (
+            lambda User: (User.id,),
+            lambda User: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
+                }
+            ],
+        ),
+        (
+            lambda User, Address: (User.id, Address),
+            lambda User, Address: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
+                },
+                {
+                    "name": "Address",
+                    "type": Address,
+                    "aliased": False,
+                    "expr": Address,
+                    "entity": Address,
+                },
+            ],
+        ),
+    )
+    def test_column_descriptions(self, cols, expected):
+        User, Address = self.classes("User", "Address")
+
+        cols = testing.resolve_lambda(cols, User=User, Address=Address)
+        expected = testing.resolve_lambda(expected, User=User, Address=Address)
+
+        stmt = select(*cols)
+
+        eq_(stmt.column_descriptions, expected)
 
 
 class JoinTest(QueryTest, AssertsCompiledSQL):

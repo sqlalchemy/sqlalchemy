@@ -533,8 +533,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # and _setup_for_generate into three or four logical sections
         self._setup_for_generate()
 
-        if compiler is not None:
-            SelectState.__init__(self, self.statement, compiler, **kw)
+        SelectState.__init__(self, self.statement, compiler, **kw)
 
         return self
 
