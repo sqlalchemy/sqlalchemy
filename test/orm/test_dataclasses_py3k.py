@@ -249,7 +249,8 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
             name: Optional[str] = None
 
             __mapper_args__ = dict(
-                polymorphic_on=widgets.c.type, polymorphic_identity="normal",
+                polymorphic_on=widgets.c.type,
+                polymorphic_identity="normal",
             )
 
         @declarative
@@ -258,7 +259,9 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
 
             magic: bool = False
 
-            __mapper_args__ = dict(polymorphic_identity="special",)
+            __mapper_args__ = dict(
+                polymorphic_identity="special",
+            )
 
         @declarative
         @dataclasses.dataclass

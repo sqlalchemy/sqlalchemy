@@ -71,9 +71,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = "sqlite"
 
     def test_boolean(self):
-        """Test that the boolean only treats 1 as True
-
-        """
+        """Test that the boolean only treats 1 as True"""
 
         meta = MetaData(testing.db)
         t = Table(
@@ -629,7 +627,7 @@ class DialectTest(
         'true', 'false', and 'column' are undocumented reserved words
         when used as column identifiers (as of 3.5.1).  Covering them
         here to ensure they remain in place if the dialect's
-        reserved_words set is updated in the future. """
+        reserved_words set is updated in the future."""
 
         meta = MetaData(testing.db)
         t = Table(
@@ -681,7 +679,7 @@ class DialectTest(
 
     @testing.provide_metadata
     def test_quoted_identifiers_functional_two(self):
-        """"test the edgiest of edge cases, quoted table/col names
+        """ "test the edgiest of edge cases, quoted table/col names
         that start and end with quotes.
 
         SQLite claims to have fixed this in
@@ -1364,7 +1362,11 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     def test_empty_insert_pk1(self, connection):
         self._test_empty_insert(
             connection,
-            Table("a", MetaData(), Column("id", Integer, primary_key=True),),
+            Table(
+                "a",
+                MetaData(),
+                Column("id", Integer, primary_key=True),
+            ),
         )
 
     def test_empty_insert_pk2(self, connection):
@@ -1468,7 +1470,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         self._test_empty_insert(
             connection,
             Table(
-                "f", MetaData(), Column("x", Integer), Column("y", Integer),
+                "f",
+                MetaData(),
+                Column("x", Integer),
+                Column("y", Integer),
             ),
         )
 

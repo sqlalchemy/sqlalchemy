@@ -231,7 +231,10 @@ class InsertExecTest(fixtures.TablesTest):
                 "t4",
                 metadata,
                 Column(
-                    "id", Integer, Sequence("t4_id_seq"), primary_key=True,
+                    "id",
+                    Integer,
+                    Sequence("t4_id_seq"),
+                    primary_key=True,
                 ),
                 Column("foo", String(30)),
             ),
@@ -387,7 +390,12 @@ class TableInsertTest(fixtures.TablesTest):
         Table(
             "foo",
             metadata,
-            Column("id", Integer, Sequence("t_id_seq"), primary_key=True,),
+            Column(
+                "id",
+                Integer,
+                Sequence("t_id_seq"),
+                primary_key=True,
+            ),
             Column("data", String(50)),
             Column("x", Integer),
         )
@@ -397,7 +405,11 @@ class TableInsertTest(fixtures.TablesTest):
             metadata,
             # note this will have full AUTO INCREMENT on MariaDB
             # whereas "foo" will not due to sequence support
-            Column("id", Integer, primary_key=True,),
+            Column(
+                "id",
+                Integer,
+                primary_key=True,
+            ),
             Column("data", String(50)),
             Column("x", Integer),
         )

@@ -57,7 +57,10 @@ class _IdentityDDLFixture(testing.AssertsCompiledSQL):
             dict(always=False, cache=1000, order=True),
             "BY DEFAULT AS IDENTITY (CACHE 1000 ORDER)",
         ),
-        (dict(order=True), "BY DEFAULT AS IDENTITY (ORDER)",),
+        (
+            dict(order=True),
+            "BY DEFAULT AS IDENTITY (ORDER)",
+        ),
     )
     def test_create_ddl(self, identity_args, text):
 
@@ -153,10 +156,15 @@ class NotSupportingIdentityDDL(testing.AssertsCompiledSQL, fixtures.TestBase):
             MetaData(),
             Column("foo", Integer(), Identity("always", start=3)),
         )
-        t2 = Table("foo_table", MetaData(), Column("foo", Integer()),)
+        t2 = Table(
+            "foo_table",
+            MetaData(),
+            Column("foo", Integer()),
+        )
         exp = CreateTable(t2).compile(dialect=testing.db.dialect)
         self.assert_compile(
-            CreateTable(t), re.sub(r"[\n\t]", "", str(exp)),
+            CreateTable(t),
+            re.sub(r"[\n\t]", "", str(exp)),
         )
 
 
@@ -169,7 +177,9 @@ class IdentityTest(fixtures.TestBase):
 
         def fn(**kwargs):
             Table(
-                "t", MetaData(), Column("y", Integer, Identity(), **kwargs),
+                "t",
+                MetaData(),
+                Column("y", Integer, Identity(), **kwargs),
             )
 
         assert_raises_message(ArgumentError, text, fn, server_default="42")

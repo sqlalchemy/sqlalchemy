@@ -1408,9 +1408,7 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
 
 class SubClassToSubClassFromParentTest(fixtures.MappedTest):
-    """test #2617
-
-    """
+    """test #2617"""
 
     run_setup_classes = "once"
     run_setup_mappers = "once"

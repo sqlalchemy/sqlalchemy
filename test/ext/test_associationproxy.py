@@ -3180,7 +3180,10 @@ class MultiOwnerTest(
         self._assert_raises_ambiguous(lambda: D.c_data == 5)
 
     def test_rel_expressions_not_available(self):
-        B, D, = self.classes("B", "D")
+        (
+            B,
+            D,
+        ) = self.classes("B", "D")
 
         self._assert_raises_ambiguous(lambda: D.c_data.any(B.id == 5))
 

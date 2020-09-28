@@ -146,11 +146,16 @@ class AsyncEngineTest(EngineFixture):
     @async_test
     async def test_pool_exhausted(self, async_engine):
         engine = create_async_engine(
-            testing.db.url, pool_size=1, max_overflow=0, pool_timeout=0.1,
+            testing.db.url,
+            pool_size=1,
+            max_overflow=0,
+            pool_timeout=0.1,
         )
         async with engine.connect():
             await assert_raises_message_async(
-                asyncio.TimeoutError, "", engine.connect(),
+                asyncio.TimeoutError,
+                "",
+                engine.connect(),
             )
 
     @async_test
@@ -190,7 +195,8 @@ class AsyncResultTest(EngineFixture):
                 )
             elif filter_ == "scalars":
                 eq_(
-                    all_, ["name%d" % i for i in range(1, 20)],
+                    all_,
+                    ["name%d" % i for i in range(1, 20)],
                 )
             else:
                 eq_(all_, [(i, "name%d" % i) for i in range(1, 20)])
@@ -224,7 +230,8 @@ class AsyncResultTest(EngineFixture):
                 )
             elif filter_ == "scalars":
                 eq_(
-                    rows, ["name%d" % i for i in range(1, 20)],
+                    rows,
+                    ["name%d" % i for i in range(1, 20)],
                 )
             else:
                 eq_(rows, [(i, "name%d" % i) for i in range(1, 20)])

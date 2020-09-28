@@ -532,16 +532,16 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def cross_schema_fk_reflection(self):
-        """target system must support reflection of inter-schema foreign keys
-        """
+        """target system must support reflection of inter-schema foreign
+        keys"""
         return only_on(["postgresql", "mysql", "mariadb", "mssql"])
 
     @property
     def implicit_default_schema(self):
         """target system has a strong concept of 'default' schema that can
-           be referred to implicitly.
+        be referred to implicitly.
 
-           basically, PostgreSQL.
+        basically, PostgreSQL.
 
         """
         return only_on(["postgresql"])
@@ -857,9 +857,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def symbol_names_w_double_quote(self):
-        """Target driver can create tables with a name like 'some " table'
-
-        """
+        """Target driver can create tables with a name like 'some " table'"""
 
         return skip_if(
             [no_support("oracle", "ORA-03001: unimplemented feature")]
@@ -867,7 +865,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def emulated_lastrowid(self):
-        """"target dialect retrieves cursor.lastrowid or an equivalent
+        """ "target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes.
         """
         return fails_on_everything_except(
@@ -881,7 +879,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def emulated_lastrowid_even_with_sequences(self):
-        """"target dialect retrieves cursor.lastrowid or an equivalent
+        """ "target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
         Sequence on it.
         """
@@ -899,7 +897,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def dbapi_lastrowid(self):
-        """"target backend includes a 'lastrowid' accessor on the DBAPI
+        """ "target backend includes a 'lastrowid' accessor on the DBAPI
         cursor object.
 
         """

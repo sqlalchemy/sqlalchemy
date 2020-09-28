@@ -1436,7 +1436,9 @@ class ArrayRoundTripTest(object):
 
         stmt = select(
             func.array_cat(
-                array([1, 2, 3]), array([4, 5, 6]), type_=self.ARRAY(Integer),
+                array([1, 2, 3]),
+                array([4, 5, 6]),
+                type_=self.ARRAY(Integer),
             )[2:5]
         )
         eq_(connection.execute(stmt).scalar(), [2, 3, 4, 5])
@@ -1879,7 +1881,10 @@ class ArrayEnum(fixtures.TestBase):
                 c = "ccc"
 
             tbl.append_column(
-                Column("pyenum_col", array_cls(enum_cls(MyEnum)),),
+                Column(
+                    "pyenum_col",
+                    array_cls(enum_cls(MyEnum)),
+                ),
             )
 
         self.metadata.create_all(connection)
@@ -1918,7 +1923,10 @@ class ArrayJSON(fixtures.TestBase):
             "json_table",
             self.metadata,
             Column("id", Integer, primary_key=True),
-            Column("json_col", array_cls(json_cls),),
+            Column(
+                "json_col",
+                array_cls(json_cls),
+            ),
         )
 
         self.metadata.create_all(connection)
@@ -2166,7 +2174,8 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         connection.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
 
         eq_(
-            connection.scalar(select(t.c.data)), "'a' 'cat' 'fat' 'mat' 'sat'",
+            connection.scalar(select(t.c.data)),
+            "'a' 'cat' 'fat' 'mat' 'sat'",
         )
 
     @testing.provide_metadata
@@ -3227,7 +3236,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
 
     def _test_insert_none_as_null(self, conn):
         conn.execute(
-            self.tables.data_table.insert(), {"name": "r1", "nulldata": None},
+            self.tables.data_table.insert(),
+            {"name": "r1", "nulldata": None},
         )
         self._assert_column_is_NULL(conn, column="nulldata")
 

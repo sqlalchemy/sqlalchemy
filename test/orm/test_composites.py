@@ -747,7 +747,9 @@ class MappedSelectTest(fixtures.MappedTest):
 
         desc_values = (
             select(values, descriptions.c.d1, descriptions.c.d2)
-            .where(descriptions.c.id == values.c.description_id,)
+            .where(
+                descriptions.c.id == values.c.description_id,
+            )
             .alias("descriptions_values")
         )
 

@@ -166,7 +166,9 @@ def generate_driver_url(url, driver, query_str):
     # type: (URL, str, str) -> URL
     backend = url.get_backend_name()
 
-    new_url = url.set(drivername="%s+%s" % (backend, driver),)
+    new_url = url.set(
+        drivername="%s+%s" % (backend, driver),
+    )
     new_url = new_url.update_query_string(query_str)
 
     try:
@@ -214,8 +216,7 @@ def drop_db(cfg, eng, ident):
 
 @register.init
 def update_db_opts(db_url, db_opts):
-    """Set database options (db_opts) for a test database that we created.
-    """
+    """Set database options (db_opts) for a test database that we created."""
     pass
 
 

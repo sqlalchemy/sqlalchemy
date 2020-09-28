@@ -656,7 +656,9 @@ class RelationshipTest4(fixtures.MappedTest):
 
         def go():
             testcar = session.get(
-                Car, car1.car_id, options=[joinedload("employee")],
+                Car,
+                car1.car_id,
+                options=[joinedload("employee")],
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 

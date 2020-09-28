@@ -461,7 +461,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             update(table1)
             .where(table1.c.name == bindparam("crit"))
-            .values({table1.c.name: "hi"},),
+            .values(
+                {table1.c.name: "hi"},
+            ),
             "UPDATE mytable SET name=:name WHERE mytable.name = :crit",
             params={"crit": "notthere"},
             checkparams={"crit": "notthere", "name": "hi"},
@@ -473,7 +475,9 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         self.assert_compile(
             update(table1)
             .where(table1.c.myid == 12)
-            .values({table1.c.name: table1.c.myid},),
+            .values(
+                {table1.c.name: table1.c.myid},
+            ),
             "UPDATE mytable "
             "SET name=mytable.myid, description=:description "
             "WHERE mytable.myid = :myid_1",

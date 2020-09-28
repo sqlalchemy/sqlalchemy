@@ -307,7 +307,8 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
             "FROM users) AS anon_1"
         )
         self.assert_compile(
-            stmt1._final_statement(legacy_query_style=False), expected,
+            stmt1._final_statement(legacy_query_style=False),
+            expected,
         )
 
         self.assert_compile(stmt2, expected)
@@ -334,7 +335,8 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            stmt1._final_statement(legacy_query_style=False), expected,
+            stmt1._final_statement(legacy_query_style=False),
+            expected,
         )
 
         self.assert_compile(stmt2, expected)
@@ -382,7 +384,9 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
                         "count",
                         column_property(
                             select(func.count(addresses.c.id))
-                            .where(users.c.id == addresses.c.user_id,)
+                            .where(
+                                users.c.id == addresses.c.user_id,
+                            )
                             .correlate(users)
                             .scalar_subquery()
                         ),
@@ -391,7 +395,15 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             ),
         )
 
-        mapper(Address, addresses, properties={"user": relationship(User,)})
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User,
+                )
+            },
+        )
 
         return User, Address
 
@@ -405,10 +417,19 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         )
 
         mapper(
-            User, users,
+            User,
+            users,
         )
 
-        mapper(Address, addresses, properties={"user": relationship(User,)})
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User,
+                )
+            },
+        )
 
         return User, Address
 
@@ -510,7 +531,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
 
     def test_column_properties_can_we_use(self, column_property_fixture):
         """test querying mappings that reference external columns or
-        selectables. """
+        selectables."""
 
         # User, Address = column_property_fixture
 
@@ -554,7 +575,12 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         # col properties will retain anonymous labels, however will
         # adopt the .key within the subquery collection so they can
         # be addressed.
-        stmt = select(User.id, User.name, User.concat, User.count,)
+        stmt = select(
+            User.id,
+            User.name,
+            User.concat,
+            User.count,
+        )
 
         subq = stmt.subquery()
         # here, the subquery needs to export the columns that include
@@ -845,7 +871,8 @@ class ImplicitWithPolymorphicTest(
         self.assert_compile(stmt, expected)
 
         self.assert_compile(
-            q._final_statement(legacy_query_style=False), expected,
+            q._final_statement(legacy_query_style=False),
+            expected,
         )
 
     def test_select_where_baseclass(self):
@@ -886,7 +913,8 @@ class ImplicitWithPolymorphicTest(
         self.assert_compile(stmt, expected)
 
         self.assert_compile(
-            q._final_statement(legacy_query_style=False), expected,
+            q._final_statement(legacy_query_style=False),
+            expected,
         )
 
     def test_select_where_subclass(self):
@@ -978,7 +1006,8 @@ class ImplicitWithPolymorphicTest(
 
         self.assert_compile(stmt, expected)
         self.assert_compile(
-            q._final_statement(legacy_query_style=False), expected,
+            q._final_statement(legacy_query_style=False),
+            expected,
         )
 
 

@@ -830,9 +830,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ":meth:`_reflection.Inspector.has_table`.",
     )
     def exists(self, bind=None):
-        """Return True if this table exists.
-
-        """
+        """Return True if this table exists."""
 
         if bind is None:
             bind = _bind_or_error(self)
@@ -3634,10 +3632,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
                 return col
-            elif col.autoincrement in (
-                "auto",
-                "ignore_fk",
-            ) and _validate_autoinc(col, False):
+            elif (
+                col.autoincrement
+                in (
+                    "auto",
+                    "ignore_fk",
+                )
+                and _validate_autoinc(col, False)
+            ):
                 return col
 
         else:

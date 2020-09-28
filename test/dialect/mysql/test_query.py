@@ -29,7 +29,8 @@ class IdiosyncrasyTest(fixtures.TestBase):
     def test_is_boolean_symbols_despite_no_native(self, connection):
 
         is_(
-            connection.scalar(select(cast(true().is_(true()), Boolean))), True,
+            connection.scalar(select(cast(true().is_(true()), Boolean))),
+            True,
         )
 
         is_(

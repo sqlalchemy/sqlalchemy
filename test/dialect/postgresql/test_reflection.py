@@ -900,8 +900,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection(self):
-        """ Reflecting expression-based indexes should warn
-        """
+        """Reflecting expression-based indexes should warn"""
 
         metadata = self.metadata
 
@@ -953,8 +952,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection_partial(self, connection):
-        """Reflect the filter defintion on partial indexes
-        """
+        """Reflect the filter defintion on partial indexes"""
 
         metadata = self.metadata
 

@@ -553,10 +553,7 @@ class AsyncMappingResult(FilterResult):
 
     def columns(self, *col_expressions):
         # type: (*object) -> AsyncMappingResult
-        r"""Establish the columns that should be returned in each row.
-
-
-        """
+        r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     async def partitions(self, size=None):

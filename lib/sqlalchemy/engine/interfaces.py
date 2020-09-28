@@ -530,7 +530,7 @@ class Dialect(object):
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
 
-         """
+        """
 
         raise NotImplementedError()
 
@@ -541,7 +541,7 @@ class Dialect(object):
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
 
-         """
+        """
 
         raise NotImplementedError()
 

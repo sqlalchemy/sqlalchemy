@@ -492,7 +492,8 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             )
 
         self._run_cache_key_fixture(
-            lambda: stmt_20(one(), two(), three()), compare_values=True,
+            lambda: stmt_20(one(), two(), three()),
+            compare_values=True,
         )
 
 

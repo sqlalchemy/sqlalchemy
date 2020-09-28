@@ -487,7 +487,8 @@ class AliasedClass(object):
 
         if alias is None:
             alias = mapper._with_polymorphic_selectable._anonymous_fromclause(
-                name=name, flat=flat,
+                name=name,
+                flat=flat,
             )
 
         self._aliased_insp = AliasedInsp(

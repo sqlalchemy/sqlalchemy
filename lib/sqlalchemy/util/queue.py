@@ -220,7 +220,8 @@ class AsyncAdaptedQueue:
             return self._queue.put_nowait(item)
         except asyncio.queues.QueueFull as err:
             compat.raise_(
-                Full(), replace_context=err,
+                Full(),
+                replace_context=err,
             )
 
     def put(self, item, block=True, timeout=None):
@@ -236,7 +237,8 @@ class AsyncAdaptedQueue:
                 return self.await_(self._queue.put(item))
         except asyncio.queues.QueueFull as err:
             compat.raise_(
-                Full(), replace_context=err,
+                Full(),
+                replace_context=err,
             )
 
     def get_nowait(self):
@@ -244,7 +246,8 @@ class AsyncAdaptedQueue:
             return self._queue.get_nowait()
         except asyncio.queues.QueueEmpty as err:
             compat.raise_(
-                Empty(), replace_context=err,
+                Empty(),
+                replace_context=err,
             )
 
     def get(self, block=True, timeout=None):
@@ -259,5 +262,6 @@ class AsyncAdaptedQueue:
                 return self.await_(self._queue.get())
         except asyncio.queues.QueueEmpty as err:
             compat.raise_(
-                Empty(), replace_context=err,
+                Empty(),
+                replace_context=err,
             )

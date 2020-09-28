@@ -76,7 +76,8 @@ class _Fixtures(_fixtures.FixtureTest):
             pass
 
         mapper(
-            UserWFoob, users,
+            UserWFoob,
+            users,
         )
         return HasFoob, UserWFoob
 
@@ -226,7 +227,10 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             s.execute(stmt).all()
 
         asserter.assert_(
-            CompiledSQL("SELECT users.id, users.name FROM users", [],),
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users",
+                [],
+            ),
             CompiledSQL(
                 "SELECT addresses.user_id AS addresses_user_id, addresses.id "
                 "AS addresses_id, addresses.email_address "
@@ -259,7 +263,8 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 
         asserter.assert_(
             CompiledSQL(
-                "SELECT users.id, users.name FROM users ORDER BY users.id", [],
+                "SELECT users.id, users.name FROM users ORDER BY users.id",
+                [],
             ),
             CompiledSQL(
                 "SELECT addresses.id AS addresses_id, "
@@ -540,7 +545,8 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             .outerjoin(User.addresses)
             .options(
                 with_loader_criteria(
-                    Address, ~Address.email_address.like("ed@%"),
+                    Address,
+                    ~Address.email_address.like("ed@%"),
                 )
             )
             .order_by(User.id)

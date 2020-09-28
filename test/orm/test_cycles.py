@@ -1199,10 +1199,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
 
 
 class SelfReferentialPostUpdateTest(fixtures.MappedTest):
-    """Post_update on a single self-referential mapper.
-
-
-    """
+    """Post_update on a single self-referential mapper."""
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1539,8 +1536,8 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
 
 
 class PostUpdateBatchingTest(fixtures.MappedTest):
-    """test that lots of post update cols batch together into a single UPDATE.
-    """
+    """test that lots of post update cols batch together into a single
+    UPDATE."""
 
     @classmethod
     def define_tables(cls, metadata):

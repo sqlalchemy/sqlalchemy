@@ -83,7 +83,11 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     ckey = orm_context.execution_options["cache_key"]
 
             if ckey is not None:
-                return get_value(ckey, cache, orm_context.invoke_statement,)
+                return get_value(
+                    ckey,
+                    cache,
+                    orm_context.invoke_statement,
+                )
 
         return maker()
 
@@ -947,7 +951,7 @@ class DeclarativeEventListenTest(
 
 class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
-    """"test event listeners against unmapped classes.
+    """ "test event listeners against unmapped classes.
 
     This incurs special logic.  Note if we ever do the "remove" case,
     it has to get all of these, too.

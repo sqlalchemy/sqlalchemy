@@ -333,7 +333,11 @@ class CoreFixtures(object):
                 (table_a.c.b == 10, 20),
                 (table_a.c.a == 9, 12),
             ),
-            case((table_a.c.a == 5, 10), (table_a.c.a == 10, 20), else_=30,),
+            case(
+                (table_a.c.a == 5, 10),
+                (table_a.c.a == 10, 20),
+                else_=30,
+            ),
             case({"wendy": "W", "jack": "J"}, value=table_a.c.a, else_="E"),
             case({"wendy": "W", "jack": "J"}, value=table_a.c.b, else_="E"),
             case({"wendy_w": "W", "jack": "J"}, value=table_a.c.a, else_="E"),
@@ -1006,7 +1010,8 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
             )
 
         self._run_cache_key_fixture(
-            fixture, True,
+            fixture,
+            True,
         )
 
     def test_bindparam_subclass_nocache(self):

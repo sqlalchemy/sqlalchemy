@@ -273,8 +273,8 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_preserve_changes(self):
-        """A deferred load operation doesn't revert modifications on attributes
-        """
+        """A deferred load operation doesn't revert modifications on
+        attributes"""
 
         orders, Order = self.tables.orders, self.classes.Order
 
@@ -824,7 +824,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
     def test_locates_col(self):
         """changed in 1.0 - we don't search for deferred cols in the result
-        now.  """
+        now."""
 
         orders, Order = self.tables.orders, self.classes.Order
 

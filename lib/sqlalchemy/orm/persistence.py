@@ -1179,7 +1179,8 @@ def _emit_insert_statements(
                         c.returned_defaults_rows or (),
                     ):
                         for pk, col in zip(
-                            inserted_primary_key, mapper._pks_by_table[table],
+                            inserted_primary_key,
+                            mapper._pks_by_table[table],
                         ):
                             prop = mapper_rec._columntoproperty[col]
                             if state_dict.get(prop.key) is None:
@@ -2236,7 +2237,8 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             session.identity_map[identity_key]
             for identity_key in [
                 target_mapper.identity_key_from_primary_key(
-                    list(primary_key), identity_token=identity_token,
+                    list(primary_key),
+                    identity_token=identity_token,
                 )
                 for primary_key, identity_token in [
                     (row[0:-1], row[-1]) for row in matched_rows
@@ -2337,7 +2339,8 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
             # TODO: inline this and call remove_newly_deleted
             # once
             identity_key = target_mapper.identity_key_from_primary_key(
-                list(primary_key), identity_token=identity_token,
+                list(primary_key),
+                identity_token=identity_token,
             )
             if identity_key in session.identity_map:
                 session._remove_newly_deleted(

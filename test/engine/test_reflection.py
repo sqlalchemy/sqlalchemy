@@ -99,7 +99,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         self.assert_tables_equal(addresses, reflected_addresses)
 
     @testing.provide_metadata
-    def test_autoload_with_imply_autoload(self,):
+    def test_autoload_with_imply_autoload(
+        self,
+    ):
         meta = self.metadata
         t = Table(
             "t",
@@ -886,7 +888,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
     def test_override_existing_fk(self):
         """test that you can override columns and specify new foreign
         keys to other reflected tables, on columns which *do* already
-        have that foreign key, and that the FK is not duped. """
+        have that foreign key, and that the FK is not duped."""
 
         meta = self.metadata
         Table(
@@ -2294,9 +2296,15 @@ class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):
         )
         if testing.requires.computed_columns_virtual.enabled:
             self.check_table_column(
-                table, "computed_virtual", "normal+2", False,
+                table,
+                "computed_virtual",
+                "normal+2",
+                False,
             )
         if testing.requires.computed_columns_stored.enabled:
             self.check_table_column(
-                table, "computed_stored", "normal-42", True,
+                table,
+                "computed_stored",
+                "normal-42",
+                True,
             )

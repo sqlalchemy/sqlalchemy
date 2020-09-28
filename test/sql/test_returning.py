@@ -260,7 +260,12 @@ class SequenceReturningTest(fixtures.TestBase):
         table = Table(
             "tables",
             meta,
-            Column("id", Integer, seq, primary_key=True,),
+            Column(
+                "id",
+                Integer,
+                seq,
+                primary_key=True,
+            ),
             Column("data", String(50)),
         )
         with testing.db.connect() as conn:

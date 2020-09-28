@@ -24,7 +24,12 @@ class SequenceTest(fixtures.TablesTest):
         Table(
             "seq_pk",
             metadata,
-            Column("id", Integer, Sequence("tab_id_seq"), primary_key=True,),
+            Column(
+                "id",
+                Integer,
+                Sequence("tab_id_seq"),
+                primary_key=True,
+            ),
             Column("data", String(50)),
         )
 
@@ -109,17 +114,21 @@ class HasSequenceTest(fixtures.TablesTest):
                 "schema_seq", schema=config.test_schema, metadata=metadata
             )
         Table(
-            "user_id_table", metadata, Column("id", Integer, primary_key=True),
+            "user_id_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
         )
 
     def test_has_sequence(self, connection):
         eq_(
-            inspect(connection).has_sequence("user_id_seq"), True,
+            inspect(connection).has_sequence("user_id_seq"),
+            True,
         )
 
     def test_has_sequence_other_object(self, connection):
         eq_(
-            inspect(connection).has_sequence("user_id_table"), False,
+            inspect(connection).has_sequence("user_id_table"),
+            False,
         )
 
     @testing.requires.schemas
@@ -133,7 +142,8 @@ class HasSequenceTest(fixtures.TablesTest):
 
     def test_has_sequence_neg(self, connection):
         eq_(
-            inspect(connection).has_sequence("some_sequence"), False,
+            inspect(connection).has_sequence("some_sequence"),
+            False,
         )
 
     @testing.requires.schemas
@@ -157,7 +167,8 @@ class HasSequenceTest(fixtures.TablesTest):
     @testing.requires.schemas
     def test_has_sequence_remote_not_in_default(self, connection):
         eq_(
-            inspect(connection).has_sequence("schema_seq"), False,
+            inspect(connection).has_sequence("schema_seq"),
+            False,
         )
 
     def test_get_sequence_names(self, connection):
@@ -194,5 +205,6 @@ class HasSequenceTestEmpty(fixtures.TestBase):
 
     def test_get_sequence_names_no_sequence(self, connection):
         eq_(
-            inspect(connection).get_sequence_names(), [],
+            inspect(connection).get_sequence_names(),
+            [],
         )

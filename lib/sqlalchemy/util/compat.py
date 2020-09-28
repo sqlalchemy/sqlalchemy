@@ -309,8 +309,7 @@ else:
 if py3k:
 
     def _formatannotation(annotation, base_module=None):
-        """vendored from python 3.7
-        """
+        """vendored from python 3.7"""
 
         if getattr(annotation, "__module__", None) == "typing":
             return repr(annotation).replace("typing.", "")

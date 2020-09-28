@@ -1373,7 +1373,9 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_identity_object_no_primary_key(self):
         metadata = MetaData()
         tbl = Table(
-            "test", metadata, Column("id", Integer, Identity(increment=42)),
+            "test",
+            metadata,
+            Column("id", Integer, Identity(increment=42)),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
@@ -1397,7 +1399,12 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl = Table(
             "test",
             metadata,
-            Column("id", Integer, Identity(start=3), nullable=False,),
+            Column(
+                "id",
+                Integer,
+                Identity(start=3),
+                nullable=False,
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
@@ -1425,7 +1432,11 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
             "test",
             metadata,
             Column("id", Integer, autoincrement=False, primary_key=True),
-            Column("x", Integer, Identity(start=3, increment=42),),
+            Column(
+                "x",
+                Integer,
+                Identity(start=3, increment=42),
+            ),
         )
         self.assert_compile(
             schema.CreateTable(tbl),
@@ -1461,7 +1472,11 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
                 Identity(start=3, increment=42),
                 autoincrement=True,
             ),
-            Column("id2", Integer, Identity(start=7, increment=2),),
+            Column(
+                "id2",
+                Integer,
+                Identity(start=7, increment=2),
+            ),
         )
         # this will be rejected by the database, just asserting this is what
         # the two autoincrements will do right now
@@ -1537,7 +1552,11 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_identity_object_no_options(self):
         metadata = MetaData()
-        tbl = Table("test", metadata, Column("id", Integer, Identity()),)
+        tbl = Table(
+            "test",
+            metadata,
+            Column("id", Integer, Identity()),
+        )
         self.assert_compile(
             schema.CreateTable(tbl),
             "CREATE TABLE test (id INTEGER NOT NULL IDENTITY)",

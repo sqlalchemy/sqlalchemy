@@ -621,9 +621,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
-        """test exceedingly large decimals.
-
-        """
+        """test exceedingly large decimals."""
 
         numbers = set(
             [
@@ -962,7 +960,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         conn = connection
         conn.execute(
-            self.tables.data_table.insert(), {"name": "r1", "data": JSON.NULL},
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": JSON.NULL},
         )
 
         eq_(
@@ -1158,13 +1157,18 @@ class JSONLegacyStringCastIndexTest(
         # "cannot extract array element from a non-array", which is
         # fixed in 9.4 but may exist in 9.3
         self._test_index_criteria(
-            and_(name == "r4", cast(col[1], String) == '"two"',), "r4",
+            and_(
+                name == "r4",
+                cast(col[1], String) == '"two"',
+            ),
+            "r4",
         )
 
     def test_string_cast_crit_mixed_path(self):
         col = self.tables.data_table.c["data"]
         self._test_index_criteria(
-            cast(col[("key3", 1, "six")], String) == '"seven"', "r3",
+            cast(col[("key3", 1, "six")], String) == '"seven"',
+            "r3",
         )
 
     def test_string_cast_crit_string_path(self):
@@ -1180,7 +1184,10 @@ class JSONLegacyStringCastIndexTest(
         col = self.tables.data_table.c["data"]
 
         self._test_index_criteria(
-            and_(name == "r6", cast(col["b"], String) == '"some value"',),
+            and_(
+                name == "r6",
+                cast(col["b"], String) == '"some value"',
+            ),
             "r6",
         )
 

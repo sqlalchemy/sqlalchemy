@@ -131,7 +131,10 @@ def deprecated(
             warning = exc.RemovedIn20Warning
         version = "1.4"
     if add_deprecation_to_docstring:
-        header = ".. deprecated:: %s %s" % (version, (message or ""),)
+        header = ".. deprecated:: %s %s" % (
+            version,
+            (message or ""),
+        )
     else:
         header = None
 

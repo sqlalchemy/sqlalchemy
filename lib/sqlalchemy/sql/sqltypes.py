@@ -361,7 +361,10 @@ class String(Concatenable, TypeEngine):
         needs_isinstance = (
             needs_convert
             and dialect.returns_unicode_strings
-            in (String.RETURNS_CONDITIONAL, String.RETURNS_UNICODE,)
+            in (
+                String.RETURNS_CONDITIONAL,
+                String.RETURNS_UNICODE,
+            )
             and self._expect_unicode != "force_nocheck"
         )
         if needs_convert:
@@ -2286,7 +2289,7 @@ class JSON(Indexable, TypeEngine):
 
               :attr:`.types.JSON.NULL`
 
-         """
+        """
         self.none_as_null = none_as_null
 
     class JSONElementType(TypeEngine):

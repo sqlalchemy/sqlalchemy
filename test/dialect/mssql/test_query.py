@@ -150,9 +150,12 @@ class QueryUnicodeTest(fixtures.TestBase):
             )
         )
         r = connection.execute(t1.select()).first()
-        assert isinstance(r[1], util.text_type), (
-            "%s is %s instead of unicode, working on %s"
-            % (r[1], type(r[1]), meta.bind)
+        assert isinstance(
+            r[1], util.text_type
+        ), "%s is %s instead of unicode, working on %s" % (
+            r[1],
+            type(r[1]),
+            meta.bind,
         )
         eq_(r[1], util.ue("abc \xc3\xa9 def"))
 

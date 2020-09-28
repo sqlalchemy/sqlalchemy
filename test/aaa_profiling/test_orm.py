@@ -891,7 +891,12 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
 
                 r.context.compiled.compile_state = compile_state
                 obj = ORMCompileState.orm_setup_cursor_result(
-                    sess, compile_state.statement, {}, exec_opts, {}, r,
+                    sess,
+                    compile_state.statement,
+                    {},
+                    exec_opts,
+                    {},
+                    r,
                 )
                 list(obj.unique())
                 sess.close()

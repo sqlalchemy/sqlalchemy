@@ -37,9 +37,13 @@ def _is_literal(element):
 
     """
 
-    return not isinstance(
-        element, (Visitable, schema.SchemaEventTarget),
-    ) and not hasattr(element, "__clause_element__")
+    return (
+        not isinstance(
+            element,
+            (Visitable, schema.SchemaEventTarget),
+        )
+        and not hasattr(element, "__clause_element__")
+    )
 
 
 def _deep_is_literal(element):

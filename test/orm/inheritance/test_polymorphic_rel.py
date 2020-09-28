@@ -285,7 +285,8 @@ class _PolymorphicTestBase(object):
     def test_filter_on_subclass_one_future(self):
         sess = create_session(future=True)
         eq_(
-            sess.execute(select(Engineer)).scalar(), Engineer(name="dilbert"),
+            sess.execute(select(Engineer)).scalar(),
+            Engineer(name="dilbert"),
         )
 
     def test_filter_on_subclass_two(self):
@@ -1567,8 +1568,7 @@ class _PolymorphicTestBase(object):
             )
 
     def test_self_referential_two_point_five(self):
-        """Using two aliases, the above case works.
-        """
+        """Using two aliases, the above case works."""
         sess = create_session()
         palias = aliased(Person)
         palias2 = aliased(Person)
@@ -1613,7 +1613,8 @@ class _PolymorphicTestBase(object):
         stmt2 = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
 
         eq_(
-            sess.execute(stmt2).unique().all(), expected,
+            sess.execute(stmt2).unique().all(),
+            expected,
         )
 
     def test_self_referential_two_point_five_future(self):
@@ -1641,7 +1642,8 @@ class _PolymorphicTestBase(object):
         stmt2 = select(pa1, pa2).order_by(pa1.person_id, pa2.person_id)
 
         eq_(
-            sess.execute(stmt2).unique().all(), expected,
+            sess.execute(stmt2).unique().all(),
+            expected,
         )
 
     def test_nesting_queries(self):
@@ -1755,7 +1757,8 @@ class _PolymorphicTestBase(object):
             ("vlad", "Elbonia, Inc."),
         ]
         eq_(
-            q(self, sess).all(), expected,
+            q(self, sess).all(),
+            expected,
         )
 
     def test_mixed_entities_two(self):

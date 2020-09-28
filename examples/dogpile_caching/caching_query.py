@@ -146,7 +146,7 @@ class FromCache(UserDefinedOption):
 
 class RelationshipCache(FromCache):
     """Specifies that a Query as called within a "lazy load"
-       should load results from a cache."""
+    should load results from a cache."""
 
     propagate_to_loaders = True
 

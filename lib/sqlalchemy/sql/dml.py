@@ -193,9 +193,7 @@ class UpdateBase(
     Executable,
     ClauseElement,
 ):
-    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
-
-    """
+    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = "update_base"
 
@@ -435,7 +433,7 @@ class UpdateBase(
         :param dialect_name: defaults to ``*``, if specified as the name
          of a particular dialect, will apply these hints only when
          that dialect is in use.
-         """
+        """
         if selectable is None:
             selectable = self.table
 

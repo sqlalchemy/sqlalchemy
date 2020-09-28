@@ -3236,7 +3236,8 @@ class BooleanTest(
             )
 
             eq_(
-                conn.scalar(select(boolean_table.c.unconstrained_value)), True,
+                conn.scalar(select(boolean_table.c.unconstrained_value)),
+                True,
             )
 
     def test_bind_processor_coercion_native_true(self):

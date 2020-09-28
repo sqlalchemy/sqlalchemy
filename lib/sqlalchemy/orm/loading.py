@@ -639,7 +639,7 @@ def _instance_processor(
     _polymorphic_from=None,
 ):
     """Produce a mapper level row processor callable
-       which processes rows into mapped instances."""
+    which processes rows into mapped instances."""
 
     # note that this method, most of which exists in a closure
     # called _instance(), resists being broken out, as
@@ -1253,9 +1253,7 @@ def _decorate_polymorphic_switch(
 
 
 class PostLoad(object):
-    """Track loaders and states for "post load" operations.
-
-    """
+    """Track loaders and states for "post load" operations."""
 
     __slots__ = "loaders", "states", "load_keys"
 

@@ -1275,8 +1275,7 @@ class Mapper(
 
     @classmethod
     def _configure_all(cls):
-        """Class-level path to the :func:`.configure_mappers` call.
-        """
+        """Class-level path to the :func:`.configure_mappers` call."""
         configure_mappers()
 
     def dispose(self):
@@ -1799,7 +1798,7 @@ class Mapper(
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def _property_from_column(self, key, prop):
         """generate/update a :class:`.ColumnProperty` given a
-        :class:`_schema.Column` object. """
+        :class:`_schema.Column` object."""
         descriptor_props = util.preloaded.orm_descriptor_props
         # we were passed a Column or a list of Columns;
         # generate a properties.ColumnProperty
@@ -1983,8 +1982,7 @@ class Mapper(
         return key in self._props
 
     def get_property(self, key, _configure_mappers=True):
-        """return a MapperProperty associated with the given key.
-        """
+        """return a MapperProperty associated with the given key."""
 
         if _configure_mappers and Mapper._new_mappers:
             configure_mappers()

@@ -13,5 +13,10 @@ def loader(driver):
     driver_cls = getattr(driver_mod, driver).dialect
 
     return type(
-        "MariaDBDialect_%s" % driver, (MariaDBDialect, driver_cls,), {}
+        "MariaDBDialect_%s" % driver,
+        (
+            MariaDBDialect,
+            driver_cls,
+        ),
+        {},
     )

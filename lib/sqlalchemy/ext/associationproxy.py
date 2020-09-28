@@ -840,8 +840,7 @@ class AmbiguousAssociationProxyInstance(AssociationProxyInstance):
 
 
 class ObjectAssociationProxyInstance(AssociationProxyInstance):
-    """an :class:`.AssociationProxyInstance` that has an object as a target.
-    """
+    """an :class:`.AssociationProxyInstance` that has an object as a target."""
 
     _target_is_object = True
     _is_canonical = True

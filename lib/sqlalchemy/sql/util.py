@@ -1011,8 +1011,7 @@ def _offset_or_limit_clause_asint_if_possible(clause):
 
 
 def _make_slice(limit_clause, offset_clause, start, stop):
-    """Compute LIMIT/OFFSET in terms of slice start/end
-    """
+    """Compute LIMIT/OFFSET in terms of slice start/end"""
 
     # for calculated limit/offset, try to do the addition of
     # values to offset in Python, however if a SQL clause is present

@@ -296,7 +296,12 @@ class ParseVersionTest(fixtures.TestBase):
 
     @testing.combinations(
         ((10, 2, 7), "10.2.7-MariaDB", (10, 2, 7), True),
-        ((10, 2, 7), "5.6.15.10.2.7-MariaDB", (5, 6, 15, 10, 2, 7), True,),
+        (
+            (10, 2, 7),
+            "5.6.15.10.2.7-MariaDB",
+            (5, 6, 15, 10, 2, 7),
+            True,
+        ),
         ((5, 0, 51, 24), "5.0.51a.24+lenny5", (5, 0, 51, 24), False),
         ((10, 2, 10), "10.2.10-MariaDB", (10, 2, 10), True),
         ((5, 7, 20), "5.7.20", (5, 7, 20), False),

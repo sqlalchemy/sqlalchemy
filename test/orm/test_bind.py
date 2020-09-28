@@ -203,7 +203,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             },
             "e2",
         ),
-        (lambda User: {"clause": select(1).where(User.name == "ed")}, "e1",),
+        (
+            lambda User: {"clause": select(1).where(User.name == "ed")},
+            "e1",
+        ),
         (lambda: {"clause": select(1)}, "e3"),
         (lambda User: {"clause": Query([User])._statement_20()}, "e1"),
         (lambda: {"clause": Query([1])._statement_20()}, "e3"),

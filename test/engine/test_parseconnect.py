@@ -172,7 +172,11 @@ class URLTest(fixtures.TestBase):
         is_false(url1 == url3)
 
     @testing.combinations(
-        "drivername", "username", "password", "host", "database",
+        "drivername",
+        "username",
+        "password",
+        "host",
+        "database",
     )
     def test_component_set(self, component):
         common_url = (
@@ -251,7 +255,9 @@ class URLTest(fixtures.TestBase):
         )
 
     @testing.combinations(
-        "username", "host", "database",
+        "username",
+        "host",
+        "database",
     )
     def test_only_str_constructor(self, argname):
         assert_raises_message(
@@ -263,7 +269,9 @@ class URLTest(fixtures.TestBase):
         )
 
     @testing.combinations(
-        "username", "host", "database",
+        "username",
+        "host",
+        "database",
     )
     def test_only_str_set(self, argname):
         u1 = url.URL.create("somedriver")
@@ -735,7 +743,10 @@ class TestRegNewDBAPI(fixtures.TestBase):
             "sqlite:///?plugin=engineplugin1&foo=bar&myplugin1_arg=bat"
             "&plugin=engineplugin2&myplugin2_arg=hoho"
         )
-        e = create_engine(url_str, logging_name="foob",)
+        e = create_engine(
+            url_str,
+            logging_name="foob",
+        )
         eq_(e.dialect.name, "sqlite")
         eq_(e.logging_name, "bar")
 

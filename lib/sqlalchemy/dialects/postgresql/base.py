@@ -1338,9 +1338,7 @@ class TIME(sqltypes.TIME):
 
 class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
 
-    """PostgreSQL INTERVAL type.
-
-    """
+    """PostgreSQL INTERVAL type."""
 
     __visit_name__ = "INTERVAL"
     native = True
@@ -1414,7 +1412,7 @@ class UUID(sqltypes.TypeEngine):
          as Python uuid objects, converting to/from string via the
          DBAPI.
 
-         """
+        """
         self.as_uuid = as_uuid
 
     def coerce_compared_value(self, op, value):
@@ -3026,7 +3024,9 @@ class PGDialect(default.DefaultDialect):
                     type_=sqltypes.Unicode,
                 ),
                 sql.bindparam(
-                    "schema", util.text_type(schema), type_=sqltypes.Unicode,
+                    "schema",
+                    util.text_type(schema),
+                    type_=sqltypes.Unicode,
                 ),
             )
         )
@@ -3200,7 +3200,9 @@ class PGDialect(default.DefaultDialect):
                 "n.nspname=:schema"
             ).bindparams(
                 sql.bindparam(
-                    "schema", util.text_type(schema), type_=sqltypes.Unicode,
+                    "schema",
+                    util.text_type(schema),
+                    type_=sqltypes.Unicode,
                 ),
             )
         )

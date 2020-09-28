@@ -54,7 +54,7 @@ def inspect(subject, raiseerr=True):
      :class:`sqlalchemy.exc.NoInspectionAvailable`
      is raised.  If ``False``, ``None`` is returned.
 
-     """
+    """
     type_ = type(subject)
     for cls in type_.__mro__:
         if cls in _registrars:

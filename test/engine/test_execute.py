@@ -988,7 +988,8 @@ class CompiledCacheTest(fixtures.TestBase):
             eq_(conn.scalar(stmt), 2)
 
         with config.db.connect().execution_options(
-            compiled_cache=cache, schema_translate_map={None: None},
+            compiled_cache=cache,
+            schema_translate_map={None: None},
         ) as conn:
             # should use default schema again even though statement
             # was compiled with test_schema in the map
@@ -1017,7 +1018,10 @@ class MockStrategyTest(fixtures.TestBase):
             "testtable",
             metadata,
             Column(
-                "pk", Integer, Sequence("testtable_pk_seq"), primary_key=True,
+                "pk",
+                Integer,
+                Sequence("testtable_pk_seq"),
+                primary_key=True,
             ),
         )
 
@@ -1700,7 +1704,11 @@ class EngineEventsTest(fixtures.TestBase):
 
             compiled = [
                 ("CREATE TABLE t1", {}, None),
-                ("INSERT INTO t1 (c1, c2)", {"c2": "some data", "c1": 5}, (),),
+                (
+                    "INSERT INTO t1 (c1, c2)",
+                    {"c2": "some data", "c1": 5},
+                    (),
+                ),
                 ("INSERT INTO t1 (c1, c2)", {"c1": 6}, ()),
                 ("select * from t1", {}, None),
                 ("DROP TABLE t1", {}, None),
@@ -1948,7 +1956,12 @@ class EngineEventsTest(fixtures.TestBase):
         t = Table(
             "t",
             self.metadata,
-            Column("x", Integer, Sequence("t_id_seq"), primary_key=True,),
+            Column(
+                "x",
+                Integer,
+                Sequence("t_id_seq"),
+                primary_key=True,
+            ),
             implicit_returning=False,
         )
         self.metadata.create_all(engine)
@@ -2601,7 +2614,9 @@ class HandleErrorTest(fixtures.TestBase):
             Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
         ):
             assert_raises(
-                tsa.exc.InvalidRequestError, conn.execute, text("select 1"),
+                tsa.exc.InvalidRequestError,
+                conn.execute,
+                text("select 1"),
             )
 
         # cursor is closed
@@ -2999,7 +3014,12 @@ class DialectEventTest(fixtures.TestBase):
             stmt = "insert into table foo"
             params = {"foo": "bar"}
             ctx = dialect.execution_ctx_cls._init_statement(
-                dialect, conn, conn.connection, {}, stmt, [params],
+                dialect,
+                conn,
+                conn.connection,
+                {},
+                stmt,
+                [params],
             )
 
             conn._cursor_execute(ctx.cursor, stmt, params, ctx)

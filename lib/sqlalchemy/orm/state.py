@@ -212,7 +212,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
             :ref:`session_object_states`
 
-            """
+        """
         return self.key is not None and self._attached and not self._deleted
 
     @property
@@ -533,7 +533,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
 
     def _reset(self, dict_, key):
         """Remove the given attribute and any
-           callables associated with it."""
+        callables associated with it."""
 
         old = dict_.pop(key, None)
         if old is not None and self.manager[key].impl.collection:

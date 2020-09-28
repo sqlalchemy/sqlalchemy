@@ -408,7 +408,8 @@ class ServerSideCursorsTest(
             )
 
             eq_(
-                result.fetchmany(5), [(i, "data%d" % i) for i in range(1, 6)],
+                result.fetchmany(5),
+                [(i, "data%d" % i) for i in range(1, 6)],
             )
             eq_(
                 result.fetchmany(10),

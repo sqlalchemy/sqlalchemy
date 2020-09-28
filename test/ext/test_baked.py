@@ -1022,7 +1022,9 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
 
             if ckey is not None:
                 return get_value(
-                    ckey, CachingQuery.cache, orm_context.invoke_statement,
+                    ckey,
+                    CachingQuery.cache,
+                    orm_context.invoke_statement,
                 )
 
         return s1
@@ -1067,13 +1069,15 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         q = sess.query(User).filter(User.id == 7).set_cache_key("user7")
 
         eq_(
-            sess.execute(q).all(), [(User(id=7, addresses=[Address(id=1)]),)],
+            sess.execute(q).all(),
+            [(User(id=7, addresses=[Address(id=1)]),)],
         )
 
         eq_(list(q.cache), ["user7"])
 
         eq_(
-            sess.execute(q).all(), [(User(id=7, addresses=[Address(id=1)]),)],
+            sess.execute(q).all(),
+            [(User(id=7, addresses=[Address(id=1)]),)],
         )
 
     def test_use_w_baked(self):

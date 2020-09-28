@@ -196,8 +196,6 @@ def remove(target, identifier, fn):
 
 
 def contains(target, identifier, fn):
-    """Return True if the given target/ident/fn is set up to listen.
-
-    """
+    """Return True if the given target/ident/fn is set up to listen."""
 
     return _event_key(target, identifier, fn).contains()

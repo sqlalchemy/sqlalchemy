@@ -196,7 +196,8 @@ class TransactionTest(fixtures.TestBase):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 0,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                0,
             )
 
     def test_inactive_due_to_subtransaction_no_commit(self, local_connection):
@@ -1022,7 +1023,7 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     """test the 'autocommit' flag on select() and text() objects.
 
     Requires PostgreSQL so that we may define a custom function which
-    modifies the database. """
+    modifies the database."""
 
     __only_on__ = "postgresql"
 
@@ -1469,7 +1470,8 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
                 c1 = c1.execution_options(foo="new_foo")
 
                 eq_(
-                    engine.dialect.get_foo(c1.connection), "new_foo",
+                    engine.dialect.get_foo(c1.connection),
+                    "new_foo",
                 )
         # stays outside of transaction
         eq_(engine.dialect.get_foo(c1.connection), "new_foo")
@@ -1513,7 +1515,8 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
 
         conn = eng.connect()
         eq_(
-            eng.dialect.get_foo(conn.connection), "new_value",
+            eng.dialect.get_foo(conn.connection),
+            "new_value",
         )
 
 
@@ -1719,7 +1722,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     @testing.requires.autocommit
@@ -1766,13 +1770,15 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             assert not conn.in_transaction()
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
             conn.execute(users.insert(), {"user_id": 2, "user_name": "name 2"})
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
 
             assert conn.in_transaction()
@@ -1780,7 +1786,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             assert not conn.in_transaction()
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     def test_rollback_on_close(self):
@@ -1865,7 +1872,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
             conn.rollback()
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     def test_rollback_no_begin(self):
@@ -1889,7 +1897,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             conn.commit()
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     def test_no_double_begin(self):
@@ -1910,7 +1919,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 0,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                0,
             )
 
     def test_begin_block(self):
@@ -1921,7 +1931,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     @testing.requires.savepoints
@@ -1935,17 +1946,20 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
             savepoint.rollback()
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     @testing.requires.savepoints
@@ -1959,17 +1973,20 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             conn.execute(users.insert(), {"user_id": 2, "user_name": "name2"})
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
             savepoint.commit()
 
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
 
     @testing.requires.savepoints
@@ -1988,7 +2005,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 0,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                0,
             )
 
     @testing.requires.savepoints
@@ -2014,7 +2032,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 2,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                2,
             )
 
     @testing.requires.savepoints
@@ -2036,7 +2055,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 3,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                3,
             )
 
     @testing.requires.savepoints
@@ -2068,7 +2088,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 1,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                1,
             )
 
     @testing.requires.savepoints
@@ -2097,5 +2118,6 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         with testing.db.connect() as conn:
             eq_(
-                conn.scalar(select(func.count(1)).select_from(users)), 0,
+                conn.scalar(select(func.count(1)).select_from(users)),
+                0,
             )

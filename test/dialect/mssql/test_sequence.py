@@ -31,7 +31,9 @@ class SequenceTest(fixtures.TablesTest):
             "bigint_seq_t",
             metadata,
             Column(
-                "id", BIGINT, default=Sequence("bigint_seq", start=3000000000),
+                "id",
+                BIGINT,
+                default=Sequence("bigint_seq", start=3000000000),
             ),
             Column("txt", String(50)),
         )
@@ -43,7 +45,9 @@ class SequenceTest(fixtures.TablesTest):
                 "id",
                 DECIMAL(10, 0),
                 default=Sequence(
-                    "decimal_seq", data_type=DECIMAL(10, 0), start=3000000000,
+                    "decimal_seq",
+                    data_type=DECIMAL(10, 0),
+                    start=3000000000,
                 ),
             ),
             Column("txt", String(50)),

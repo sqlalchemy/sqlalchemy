@@ -119,7 +119,9 @@ def setup_filters():
         r"The Session.begin.subtransactions flag is deprecated",
     ]:
         warnings.filterwarnings(
-            "ignore", message=msg, category=sa_exc.RemovedIn20Warning,
+            "ignore",
+            message=msg,
+            category=sa_exc.RemovedIn20Warning,
         )
 
     try:

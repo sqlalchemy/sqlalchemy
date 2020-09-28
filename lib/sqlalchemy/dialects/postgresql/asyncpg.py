@@ -576,11 +576,13 @@ class AsyncAdapt_asyncpg_dbapi:
 
         if async_fallback:
             return AsyncAdaptFallback_asyncpg_connection(
-                self, await_fallback(self.asyncpg.connect(*arg, **kw)),
+                self,
+                await_fallback(self.asyncpg.connect(*arg, **kw)),
             )
         else:
             return AsyncAdapt_asyncpg_connection(
-                self, await_only(self.asyncpg.connect(*arg, **kw)),
+                self,
+                await_only(self.asyncpg.connect(*arg, **kw)),
             )
 
     class Error(Exception):

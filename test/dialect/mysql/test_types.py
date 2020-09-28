@@ -491,7 +491,10 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         t.create(connection)
         connection.execute(
             t.insert(),
-            dict(scale_value=45.768392065789, unscale_value=45.768392065789,),
+            dict(
+                scale_value=45.768392065789,
+                unscale_value=45.768392065789,
+            ),
         )
         result = connection.scalar(select(t.c.scale_value))
         eq_(result, decimal.Decimal("45.768392065789"))
@@ -1054,7 +1057,8 @@ class EnumSetTest(
             dict(e1="a", e2="a", e3="a", e4="'a'", e5="a,b"),
         )
         connection.execute(
-            set_table.insert(), dict(e1="b", e2="b", e3="b", e4="b", e5="a,b"),
+            set_table.insert(),
+            dict(e1="b", e2="b", e3="b", e4="b", e5="a,b"),
         )
 
         expected = [
@@ -1065,7 +1069,13 @@ class EnumSetTest(
                 set(["'a'"]),
                 set(["a", "b"]),
             ),
-            (set(["b"]), set(["b"]), set(["b"]), set(["b"]), set(["a", "b"]),),
+            (
+                set(["b"]),
+                set(["b"]),
+                set(["b"]),
+                set(["b"]),
+                set(["a", "b"]),
+            ),
         ]
         res = connection.execute(set_table.select()).fetchall()
 
@@ -1264,7 +1274,13 @@ class EnumSetTest(
             Column("e6", mysql.SET("", "a", retrieve_as_bitwise=True)),
             Column(
                 "e7",
-                mysql.SET("", "'a'", "b'b", "'", retrieve_as_bitwise=True,),
+                mysql.SET(
+                    "",
+                    "'a'",
+                    "b'b",
+                    "'",
+                    retrieve_as_bitwise=True,
+                ),
             ),
         )
 

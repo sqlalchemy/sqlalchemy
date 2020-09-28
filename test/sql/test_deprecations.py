@@ -545,7 +545,11 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             r"The \"whens\" argument to case\(\) is now passed"
         ):
             stmt = select(t1).where(
-                case(whens={t1.c.q == 5: "foo"}, else_="bat",) != "bat"
+                case(
+                    whens={t1.c.q == 5: "foo"},
+                    else_="bat",
+                )
+                != "bat"
             )
 
         self.assert_compile(
@@ -1607,7 +1611,8 @@ class PositionalTextTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
-            cls.tables.text1.insert(), [dict(a="a1", b="b1", c="c1", d="d1")],
+            cls.tables.text1.insert(),
+            [dict(a="a1", b="b1", c="c1", d="d1")],
         )
 
     def test_anon_aliased_overlapping(self, connection):
@@ -1756,7 +1761,8 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt = table.insert(values={}, inline=True)
 
         self.assert_compile(
-            stmt, "INSERT INTO sometable (foo) VALUES (foobar())",
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
         )
 
         with testing.expect_deprecated_20(
@@ -1765,7 +1771,9 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             stmt = table.insert(inline=True)
 
         self.assert_compile(
-            stmt, "INSERT INTO sometable (foo) VALUES (foobar())", params={},
+            stmt,
+            "INSERT INTO sometable (foo) VALUES (foobar())",
+            params={},
         )
 
     def test_update_inline_kw_defaults(self):
@@ -1808,7 +1816,9 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_update_whereclause(self):
         table1 = table(
-            "mytable", Column("myid", Integer), Column("name", String(30)),
+            "mytable",
+            Column("myid", Integer),
+            Column("name", String(30)),
         )
 
         with testing.expect_deprecated_20(
@@ -1823,7 +1833,9 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
 
     def test_update_values(self):
         table1 = table(
-            "mytable", Column("myid", Integer), Column("name", String(30)),
+            "mytable",
+            Column("myid", Integer),
+            Column("name", String(30)),
         )
 
         with testing.expect_deprecated_20(
@@ -1835,7 +1847,10 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             )
 
     def test_delete_whereclause(self):
-        table1 = table("mytable", Column("myid", Integer),)
+        table1 = table(
+            "mytable",
+            Column("myid", Integer),
+        )
 
         with testing.expect_deprecated_20(
             "The delete.whereclause parameter will be "

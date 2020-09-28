@@ -325,7 +325,7 @@ class InheritTest(fixtures.MappedTest):
         """this tests the RasterDocument being attached to the Assembly, but
         *not* the Document.  this means only a "sub-class" task, i.e.
         corresponding to an inheriting mapper but not the base mapper,
-        is created. """
+        is created."""
 
         product_mapper = mapper(
             Product,

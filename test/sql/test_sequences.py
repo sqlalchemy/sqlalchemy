@@ -124,14 +124,14 @@ class LegacySequenceExecTest(fixtures.TestBase):
 
     def test_explicit_optional(self):
         """test dialect executes a Sequence, returns nextval, whether
-        or not "optional" is set """
+        or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(s.execute(testing.db))
 
     def test_func_implicit_connectionless_execute(self):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence", metadata=MetaData(testing.db))
         self._assert_seq_result(s.next_value().execute().scalar())
@@ -178,21 +178,21 @@ class SequenceExecTest(fixtures.TestBase):
 
     def test_execute_optional(self, connection):
         """test dialect executes a Sequence, returns nextval, whether
-        or not "optional" is set """
+        or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(connection.execute(s))
 
     def test_execute_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence")
         self._assert_seq_result(connection.scalar(s.next_value()))
 
     def test_execute_optional_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(connection.scalar(s.next_value()))
@@ -225,7 +225,11 @@ class SequenceExecTest(fixtures.TestBase):
         """test can use next_value() in values() of _ValuesBase"""
 
         metadata = self.metadata
-        t1 = Table("t", metadata, Column("x", Integer),)
+        t1 = Table(
+            "t",
+            metadata,
+            Column("x", Integer),
+        )
         t1.create(testing.db)
         s = Sequence("my_sequence")
         connection.execute(t1.insert().values(x=s.next_value()))
@@ -263,7 +267,15 @@ class SequenceExecTest(fixtures.TestBase):
 
         metadata = self.metadata
         s = Sequence("my_sequence")
-        t1 = Table("t", metadata, Column("x", Integer, primary_key=True,),)
+        t1 = Table(
+            "t",
+            metadata,
+            Column(
+                "x",
+                Integer,
+                primary_key=True,
+            ),
+        )
         t1.create(testing.db)
 
         e = engines.testing_engine(options={"implicit_returning": True})
@@ -424,7 +436,11 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         Table(
             "Manager",
             metadata,
-            Column("obj_id", Integer, Sequence("obj_id_seq"),),
+            Column(
+                "obj_id",
+                Integer,
+                Sequence("obj_id_seq"),
+            ),
             Column("name", String(128)),
             Column(
                 "id",
@@ -477,10 +493,26 @@ class TableBoundSequenceTest(fixtures.TablesTest):
                     conn.execute(sometable.select().order_by(sometable.c.id))
                 ),
                 [
-                    (dsb, "somename", dsb,),
-                    (dsb + 1, "someother", dsb + 1,),
-                    (dsb + 2, "name3", dsb + 2,),
-                    (dsb + 3, "name4", dsb + 3,),
+                    (
+                        dsb,
+                        "somename",
+                        dsb,
+                    ),
+                    (
+                        dsb + 1,
+                        "someother",
+                        dsb + 1,
+                    ),
+                    (
+                        dsb + 2,
+                        "name3",
+                        dsb + 2,
+                    ),
+                    (
+                        dsb + 3,
+                        "name4",
+                        dsb + 3,
+                    ),
                 ],
             )
 

@@ -167,7 +167,10 @@ class SimpleResultMetaData(ResultMetaData):
 
         if extra:
             recs_names = [
-                ((name,) + extras, (index, name, extras),)
+                (
+                    (name,) + extras,
+                    (index, name, extras),
+                )
                 for index, (name, extras) in enumerate(zip(self._keys, extra))
             ]
         else:
@@ -407,7 +410,10 @@ class ResultInternal(InPlaceGenerative):
             rows = [
                 made_row
                 for made_row, sig_row in [
-                    (made_row, strategy(made_row) if strategy else made_row,)
+                    (
+                        made_row,
+                        strategy(made_row) if strategy else made_row,
+                    )
                     for made_row in made_rows
                 ]
                 if sig_row not in uniques and not uniques.add(sig_row)
@@ -543,7 +549,10 @@ class ResultInternal(InPlaceGenerative):
         return manyrows
 
     def _only_one_row(
-        self, raise_for_second_row, raise_for_none, scalar,
+        self,
+        raise_for_second_row,
+        raise_for_none,
+        scalar,
     ):
         onerow = self._fetchone_impl
 
@@ -1400,10 +1409,7 @@ class MappingResult(FilterResult):
 
     def columns(self, *col_expressions):
         # type: (*object) -> MappingResult
-        r"""Establish the columns that should be returned in each row.
-
-
-        """
+        r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     def partitions(self, size=None):

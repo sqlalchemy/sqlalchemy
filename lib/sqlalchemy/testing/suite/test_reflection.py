@@ -151,7 +151,10 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
             Column("related_id", Integer),
             sa.PrimaryKeyConstraint("id", name="pk quote ' one"),
             sa.Index("ix quote ' one", "name"),
-            sa.UniqueConstraint("data", name="uq quote' one",),
+            sa.UniqueConstraint(
+                "data",
+                name="uq quote' one",
+            ),
             sa.ForeignKeyConstraint(
                 ["id"], ["related.id"], name="fk quote ' one"
             ),
@@ -170,7 +173,10 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
                 Column("related_id", Integer),
                 sa.PrimaryKeyConstraint("id", name='pk quote " two'),
                 sa.Index('ix quote " two', "name"),
-                sa.UniqueConstraint("data", name='uq quote" two',),
+                sa.UniqueConstraint(
+                    "data",
+                    name='uq quote" two',
+                ),
                 sa.ForeignKeyConstraint(
                     ["id"], ["related.id"], name='fk quote " two'
                 ),
@@ -1039,7 +1045,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
             "Skipped unsupported reflection of expression-based index t_idx"
         ):
             eq_(
-                insp.get_indexes("t"), expected,
+                insp.get_indexes("t"),
+                expected,
             )
 
     @testing.requires.index_reflects_included_columns
@@ -1098,7 +1105,8 @@ class ComponentReflectionTest(fixtures.TablesTest):
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
         eq_(
-            [idx for idx in indexes if idx["name"] == "user_tmp_ix"], expected,
+            [idx for idx in indexes if idx["name"] == "user_tmp_ix"],
+            expected,
         )
 
     @testing.requires.unique_constraint_reflection
@@ -1390,11 +1398,17 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
         )
         if testing.requires.computed_columns_virtual.enabled:
             self.check_column(
-                data, "computed_virtual", "normal+2", False,
+                data,
+                "computed_virtual",
+                "normal+2",
+                False,
             )
         if testing.requires.computed_columns_stored.enabled:
             self.check_column(
-                data, "computed_stored", "normal-42", True,
+                data,
+                "computed_stored",
+                "normal-42",
+                True,
             )
 
     @testing.requires.schemas
@@ -1414,11 +1428,17 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
         )
         if testing.requires.computed_columns_virtual.enabled:
             self.check_column(
-                data, "computed_virtual", "normal/2", False,
+                data,
+                "computed_virtual",
+                "normal/2",
+                False,
             )
         if testing.requires.computed_columns_stored.enabled:
             self.check_column(
-                data, "computed_stored", "normal*42", True,
+                data,
+                "computed_stored",
+                "normal*42",
+                True,
             )
 
 

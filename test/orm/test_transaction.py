@@ -2787,13 +2787,15 @@ class FutureJoinIntoAnExternalTransactionTest(
 
 
 class NonFutureJoinIntoAnExternalTransactionTest(
-    NewStyleJoinIntoAnExternalTransactionTest, fixtures.TestBase,
+    NewStyleJoinIntoAnExternalTransactionTest,
+    fixtures.TestBase,
 ):
     pass
 
 
 class LegacyJoinIntoAnExternalTransactionTest(
-    JoinIntoAnExternalTransactionFixture, fixtures.TestBase,
+    JoinIntoAnExternalTransactionFixture,
+    fixtures.TestBase,
 ):
     def setup_session(self):
         # begin a non-ORM transaction

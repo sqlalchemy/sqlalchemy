@@ -67,9 +67,7 @@ class Connection(Connectable):
         _dispatch=None,
         _has_events=None,
     ):
-        """Construct a new Connection.
-
-        """
+        """Construct a new Connection."""
         self.engine = engine
         self.dialect = engine.dialect
         self.__branch_from = _branch_from
@@ -347,7 +345,7 @@ class Connection(Connectable):
         return c
 
     def get_execution_options(self):
-        """ Get the non-SQL options which will take effect during execution.
+        """Get the non-SQL options which will take effect during execution.
 
         .. versionadded:: 1.3
 
@@ -1234,7 +1232,11 @@ class Connection(Connectable):
 
         for fn in self.dispatch.before_execute:
             elem, event_multiparams, event_params = fn(
-                self, elem, event_multiparams, event_params, execution_options,
+                self,
+                elem,
+                event_multiparams,
+                event_params,
+                execution_options,
             )
 
         if event_multiparams:
@@ -2124,9 +2126,7 @@ class Transaction(object):
             assert not self.is_active
 
     def rollback(self):
-        """Roll back this :class:`.Transaction`.
-
-        """
+        """Roll back this :class:`.Transaction`."""
         try:
             self._do_rollback()
         finally:
@@ -2618,7 +2618,7 @@ class Engine(Connectable, log.Identified):
         return self._option_cls(self, opt)
 
     def get_execution_options(self):
-        """ Get the non-SQL options which will take effect during execution.
+        """Get the non-SQL options which will take effect during execution.
 
         .. versionadded: 1.3
 

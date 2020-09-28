@@ -1033,7 +1033,7 @@ class TIME(sqltypes.TIME):
                     self.__zero_date, value.time()
                 )
             elif isinstance(value, datetime.time):
-                """ issue #5339
+                """issue #5339
                 per: https://github.com/mkleehammer/pyodbc/wiki/Tips-and-Tricks-by-Database-Platform#time-columns
                 pass TIME value as string
                 """  # noqa
@@ -1260,9 +1260,7 @@ class SQL_VARIANT(sqltypes.TypeEngine):
 
 
 class TryCast(sql.elements.Cast):
-    """Represent a SQL Server TRY_CAST expression.
-
-    """
+    """Represent a SQL Server TRY_CAST expression."""
 
     __visit_name__ = "try_cast"
 
@@ -1579,8 +1577,12 @@ class MSExecutionContext(default.DefaultExecutionContext):
         elif (
             self.isinsert or self.isupdate or self.isdelete
         ) and self.compiled.returning:
-            self.cursor_fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(  # noqa
-                self.cursor, self.cursor.description, self.cursor.fetchall()
+            self.cursor_fetch_strategy = (
+                _cursor.FullyBufferedCursorFetchStrategy(
+                    self.cursor,
+                    self.cursor.description,
+                    self.cursor.fetchall(),
+                )
             )
 
         if self._enable_identity_insert:
@@ -1729,8 +1731,8 @@ class MSSQLCompiler(compiler.SQLCompiler):
         return text
 
     def limit_clause(self, select, **kw):
-        """ MSSQL 2012 supports OFFSET/FETCH operators
-            Use it instead subquery with row_number
+        """MSSQL 2012 supports OFFSET/FETCH operators
+        Use it instead subquery with row_number
 
         """
 

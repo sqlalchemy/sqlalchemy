@@ -66,7 +66,8 @@ class safe_reraise(object):
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
                 compat.raise_(
-                    exc_value, with_traceback=exc_tb,
+                    exc_value,
+                    with_traceback=exc_tb,
                 )
         else:
             if not compat.py3k and self._exc_info and self._exc_info[1]:
@@ -731,10 +732,10 @@ def class_hierarchy(cls):
 
 def iterate_attributes(cls):
     """iterate all the keys and attributes associated
-       with a class, without using getattr().
+    with a class, without using getattr().
 
-       Does not use getattr() so that class-sensitive
-       descriptors (i.e. property.__get__()) are not called.
+    Does not use getattr() so that class-sensitive
+    descriptors (i.e. property.__get__()) are not called.
 
     """
     keys = dir(cls)
@@ -986,9 +987,7 @@ class HasMemoized(object):
 
     @classmethod
     def memoized_instancemethod(cls, fn):
-        """Decorate a method memoize its return value.
-
-        """
+        """Decorate a method memoize its return value."""
 
         def oneshot(self, *args, **kw):
             result = fn(self, *args, **kw)
@@ -1738,8 +1737,8 @@ def inject_param_text(doctext, inject_params):
 
 
 def repr_tuple_names(names):
-    """ Trims a list of strings from the middle and return a string of up to
-        four elements. Strings greater than 11 characters will be truncated"""
+    """Trims a list of strings from the middle and return a string of up to
+    four elements. Strings greater than 11 characters will be truncated"""
     if len(names) == 0:
         return None
     flag = len(names) <= 4

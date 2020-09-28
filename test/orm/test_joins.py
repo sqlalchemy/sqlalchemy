@@ -624,7 +624,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_single_prop_4(self):
-        Order, User, = (self.classes.Order, self.classes.User)
+        (
+            Order,
+            User,
+        ) = (self.classes.Order, self.classes.User)
 
         sess = create_session()
         oalias1 = aliased(Order)
@@ -640,7 +643,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_single_prop_5(self):
-        Order, User, = (self.classes.Order, self.classes.User)
+        (
+            Order,
+            User,
+        ) = (self.classes.Order, self.classes.User)
 
         sess = create_session()
         self.assert_compile(
@@ -682,7 +688,10 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_single_prop_8(self):
-        Order, User, = (self.classes.Order, self.classes.User)
+        (
+            Order,
+            User,
+        ) = (self.classes.Order, self.classes.User)
 
         sess = create_session()
         # same as before using an aliased() for User as well

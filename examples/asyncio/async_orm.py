@@ -38,7 +38,8 @@ async def async_main():
     """Main program function."""
 
     engine = create_async_engine(
-        "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+        "postgresql+asyncpg://scott:tiger@localhost/test",
+        echo=True,
     )
 
     async with engine.begin() as conn:

@@ -895,8 +895,7 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         )
 
     def test_entirely_oob_assignment(self):
-        """test warn on an unknown polymorphic identity.
-        """
+        """test warn on an unknown polymorphic identity."""
         B = self.classes.B
 
         sess = Session()
@@ -2615,7 +2614,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
             eq_(s1.sub, "s1sub")
 
     def test_optimized_passes(self):
-        """"test that the 'optimized load' routine doesn't crash when
+        """ "test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
 
         base, sub = self.tables.base, self.tables.sub

@@ -288,7 +288,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         if not exists:
             with expect_raises(exc.NoSuchTableError):
                 Table(
-                    table_name, metadata, autoload_with=connection,
+                    table_name,
+                    metadata,
+                    autoload_with=connection,
                 )
         else:
             tmp_t = Table(table_name, metadata, autoload_with=connection)
@@ -296,7 +298,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 tmp_t.select().where(tmp_t.c.id == 2)
             ).fetchall()
             eq_(
-                result, [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
+                result,
+                [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
             )
 
     @testing.provide_metadata
@@ -309,7 +312,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     )
     def test_has_table_temporary(self, connection, table_name, exists):
         if exists:
-            tt = Table(table_name, self.metadata, Column("id", Integer),)
+            tt = Table(
+                table_name,
+                self.metadata,
+                Column("id", Integer),
+            )
             tt.create(connection)
 
         found_it = testing.db.dialect.has_table(connection, table_name)
@@ -516,13 +523,11 @@ class ReflectHugeViewTest(fixtures.TestBase):
                 for i in range(self.col_num)
             ]
         )
-        self.view_str = view_str = (
-            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
-            % (
-                ",".join(
-                    "long_named_column_number_%d" % i
-                    for i in range(self.col_num)
-                )
+        self.view_str = (
+            view_str
+        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
+            ",".join(
+                "long_named_column_number_%d" % i for i in range(self.col_num)
             )
         )
         assert len(view_str) > 4000

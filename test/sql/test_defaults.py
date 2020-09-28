@@ -250,7 +250,12 @@ class DefaultObjectTest(fixtures.TestBase):
             Column("boolcol1", sa.Boolean, default=True),
             Column("boolcol2", sa.Boolean, default=False),
             # python function which uses ExecutionContext
-            Column("col7", Integer, default=lambda: 5, onupdate=lambda: 10,),
+            Column(
+                "col7",
+                Integer,
+                default=lambda: 5,
+                onupdate=lambda: 10,
+            ),
             # python builtin
             Column(
                 "col8",
@@ -1277,11 +1282,13 @@ class SpecialTypePKTest(fixtures.TestBase):
                 eq_(r.inserted_primary_key, (None,))
             else:
                 eq_(
-                    r.inserted_primary_key, (expected_result,),
+                    r.inserted_primary_key,
+                    (expected_result,),
                 )
 
             eq_(
-                conn.execute(t.select()).first(), (expected_result, 5),
+                conn.execute(t.select()).first(),
+                (expected_result, 5),
             )
 
     def test_plain(self):

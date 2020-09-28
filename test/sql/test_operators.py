@@ -1072,8 +1072,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
-    """test interaction of and_()/or_() with boolean , null constants
-    """
+    """test interaction of and_()/or_() with boolean , null constants"""
 
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
 
@@ -1851,7 +1850,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             )
             .select_from(
                 self.table1.join(
-                    self.table2, self.table1.c.myid == self.table2.c.otherid,
+                    self.table2,
+                    self.table1.c.myid == self.table2.c.otherid,
                 )
             )
             .order_by(self.table1.c.myid),

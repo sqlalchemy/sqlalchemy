@@ -473,7 +473,8 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
         assert t.c.id not in result.keys()
         assert not result._soft_closed
         assert isinstance(
-            result.cursor_strategy, _cursor.FullyBufferedCursorFetchStrategy,
+            result.cursor_strategy,
+            _cursor.FullyBufferedCursorFetchStrategy,
         )
         assert not result.cursor.closed
         assert not result.closed
@@ -1020,7 +1021,10 @@ $$ LANGUAGE plpgsql;
             eq_(
                 conn.scalar(
                     select(
-                        cast(literal(quoted_name("some_name", False)), String,)
+                        cast(
+                            literal(quoted_name("some_name", False)),
+                            String,
+                        )
                     )
                 ),
                 "some_name",

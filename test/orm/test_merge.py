@@ -803,7 +803,7 @@ class MergeTest(_fixtures.FixtureTest):
 
     def test_no_relationship_cascade(self):
         """test that merge doesn't interfere with a relationship()
-           target that specifically doesn't include 'merge' cascade.
+        target that specifically doesn't include 'merge' cascade.
         """
 
         Address, addresses, users, User = (

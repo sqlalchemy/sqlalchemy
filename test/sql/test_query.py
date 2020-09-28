@@ -157,7 +157,8 @@ class QueryTest(fixtures.TestBase):
         eq_(connection.execute(select(or_(true, false))).scalar(), True)
         eq_(connection.execute(select(or_(false, false))).scalar(), False)
         eq_(
-            connection.execute(select(not_(or_(false, false)))).scalar(), True,
+            connection.execute(select(not_(or_(false, false)))).scalar(),
+            True,
         )
 
         row = connection.execute(
@@ -174,7 +175,8 @@ class QueryTest(fixtures.TestBase):
 
     def test_select_tuple(self, connection):
         connection.execute(
-            users.insert(), {"user_id": 1, "user_name": "apples"},
+            users.insert(),
+            {"user_id": 1, "user_name": "apples"},
         )
 
         assert_raises_message(
@@ -351,7 +353,8 @@ class QueryTest(fixtures.TestBase):
                 return "INT_%d" % value
 
         eq_(
-            connection.scalar(select(cast("INT_5", type_=MyInteger))), "INT_5",
+            connection.scalar(select(cast("INT_5", type_=MyInteger))),
+            "INT_5",
         )
         eq_(
             connection.scalar(
@@ -1213,7 +1216,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.fails_on("sqlite", "FIXME: unknown")
     def test_union_all(self, connection):
         e = union_all(
-            select(t1.c.col3), union(select(t1.c.col3), select(t1.c.col3)),
+            select(t1.c.col3),
+            union(select(t1.c.col3), select(t1.c.col3)),
         )
 
         wanted = [("aaa",), ("aaa",), ("bbb",), ("bbb",), ("ccc",), ("ccc",)]
@@ -1734,35 +1738,45 @@ class JoinTest(fixtures.TestBase):
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
-                .where(t1.c.name == "t1 #10",)
+                .where(
+                    t1.c.name == "t1 #10",
+                )
                 .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
-                .where(t2.c.name == "t2 #20",)
+                .where(
+                    t2.c.name == "t2 #20",
+                )
                 .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
-                .where(t3.c.name == "t3 #30",)
+                .where(
+                    t3.c.name == "t3 #30",
+                )
                 .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
-                .where(and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"),)
+                .where(
+                    and_(t1.c.name == "t1 #10", t2.c.name == "t2 #20"),
+                )
                 .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])
 
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
-                .where(and_(t2.c.name == "t2 #20", t3.c.name == "t3 #30"),)
+                .where(
+                    and_(t2.c.name == "t2 #20", t3.c.name == "t3 #30"),
+                )
                 .select_from((t1.join(t2).outerjoin(t3, criteria)))
             )
             self.assertRows(expr, [(10, 20, 30)])

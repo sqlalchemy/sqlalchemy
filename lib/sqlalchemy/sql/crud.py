@@ -719,7 +719,8 @@ def _append_param_update(
                 (
                     c,
                     compiler.preparer.format_column(
-                        c, use_table=include_table,
+                        c,
+                        use_table=include_table,
                     ),
                     compiler.process(c.onupdate.arg.self_group(), **kw),
                 )
@@ -733,7 +734,8 @@ def _append_param_update(
                 (
                     c,
                     compiler.preparer.format_column(
-                        c, use_table=include_table,
+                        c,
+                        use_table=include_table,
                     ),
                     _create_update_prefetch_bind_param(compiler, c, **kw),
                 )

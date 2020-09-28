@@ -992,7 +992,8 @@ class LOBFetchTest(fixtures.TablesTest):
         )
         with engine.connect() as conn:
             result = exec_sql(
-                conn, "select id, data, bindata from z_test order by id",
+                conn,
+                "select id, data, bindata from z_test order by id",
             )
             results = result.fetchall()
 

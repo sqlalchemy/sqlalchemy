@@ -558,10 +558,7 @@ class _MetaOptions(type):
 
 
 class Options(util.with_metaclass(_MetaOptions)):
-    """A cacheable option dictionary with defaults.
-
-
-    """
+    """A cacheable option dictionary with defaults."""
 
     def __init__(self, **kw):
         self.__dict__.update(kw)
@@ -635,7 +632,7 @@ class Options(util.with_metaclass(_MetaOptions)):
     def from_execution_options(
         cls, key, attrs, exec_options, statement_exec_options
     ):
-        """"process Options argument in terms of execution options.
+        """process Options argument in terms of execution options.
 
 
         e.g.::
@@ -706,9 +703,7 @@ class ExecutableOption(HasCopyInternals, HasCacheKey):
     __visit_name__ = "executable_option"
 
     def _clone(self):
-        """Create a shallow copy of this ExecutableOption.
-
-        """
+        """Create a shallow copy of this ExecutableOption."""
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = dict(self.__dict__)
         return c
@@ -812,7 +807,7 @@ class Executable(Generative):
 
     @_generative
     def execution_options(self, **kw):
-        """ Set non-SQL options for the statement which take effect during
+        """Set non-SQL options for the statement which take effect during
         execution.
 
         Execution options can be set on a per-statement or
@@ -858,7 +853,7 @@ class Executable(Generative):
         self._execution_options = self._execution_options.union(kw)
 
     def get_execution_options(self):
-        """ Get the non-SQL options which will take effect during execution.
+        """Get the non-SQL options which will take effect during execution.
 
         .. versionadded:: 1.3
 
@@ -877,9 +872,7 @@ class Executable(Generative):
         ":class:`.Session`.",
     )
     def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`.
-
-        """
+        """Compile and execute this :class:`.Executable`."""
         e = self.bind
         if e is None:
             label = getattr(self, "description", self.__class__.__name__)
@@ -1388,18 +1381,18 @@ class DedupeColumnCollection(ColumnCollection):
 
     def replace(self, column):
         """add the given column to this collection, removing unaliased
-           versions of this column  as well as existing columns with the
-           same key.
+        versions of this column  as well as existing columns with the
+        same key.
 
-            e.g.::
+        e.g.::
 
-                t = Table('sometable', metadata, Column('col1', Integer))
-                t.columns.replace(Column('col1', Integer, key='columnone'))
+            t = Table('sometable', metadata, Column('col1', Integer))
+            t.columns.replace(Column('col1', Integer, key='columnone'))
 
-            will remove the original 'col1' from the collection, and add
-            the new column under the name 'columnname'.
+        will remove the original 'col1' from the collection, and add
+        the new column under the name 'columnname'.
 
-           Used by schema.Column to override columns during table reflection.
+        Used by schema.Column to override columns during table reflection.
 
         """
 

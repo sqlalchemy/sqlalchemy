@@ -515,7 +515,9 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 dbapi_connection = connection
 
             dbapi_connection.create_function(
-                "regexp", 2, regexp,
+                "regexp",
+                2,
+                regexp,
             )
 
         fns = [set_regexp]

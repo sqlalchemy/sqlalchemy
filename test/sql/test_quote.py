@@ -825,7 +825,8 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         t2 = Table("t2", m, Column("x", Integer), quote=True)
         self.assert_compile(
-            select(t2.c.x).apply_labels(), 'SELECT "t2".x AS "t2_x" FROM "t2"',
+            select(t2.c.x).apply_labels(),
+            'SELECT "t2".x AS "t2_x" FROM "t2"',
         )
 
 

@@ -269,7 +269,8 @@ class ShardTest(object):
             )
         ).scalars()
         eq_(
-            {c.city for c in asia_and_europe}, {"Tokyo", "London", "Dublin"},
+            {c.city for c in asia_and_europe},
+            {"Tokyo", "London", "Dublin"},
         )
 
     def test_roundtrip(self):
@@ -287,18 +288,21 @@ class ShardTest(object):
             WeatherLocation.continent == "North America"
         )
         eq_(
-            {c.city for c in north_american_cities}, {"New York", "Toronto"},
+            {c.city for c in north_american_cities},
+            {"New York", "Toronto"},
         )
         asia_and_europe = sess.query(WeatherLocation).filter(
             WeatherLocation.continent.in_(["Europe", "Asia"])
         )
         eq_(
-            {c.city for c in asia_and_europe}, {"Tokyo", "London", "Dublin"},
+            {c.city for c in asia_and_europe},
+            {"Tokyo", "London", "Dublin"},
         )
 
         # inspect the shard token stored with each instance
         eq_(
-            {inspect(c).key[2] for c in asia_and_europe}, {"europe", "asia"},
+            {inspect(c).key[2] for c in asia_and_europe},
+            {"europe", "asia"},
         )
 
         eq_(
@@ -545,7 +549,9 @@ class ShardTest(object):
         sess.execute(
             update(Report)
             .filter(Report.temperature >= 80)
-            .values({"temperature": Report.temperature + 6},)
+            .values(
+                {"temperature": Report.temperature + 6},
+            )
             .execution_options(synchronize_session="evaluate")
         )
 
@@ -579,7 +585,9 @@ class ShardTest(object):
         # four shards
         sess.execute(
             update(Report)
-            .values({"temperature": Report.temperature + 6},)
+            .values(
+                {"temperature": Report.temperature + 6},
+            )
             .execution_options(synchronize_session="fetch")
         )
 
@@ -783,8 +791,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
 
 
 class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
-    """test #4175
-    """
+    """test #4175"""
 
     @classmethod
     def setup_classes(cls):

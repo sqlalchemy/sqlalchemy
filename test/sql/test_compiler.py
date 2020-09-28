@@ -447,7 +447,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # this is native_boolean=False for default dialect
         self.assert_compile(
-            select(not_(True)).apply_labels(), "SELECT :param_1 = 0 AS anon_1",
+            select(not_(True)).apply_labels(),
+            "SELECT :param_1 = 0 AS anon_1",
         )
 
         self.assert_compile(
@@ -727,7 +728,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         foo_bar__id = foo_bar.c.id._annotate({"some_orm_thing": True})
 
         stmt = select(
-            foo.c.bar_id, foo_bar.c.id, foo_bar.c.id, foo_bar__id, foo_bar__id,
+            foo.c.bar_id,
+            foo_bar.c.id,
+            foo_bar.c.id,
+            foo_bar__id,
+            foo_bar__id,
         ).apply_labels()
 
         self.assert_compile(
@@ -752,9 +757,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_nested_label_targeting(self):
-        """test nested anonymous label generation.
-
-        """
+        """test nested anonymous label generation."""
         s1 = table1.select()
         s2 = s1.alias()
         s3 = select(s2).apply_labels()
@@ -1491,7 +1494,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_order_by_nulls(self):
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid, table2.c.othername.desc().nullsfirst(),
+                table2.c.otherid,
+                table2.c.othername.desc().nullsfirst(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid, "
@@ -1500,7 +1504,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid, table2.c.othername.desc().nullslast(),
+                table2.c.otherid,
+                table2.c.othername.desc().nullslast(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid, "
@@ -1519,7 +1524,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid.nullsfirst(), table2.c.othername.desc(),
+                table2.c.otherid.nullsfirst(),
+                table2.c.othername.desc(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid NULLS FIRST, "
@@ -2068,7 +2074,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "Can't resolve label reference for ORDER BY / GROUP BY / "
             "DISTINCT etc. Textual "
             "SQL expression 'noname'",
-            union(select(table1.c.myid, table1.c.name), select(table2),)
+            union(
+                select(table1.c.myid, table1.c.name),
+                select(table2),
+            )
             .order_by("noname")
             .compile,
         )
@@ -3159,7 +3168,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def _test_binds_no_hash_collision(self):
         """test that construct_params doesn't corrupt dict
-            due to hash collisions"""
+        due to hash collisions"""
 
         total_params = 100000
 
@@ -3468,7 +3477,12 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         compiled = stmt_adapted.compile(cache_key=cache_key)
 
         # params set up as 5
-        eq_(compiled.construct_params(params={},), {"myid_1": 5})
+        eq_(
+            compiled.construct_params(
+                params={},
+            ),
+            {"myid_1": 5},
+        )
 
         # also works w the original cache key
         eq_(
@@ -3529,7 +3543,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         compiled = modified_stmt.compile(cache_key=cache_key)
 
         eq_(
-            compiled.construct_params(params={}), {"myid_1": 10, "myid_2": 12},
+            compiled.construct_params(params={}),
+            {"myid_1": 10, "myid_2": 12},
         )
 
         # make a new statement doing the same thing and make sure

@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
 -   repo: https://github.com/python/black
-    rev: 19.10b0
+    rev: 20.8b1
     hooks:
     -   id: black
 

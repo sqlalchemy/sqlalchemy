@@ -1267,7 +1267,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            c.any(5), "%(param_1)s = ANY (x)", checkparams={"param_1": 5},
+            c.any(5),
+            "%(param_1)s = ANY (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
@@ -1277,7 +1279,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            c.all(5), "%(param_1)s = ALL (x)", checkparams={"param_1": 5},
+            c.all(5),
+            "%(param_1)s = ALL (x)",
+            checkparams={"param_1": 5},
         )
 
         self.assert_compile(
@@ -2300,8 +2304,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
 
-    """Tests for full text searching
-    """
+    """Tests for full text searching"""
 
     __dialect__ = postgresql.dialect()
 
@@ -2322,8 +2325,8 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _raise_query(self, q):
         """
-            useful for debugging. just do...
-            self._raise_query(q)
+        useful for debugging. just do...
+        self._raise_query(q)
         """
         c = q.compile(dialect=postgresql.dialect())
         raise ValueError(c)

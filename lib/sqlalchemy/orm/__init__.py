@@ -119,9 +119,7 @@ relationship = public_factory(RelationshipProperty, ".orm.relationship")
 
 @_sa_util.deprecated_20("relation", "Please use :func:`.relationship`.")
 def relation(*arg, **kw):
-    """A synonym for :func:`relationship`.
-
-    """
+    """A synonym for :func:`relationship`."""
 
     return relationship(*arg, **kw)
 

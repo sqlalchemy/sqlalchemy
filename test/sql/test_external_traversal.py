@@ -702,7 +702,9 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         subq = subq.alias("subq")
         s = select(t1.c.col1, subq.c.col1).select_from(
-            t1, subq, t1.join(subq, t1.c.col1 == subq.c.col2),
+            t1,
+            subq,
+            t1.join(subq, t1.c.col1 == subq.c.col2),
         )
         s5 = CloningVisitor().traverse(s)
         eq_(str(s), str(s5))
@@ -2190,7 +2192,8 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         compile_state = i._compile_state_factory(i, None)
 
         self._compare_param_dict(
-            compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
+            compile_state._dict_parameters,
+            {"col1": 5, "col2": 6, "col3": 7},
         )
 
     def test_kw_and_dict_simultaneously_single(self):
@@ -2211,7 +2214,8 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
         i = i.values([(5, 6, 7), (8, 9, 10)])
         compile_state = i._compile_state_factory(i, None)
         eq_(
-            compile_state._dict_parameters, {"col1": 5, "col2": 6, "col3": 7},
+            compile_state._dict_parameters,
+            {"col1": 5, "col2": 6, "col3": 7},
         )
         eq_(compile_state._has_multi_parameters, True)
         eq_(

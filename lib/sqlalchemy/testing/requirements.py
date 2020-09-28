@@ -67,7 +67,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def on_update_cascade(self):
-        """"target database must support ON UPDATE..CASCADE behavior in
+        """target database must support ON UPDATE..CASCADE behavior in
         foreign keys."""
 
         return exclusions.open()
@@ -388,7 +388,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def implements_get_lastrowid(self):
-        """"target dialect implements the executioncontext.get_lastrowid()
+        """target dialect implements the executioncontext.get_lastrowid()
         method without reliance on RETURNING.
 
         """
@@ -396,7 +396,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def emulated_lastrowid(self):
-        """"target dialect retrieves cursor.lastrowid, or fetches
+        """target dialect retrieves cursor.lastrowid, or fetches
         from a database-side function after an insert() construct executes,
         within the get_lastrowid() method.
 
@@ -408,7 +408,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def emulated_lastrowid_even_with_sequences(self):
-        """"target dialect retrieves cursor.lastrowid or an equivalent
+        """target dialect retrieves cursor.lastrowid or an equivalent
         after an insert() construct executes, even if the table has a
         Sequence on it.
 
@@ -417,7 +417,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def dbapi_lastrowid(self):
-        """"target platform includes a 'lastrowid' accessor on the DBAPI
+        """target platform includes a 'lastrowid' accessor on the DBAPI
         cursor object.
 
         """
@@ -438,17 +438,16 @@ class SuiteRequirements(Requirements):
 
     @property
     def cross_schema_fk_reflection(self):
-        """target system must support reflection of inter-schema foreign keys
-
-        """
+        """target system must support reflection of inter-schema
+        foreign keys"""
         return exclusions.closed()
 
     @property
     def implicit_default_schema(self):
         """target system has a strong concept of 'default' schema that can
-           be referred to implicitly.
+        be referred to implicitly.
 
-           basically, PostgreSQL.
+        basically, PostgreSQL.
 
         """
         return exclusions.closed()
@@ -535,8 +534,8 @@ class SuiteRequirements(Requirements):
 
     @property
     def view_reflection(self):
-        """target database must support inspection of the full CREATE VIEW definition.
-        """
+        """target database must support inspection of the full CREATE VIEW
+        definition."""
         return self.views
 
     @property
@@ -654,9 +653,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def symbol_names_w_double_quote(self):
-        """Target driver can create tables with a name like 'some " table'
-
-        """
+        """Target driver can create tables with a name like 'some " table'"""
         return exclusions.open()
 
     @property
@@ -804,7 +801,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def json_array_indexes(self):
-        """"target platform supports numeric array indexes
+        """target platform supports numeric array indexes
         within a JSON structure"""
 
         return self.json_type

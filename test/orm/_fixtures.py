@@ -15,9 +15,7 @@ __all__ = ()
 
 
 class FixtureTest(fixtures.MappedTest):
-    """A MappedTest pre-configured with a common set of fixtures.
-
-    """
+    """A MappedTest pre-configured with a common set of fixtures."""
 
     run_define_tables = "once"
     run_setup_classes = "once"

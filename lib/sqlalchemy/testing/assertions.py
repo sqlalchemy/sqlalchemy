@@ -522,9 +522,12 @@ class ComparesTables(object):
             assert reflected_table.primary_key.columns[c.name] is not None
 
     def assert_types_base(self, c1, c2):
-        assert c1.type._compare_type_affinity(c2.type), (
-            "On column %r, type '%s' doesn't correspond to type '%s'"
-            % (c1.name, c1.type, c2.type)
+        assert c1.type._compare_type_affinity(
+            c2.type
+        ), "On column %r, type '%s' doesn't correspond to type '%s'" % (
+            c1.name,
+            c1.type,
+            c2.type,
         )
 
 

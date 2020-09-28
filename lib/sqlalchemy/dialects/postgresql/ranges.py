@@ -100,48 +100,36 @@ class RangeOperators(object):
 
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL INT4RANGE type.
-
-    """
+    """Represent the PostgreSQL INT4RANGE type."""
 
     __visit_name__ = "INT4RANGE"
 
 
 class INT8RANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL INT8RANGE type.
-
-    """
+    """Represent the PostgreSQL INT8RANGE type."""
 
     __visit_name__ = "INT8RANGE"
 
 
 class NUMRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL NUMRANGE type.
-
-    """
+    """Represent the PostgreSQL NUMRANGE type."""
 
     __visit_name__ = "NUMRANGE"
 
 
 class DATERANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL DATERANGE type.
-
-    """
+    """Represent the PostgreSQL DATERANGE type."""
 
     __visit_name__ = "DATERANGE"
 
 
 class TSRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL TSRANGE type.
-
-    """
+    """Represent the PostgreSQL TSRANGE type."""
 
     __visit_name__ = "TSRANGE"
 
 
 class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
-    """Represent the PostgreSQL TSTZRANGE type.
-
-    """
+    """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZRANGE"

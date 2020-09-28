@@ -1474,7 +1474,9 @@ class KeyTargetingTest(fixtures.TablesTest):
             Column("team_id", metadata, ForeignKey("teams.id")),
         )
         Table(
-            "teams", metadata, Column("id", Integer, primary_key=True),
+            "teams",
+            metadata,
+            Column("id", Integer, primary_key=True),
         )
 
     @classmethod
@@ -1847,7 +1849,8 @@ class KeyTargetingTest(fixtures.TablesTest):
         # this has _result_columns structure that is not ordered
         # the same as the cursor.description.
         return text("select a AS keyed2_a, b AS keyed2_b from keyed2").columns(
-            keyed2_b=CHAR, keyed2_a=CHAR,
+            keyed2_b=CHAR,
+            keyed2_a=CHAR,
         )
 
     def _adapt_result_columns_fixture_seven(self):
@@ -1970,7 +1973,8 @@ class PositionalTextTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
-            cls.tables.text1.insert(), [dict(a="a1", b="b1", c="c1", d="d1")],
+            cls.tables.text1.insert(),
+            [dict(a="a1", b="b1", c="c1", d="d1")],
         )
 
     def test_via_column(self, connection):
@@ -2589,7 +2593,8 @@ class MergeCursorResultTest(fixtures.TablesTest):
 
         result = r1.merge(r2, r3, r4)
         eq_(
-            result.first(), (7, "u1"),
+            result.first(),
+            (7, "u1"),
         )
         for r in [r1, r2, r3, r4]:
             assert r.closed

@@ -381,7 +381,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         subq = select(User).filter(User.id.in_([8, 9])).subquery()
         q = create_session().query(aliased(User, subq))
         eq_(
-            [User(id=8), User(id=9)], q.all(),
+            [User(id=8), User(id=9)],
+            q.all(),
         )
 
         subq = select(User).order_by(User.id).slice(1, 3).subquery()
@@ -392,7 +393,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         u = aliased(User, subq)
         q = create_session().query(u).order_by(u.id)
         eq_(
-            [User(id=8)], list(q[0:1]),
+            [User(id=8)],
+            list(q[0:1]),
         )
 
     def test_join(self):
@@ -433,7 +435,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         aq = aliased(Address, subq)
         q = create_session().query(aq.user_id, subq.c.count)
         eq_(
-            q.all(), [(7, 1), (8, 3), (9, 1)],
+            q.all(),
+            [(7, 1), (8, 3), (9, 1)],
         )
 
         subq = select(Address.user_id, Address.id)
@@ -447,7 +450,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         )
 
         eq_(
-            q.all(), [(7, 1), (8, 3), (9, 1)],
+            q.all(),
+            [(7, 1), (8, 3), (9, 1)],
         )
 
     def test_error_w_aliased_against_select(self):
@@ -559,7 +563,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         )
 
         eq_(
-            q.all(), [("chuck", "ed"), ("fred", "ed")],
+            q.all(),
+            [("chuck", "ed"), ("fred", "ed")],
         )
 
         q = (
@@ -645,7 +650,8 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
 
         q3 = sess.query(q2)
         eq_(
-            q3.all(), [(7, 1), (8, 1), (9, 1), (10, 1)],
+            q3.all(),
+            [(7, 1), (8, 1), (9, 1), (10, 1)],
         )
 
         q3 = select(q2)
@@ -2183,7 +2189,8 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             select(User, Address).from_statement(selectquery)
         )
         eq_(
-            list(result), expected,
+            list(result),
+            expected,
         )
         sess.expunge_all()
 
@@ -3442,14 +3449,24 @@ class ExternalColumnsTest(QueryTest):
                 "concat": column_property((users.c.id * 2)),
                 "count": column_property(
                     select(func.count(addresses.c.id))
-                    .where(users.c.id == addresses.c.user_id,)
+                    .where(
+                        users.c.id == addresses.c.user_id,
+                    )
                     .correlate(users)
                     .scalar_subquery()
                 ),
             },
         )
 
-        mapper(Address, addresses, properties={"user": relationship(User,)})
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User,
+                )
+            },
+        )
 
         sess = create_session()
 
@@ -3603,7 +3620,9 @@ class ExternalColumnsTest(QueryTest):
                 "concat": column_property((users.c.id * 2)),
                 "count": column_property(
                     select(func.count(addresses.c.id))
-                    .where(users.c.id == addresses.c.user_id,)
+                    .where(
+                        users.c.id == addresses.c.user_id,
+                    )
                     .correlate(users)
                     .scalar_subquery()
                 ),

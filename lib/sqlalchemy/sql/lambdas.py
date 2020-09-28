@@ -604,7 +604,11 @@ class AnalyzedCode(object):
         # create trackers to catch those.
 
         analyzed_function = AnalyzedFunction(
-            self, lambda_element, None, lambda_kw, fn,
+            self,
+            lambda_element,
+            None,
+            lambda_kw,
+            fn,
         )
 
         closure_trackers = self.closure_trackers
@@ -781,7 +785,12 @@ class AnalyzedFunction(object):
     )
 
     def __init__(
-        self, analyzed_code, lambda_element, apply_propagate_attrs, kw, fn,
+        self,
+        analyzed_code,
+        lambda_element,
+        apply_propagate_attrs,
+        kw,
+        fn,
     ):
         self.analyzed_code = analyzed_code
         self.fn = fn

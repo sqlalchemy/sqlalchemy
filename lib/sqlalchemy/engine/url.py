@@ -140,7 +140,7 @@ class URL(
             :class:`_engine.URL`, use the :meth:`_engine.URL.set` and
             :meth:`_engine.URL.update_query` methods.
 
-    """
+        """
 
         return cls(
             cls._assert_str(drivername, "drivername"),
@@ -205,7 +205,9 @@ class URL(
 
         return util.immutabledict(
             {
-                _assert_str(key): _assert_value(value,)
+                _assert_str(key): _assert_value(
+                    value,
+                )
                 for key, value in dict_items
             }
         )

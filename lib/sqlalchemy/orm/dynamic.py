@@ -487,12 +487,15 @@ class AppenderQuery(Generative):
                 iterator = (
                     (item,)
                     for item in self.attr._get_collection_history(
-                        state, attributes.PASSIVE_NO_INITIALIZE,
+                        state,
+                        attributes.PASSIVE_NO_INITIALIZE,
                     ).added_items
                 )
 
                 row_metadata = _result.SimpleResultMetaData(
-                    (self.mapper.class_.__name__,), [], _unique_filters=[id],
+                    (self.mapper.class_.__name__,),
+                    [],
+                    _unique_filters=[id],
                 )
 
                 return _result.IteratorResult(row_metadata, iterator).scalars()

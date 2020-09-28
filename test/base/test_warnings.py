@@ -15,7 +15,7 @@ class WarnDeprecatedLimitedTest(fixtures.TestBase):
             )
 
     def test_warn_deprecated_limited_cap(self):
-        """ warn_deprecated_limited() and warn_limited() use
+        """warn_deprecated_limited() and warn_limited() use
         _hash_limit_string
 
         actually just verifying that _hash_limit_string works as expected

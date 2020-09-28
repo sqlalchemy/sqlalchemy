@@ -789,7 +789,9 @@ class TypeRoundTripTest(
     @testing.metadata_fixture()
     def datetimeoffset_fixture(self, metadata):
         t = Table(
-            "test_dates", metadata, Column("adatetimeoffset", DATETIMEOFFSET),
+            "test_dates",
+            metadata,
+            Column("adatetimeoffset", DATETIMEOFFSET),
         )
 
         return t
@@ -886,7 +888,8 @@ class TypeRoundTripTest(
                 return
 
             conn.execute(
-                t.insert(), adatetimeoffset=dto_param_value,
+                t.insert(),
+                adatetimeoffset=dto_param_value,
             )
 
             row = conn.execute(t.select()).first()

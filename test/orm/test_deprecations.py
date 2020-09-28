@@ -1700,7 +1700,13 @@ class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
 
         s = Session(connection)
 
-        as_ = [A(id=i, cs=[C(), C()],) for i in range(1, 5)]
+        as_ = [
+            A(
+                id=i,
+                cs=[C(), C()],
+            )
+            for i in range(1, 5)
+        ]
 
         s.add_all(
             [
@@ -2358,7 +2364,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
     def test_selectload(self):
         """tests lazy loading with two relationships simultaneously,
-        from the same table, using aliases.  """
+        from the same table, using aliases."""
 
         users, orders, User, Address, Order, addresses = (
             self.tables.users,
@@ -2409,7 +2415,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
     def test_joinedload(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         users, orders, User, Address, Order, addresses = (
             self.tables.users,

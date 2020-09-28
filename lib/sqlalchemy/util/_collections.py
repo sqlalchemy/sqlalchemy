@@ -133,10 +133,7 @@ class FacadeDict(ImmutableContainer, dict):
         return FacadeDict, (dict(self),)
 
     def _insert_item(self, key, value):
-        """insert an item into the dictionary directly.
-
-
-        """
+        """insert an item into the dictionary directly."""
         dict.__setitem__(self, key, value)
 
     def __repr__(self):

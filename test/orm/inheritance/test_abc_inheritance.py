@@ -38,7 +38,10 @@ class ABCTest(fixtures.MappedTest):
         ta = ["a", metadata]
         ta.append(
             Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True,
+                "id",
+                Integer,
+                primary_key=True,
+                test_needs_autoincrement=True,
             )
         ),
         ta.append(Column("a_data", String(30)))

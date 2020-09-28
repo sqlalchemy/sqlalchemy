@@ -1058,7 +1058,12 @@ class IdentityColumnTest(fixtures.TablesTest):
             Column(
                 "id",
                 Integer,
-                Identity(increment=-5, start=0, minvalue=-1000, maxvalue=0,),
+                Identity(
+                    increment=-5,
+                    start=0,
+                    minvalue=-1000,
+                    maxvalue=0,
+                ),
                 primary_key=True,
             ),
             Column("desc", String(100)),
@@ -1067,13 +1072,16 @@ class IdentityColumnTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
-            cls.tables.tbl_a.insert(), [{"desc": "a"}, {"desc": "b"}],
+            cls.tables.tbl_a.insert(),
+            [{"desc": "a"}, {"desc": "b"}],
         )
         connection.execute(
-            cls.tables.tbl_b.insert(), [{"desc": "a"}, {"desc": "b"}],
+            cls.tables.tbl_b.insert(),
+            [{"desc": "a"}, {"desc": "b"}],
         )
         connection.execute(
-            cls.tables.tbl_b.insert(), [{"id": 42, "desc": "c"}],
+            cls.tables.tbl_b.insert(),
+            [{"id": 42, "desc": "c"}],
         )
 
     def test_select_all(self, connection):
@@ -1102,7 +1110,8 @@ class IdentityColumnTest(fixtures.TablesTest):
     def test_insert_always_error(self, connection):
         def fn():
             connection.execute(
-                self.tables.tbl_a.insert(), [{"id": 200, "desc": "a"}],
+                self.tables.tbl_a.insert(),
+                [{"id": 200, "desc": "a"}],
             )
 
         assert_raises((DatabaseError, ProgrammingError), fn)
@@ -1204,7 +1213,8 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             tbl.select(tbl.c.col_a.is_distinct_from(tbl.c.col_b))
         ).fetchall()
         eq_(
-            len(result), expected_row_count_for_is,
+            len(result),
+            expected_row_count_for_is,
         )
 
         expected_row_count_for_isnot = (
@@ -1214,5 +1224,6 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             tbl.select(tbl.c.col_a.isnot_distinct_from(tbl.c.col_b))
         ).fetchall()
         eq_(
-            len(result), expected_row_count_for_isnot,
+            len(result),
+            expected_row_count_for_isnot,
         )

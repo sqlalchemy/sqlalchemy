@@ -3636,9 +3636,7 @@ class JoinCondition(object):
 
 
 class _ColInAnnotations(object):
-    """Seralizable object that tests for a name in c._annotations.
-
-    """
+    """Seralizable object that tests for a name in c._annotations."""
 
     __slots__ = ("name",)
 

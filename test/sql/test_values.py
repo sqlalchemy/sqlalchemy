@@ -117,7 +117,8 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_with_join_unnamed(self):
         people = self.tables.people
         values = Values(
-            column("column1", Integer), column("column2", Integer),
+            column("column1", Integer),
+            column("column2", Integer),
         ).data([(1, 1), (2, 1), (3, 2), (3, 3)])
         stmt = select(people, values).select_from(
             people.join(values, values.c.column2 == people.c.people_id)

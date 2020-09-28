@@ -27,7 +27,8 @@ t1 = Table(
 async def async_main():
     # engine is an instance of AsyncEngine
     engine = create_async_engine(
-        "postgresql+asyncpg://scott:tiger@localhost/test", echo=True,
+        "postgresql+asyncpg://scott:tiger@localhost/test",
+        echo=True,
     )
 
     # conn is an instance of AsyncConnection

@@ -269,9 +269,7 @@ class AsyncSessionTransaction(StartableContext):
         return self.sync_transaction
 
     async def rollback(self):
-        """Roll back this :class:`_asyncio.AsyncTransaction`.
-
-        """
+        """Roll back this :class:`_asyncio.AsyncTransaction`."""
         await greenlet_spawn(self._sync_transaction().rollback)
 
     async def commit(self):

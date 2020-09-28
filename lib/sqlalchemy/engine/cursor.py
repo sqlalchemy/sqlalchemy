@@ -1034,7 +1034,8 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
     @classmethod
     def create(cls, result):
         return BufferedRowCursorFetchStrategy(
-            result.cursor, result.context.execution_options,
+            result.cursor,
+            result.context.execution_options,
         )
 
     def _buffer_rows(self, result, dbapi_cursor):
@@ -1204,9 +1205,7 @@ _NO_RESULT_METADATA = _NoResultMetaData()
 
 
 class BaseCursorResult(object):
-    """Base class for database result objects.
-
-    """
+    """Base class for database result objects."""
 
     out_parameters = None
     _metadata = None

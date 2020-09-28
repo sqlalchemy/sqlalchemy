@@ -887,9 +887,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         )
 
     def test_columns_single_inheritance_cascading_resolution_pk(self):
-        """An additional test for #4352 in terms of the requested use case.
-
-        """
+        """An additional test for #4352 in terms of the requested use case."""
 
         class TestBase(Base):
             __abstract__ = True

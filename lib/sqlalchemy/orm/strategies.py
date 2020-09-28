@@ -1455,7 +1455,12 @@ class SubqueryLoader(PostLoader):
                 self._load()
 
     def _setup_query_from_rowproc(
-        self, context, path, entity, loadopt, adapter,
+        self,
+        context,
+        path,
+        entity,
+        loadopt,
+        adapter,
     ):
         compile_state = context.compile_state
         if (
@@ -1627,7 +1632,11 @@ class SubqueryLoader(PostLoader):
             return
 
         subq = self._setup_query_from_rowproc(
-            context, path, path[-1], loadopt, adapter,
+            context,
+            path,
+            path[-1],
+            loadopt,
+            adapter,
         )
 
         if subq is None:
@@ -1879,7 +1888,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                     prop.mapper, None
                 )
         path.set(
-            target_attributes, "user_defined_eager_row_processor", adapter,
+            target_attributes,
+            "user_defined_eager_row_processor",
+            adapter,
         )
 
         return adapter

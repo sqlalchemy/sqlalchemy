@@ -375,7 +375,12 @@ def declarative_base(
         metadata=metadata,
         class_registry=class_registry,
         constructor=constructor,
-    ).generate_base(mapper=mapper, cls=cls, name=name, metaclass=metaclass,)
+    ).generate_base(
+        mapper=mapper,
+        cls=cls,
+        name=name,
+        metaclass=metaclass,
+    )
 
 
 class registry(object):
@@ -458,7 +463,11 @@ class registry(object):
         clsregistry.remove_class(cls.__name__, cls, self._class_registry)
 
     def generate_base(
-        self, mapper=None, cls=object, name="Base", metaclass=DeclarativeMeta,
+        self,
+        mapper=None,
+        cls=object,
+        name="Base",
+        metaclass=DeclarativeMeta,
     ):
         """Generate a declarative base class.
 

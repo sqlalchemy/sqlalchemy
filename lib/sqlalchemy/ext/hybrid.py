@@ -950,7 +950,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
             :ref:`hybrid_reuse_subclass`
 
-         """
+        """
         return self
 
     def getter(self, fget):

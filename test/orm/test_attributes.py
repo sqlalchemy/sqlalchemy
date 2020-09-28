@@ -378,7 +378,8 @@ class AttributesTest(fixtures.ORMTest):
             return b.name
 
         assert_raises(
-            orm_exc.UnmappedInstanceError, go,
+            orm_exc.UnmappedInstanceError,
+            go,
         )
 
     def test_del_scalar_nonobject(self):
@@ -597,7 +598,7 @@ class AttributesTest(fixtures.ORMTest):
 
     def test_lazytrackparent(self):
         """test that the "hasparent" flag works properly
-           when lazy loaders and backrefs are used
+        when lazy loaders and backrefs are used
 
         """
 
@@ -859,7 +860,7 @@ class AttributesTest(fixtures.ORMTest):
         """changeset: 1633 broke ability to use ORM to map classes with
         unusual descriptor attributes (for example, classes that inherit
         from ones implementing zope.interface.Interface). This is a
-        simple regression test to prevent that defect. """
+        simple regression test to prevent that defect."""
 
         class des(object):
             def __get__(self, instance, owner):
@@ -1111,7 +1112,7 @@ class UtilTest(fixtures.ORMTest):
 
     def test_set_commited_value_none_uselist(self):
         """test that set_committed_value->None to a uselist generates an
-        empty list """
+        empty list"""
 
         class Foo(object):
             pass

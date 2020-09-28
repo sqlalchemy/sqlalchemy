@@ -85,16 +85,12 @@ class AsyncConnection(StartableContext):
         return self.sync_connection
 
     def begin(self) -> "AsyncTransaction":
-        """Begin a transaction prior to autobegin occurring.
-
-        """
+        """Begin a transaction prior to autobegin occurring."""
         self._sync_connection()
         return AsyncTransaction(self)
 
     def begin_nested(self) -> "AsyncTransaction":
-        """Begin a nested transaction and return a transaction handle.
-
-        """
+        """Begin a nested transaction and return a transaction handle."""
         self._sync_connection()
         return AsyncTransaction(self, nested=True)
 
@@ -154,7 +150,10 @@ class AsyncConnection(StartableContext):
         conn = self._sync_connection()
 
         result = await greenlet_spawn(
-            conn.exec_driver_sql, statement, parameters, execution_options,
+            conn.exec_driver_sql,
+            statement,
+            parameters,
+            execution_options,
         )
         if result.context._is_server_side:
             raise async_exc.AsyncMethodRequired(
@@ -230,7 +229,10 @@ class AsyncConnection(StartableContext):
         conn = self._sync_connection()
 
         result = await greenlet_spawn(
-            conn._execute_20, statement, parameters, execution_options,
+            conn._execute_20,
+            statement,
+            parameters,
+            execution_options,
         )
         if result.context._is_server_side:
             raise async_exc.AsyncMethodRequired(
@@ -261,7 +263,7 @@ class AsyncConnection(StartableContext):
         return result.scalar()
 
     async def run_sync(self, fn: Callable, *arg, **kw) -> Any:
-        """"Invoke the given sync callable passing self as the first argument.
+        """Invoke the given sync callable passing self as the first argument.
 
         This method maintains the asyncio event loop all the way through
         to the database connection by running the given callable in a
@@ -418,9 +420,7 @@ class AsyncTransaction(StartableContext):
         await greenlet_spawn(self._sync_transaction().close)
 
     async def rollback(self):
-        """Roll back this :class:`.Transaction`.
-
-        """
+        """Roll back this :class:`.Transaction`."""
         await greenlet_spawn(self._sync_transaction().rollback)
 
     async def commit(self):

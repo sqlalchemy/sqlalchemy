@@ -266,10 +266,13 @@ class NaturalPKTest(fixtures.MappedTest):
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
-        assert User(
-            username="jack",
-            addresses=[Address(username="jack"), Address(username="jack")],
-        ) == sess.query(User).get("jack")
+        assert (
+            User(
+                username="jack",
+                addresses=[Address(username="jack"), Address(username="jack")],
+            )
+            == sess.query(User).get("jack")
+        )
 
         u1 = sess.query(User).get("jack")
         u1.addresses = []
@@ -1120,10 +1123,13 @@ class NonPKCascadeTest(fixtures.MappedTest):
             # test passive_updates=True; update user
             self.assert_sql_count(testing.db, go, 1)
         sess.expunge_all()
-        assert User(
-            username="jack",
-            addresses=[Address(username="jack"), Address(username="jack")],
-        ) == sess.query(User).get(u1.id)
+        assert (
+            User(
+                username="jack",
+                addresses=[Address(username="jack"), Address(username="jack")],
+            )
+            == sess.query(User).get(u1.id)
+        )
         sess.expunge_all()
 
         u1 = sess.query(User).get(u1.id)

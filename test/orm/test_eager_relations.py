@@ -222,7 +222,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_orderby_related(self):
         """A regular mapper select on a single table can
-            order by a relationship to a second table"""
+        order by a relationship to a second table"""
 
         Address, addresses, users, User = (
             self.classes.Address,
@@ -712,7 +712,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_double_w_ac(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         (
             users,
@@ -788,7 +788,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_double_w_ac_against_subquery(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         (
             users,
@@ -1297,7 +1297,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # against a select.   original issue from ticket #904
         sel = (
             sa.select(users, addresses.c.email_address)
-            .where(users.c.id == addresses.c.user_id,)
+            .where(
+                users.c.id == addresses.c.user_id,
+            )
             .alias("useralias")
         )
         mapper(
@@ -4867,7 +4869,9 @@ class SubqueryTest(fixtures.MappedTest):
             tag_score = tags_table.c.score1 * tags_table.c.score2
             user_score = sa.select(
                 sa.func.sum(tags_table.c.score1 * tags_table.c.score2)
-            ).where(tags_table.c.user_id == users_table.c.id,)
+            ).where(
+                tags_table.c.user_id == users_table.c.id,
+            )
 
             if labeled:
                 tag_score = tag_score.label(labelname)

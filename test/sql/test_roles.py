@@ -150,14 +150,16 @@ class RoleTest(fixtures.TestBase):
             "implicitly coercing SELECT object to scalar subquery"
         ):
             expect(
-                roles.LabeledColumnExprRole, select(column("q")),
+                roles.LabeledColumnExprRole,
+                select(column("q")),
             )
 
         with testing.expect_warnings(
             "implicitly coercing SELECT object to scalar subquery"
         ):
             expect(
-                roles.LabeledColumnExprRole, select(column("q")).alias(),
+                roles.LabeledColumnExprRole,
+                select(column("q")).alias(),
             )
 
     def test_statement_no_text_coercion(self):

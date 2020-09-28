@@ -266,16 +266,43 @@ class ResultTest(fixtures.TestBase):
             object(),
         )
 
-        result = self._fixture(extras=[(ex1a, ex1b), (ex2,), (ex3a, ex3b,)])
+        result = self._fixture(
+            extras=[
+                (ex1a, ex1b),
+                (ex2,),
+                (
+                    ex3a,
+                    ex3b,
+                ),
+            ]
+        )
         eq_(
             result.columns(ex2, ex3b).columns(ex3a).all(),
             [(1,), (2,), (2,), (2,)],
         )
 
-        result = self._fixture(extras=[(ex1a, ex1b), (ex2,), (ex3a, ex3b,)])
+        result = self._fixture(
+            extras=[
+                (ex1a, ex1b),
+                (ex2,),
+                (
+                    ex3a,
+                    ex3b,
+                ),
+            ]
+        )
         eq_([row._mapping[ex1b] for row in result], [1, 2, 1, 4])
 
-        result = self._fixture(extras=[(ex1a, ex1b), (ex2,), (ex3a, ex3b,)])
+        result = self._fixture(
+            extras=[
+                (ex1a, ex1b),
+                (ex2,),
+                (
+                    ex3a,
+                    ex3b,
+                ),
+            ]
+        )
         eq_(
             [
                 dict(r)
@@ -906,7 +933,8 @@ class MergeResultTest(fixtures.TestBase):
 
         result = r1.merge(r2, r3, r4)
         eq_(
-            result.first(), (7, "u1"),
+            result.first(),
+            (7, "u1"),
         )
 
     def test_columns(self, merge_fixture):
@@ -1004,7 +1032,8 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         r = r.columns(0).mappings()
         eq_(
-            list(r), [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
+            list(r),
+            [{"a": 1}, {"a": 2}, {"a": 1}, {"a": 1}, {"a": 4}],
         )
 
     def test_scalar_mode_but_accessed_nonscalar_result(self, no_tuple_fixture):
@@ -1037,7 +1066,9 @@ class OnlyScalarsTest(fixtures.TestBase):
         )
 
         r = result.ChunkedIteratorResult(
-            metadata, no_tuple_fixture, source_supports_scalars=True,
+            metadata,
+            no_tuple_fixture,
+            source_supports_scalars=True,
         )
 
         r = r.unique()
@@ -1050,7 +1081,9 @@ class OnlyScalarsTest(fixtures.TestBase):
         )
 
         r = result.ChunkedIteratorResult(
-            metadata, no_tuple_fixture, source_supports_scalars=True,
+            metadata,
+            no_tuple_fixture,
+            source_supports_scalars=True,
         )
 
         r = r.unique()
@@ -1063,7 +1096,9 @@ class OnlyScalarsTest(fixtures.TestBase):
         )
 
         r = result.ChunkedIteratorResult(
-            metadata, no_tuple_fixture, source_supports_scalars=True,
+            metadata,
+            no_tuple_fixture,
+            source_supports_scalars=True,
         )
 
         r = r.scalars().unique()

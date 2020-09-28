@@ -131,7 +131,10 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
                 [row["field%d" % fnum] for fnum in range(NUM_FIELDS)]
 
     @testing.combinations(
-        (False, 0), (True, 1), (False, 1), (False, 2),
+        (False, 0),
+        (True, 1),
+        (False, 1),
+        (False, 2),
     )
     def test_one_or_none(self, one_or_first, rows_present):
         # TODO: this is not testing the ORM level "scalar_mapping"

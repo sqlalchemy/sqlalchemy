@@ -1008,7 +1008,8 @@ class ExecuteTest(fixtures.TestBase):
         connection.execute(t2.insert())
         connection.execute(t2.insert().values(value=func.length("one")))
         connection.execute(
-            t2.insert().values(value=func.length("asfda") + -19), stuff="hi",
+            t2.insert().values(value=func.length("asfda") + -19),
+            stuff="hi",
         )
 
         res = sorted(connection.execute(select(t2.c.value, t2.c.stuff)))

@@ -261,9 +261,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_union_alias_two(self):
-        """
-
-        """
+        """"""
 
         # I know, this is the PG VALUES keyword,
         # we're cheating here.  also yes we need the SELECT,
@@ -773,7 +771,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s2 = (
             select(
-                orders.c.order == "y", s1a.c.order, orders.c.order, s1.c.order,
+                orders.c.order == "y",
+                s1a.c.order,
+                orders.c.order,
+                s1.c.order,
             )
             .where(orders.c.order == "z")
             .cte("regional_sales_2")
@@ -815,7 +816,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         s2 = (
             select(
-                orders.c.order == "y", s1a.c.order, orders.c.order, s1.c.order,
+                orders.c.order == "y",
+                s1a.c.order,
+                orders.c.order,
+                s1.c.order,
             )
             .where(orders.c.order == "z")
             .cte("regional_sales_2")
