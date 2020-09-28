@@ -1293,6 +1293,7 @@ class Mapper(
             and self.class_manager.is_mapped
             and self.class_manager.mapper is self
         ):
+            self.class_manager.registry._dispose_cls(self.class_)
             instrumentation.unregister_class(self.class_)
 
     def _configure_pks(self):

@@ -253,8 +253,13 @@ def clear_mappers():
     """
     with mapperlib._CONFIGURE_MUTEX:
         while _mapper_registry:
-            mapper, b = _mapper_registry.popitem()
-            mapper.dispose()
+            try:
+                mapper, b = _mapper_registry.popitem()
+            except KeyError:
+                # weak registry, item could have been collected
+                pass
+            else:
+                mapper.dispose()
 
 
 joinedload = strategy_options.joinedload._unbound_fn

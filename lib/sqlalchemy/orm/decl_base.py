@@ -189,12 +189,6 @@ class _MapperConfig(object):
             init_method=registry.constructor,
         )
 
-        event.listen(
-            cls_,
-            "class_uninstrument",
-            registry._dispose_declarative_artifacts,
-        )
-
     def set_cls_attribute(self, attrname, value):
 
         manager = instrumentation.manager_of_class(self.cls)
