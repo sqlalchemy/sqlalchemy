@@ -454,7 +454,7 @@ class registry(object):
         self.metadata = lcl_metadata
         self.constructor = constructor
 
-    def _dispose_declarative_artifacts(self, cls):
+    def _dispose_cls(self, cls):
         clsregistry.remove_class(cls.__name__, cls, self._class_registry)
 
     def generate_base(

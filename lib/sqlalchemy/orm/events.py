@@ -67,6 +67,11 @@ class InstrumentationEvents(event.Events):
 
         def listen(target_cls, *arg):
             listen_cls = target()
+
+            # if weakref were collected, however this is not something
+            # that normally happens.   it was occurring during test teardown
+            # between mapper/registry/instrumentation_manager, however this
+            # interaction was changed to not rely upon the event system.
             if listen_cls is None:
                 return None
 
