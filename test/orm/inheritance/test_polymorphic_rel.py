@@ -1395,7 +1395,8 @@ class _PolymorphicTestBase(object):
             ("vlad", "Elbonia, Inc."),
         ]
         eq_(
-            q(self, sess).all(), expected,
+            q(self, sess).all(),
+            expected,
         )
 
     def test_mixed_entities_two(self):

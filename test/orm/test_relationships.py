@@ -2354,7 +2354,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 class TypeMatchTest(fixtures.MappedTest):
 
     """test errors raised when trying to add items
-        whose type is not handled by a relationship"""
+    whose type is not handled by a relationship"""
 
     @classmethod
     def define_tables(cls, metadata):
@@ -3079,7 +3079,9 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             return
 
         mapper(
-            A, self.tables.t1, properties={"bs": rel()},
+            A,
+            self.tables.t1,
+            properties={"bs": rel()},
         )
         mapper(B, self.tables.t2)
 
@@ -3623,9 +3625,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
 
 
 class FunctionAsPrimaryJoinTest(fixtures.DeclarativeMappedTest):
-    """test :ticket:`3831`
-
-    """
+    """test :ticket:`3831`"""
 
     __only_on__ = "sqlite"
 

@@ -1729,7 +1729,7 @@ class ExplicitAutoCommitDeprecatedTest(fixtures.TestBase):
     """test the 'autocommit' flag on select() and text() objects.
 
     Requires PostgreSQL so that we may define a custom function which
-    modifies the database. """
+    modifies the database."""
 
     __only_on__ = "postgresql"
 

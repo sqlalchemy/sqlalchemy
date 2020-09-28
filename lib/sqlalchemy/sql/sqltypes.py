@@ -2224,7 +2224,7 @@ class JSON(Indexable, TypeEngine):
 
               :attr:`.types.JSON.NULL`
 
-         """
+        """
         self.none_as_null = none_as_null
 
     class JSONElementType(TypeEngine):

@@ -250,7 +250,12 @@ class DefaultObjectTest(fixtures.TestBase):
             Column("boolcol1", sa.Boolean, default=True),
             Column("boolcol2", sa.Boolean, default=False),
             # python function which uses ExecutionContext
-            Column("col7", Integer, default=lambda: 5, onupdate=lambda: 10,),
+            Column(
+                "col7",
+                Integer,
+                default=lambda: 5,
+                onupdate=lambda: 10,
+            ),
             # python builtin
             Column(
                 "col8",

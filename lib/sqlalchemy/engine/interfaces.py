@@ -532,7 +532,7 @@ class Dialect(object):
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
 
-         """
+        """
 
         raise NotImplementedError()
 
@@ -543,7 +543,7 @@ class Dialect(object):
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
 
-         """
+        """
 
         raise NotImplementedError()
 
@@ -1294,8 +1294,7 @@ class Connectable(object):
         ":meth:`_schema.MetaData.create_all`.",
     )
     def create(self, entity, **kwargs):
-        """Emit CREATE statements for the given schema entity.
-        """
+        """Emit CREATE statements for the given schema entity."""
 
         raise NotImplementedError()
 
@@ -1308,8 +1307,7 @@ class Connectable(object):
         ":meth:`_schema.MetaData.drop_all`.",
     )
     def drop(self, entity, **kwargs):
-        """Emit DROP statements for the given schema entity.
-        """
+        """Emit DROP statements for the given schema entity."""
 
         raise NotImplementedError()
 

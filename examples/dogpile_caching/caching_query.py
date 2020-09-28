@@ -47,15 +47,15 @@ class CachingQuery(Query):
 
     def __iter__(self):
         """override __iter__ to pull results from dogpile
-           if particular attributes have been configured.
+        if particular attributes have been configured.
 
-           Note that this approach does *not* detach the loaded objects from
-           the current session. If the cache backend is an in-process cache
-           (like "memory") and lives beyond the scope of the current session's
-           transaction, those objects may be expired. The method here can be
-           modified to first expunge() each loaded item from the current
-           session before returning the list of items, so that the items
-           in the cache are not the same ones in the current Session.
+        Note that this approach does *not* detach the loaded objects from
+        the current session. If the cache backend is an in-process cache
+        (like "memory") and lives beyond the scope of the current session's
+        transaction, those objects may be expired. The method here can be
+        modified to first expunge() each loaded item from the current
+        session before returning the list of items, so that the items
+        in the cache are not the same ones in the current Session.
 
         """
         super_ = super(CachingQuery, self)
@@ -67,15 +67,15 @@ class CachingQuery(Query):
 
     def _execute_and_instances(self, context):
         """override _execute_and_instances to pull results from dogpile
-            if the query is invoked directly from an external context.
+         if the query is invoked directly from an external context.
 
-           This method is necessary in order to maintain compatibility
-           with the "baked query" system now used by default in some
-           relationship loader scenarios.   Note also the
-           RelationshipCache._generate_cache_key method which enables
-           the baked query to be used within lazy loads.
+        This method is necessary in order to maintain compatibility
+        with the "baked query" system now used by default in some
+        relationship loader scenarios.   Note also the
+        RelationshipCache._generate_cache_key method which enables
+        the baked query to be used within lazy loads.
 
-           .. versionadded:: 1.2.7
+        .. versionadded:: 1.2.7
         """
         super_ = super(CachingQuery, self)
 
@@ -208,7 +208,7 @@ class FromCache(MapperOption):
 
 class RelationshipCache(MapperOption):
     """Specifies that a Query as called within a "lazy load"
-       should load results from a cache."""
+    should load results from a cache."""
 
     propagate_to_loaders = True
 

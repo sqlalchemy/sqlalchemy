@@ -559,9 +559,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(s.positiontup, ["a", "b", "c"])
 
     def test_nested_label_targeting(self):
-        """test nested anonymous label generation.
-
-        """
+        """test nested anonymous label generation."""
         s1 = table1.select()
         s2 = s1.alias()
         s3 = select([s2], use_labels=True)
@@ -2959,7 +2957,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
     def _test_binds_no_hash_collision(self):
         """test that construct_params doesn't corrupt dict
-            due to hash collisions"""
+        due to hash collisions"""
 
         total_params = 100000
 
@@ -4088,7 +4086,11 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             {
                 "anotherid": (
                     "anotherid",
-                    (t1.c.anotherid, "anotherid", "anotherid",),
+                    (
+                        t1.c.anotherid,
+                        "anotherid",
+                        "anotherid",
+                    ),
                     t1.c.anotherid.type,
                 )
             },

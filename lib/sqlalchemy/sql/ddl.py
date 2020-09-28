@@ -1038,7 +1038,9 @@ class SchemaDropper(DDLBase):
 
 
 def sort_tables(
-    tables, skip_fn=None, extra_dependencies=None,
+    tables,
+    skip_fn=None,
+    extra_dependencies=None,
 ):
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.

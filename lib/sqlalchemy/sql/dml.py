@@ -31,9 +31,7 @@ from .. import util
 class UpdateBase(
     HasCTE, DialectKWArgs, HasPrefixes, Executable, ClauseElement
 ):
-    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements.
-
-    """
+    """Form the base for ``INSERT``, ``UPDATE``, and ``DELETE`` statements."""
 
     __visit_name__ = "update_base"
 

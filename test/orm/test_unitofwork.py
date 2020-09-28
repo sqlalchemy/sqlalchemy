@@ -3488,7 +3488,9 @@ class EnsurePKSortableTest(fixtures.MappedTest):
                 )
 
             assert_raises_message(
-                sa.exc.InvalidRequestError, message, s.flush,
+                sa.exc.InvalidRequestError,
+                message,
+                s.flush,
             )
         else:
             s.flush()

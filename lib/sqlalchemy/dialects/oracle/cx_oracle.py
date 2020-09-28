@@ -1001,7 +1001,11 @@ class OracleDialect_cx_oracle(OracleDialect):
             # allow all strings to come back natively as Unicode
             elif (
                 dialect.coerce_to_unicode
-                and default_type in (cx_Oracle.STRING, cx_Oracle.FIXED_CHAR,)
+                and default_type
+                in (
+                    cx_Oracle.STRING,
+                    cx_Oracle.FIXED_CHAR,
+                )
                 and default_type is not cx_Oracle.CLOB
                 and default_type is not cx_Oracle.NCLOB
             ):
@@ -1049,7 +1053,9 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.BLOB,
             ):
                 return cursor.var(
-                    cx_Oracle.LONG_BINARY, size, cursor.arraysize,
+                    cx_Oracle.LONG_BINARY,
+                    size,
+                    cursor.arraysize,
                 )
 
         return output_type_handler

@@ -604,9 +604,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.requires.precision_numerics_enotation_large
     def test_enotation_decimal_large(self):
-        """test exceedingly large decimals.
-
-        """
+        """test exceedingly large decimals."""
 
         numbers = set(
             [
@@ -928,7 +926,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         conn = connection
         conn.execute(
-            self.tables.data_table.insert(), {"name": "r1", "data": JSON.NULL},
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": JSON.NULL},
         )
 
         eq_(

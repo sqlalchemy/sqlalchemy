@@ -221,7 +221,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_orderby_related(self):
         """A regular mapper select on a single table can
-            order by a relationship to a second table"""
+        order by a relationship to a second table"""
 
         Address, addresses, users, User = (
             self.classes.Address,
@@ -714,7 +714,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_double_w_ac(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         (
             users,
@@ -788,7 +788,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
     def test_double_w_ac_against_subquery(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         (
             users,

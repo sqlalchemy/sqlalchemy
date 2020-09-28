@@ -142,7 +142,7 @@ class _Dispatch(object):
 
     def _update(self, other, only_propagate=True):
         """Populate from the listeners in another :class:`_Dispatch`
-            object."""
+        object."""
         for ls in other._event_descriptors:
             if isinstance(ls, _EmptyListener):
                 continue

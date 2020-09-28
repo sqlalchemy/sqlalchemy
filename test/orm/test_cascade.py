@@ -3619,8 +3619,8 @@ class O2MConflictTest(fixtures.MappedTest):
 
 
 class PartialFlushTest(fixtures.MappedTest):
-    """test cascade behavior as it relates to object lists passed to flush().
-    """
+    """test cascade behavior as it relates to object lists passed to
+    flush()."""
 
     @classmethod
     def define_tables(cls, metadata):

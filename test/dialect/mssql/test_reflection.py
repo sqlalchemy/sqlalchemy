@@ -395,13 +395,11 @@ class ReflectHugeViewTest(fixtures.TestBase):
                 for i in range(self.col_num)
             ]
         )
-        self.view_str = view_str = (
-            "CREATE VIEW huge_named_view AS SELECT %s FROM base_table"
-            % (
-                ",".join(
-                    "long_named_column_number_%d" % i
-                    for i in range(self.col_num)
-                )
+        self.view_str = (
+            view_str
+        ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
+            ",".join(
+                "long_named_column_number_%d" % i for i in range(self.col_num)
             )
         )
         assert len(view_str) > 4000
@@ -505,7 +503,8 @@ class OwnerPlusDBTest(fixtures.TestBase):
         eq_(schema, expected_schema)
 
         mock_connection = mock.Mock(
-            dialect=dialect, scalar=mock.Mock(return_value="Some  Database"),
+            dialect=dialect,
+            scalar=mock.Mock(return_value="Some  Database"),
         )
         mock_lambda = mock.Mock()
         base._switch_db(schema, mock_connection, mock_lambda, "x", y="bar")

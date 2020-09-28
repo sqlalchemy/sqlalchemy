@@ -150,8 +150,7 @@ class Inspector(object):
         return self.dialect.default_schema_name
 
     def get_schema_names(self):
-        """Return all schema names.
-        """
+        """Return all schema names."""
 
         if hasattr(self.dialect, "get_schema_names"):
             return self.dialect.get_schema_names(

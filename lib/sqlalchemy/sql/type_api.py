@@ -1144,10 +1144,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     @util.memoized_property
     def _has_literal_processor(self):
-        """memoized boolean, check if process_literal_param is implemented.
-
-
-        """
+        """memoized boolean, check if process_literal_param is implemented."""
 
         return (
             self.__class__.process_literal_param.__code__

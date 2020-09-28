@@ -1705,7 +1705,7 @@ class Query(object):
         return self.with_hint(None, text, dialect_name)
 
     def get_execution_options(self):
-        """ Get the non-SQL options which will take effect during execution.
+        """Get the non-SQL options which will take effect during execution.
 
         .. versionadded:: 1.3
 
@@ -1717,7 +1717,7 @@ class Query(object):
 
     @_generative()
     def execution_options(self, **kwargs):
-        """ Set non-SQL options which take effect during execution.
+        """Set non-SQL options which take effect during execution.
 
         The options are the same as those accepted by
         :meth:`_engine.Connection.execution_options`.

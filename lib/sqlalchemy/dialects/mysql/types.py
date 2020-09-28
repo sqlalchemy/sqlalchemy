@@ -440,9 +440,7 @@ class TIME(sqltypes.TIME):
 
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
-    """MySQL TIMESTAMP type.
-
-    """
+    """MySQL TIMESTAMP type."""
 
     __visit_name__ = "TIMESTAMP"
 
@@ -467,9 +465,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
 
 class DATETIME(sqltypes.DATETIME):
-    """MySQL DATETIME type.
-
-    """
+    """MySQL DATETIME type."""
 
     __visit_name__ = "DATETIME"
 

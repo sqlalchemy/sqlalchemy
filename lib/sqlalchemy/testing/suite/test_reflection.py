@@ -93,7 +93,10 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
             Column("related_id", Integer),
             sa.PrimaryKeyConstraint("id", name="pk quote ' one"),
             sa.Index("ix quote ' one", "name"),
-            sa.UniqueConstraint("data", name="uq quote' one",),
+            sa.UniqueConstraint(
+                "data",
+                name="uq quote' one",
+            ),
             sa.ForeignKeyConstraint(
                 ["id"], ["related.id"], name="fk quote ' one"
             ),
@@ -112,7 +115,10 @@ class QuotedNameArgumentTest(fixtures.TablesTest):
                 Column("related_id", Integer),
                 sa.PrimaryKeyConstraint("id", name='pk quote " two'),
                 sa.Index('ix quote " two', "name"),
-                sa.UniqueConstraint("data", name='uq quote" two',),
+                sa.UniqueConstraint(
+                    "data",
+                    name='uq quote" two',
+                ),
                 sa.ForeignKeyConstraint(
                     ["id"], ["related.id"], name='fk quote " two'
                 ),
@@ -1298,11 +1304,17 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
         )
         if testing.requires.computed_columns_virtual.enabled:
             self.check_column(
-                data, "computed_virtual", "normal+2", False,
+                data,
+                "computed_virtual",
+                "normal+2",
+                False,
             )
         if testing.requires.computed_columns_stored.enabled:
             self.check_column(
-                data, "computed_stored", "normal-42", True,
+                data,
+                "computed_stored",
+                "normal-42",
+                True,
             )
 
     @testing.requires.schemas
@@ -1322,11 +1334,17 @@ class ComputedReflectionTest(fixtures.ComputedReflectionFixtureTest):
         )
         if testing.requires.computed_columns_virtual.enabled:
             self.check_column(
-                data, "computed_virtual", "normal/2", False,
+                data,
+                "computed_virtual",
+                "normal/2",
+                False,
             )
         if testing.requires.computed_columns_stored.enabled:
             self.check_column(
-                data, "computed_stored", "normal*42", True,
+                data,
+                "computed_stored",
+                "normal*42",
+                True,
             )
 
 

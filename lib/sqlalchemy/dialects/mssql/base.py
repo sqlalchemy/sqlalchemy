@@ -968,7 +968,7 @@ class TIME(sqltypes.TIME):
                     self.__zero_date, value.time()
                 )
             elif isinstance(value, datetime.time):
-                """ issue #5339
+                """issue #5339
                 per: https://github.com/mkleehammer/pyodbc/wiki/Tips-and-Tricks-by-Database-Platform#time-columns
                 pass TIME value as string
                 """  # noqa
@@ -1195,9 +1195,7 @@ class SQL_VARIANT(sqltypes.TypeEngine):
 
 
 class TryCast(sql.elements.Cast):
-    """Represent a SQL Server TRY_CAST expression.
-
-    """
+    """Represent a SQL Server TRY_CAST expression."""
 
     __visit_name__ = "try_cast"
 

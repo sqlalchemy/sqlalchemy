@@ -729,7 +729,11 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 "Column('foo', Integer(), table=None, primary_key=True, "
                 "nullable=False, onupdate=%s, default=%s, server_default=%s, "
                 "comment='foo')"
-                % (ColumnDefault(1), ColumnDefault(42), DefaultClause("42"),),
+                % (
+                    ColumnDefault(1),
+                    ColumnDefault(42),
+                    DefaultClause("42"),
+                ),
             ),
             (
                 Table("bar", MetaData(), Column("x", String)),
@@ -5155,7 +5159,8 @@ class CopyDialectOptionsTest(fixtures.TestBase):
     @classmethod
     def check_dialect_options_(cls, t):
         eq_(
-            t.dialect_kwargs["copydialectoptionstest_some_table_arg"], "a1",
+            t.dialect_kwargs["copydialectoptionstest_some_table_arg"],
+            "a1",
         )
         eq_(
             t.c.foo.dialect_kwargs["copydialectoptionstest_some_column_arg"],
@@ -5198,7 +5203,9 @@ class CopyDialectOptionsTest(fixtures.TestBase):
                 copydialectoptionstest_some_table_arg="a1",
             )
             Index(
-                "idx", t1.c.foo, copydialectoptionstest_some_index_arg="a4",
+                "idx",
+                t1.c.foo,
+                copydialectoptionstest_some_index_arg="a4",
             )
 
             self.check_dialect_options_(t1)

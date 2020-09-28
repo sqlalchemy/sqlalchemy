@@ -789,7 +789,8 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             tbl.select(tbl.c.col_a.is_distinct_from(tbl.c.col_b))
         ).fetchall()
         eq_(
-            len(result), expected_row_count_for_is,
+            len(result),
+            expected_row_count_for_is,
         )
 
         expected_row_count_for_isnot = (
@@ -799,5 +800,6 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             tbl.select(tbl.c.col_a.isnot_distinct_from(tbl.c.col_b))
         ).fetchall()
         eq_(
-            len(result), expected_row_count_for_isnot,
+            len(result),
+            expected_row_count_for_isnot,
         )

@@ -103,10 +103,22 @@ class EncodingErrorsTest(fixtures.TestBase):
         )
 
     _oracle_char_combinations = testing.combinations(
-        ("STRING", cx_Oracle_STRING,),
-        ("FIXED_CHAR", cx_Oracle_FIXED_CHAR,),
-        ("CLOB", cx_Oracle_CLOB,),
-        ("NCLOB", cx_Oracle_NCLOB,),
+        (
+            "STRING",
+            cx_Oracle_STRING,
+        ),
+        (
+            "FIXED_CHAR",
+            cx_Oracle_FIXED_CHAR,
+        ),
+        (
+            "CLOB",
+            cx_Oracle_CLOB,
+        ),
+        (
+            "NCLOB",
+            cx_Oracle_NCLOB,
+        ),
         argnames="cx_oracle_type",
         id_="ia",
     )
@@ -149,7 +161,9 @@ class EncodingErrorsTest(fixtures.TestBase):
     @_oracle_char_combinations
     @testing.requires.python2
     def test_encoding_errors_sqla_py2k(
-        self, cx_Oracle, cx_oracle_type,
+        self,
+        cx_Oracle,
+        cx_oracle_type,
     ):
         ignore_dialect = cx_oracle.dialect(
             dbapi=cx_Oracle, encoding_errors="ignore"
@@ -167,7 +181,9 @@ class EncodingErrorsTest(fixtures.TestBase):
     @_oracle_char_combinations
     @testing.requires.python2
     def test_no_encoding_errors_sqla_py2k(
-        self, cx_Oracle, cx_oracle_type,
+        self,
+        cx_Oracle,
+        cx_oracle_type,
     ):
         plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
 
@@ -183,7 +199,9 @@ class EncodingErrorsTest(fixtures.TestBase):
     @_oracle_char_combinations
     @testing.requires.python3
     def test_encoding_errors_cx_oracle_py3k(
-        self, cx_Oracle, cx_oracle_type,
+        self,
+        cx_Oracle,
+        cx_oracle_type,
     ):
         ignore_dialect = cx_oracle.dialect(
             dbapi=cx_Oracle, encoding_errors="ignore"
@@ -200,7 +218,10 @@ class EncodingErrorsTest(fixtures.TestBase):
             cursor.mock_calls,
             [
                 mock.call.var(
-                    mock.ANY, None, cursor.arraysize, encodingErrors="ignore",
+                    mock.ANY,
+                    None,
+                    cursor.arraysize,
+                    encodingErrors="ignore",
                 )
             ],
         )
@@ -208,7 +229,9 @@ class EncodingErrorsTest(fixtures.TestBase):
     @_oracle_char_combinations
     @testing.requires.python3
     def test_no_encoding_errors_cx_oracle_py3k(
-        self, cx_Oracle, cx_oracle_type,
+        self,
+        cx_Oracle,
+        cx_oracle_type,
     ):
         plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
 

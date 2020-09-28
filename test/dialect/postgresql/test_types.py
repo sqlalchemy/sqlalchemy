@@ -1880,7 +1880,10 @@ class ArrayEnum(fixtures.TestBase):
                 c = "ccc"
 
             tbl.append_column(
-                Column("pyenum_col", array_cls(enum_cls(MyEnum)),),
+                Column(
+                    "pyenum_col",
+                    array_cls(enum_cls(MyEnum)),
+                ),
             )
 
         self.metadata.create_all(connection)
@@ -1917,7 +1920,10 @@ class ArrayJSON(fixtures.TestBase):
             "json_table",
             self.metadata,
             Column("id", Integer, primary_key=True),
-            Column("json_col", array_cls(json_cls),),
+            Column(
+                "json_col",
+                array_cls(json_cls),
+            ),
         )
 
         self.metadata.create_all(connection)

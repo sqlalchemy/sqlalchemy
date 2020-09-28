@@ -875,9 +875,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ":class:`.DDLEvents`.",
     )
     def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``Table``.
-
-        """
+        """Append a DDL event listener to this ``Table``."""
 
         def adapt_listener(target, connection, **kw):
             listener(event_name, target, connection)
@@ -2815,8 +2813,7 @@ class DefaultClause(FetchedValue):
     "future release.  Please refer to :class:`.DefaultClause`.",
 )
 class PassiveDefault(DefaultClause):
-    """A DDL-specified DEFAULT column value.
-    """
+    """A DDL-specified DEFAULT column value."""
 
     def __init__(self, *arg, **kw):
         DefaultClause.__init__(self, *arg, **kw)
@@ -3698,10 +3695,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
                 return col
-            elif col.autoincrement in (
-                "auto",
-                "ignore_fk",
-            ) and _validate_autoinc(col, False):
+            elif (
+                col.autoincrement
+                in (
+                    "auto",
+                    "ignore_fk",
+                )
+                and _validate_autoinc(col, False)
+            ):
                 return col
 
         else:
@@ -4519,10 +4520,7 @@ class MetaData(SchemaItem):
         ":class:`.DDLEvents`.",
     )
     def append_ddl_listener(self, event_name, listener):
-        """Append a DDL event listener to this ``MetaData``.
-
-
-        """
+        """Append a DDL event listener to this ``MetaData``."""
 
         def adapt_listener(target, connection, **kw):
             tables = kw["tables"]

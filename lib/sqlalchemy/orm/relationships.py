@@ -3525,7 +3525,7 @@ class JoinCondition(object):
 class _ColInAnnotations(object):
     """Seralizable equivalent to:
 
-        lambda c: "name" in c._annotations
+    lambda c: "name" in c._annotations
     """
 
     def __init__(self, name):

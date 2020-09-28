@@ -27,7 +27,7 @@ from ..sql import expression
 
 class DescriptorProperty(MapperProperty):
     """:class:`.MapperProperty` which proxies access to a
-        user-defined descriptor."""
+    user-defined descriptor."""
 
     doc = None
 

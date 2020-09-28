@@ -2831,15 +2831,11 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         ).all()
 
         # test that the contents are not adapted by the aliased join
-        assert (
-            [User(id=7), User(id=8)]
-            == sess.query(User)
-            .join("addresses", aliased=True)
-            .filter(
-                ~User.addresses.any(Address.email_address == "fred@fred.com")
-            )
-            .all()
-        )
+        assert [User(id=7), User(id=8)] == sess.query(User).join(
+            "addresses", aliased=True
+        ).filter(
+            ~User.addresses.any(Address.email_address == "fred@fred.com")
+        ).all()
 
         assert [User(id=10)] == sess.query(User).outerjoin(
             "addresses", aliased=True
@@ -2853,15 +2849,11 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         sess = create_session()
 
         # test that any() doesn't overcorrelate
-        assert (
-            [User(id=7), User(id=8)]
-            == sess.query(User)
-            .join("addresses")
-            .filter(
-                ~User.addresses.any(Address.email_address == "fred@fred.com")
-            )
-            .all()
-        )
+        assert [User(id=7), User(id=8)] == sess.query(User).join(
+            "addresses"
+        ).filter(
+            ~User.addresses.any(Address.email_address == "fred@fred.com")
+        ).all()
 
     def test_has(self):
         # see also HasAnyTest, a newer suite which tests these at the level of
@@ -2877,41 +2869,40 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             Address.user.has(name="fred")
         ).all()
 
-        assert (
-            [Address(id=2), Address(id=3), Address(id=4), Address(id=5)]
-            == sess.query(Address)
-            .filter(Address.user.has(User.name.like("%ed%")))
-            .order_by(Address.id)
-            .all()
-        )
+        assert [
+            Address(id=2),
+            Address(id=3),
+            Address(id=4),
+            Address(id=5),
+        ] == sess.query(Address).filter(
+            Address.user.has(User.name.like("%ed%"))
+        ).order_by(
+            Address.id
+        ).all()
 
-        assert (
-            [Address(id=2), Address(id=3), Address(id=4)]
-            == sess.query(Address)
-            .filter(Address.user.has(User.name.like("%ed%"), id=8))
-            .order_by(Address.id)
-            .all()
-        )
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
+            Address
+        ).filter(Address.user.has(User.name.like("%ed%"), id=8)).order_by(
+            Address.id
+        ).all()
 
         # test has() doesn't overcorrelate
-        assert (
-            [Address(id=2), Address(id=3), Address(id=4)]
-            == sess.query(Address)
-            .join("user")
-            .filter(Address.user.has(User.name.like("%ed%"), id=8))
-            .order_by(Address.id)
-            .all()
-        )
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
+            Address
+        ).join("user").filter(
+            Address.user.has(User.name.like("%ed%"), id=8)
+        ).order_by(
+            Address.id
+        ).all()
 
         # test has() doesn't get subquery contents adapted by aliased join
-        assert (
-            [Address(id=2), Address(id=3), Address(id=4)]
-            == sess.query(Address)
-            .join("user", aliased=True)
-            .filter(Address.user.has(User.name.like("%ed%"), id=8))
-            .order_by(Address.id)
-            .all()
-        )
+        assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
+            Address
+        ).join("user", aliased=True).filter(
+            Address.user.has(User.name.like("%ed%"), id=8)
+        ).order_by(
+            Address.id
+        ).all()
 
         dingaling = sess.query(Dingaling).get(2)
         assert [User(id=9)] == sess.query(User).filter(
@@ -3436,7 +3427,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
     def test_union_literal_expressions_compile(self):
         """test that column expressions translate during
-            the _from_statement() portion of union(), others"""
+        the _from_statement() portion of union(), others"""
 
         User = self.classes.User
 
@@ -3628,25 +3619,20 @@ class AggregateTest(QueryTest):
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
-        assert (
-            [User(name="ed", id=8)]
-            == sess.query(User)
-            .order_by(User.id)
-            .group_by(User)
-            .join("addresses")
-            .having(func.count(Address.id) > 2)
-            .all()
-        )
+        assert [User(name="ed", id=8)] == sess.query(User).order_by(
+            User.id
+        ).group_by(User).join("addresses").having(
+            func.count(Address.id) > 2
+        ).all()
 
-        assert (
-            [User(name="jack", id=7), User(name="fred", id=9)]
-            == sess.query(User)
-            .order_by(User.id)
-            .group_by(User)
-            .join("addresses")
-            .having(func.count(Address.id) < 2)
-            .all()
-        )
+        assert [
+            User(name="jack", id=7),
+            User(name="fred", id=9),
+        ] == sess.query(User).order_by(User.id).group_by(User).join(
+            "addresses"
+        ).having(
+            func.count(Address.id) < 2
+        ).all()
 
 
 class ExistsTest(QueryTest, AssertsCompiledSQL):

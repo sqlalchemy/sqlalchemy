@@ -995,8 +995,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
-    """test interaction of and_()/or_() with boolean , null constants
-    """
+    """test interaction of and_()/or_() with boolean , null constants"""
 
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
 

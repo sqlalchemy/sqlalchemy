@@ -35,7 +35,11 @@ class SQLAlchemyError(Exception):
         else:
             return (
                 "(Background on this error at: "
-                "http://sqlalche.me/e/%s/%s)" % (_version_token, self.code,)
+                "http://sqlalche.me/e/%s/%s)"
+                % (
+                    _version_token,
+                    self.code,
+                )
             )
 
     def _message(self, as_unicode=compat.py3k):

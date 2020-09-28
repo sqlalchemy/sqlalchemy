@@ -515,7 +515,9 @@ class IsolationLevelDetectTest(fixtures.TestBase):
 
         result = []
 
-        def fail_on_exec(stmt,):
+        def fail_on_exec(
+            stmt,
+        ):
             if view is not None and view in stmt:
                 result.append(("SERIALIZABLE",))
             else:
@@ -568,7 +570,8 @@ class InvalidTransactionFalsePositiveTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
-            cls.tables.error_t.insert(), [{"error_code": "01002"}],
+            cls.tables.error_t.insert(),
+            [{"error_code": "01002"}],
         )
 
     def test_invalid_transaction_detection(self, connection):

@@ -123,14 +123,14 @@ class LegacySequenceExecTest(fixtures.TestBase):
 
     def test_explicit_optional(self):
         """test dialect executes a Sequence, returns nextval, whether
-        or not "optional" is set """
+        or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(s.execute(testing.db))
 
     def test_func_implicit_connectionless_execute(self):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence", metadata=MetaData(testing.db))
         self._assert_seq_result(s.next_value().execute().scalar())
@@ -177,21 +177,21 @@ class SequenceExecTest(fixtures.TestBase):
 
     def test_execute_optional(self, connection):
         """test dialect executes a Sequence, returns nextval, whether
-        or not "optional" is set """
+        or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(connection.execute(s))
 
     def test_execute_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence")
         self._assert_seq_result(connection.scalar(s.next_value()))
 
     def test_execute_optional_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
-        with connectionless execution. """
+        with connectionless execution."""
 
         s = Sequence("my_sequence", optional=True)
         self._assert_seq_result(connection.scalar(s.next_value()))
@@ -521,7 +521,8 @@ class SequenceAsServerDefaultTest(
         )
 
         eq_(
-            connection.execute("select id from t_seq_test_2").scalar(), 1,
+            connection.execute("select id from t_seq_test_2").scalar(),
+            1,
         )
 
     def test_default_core_server_only(self, connection):

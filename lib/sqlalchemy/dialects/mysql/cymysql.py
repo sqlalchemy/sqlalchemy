@@ -28,8 +28,8 @@ from ... import util
 
 class _cymysqlBIT(BIT):
     def result_processor(self, dialect, coltype):
-        """Convert a MySQL's 64 bit, variable length binary string to a long.
-        """
+        """Convert a MySQL's 64 bit, variable length binary string to a
+        long."""
 
         def process(value):
             if value is not None:

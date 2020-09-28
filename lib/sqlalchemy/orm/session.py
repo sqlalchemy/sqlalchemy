@@ -1539,7 +1539,8 @@ class Session(_SessionClassMethods):
             except sa_exc.NoInspectionAvailable as err:
                 if isinstance(mapper, type):
                     util.raise_(
-                        exc.UnmappedClassError(mapper), replace_context=err,
+                        exc.UnmappedClassError(mapper),
+                        replace_context=err,
                     )
                 else:
                     raise
@@ -1685,7 +1686,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
 
         self._expire_state(state, attribute_names)
@@ -1797,7 +1799,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
         self._expire_state(state, attribute_names)
 
@@ -1854,7 +1857,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
@@ -2008,7 +2012,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
 
         self._save_or_update_state(state)
@@ -2045,7 +2050,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
 
         self._delete_impl(state, instance, head=True)
@@ -2476,7 +2482,8 @@ class Session(_SessionClassMethods):
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
             util.raise_(
-                exc.UnmappedInstanceError(instance), replace_context=err,
+                exc.UnmappedInstanceError(instance),
+                replace_context=err,
             )
         return self._contains_state(state)
 
@@ -2575,7 +2582,8 @@ class Session(_SessionClassMethods):
 
                 except exc.NO_STATE as err:
                     util.raise_(
-                        exc.UnmappedInstanceError(o), replace_context=err,
+                        exc.UnmappedInstanceError(o),
+                        replace_context=err,
                     )
                 objset.add(state)
         else:
@@ -3445,7 +3453,8 @@ def object_session(instance):
         state = attributes.instance_state(instance)
     except exc.NO_STATE as err:
         util.raise_(
-            exc.UnmappedInstanceError(instance), replace_context=err,
+            exc.UnmappedInstanceError(instance),
+            replace_context=err,
         )
     else:
         return _state_session(state)

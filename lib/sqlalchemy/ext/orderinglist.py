@@ -377,7 +377,7 @@ class OrderingList(list):
 
 
 def _reconstitute(cls, dict_, items):
-    """ Reconstitute an :class:`.OrderingList`.
+    """Reconstitute an :class:`.OrderingList`.
 
     This is the adjoint to :meth:`.OrderingList.__reduce__`.  It is used for
     unpickling :class:`.OrderingList` objects.

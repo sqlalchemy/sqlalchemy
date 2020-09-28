@@ -55,8 +55,7 @@ from ...connectors.mxodbc import MxODBCConnector
 
 
 class _MSNumeric_mxodbc(_MSNumeric_pyodbc):
-    """Include pyodbc's numeric processor.
-    """
+    """Include pyodbc's numeric processor."""
 
 
 class _MSDate_mxodbc(_MSDate):

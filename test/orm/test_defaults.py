@@ -309,7 +309,10 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
             True,
             testing.requires.computed_columns_on_update_returning,
         ),
-        ("noneagerload", False,),
+        (
+            "noneagerload",
+            False,
+        ),
         id_="ia",
     )
     def test_update_computed(self, eager):

@@ -2237,7 +2237,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
     def test_selectload(self):
         """tests lazy loading with two relationships simultaneously,
-        from the same table, using aliases.  """
+        from the same table, using aliases."""
 
         users, orders, User, Address, Order, addresses = (
             self.tables.users,
@@ -2288,7 +2288,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
     def test_joinedload(self):
         """Eager loading with two relationships simultaneously,
-            from the same table, using aliases."""
+        from the same table, using aliases."""
 
         users, orders, User, Address, Order, addresses = (
             self.tables.users,

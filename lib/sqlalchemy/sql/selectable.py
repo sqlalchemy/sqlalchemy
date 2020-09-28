@@ -2278,8 +2278,7 @@ class GenerativeSelect(SelectBase):
 
     @property
     def for_update(self):
-        """Provide legacy dialect support for the ``for_update`` attribute.
-        """
+        """Provide legacy dialect support for the ``for_update`` attribute."""
         if self._for_update_arg is not None:
             return self._for_update_arg.legacy_for_update_value
         else:
@@ -4033,9 +4032,7 @@ class ScalarSelect(Generative, Grouping):
 
 
 class Exists(UnaryExpression):
-    """Represent an ``EXISTS`` clause.
-
-    """
+    """Represent an ``EXISTS`` clause."""
 
     __visit_name__ = UnaryExpression.__visit_name__
     _from_objects = []

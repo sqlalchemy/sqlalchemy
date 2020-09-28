@@ -139,8 +139,7 @@ def _clear(owner, elements):
 
 
 class _EventKey(object):
-    """Represent :func:`.listen` arguments.
-    """
+    """Represent :func:`.listen` arguments."""
 
     __slots__ = (
         "target",
@@ -239,8 +238,7 @@ class _EventKey(object):
                 collection.remove(self.with_wrapper(listener_fn))
 
     def contains(self):
-        """Return True if this event key is registered to listen.
-        """
+        """Return True if this event key is registered to listen."""
         return self._key in _key_to_collection
 
     def base_listen(

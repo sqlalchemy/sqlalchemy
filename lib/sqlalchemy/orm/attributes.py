@@ -886,9 +886,9 @@ class ScalarAttributeImpl(AttributeImpl):
 
 class ScalarObjectAttributeImpl(ScalarAttributeImpl):
     """represents a scalar-holding InstrumentedAttribute,
-       where the target object is also instrumented.
+    where the target object is also instrumented.
 
-       Adds events to delete/set operations.
+    Adds events to delete/set operations.
 
     """
 
@@ -983,9 +983,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         check_old=None,
         pop=False,
     ):
-        """Set a value on the given InstanceState.
-
-        """
+        """Set a value on the given InstanceState."""
         if self.dispatch._active_history:
             old = self.get(
                 state,

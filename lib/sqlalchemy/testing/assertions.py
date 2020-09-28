@@ -334,7 +334,10 @@ def assert_raises(except_cls, callable_, *args, **kw):
 
 def assert_raises_context_ok(except_cls, callable_, *args, **kw):
     _assert_raises(
-        except_cls, callable_, args, kw,
+        except_cls,
+        callable_,
+        args,
+        kw,
     )
 
 
@@ -369,7 +372,10 @@ def _assert_raises(
         if msg is not None:
             assert re.search(
                 msg, util.text_type(err), re.UNICODE
-            ), "%r !~ %s" % (msg, err,)
+            ), "%r !~ %s" % (
+                msg,
+                err,
+            )
         if check_context and not are_we_already_in_a_traceback:
             _assert_proper_exception_context(err)
         print(util.text_type(err).encode("utf-8"))
@@ -504,9 +510,12 @@ class ComparesTables(object):
             assert reflected_table.primary_key.columns[c.name] is not None
 
     def assert_types_base(self, c1, c2):
-        assert c1.type._compare_type_affinity(c2.type), (
-            "On column %r, type '%s' doesn't correspond to type '%s'"
-            % (c1.name, c1.type, c2.type)
+        assert c1.type._compare_type_affinity(
+            c2.type
+        ), "On column %r, type '%s' doesn't correspond to type '%s'" % (
+            c1.name,
+            c1.type,
+            c2.type,
         )
 
 

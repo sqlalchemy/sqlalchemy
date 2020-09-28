@@ -770,7 +770,10 @@ class SubclassRelationshipTest(
         )
 
     def test_any_walias(self):
-        DataContainer, Job, = (self.classes.DataContainer, self.classes.Job)
+        (
+            DataContainer,
+            Job,
+        ) = (self.classes.DataContainer, self.classes.Job)
 
         Job_A = aliased(Job)
 
@@ -860,7 +863,10 @@ class SubclassRelationshipTest(
         )
 
     def test_join_walias(self):
-        DataContainer, Job, = (self.classes.DataContainer, self.classes.Job)
+        (
+            DataContainer,
+            Job,
+        ) = (self.classes.DataContainer, self.classes.Job)
 
         Job_A = aliased(Job)
 

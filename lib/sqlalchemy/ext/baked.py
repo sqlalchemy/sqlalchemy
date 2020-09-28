@@ -171,8 +171,7 @@ class BakedQuery(object):
         return self._cache_key + (session._query_cls,)
 
     def _with_lazyload_options(self, options, effective_path, cache_path=None):
-        """Cloning version of _add_lazyload_options.
-        """
+        """Cloning version of _add_lazyload_options."""
         q = self._clone()
         q._add_lazyload_options(options, effective_path, cache_path=cache_path)
         return q

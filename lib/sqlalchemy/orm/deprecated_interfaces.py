@@ -398,7 +398,7 @@ class SessionExtension(object):
         """Execute before flush process has started.
 
         `instances` is an optional list of objects which were passed to
-        the ``flush()`` method. """
+        the ``flush()`` method."""
 
     def after_flush(self, session, flush_context):
         """Execute after flush has completed, but before commit has been
@@ -415,18 +415,18 @@ class SessionExtension(object):
         This will be when the 'new', 'dirty', and 'deleted' lists are in
         their final state.  An actual commit() may or may not have
         occurred, depending on whether or not the flush started its own
-        transaction or participated in a larger transaction. """
+        transaction or participated in a larger transaction."""
 
     def after_begin(self, session, transaction, connection):
         """Execute after a transaction is begun on a connection
 
         `transaction` is the SessionTransaction. This method is called
-        after an engine level transaction is begun on a connection. """
+        after an engine level transaction is begun on a connection."""
 
     def after_attach(self, session, instance):
         """Execute after an instance is attached to a session.
 
-        This is called after an add, delete or merge. """
+        This is called after an add, delete or merge."""
 
     def after_bulk_update(self, session, query, query_context, result):
         """Execute after a bulk update operation to the session.

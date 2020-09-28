@@ -1476,7 +1476,8 @@ class PositionalTextTest(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         connection.execute(
-            cls.tables.text1.insert(), [dict(a="a1", b="b1", c="c1", d="d1")],
+            cls.tables.text1.insert(),
+            [dict(a="a1", b="b1", c="c1", d="d1")],
         )
 
     def test_via_column(self):

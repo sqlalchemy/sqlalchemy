@@ -1311,7 +1311,7 @@ class UUID(sqltypes.TypeEngine):
          as Python uuid objects, converting to/from string via the
          DBAPI.
 
-         """
+        """
         if as_uuid and _python_UUID is None:
             raise NotImplementedError(
                 "This version of Python does not support "
@@ -2609,10 +2609,14 @@ class PGDialect(default.DefaultDialect):
 
     def initialize(self, connection):
         super(PGDialect, self).initialize(connection)
-        self.implicit_returning = self.server_version_info > (
-            8,
-            2,
-        ) and self.__dict__.get("implicit_returning", True)
+        self.implicit_returning = (
+            self.server_version_info
+            > (
+                8,
+                2,
+            )
+            and self.__dict__.get("implicit_returning", True)
+        )
         self.supports_native_enum = self.server_version_info >= (8, 3)
         if not self.supports_native_enum:
             self.colspecs = self.colspecs.copy()

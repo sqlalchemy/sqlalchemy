@@ -31,10 +31,7 @@ Zoo = Animal = session = None
 
 class ZooMarkTest(replay_fixture.ReplayFixtureTest):
 
-    """Runs the ZooMark and squawks if method counts vary from the norm.
-
-
-    """
+    """Runs the ZooMark and squawks if method counts vary from the norm."""
 
     __requires__ = ("cpython",)
     __only_on__ = "postgresql+psycopg2"

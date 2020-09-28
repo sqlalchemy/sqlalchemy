@@ -877,8 +877,7 @@ class ReflectionTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_index_reflection(self):
-        """ Reflecting partial & expression-based indexes should warn
-        """
+        """Reflecting partial & expression-based indexes should warn"""
 
         metadata = self.metadata
 
