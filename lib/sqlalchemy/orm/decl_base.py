@@ -677,7 +677,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                 ) is not None and not _get_immediate_cls_attr(
                     c, "_sa_decl_prepare_nocascade", strict=True
                 ):
-                    inherits_search.append(c)
+                    if c not in inherits_search:
+                        inherits_search.append(c)
 
             if inherits_search:
                 if len(inherits_search) > 1:
