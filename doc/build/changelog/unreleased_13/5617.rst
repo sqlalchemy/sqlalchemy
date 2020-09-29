@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 5617
+
+    Fixed bug where an UPDATE statement against a JOIN using MySQL multi-table
+    format would fail to include the table prefix for the target table if the
+    statement had no WHERE clause, as only the WHERE clause were scanned to
+    detect a "multi table update" at that particular point.  The target
+    is now also scanned if it's a JOIN to get the leftmost table as the
+    primary table and the additional entries as additional FROM entries.
+

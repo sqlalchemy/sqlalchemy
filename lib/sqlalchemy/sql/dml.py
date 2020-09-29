@@ -9,7 +9,7 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 :class:`_expression.Delete`.
 
 """
-
+from . import util as sql_util
 from .base import _from_objects
 from .base import _generative
 from .base import DialectKWArgs
@@ -817,7 +817,9 @@ class Update(ValuesBase):
     @property
     def _extra_froms(self):
         froms = []
-        seen = {self.table}
+
+        all_tables = list(sql_util.tables_from_leftmost(self.table))
+        seen = {all_tables[0]}
 
         if self._whereclause is not None:
             for item in _from_objects(self._whereclause):
@@ -825,6 +827,7 @@ class Update(ValuesBase):
                     froms.append(item)
                 seen.update(item._cloned_set)
 
+        froms.extend(all_tables[1:])
         return froms
 
 

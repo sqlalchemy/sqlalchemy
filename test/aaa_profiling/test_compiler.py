@@ -65,7 +65,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     def test_update_whereclause(self):
         t1.update().where(t1.c.c2 == 12).compile(dialect=self.dialect)
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(variance=0.20)
         def go():
             t1.update().where(t1.c.c2 == 12).compile(dialect=self.dialect)
 

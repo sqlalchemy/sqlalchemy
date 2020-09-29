@@ -791,7 +791,7 @@ class UpdateFromCompileTest(
             dialect="mysql",
         )
 
-    def test_update_from_join_mysql(self):
+    def test_update_from_join_mysql_whereclause(self):
         users, addresses = self.tables.users, self.tables.addresses
 
         j = users.join(addresses)
@@ -806,6 +806,73 @@ class UpdateFromCompileTest(
             "WHERE "
             "addresses.email_address = %s",
             checkparams={"email_address_1": "e1", "name": "newname"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_update_from_join_mysql_no_whereclause_one(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        j = users.join(addresses)
+        self.assert_compile(
+            update(j).values(name="newname"),
+            ""
+            "UPDATE users "
+            "INNER JOIN addresses ON users.id = addresses.user_id "
+            "SET users.name=%s",
+            checkparams={"name": "newname"},
+            dialect=mysql.dialect(),
+        )
+
+    def test_update_from_join_mysql_no_whereclause_two(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        j = users.join(addresses)
+        self.assert_compile(
+            update(j).values({users.c.name: addresses.c.email_address}),
+            ""
+            "UPDATE users "
+            "INNER JOIN addresses ON users.id = addresses.user_id "
+            "SET users.name=addresses.email_address",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
+    def test_update_from_join_mysql_no_whereclause_three(self):
+        users, addresses, dingalings = (
+            self.tables.users,
+            self.tables.addresses,
+            self.tables.dingalings,
+        )
+
+        j = users.join(addresses).join(dingalings)
+        self.assert_compile(
+            update(j).values({users.c.name: dingalings.c.id}),
+            ""
+            "UPDATE users "
+            "INNER JOIN addresses ON users.id = addresses.user_id "
+            "INNER JOIN dingalings ON addresses.id = dingalings.address_id "
+            "SET users.name=dingalings.id",
+            checkparams={},
+            dialect=mysql.dialect(),
+        )
+
+    def test_update_from_join_mysql_no_whereclause_four(self):
+        users, addresses, dingalings = (
+            self.tables.users,
+            self.tables.addresses,
+            self.tables.dingalings,
+        )
+
+        j = users.join(addresses).join(dingalings)
+
+        self.assert_compile(
+            update(j).values(name="foo"),
+            ""
+            "UPDATE users "
+            "INNER JOIN addresses ON users.id = addresses.user_id "
+            "INNER JOIN dingalings ON addresses.id = dingalings.address_id "
+            "SET users.name=%s",
+            checkparams={"name": "foo"},
             dialect=mysql.dialect(),
         )
 

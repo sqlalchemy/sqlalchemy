@@ -351,6 +351,19 @@ def clause_is_present(clause, search):
         return False
 
 
+def tables_from_leftmost(clause):
+    if isinstance(clause, Join):
+        for t in tables_from_leftmost(clause.left):
+            yield t
+        for t in tables_from_leftmost(clause.right):
+            yield t
+    elif isinstance(clause, FromGrouping):
+        for t in tables_from_leftmost(clause.element):
+            yield t
+    else:
+        yield clause
+
+
 def surface_selectables(clause):
     stack = [clause]
     while stack:
