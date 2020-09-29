@@ -1,4 +1,5 @@
 # -*- encoding: utf-8
+from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Computed
 from sqlalchemy import delete
@@ -35,9 +36,17 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 
+tbl = table("t", column("a"))
+
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mssql.dialect()
+
+    @testing.fixture
+    def dialect_2012(self):
+        dialect = mssql.dialect()
+        dialect._supports_offset_fetch = True
+        return dialect
 
     def test_true_false(self):
         self.assert_compile(sql.false(), "0")
@@ -457,7 +466,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
-    def test_noorderby_insubquery_offset_newstyle(self):
+    def test_noorderby_insubquery_offset_newstyle(self, dialect_2012):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -475,17 +484,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
-        dialect = mssql.dialect()
-        dialect._supports_offset_fetch = True
         self.assert_compile(
             select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
             "ORDER BY mytable.myid OFFSET :param_1 ROWS) AS foo, "
             "mytable WHERE foo.myid = mytable.myid",
-            dialect=dialect,
+            dialect=dialect_2012,
         )
 
-    def test_noorderby_insubquery_limit_offset_newstyle(self):
+    def test_noorderby_insubquery_limit_offset_newstyle(self, dialect_2012):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -504,15 +511,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
-        dialect = mssql.dialect()
-        dialect._supports_offset_fetch = True
         self.assert_compile(
             select("*").where(crit),
             "SELECT * FROM (SELECT mytable.myid AS myid FROM mytable "
             "ORDER BY mytable.myid OFFSET :param_1 ROWS "
-            "FETCH NEXT :param_2 ROWS ONLY ) AS foo, "
+            "FETCH FIRST :param_2 ROWS ONLY) AS foo, "
             "mytable WHERE foo.myid = mytable.myid",
-            dialect=dialect,
+            dialect=dialect_2012,
         )
 
     def test_noorderby_parameters_insubquery(self):
@@ -1005,11 +1010,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         assert t.c.x in set(c._create_result_map()["x"][1])
         assert t.c.y in set(c._create_result_map()["y"][1])
 
-    def test_limit_offset_using_offset_fetch(self):
+    def test_limit_offset_using_offset_fetch(self, dialect_2012):
         t = table("t", column("x", Integer), column("y", Integer))
-        dialect_2012 = mssql.base.MSDialect()
-        dialect_2012._supports_offset_fetch = True
-
         s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
 
         self.assert_compile(
@@ -1018,7 +1020,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y "
             "OFFSET :param_1 ROWS "
-            "FETCH NEXT :param_2 ROWS ONLY ",
+            "FETCH FIRST :param_2 ROWS ONLY",
             checkparams={"param_1": 20, "param_2": 10, "x_1": 5},
             dialect=dialect_2012,
         )
@@ -1308,6 +1310,228 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             "CREATE TABLE t (x INTEGER NULL, y AS (x + 2)%s)" % text,
         )
+
+    @testing.combinations(
+        (
+            5,
+            10,
+            {},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (None, 10, {}, "OFFSET :param_1 ROWS", {"param_1": 10}),
+        (
+            5,
+            None,
+            {},
+            "OFFSET 0 ROWS FETCH FIRST :param_1 ROWS ONLY",
+            {"param_1": 5},
+        ),
+        (
+            0,
+            0,
+            {},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            {"param_1": 0, "param_2": 0},
+        ),
+        (
+            5,
+            0,
+            {"percent": True},
+            "TOP [POSTCOMPILE_param_1] PERCENT",
+            {"param_1": 5},
+        ),
+        (
+            5,
+            None,
+            {"percent": True, "with_ties": True},
+            "TOP [POSTCOMPILE_param_1] PERCENT WITH TIES",
+            {"param_1": 5},
+        ),
+        (
+            5,
+            0,
+            {"with_ties": True},
+            "TOP [POSTCOMPILE_param_1] WITH TIES",
+            {"param_1": 5},
+        ),
+        (
+            literal_column("Q"),
+            literal_column("Y"),
+            {},
+            "OFFSET Y ROWS FETCH FIRST Q ROWS ONLY",
+            {},
+        ),
+        (
+            column("Q"),
+            column("Y"),
+            {},
+            "OFFSET [Y] ROWS FETCH FIRST [Q] ROWS ONLY",
+            {},
+        ),
+        (
+            bindparam("Q", 3),
+            bindparam("Y", 7),
+            {},
+            "OFFSET :Y ROWS FETCH FIRST :Q ROWS ONLY",
+            {"Q": 3, "Y": 7},
+        ),
+        (
+            literal_column("Q") + literal_column("Z"),
+            literal_column("Y") + literal_column("W"),
+            {},
+            "OFFSET Y + W ROWS FETCH FIRST Q + Z ROWS ONLY",
+            {},
+        ),
+        argnames="fetch, offset, fetch_kw, exp, params",
+    )
+    def test_fetch(self, dialect_2012, fetch, offset, fetch_kw, exp, params):
+        t = table("t", column("a"))
+        if "TOP" in exp:
+            sel = "SELECT %s t.a FROM t ORDER BY t.a" % exp
+        else:
+            sel = "SELECT t.a FROM t ORDER BY t.a " + exp
+
+        self.assert_compile(
+            select(t).order_by(t.c.a).fetch(fetch, **fetch_kw).offset(offset),
+            sel,
+            checkparams=params,
+            dialect=dialect_2012,
+        )
+
+    @testing.combinations(
+        (
+            5,
+            10,
+            {},
+            "mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (None, 10, {}, "mssql_rn > :param_1", {"param_1": 10}),
+        (
+            5,
+            None,
+            {},
+            "mssql_rn <= :param_1",
+            {"param_1": 5},
+        ),
+        (
+            0,
+            0,
+            {},
+            "mssql_rn > :param_1 AND mssql_rn <= :param_2 + :param_1",
+            {"param_1": 0, "param_2": 0},
+        ),
+        (
+            5,
+            0,
+            {"percent": True},
+            "TOP [POSTCOMPILE_param_1] PERCENT",
+            {"param_1": 5},
+        ),
+        (
+            5,
+            None,
+            {"percent": True, "with_ties": True},
+            "TOP [POSTCOMPILE_param_1] PERCENT WITH TIES",
+            {"param_1": 5},
+        ),
+        (
+            5,
+            0,
+            {"with_ties": True},
+            "TOP [POSTCOMPILE_param_1] WITH TIES",
+            {"param_1": 5},
+        ),
+        (
+            literal_column("Q"),
+            literal_column("Y"),
+            {},
+            "mssql_rn > Y AND mssql_rn <= Q + Y",
+            {},
+        ),
+        (
+            column("Q"),
+            column("Y"),
+            {},
+            "mssql_rn > [Y] AND mssql_rn <= [Q] + [Y]",
+            {},
+        ),
+        (
+            bindparam("Q", 3),
+            bindparam("Y", 7),
+            {},
+            "mssql_rn > :Y AND mssql_rn <= :Q + :Y",
+            {"Q": 3, "Y": 7},
+        ),
+        (
+            literal_column("Q") + literal_column("Z"),
+            literal_column("Y") + literal_column("W"),
+            {},
+            "mssql_rn > Y + W AND mssql_rn <= Q + Z + Y + W",
+            {},
+        ),
+        argnames="fetch, offset, fetch_kw, exp, params",
+    )
+    def test_fetch_old_version(self, fetch, offset, fetch_kw, exp, params):
+        t = table("t", column("a"))
+        if "TOP" in exp:
+            sel = "SELECT %s t.a FROM t ORDER BY t.a" % exp
+        else:
+            sel = (
+                "SELECT anon_1.a FROM (SELECT t.a AS a, ROW_NUMBER() "
+                "OVER (ORDER BY t.a) AS mssql_rn FROM t) AS anon_1 WHERE "
+                + exp
+            )
+
+        self.assert_compile(
+            select(t).order_by(t.c.a).fetch(fetch, **fetch_kw).offset(offset),
+            sel,
+            checkparams=params,
+        )
+
+    _no_offset = (
+        "MSSQL needs TOP to use PERCENT and/or WITH TIES. "
+        "Only simple fetch without offset can be used."
+    )
+
+    _order_by = (
+        "MSSQL requires an order_by when using an OFFSET "
+        "or a non-simple LIMIT clause"
+    )
+
+    @testing.combinations(
+        (
+            select(tbl).order_by(tbl.c.a).fetch(5, percent=True).offset(3),
+            _no_offset,
+        ),
+        (
+            select(tbl).order_by(tbl.c.a).fetch(5, with_ties=True).offset(3),
+            _no_offset,
+        ),
+        (
+            select(tbl)
+            .order_by(tbl.c.a)
+            .fetch(5, percent=True, with_ties=True)
+            .offset(3),
+            _no_offset,
+        ),
+        (
+            select(tbl)
+            .order_by(tbl.c.a)
+            .fetch(bindparam("x"), with_ties=True),
+            _no_offset,
+        ),
+        (select(tbl).fetch(5).offset(3), _order_by),
+        (select(tbl).fetch(5), _order_by),
+        (select(tbl).offset(5), _order_by),
+        argnames="stmt, error",
+    )
+    def test_row_limit_compile_error(self, dialect_2012, stmt, error):
+        with testing.expect_raises_message(exc.CompileError, error):
+            print(stmt.compile(dialect=dialect_2012))
+        with testing.expect_raises_message(exc.CompileError, error):
+            print(stmt.compile(dialect=self.__dialect__))
 
 
 class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):

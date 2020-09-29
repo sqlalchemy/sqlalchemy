@@ -313,7 +313,6 @@ class AsyncAdapt_asyncpg_cursor:
 
         params = self._parameters()
         operation = re.sub(r"\?", lambda m: next(params), operation)
-
         try:
             prepared_stmt = await self._connection.prepare(operation)
 

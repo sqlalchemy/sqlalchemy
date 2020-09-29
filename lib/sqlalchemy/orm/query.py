@@ -300,6 +300,12 @@ class Query(
                 "are applied." % (meth, meth)
             )
 
+    @property
+    def _has_row_limiting_clause(self):
+        return (
+            self._limit_clause is not None or self._offset_clause is not None
+        )
+
     def _get_options(
         self,
         populate_existing=None,

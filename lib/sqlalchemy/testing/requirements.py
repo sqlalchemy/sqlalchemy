@@ -1292,19 +1292,37 @@ class SuiteRequirements(Requirements):
 
     @property
     def regexp_match(self):
-        """backend supports the regexp_match operator.
-
-        .. versionadded:: 1.4
-
-        """
+        """backend supports the regexp_match operator."""
         return exclusions.closed()
 
     @property
     def regexp_replace(self):
-        """backend supports the regexp_replace operator.
+        """backend supports the regexp_replace operator."""
+        return exclusions.closed()
 
-        .. versionadded:: 1.4
+    @property
+    def fetch_first(self):
+        """backend supports the fetch first clause."""
+        return exclusions.closed()
 
+    @property
+    def fetch_percent(self):
+        """backend supports the fetch first clause with percent."""
+        return exclusions.closed()
 
+    @property
+    def fetch_ties(self):
+        """backend supports the fetch first clause with ties."""
+        return exclusions.closed()
+
+    @property
+    def fetch_no_order_by(self):
+        """backend supports the fetch first without order by"""
+        return exclusions.closed()
+
+    @property
+    def fetch_offset_with_options(self):
+        """backend supports the offset when using fetch first with percent
+        or ties. basically this is "not mssql"
         """
         return exclusions.closed()

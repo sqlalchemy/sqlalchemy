@@ -1037,9 +1037,13 @@ class OracleCompiler(compiler.SQLCompiler):
                     select = select.where(whereclause)
                     select._oracle_visit = True
 
-            limit_clause = select._limit_clause
-            offset_clause = select._offset_clause
-            if limit_clause is not None or offset_clause is not None:
+            # if fetch is used this is not needed
+            if (
+                select._has_row_limiting_clause
+                and select._fetch_clause is None
+            ):
+                limit_clause = select._limit_clause
+                offset_clause = select._offset_clause
                 # currently using form at:
                 # https://blogs.oracle.com/oraclemagazine/\
                 # on-rownum-and-limiting-results
@@ -1071,7 +1075,7 @@ class OracleCompiler(compiler.SQLCompiler):
                 if (
                     limit_clause is not None
                     and self.dialect.optimize_limits
-                    and select._simple_int_limit
+                    and select._simple_int_clause(limit_clause)
                 ):
                     param = sql.bindparam(
                         "_ora_frow",
@@ -1099,8 +1103,9 @@ class OracleCompiler(compiler.SQLCompiler):
 
                 # If needed, add the limiting clause
                 if limit_clause is not None:
-                    if select._simple_int_limit and (
-                        offset_clause is None or select._simple_int_offset
+                    if select._simple_int_clause(limit_clause) and (
+                        offset_clause is None
+                        or select._simple_int_clause(offset_clause)
                     ):
                         max_row = select._limit
 
@@ -1161,7 +1166,7 @@ class OracleCompiler(compiler.SQLCompiler):
                             adapter.traverse(elem) for elem in for_update.of
                         ]
 
-                    if select._simple_int_offset:
+                    if select._simple_int_clause(offset_clause):
                         offset_clause = sql.bindparam(
                             None,
                             select._offset,

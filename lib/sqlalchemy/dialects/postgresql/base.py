@@ -1953,7 +1953,7 @@ class PGCompiler(compiler.SQLCompiler):
             text += " \n LIMIT " + self.process(select._limit_clause, **kw)
         if select._offset_clause is not None:
             if select._limit_clause is None:
-                text += " \n LIMIT ALL"
+                text += "\n LIMIT ALL"
             text += " OFFSET " + self.process(select._offset_clause, **kw)
         return text
 
@@ -2141,6 +2141,25 @@ class PGCompiler(compiler.SQLCompiler):
             t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
             for t in extra_froms
         )
+
+    def fetch_clause(self, select, **kw):
+        # pg requires parens for non literal clauses. It's also required for
+        # bind parameters if a ::type casts is used by the driver (asyncpg),
+        # so it's easies to just always add it
+        text = ""
+        if select._offset_clause is not None:
+            text += "\n OFFSET (%s) ROWS" % self.process(
+                select._offset_clause, **kw
+            )
+        if select._fetch_clause is not None:
+            text += "\n FETCH FIRST (%s)%s ROWS %s" % (
+                self.process(select._fetch_clause, **kw),
+                " PERCENT" if select._fetch_clause_options["percent"] else "",
+                "WITH TIES"
+                if select._fetch_clause_options["with_ties"]
+                else "ONLY",
+            )
+        return text
 
 
 class PGDDLCompiler(compiler.DDLCompiler):

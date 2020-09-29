@@ -1745,17 +1745,20 @@ class SQLCompiler(Compiled):
         kwargs["include_table"] = False
         text += self.group_by_clause(cs, **dict(asfrom=asfrom, **kwargs))
         text += self.order_by_clause(cs, **kwargs)
-        text += (
-            (cs._limit_clause is not None or cs._offset_clause is not None)
-            and self.limit_clause(cs, **kwargs)
-            or ""
-        )
+        if cs._has_row_limiting_clause:
+            text += self._row_limit_clause(cs, **kwargs)
 
         if self.ctes and toplevel:
             text = self._render_cte_clause() + text
 
         self.stack.pop(-1)
         return text
+
+    def _row_limit_clause(self, cs, **kwargs):
+        if cs._fetch_clause is not None:
+            return self.fetch_clause(cs, **kwargs)
+        else:
+            return self.limit_clause(cs, **kwargs)
 
     def _get_operator_dispatch(self, operator_, qualifier1, qualifier2):
         attrname = "visit_%s_%s%s" % (
@@ -3087,11 +3090,8 @@ class SQLCompiler(Compiled):
         if select._order_by_clauses:
             text += self.order_by_clause(select, **kwargs)
 
-        if (
-            select._limit_clause is not None
-            or select._offset_clause is not None
-        ):
-            text += self.limit_clause(select, **kwargs)
+        if select._has_row_limiting_clause:
+            text += self._row_limit_clause(select, **kwargs)
 
         if select._for_update_arg is not None:
             text += self.for_update_clause(select, **kwargs)
@@ -3181,6 +3181,22 @@ class SQLCompiler(Compiled):
             if select._limit_clause is None:
                 text += "\n LIMIT -1"
             text += " OFFSET " + self.process(select._offset_clause, **kw)
+        return text
+
+    def fetch_clause(self, select, **kw):
+        text = ""
+        if select._offset_clause is not None:
+            text += "\n OFFSET %s ROWS" % self.process(
+                select._offset_clause, **kw
+            )
+        if select._fetch_clause is not None:
+            text += "\n FETCH FIRST %s%s ROWS %s" % (
+                self.process(select._fetch_clause, **kw),
+                " PERCENT" if select._fetch_clause_options["percent"] else "",
+                "WITH TIES"
+                if select._fetch_clause_options["with_ties"]
+                else "ONLY",
+            )
         return text
 
     def visit_table(

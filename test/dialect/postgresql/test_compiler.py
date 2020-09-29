@@ -2,6 +2,7 @@
 
 from sqlalchemy import and_
 from sqlalchemy import BigInteger
+from sqlalchemy import bindparam
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import Computed
@@ -2539,4 +2540,87 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "REGEXP_REPLACE(mytable.myid, %(myid_1)s,"
             " %(myid_2)s, mytable.name)",
             checkparams={"myid_1": "pattern", "myid_2": "replacement"},
+        )
+
+    @testing.combinations(
+        (
+            5,
+            10,
+            {},
+            "OFFSET (%(param_1)s) ROWS FETCH FIRST (%(param_2)s) ROWS ONLY",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (None, 10, {}, "LIMIT ALL OFFSET %(param_1)s", {"param_1": 10}),
+        (
+            5,
+            None,
+            {},
+            "FETCH FIRST (%(param_1)s) ROWS ONLY",
+            {"param_1": 5},
+        ),
+        (
+            0,
+            0,
+            {},
+            "OFFSET (%(param_1)s) ROWS FETCH FIRST (%(param_2)s) ROWS ONLY",
+            {"param_1": 0, "param_2": 0},
+        ),
+        (
+            5,
+            10,
+            {"percent": True},
+            "OFFSET (%(param_1)s) ROWS FETCH FIRST "
+            "(%(param_2)s) PERCENT ROWS ONLY",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            5,
+            10,
+            {"percent": True, "with_ties": True},
+            "OFFSET (%(param_1)s) ROWS FETCH FIRST (%(param_2)s)"
+            " PERCENT ROWS WITH TIES",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            5,
+            10,
+            {"with_ties": True},
+            "OFFSET (%(param_1)s) ROWS FETCH FIRST "
+            "(%(param_2)s) ROWS WITH TIES",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            literal_column("Q"),
+            literal_column("Y"),
+            {},
+            "OFFSET (Y) ROWS FETCH FIRST (Q) ROWS ONLY",
+            {},
+        ),
+        (
+            column("Q"),
+            column("Y"),
+            {},
+            'OFFSET ("Y") ROWS FETCH FIRST ("Q") ROWS ONLY',
+            {},
+        ),
+        (
+            bindparam("Q", 3),
+            bindparam("Y", 7),
+            {},
+            "OFFSET (%(Y)s) ROWS FETCH FIRST (%(Q)s) ROWS ONLY",
+            {"Q": 3, "Y": 7},
+        ),
+        (
+            literal_column("Q") + literal_column("Z"),
+            literal_column("Y") + literal_column("W"),
+            {},
+            "OFFSET (Y + W) ROWS FETCH FIRST (Q + Z) ROWS ONLY",
+            {},
+        ),
+    )
+    def test_fetch(self, fetch, offset, fetch_kw, exp, params):
+        self.assert_compile(
+            select(1).fetch(fetch, **fetch_kw).offset(offset),
+            "SELECT 1 " + exp,
+            checkparams=params,
         )
