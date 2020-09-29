@@ -12,6 +12,7 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 from sqlalchemy.types import NullType
 from . import coercions
 from . import roles
+from . import util as sql_util
 from .base import _entity_namespace_key
 from .base import _from_objects
 from .base import _generative
@@ -47,7 +48,9 @@ class DMLState(CompileState):
 
     def _make_extra_froms(self, statement):
         froms = []
-        seen = {statement.table}
+
+        all_tables = list(sql_util.tables_from_leftmost(statement.table))
+        seen = {all_tables[0]}
 
         for crit in statement._where_criteria:
             for item in _from_objects(crit):
@@ -55,6 +58,7 @@ class DMLState(CompileState):
                     froms.append(item)
                 seen.update(item._cloned_set)
 
+        froms.extend(all_tables[1:])
         return froms
 
     def _process_multi_values(self, statement):
