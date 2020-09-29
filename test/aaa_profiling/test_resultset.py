@@ -84,14 +84,14 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def teardown(self):
         metadata.drop_all()
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.15)
     def test_string(self):
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
             [tuple(row) for row in conn.execute(t.select()).fetchall()]
 
-    @profiling.function_call_count()
+    @profiling.function_call_count(variance=0.15)
     def test_unicode(self):
         with testing.db.connect().execution_options(
             compiled_cache=None
