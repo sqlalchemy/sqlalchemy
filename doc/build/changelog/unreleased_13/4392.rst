@@ -1,0 +1,7 @@
+.. change::
+    :tags: engine, postgresql, usecase
+    :tickets: 4392
+
+    A :class:`.URL` connection now supports multiple hosts for PostgreSQL. Any
+    query that contains multiple hosts will now group the hosts as a string
+    instead of a tuple of strings. Pull request courtesy Ramon Williams.
