@@ -159,6 +159,25 @@ class DialectTest(fixtures.TestBase):
         eq_(cargs, [])
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
+    def test_psycopg2_nonempty_connection_string_w_query_two(self):
+        dialect = psycopg2_dialect.dialect()
+        url_string = "postgresql://USER:PASS@/DB?host=hostA"
+        u = url.make_url(url_string)
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cargs, [])
+        eq_(cparams["host"], "hostA")
+
+    def test_psycopg2_nonempty_connection_string_w_query_three(self):
+        dialect = psycopg2_dialect.dialect()
+        url_string = (
+            "postgresql://USER:PASS@/DB"
+            "?host=hostA:portA&host=hostB&host=hostC"
+        )
+        u = url.make_url(url_string)
+        cargs, cparams = dialect.create_connect_args(u)
+        eq_(cargs, [])
+        eq_(cparams["host"], "hostA:portA,hostB,hostC")
+
 
 class ExecuteManyMode(object):
     __only_on__ = "postgresql+psycopg2"

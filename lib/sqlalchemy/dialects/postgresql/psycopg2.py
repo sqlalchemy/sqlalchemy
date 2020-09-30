@@ -71,6 +71,28 @@ using ``host`` as an additional keyword argument::
     `PQconnectdbParams \
     <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
+Multiple Hosts in Connection String
+------------------------
+psycopg2 supports multiple connection points in the connection string.
+When the ``host`` parameter is used multiple times in the query section of
+the URL, SQLAlchemy will create a single string of the host and port
+information provided to make the connections::
+
+    create_engine(
+        "postgresql+psycopg2://user:password@/dbname?host=HostA:port1&host=HostB&host=HostC"
+    )
+
+A connection to each host is then attempted until either a connection is successful
+or all connections are unsuccessful in which case an error is raised.
+
+.. versionadded:: 1.3.20 Support for multiple hosts in PostgreSQL connection
+   string.
+
+.. seealso::
+
+    `PQConnString \
+    <https://www.postgresql.org/docs/10/libpq-connect.html#LIBPQ-CONNSTRING>`_
+
 Empty DSN Connections / Environment Variable Connections
 ---------------------------------------------------------
 
@@ -929,16 +951,25 @@ class PGDialect_psycopg2(PGDialect):
 
     def create_connect_args(self, url):
         opts = url.translate_connect_args(username="user")
+
+        is_multihost = False
+        if "host" in url.query:
+            is_multihost = isinstance(url.query["host"], (list, tuple))
+
         if opts:
             if "port" in opts:
                 opts["port"] = int(opts["port"])
             opts.update(url.query)
+            if is_multihost:
+                opts["host"] = ",".join(url.query["host"])
             # send individual dbname, user, password, host, port
             # parameters to psycopg2.connect()
             return ([], opts)
         elif url.query:
             # any other connection arguments, pass directly
             opts.update(url.query)
+            if is_multihost:
+                opts["host"] = ",".join(url.query["host"])
             return ([], opts)
         else:
             # no connection arguments whatsoever; psycopg2.connect()
