@@ -72,7 +72,8 @@ using ``host`` as an additional keyword argument::
     <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 Multiple Hosts in Connection String
-------------------------
+------------------------------------
+
 psycopg2 supports multiple connection points in the connection string.
 When the ``host`` parameter is used multiple times in the query section of
 the URL, SQLAlchemy will create a single string of the host and port
