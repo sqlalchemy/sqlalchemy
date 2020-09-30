@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5618
+
+    Fixed bug where an error was not raised for lower-case :func:`_sql.column`
+    added to lower-case :func:`_sql.table` object. This now raises
+    :class:`_exc.ArgumentError` which has always been the case for upper-case
+    :class:`_schema.Column` and :class:`_schema.Table`.

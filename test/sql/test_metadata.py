@@ -8,6 +8,7 @@ from sqlalchemy import BLANK_SCHEMA
 from sqlalchemy import Boolean
 from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import ColumnDefault
 from sqlalchemy import desc
 from sqlalchemy import Enum
@@ -24,6 +25,7 @@ from sqlalchemy import schema
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
@@ -3606,7 +3608,7 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             c,
         )
 
-    def test_dupe_column(self):
+    def test_no_shared_column_schema(self):
         c = Column("x", Integer)
         Table("t", MetaData(), c)
 
@@ -3616,6 +3618,18 @@ class ColumnDefinitionTest(AssertsCompiledSQL, fixtures.TestBase):
             Table,
             "q",
             MetaData(),
+            c,
+        )
+
+    def test_no_shared_column_sql(self):
+        c = column("x", Integer)
+        table("t", c)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "column object 'x' already assigned to table 't'",
+            table,
+            "q",
             c,
         )
 
