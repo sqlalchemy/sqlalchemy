@@ -2662,7 +2662,7 @@ class Session(_SessionClassMethods):
 
         if populate_existing:
             load_options += {"_populate_existing": populate_existing}
-        statement = sql.select(mapper).apply_labels()
+        statement = sql.select(mapper).use_labels()
         if with_for_update is not None:
             statement._for_update_arg = query.ForUpdateArg._from_argument(
                 with_for_update

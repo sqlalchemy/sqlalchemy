@@ -487,7 +487,7 @@ class DeferredColumnLoader(LoaderStrategy):
         if (
             loading.load_on_ident(
                 session,
-                sql.select(localparent).apply_labels(),
+                sql.select(localparent).use_labels(),
                 state.key,
                 only_load_props=group,
                 refresh_state=state,
@@ -890,7 +890,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         stmt = sql.lambda_stmt(
             lambda: sql.select(self.entity)
-            .apply_labels()
+            .use_labels()
             ._set_compile_options(ORMCompileState.default_compile_options),
             global_track_bound_values=False,
             lambda_cache=self._query_cache,
@@ -2698,7 +2698,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         q = sql.lambda_stmt(
             lambda: sql.select(
                 orm_util.Bundle("pk", *pk_cols), effective_entity
-            ).apply_labels(),
+            ).use_labels(),
             lambda_cache=self._query_cache,
             global_track_bound_values=False,
             track_on=(self, effective_entity) + tuple(pk_cols),

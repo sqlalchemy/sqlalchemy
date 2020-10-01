@@ -1508,7 +1508,7 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
         if toload_now:
             state.key = base_mapper._identity_key_from_state(state)
-            stmt = future.select(mapper).apply_labels()
+            stmt = future.select(mapper).use_labels()
             loading.load_on_ident(
                 uowtransaction.session,
                 stmt,

@@ -1396,7 +1396,7 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
 
         result = load_on_ident(
             session,
-            future.select(mapper).apply_labels(),
+            future.select(mapper).use_labels(),
             identity_key,
             refresh_state=state,
             only_load_props=attribute_names,
