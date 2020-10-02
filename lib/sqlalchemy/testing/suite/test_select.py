@@ -894,6 +894,7 @@ class LikeFunctionsTest(fixtures.TablesTest):
                 {"id": 8, "data": "ab9cdefg"},
                 {"id": 9, "data": "abcde#fg"},
                 {"id": 10, "data": "abcd9fg"},
+                {"id": 11, "data": None},
             ],
         )
 

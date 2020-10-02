@@ -506,6 +506,8 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         connect = super(SQLiteDialect_pysqlite, self).on_connect()
 
         def regexp(a, b):
+            if b is None:
+                return None
             return bool(re.match(a, b))
 
         def set_regexp(connection):
@@ -513,7 +515,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 dbapi_connection = connection.connection
             else:
                 dbapi_connection = connection
-
             dbapi_connection.create_function(
                 "regexp",
                 2,
