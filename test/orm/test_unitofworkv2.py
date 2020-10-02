@@ -4,6 +4,7 @@ from sqlalchemy import exc
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import literal
@@ -25,6 +26,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
@@ -3066,3 +3068,36 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         s.commit()
         eq_(s.query(cast(JSONThing.data, String)).scalar(), "null")
         eq_(s.query(cast(JSONThing.data_null, String)).scalar(), None)
+
+
+class EnsureCacheTest(fixtures.FutureEngineMixin, UOWTest):
+    def test_ensure_cache(self):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        cache = {}
+        eq_(len(inspect(User)._compiled_cache), 0)
+
+        with testing.db.connect().execution_options(
+            compiled_cache=cache
+        ) as conn:
+            s = Session(conn)
+            u1 = User(name="adf")
+            s.add(u1)
+            s.flush()
+
+            is_(conn._execution_options["compiled_cache"], cache)
+            eq_(len(inspect(User)._compiled_cache), 1)
+
+            u1.name = "newname"
+            s.flush()
+
+            is_(conn._execution_options["compiled_cache"], cache)
+            eq_(len(inspect(User)._compiled_cache), 2)
+
+            s.delete(u1)
+            s.flush()
+
+            is_(conn._execution_options["compiled_cache"], cache)
+            eq_(len(inspect(User)._compiled_cache), 3)
