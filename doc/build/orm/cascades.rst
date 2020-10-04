@@ -95,7 +95,7 @@ becomes part of the state of that :class:`.Session`::
 
 ``save-update`` has the possibly surprising behavior which is that
 persistent objects which were *removed* from a collection
-or in some cases a scalar attribute
+(or in some cases a scalar attribute)
 may also be pulled into the :class:`.Session` of a parent object; this is
 so that the flush process may handle that related object appropriately.
 This case can usually only arise if an object is removed from one :class:`.Session`
