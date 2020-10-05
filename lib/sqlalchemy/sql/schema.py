@@ -215,7 +215,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
             The autoload parameter is deprecated and will be removed in
             version 2.0.  Please use the
-            :paramref:`_schema.Table`autoload_with` parameter, passing an
+            :paramref:`_schema.Table.autoload_with` parameter, passing an
             engine or connection.
 
         .. seealso::

@@ -276,6 +276,10 @@ class Row(BaseRow, collections_abc.Sequence):
         """Return the list of keys as strings represented by this
         :class:`.Row`.
 
+        The keys can represent the labels of the columns returned by a core
+        statement or the names of the orm classes returned by an orm
+        execution.
+
         This method is analogous to the Python dictionary ``.keys()`` method,
         except that it returns a list, not an iterator.
 
@@ -292,6 +296,10 @@ class Row(BaseRow, collections_abc.Sequence):
     def _fields(self):
         """Return a tuple of string keys as represented by this
         :class:`.Row`.
+
+        The keys can represent the labels of the columns returned by a core
+        statement or the names of the orm classes returned by an orm
+        execution.
 
         This attribute is analogous to the Python named tuple ``._fields``
         attribute.

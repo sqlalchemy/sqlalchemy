@@ -677,7 +677,30 @@ class ResultInternal(InPlaceGenerative):
         return uniques, strategy
 
 
-class Result(ResultInternal):
+class _WithKeys(object):
+    # used mainly to share documentation on the keys method.
+    # py2k does not allow overriding the __doc__ attribute.
+    def keys(self):
+        """Return an iterable view which yields the string keys that would
+        be represented by each :class:`.Row`.
+
+        The keys can represent the labels of the columns returned by a core
+        statement or the names of the orm classes returned by an orm
+        execution.
+
+        The view also can be tested for key containment using the Python
+        ``in`` operator, which will test both for the string keys represented
+        in the view, as well as for alternate keys such as column objects.
+
+        .. versionchanged:: 1.4 a key view object is returned rather than a
+           plain list.
+
+
+        """
+        return self._metadata.keys
+
+
+class Result(_WithKeys, ResultInternal):
     """Represent a set of database results.
 
     .. versionadded:: 1.4  The :class:`.Result` object provides a completely
@@ -704,21 +727,6 @@ class Result(ResultInternal):
 
     def _soft_close(self, hard=False):
         raise NotImplementedError()
-
-    def keys(self):
-        """Return an iterable view which yields the string keys that would
-        be represented by each :class:`.Row`.
-
-        The view also can be tested for key containment using the Python
-        ``in`` operator, which will test both for the string keys represented
-        in the view, as well as for alternate keys such as column objects.
-
-        .. versionchanged:: 1.4 a key view object is returned rather than a
-           plain list.
-
-
-        """
-        return self._metadata.keys
 
     @_generative
     def yield_per(self, num):
@@ -949,7 +957,7 @@ class Result(ResultInternal):
         :paramref:`.Connection.execution_options.stream_results` execution
         option is used indicating that the driver should not pre-buffer
         results, if possible.   Not all drivers support this option and
-        the option is silently ignored for those who do.
+        the option is silently ignored for those who do not.
 
         .. versionadded:: 1.4
 
@@ -1361,7 +1369,7 @@ class ScalarResult(FilterResult):
         return self._only_one_row(True, True, False)
 
 
-class MappingResult(FilterResult):
+class MappingResult(_WithKeys, FilterResult):
     """A wrapper for a :class:`_engine.Result` that returns dictionary values
     rather than :class:`_engine.Row` values.
 
@@ -1380,21 +1388,6 @@ class MappingResult(FilterResult):
         self._metadata = result._metadata
         if result._source_supports_scalars:
             self._metadata = self._metadata._reduce([0])
-
-    def keys(self):
-        """Return an iterable view which yields the string keys that would
-        be represented by each :class:`.Row`.
-
-        The view also can be tested for key containment using the Python
-        ``in`` operator, which will test both for the string keys represented
-        in the view, as well as for alternate keys such as column objects.
-
-        .. versionchanged:: 1.4 a key view object is returned rather than a
-           plain list.
-
-
-        """
-        return self._metadata.keys
 
     def unique(self, strategy=None):
         # type: () -> MappingResult

@@ -1290,8 +1290,9 @@ agnostic of the ORM**.  To achieve this, the vast majority of logic from
 ORM-specific compiler plugins receive the
 :class:`_sql.Select` construct and interpret its contents in terms of an
 ORM-style query, before passing off to the core-level compiler in order to
-create a SQL string.  With the advent of the new `SQL compilation caching
-system <change_4639>`, the majority of this ORM logic is also cached.
+create a SQL string.  With the advent of the new
+`SQL compilation caching system <change_4639>`,
+the majority of this ORM logic is also cached.
 
 
 .. seealso::
@@ -1654,7 +1655,7 @@ As is the case described at :ref:`migration_20_query_from_self`, the
 
     subquery = session.query(User).filter(User.id == 5).subquery()
 
-    ua = aliased(user, subquery)
+    ua = aliased(User, subquery)
 
     user = session.query(ua).first()
 
@@ -1664,7 +1665,7 @@ Using :term:`2.0 style`::
 
     subquery = select(User).where(User.id == 5).subquery()
 
-    ua = aliased(user, subquery)
+    ua = aliased(User, subquery)
 
     user = session.execute(select(ua)).scalars().first()
 
@@ -1710,7 +1711,7 @@ while still maintaining explicitness::
 
     # statement will raise if unique() is not used, due to joinedload()
     # of a collection.  in all other cases, unique() is not needed
-    rows = session.invoke(stmt).unique().execute().all()
+    rows = session.execute(stmt).unique().execute().all()
 
 **Discussion**
 
