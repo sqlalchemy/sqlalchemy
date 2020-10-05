@@ -2804,6 +2804,8 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     _group_by_clauses = ()
     _limit_clause = None
     _offset_clause = None
+    _fetch_clause = None
+    _fetch_clause_options = None
     _for_update_arg = None
 
     def __init__(
@@ -2976,19 +2978,11 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         """
         return self._offset_or_limit_clause_asint(self._limit_clause, "limit")
 
-    @property
-    def _simple_int_limit(self):
-        """True if the LIMIT clause is a simple integer, False
+    def _simple_int_clause(self, clause):
+        """True if the clause is a simple integer, False
         if it is not present or is a SQL expression.
         """
-        return isinstance(self._limit_clause, _OffsetLimitParam)
-
-    @property
-    def _simple_int_offset(self):
-        """True if the OFFSET clause is a simple integer, False
-        if it is not present or is a SQL expression.
-        """
-        return isinstance(self._offset_clause, _OffsetLimitParam)
+        return isinstance(clause, _OffsetLimitParam)
 
     @property
     def _offset(self):
@@ -3002,6 +2996,14 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             self._offset_clause, "offset"
         )
 
+    @property
+    def _has_row_limiting_clause(self):
+        return (
+            self._limit_clause is not None
+            or self._offset_clause is not None
+            or self._fetch_clause is not None
+        )
+
     @_generative
     def limit(self, limit):
         """Return a new selectable with the given LIMIT criterion
@@ -3012,15 +3014,77 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         support ``LIMIT`` will attempt to provide similar
         functionality.
 
+        .. note::
+
+           The :meth:`_sql.GenerativeSelect.limit` method will replace
+           any clause applied with :meth:`_sql.GenerativeSelect.fetch`.
+
         .. versionchanged:: 1.0.0 - :meth:`_expression.Select.limit` can now
            accept arbitrary SQL expressions as well as integer values.
 
         :param limit: an integer LIMIT parameter, or a SQL expression
-         that provides an integer result.
+         that provides an integer result. Pass ``None`` to reset it.
+
+        .. seealso::
+
+           :meth:`_sql.GenerativeSelect.fetch`
+
+           :meth:`_sql.GenerativeSelect.offset`
 
         """
 
+        self._fetch_clause = self._fetch_clause_options = None
         self._limit_clause = self._offset_or_limit_clause(limit)
+
+    @_generative
+    def fetch(self, count, with_ties=False, percent=False):
+        """Return a new selectable with the given FETCH FIRST criterion
+        applied.
+
+        This is a numeric value which usually renders as
+        ``FETCH {FIRST | NEXT} [ count ] {ROW | ROWS} {ONLY | WITH TIES}``
+        expression in the resulting select. This functionality is
+        is currently implemented for Oracle, PostgreSQL, MSSSQL.
+
+        Use :meth:`_sql.GenerativeSelect.offset` to specify the offset.
+
+        .. note::
+
+           The :meth:`_sql.GenerativeSelect.fetch` method will replace
+           any clause applied with :meth:`_sql.GenerativeSelect.limit`.
+
+        .. versionadded:: 1.4
+
+        :param count: an integer COUNT parameter, or a SQL expression
+         that provides an integer result. When ``percent=True`` this will
+         represent the percentage of rows to return, not the absolute value.
+         Pass ``None`` to reset it.
+
+        :param with_ties: When ``True``, the WITH TIES option is used
+         to return any additional rows that tie for the last place in the
+         result set according to the ``ORDER BY`` clause. The
+         ``ORDER BY`` may be mandatory in this case. Defaults to ``False``
+
+        :param percent: When ``True``, ``count`` represents the percentage
+         of the total number of selected rows to return. Defaults to ``False``
+
+        .. seealso::
+
+           :meth:`_sql.GenerativeSelect.limit`
+
+           :meth:`_sql.GenerativeSelect.offset`
+
+        """
+
+        self._limit_clause = None
+        if count is None:
+            self._fetch_clause = self._fetch_clause_options = None
+        else:
+            self._fetch_clause = self._offset_or_limit_clause(count)
+            self._fetch_clause_options = {
+                "with_ties": with_ties,
+                "percent": percent,
+            }
 
     @_generative
     def offset(self, offset):
@@ -3038,7 +3102,13 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
            accept arbitrary SQL expressions as well as integer values.
 
         :param offset: an integer OFFSET parameter, or a SQL expression
-         that provides an integer result.
+         that provides an integer result. Pass ``None`` to reset it.
+
+        .. seealso::
+
+           :meth:`_sql.GenerativeSelect.limit`
+
+           :meth:`_sql.GenerativeSelect.fetch`
 
         """
 
@@ -3068,6 +3138,11 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
            LIMIT ? OFFSET ?
            (2, 1)
 
+        .. note::
+
+           The :meth:`_sql.GenerativeSelect.slice` method will replace
+           any clause applied with :meth:`_sql.GenerativeSelect.fetch`.
+
         .. versionadded:: 1.4  Added the :meth:`_sql.GenerativeSelect.slice`
            method generalized from the ORM.
 
@@ -3077,8 +3152,11 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
            :meth:`_sql.GenerativeSelect.offset`
 
+           :meth:`_sql.GenerativeSelect.fetch`
+
         """
         sql_util = util.preloaded.sql_util
+        self._fetch_clause = self._fetch_clause_options = None
         self._limit_clause, self._offset_clause = sql_util._make_slice(
             self._limit_clause, self._offset_clause, start, stop
         )
@@ -3177,6 +3255,8 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         ("selects", InternalTraversal.dp_clauseelement_list),
         ("_limit_clause", InternalTraversal.dp_clauseelement),
         ("_offset_clause", InternalTraversal.dp_clauseelement),
+        ("_fetch_clause", InternalTraversal.dp_clauseelement),
+        ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
         ("_order_by_clauses", InternalTraversal.dp_clauseelement_list),
         ("_group_by_clauses", InternalTraversal.dp_clauseelement_list),
         ("_for_update_arg", InternalTraversal.dp_clauseelement),
@@ -3933,6 +4013,8 @@ class Select(
             ("_correlate_except", InternalTraversal.dp_clauseelement_tuple),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
             ("_offset_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause", InternalTraversal.dp_clauseelement),
+            ("_fetch_clause_options", InternalTraversal.dp_plain_dict),
             ("_for_update_arg", InternalTraversal.dp_clauseelement),
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
@@ -5202,10 +5284,8 @@ class Select(
         subquery._columns._populate_separate_keys(prox)
 
     def _needs_parens_for_grouping(self):
-        return (
-            self._limit_clause is not None
-            or self._offset_clause is not None
-            or bool(self._order_by_clause.clauses)
+        return self._has_row_limiting_clause or bool(
+            self._order_by_clause.clauses
         )
 
     def self_group(self, against=None):

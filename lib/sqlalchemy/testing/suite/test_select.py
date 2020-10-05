@@ -151,7 +151,7 @@ class OrderByLabelTest(fixtures.TablesTest):
         self._assert_result(stmt, [(1, 3), (1, 5), (1, 7)])
 
 
-class LimitOffsetTest(fixtures.TablesTest):
+class FetchLimitOffsetTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
@@ -173,6 +173,7 @@ class LimitOffsetTest(fixtures.TablesTest):
                 {"id": 2, "x": 2, "y": 3},
                 {"id": 3, "x": 3, "y": 4},
                 {"id": 4, "x": 4, "y": 5},
+                {"id": 5, "x": 4, "y": 6},
             ],
         )
 
@@ -191,12 +192,20 @@ class LimitOffsetTest(fixtures.TablesTest):
             [(1, 1, 2), (2, 2, 3)],
         )
 
+    @testing.requires.fetch_first
+    def test_simple_fetch(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table).order_by(table.c.id).fetch(2),
+            [(1, 1, 2), (2, 2, 3)],
+        )
+
     @testing.requires.offset
     def test_simple_offset(self):
         table = self.tables.some_table
         self._assert_result(
             select(table).order_by(table.c.id).offset(2),
-            [(3, 3, 4), (4, 4, 5)],
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
         )
 
     @testing.requires.offset
@@ -207,12 +216,42 @@ class LimitOffsetTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)],
         )
 
+    @testing.requires.fetch_first
+    def test_simple_fetch_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table).order_by(table.c.id).fetch(2).offset(1),
+            [(2, 2, 3), (3, 3, 4)],
+        )
+
+    @testing.requires.fetch_no_order_by
+    def test_fetch_offset_no_order(self):
+        table = self.tables.some_table
+        with config.db.connect() as conn:
+            eq_(
+                set(conn.execute(select(table).fetch(10))),
+                set([(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)]),
+            )
+
     @testing.requires.offset
     def test_limit_offset_nobinds(self):
         """test that 'literal binds' mode works - no bound params."""
 
         table = self.tables.some_table
         stmt = select(table).order_by(table.c.id).limit(2).offset(1)
+        sql = stmt.compile(
+            dialect=config.db.dialect, compile_kwargs={"literal_binds": True}
+        )
+        sql = str(sql)
+
+        self._assert_result_str(sql, [(2, 2, 3), (3, 3, 4)])
+
+    @testing.requires.fetch_first
+    def test_fetch_offset_nobinds(self):
+        """test that 'literal binds' mode works - no bound params."""
+
+        table = self.tables.some_table
+        stmt = select(table).order_by(table.c.id).fetch(2).offset(1)
         sql = stmt.compile(
             dialect=config.db.dialect, compile_kwargs={"literal_binds": True}
         )
@@ -234,7 +273,7 @@ class LimitOffsetTest(fixtures.TablesTest):
         table = self.tables.some_table
         self._assert_result(
             select(table).order_by(table.c.id).offset(bindparam("o")),
-            [(3, 3, 4), (4, 4, 5)],
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
             params={"o": 2},
         )
 
@@ -250,6 +289,18 @@ class LimitOffsetTest(fixtures.TablesTest):
             params={"l": 2, "o": 1},
         )
 
+    @testing.requires.fetch_first
+    def test_bound_fetch_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table)
+            .order_by(table.c.id)
+            .fetch(bindparam("f"))
+            .offset(bindparam("o")),
+            [(2, 2, 3), (3, 3, 4)],
+            params={"f": 2, "o": 1},
+        )
+
     @testing.requires.sql_expression_limit_offset
     def test_expr_offset(self):
         table = self.tables.some_table
@@ -257,7 +308,7 @@ class LimitOffsetTest(fixtures.TablesTest):
             select(table)
             .order_by(table.c.id)
             .offset(literal_column("1") + literal_column("2")),
-            [(4, 4, 5)],
+            [(4, 4, 5), (5, 4, 6)],
         )
 
     @testing.requires.sql_expression_limit_offset
@@ -277,6 +328,17 @@ class LimitOffsetTest(fixtures.TablesTest):
             select(table)
             .order_by(table.c.id)
             .limit(literal_column("1") + literal_column("1"))
+            .offset(literal_column("1") + literal_column("1")),
+            [(3, 3, 4), (4, 4, 5)],
+        )
+
+    @testing.requires.fetch_first
+    def test_expr_fetch_offset(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table)
+            .order_by(table.c.id)
+            .fetch(literal_column("1") + literal_column("1"))
             .offset(literal_column("1") + literal_column("1")),
             [(3, 3, 4), (4, 4, 5)],
         )
@@ -302,6 +364,96 @@ class LimitOffsetTest(fixtures.TablesTest):
             .offset(2),
             [(3, 3, 4), (4, 4, 5)],
         )
+
+    @testing.requires.fetch_ties
+    def test_simple_fetch_ties(self):
+        table = self.tables.some_table
+        with config.db.connect() as conn:
+            eq_(
+                set(
+                    conn.execute(
+                        select(table)
+                        .order_by(table.c.x.desc())
+                        .fetch(1, with_ties=True)
+                    )
+                ),
+                set([(4, 4, 5), (5, 4, 6)]),
+            )
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_ties(self):
+        table = self.tables.some_table
+        with config.db.connect() as conn:
+            fa = conn.execute(
+                select(table)
+                .order_by(table.c.x)
+                .fetch(2, with_ties=True)
+                .offset(2)
+            ).fetchall()
+            eq_(fa[0], (3, 3, 4))
+            eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_ties_exact_number(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table)
+            .order_by(table.c.x)
+            .fetch(2, with_ties=True)
+            .offset(1),
+            [(2, 2, 3), (3, 3, 4)],
+        )
+
+    @testing.requires.fetch_percent
+    def test_simple_fetch_percent(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table).order_by(table.c.id).fetch(20, percent=True),
+            [(1, 1, 2)],
+        )
+
+    @testing.requires.fetch_percent
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_percent(self):
+        table = self.tables.some_table
+        self._assert_result(
+            select(table)
+            .order_by(table.c.id)
+            .fetch(40, percent=True)
+            .offset(1),
+            [(2, 2, 3), (3, 3, 4)],
+        )
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_percent
+    def test_simple_fetch_percent_ties(self):
+        table = self.tables.some_table
+        with config.db.connect() as conn:
+            fa = conn.execute(
+                select(table)
+                .order_by(table.c.x.desc())
+                .fetch(20, percent=True, with_ties=True)
+            ).fetchall()
+
+        eq_(len(fa), 2)
+        eq_(set(fa), set([(4, 4, 5), (5, 4, 6)]))
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_percent
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_percent_ties(self):
+        table = self.tables.some_table
+        with config.db.connect() as conn:
+            fa = conn.execute(
+                select(table)
+                .order_by(table.c.x)
+                .fetch(40, percent=True, with_ties=True)
+                .offset(2)
+            ).fetchall()
+            eq_(fa[0], (3, 3, 4))
+            eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
 
 
 class JoinTest(fixtures.TablesTest):

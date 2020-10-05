@@ -1716,15 +1716,19 @@ class MSSQLCompiler(compiler.SQLCompiler):
 
         s = super(MSSQLCompiler, self).get_select_precolumns(select, **kw)
 
-        if select._simple_int_limit and (
-            select._offset_clause is None
-            or (select._simple_int_offset and select._offset == 0)
-        ):
+        if select._has_row_limiting_clause and self._use_top(select):
             # ODBC drivers and possibly others
             # don't support bind params in the SELECT clause on SQL Server.
             # so have to use literal here.
             kw["literal_execute"] = True
-            s += "TOP %s " % self.process(select._limit_clause, **kw)
+            s += "TOP %s " % self.process(
+                self._get_limit_or_fetch(select), **kw
+            )
+            if select._fetch_clause is not None:
+                if select._fetch_clause_options["percent"]:
+                    s += "PERCENT "
+                if select._fetch_clause_options["with_ties"]:
+                    s += "WITH TIES "
 
         return s
 
@@ -1734,27 +1738,65 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def get_crud_hint_text(self, table, text):
         return text
 
-    def limit_clause(self, select, **kw):
+    def _get_limit_or_fetch(self, select):
+        if select._fetch_clause is None:
+            return select._limit_clause
+        else:
+            return select._fetch_clause
+
+    def _use_top(self, select):
+        return (
+            select._offset_clause is None
+            or (
+                select._simple_int_clause(select._offset_clause)
+                and select._offset == 0
+            )
+        ) and (
+            select._simple_int_clause(select._limit_clause)
+            or (
+                # limit can use TOP with is by itself. fetch only uses TOP
+                # when it needs to because of PERCENT and/or WITH TIES
+                select._simple_int_clause(select._fetch_clause)
+                and (
+                    select._fetch_clause_options["percent"]
+                    or select._fetch_clause_options["with_ties"]
+                )
+            )
+        )
+
+    def fetch_clause(self, cs, **kwargs):
+        return ""
+
+    def limit_clause(self, cs, **kwargs):
+        return ""
+
+    def _check_can_use_fetch_like(self, select):
+        # to use ROW_NUMBER(), an ORDER BY is required.
+        # OFFSET are FETCH are options of the ORDER BY clause
+        if not select._order_by_clause.clauses:
+            raise exc.CompileError(
+                "MSSQL requires an order_by when "
+                "using an OFFSET or a non-simple "
+                "LIMIT clause"
+            )
+
+        if select._fetch_clause_options is not None and (
+            select._fetch_clause_options["percent"]
+            or select._fetch_clause_options["with_ties"]
+        ):
+            raise exc.CompileError(
+                "MSSQL needs TOP to use PERCENT and/or WITH TIES. "
+                "Only simple fetch without offset can be used."
+            )
+
+    def _row_limit_clause(self, select, **kw):
         """MSSQL 2012 supports OFFSET/FETCH operators
         Use it instead subquery with row_number
 
         """
 
-        if self.dialect._supports_offset_fetch and (
-            (not select._simple_int_limit and select._limit_clause is not None)
-            or (
-                select._offset_clause is not None
-                and not select._simple_int_offset
-                or select._offset
-            )
-        ):
-            # OFFSET are FETCH are options of the ORDER BY clause
-            if not select._order_by_clause.clauses:
-                raise exc.CompileError(
-                    "MSSQL requires an order_by when "
-                    "using an OFFSET or a non-simple "
-                    "LIMIT clause"
-                )
+        if self.dialect._supports_offset_fetch and not self._use_top(select):
+            self._check_can_use_fetch_like(select)
 
             text = ""
 
@@ -1764,9 +1806,11 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 offset_str = "0"
             text += "\n OFFSET %s ROWS" % offset_str
 
-            if select._limit_clause is not None:
-                text += "\n FETCH NEXT %s ROWS ONLY " % self.process(
-                    select._limit_clause, **kw
+            limit = self._get_limit_or_fetch(select)
+
+            if limit is not None:
+                text += "\n FETCH FIRST %s ROWS ONLY" % self.process(
+                    limit, **kw
                 )
             return text
         else:
@@ -1787,35 +1831,19 @@ class MSSQLCompiler(compiler.SQLCompiler):
         select = select_stmt
 
         if (
-            not self.dialect._supports_offset_fetch
-            and (
-                (
-                    not select._simple_int_limit
-                    and select._limit_clause is not None
-                )
-                or (
-                    select._offset_clause is not None
-                    and not select._simple_int_offset
-                    or select._offset
-                )
-            )
+            select._has_row_limiting_clause
+            and not self.dialect._supports_offset_fetch
+            and not self._use_top(select)
             and not getattr(select, "_mssql_visit", None)
         ):
-
-            # to use ROW_NUMBER(), an ORDER BY is required.
-            if not select._order_by_clause.clauses:
-                raise exc.CompileError(
-                    "MSSQL requires an order_by when "
-                    "using an OFFSET or a non-simple "
-                    "LIMIT clause"
-                )
+            self._check_can_use_fetch_like(select)
 
             _order_by_clauses = [
                 sql_util.unwrap_label_reference(elem)
                 for elem in select._order_by_clause.clauses
             ]
 
-            limit_clause = select._limit_clause
+            limit_clause = self._get_limit_or_fetch(select)
             offset_clause = select._offset_clause
 
             select = select._generate()

@@ -378,6 +378,38 @@ class CoreFixtures(object):
         ),
         lambda: (
             select(table_a.c.a),
+            select(table_a.c.a).limit(2),
+            select(table_a.c.a).limit(3),
+            select(table_a.c.a).fetch(3),
+            select(table_a.c.a).fetch(2),
+            select(table_a.c.a).fetch(2, percent=True),
+            select(table_a.c.a).fetch(2, with_ties=True),
+            select(table_a.c.a).fetch(2, with_ties=True, percent=True),
+            select(table_a.c.a).fetch(2).offset(3),
+            select(table_a.c.a).fetch(2).offset(5),
+            select(table_a.c.a).limit(2).offset(5),
+            select(table_a.c.a).limit(2).offset(3),
+            select(table_a.c.a).union(select(table_a.c.a)).limit(2).offset(3),
+            union(select(table_a.c.a), select(table_a.c.b)).limit(2).offset(3),
+            union(select(table_a.c.a), select(table_a.c.b)).limit(6).offset(3),
+            union(select(table_a.c.a), select(table_a.c.b)).limit(6).offset(8),
+            union(select(table_a.c.a), select(table_a.c.b)).fetch(2).offset(8),
+            union(select(table_a.c.a), select(table_a.c.b)).fetch(6).offset(8),
+            union(select(table_a.c.a), select(table_a.c.b)).fetch(6).offset(3),
+            union(select(table_a.c.a), select(table_a.c.b))
+            .fetch(6, percent=True)
+            .offset(3),
+            union(select(table_a.c.a), select(table_a.c.b))
+            .fetch(6, with_ties=True)
+            .offset(3),
+            union(select(table_a.c.a), select(table_a.c.b))
+            .fetch(6, with_ties=True, percent=True)
+            .offset(3),
+            union(select(table_a.c.a), select(table_a.c.b)).limit(6),
+            union(select(table_a.c.a), select(table_a.c.b)).offset(6),
+        ),
+        lambda: (
+            select(table_a.c.a),
             select(table_a.c.a).join(table_b, table_a.c.a == table_b.c.a),
             select(table_a.c.a).join_from(
                 table_a, table_b, table_a.c.a == table_b.c.a
@@ -861,8 +893,41 @@ class CoreFixtures(object):
 
     dont_compare_values_fixtures.append(_lambda_fixtures)
 
+    # like fixture but returns at least two objects that compare equally
+    equal_fixtures = [
+        lambda: (
+            select(table_a.c.a).fetch(3),
+            select(table_a.c.a).fetch(2).fetch(3),
+            select(table_a.c.a).fetch(3, percent=False, with_ties=False),
+            select(table_a.c.a).limit(2).fetch(3),
+            select(table_a.c.a).slice(2, 4).fetch(3).offset(None),
+        ),
+        lambda: (
+            select(table_a.c.a).limit(3),
+            select(table_a.c.a).fetch(2).limit(3),
+            select(table_a.c.a).fetch(2).slice(0, 3).offset(None),
+        ),
+    ]
+
 
 class CacheKeyFixture(object):
+    def _compare_equal(self, a, b, compare_values):
+        a_key = a._generate_cache_key()
+        b_key = b._generate_cache_key()
+
+        if a_key is None:
+            assert a._annotations.get("nocache")
+
+            assert b_key is None
+        else:
+
+            eq_(a_key.key, b_key.key)
+            eq_(hash(a_key.key), hash(b_key.key))
+
+            for a_param, b_param in zip(a_key.bindparams, b_key.bindparams):
+                assert a_param.compare(b_param, compare_values=compare_values)
+        return a_key, b_key
+
     def _run_cache_key_fixture(self, fixture, compare_values):
         case_a = fixture()
         case_b = fixture()
@@ -871,24 +936,11 @@ class CacheKeyFixture(object):
             range(len(case_a)), 2
         ):
             if a == b:
-                a_key = case_a[a]._generate_cache_key()
-                b_key = case_b[b]._generate_cache_key()
-
+                a_key, b_key = self._compare_equal(
+                    case_a[a], case_b[b], compare_values
+                )
                 if a_key is None:
-                    assert case_a[a]._annotations.get("nocache")
-
-                    assert b_key is None
                     continue
-
-                eq_(a_key.key, b_key.key)
-                eq_(hash(a_key.key), hash(b_key.key))
-
-                for a_param, b_param in zip(
-                    a_key.bindparams, b_key.bindparams
-                ):
-                    assert a_param.compare(
-                        b_param, compare_values=compare_values
-                    )
             else:
                 a_key = case_a[a]._generate_cache_key()
                 b_key = case_b[b]._generate_cache_key()
@@ -951,6 +1003,15 @@ class CacheKeyFixture(object):
                     ),
                 )
 
+    def _run_cache_key_equal_fixture(self, fixture, compare_values):
+        case_a = fixture()
+        case_b = fixture()
+
+        for a, b in itertools.combinations_with_replacement(
+            range(len(case_a)), 2
+        ):
+            self._compare_equal(case_a[a], case_b[b], compare_values)
+
 
 class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
     # we are slightly breaking the policy of not having external dialect
@@ -1001,6 +1062,10 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         ]:
             for fixture in fixtures_:
                 self._run_cache_key_fixture(fixture, compare_values)
+
+    def test_cache_key_equal(self):
+        for fixture in self.equal_fixtures:
+            self._run_cache_key_equal_fixture(fixture, True)
 
     def test_literal_binds(self):
         def fixture():

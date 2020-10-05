@@ -295,28 +295,164 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "_offset",
         )
 
-    def test_limit_offset(self):
-        for lim, offset, exp, params in [
-            (
-                5,
-                10,
-                "LIMIT :param_1 OFFSET :param_2",
-                {"param_1": 5, "param_2": 10},
-            ),
-            (None, 10, "LIMIT -1 OFFSET :param_1", {"param_1": 10}),
-            (5, None, "LIMIT :param_1", {"param_1": 5}),
-            (
-                0,
-                0,
-                "LIMIT :param_1 OFFSET :param_2",
-                {"param_1": 0, "param_2": 0},
-            ),
-        ]:
-            self.assert_compile(
-                select(1).limit(lim).offset(offset),
-                "SELECT 1 " + exp,
-                checkparams=params,
-            )
+    @testing.combinations(
+        (
+            5,
+            10,
+            "LIMIT :param_1 OFFSET :param_2",
+            {"param_1": 5, "param_2": 10},
+        ),
+        (None, 10, "LIMIT -1 OFFSET :param_1", {"param_1": 10}),
+        (5, None, "LIMIT :param_1", {"param_1": 5}),
+        (
+            0,
+            0,
+            "LIMIT :param_1 OFFSET :param_2",
+            {"param_1": 0, "param_2": 0},
+        ),
+        (
+            literal_column("Q"),
+            literal_column("Y"),
+            "LIMIT Q OFFSET Y",
+            {},
+        ),
+        (
+            column("Q"),
+            column("Y"),
+            'LIMIT "Q" OFFSET "Y"',
+            {},
+        ),
+    )
+    def test_limit_offset(self, lim, offset, exp, params):
+        self.assert_compile(
+            select(1).limit(lim).offset(offset),
+            "SELECT 1 " + exp,
+            checkparams=params,
+        )
+
+    @testing.combinations(
+        (
+            5,
+            10,
+            {},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (None, 10, {}, "LIMIT -1 OFFSET :param_1", {"param_1": 10}),
+        (
+            5,
+            None,
+            {},
+            "FETCH FIRST :param_1 ROWS ONLY",
+            {"param_1": 5},
+        ),
+        (
+            0,
+            0,
+            {},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            {"param_1": 0, "param_2": 0},
+        ),
+        (
+            5,
+            10,
+            {"percent": True},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 PERCENT ROWS ONLY",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            5,
+            10,
+            {"percent": True, "with_ties": True},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 PERCENT ROWS WITH TIES",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            5,
+            10,
+            {"with_ties": True},
+            "OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS WITH TIES",
+            {"param_1": 10, "param_2": 5},
+        ),
+        (
+            literal_column("Q"),
+            literal_column("Y"),
+            {},
+            "OFFSET Y ROWS FETCH FIRST Q ROWS ONLY",
+            {},
+        ),
+        (
+            column("Q"),
+            column("Y"),
+            {},
+            'OFFSET "Y" ROWS FETCH FIRST "Q" ROWS ONLY',
+            {},
+        ),
+        (
+            bindparam("Q", 3),
+            bindparam("Y", 7),
+            {},
+            "OFFSET :Y ROWS FETCH FIRST :Q ROWS ONLY",
+            {"Q": 3, "Y": 7},
+        ),
+        (
+            literal_column("Q") + literal_column("Z"),
+            literal_column("Y") + literal_column("W"),
+            {},
+            "OFFSET Y + W ROWS FETCH FIRST Q + Z ROWS ONLY",
+            {},
+        ),
+    )
+    def test_fetch(self, fetch, offset, fetch_kw, exp, params):
+        self.assert_compile(
+            select(1).fetch(fetch, **fetch_kw).offset(offset),
+            "SELECT 1 " + exp,
+            checkparams=params,
+        )
+
+    def test_fetch_limit_offset_self_group(self):
+        self.assert_compile(
+            select(1).limit(1).self_group(),
+            "(SELECT 1 LIMIT :param_1)",
+            checkparams={"param_1": 1},
+        )
+        self.assert_compile(
+            select(1).offset(1).self_group(),
+            "(SELECT 1 LIMIT -1 OFFSET :param_1)",
+            checkparams={"param_1": 1},
+        )
+        self.assert_compile(
+            select(1).fetch(1).self_group(),
+            "(SELECT 1 FETCH FIRST :param_1 ROWS ONLY)",
+            checkparams={"param_1": 1},
+        )
+
+    def test_limit_fetch_interaction(self):
+        self.assert_compile(
+            select(1).limit(42).fetch(1),
+            "SELECT 1 FETCH FIRST :param_1 ROWS ONLY",
+            checkparams={"param_1": 1},
+        )
+        self.assert_compile(
+            select(1).fetch(42).limit(1),
+            "SELECT 1 LIMIT :param_1",
+            checkparams={"param_1": 1},
+        )
+        self.assert_compile(
+            select(1).limit(42).offset(7).fetch(1),
+            "SELECT 1 OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            checkparams={"param_1": 7, "param_2": 1},
+        )
+        self.assert_compile(
+            select(1).fetch(1).slice(2, 5),
+            "SELECT 1 LIMIT :param_1 OFFSET :param_2",
+            checkparams={"param_1": 3, "param_2": 2},
+        )
+        self.assert_compile(
+            select(1).slice(2, 5).fetch(1),
+            "SELECT 1 OFFSET :param_1 ROWS FETCH FIRST :param_2 ROWS ONLY",
+            checkparams={"param_1": 2, "param_2": 1},
+        )
 
     def test_select_precol_compile_ordering(self):
         s1 = (
@@ -3694,6 +3830,22 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_compile(
             stmt,
             "SELECT 1 UNION SELECT 2 LIMIT 5 OFFSET 6",
+            literal_binds=True,
+        )
+
+    def test_fetch_offset_select_literal_binds(self):
+        stmt = select(1).fetch(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 OFFSET 6 ROWS FETCH FIRST 5 ROWS ONLY",
+            literal_binds=True,
+        )
+
+    def test_fetch_offset_compound_select_literal_binds(self):
+        stmt = select(1).union(select(2)).fetch(5).offset(6)
+        self.assert_compile(
+            stmt,
+            "SELECT 1 UNION SELECT 2 OFFSET 6 ROWS FETCH FIRST 5 ROWS ONLY",
             literal_binds=True,
         )
 

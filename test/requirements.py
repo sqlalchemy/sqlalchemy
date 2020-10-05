@@ -1690,3 +1690,25 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def index_reflects_included_columns(self):
         return only_on(["postgresql >= 11", "mssql"])
+
+    # mssql>= 11 -> >= MS_2012_VERSION
+
+    @property
+    def fetch_first(self):
+        return only_on(["postgresql", "mssql >= 11", "oracle >= 12"])
+
+    @property
+    def fetch_percent(self):
+        return only_on(["mssql >= 11", "oracle >= 12"])
+
+    @property
+    def fetch_ties(self):
+        return only_on(["postgresql >= 13", "mssql >= 11", "oracle >= 12"])
+
+    @property
+    def fetch_no_order_by(self):
+        return only_on(["postgresql", "oracle >= 12"])
+
+    @property
+    def fetch_offset_with_options(self):
+        return skip_if("mssql")

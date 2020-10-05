@@ -1253,7 +1253,7 @@ class SubqueryLoader(PostLoader):
                     break
 
         # don't need ORDER BY if no limit/offset
-        if q._limit_clause is None and q._offset_clause is None:
+        if not q._has_row_limiting_clause:
             q._order_by_clauses = ()
 
         if q._distinct is True and q._order_by_clauses:
