@@ -17,6 +17,16 @@ class UnevaluatableError(Exception):
     pass
 
 
+class _NoObject(operators.ColumnOperators):
+    def operate(self, *arg, **kw):
+        return None
+
+    def reverse_operate(self, *arg, **kw):
+        return None
+
+
+_NO_OBJECT = _NoObject()
+
 _straight_ops = set(
     getattr(operators, op)
     for op in (
@@ -36,8 +46,10 @@ _straight_ops = set(
 )
 
 _extended_ops = {
-    operators.in_op: (lambda a, b: a in b),
-    operators.not_in_op: (lambda a, b: a not in b),
+    operators.in_op: (lambda a, b: a in b if a is not _NO_OBJECT else None),
+    operators.not_in_op: (
+        lambda a, b: a not in b if a is not _NO_OBJECT else None
+    ),
 }
 
 _notimplemented_ops = set(
@@ -111,7 +123,11 @@ class EvaluatorCompiler(object):
                 raise UnevaluatableError("Cannot evaluate column: %s" % clause)
 
         get_corresponding_attr = operator.attrgetter(key)
-        return lambda obj: get_corresponding_attr(obj)
+        return (
+            lambda obj: get_corresponding_attr(obj)
+            if obj is not None
+            else _NO_OBJECT
+        )
 
     def visit_tuple(self, clause):
         return self.visit_clauselist(clause)
@@ -137,7 +153,7 @@ class EvaluatorCompiler(object):
                 for sub_evaluate in evaluators:
                     value = sub_evaluate(obj)
                     if not value:
-                        if value is None:
+                        if value is None or value is _NO_OBJECT:
                             return None
                         return False
                 return True
@@ -148,7 +164,7 @@ class EvaluatorCompiler(object):
                 values = []
                 for sub_evaluate in evaluators:
                     value = sub_evaluate(obj)
-                    if value is None:
+                    if value is None or value is _NO_OBJECT:
                         return None
                     values.append(value)
                 return tuple(values)

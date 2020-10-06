@@ -100,7 +100,11 @@ class EvaluateTest(fixtures.MappedTest):
 
         eval_eq(
             User.name == None,  # noqa
-            testcases=[(User(name="foo"), False), (User(name=None), True)],
+            testcases=[
+                (User(name="foo"), False),
+                (User(name=None), True),
+                (None, None),
+            ],
         )
 
     def test_warn_on_unannotated_matched_column(self):
@@ -144,6 +148,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(name="foo"), False),
                 (User(name=True), False),
                 (User(name=False), True),
+                (None, None),
             ],
         )
 
@@ -153,6 +158,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(name="foo"), False),
                 (User(name=True), True),
                 (User(name=False), False),
+                (None, None),
             ],
         )
 
@@ -167,6 +173,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=1, name="bar"), False),
                 (User(id=2, name="bar"), False),
                 (User(id=1, name=None), None),
+                (None, None),
             ],
         )
 
@@ -179,6 +186,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=2, name="bar"), False),
                 (User(id=1, name=None), True),
                 (User(id=2, name=None), None),
+                (None, None),
             ],
         )
 
@@ -201,6 +209,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=2, name="bat"), False),
                 (User(id=1, name="bar"), True),
                 (User(id=1, name=None), None),
+                (None, None),
             ],
         )
 
@@ -211,6 +220,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=2, name="bat"), True),
                 (User(id=1, name="bar"), False),
                 (User(id=1, name=None), None),
+                (None, None),
             ],
         )
 
@@ -225,6 +235,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=1, name="bar"), False),
                 (User(id=2, name="bar"), True),
                 (User(id=1, name=None), None),
+                (None, None),
             ],
         )
 
@@ -236,6 +247,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=1, name="bar"), True),
                 (User(id=2, name="bar"), False),
                 (User(id=1, name=None), None),
+                (None, None),
             ],
         )
 
@@ -251,6 +263,7 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=2, name="bar"), True),
                 (User(id=None, name="foo"), None),
                 (User(id=None, name=None), None),
+                (None, None),
             ],
         )
 
