@@ -13,6 +13,7 @@ raised as a result of DBAPI exceptions are all subclasses of
 
 """
 
+from .util import _preloaded
 from .util import compat
 
 _version_token = None
@@ -384,8 +385,8 @@ class StatementError(SQLAlchemyError):
             ),
         )
 
-    def _sql_message(self, as_unicode):
-        from sqlalchemy.sql import util
+    @_preloaded.dependencies("sqlalchemy.sql.util")
+    def _sql_message(self, util, as_unicode):
 
         details = [self._message(as_unicode=as_unicode)]
         if self.statement:

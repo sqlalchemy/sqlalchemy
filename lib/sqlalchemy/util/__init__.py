@@ -43,6 +43,7 @@ from ._collections import UniqueAppender  # noqa
 from ._collections import update_copy  # noqa
 from ._collections import WeakPopulateDict  # noqa
 from ._collections import WeakSequence  # noqa
+from ._preloaded import dependencies  # noqa
 from .compat import arm  # noqa
 from .compat import b  # noqa
 from .compat import b64decode  # noqa
@@ -113,7 +114,6 @@ from .langhelpers import constructor_copy  # noqa
 from .langhelpers import counter  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa
-from .langhelpers import dependencies  # noqa
 from .langhelpers import dictlike_iteritems  # noqa
 from .langhelpers import duck_type_collection  # noqa
 from .langhelpers import ellipses_string  # noqa
