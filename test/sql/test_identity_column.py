@@ -1,5 +1,3 @@
-import re
-
 from sqlalchemy import Column
 from sqlalchemy import Identity
 from sqlalchemy import Integer
@@ -153,6 +151,9 @@ class DefaultDialectIdentityDDL(_IdentityDDLFixture, fixtures.TestBase):
 
 
 class NotSupportingIdentityDDL(testing.AssertsCompiledSQL, fixtures.TestBase):
+    # a dialect that doesn't render IDENTITY
+    __dialect__ = "sqlite"
+
     @testing.skip_if(testing.requires.identity_columns)
     def test_identity_is_ignored(self):
         t = Table(
@@ -160,15 +161,8 @@ class NotSupportingIdentityDDL(testing.AssertsCompiledSQL, fixtures.TestBase):
             MetaData(),
             Column("foo", Integer(), Identity("always", start=3)),
         )
-        t2 = Table(
-            "foo_table",
-            MetaData(),
-            Column("foo", Integer()),
-        )
-        exp = CreateTable(t2).compile(dialect=testing.db.dialect)
         self.assert_compile(
-            CreateTable(t),
-            re.sub(r"[\n\t]", "", str(exp)),
+            CreateTable(t), "CREATE TABLE foo_table (foo INTEGER)"
         )
 
 
