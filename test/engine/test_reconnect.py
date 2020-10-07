@@ -357,6 +357,8 @@ class PrePingMockTest(fixtures.TestBase):
 
 
 class MockReconnectTest(fixtures.TestBase):
+    __requires__ = ("millisecond_monotonic_time",)
+
     def setup(self):
         self.dbapi = MockDBAPI()
 
@@ -402,6 +404,9 @@ class MockReconnectTest(fixtures.TestBase):
         # set it to fail
 
         self.dbapi.shutdown()
+
+        # close on DBAPI connection occurs here, as it is detected
+        # as invalid.
         assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
         # assert was invalidated
@@ -419,8 +424,14 @@ class MockReconnectTest(fixtures.TestBase):
             [[call()], []],
         )
 
+        # checkout makes use of the same connection record.   in
+        # get_connection(), recycle should be enabled because
+        # the age of the connection is older than the time at which
+        # the invalidation occurred.
         conn = self.db.connect()
 
+        # therefore the two connections should both have been closed
+        # when we connected again.
         eq_(
             [c.close.mock_calls for c in self.dbapi.connections],
             [[call()], [call()], []],
