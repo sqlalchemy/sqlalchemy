@@ -955,7 +955,6 @@ class QueuePoolTest(PoolTestBase):
         dbapi = Mock()
 
         def failing_dbapi():
-            time.sleep(2)
             raise Exception("connection failed")
 
         creator = dbapi.connect
@@ -1890,7 +1889,7 @@ class SingletonThreadPoolTest(PoolTestBase):
                 assert c
                 c.cursor()
                 c.close()
-                time.sleep(0.1)
+                time.sleep(0.01)
 
         threads = []
         for i in range(10):

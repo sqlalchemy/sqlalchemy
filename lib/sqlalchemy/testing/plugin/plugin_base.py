@@ -122,6 +122,12 @@ def setup_options(make_option):
         help="Don't run memory profiling tests",
     )
     make_option(
+        "--notimingintensive",
+        action="store_true",
+        dest="notimingintensive",
+        help="Don't run timing intensive tests",
+    )
+    make_option(
         "--profile-sort",
         type="string",
         default="cumulative",
@@ -344,6 +350,12 @@ def _setup_options(opt, file_config):
 def _set_nomemory(opt, file_config):
     if opt.nomemory:
         exclude_tags.add("memory_intensive")
+
+
+@pre
+def _set_notimingintensive(opt, file_config):
+    if opt.notimingintensive:
+        exclude_tags.add("timing_intensive")
 
 
 @pre
