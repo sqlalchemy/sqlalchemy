@@ -42,16 +42,6 @@ jobs:
           - x86
 
         include:
-          # the mock reconnect test seems to fail on the ci in windows
-          - os: "windows-latest"
-            pytest-args: "-k 'not MockReconnectTest'"
-          # python 2.7 or 3.5 on windows seem to fail also test_hanging_connect_within_overflow
-          - os: "windows-latest"
-            python-version: "3.5"
-            pytest-args: "-k 'not MockReconnectTest and not test_hanging_connect_within_overflow'"
-          - os: "windows-latest"
-            python-version: "2.7"
-            pytest-args: "-k 'not MockReconnectTest and not test_hanging_connect_within_overflow'"
           # autocommit tests fail on the ci for some reason
           - python-version: "pypy3"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
@@ -96,7 +86,7 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
 
   run-test-arm64:
     name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
@@ -132,5 +122,5 @@ jobs:
             python -m pip install --upgrade pip &&
             pip install --upgrade tox setuptools &&
             pip list &&
-            tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+            tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
             "
