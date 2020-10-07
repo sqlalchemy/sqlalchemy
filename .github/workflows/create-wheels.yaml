@@ -94,7 +94,7 @@ jobs:
         # the mock reconnect test seems to fail on the ci in windows
         run: |
           pip install pytest pytest-xdist ${{ matrix.extra-requires }}
-          pytest -n2 -q test -k 'not MockReconnectTest' --nomemory
+          pytest -n2 -q test --nomemory --notimingintensive
 
       - name: Get wheel name
         id: wheel-name
@@ -223,7 +223,7 @@ jobs:
             pip install -f dist --no-index sqlalchemy
             python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
             pip install pytest pytest-xdist ${{ matrix.extra-requires }}
-            pytest -n2 -q test -k 'not MockReconnectTest' --nomemory
+            pytest -n2 -q test --nomemory --notimingintensive
           else
             echo Not compatible. Skipping install.
           fi
@@ -361,7 +361,7 @@ jobs:
             pip install -f dist --no-index sqlalchemy &&
             python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils' &&
             pip install pytest pytest-xdist ${{ matrix.extra-requires }} &&
-            pytest -n2 -q test -k 'not MockReconnectTest' --nomemory"
+            pytest -n2 -q test --nomemory --notimingintensive"
 
       - name: Get wheel names
         id: wheel-name

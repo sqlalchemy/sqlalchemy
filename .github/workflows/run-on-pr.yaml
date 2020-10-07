@@ -50,7 +50,7 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}
+        run: tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
 
   # Arm emulation is quite slow (~20min) so for now just run it when merging to master
   # run-test-arm64:
@@ -81,4 +81,4 @@ jobs:
   #               python -m pip install --upgrade pip &&
   #               pip install --upgrade tox setuptools &&
   #               pip list &&
-  #               tox -e github-${{ matrix.build-type }} -- -q --nomemory ${{ matrix.pytest-args }}"
+  #               tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}"
