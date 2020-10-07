@@ -405,6 +405,9 @@ class MockReconnectTest(fixtures.TestBase):
 
         self.dbapi.shutdown()
 
+        # force windows monotonic timer to definitely increment
+        time.sleep(0.5)
+
         # close on DBAPI connection occurs here, as it is detected
         # as invalid.
         assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
