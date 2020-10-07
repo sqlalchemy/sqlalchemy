@@ -3160,15 +3160,11 @@ class BooleanTest(
             Column("unconstrained_value", Boolean()),
         )
 
-    @testing.fails_on(
-        ["mysql", "mariadb"],
-        "The CHECK clause is parsed but ignored by all storage engines.",
-    )
-    @testing.fails_on("mssql", "FIXME: MS-SQL 2005 doesn't honor CHECK ?!?")
-    @testing.skip_if(lambda: testing.db.dialect.supports_native_boolean)
+    @testing.requires.enforces_check_constraints
+    @testing.requires.non_native_boolean_unconstrained
     def test_constraint(self, connection):
         assert_raises(
-            (exc.IntegrityError, exc.ProgrammingError),
+            (exc.IntegrityError, exc.ProgrammingError, exc.OperationalError),
             connection.exec_driver_sql,
             "insert into boolean_table (id, value) values(1, 5)",
         )
