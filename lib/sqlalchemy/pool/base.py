@@ -11,14 +11,15 @@
 """
 
 from collections import deque
+import time
 import weakref
 
 from .. import event
 from .. import exc
 from .. import log
 from .. import util
-from ..util import monotonic_time
 from ..util import threading
+
 
 reset_rollback = util.symbol("reset_rollback")
 reset_commit = util.symbol("reset_commit")
@@ -260,7 +261,7 @@ class Pool(log.Identified):
         """
         rec = getattr(connection, "_connection_record", None)
         if not rec or self._invalidate_time < rec.starttime:
-            self._invalidate_time = monotonic_time()
+            self._invalidate_time = time.time()
         if _checkin and getattr(connection, "is_valid", False):
             connection.invalidate(exception)
 
@@ -509,7 +510,7 @@ class _ConnectionRecord(object):
                 self.connection,
             )
         if soft:
-            self._soft_invalidate_time = monotonic_time()
+            self._soft_invalidate_time = time.time()
         else:
             self.__close()
             self.connection = None
@@ -518,16 +519,23 @@ class _ConnectionRecord(object):
         recycle = False
 
         # NOTE: the various comparisons here are assuming that measurable time
-        # passes between these state changes.  on Python 2, we are still using
-        # time.time() which is not guaranteed to have millisecondsecond
-        # precision, i.e. on Windows. For Python 3 we now use monotonic_time().
-
+        # passes between these state changes.  however, time.time() is not
+        # guaranteed to have sub-second precision.  comparisons of
+        # "invalidation time" to "starttime" should perhaps use >= so that the
+        # state change can take place assuming no measurable  time has passed,
+        # however this does not guarantee correct behavior here as if time
+        # continues to not pass, it will try to reconnect repeatedly until
+        # these timestamps diverge, so in that sense using > is safer.  Per
+        # https://stackoverflow.com/a/1938096/34549, Windows time.time() may be
+        # within 16 milliseconds accuracy, so unit tests for connection
+        # invalidation need a sleep of at least this long between initial start
+        # time and invalidation for the logic below to work reliably.
         if self.connection is None:
             self.info.clear()
             self.__connect()
         elif (
             self.__pool._recycle > -1
-            and monotonic_time() - self.starttime > self.__pool._recycle
+            and time.time() - self.starttime > self.__pool._recycle
         ):
             self.__pool.logger.info(
                 "Connection %r exceeded timeout; recycling", self.connection
@@ -569,7 +577,7 @@ class _ConnectionRecord(object):
         # creator fails, this attribute stays None
         self.connection = None
         try:
-            self.starttime = monotonic_time()
+            self.starttime = time.time()
             connection = pool._invoke_creator(self)
             pool.logger.debug("Created new connection %r", connection)
             self.connection = connection

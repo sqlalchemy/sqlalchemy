@@ -1241,7 +1241,7 @@ class QueuePoolTest(PoolTestBase):
         )
 
     def test_recycle(self):
-        with patch("sqlalchemy.pool.base.monotonic_time") as mock:
+        with patch("sqlalchemy.pool.base.time.time") as mock:
             mock.return_value = 10000
 
             p = self._queuepool_fixture(

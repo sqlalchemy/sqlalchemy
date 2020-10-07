@@ -15,6 +15,7 @@ to provide specific inclusion/exclusions.
 
 """
 
+import platform
 import sys
 
 from . import exclusions
@@ -1092,19 +1093,8 @@ class SuiteRequirements(Requirements):
 
     def _running_on_windows(self):
         return exclusions.LambdaPredicate(
-            lambda: util.win32,
+            lambda: platform.system() == "Windows",
             description="running on Windows",
-        )
-
-    @property
-    def millisecond_monotonic_time(self):
-        """the util.monotonic_time() function must be millisecond accurate.
-
-        Under Python 2 we can't guarantee this on Windows.
-
-        """
-        return exclusions.skip_if(
-            lambda: util.win32 and sys.version_info < (3,)
         )
 
     @property
