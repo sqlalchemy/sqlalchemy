@@ -3044,7 +3044,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         This is a numeric value which usually renders as
         ``FETCH {FIRST | NEXT} [ count ] {ROW | ROWS} {ONLY | WITH TIES}``
         expression in the resulting select. This functionality is
-        is currently implemented for Oracle, PostgreSQL, MSSSQL.
+        is currently implemented for Oracle, PostgreSQL, MSSQL.
 
         Use :meth:`_sql.GenerativeSelect.offset` to specify the offset.
 
