@@ -24,6 +24,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
+from sqlalchemy.util import _preloaded
 from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
 from sqlalchemy.util import get_callable_argspec
@@ -3210,7 +3211,7 @@ class TestModuleRegistry(fixtures.TestBase):
         for m in ("xml.dom", "wsgiref.simple_server"):
             to_restore.append((m, sys.modules.pop(m, None)))
         try:
-            mr = langhelpers._ModuleRegistry()
+            mr = _preloaded._ModuleRegistry()
 
             ret = mr.preload_module(
                 "xml.dom", "wsgiref.simple_server", "sqlalchemy.sql.util"

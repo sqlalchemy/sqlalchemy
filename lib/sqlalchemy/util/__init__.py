@@ -44,6 +44,8 @@ from ._collections import UniqueAppender  # noqa
 from ._collections import update_copy  # noqa
 from ._collections import WeakPopulateDict  # noqa
 from ._collections import WeakSequence  # noqa
+from ._preloaded import preload_module  # noqa
+from ._preloaded import preloaded  # noqa
 from .compat import ABC  # noqa
 from .compat import arm  # noqa
 from .compat import b  # noqa
@@ -149,8 +151,6 @@ from .langhelpers import NoneType  # noqa
 from .langhelpers import only_once  # noqa
 from .langhelpers import PluginLoader  # noqa
 from .langhelpers import portable_instancemethod  # noqa
-from .langhelpers import preload_module  # noqa
-from .langhelpers import preloaded  # noqa
 from .langhelpers import quoted_token_parser  # noqa
 from .langhelpers import safe_reraise  # noqa
 from .langhelpers import set_creation_order  # noqa
