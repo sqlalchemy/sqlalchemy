@@ -1674,12 +1674,10 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-        if util.py36:
+        if util.py3k:
             assert_raises_message(
                 TypeError, "not supported between instances of", callable_
             )
-        elif util.py3k:
-            assert_raises_message(TypeError, "unorderable types", callable_)
         else:
             assert_raises_message(
                 TypeError, "cannot compare sets using cmp()", callable_
@@ -3165,8 +3163,6 @@ class TimezoneTest(fixtures.TestBase):
         ),
     )
     def test_tzname(self, td, expected):
-        if expected == "UTC" and util.py3k and not util.py36:
-            expected += "+00:00"
         eq_(timezone(td).tzname(None), expected)
 
     def test_utcoffset(self):

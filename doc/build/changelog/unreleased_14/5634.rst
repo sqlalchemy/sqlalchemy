@@ -1,0 +1,6 @@
+.. change::
+    :tags: change
+    :tickets: 5634
+
+    Dropped support for python 3.5 that has reached EOL.
+    SQLAlchemy 1.4 series requires python 2.7 or 3.6+.

@@ -72,7 +72,6 @@ from .compat import perf_counter  # noqa
 from .compat import pickle  # noqa
 from .compat import print_  # noqa
 from .compat import py2k  # noqa
-from .compat import py36  # noqa
 from .compat import py37  # noqa
 from .compat import py3k  # noqa
 from .compat import pypy  # noqa
