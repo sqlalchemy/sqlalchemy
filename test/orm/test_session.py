@@ -1,3 +1,5 @@
+import inspect as _py_inspect
+
 import sqlalchemy as sa
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
@@ -1820,22 +1822,28 @@ class DisposedStates(fixtures.MappedTest):
 class SessionInterface(fixtures.TestBase):
     """Bogus args to Session methods produce actionable exceptions."""
 
-    # TODO: expand with message body assertions.
-
     _class_methods = set(("connection", "execute", "get_bind", "scalar"))
 
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blacklist = set(("begin", "query"))
-
+        blacklist = {"begin", "query", "bind_mapper", "get", "bind_table"}
+        specials = {"__iter__", "__contains__"}
         ok = set()
-        for meth in Session.public_methods:
-            if meth in blacklist:
-                continue
-            spec = inspect_getfullargspec(getattr(Session, meth))
-            if len(spec[0]) > 1 or spec[1]:
-                ok.add(meth)
+        for name in dir(Session):
+            if (
+                name in Session.__dict__
+                and (not name.startswith("_") or name in specials)
+                and (
+                    _py_inspect.ismethod(getattr(Session, name))
+                    or _py_inspect.isfunction(getattr(Session, name))
+                )
+            ):
+                if name in blacklist:
+                    continue
+                spec = inspect_getfullargspec(getattr(Session, name))
+                if len(spec[0]) > 1 or spec[1]:
+                    ok.add(name)
         return ok
 
     def _map_it(self, cls):
@@ -1866,17 +1874,20 @@ class SessionInterface(fixtures.TestBase):
         def raises_(method, *args, **kw):
             x_raises_(create_session(), method, *args, **kw)
 
-        raises_("__contains__", user_arg)
-
-        raises_("add", user_arg)
+        for name in [
+            "__contains__",
+            "is_modified",
+            "merge",
+            "refresh",
+            "add",
+            "delete",
+            "expire",
+            "expunge",
+            "enable_relationship_loading",
+        ]:
+            raises_(name, user_arg)
 
         raises_("add_all", (user_arg,))
-
-        raises_("delete", user_arg)
-
-        raises_("expire", user_arg)
-
-        raises_("expunge", user_arg)
 
         # flush will no-op without something in the unit of work
         def _():
@@ -1890,12 +1901,6 @@ class SessionInterface(fixtures.TestBase):
             x_raises_(s, "flush", (user_arg,))
 
         _()
-
-        raises_("is_modified", user_arg)
-
-        raises_("merge", user_arg)
-
-        raises_("refresh", user_arg)
 
         instance_methods = (
             self._public_session_methods()

@@ -184,14 +184,17 @@ class Connection(Connectable):
         r""" Set non-SQL options for the connection which take effect
         during execution.
 
-        The method returns a copy of this :class:`_engine.Connection`
-        which references
-        the same underlying DBAPI connection, but also defines the given
-        execution options which will take effect for a call to
-        :meth:`execute`. As the new :class:`_engine.Connection`
-        references the same
-        underlying resource, it's usually a good idea to ensure that the copies
-        will be discarded immediately, which is implicit if used as in::
+        For a "future" style connection, this method returns this same
+        :class:`_future.Connection` object with the new options added.
+
+        For a legacy connection, this method returns a copy of this
+        :class:`_engine.Connection` which references the same underlying DBAPI
+        connection, but also defines the given execution options which will
+        take effect for a call to
+        :meth:`execute`. As the new :class:`_engine.Connection` references the
+        same underlying resource, it's usually a good idea to ensure that
+        the copies will be discarded immediately, which is implicit if used
+        as in::
 
             result = connection.execution_options(stream_results=True).\
                                 execute(stmt)
@@ -549,9 +552,10 @@ class Connection(Connectable):
         """Invalidate the underlying DBAPI connection associated with
         this :class:`_engine.Connection`.
 
-        The underlying DBAPI connection is literally closed (if
-        possible), and is discarded.  Its source connection pool will
-        typically lazily create a new connection to replace it.
+        An attempt will be made to close the underlying DBAPI connection
+        immediately; however if this operation fails, the error is logged
+        but not raised.  The connection is then discarded whether or not
+        close() succeeded.
 
         Upon the next use (where "use" typically means using the
         :meth:`_engine.Connection.execute` method or similar),
@@ -579,6 +583,10 @@ class Connection(Connectable):
         just like auto-invalidation,
         will at the connection pool level invoke the
         :meth:`_events.PoolEvents.invalidate` event.
+
+        :param exception: an optional ``Exception`` instance that's the
+         reason for the invalidation.  is passed along to event handlers
+         and logging functions.
 
         .. seealso::
 

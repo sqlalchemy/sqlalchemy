@@ -9,14 +9,60 @@ from . import class_mapper
 from . import exc as orm_exc
 from .session import Session
 from .. import exc as sa_exc
+from ..util import create_proxy_methods
 from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 
-
 __all__ = ["scoped_session"]
 
 
+@create_proxy_methods(
+    Session,
+    ":class:`_orm.Session`",
+    ":class:`_orm.scoping.scoped_session`",
+    classmethods=["close_all", "object_session", "identity_key"],
+    methods=[
+        "__contains__",
+        "__iter__",
+        "add",
+        "add_all",
+        "begin",
+        "begin_nested",
+        "close",
+        "commit",
+        "connection",
+        "delete",
+        "execute",
+        "expire",
+        "expire_all",
+        "expunge",
+        "expunge_all",
+        "flush",
+        "get_bind",
+        "is_modified",
+        "bulk_save_objects",
+        "bulk_insert_mappings",
+        "bulk_update_mappings",
+        "merge",
+        "query",
+        "refresh",
+        "rollback",
+        "scalar",
+    ],
+    attributes=[
+        "bind",
+        "dirty",
+        "deleted",
+        "new",
+        "identity_map",
+        "is_active",
+        "autoflush",
+        "no_autoflush",
+        "info",
+        "autocommit",
+    ],
+)
 class scoped_session(object):
     """Provides scoped management of :class:`.Session` objects.
 
@@ -52,6 +98,10 @@ class scoped_session(object):
             self.registry = ScopedRegistry(session_factory, scopefunc)
         else:
             self.registry = ThreadLocalRegistry(session_factory)
+
+    @property
+    def _proxied(self):
+        return self.registry()
 
     def __call__(self, **kw):
         r"""Return the current :class:`.Session`, creating it
@@ -156,50 +206,3 @@ class scoped_session(object):
 
 ScopedSession = scoped_session
 """Old name for backwards compatibility."""
-
-
-def instrument(name):
-    def do(self, *args, **kwargs):
-        return getattr(self.registry(), name)(*args, **kwargs)
-
-    return do
-
-
-for meth in Session.public_methods:
-    setattr(scoped_session, meth, instrument(meth))
-
-
-def makeprop(name):
-    def set_(self, attr):
-        setattr(self.registry(), name, attr)
-
-    def get(self):
-        return getattr(self.registry(), name)
-
-    return property(get, set_)
-
-
-for prop in (
-    "bind",
-    "dirty",
-    "deleted",
-    "new",
-    "identity_map",
-    "is_active",
-    "autoflush",
-    "no_autoflush",
-    "info",
-    "autocommit",
-):
-    setattr(scoped_session, prop, makeprop(prop))
-
-
-def clslevel(name):
-    def do(cls, *args, **kwargs):
-        return getattr(Session, name)(*args, **kwargs)
-
-    return classmethod(do)
-
-
-for prop in ("close_all", "object_session", "identity_key"):
-    setattr(scoped_session, prop, clslevel(prop))

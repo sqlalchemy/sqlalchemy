@@ -2,6 +2,7 @@ import asyncio
 
 from sqlalchemy import Column
 from sqlalchemy import delete
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -9,13 +10,19 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import union_all
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.asyncio import assert_raises_message_async
+from sqlalchemy.util.concurrency import greenlet_spawn
 
 
 class EngineFixture(fixtures.TablesTest):
@@ -49,6 +56,117 @@ class EngineFixture(fixtures.TablesTest):
 
 class AsyncEngineTest(EngineFixture):
     __backend__ = True
+
+    def test_proxied_attrs_engine(self, async_engine):
+        sync_engine = async_engine.sync_engine
+
+        is_(async_engine.url, sync_engine.url)
+        is_(async_engine.pool, sync_engine.pool)
+        is_(async_engine.dialect, sync_engine.dialect)
+        eq_(async_engine.name, sync_engine.name)
+        eq_(async_engine.driver, sync_engine.driver)
+        eq_(async_engine.echo, sync_engine.echo)
+
+    def test_clear_compiled_cache(self, async_engine):
+        async_engine.sync_engine._compiled_cache["foo"] = "bar"
+        eq_(async_engine.sync_engine._compiled_cache["foo"], "bar")
+        async_engine.clear_compiled_cache()
+        assert "foo" not in async_engine.sync_engine._compiled_cache
+
+    def test_execution_options(self, async_engine):
+        a2 = async_engine.execution_options(foo="bar")
+        assert isinstance(a2, _async_engine.AsyncEngine)
+        eq_(a2.sync_engine._execution_options, {"foo": "bar"})
+        eq_(async_engine.sync_engine._execution_options, {})
+
+        """
+
+            attr uri, pool, dialect, engine, name, driver, echo
+            methods clear_compiled_cache, update_execution_options,
+            execution_options, get_execution_options, dispose
+
+        """
+
+    @async_test
+    async def test_proxied_attrs_connection(self, async_engine):
+        conn = await async_engine.connect()
+
+        sync_conn = conn.sync_connection
+
+        is_(conn.engine, async_engine)
+        is_(conn.closed, sync_conn.closed)
+        is_(conn.dialect, async_engine.sync_engine.dialect)
+        eq_(conn.default_isolation_level, sync_conn.default_isolation_level)
+
+    @async_test
+    async def test_invalidate(self, async_engine):
+        conn = await async_engine.connect()
+
+        is_(conn.invalidated, False)
+
+        connection_fairy = await conn.get_raw_connection()
+        is_(connection_fairy.is_valid, True)
+        dbapi_connection = connection_fairy.connection
+
+        await conn.invalidate()
+        assert dbapi_connection._connection.is_closed()
+
+        new_fairy = await conn.get_raw_connection()
+        is_not(new_fairy.connection, dbapi_connection)
+        is_not(new_fairy, connection_fairy)
+        is_(new_fairy.is_valid, True)
+        is_(connection_fairy.is_valid, False)
+
+    @async_test
+    async def test_get_dbapi_connection_raise(self, async_engine):
+
+        conn = await async_engine.connect()
+
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            "AsyncConnection.connection accessor is not "
+            "implemented as the attribute",
+        ):
+            conn.connection
+
+    @async_test
+    async def test_get_raw_connection(self, async_engine):
+
+        conn = await async_engine.connect()
+
+        pooled = await conn.get_raw_connection()
+        is_(pooled, conn.sync_connection.connection)
+
+    @async_test
+    async def test_isolation_level(self, async_engine):
+        conn = await async_engine.connect()
+
+        sync_isolation_level = await greenlet_spawn(
+            conn.sync_connection.get_isolation_level
+        )
+        isolation_level = await conn.get_isolation_level()
+
+        eq_(isolation_level, sync_isolation_level)
+
+        await conn.execution_options(isolation_level="SERIALIZABLE")
+        isolation_level = await conn.get_isolation_level()
+
+        eq_(isolation_level, "SERIALIZABLE")
+
+    @async_test
+    async def test_dispose(self, async_engine):
+        c1 = await async_engine.connect()
+        c2 = await async_engine.connect()
+
+        await c1.close()
+        await c2.close()
+
+        p1 = async_engine.pool
+        eq_(async_engine.pool.checkedin(), 2)
+
+        await async_engine.dispose()
+        eq_(async_engine.pool.checkedin(), 0)
+        is_not(p1, async_engine.pool)
 
     @async_test
     async def test_init_once_concurrency(self, async_engine):
@@ -166,6 +284,70 @@ class AsyncEngineTest(EngineFixture):
             create_async_engine,
             testing.db.url,
             server_side_cursors=True,
+        )
+
+
+class AsyncEventTest(EngineFixture):
+    """The engine events all run in their normal synchronous context.
+
+    we do not provide an asyncio event interface at this time.
+
+    """
+
+    __backend__ = True
+
+    @async_test
+    async def test_no_async_listeners(self, async_engine):
+        with testing.expect_raises_message(
+            NotImplementedError,
+            "asynchronous events are not implemented "
+            "at this time.  Apply synchronous listeners to the "
+            "AsyncEngine.sync_engine or "
+            "AsyncConnection.sync_connection attributes.",
+        ):
+            event.listen(async_engine, "before_cursor_execute", mock.Mock())
+
+        conn = await async_engine.connect()
+
+        with testing.expect_raises_message(
+            NotImplementedError,
+            "asynchronous events are not implemented "
+            "at this time.  Apply synchronous listeners to the "
+            "AsyncEngine.sync_engine or "
+            "AsyncConnection.sync_connection attributes.",
+        ):
+            event.listen(conn, "before_cursor_execute", mock.Mock())
+
+    @async_test
+    async def test_sync_before_cursor_execute_engine(self, async_engine):
+        canary = mock.Mock()
+
+        event.listen(async_engine.sync_engine, "before_cursor_execute", canary)
+
+        async with async_engine.connect() as conn:
+            sync_conn = conn.sync_connection
+            await conn.execute(text("select 1"))
+
+        eq_(
+            canary.mock_calls,
+            [mock.call(sync_conn, mock.ANY, "select 1", (), mock.ANY, False)],
+        )
+
+    @async_test
+    async def test_sync_before_cursor_execute_connection(self, async_engine):
+        canary = mock.Mock()
+
+        async with async_engine.connect() as conn:
+            sync_conn = conn.sync_connection
+
+            event.listen(
+                async_engine.sync_engine, "before_cursor_execute", canary
+            )
+            await conn.execute(text("select 1"))
+
+        eq_(
+            canary.mock_calls,
+            [mock.call(sync_conn, mock.ANY, "select 1", (), mock.ANY, False)],
         )
 
 
