@@ -33,6 +33,7 @@ jobs:
           - "3.6"
           - "3.7"
           - "3.8"
+          - "3.9"
         build-type:
           - "cext"
           - "nocext"
@@ -98,6 +99,7 @@ jobs:
           - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
+          - cp39-cp39
         build-type:
           - "cext"
           - "nocext"
