@@ -169,7 +169,8 @@ def generate_driver_url(url, driver, query_str):
     new_url = url.set(
         drivername="%s+%s" % (backend, driver),
     )
-    new_url = new_url.update_query_string(query_str)
+    if query_str:
+        new_url = new_url.update_query_string(query_str)
 
     try:
         new_url.get_dialect()
