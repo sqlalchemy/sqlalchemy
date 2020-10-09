@@ -542,6 +542,7 @@ def _collect_insert_commands(
             mapper.version_id_generator is not False
             and mapper.version_id_col is not None
             and mapper.version_id_col in mapper._cols_by_table[table]
+            and params.get(mapper.version_id_col.key) is None
         ):
             params[mapper.version_id_col.key] = mapper.version_id_generator(
                 None

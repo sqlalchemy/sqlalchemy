@@ -287,11 +287,12 @@ class VersioningTest(fixtures.MappedTest):
 
         s1 = self._fixture()
         s1.bulk_insert_mappings(
-            Foo, [{"id": 1, "value": "f1"}, {"id": 2, "value": "f2"}]
+            Foo, [{"id": 1, "value": "f1"}, {"id": 2, "value": "f2"},
+                  {"id": 3, "value": "f3", "version_id": 10}]
         )
         eq_(
             s1.query(Foo.id, Foo.value, Foo.version_id).order_by(Foo.id).all(),
-            [(1, "f1", 1), (2, "f2", 1)],
+            [(1, "f1", 1), (2, "f2", 1), (3, "f3", 10)],
         )
 
     def test_bulk_update(self):
