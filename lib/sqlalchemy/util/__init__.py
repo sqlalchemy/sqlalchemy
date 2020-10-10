@@ -123,6 +123,7 @@ from .langhelpers import coerce_kw_type  # noqa
 from .langhelpers import constructor_copy  # noqa
 from .langhelpers import constructor_key  # noqa
 from .langhelpers import counter  # noqa
+from .langhelpers import create_proxy_methods  # noqa
 from .langhelpers import decode_slice  # noqa
 from .langhelpers import decorator  # noqa
 from .langhelpers import dictlike_iteritems  # noqa

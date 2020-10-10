@@ -372,7 +372,7 @@ def _pytest_fn_decorator(target):
         if add_positional_parameters:
             spec.args.extend(add_positional_parameters)
 
-        metadata = dict(target="target", fn="fn", name=fn.__name__)
+        metadata = dict(target="target", fn="__fn", name=fn.__name__)
         metadata.update(format_argspec_plus(spec, grouped=False))
         code = (
             """\
@@ -382,7 +382,7 @@ def %(name)s(%(args)s):
             % metadata
         )
         decorated = _exec_code_in_env(
-            code, {"target": target, "fn": fn}, fn.__name__
+            code, {"target": target, "__fn": fn}, fn.__name__
         )
         if not add_positional_parameters:
             decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__

@@ -509,6 +509,7 @@ class _ConnectionRecord(object):
                 "Soft " if soft else "",
                 self.connection,
             )
+
         if soft:
             self._soft_invalidate_time = time.time()
         else:

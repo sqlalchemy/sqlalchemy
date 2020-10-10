@@ -2300,7 +2300,14 @@ class SymbolTest(fixtures.TestBase):
 
 
 class _Py3KFixtures(object):
-    pass
+    def _kw_only_fixture(self):
+        pass
+
+    def _kw_plus_posn_fixture(self):
+        pass
+
+    def _kw_opt_fixture(self):
+        pass
 
 
 if util.py3k:
@@ -2321,9 +2328,193 @@ def _kw_opt_fixture(self, a, *, b, c="c"):
     for k in _locals:
         setattr(_Py3KFixtures, k, _locals[k])
 
+py3k_fixtures = _Py3KFixtures()
+
 
 class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
-    def _test_format_argspec_plus(self, fn, wanted, grouped=None):
+    @testing.combinations(
+        (
+            lambda: None,
+            {
+                "args": "()",
+                "self_arg": None,
+                "apply_kw": "()",
+                "apply_pos": "()",
+                "apply_pos_proxied": "()",
+            },
+            True,
+        ),
+        (
+            lambda: None,
+            {
+                "args": "",
+                "self_arg": None,
+                "apply_kw": "",
+                "apply_pos": "",
+                "apply_pos_proxied": "",
+            },
+            False,
+        ),
+        (
+            lambda self: None,
+            {
+                "args": "(self)",
+                "self_arg": "self",
+                "apply_kw": "(self)",
+                "apply_pos": "(self)",
+                "apply_pos_proxied": "()",
+            },
+            True,
+        ),
+        (
+            lambda self: None,
+            {
+                "args": "self",
+                "self_arg": "self",
+                "apply_kw": "self",
+                "apply_pos": "self",
+                "apply_pos_proxied": "",
+            },
+            False,
+        ),
+        (
+            lambda *a: None,
+            {
+                "args": "(*a)",
+                "self_arg": "a[0]",
+                "apply_kw": "(*a)",
+                "apply_pos": "(*a)",
+                "apply_pos_proxied": "(*a)",
+            },
+            True,
+        ),
+        (
+            lambda **kw: None,
+            {
+                "args": "(**kw)",
+                "self_arg": None,
+                "apply_kw": "(**kw)",
+                "apply_pos": "(**kw)",
+                "apply_pos_proxied": "(**kw)",
+            },
+            True,
+        ),
+        (
+            lambda *a, **kw: None,
+            {
+                "args": "(*a, **kw)",
+                "self_arg": "a[0]",
+                "apply_kw": "(*a, **kw)",
+                "apply_pos": "(*a, **kw)",
+                "apply_pos_proxied": "(*a, **kw)",
+            },
+            True,
+        ),
+        (
+            lambda a, *b: None,
+            {
+                "args": "(a, *b)",
+                "self_arg": "a",
+                "apply_kw": "(a, *b)",
+                "apply_pos": "(a, *b)",
+                "apply_pos_proxied": "(*b)",
+            },
+            True,
+        ),
+        (
+            lambda a, **b: None,
+            {
+                "args": "(a, **b)",
+                "self_arg": "a",
+                "apply_kw": "(a, **b)",
+                "apply_pos": "(a, **b)",
+                "apply_pos_proxied": "(**b)",
+            },
+            True,
+        ),
+        (
+            lambda a, *b, **c: None,
+            {
+                "args": "(a, *b, **c)",
+                "self_arg": "a",
+                "apply_kw": "(a, *b, **c)",
+                "apply_pos": "(a, *b, **c)",
+                "apply_pos_proxied": "(*b, **c)",
+            },
+            True,
+        ),
+        (
+            lambda a, b=1, **c: None,
+            {
+                "args": "(a, b=1, **c)",
+                "self_arg": "a",
+                "apply_kw": "(a, b=b, **c)",
+                "apply_pos": "(a, b, **c)",
+                "apply_pos_proxied": "(b, **c)",
+            },
+            True,
+        ),
+        (
+            lambda a=1, b=2: None,
+            {
+                "args": "(a=1, b=2)",
+                "self_arg": "a",
+                "apply_kw": "(a=a, b=b)",
+                "apply_pos": "(a, b)",
+                "apply_pos_proxied": "(b)",
+            },
+            True,
+        ),
+        (
+            lambda a=1, b=2: None,
+            {
+                "args": "a=1, b=2",
+                "self_arg": "a",
+                "apply_kw": "a=a, b=b",
+                "apply_pos": "a, b",
+                "apply_pos_proxied": "b",
+            },
+            False,
+        ),
+        (
+            py3k_fixtures._kw_only_fixture,
+            {
+                "args": "self, a, *, b, c",
+                "self_arg": "self",
+                "apply_pos": "self, a, *, b, c",
+                "apply_kw": "self, a, b=b, c=c",
+                "apply_pos_proxied": "a, *, b, c",
+            },
+            False,
+            testing.requires.python3,
+        ),
+        (
+            py3k_fixtures._kw_plus_posn_fixture,
+            {
+                "args": "self, a, *args, b, c",
+                "self_arg": "self",
+                "apply_pos": "self, a, *args, b, c",
+                "apply_kw": "self, a, b=b, c=c, *args",
+                "apply_pos_proxied": "a, *args, b, c",
+            },
+            False,
+            testing.requires.python3,
+        ),
+        (
+            py3k_fixtures._kw_opt_fixture,
+            {
+                "args": "self, a, *, b, c='c'",
+                "self_arg": "self",
+                "apply_pos": "self, a, *, b, c",
+                "apply_kw": "self, a, b=b, c=c",
+                "apply_pos_proxied": "a, *, b, c",
+            },
+            False,
+            testing.requires.python3,
+        ),
+        argnames="fn,wanted,grouped",
+    )
+    def test_specs(self, fn, wanted, grouped):
 
         # test direct function
         if grouped is None:
@@ -2340,167 +2531,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             parsed = util.format_argspec_plus(spec, grouped=grouped)
         eq_(parsed, wanted)
 
-    def test_specs(self):
-        self._test_format_argspec_plus(
-            lambda: None,
-            {
-                "args": "()",
-                "self_arg": None,
-                "apply_kw": "()",
-                "apply_pos": "()",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda: None,
-            {"args": "", "self_arg": None, "apply_kw": "", "apply_pos": ""},
-            grouped=False,
-        )
-
-        self._test_format_argspec_plus(
-            lambda self: None,
-            {
-                "args": "(self)",
-                "self_arg": "self",
-                "apply_kw": "(self)",
-                "apply_pos": "(self)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda self: None,
-            {
-                "args": "self",
-                "self_arg": "self",
-                "apply_kw": "self",
-                "apply_pos": "self",
-            },
-            grouped=False,
-        )
-
-        self._test_format_argspec_plus(
-            lambda *a: None,
-            {
-                "args": "(*a)",
-                "self_arg": "a[0]",
-                "apply_kw": "(*a)",
-                "apply_pos": "(*a)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda **kw: None,
-            {
-                "args": "(**kw)",
-                "self_arg": None,
-                "apply_kw": "(**kw)",
-                "apply_pos": "(**kw)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda *a, **kw: None,
-            {
-                "args": "(*a, **kw)",
-                "self_arg": "a[0]",
-                "apply_kw": "(*a, **kw)",
-                "apply_pos": "(*a, **kw)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a, *b: None,
-            {
-                "args": "(a, *b)",
-                "self_arg": "a",
-                "apply_kw": "(a, *b)",
-                "apply_pos": "(a, *b)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a, **b: None,
-            {
-                "args": "(a, **b)",
-                "self_arg": "a",
-                "apply_kw": "(a, **b)",
-                "apply_pos": "(a, **b)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a, *b, **c: None,
-            {
-                "args": "(a, *b, **c)",
-                "self_arg": "a",
-                "apply_kw": "(a, *b, **c)",
-                "apply_pos": "(a, *b, **c)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a, b=1, **c: None,
-            {
-                "args": "(a, b=1, **c)",
-                "self_arg": "a",
-                "apply_kw": "(a, b=b, **c)",
-                "apply_pos": "(a, b, **c)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a=1, b=2: None,
-            {
-                "args": "(a=1, b=2)",
-                "self_arg": "a",
-                "apply_kw": "(a=a, b=b)",
-                "apply_pos": "(a, b)",
-            },
-        )
-
-        self._test_format_argspec_plus(
-            lambda a=1, b=2: None,
-            {
-                "args": "a=1, b=2",
-                "self_arg": "a",
-                "apply_kw": "a=a, b=b",
-                "apply_pos": "a, b",
-            },
-            grouped=False,
-        )
-
-        if util.py3k:
-            self._test_format_argspec_plus(
-                self._kw_only_fixture,
-                {
-                    "args": "self, a, *, b, c",
-                    "self_arg": "self",
-                    "apply_pos": "self, a, *, b, c",
-                    "apply_kw": "self, a, b=b, c=c",
-                },
-                grouped=False,
-            )
-            self._test_format_argspec_plus(
-                self._kw_plus_posn_fixture,
-                {
-                    "args": "self, a, *args, b, c",
-                    "self_arg": "self",
-                    "apply_pos": "self, a, *args, b, c",
-                    "apply_kw": "self, a, b=b, c=c, *args",
-                },
-                grouped=False,
-            )
-            self._test_format_argspec_plus(
-                self._kw_opt_fixture,
-                {
-                    "args": "self, a, *, b, c='c'",
-                    "self_arg": "self",
-                    "apply_pos": "self, a, *, b, c",
-                    "apply_kw": "self, a, b=b, c=c",
-                },
-                grouped=False,
-            )
-
     @testing.requires.cpython
     def test_init_grouped(self):
         object_spec = {
@@ -2508,17 +2538,20 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "self_arg": "self",
             "apply_pos": "(self)",
             "apply_kw": "(self)",
+            "apply_pos_proxied": "()",
         }
         wrapper_spec = {
             "args": "(self, *args, **kwargs)",
             "self_arg": "self",
             "apply_pos": "(self, *args, **kwargs)",
             "apply_kw": "(self, *args, **kwargs)",
+            "apply_pos_proxied": "(*args, **kwargs)",
         }
         custom_spec = {
             "args": "(slef, a=123)",
             "self_arg": "slef",  # yes, slef
             "apply_pos": "(slef, a)",
+            "apply_pos_proxied": "(a)",
             "apply_kw": "(slef, a=a)",
         }
 
@@ -2532,18 +2565,21 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "self_arg": "self",
             "apply_pos": "self",
             "apply_kw": "self",
+            "apply_pos_proxied": "",
         }
         wrapper_spec = {
             "args": "self, *args, **kwargs",
             "self_arg": "self",
             "apply_pos": "self, *args, **kwargs",
             "apply_kw": "self, *args, **kwargs",
+            "apply_pos_proxied": "*args, **kwargs",
         }
         custom_spec = {
             "args": "slef, a=123",
             "self_arg": "slef",  # yes, slef
             "apply_pos": "slef, a",
             "apply_kw": "slef, a=a",
+            "apply_pos_proxied": "a",
         }
 
         self._test_init(False, object_spec, wrapper_spec, custom_spec)

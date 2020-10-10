@@ -2,6 +2,8 @@ from .engine import AsyncConnection  # noqa
 from .engine import AsyncEngine  # noqa
 from .engine import AsyncTransaction  # noqa
 from .engine import create_async_engine  # noqa
+from .events import AsyncConnectionEvents  # noqa
+from .events import AsyncSessionEvents  # noqa
 from .result import AsyncMappingResult  # noqa
 from .result import AsyncResult  # noqa
 from .result import AsyncScalarResult  # noqa

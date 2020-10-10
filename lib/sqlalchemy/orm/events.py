@@ -1371,7 +1371,8 @@ class SessionEvents(event.Events):
         elif isinstance(target, Session):
             return target
         else:
-            return None
+            # allows alternate SessionEvents-like-classes to be consulted
+            return event.Events._accept_with(target)
 
     @classmethod
     def _listen(cls, event_key, raw=False, restore_load_context=False, **kw):

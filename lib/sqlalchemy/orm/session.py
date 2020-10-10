@@ -835,35 +835,6 @@ class Session(_SessionClassMethods):
 
     """
 
-    public_methods = (
-        "__contains__",
-        "__iter__",
-        "add",
-        "add_all",
-        "begin",
-        "begin_nested",
-        "close",
-        "commit",
-        "connection",
-        "delete",
-        "execute",
-        "expire",
-        "expire_all",
-        "expunge",
-        "expunge_all",
-        "flush",
-        "get_bind",
-        "is_modified",
-        "bulk_save_objects",
-        "bulk_insert_mappings",
-        "bulk_update_mappings",
-        "merge",
-        "query",
-        "refresh",
-        "rollback",
-        "scalar",
-    )
-
     @util.deprecated_params(
         autocommit=(
             "2.0",
@@ -3028,7 +2999,14 @@ class Session(_SessionClassMethods):
             will unexpire attributes on access.
 
         """
-        state = attributes.instance_state(obj)
+        try:
+            state = attributes.instance_state(obj)
+        except exc.NO_STATE as err:
+            util.raise_(
+                exc.UnmappedInstanceError(obj),
+                replace_context=err,
+            )
+
         to_attach = self._before_attach(state, obj)
         state._load_pending = True
         if to_attach:

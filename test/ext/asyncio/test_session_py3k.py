@@ -1,3 +1,4 @@
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import select
@@ -9,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from ...orm import _fixtures
 
 
@@ -140,6 +142,27 @@ class AsyncSessionTransactionTest(AsyncFixture):
             eq_(await outer_conn.scalar(select(func.count(User.id))), 1)
 
     @async_test
+    async def test_delete(self, async_session):
+        User = self.classes.User
+
+        async with async_session.begin():
+            u1 = User(name="u1")
+
+            async_session.add(u1)
+
+            await async_session.flush()
+
+            conn = await async_session.connection()
+
+            eq_(await conn.scalar(select(func.count(User.id))), 1)
+
+            async_session.delete(u1)
+
+            await async_session.flush()
+
+            eq_(await conn.scalar(select(func.count(User.id))), 0)
+
+    @async_test
     async def test_flush(self, async_session):
         User = self.classes.User
 
@@ -198,3 +221,38 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             is_(new_u_merged, u1)
             eq_(u1.name, "new u1")
+
+
+class AsyncEventTest(AsyncFixture):
+    """The engine events all run in their normal synchronous context.
+
+    we do not provide an asyncio event interface at this time.
+
+    """
+
+    __backend__ = True
+
+    @async_test
+    async def test_no_async_listeners(self, async_session):
+        with testing.expect_raises(
+            NotImplementedError,
+            "NotImplementedError: asynchronous events are not implemented "
+            "at this time.  Apply synchronous listeners to the "
+            "AsyncEngine.sync_engine or "
+            "AsyncConnection.sync_connection attributes.",
+        ):
+            event.listen(async_session, "before_flush", mock.Mock())
+
+    @async_test
+    async def test_sync_before_commit(self, async_session):
+        canary = mock.Mock()
+
+        event.listen(async_session.sync_session, "before_commit", canary)
+
+        async with async_session.begin():
+            pass
+
+        eq_(
+            canary.mock_calls,
+            [mock.call(async_session.sync_session)],
+        )

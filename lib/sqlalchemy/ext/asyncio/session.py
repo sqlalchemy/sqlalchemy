@@ -1,6 +1,5 @@
 from typing import Any
 from typing import Callable
-from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -15,6 +14,35 @@ from ...sql import Executable
 from ...util.concurrency import greenlet_spawn
 
 
+@util.create_proxy_methods(
+    Session,
+    ":class:`_orm.Session`",
+    ":class:`_asyncio.AsyncSession`",
+    classmethods=["object_session", "identity_key"],
+    methods=[
+        "__contains__",
+        "__iter__",
+        "add",
+        "add_all",
+        "delete",
+        "expire",
+        "expire_all",
+        "expunge",
+        "expunge_all",
+        "get_bind",
+        "is_modified",
+    ],
+    attributes=[
+        "dirty",
+        "deleted",
+        "new",
+        "identity_map",
+        "is_active",
+        "autoflush",
+        "no_autoflush",
+        "info",
+    ],
+)
 class AsyncSession:
     """Asyncio version of :class:`_orm.Session`.
 
@@ -22,6 +50,16 @@ class AsyncSession:
     .. versionadded:: 1.4
 
     """
+
+    __slots__ = (
+        "binds",
+        "bind",
+        "sync_session",
+        "_proxied",
+        "_slots_dispatch",
+    )
+
+    dispatch = None
 
     def __init__(
         self,
@@ -31,46 +69,18 @@ class AsyncSession:
     ):
         kw["future"] = True
         if bind:
+            self.bind = engine
             bind = engine._get_sync_engine(bind)
 
         if binds:
+            self.binds = binds
             binds = {
                 key: engine._get_sync_engine(b) for key, b in binds.items()
             }
 
-        self.sync_session = Session(bind=bind, binds=binds, **kw)
-
-    def add(self, instance: object) -> None:
-        """Place an object in this :class:`_asyncio.AsyncSession`.
-
-        .. seealso::
-
-            :meth:`_orm.Session.add`
-
-        """
-        self.sync_session.add(instance)
-
-    def add_all(self, instances: List[object]) -> None:
-        """Add the given collection of instances to this
-        :class:`_asyncio.AsyncSession`."""
-
-        self.sync_session.add_all(instances)
-
-    def expire_all(self):
-        """Expires all persistent instances within this Session.
-
-        See :meth:`_orm.Session.expire_all` for usage details.
-
-        """
-        self.sync_session.expire_all()
-
-    def expire(self, instance, attribute_names=None):
-        """Expire the attributes on an instance.
-
-        See :meth:`._orm.Session.expire` for usage details.
-
-        """
-        self.sync_session.expire()
+        self.sync_session = self._proxied = Session(
+            bind=bind, binds=binds, **kw
+        )
 
     async def refresh(
         self, instance, attribute_names=None, with_for_update=None
@@ -178,8 +188,17 @@ class AsyncSession:
         :class:`.Session` object's transactional state.
 
         """
+
+        # POSSIBLY TODO: here, we see that the sync engine / connection
+        # that are generated from AsyncEngine / AsyncConnection don't
+        # provide any backlink from those sync objects back out to the
+        # async ones.   it's not *too* big a deal since AsyncEngine/Connection
+        # are just proxies and all the state is actually in the sync
+        # version of things.  However!  it has to stay that way :)
         sync_connection = await greenlet_spawn(self.sync_session.connection)
-        return engine.AsyncConnection(sync_connection.engine, sync_connection)
+        return engine.AsyncConnection(
+            engine.AsyncEngine(sync_connection.engine), sync_connection
+        )
 
     def begin(self, **kw):
         """Return an :class:`_asyncio.AsyncSessionTransaction` object.
@@ -218,13 +237,21 @@ class AsyncSession:
         return AsyncSessionTransaction(self, nested=True)
 
     async def rollback(self):
+        """Rollback the current transaction in progress."""
         return await greenlet_spawn(self.sync_session.rollback)
 
     async def commit(self):
+        """Commit the current transaction in progress."""
         return await greenlet_spawn(self.sync_session.commit)
 
     async def close(self):
+        """Close this :class:`_asyncio.AsyncSession`."""
         return await greenlet_spawn(self.sync_session.close)
+
+    @classmethod
+    async def close_all(self):
+        """Close all :class:`_asyncio.AsyncSession` sessions."""
+        return await greenlet_spawn(self.sync_session.close_all)
 
     async def __aenter__(self):
         return self

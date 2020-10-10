@@ -9,6 +9,7 @@
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
+
 from functools import update_wrapper
 import hashlib
 import inspect
@@ -462,6 +463,8 @@ def format_argspec_plus(fn, grouped=True):
       passed positionally.
     apply_kw
       Like apply_pos, except keyword-ish args are passed as keywords.
+    apply_pos_proxied
+      Like apply_pos but omits the self/cls argument
 
     Example::
 
@@ -478,16 +481,27 @@ def format_argspec_plus(fn, grouped=True):
         spec = fn
 
     args = compat.inspect_formatargspec(*spec)
-    if spec[0]:
-        self_arg = spec[0][0]
-    elif spec[1]:
-        self_arg = "%s[0]" % spec[1]
-    else:
-        self_arg = None
 
     apply_pos = compat.inspect_formatargspec(
         spec[0], spec[1], spec[2], None, spec[4]
     )
+
+    if spec[0]:
+        self_arg = spec[0][0]
+
+        apply_pos_proxied = compat.inspect_formatargspec(
+            spec[0][1:], spec[1], spec[2], None, spec[4]
+        )
+
+    elif spec[1]:
+        # im not sure what this is
+        self_arg = "%s[0]" % spec[1]
+
+        apply_pos_proxied = apply_pos
+    else:
+        self_arg = None
+        apply_pos_proxied = apply_pos
+
     num_defaults = 0
     if spec[3]:
         num_defaults += len(spec[3])
@@ -513,6 +527,7 @@ def format_argspec_plus(fn, grouped=True):
             self_arg=self_arg,
             apply_pos=apply_pos,
             apply_kw=apply_kw,
+            apply_pos_proxied=apply_pos_proxied,
         )
     else:
         return dict(
@@ -520,6 +535,7 @@ def format_argspec_plus(fn, grouped=True):
             self_arg=self_arg,
             apply_pos=apply_pos[1:-1],
             apply_kw=apply_kw[1:-1],
+            apply_pos_proxied=apply_pos_proxied[1:-1],
         )
 
 
@@ -534,17 +550,140 @@ def format_argspec_init(method, grouped=True):
 
     """
     if method is object.__init__:
-        args = grouped and "(self)" or "self"
+        args = "(self)" if grouped else "self"
+        proxied = "()" if grouped else ""
     else:
         try:
             return format_argspec_plus(method, grouped=grouped)
         except TypeError:
             args = (
-                grouped
-                and "(self, *args, **kwargs)"
-                or "self, *args, **kwargs"
+                "(self, *args, **kwargs)"
+                if grouped
+                else "self, *args, **kwargs"
             )
-    return dict(self_arg="self", args=args, apply_pos=args, apply_kw=args)
+            proxied = "(*args, **kwargs)" if grouped else "*args, **kwargs"
+    return dict(
+        self_arg="self",
+        args=args,
+        apply_pos=args,
+        apply_kw=args,
+        apply_pos_proxied=proxied,
+    )
+
+
+def create_proxy_methods(
+    target_cls,
+    target_cls_sphinx_name,
+    proxy_cls_sphinx_name,
+    classmethods=(),
+    methods=(),
+    attributes=(),
+):
+    """A class decorator that will copy attributes to a proxy class.
+
+    The class to be instrumented must define a single accessor "_proxied".
+
+    """
+
+    def decorate(cls):
+        def instrument(name, clslevel=False):
+            fn = getattr(target_cls, name)
+            spec = compat.inspect_getfullargspec(fn)
+            env = {}
+
+            spec = _update_argspec_defaults_into_env(spec, env)
+            caller_argspec = format_argspec_plus(spec, grouped=False)
+
+            metadata = {
+                "name": fn.__name__,
+                "apply_pos_proxied": caller_argspec["apply_pos_proxied"],
+                "args": caller_argspec["args"],
+                "self_arg": caller_argspec["self_arg"],
+            }
+
+            if clslevel:
+                code = (
+                    "def %(name)s(%(args)s):\n"
+                    "    return target_cls.%(name)s(%(apply_pos_proxied)s)"
+                    % metadata
+                )
+                env["target_cls"] = target_cls
+            else:
+                code = (
+                    "def %(name)s(%(args)s):\n"
+                    "    return %(self_arg)s._proxied.%(name)s(%(apply_pos_proxied)s)"  # noqa E501
+                    % metadata
+                )
+
+            proxy_fn = _exec_code_in_env(code, env, fn.__name__)
+            proxy_fn.__defaults__ = getattr(fn, "__func__", fn).__defaults__
+            proxy_fn.__doc__ = inject_docstring_text(
+                fn.__doc__,
+                ".. container:: class_bases\n\n    "
+                "Proxied for the %s class on behalf of the %s class."
+                % (target_cls_sphinx_name, proxy_cls_sphinx_name),
+                1,
+            )
+
+            if clslevel:
+                proxy_fn = classmethod(proxy_fn)
+
+            return proxy_fn
+
+        def makeprop(name):
+            attr = target_cls.__dict__.get(name, None)
+
+            if attr is not None:
+                doc = inject_docstring_text(
+                    attr.__doc__,
+                    ".. container:: class_bases\n\n    "
+                    "Proxied for the %s class on behalf of the %s class."
+                    % (
+                        target_cls_sphinx_name,
+                        proxy_cls_sphinx_name,
+                    ),
+                    1,
+                )
+            else:
+                doc = None
+
+            code = (
+                "def set_(self, attr):\n"
+                "    self._proxied.%(name)s = attr\n"
+                "def get(self):\n"
+                "    return self._proxied.%(name)s\n"
+                "get.__doc__ = doc\n"
+                "getset = property(get, set_)"
+            ) % {"name": name}
+
+            getset = _exec_code_in_env(code, {"doc": doc}, "getset")
+
+            return getset
+
+        for meth in methods:
+            if hasattr(cls, meth):
+                raise TypeError(
+                    "class %s already has a method %s" % (cls, meth)
+                )
+            setattr(cls, meth, instrument(meth))
+
+        for prop in attributes:
+            if hasattr(cls, prop):
+                raise TypeError(
+                    "class %s already has a method %s" % (cls, prop)
+                )
+            setattr(cls, prop, makeprop(prop))
+
+        for prop in classmethods:
+            if hasattr(cls, prop):
+                raise TypeError(
+                    "class %s already has a method %s" % (cls, prop)
+                )
+            setattr(cls, prop, instrument(prop, clslevel=True))
+
+        return cls
+
+    return decorate
 
 
 def getargspec_init(method):
