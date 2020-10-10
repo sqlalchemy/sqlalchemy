@@ -24,7 +24,6 @@ jobs:
           - "macos-latest"
         python-version:
           - "2.7"
-          - "3.5"
           - "3.6"
           - "3.7"
           - "3.8"
@@ -84,10 +83,9 @@ jobs:
           pip install -f dist --no-index sqlalchemy
 
       - name: Check c extensions
-        # on windows in python 2.7 and 3.5 the cextension fail to build.
+        # on windows in python 2.7 the cextension fail to build.
         # for python 2.7 visual studio 9 is missing
-        # for python 3.5 the linker has an error "cannot run 'rc.exe'"
-        if: matrix.os != 'windows-latest' || ( matrix.python-version != '2.7' && matrix.python-version != '3.5' )
+        if: matrix.os != 'windows-latest' || matrix.python-version != '2.7'
         run: |
           python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
 
@@ -146,7 +144,6 @@ jobs:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
           - cp27-cp27m
           - cp27-cp27mu
-          - cp35-cp35m
           - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
@@ -296,7 +293,6 @@ jobs:
           - "ubuntu-latest"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
-          - cp35-cp35m
           - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38

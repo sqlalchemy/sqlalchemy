@@ -17,7 +17,6 @@ import sys
 
 py38 = sys.version_info >= (3, 8)
 py37 = sys.version_info >= (3, 7)
-py36 = sys.version_info >= (3, 6)
 py3k = sys.version_info >= (3, 0)
 py2k = sys.version_info < (3, 0)
 pypy = platform.python_implementation() == "PyPy"

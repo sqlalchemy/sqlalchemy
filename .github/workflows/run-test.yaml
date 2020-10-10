@@ -29,7 +29,6 @@ jobs:
           - "macos-latest"
         python-version:
           - "2.7"
-          - "3.5"
           - "3.6"
           - "3.7"
           - "3.8"
@@ -48,12 +47,9 @@ jobs:
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
 
         exclude:
-          # c-extensions fail to build on windows for python 3.5 and 2.7
+          # c-extensions fail to build on windows for python 2.7
           - os: "windows-latest"
             python-version: "2.7"
-            build-type: "cext"
-          - os: "windows-latest"
-            python-version: "3.5"
             build-type: "cext"
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
@@ -95,7 +91,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - cp35-cp35m
           - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
