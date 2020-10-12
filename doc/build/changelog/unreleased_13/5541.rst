@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, ext, associationproxy
-    :tickets: 5541, 5542
-
-    An informative error is now raised when attempting to use an association
-    proxy element as a plain column expression to be SELECTed from or used in a
-    SQL function; this use case is not currently supported.
-

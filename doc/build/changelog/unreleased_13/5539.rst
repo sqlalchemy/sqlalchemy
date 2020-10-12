@@ -1,7 +1,0 @@
-.. change::
-    :tags: change, mysql
-    :tickets: 5539
-
-    Add new MySQL reserved words: ``cube``, ``lateral`` added in MySQL 8.0.1
-    and 8.0.14, respectively; this indicates that these terms will be quoted if
-    used as table or column identifier names.
