@@ -12,7 +12,7 @@ r"""
     :url: https://pypi.org/project/pg8000/
 
 .. versionchanged:: 1.4  The pg8000 dialect has been updated for version
-   1.16.5 and higher, and is again part of SQLAlchemy's continuous integration
+   1.16.6 and higher, and is again part of SQLAlchemy's continuous integration
    with full feature support.
 
 .. _pg8000_unicode:
@@ -119,10 +119,7 @@ class _PGNumericNoBind(_PGNumeric):
 
 class _PGJSON(JSON):
     def result_processor(self, dialect, coltype):
-        if dialect._dbapi_version > (1, 10, 1):
-            return None  # Has native JSON
-        else:
-            return super(_PGJSON, self).result_processor(dialect, coltype)
+        return None
 
     def get_dbapi_type(self, dbapi):
         return dbapi.JSON
@@ -130,10 +127,7 @@ class _PGJSON(JSON):
 
 class _PGJSONB(JSONB):
     def result_processor(self, dialect, coltype):
-        if dialect._dbapi_version > (1, 10, 1):
-            return None  # Has native JSON
-        else:
-            return super(_PGJSON, self).result_processor(dialect, coltype)
+        return None
 
     def get_dbapi_type(self, dbapi):
         return dbapi.JSONB
@@ -240,8 +234,7 @@ class PGExecutionContext_pg8000(PGExecutionContext):
         if not self.compiled:
             return
 
-        if self.dialect._dbapi_version > (1, 16, 0):
-            self.set_input_sizes()
+        self.set_input_sizes()
 
 
 class PGCompiler_pg8000(PGCompiler):
@@ -271,7 +264,11 @@ class PGDialect_pg8000(PGDialect):
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
-    description_encoding = "use_encoding"
+
+    # reversed as of pg8000 1.16.6.  1.16.5 and lower
+    # are no longer compatible
+    description_encoding = None
+    # description_encoding = "use_encoding"
 
     colspecs = util.update_copy(
         PGDialect.colspecs,
@@ -302,9 +299,8 @@ class PGDialect_pg8000(PGDialect):
         PGDialect.__init__(self, **kwargs)
         self.client_encoding = client_encoding
 
-    def initialize(self, connection):
-        self.supports_sane_multi_rowcount = self._dbapi_version >= (1, 9, 14)
-        super(PGDialect_pg8000, self).initialize(connection)
+        if self._dbapi_version < (1, 16, 6):
+            raise NotImplementedError("pg8000 1.16.6 or greater is required")
 
     @util.memoized_property
     def _dbapi_version(self):
@@ -452,7 +448,7 @@ class PGDialect_pg8000(PGDialect):
 
             fns.append(on_connect)
 
-        if self._dbapi_version > (1, 16, 0) and self._json_deserializer:
+        if self._json_deserializer:
 
             def on_connect(conn):
                 # json
