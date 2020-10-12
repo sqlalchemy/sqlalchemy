@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 5618
-
-    Fixed bug where an error was not raised in the case where a
-    :func:`_sql.column` were added to more than one :func:`_sql.table` at a
-    time.  This raised correctly for the :class:`_schema.Column` and
-    :class:`_schema.Table` objects. An :class:`_exc.ArgumentError` is now
-    raised when this occurs.

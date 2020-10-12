@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 5644
-
-    Fixed issue where the ``pickle.dumps()`` operation against
-    :class:`_expression.Over` construct would produce a recursion overflow.

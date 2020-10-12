@@ -12,7 +12,167 @@
 
 .. changelog::
     :version: 1.3.20
-    :include_notes_from: unreleased_13
+    :released: October 12, 2020
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4428
+
+        An :class:`.ArgumentError` with more detail is now raised if the target
+        parameter for :meth:`_query.Query.join` is set to an unmapped object.
+        Prior to this change a less detailed ``AttributeError`` was raised.
+        Pull request courtesy Ramon Williams.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5568
+
+        The "skip_locked" keyword used with ``with_for_update()`` will emit a
+        warning when used on MariaDB backends, and will then be ignored.   This is
+        a deprecated behavior that will raise in SQLAlchemy 1.4, as an application
+        that requests "skip locked" is looking for a non-blocking operation which
+        is not available on those backends.
+
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5599
+
+        Fixed issue where a non-string object sent to
+        :class:`_exc.SQLAlchemyError` or a subclass, as occurs with some third
+        party dialects, would fail to stringify correctly. Pull request
+        courtesy Andrzej Bartosiński.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5644
+
+        Fixed issue where the ``pickle.dumps()`` operation against
+        :class:`_expression.Over` construct would produce a recursion overflow.
+
+    .. change::
+        :tags: postgresql, usecase
+        :tickets: 4392
+
+        The psycopg2 dialect now support PostgreSQL multiple host connections, by
+        passing host/port combinations to the query string. Pull request courtesy
+        Ramon Williams.
+
+        .. seealso::
+
+            :ref:`psycopg2_multi_host`
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5617
+
+        Fixed bug where an UPDATE statement against a JOIN using MySQL multi-table
+        format would fail to include the table prefix for the target table if the
+        statement had no WHERE clause, as only the WHERE clause were scanned to
+        detect a "multi table update" at that particular point.  The target
+        is now also scanned if it's a JOIN to get the leftmost table as the
+        primary table and the additional entries as additional FROM entries.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5518
+
+        Adjusted the :meth:`_types.ARRAY.Comparator.any` and
+        :meth:`_types.ARRAY.Comparator.all` methods to implement a straight "NOT"
+        operation for negation, rather than negating the comparison operator.
+
+    .. change::
+        :tags: bug, pool
+        :tickets: 5582
+
+        Fixed issue where the following pool parameters were not being propagated
+        to the new pool created when :meth:`_engine.Engine.dispose` were called:
+        ``pre_ping``, ``use_lifo``.  Additionally the ``recycle`` and
+        ``reset_on_return`` parameter is now propagated for the
+        :class:`_engine.AssertionPool` class.
+
+    .. change::
+        :tags: bug, ext, associationproxy
+        :tickets: 5541, 5542
+
+        An informative error is now raised when attempting to use an association
+        proxy element as a plain column expression to be SELECTed from or used in a
+        SQL function; this use case is not currently supported.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5618
+
+        Fixed bug where an error was not raised in the case where a
+        :func:`_sql.column` were added to more than one :func:`_sql.table` at a
+        time.  This raised correctly for the :class:`_schema.Column` and
+        :class:`_schema.Table` objects. An :class:`_exc.ArgumentError` is now
+        raised when this occurs.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 4589
+
+        Fixed issue where using a loader option against a string attribute name
+        that is not actually a mapped attribute, such as a plain Python descriptor,
+        would raise an uninformative AttributeError;  a descriptive error is now
+        raised.
+
+
+
+    .. change::
+        :tags: mysql, usecase
+        :tickets: 5462
+
+        Adjusted the MySQL dialect to correctly parenthesize functional index
+        expressions as accepted by MySQL 8. Pull request courtesy Ramon Williams.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5632
+
+        Repaired a function-level import that was not using SQLAlchemy's standard
+        late-import system within the sqlalchemy.exc module.
+
+
+    .. change::
+        :tags: change, mysql
+        :tickets: 5539
+
+        Add new MySQL reserved words: ``cube``, ``lateral`` added in MySQL 8.0.1
+        and 8.0.14, respectively; this indicates that these terms will be quoted if
+        used as table or column identifier names.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5592
+
+        Fixed issue where a SQLAlchemy connection URI for Azure DW with
+        ``authentication=ActiveDirectoryIntegrated`` (and no username+password)
+        was not constructing the ODBC connection string in a way that was
+        acceptable to the Azure DW instance.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5520
+
+        Fixed issue where the :class:`_postgresql.ENUM` type would not consult the
+        schema translate map when emitting a CREATE TYPE or DROP TYPE during the
+        test to see if the type exists or not.  Additionally, repaired an issue
+        where if the same enum were encountered multiple times in a single DDL
+        sequence, the "check" query would run repeatedly rather than relying upon a
+        cached value.
+
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 5635
+
+        Fixed incompatibilities in the test suite when running against Pytest 6.x.
+
 
 .. changelog::
     :version: 1.3.19

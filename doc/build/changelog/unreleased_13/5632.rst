@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 5632
-
-    Repaired a function-level import that was not using SQLAlchemy's standard
-    late-import system within the sqlalchemy.exc module.
-

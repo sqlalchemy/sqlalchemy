@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4428
-
-    An :class:`.ArgumentError` with more detail is now raised if the target
-    parameter for :meth:`_query.Query.join` is set to an unmapped object.
-    Prior to this change a less detailed ``AttributeError`` was raised.
-    Pull request courtesy Ramon Williams.

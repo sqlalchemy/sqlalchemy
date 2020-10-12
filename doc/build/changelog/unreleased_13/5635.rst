@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, tests
-    :tickets: 5635
-
-    Fixed incompatibilities in the test suite when running against Pytest 6.x.
-

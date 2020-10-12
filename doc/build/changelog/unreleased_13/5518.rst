@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 5518
-
-    Adjusted the :meth:`_types.ARRAY.Comparator.any` and
-    :meth:`_types.ARRAY.Comparator.all` methods to implement a straight "NOT"
-    operation for negation, rather than negating the comparison operator.
