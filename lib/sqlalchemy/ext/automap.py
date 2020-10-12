@@ -720,16 +720,35 @@ class AutomapBase(object):
     """
 
     @classmethod
+    @util.deprecated_params(
+        engine=(
+            "2.0",
+            "The :paramref:`_automap.AutomapBase.prepare.engine` parameter "
+            "is deprecated and will be removed in a future release.  "
+            "Please use the "
+            ":paramref:`_automap.AutomapBase.prepare.autoload_with` "
+            "parameter.",
+        ),
+        reflect=(
+            "2.0",
+            "The :paramref:`_automap.AutomapBase.prepare.reflect` "
+            "parameter is deprecated and will be removed in a future "
+            "release.  Reflection is enabled when "
+            ":paramref:`_automap.AutomapBase.prepare.autoload_with` "
+            "is passed.",
+        ),
+    )
     def prepare(
         cls,
+        autoload_with=None,
         engine=None,
         reflect=False,
         schema=None,
-        classname_for_table=classname_for_table,
-        collection_class=list,
-        name_for_scalar_relationship=name_for_scalar_relationship,
-        name_for_collection_relationship=name_for_collection_relationship,
-        generate_relationship=generate_relationship,
+        classname_for_table=None,
+        collection_class=None,
+        name_for_scalar_relationship=None,
+        name_for_collection_relationship=None,
+        generate_relationship=None,
     ):
         """Extract mapped classes and relationships from the
         :class:`_schema.MetaData` and
@@ -782,9 +801,31 @@ class AutomapBase(object):
          .. versionadded:: 1.1
 
         """
+        glbls = globals()
+        if classname_for_table is None:
+            classname_for_table = glbls["classname_for_table"]
+        if name_for_scalar_relationship is None:
+            name_for_scalar_relationship = glbls[
+                "name_for_scalar_relationship"
+            ]
+        if name_for_collection_relationship is None:
+            name_for_collection_relationship = glbls[
+                "name_for_collection_relationship"
+            ]
+        if generate_relationship is None:
+            generate_relationship = glbls["generate_relationship"]
+        if collection_class is None:
+            collection_class = list
+
+        if autoload_with:
+            reflect = True
+
+        if engine:
+            autoload_with = engine
+
         if reflect:
             cls.metadata.reflect(
-                engine,
+                autoload_with,
                 schema=schema,
                 extend_existing=True,
                 autoload_replace=False,

@@ -1475,6 +1475,11 @@ class ColumnSet(util.ordered_column_set):
 
 
 def _bind_or_error(schemaitem, msg=None):
+
+    util.warn_deprecated_20(
+        "The ``bind`` argument for schema methods that invoke SQL "
+        "against an engine or connection will be required in SQLAlchemy 2.0."
+    )
     bind = schemaitem.bind
     if not bind:
         name = schemaitem.__class__.__name__

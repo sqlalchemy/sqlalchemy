@@ -1,4 +1,5 @@
 from sqlalchemy import testing
+from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.orm import mapper
 from sqlalchemy.testing import eq_
@@ -6,6 +7,31 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from . import test_mutable
 from .test_mutable import Foo
+from ..orm._fixtures import FixtureTest
+
+
+class AutomapTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        FixtureTest.define_tables(metadata)
+
+    def test_reflect_true(self):
+        Base = automap_base(metadata=self.metadata)
+        engine_mock = mock.Mock()
+        with mock.patch.object(Base.metadata, "reflect") as reflect_mock:
+            with testing.expect_deprecated(
+                "The AutomapBase.prepare.reflect parameter is deprecated",
+                "The AutomapBase.prepare.engine parameter is deprecated",
+            ):
+                Base.prepare(
+                    engine=engine_mock, reflect=True, schema="some_schema"
+                )
+            reflect_mock.assert_called_once_with(
+                engine_mock,
+                schema="some_schema",
+                extend_existing=True,
+                autoload_replace=False,
+            )
 
 
 class MutableIncludeNonPrimaryTest(test_mutable.MutableWithScalarJSONTest):

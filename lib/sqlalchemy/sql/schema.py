@@ -843,6 +843,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :class:`_schema.Table`, using the given :class:`.Connectable`
         for connectivity.
 
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
+
         .. seealso::
 
             :meth:`_schema.MetaData.create_all`.
@@ -857,6 +860,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         """Issue a ``DROP`` statement for this
         :class:`_schema.Table`, using the given :class:`.Connectable`
         for connectivity.
+
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
 
         .. seealso::
 
@@ -2672,14 +2678,24 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
             return None
 
     def create(self, bind=None, checkfirst=True):
-        """Creates this sequence in the database."""
+        """Creates this sequence in the database.
+
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
+
+        """
 
         if bind is None:
             bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
     def drop(self, bind=None, checkfirst=True):
-        """Drops this sequence from the database."""
+        """Drops this sequence from the database.
+
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
+
+        """
 
         if bind is None:
             bind = _bind_or_error(self)
@@ -3904,6 +3920,13 @@ class MetaData(SchemaItem):
 
     __visit_name__ = "metadata"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_schema.MetaData.bind` argument is deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(
         self,
         bind=None,
@@ -4431,6 +4454,9 @@ class MetaData(SchemaItem):
           database; if None, uses the existing bind on this ``MetaData``, if
           any.
 
+          .. note:: the "bind" argument will be required in
+             SQLAlchemy 2.0.
+
         :param tables:
           Optional list of ``Table`` objects, which is a subset of the total
           tables in the ``MetaData`` (others are ignored).
@@ -4456,6 +4482,9 @@ class MetaData(SchemaItem):
           A :class:`.Connectable` used to access the
           database; if None, uses the existing bind on this ``MetaData``, if
           any.
+
+          .. note:: the "bind" argument will be required in
+             SQLAlchemy 2.0.
 
         :param tables:
           Optional list of ``Table`` objects, which is a subset of the
