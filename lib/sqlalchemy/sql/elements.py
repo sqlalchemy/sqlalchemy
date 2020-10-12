@@ -3547,6 +3547,15 @@ class Over(ColumnElement):
         else:
             self.rows = self.range_ = None
 
+    def __reduce__(self):
+        return self.__class__, (
+            self.element,
+            self.partition_by,
+            self.order_by,
+            self.range_,
+            self.rows,
+        )
+
     def _interpret_range(self, range_):
         if not isinstance(range_, tuple) or len(range_) != 2:
             raise exc.ArgumentError("2-tuple expected for range/rows")
