@@ -44,6 +44,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import le_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.mock import Mock
@@ -2485,6 +2486,73 @@ class AlternateCursorResultTest(fixtures.TablesTest):
 
         result.fetchmany(5)
         eq_(len(result.cursor_strategy._rowbuffer), 296)
+
+        self._test_result_processor(
+            _cursor.BufferedRowCursorFetchStrategy, False
+        )
+
+    @testing.combinations(
+        _cursor.CursorFetchStrategy,
+        _cursor.BufferedRowCursorFetchStrategy,
+        # does not handle error in fetch
+        # _cursor.FullyBufferedCursorFetchStrategy,
+        argnames="strategy_cls",
+    )
+    @testing.combinations(
+        "fetchone",
+        "fetchmany",
+        "fetchmany_w_num",
+        "fetchall",
+        argnames="method_name",
+    )
+    def test_handle_error_in_fetch(self, strategy_cls, method_name):
+        class cursor(object):
+            def raise_(self):
+                raise IOError("random non-DBAPI error during cursor operation")
+
+            def fetchone(self):
+                self.raise_()
+
+            def fetchmany(self, num=None):
+                self.raise_()
+
+            def fetchall(self):
+                self.raise_()
+
+            def close(self):
+                self.raise_()
+
+        with self._proxy_fixture(strategy_cls):
+            with self.engine.connect() as conn:
+                r = conn.execute(select(self.table))
+                assert isinstance(r.cursor_strategy, strategy_cls)
+                with mock.patch.object(r, "cursor", cursor()):
+
+                    with testing.expect_raises_message(
+                        IOError, "random non-DBAPI"
+                    ):
+                        if method_name == "fetchmany_w_num":
+                            r.fetchmany(10)
+                        else:
+                            getattr(r, method_name)()
+                            getattr(r, method_name)()
+
+                r.close()
+
+    def test_buffered_row_close_error_during_fetchone(self):
+        def raise_(**kw):
+            raise IOError("random non-DBAPI error during cursor operation")
+
+        with self._proxy_fixture(_cursor.BufferedRowCursorFetchStrategy):
+            with self.engine.connect() as conn:
+                r = conn.execute(select(self.table).limit(1))
+
+                r.fetchone()
+                with mock.patch.object(
+                    r, "_soft_close", raise_
+                ), testing.expect_raises_message(IOError, "random non-DBAPI"):
+                    r.first()
+                r.close()
 
 
 class MergeCursorResultTest(fixtures.TablesTest):

@@ -1079,7 +1079,7 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
                 try:
                     result._soft_close(hard=hard_close)
                 except BaseException as e:
-                    self.handle_exception(result, e)
+                    self.handle_exception(result, dbapi_cursor, e)
                 return None
         return self._rowbuffer.popleft()
 
@@ -1093,7 +1093,7 @@ class BufferedRowCursorFetchStrategy(CursorFetchStrategy):
             try:
                 buf.extend(dbapi_cursor.fetchmany(size - lb))
             except BaseException as e:
-                self.handle_exception(result, e)
+                self.handle_exception(result, dbapi_cursor, e)
 
         result = buf[0:size]
         self._rowbuffer = collections.deque(buf[size:])
