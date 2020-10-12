@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5644
+
+    Fixed issue where a plain pickle dumps call of the :class:`_sql.Over`
+    construct didn't work.
