@@ -2,8 +2,8 @@
     :tags: bug, pool
     :tickets: 5582
 
-    The following pool parameters were not being propagated to the new pool
-    created when :meth:`_engine.Engine.dispose` were called: ``pre_ping``,
-    ``use_lifo``.  Additionally the ``recycle`` and ``reset_on_return``
-    parameters were not propagated for the :class:`_engine.AssertionPool`
-    class.  These issues have been fixed.
+    Fixed issue where the following pool parameters were not being propagated
+    to the new pool created when :meth:`_engine.Engine.dispose` were called:
+    ``pre_ping``, ``use_lifo``.  Additionally the ``recycle`` and
+    ``reset_on_return`` parameter is now propagated for the
+    :class:`_engine.AssertionPool` class.

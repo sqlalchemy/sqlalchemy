@@ -1,7 +1,11 @@
 .. change::
-    :tags: engine, postgresql, usecase
+    :tags: postgresql, usecase
     :tickets: 4392
 
-    A :class:`.URL` connection now supports multiple hosts for PostgreSQL. Any
-    query that contains multiple hosts will now group the hosts as a string
-    instead of a tuple of strings. Pull request courtesy Ramon Williams.
+    The psycopg2 dialect now support PostgreSQL multiple host connections, by
+    passing host/port combinations to the query string. Pull request courtesy
+    Ramon Williams.
+
+    .. seealso::
+
+        :ref:`psycopg2_multi_host`

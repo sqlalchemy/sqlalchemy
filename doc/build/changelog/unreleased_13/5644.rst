@@ -2,5 +2,5 @@
     :tags: bug, sql
     :tickets: 5644
 
-    Fixed issue where a plain pickle dumps call of the :class:`_sql.Over`
-    construct didn't work.
+    Fixed issue where the ``pickle.dumps()`` operation against
+    :class:`_expression.Over` construct would produce a recursion overflow.

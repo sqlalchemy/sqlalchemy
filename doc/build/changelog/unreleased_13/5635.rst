@@ -2,6 +2,5 @@
     :tags: bug, tests
     :tickets: 5635
 
-    Fixed incompatibilities in the test suite that prevented the tests from
-    working with Pytest 6.x.
+    Fixed incompatibilities in the test suite when running against Pytest 6.x.
 

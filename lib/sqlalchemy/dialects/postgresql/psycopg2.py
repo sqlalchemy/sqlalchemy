@@ -71,7 +71,9 @@ using ``host`` as an additional keyword argument::
     `PQconnectdbParams \
     <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
-Multiple Hosts in Connection String
+.. _psycopg2_multi_host:
+
+Specfiying mutiple fallback hosts
 ------------------------------------
 
 psycopg2 supports multiple connection points in the connection string.

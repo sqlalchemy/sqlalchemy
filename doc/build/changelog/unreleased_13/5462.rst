@@ -2,6 +2,5 @@
     :tags: mysql, usecase
     :tickets: 5462
 
-    Adjusted the :meth:`MySQLDDLCompiler.visit_create_index` to implement
-    indexing with expressions and functions on the MySQL dialect as accepted by
-    MySQL 8. Pull request courtesy Ramon Williams.
+    Adjusted the MySQL dialect to correctly parenthesize functional index
+    expressions as accepted by MySQL 8. Pull request courtesy Ramon Williams.
