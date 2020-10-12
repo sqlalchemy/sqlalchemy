@@ -14,6 +14,7 @@ from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import join
@@ -65,6 +66,28 @@ class ToMetaDataTest(fixtures.TestBase):
             m2 = MetaData()
             t2 = t1.tometadata(m2)
             eq_(t2.name, "t")
+
+
+class BoundMetadataTest(fixtures.TestBase):
+    def test_arg_deprecated(self):
+        with testing.expect_deprecated_20(
+            "The MetaData.bind argument is deprecated"
+        ):
+            m1 = MetaData(testing.db)
+
+        Table("t", m1, Column("q", Integer))
+
+        with testing.expect_deprecated_20(
+            "The ``bind`` argument for schema methods that invoke SQL "
+            "against an engine or connection will be required"
+        ):
+            m1.create_all()
+        try:
+            assert "t" in inspect(testing.db).get_table_names()
+        finally:
+            m1.drop_all(testing.db)
+
+        assert "t" not in inspect(testing.db).get_table_names()
 
 
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -113,7 +113,7 @@ class AutomapTest(fixtures.MappedTest):
         Base = automap_base(metadata=self.metadata)
         engine_mock = Mock()
         with patch.object(Base.metadata, "reflect") as reflect_mock:
-            Base.prepare(engine_mock, reflect=True, schema="some_schema")
+            Base.prepare(autoload_with=engine_mock, schema="some_schema")
             reflect_mock.assert_called_once_with(
                 engine_mock,
                 schema="some_schema",
@@ -131,7 +131,7 @@ class AutomapTest(fixtures.MappedTest):
         Base = automap_base(metadata=self.metadata)
         engine_mock = Mock()
         with patch.object(Base.metadata, "reflect") as reflect_mock:
-            Base.prepare(engine_mock, reflect=True)
+            Base.prepare(autoload_with=engine_mock)
             reflect_mock.assert_called_once_with(
                 engine_mock,
                 schema=None,
@@ -352,7 +352,7 @@ class AutomapInhTest(fixtures.MappedTest):
         class SubUser2(Single):
             __mapper_args__ = {"polymorphic_identity": "u2"}
 
-        Base.prepare(engine=testing.db, reflect=True)
+        Base.prepare(autoload_with=testing.db)
 
         assert SubUser2.__mapper__.inherits is Single.__mapper__
 
@@ -373,7 +373,7 @@ class AutomapInhTest(fixtures.MappedTest):
             __tablename__ = "joined_inh"
             __mapper_args__ = {"polymorphic_identity": "u1"}
 
-        Base.prepare(engine=testing.db, reflect=True)
+        Base.prepare(autoload_with=testing.db)
 
         assert SubJoined.__mapper__.inherits is Joined.__mapper__
 
@@ -387,8 +387,7 @@ class AutomapInhTest(fixtures.MappedTest):
             return None
 
         Base.prepare(
-            engine=testing.db,
-            reflect=True,
+            autoload_with=testing.db,
             generate_relationship=_gen_relationship,
         )
 
@@ -416,7 +415,7 @@ class ConcurrentAutomapTest(fixtures.TestBase):
     def _automap(self, e):
         Base = automap_base()
 
-        Base.prepare(e, reflect=True)
+        Base.prepare(autoload_with=e)
 
         time.sleep(0.01)
         configure_mappers()

@@ -60,6 +60,12 @@ def setup_filters():
         r".*DefaultGenerator.execute\(\)",
         r"The autoload parameter is deprecated and will be removed ",
         #
+        #
+        # bound metadaa
+        #
+        r"The MetaData.bind argument is deprecated",
+        r"The ``bind`` argument for schema methods that invoke SQL ",
+        #
         # result sets
         #
         r"The Row.keys\(\) function/method",
