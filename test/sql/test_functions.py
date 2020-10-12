@@ -483,6 +483,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         except AttributeError:
             assert True
 
+    def test_pickle_over(self):
+        # TODO: the test/sql package lacks a comprehensive pickling
+        # test suite even though there are __reduce__ methods in several
+        # places in sql/elements.py.   likely as part of
+        # test/sql/test_compare.py might be a place this can happen but
+        # this still relies upon a strategy for table metadata as we have
+        # in serializer.
+
+        f1 = func.row_number().over()
+
+        self.assert_compile(
+            util.pickle.loads(util.pickle.dumps(f1)),
+            "row_number() OVER ()",
+        )
+
     def test_functions_with_cols(self):
         users = table(
             "users", column("id"), column("name"), column("fullname")
