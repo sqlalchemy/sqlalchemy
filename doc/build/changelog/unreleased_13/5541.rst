@@ -2,7 +2,7 @@
     :tags: bug, ext, associationproxy
     :tickets: 5541, 5542
 
-    It's not possible right now to use an association proxy element as a plain
-    column expression to be SELECTed from or used in a SQL function.  An
-    informative error is now raised when this occurs.
+    An informative error is now raised when attempting to use an association
+    proxy element as a plain column expression to be SELECTed from or used in a
+    SQL function; this use case is not currently supported.
 
