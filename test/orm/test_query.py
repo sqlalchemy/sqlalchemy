@@ -5417,6 +5417,48 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             {"param_1": 7},
         )
 
+    def test_select_from_alias_from_entity(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        q = sess.query(a1, a2).with_parent(u1, User.addresses, from_entity=a2)
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, "
+            "addresses_2.id AS addresses_2_id, "
+            "addresses_2.user_id AS addresses_2_user_id, "
+            "addresses_2.email_address AS addresses_2_email_address "
+            "FROM addresses AS addresses_1, "
+            "addresses AS addresses_2 WHERE :param_1 = addresses_2.user_id",
+            {"param_1": 7},
+        )
+
+    def test_select_from_alias_of_type(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = create_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        q = sess.query(a1, a2).with_parent(u1, User.addresses.of_type(a2))
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, "
+            "addresses_2.id AS addresses_2_id, "
+            "addresses_2.user_id AS addresses_2_user_id, "
+            "addresses_2.email_address AS addresses_2_email_address "
+            "FROM addresses AS addresses_1, "
+            "addresses AS addresses_2 WHERE :param_1 = addresses_2.user_id",
+            {"param_1": 7},
+        )
+
     def test_noparent(self):
         Item, User = self.classes.Item, self.classes.User
 

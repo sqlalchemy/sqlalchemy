@@ -1333,6 +1333,7 @@ SQLAlchemy originally included "get()" to resemble the Hibernate
 wrong as this method is really more about the :class:`_orm.Session` than
 with writing a SQL query.
 
+.. _migration_20_orm_query_join_strings:
 
 ORM Query  - Joining / loading on relationships uses attributes, not strings
 ----------------------------------------------------------------------------

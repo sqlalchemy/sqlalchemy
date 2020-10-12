@@ -352,7 +352,7 @@ class _CoerceLiterals(object):
             if self._coerce_star and element == "*":
                 return elements.ColumnClause("*", is_literal=True)
             else:
-                return self._text_coercion(element, argname)
+                return self._text_coercion(element, argname, **kw)
 
         if self._coerce_consts:
             if element is None:
@@ -527,6 +527,32 @@ class OnClauseImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
     __slots__ = ()
 
     _coerce_consts = True
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, legacy=False, **kw
+    ):
+        if legacy and isinstance(resolved, str):
+            return resolved
+        else:
+            return super(OnClauseImpl, self)._implicit_coercions(
+                original_element,
+                resolved,
+                argname=argname,
+                legacy=legacy,
+                **kw
+            )
+
+    def _text_coercion(self, element, argname=None, legacy=False):
+        if legacy and isinstance(element, str):
+            util.warn_deprecated_20(
+                "Using strings to indicate relationship names in "
+                "Query.join() is deprecated and will be removed in "
+                "SQLAlchemy 2.0.  Please use the class-bound attribute "
+                "directly."
+            )
+            return element
+
+        return super(OnClauseImpl, self)._text_coercion(element, argname)
 
     def _post_coercion(self, resolved, original_element=None, **kw):
         # this is a hack right now as we want to use coercion on an
@@ -802,7 +828,15 @@ class JoinTargetImpl(RoleImpl):
     ):
         if isinstance(original_element, roles.JoinTargetRole):
             return original_element
-        elif legacy and isinstance(resolved, (str, roles.WhereHavingRole)):
+        elif legacy and isinstance(resolved, str):
+            util.warn_deprecated_20(
+                "Using strings to indicate relationship names in "
+                "Query.join() is deprecated and will be removed in "
+                "SQLAlchemy 2.0.  Please use the class-bound attribute "
+                "directly."
+            )
+            return resolved
+        elif legacy and isinstance(resolved, roles.WhereHavingRole):
             return resolved
         elif legacy and resolved._is_select_statement:
             util.warn_deprecated(

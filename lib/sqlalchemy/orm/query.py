@@ -718,9 +718,12 @@ class Query(
         """
         self._compile_options += {"_current_path": path}
 
-    # TODO: removed in 2.0
     @_generative
     @_assertions(_no_clauseelement_condition)
+    @util.deprecated_20(
+        ":meth:`_orm.Query.with_polymorphic`",
+        alternative="Use the orm.with_polymorphic() standalone function",
+    )
     def with_polymorphic(
         self, cls_or_mappers, selectable=None, polymorphic_on=None
     ):
@@ -2094,6 +2097,9 @@ class Query(
 
         **Legacy Features of Query.join()**
 
+        .. deprecated:: 1.4 The following features are deprecated and will
+           be removed in SQLAlchemy 2.0.
+
         The :meth:`_query.Query.join` method currently supports several
         usage patterns and arguments that are considered to be legacy
         as of SQLAlchemy 1.3.   A deprecation path will follow
@@ -2218,6 +2224,14 @@ class Query(
             kwargs.pop("isouter", False),
             kwargs.pop("full", False),
         )
+
+        if aliased or from_joinpoint:
+            util.warn_deprecated_20(
+                "The ``aliased`` and ``from_joinpoint`` keyword arguments "
+                "to Query.join() are deprecated and will be removed "
+                "in SQLAlchemy 2.0."
+            )
+
         if kwargs:
             raise TypeError(
                 "unknown arguments: %s" % ", ".join(sorted(kwargs))
@@ -2249,6 +2263,10 @@ class Query(
             _single = []
             for prop in (target,) + props:
                 if isinstance(prop, tuple):
+                    util.warn_deprecated_20(
+                        "Query.join() will no longer accept tuples as "
+                        "arguments in SQLAlchemy 2.0."
+                    )
                     if _single:
                         _props.extend((_s,) for _s in _single)
                     _single = []
@@ -2286,7 +2304,7 @@ class Query(
 
         # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-        self._legacy_setup_joins += tuple(
+        joins_to_add = tuple(
             (
                 coercions.expect(
                     roles.JoinTargetRole,
@@ -2295,9 +2313,9 @@ class Query(
                     apply_propagate_attrs=self,
                 ),
                 (
-                    coercions.expect(roles.OnClauseRole, prop[1])
-                    if not isinstance(prop[1], str)
-                    else prop[1]
+                    coercions.expect(roles.OnClauseRole, prop[1], legacy=True)
+                    #                    if not isinstance(prop[1], str)
+                    #                    else prop[1]
                 )
                 if len(prop) == 2
                 else None,
@@ -2312,6 +2330,14 @@ class Query(
             )
             for i, prop in enumerate(_props)
         )
+
+        if len(joins_to_add) > 1:
+            util.warn_deprecated_20(
+                "Passing a chain of multiple join conditions to Query.join() "
+                "is deprecated and will be removed in SQLAlchemy 2.0. "
+                "Please use individual join() calls per relationship."
+            )
+        self._legacy_setup_joins += joins_to_add
 
         self.__dict__.pop("_last_joined_entity", None)
 
@@ -3038,9 +3064,7 @@ class Query(
 
         """
 
-        bulk_del = BulkDelete(
-            self,
-        )
+        bulk_del = BulkDelete(self)
         if self.dispatch.before_compile_delete:
             for fn in self.dispatch.before_compile_delete:
                 new_query = fn(bulk_del.query, bulk_del)

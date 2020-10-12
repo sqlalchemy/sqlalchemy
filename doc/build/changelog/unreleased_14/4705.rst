@@ -1,0 +1,22 @@
+.. change::
+    :tags: change, orm
+    :tickets: 4705, 5202
+
+    Using strings to represent relationship names in ORM operations such as
+    :meth:`_orm.Query.join`, as well as strings for all ORM attribute names
+    in loader options like :func:`_orm.selectinload`
+    is deprecated and will be removed in SQLAlchemy 2.0.  The class-bound
+    attribute should be passed instead.  This provides much better specificity
+    to the given method, allows for modifiers such as ``of_type()``, and
+    reduces internal complexity.
+
+    Additionally, the ``aliased`` and ``from_joinpoint`` parameters to
+    :meth:`_orm.Query.join` are also deprecated.   The :func:`_orm.aliased`
+    construct now provides for a great deal of flexibility and capability
+    and should be used directly.
+
+    .. seealso::
+
+        :ref:`migration_20_orm_query_join_strings`
+
+        :ref:`migration_20_query_join_options`
