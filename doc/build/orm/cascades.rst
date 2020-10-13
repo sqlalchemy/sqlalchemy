@@ -93,12 +93,11 @@ becomes part of the state of that :class:`.Session`::
     >>> address3 in sess
     >>> True
 
-``save-update`` has the possibly surprising behavior which is that
-persistent objects which were *removed* from a collection
-or in some cases a scalar attribute
-may also be pulled into the :class:`.Session` of a parent object; this is
+A ``save-update`` cascade can exhibit surprising behavior when removing an item from
+a collection or de-associating an object from a scalar attribute. In some cases, the
+orphaned objects may still be pulled into the ex-parent's :class:`.Session`; this is
 so that the flush process may handle that related object appropriately.
-This case can usually only arise if an object is removed from one :class:`.Session`
+This case usually only arises if an object is removed from one :class:`.Session`
 and added to another::
 
     >>> user1 = sess1.query(User).filter_by(id=1).first()
