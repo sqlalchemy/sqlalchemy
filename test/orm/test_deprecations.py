@@ -41,6 +41,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.util import polymorphic_union
@@ -67,6 +68,27 @@ from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_query import QueryTest
 from .test_transaction import _LocalFixture
+
+
+join_aliased_dep = (
+    r"The ``aliased`` and ``from_joinpoint`` keyword arguments to "
+    r"Query.join\(\)"
+)
+
+w_polymorphic_dep = (
+    r"The Query.with_polymorphic\(\) function/method is "
+    "considered legacy as of the 1.x series"
+)
+
+join_chain_dep = (
+    r"Passing a chain of multiple join conditions to Query.join\(\)"
+)
+
+join_strings_dep = "Using strings to indicate relationship names in Query.join"
+join_tuple_form = (
+    r"Query.join\(\) will no longer accept tuples as "
+    "arguments in SQLAlchemy 2.0."
+)
 
 
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -155,6 +177,146 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                     )
                 ],
             )
+
+    def test_aliased(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            q1 = s.query(User).join(User.addresses, aliased=True)
+
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id",
+        )
+
+    def test_from_joinpoint(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session()
+
+        u1 = aliased(User)
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            q1 = (
+                s.query(u1)
+                .join(u1.addresses)
+                .join(Address.user, from_joinpoint=True)
+            )
+
+        self.assert_compile(
+            q1,
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 JOIN addresses ON users_1.id = "
+            "addresses.user_id JOIN users ON users.id = addresses.user_id",
+        )
+
+    def test_multiple_joins(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session()
+
+        u1 = aliased(User)
+
+        with testing.expect_deprecated_20(join_chain_dep):
+            q1 = s.query(u1).join(u1.addresses, Address.user)
+
+        self.assert_compile(
+            q1,
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 JOIN addresses ON users_1.id = "
+            "addresses.user_id JOIN users ON users.id = addresses.user_id",
+        )
+
+    def test_str_join_target(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            q1 = s.query(User).join("addresses")
+
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS users_id, users.name AS "
+            "users_name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id",
+        )
+
+    def test_str_rel_loader_opt(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        q1 = s.query(User).options(joinedload("addresses"))
+
+        with testing.expect_deprecated_20(
+            "Using strings to indicate column or relationship "
+            "paths in loader options"
+        ):
+            self.assert_compile(
+                q1,
+                "SELECT users.id AS users_id, users.name AS users_name, "
+                "addresses_1.id AS addresses_1_id, addresses_1.user_id "
+                "AS addresses_1_user_id, addresses_1.email_address AS "
+                "addresses_1_email_address FROM users LEFT OUTER JOIN "
+                "addresses AS addresses_1 ON users.id = addresses_1.user_id "
+                "ORDER BY addresses_1.id",
+            )
+
+    def test_str_col_loader_opt(self):
+        User = self.classes.User
+
+        s = create_session()
+
+        q1 = s.query(User).options(defer("name"))
+
+        with testing.expect_deprecated_20(
+            "Using strings to indicate column or relationship "
+            "paths in loader options"
+        ):
+            self.assert_compile(q1, "SELECT users.id AS users_id FROM users")
+
+    def test_str_with_parent(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        s = create_session()
+
+        u1 = User(id=1)
+
+        with testing.expect_deprecated_20(
+            r"Using strings to indicate relationship names in the ORM "
+            r"with_parent\(\)",
+        ):
+            q1 = s.query(Address).filter(with_parent(u1, "addresses"))
+
+        self.assert_compile(
+            q1,
+            "SELECT addresses.id AS addresses_id, addresses.user_id "
+            "AS addresses_user_id, addresses.email_address "
+            "AS addresses_email_address FROM addresses "
+            "WHERE :param_1 = addresses.user_id",
+        )
+
+        with testing.expect_deprecated_20(
+            r"Using strings to indicate relationship names in the ORM "
+            r"with_parent\(\)",
+        ):
+            q1 = s.query(Address).with_parent(u1, "addresses")
+
+        self.assert_compile(
+            q1,
+            "SELECT addresses.id AS addresses_id, addresses.user_id "
+            "AS addresses_user_id, addresses.email_address "
+            "AS addresses_email_address FROM addresses "
+            "WHERE :param_1 = addresses.user_id",
+        )
 
     def test_invalid_column(self):
         User = self.classes.User
@@ -1040,9 +1202,10 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         with self._from_self_deprecated():
             q1 = q1.from_self()
 
-        q1 = q1.join(User.addresses, aliased=True).order_by(
-            User.id, Address.id, addresses.c.id
-        )
+        with testing.expect_deprecated_20(join_aliased_dep):
+            q1 = q1.join(User.addresses, aliased=True).order_by(
+                User.id, Address.id, addresses.c.id
+            )
 
         self.assert_compile(
             q1,
@@ -3067,12 +3230,13 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
-        q = (
-            sess.query(User)
-            .join("addresses")
-            .distinct()
-            .order_by(desc(Address.email_address))
-        )
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("addresses")
+                .distinct()
+                .order_by(desc(Address.email_address))
+            )
         with testing.expect_deprecated(
             "ORDER BY columns added implicitly due to "
         ):
@@ -3082,12 +3246,13 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = create_session()
-        q = (
-            sess.query(User)
-            .join("addresses")
-            .distinct()
-            .order_by(desc(Address.email_address).label("foo"))
-        )
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("addresses")
+                .distinct()
+                .order_by(desc(Address.email_address).label("foo"))
+            )
         with testing.expect_deprecated(
             "ORDER BY columns added implicitly due to "
         ):
@@ -3474,3 +3639,1417 @@ class DeclarativeBind(fixtures.TestBase):
                 id = Column(Integer, primary_key=True)
 
         is_true(Base.metadata.bind is testing.db)
+
+
+class JoinTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_implicit_joins_from_aliases(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = create_session()
+        OrderAlias = aliased(Order)
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            eq_(
+                sess.query(OrderAlias)
+                .join("items")
+                .filter_by(description="item 3")
+                .order_by(OrderAlias.id)
+                .all(),
+                [
+                    Order(
+                        address_id=1,
+                        description="order 1",
+                        isopen=0,
+                        user_id=7,
+                        id=1,
+                    ),
+                    Order(
+                        address_id=4,
+                        description="order 2",
+                        isopen=0,
+                        user_id=9,
+                        id=2,
+                    ),
+                    Order(
+                        address_id=1,
+                        description="order 3",
+                        isopen=1,
+                        user_id=7,
+                        id=3,
+                    ),
+                ],
+            )
+
+        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
+            eq_(
+                sess.query(User, OrderAlias, Item.description)
+                .join(OrderAlias, "orders")
+                .join("items", from_joinpoint=True)
+                .filter_by(description="item 3")
+                .order_by(User.id, OrderAlias.id)
+                .all(),
+                [
+                    (
+                        User(name="jack", id=7),
+                        Order(
+                            address_id=1,
+                            description="order 1",
+                            isopen=0,
+                            user_id=7,
+                            id=1,
+                        ),
+                        "item 3",
+                    ),
+                    (
+                        User(name="jack", id=7),
+                        Order(
+                            address_id=1,
+                            description="order 3",
+                            isopen=1,
+                            user_id=7,
+                            id=3,
+                        ),
+                        "item 3",
+                    ),
+                    (
+                        User(name="fred", id=9),
+                        Order(
+                            address_id=4,
+                            description="order 2",
+                            isopen=0,
+                            user_id=9,
+                            id=2,
+                        ),
+                        "item 3",
+                    ),
+                ],
+            )
+
+    def test_orderby_arg_bug(self):
+        User, users, Order = (
+            self.classes.User,
+            self.tables.users,
+            self.classes.Order,
+        )
+
+        sess = create_session()
+        # no arg error
+        with testing.expect_deprecated_20(join_aliased_dep):
+            (
+                sess.query(User)
+                .join("orders", aliased=True)
+                .order_by(Order.id)
+                .reset_joinpoint()
+                .order_by(users.c.id)
+                .all()
+            )
+
+    def test_aliased(self):
+        """test automatic generation of aliased joins."""
+
+        Item, Order, User, Address = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+            self.classes.Address,
+        )
+
+        sess = create_session()
+
+        # test a basic aliasized path
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("addresses", aliased=True)
+                .filter_by(email_address="jack@bean.com")
+            )
+        assert [User(id=7)] == q.all()
+
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("addresses", aliased=True)
+                .filter(Address.email_address == "jack@bean.com")
+            )
+        assert [User(id=7)] == q.all()
+
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("addresses", aliased=True)
+                .filter(
+                    or_(
+                        Address.email_address == "jack@bean.com",
+                        Address.email_address == "fred@fred.com",
+                    )
+                )
+            )
+        assert [User(id=7), User(id=9)] == q.all()
+
+        # test two aliasized paths, one to 'orders' and the other to
+        # 'orders','items'. one row is returned because user 7 has order 3 and
+        # also has order 1 which has item 1
+        # this tests a o2m join and a m2m join.
+        with testing.expect_deprecated(
+            join_aliased_dep, join_strings_dep, join_chain_dep
+        ):
+            q = (
+                sess.query(User)
+                .join("orders", aliased=True)
+                .filter(Order.description == "order 3")
+                .join("orders", "items", aliased=True)
+                .filter(Item.description == "item 1")
+            )
+        assert q.count() == 1
+        assert [User(id=7)] == q.all()
+
+        with testing.expect_deprecated(join_strings_dep, join_chain_dep):
+            # test the control version - same joins but not aliased. rows are
+            # not returned because order 3 does not have item 1
+            q = (
+                sess.query(User)
+                .join("orders")
+                .filter(Order.description == "order 3")
+                .join("orders", "items")
+                .filter(Item.description == "item 1")
+            )
+        assert [] == q.all()
+        assert q.count() == 0
+
+        # the left half of the join condition of the any() is aliased.
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("orders", aliased=True)
+                .filter(Order.items.any(Item.description == "item 4"))
+            )
+        assert [User(id=7)] == q.all()
+
+        # test that aliasing gets reset when join() is called
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join("orders", aliased=True)
+                .filter(Order.description == "order 3")
+                .join("orders", aliased=True)
+                .filter(Order.description == "order 5")
+            )
+        assert q.count() == 1
+        assert [User(id=7)] == q.all()
+
+    def test_overlapping_paths_two(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        # test overlapping paths.   User->orders is used by both joins, but
+        # rendered once.
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join("orders", "items")
+                .join("orders", "address"),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders "
+                "ON users.id = orders.user_id "
+                "JOIN order_items AS order_items_1 "
+                "ON orders.id = order_items_1.order_id "
+                "JOIN items ON items.id = order_items_1.item_id JOIN "
+                "addresses "
+                "ON addresses.id = orders.address_id",
+            )
+
+    def test_overlapping_paths_three(self):
+        User = self.classes.User
+
+        for aliased_ in (True, False):
+            # load a user who has an order that contains item id 3 and address
+            # id 1 (order 3, owned by jack)
+
+            warnings = (join_strings_dep, join_chain_dep)
+            if aliased_:
+                warnings += (join_aliased_dep,)
+
+            with testing.expect_deprecated_20(*warnings):
+                result = (
+                    create_session()
+                    .query(User)
+                    .join("orders", "items", aliased=aliased_)
+                    .filter_by(id=3)
+                    .join("orders", "address", aliased=aliased_)
+                    .filter_by(id=1)
+                    .all()
+                )
+            assert [User(id=7, name="jack")] == result
+
+    def test_overlapping_paths_multilevel(self):
+        User = self.classes.User
+
+        s = Session()
+
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            q = (
+                s.query(User)
+                .join("orders")
+                .join("addresses")
+                .join("orders", "items")
+                .join("addresses", "dingaling")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id "
+            "JOIN items ON items.id = order_items_1.item_id "
+            "JOIN dingalings ON addresses.id = dingalings.address_id",
+        )
+
+    def test_from_joinpoint(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = create_session()
+
+        for oalias, ialias in [
+            (True, True),
+            (False, False),
+            (True, False),
+            (False, True),
+        ]:
+            with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+                eq_(
+                    sess.query(User)
+                    .join("orders", aliased=oalias)
+                    .join("items", from_joinpoint=True, aliased=ialias)
+                    .filter(Item.description == "item 4")
+                    .all(),
+                    [User(name="jack")],
+                )
+
+            # use middle criterion
+            with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+                eq_(
+                    sess.query(User)
+                    .join("orders", aliased=oalias)
+                    .filter(Order.user_id == 9)
+                    .join("items", from_joinpoint=True, aliased=ialias)
+                    .filter(Item.description == "item 4")
+                    .all(),
+                    [],
+                )
+
+        orderalias = aliased(Order)
+        itemalias = aliased(Item)
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            eq_(
+                sess.query(User)
+                .join(orderalias, "orders")
+                .join(itemalias, "items", from_joinpoint=True)
+                .filter(itemalias.description == "item 4")
+                .all(),
+                [User(name="jack")],
+            )
+        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
+            eq_(
+                sess.query(User)
+                .join(orderalias, "orders")
+                .join(itemalias, "items", from_joinpoint=True)
+                .filter(orderalias.user_id == 9)
+                .filter(itemalias.description == "item 4")
+                .all(),
+                [],
+            )
+
+    def test_multi_tuple_form_legacy_one(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated(join_tuple_form):
+            q = (
+                sess.query(User)
+                .join((Order, User.id == Order.user_id))
+                .filter_by(description="foo")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_two(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Item, Order, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_tuple_form):
+            q = (
+                sess.query(User)
+                .join((Order, User.id == Order.user_id), (Item, Order.items))
+                .filter_by(description="foo")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id JOIN items ON items.id = "
+            "order_items_1.item_id WHERE items.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_three(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        # the old "backwards" form
+        with testing.expect_deprecated_20(join_tuple_form, join_strings_dep):
+            q = (
+                sess.query(User)
+                .join(("orders", Order))
+                .filter_by(description="foo")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_three_point_five(self):
+        """test the 'tuple' form of join, now superseded
+        by the two-element join() form.
+
+
+        """
+
+        Order, User = (
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = (
+                sess.query(User)
+                .join(Order, "orders")
+                .filter_by(description="foo")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "WHERE orders.description = :description_1",
+        )
+
+    def test_multi_tuple_form_legacy_four(self):
+        User, Order, Item, Keyword = self.classes(
+            "User", "Order", "Item", "Keyword"
+        )
+
+        sess = create_session()
+
+        # ensure when the tokens are broken up that from_joinpoint
+        # is set between them
+
+        expected = (
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN orders ON users.id = orders.user_id "
+            "JOIN order_items AS order_items_1 ON orders.id = "
+            "order_items_1.order_id JOIN items ON items.id = "
+            "order_items_1.item_id JOIN item_keywords AS item_keywords_1 "
+            "ON items.id = item_keywords_1.item_id "
+            "JOIN keywords ON keywords.id = item_keywords_1.keyword_id"
+        )
+
+        with testing.expect_deprecated_20(join_tuple_form, join_strings_dep):
+            q = sess.query(User).join(
+                (Order, "orders"), (Item, "items"), (Keyword, "keywords")
+            )
+        self.assert_compile(q, expected)
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = sess.query(User).join("orders", "items", "keywords")
+        self.assert_compile(q, expected)
+
+    def test_single_name(self):
+        User = self.classes.User
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            self.assert_compile(
+                sess.query(User).join("orders"),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN orders ON users.id = orders.user_id",
+            )
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            assert_raises(
+                sa_exc.InvalidRequestError,
+                sess.query(User).join("user")._compile_context,
+            )
+
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            self.assert_compile(
+                sess.query(User).join("orders", "items"),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders ON users.id = orders.user_id "
+                "JOIN order_items AS order_items_1 "
+                "ON orders.id = order_items_1.order_id JOIN items "
+                "ON items.id = order_items_1.item_id",
+            )
+
+        # test overlapping paths.   User->orders is used by both joins, but
+        # rendered once.
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join("orders", "items")
+                .join("orders", "address"),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders "
+                "ON users.id = orders.user_id "
+                "JOIN order_items AS order_items_1 "
+                "ON orders.id = order_items_1.order_id "
+                "JOIN items ON items.id = order_items_1.item_id JOIN "
+                "addresses "
+                "ON addresses.id = orders.address_id",
+            )
+
+    def test_single_prop_5(self):
+        (
+            Order,
+            User,
+        ) = (self.classes.Order, self.classes.User)
+
+        sess = create_session()
+        with testing.expect_deprecated_20(join_chain_dep):
+            self.assert_compile(
+                sess.query(User).join(User.orders, Order.items),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders ON users.id = orders.user_id "
+                "JOIN order_items AS order_items_1 "
+                "ON orders.id = order_items_1.order_id JOIN items "
+                "ON items.id = order_items_1.item_id",
+            )
+
+    def test_single_prop_7(self):
+        Order, User = (self.classes.Order, self.classes.User)
+
+        sess = create_session()
+        # this query is somewhat nonsensical.  the old system didn't render a
+        # correct query for this. In this case its the most faithful to what
+        # was asked - there's no linkage between User.orders and "oalias",
+        # so two FROM elements are generated.
+        oalias = aliased(Order)
+        with testing.expect_deprecated_20(join_chain_dep):
+            self.assert_compile(
+                sess.query(User).join(User.orders, oalias.items),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders ON users.id = orders.user_id, "
+                "orders AS orders_1 JOIN order_items AS order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items ON items.id = order_items_1.item_id",
+            )
+
+    def test_single_prop_8(self):
+        (
+            Order,
+            User,
+        ) = (self.classes.Order, self.classes.User)
+
+        sess = create_session()
+        # same as before using an aliased() for User as well
+        ualias = aliased(User)
+        oalias = aliased(Order)
+        with testing.expect_deprecated_20(join_chain_dep):
+            self.assert_compile(
+                sess.query(ualias).join(ualias.orders, oalias.items),
+                "SELECT users_1.id AS users_1_id, users_1.name "
+                "AS users_1_name "
+                "FROM users AS users_1 "
+                "JOIN orders ON users_1.id = orders.user_id, "
+                "orders AS orders_1 JOIN order_items AS order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items ON items.id = order_items_1.item_id",
+            )
+
+    def test_single_prop_10(self):
+        User, Address = (self.classes.User, self.classes.Address)
+
+        sess = create_session()
+        with testing.expect_deprecated_20(join_aliased_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join(User.addresses, aliased=True)
+                .filter(Address.email_address == "foo"),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN addresses AS addresses_1 "
+                "ON users.id = addresses_1.user_id "
+                "WHERE addresses_1.email_address = :email_address_1",
+            )
+
+    def test_single_prop_11(self):
+        Item, Order, User, = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+        with testing.expect_deprecated_20(join_aliased_dep, join_chain_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join(User.orders, Order.items, aliased=True)
+                .filter(Item.id == 10),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN orders AS orders_1 "
+                "ON users.id = orders_1.user_id "
+                "JOIN order_items AS order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
+                "WHERE items_1.id = :id_1",
+            )
+
+    def test_multiple_adaption(self):
+        Item, Order, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_chain_dep, join_aliased_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join(User.orders, Order.items, aliased=True)
+                .filter(Order.id == 7)
+                .filter(Item.id == 8),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders AS orders_1 "
+                "ON users.id = orders_1.user_id JOIN order_items AS "
+                "order_items_1 "
+                "ON orders_1.id = order_items_1.order_id "
+                "JOIN items AS items_1 ON items_1.id = order_items_1.item_id "
+                "WHERE orders_1.id = :id_1 AND items_1.id = :id_2",
+                use_default_dialect=True,
+            )
+
+    def test_onclause_conditional_adaption(self):
+        Item, Order, orders, order_items, User = (
+            self.classes.Item,
+            self.classes.Order,
+            self.tables.orders,
+            self.tables.order_items,
+            self.classes.User,
+        )
+
+        sess = create_session()
+
+        # this is now a very weird test, nobody should really
+        # be using the aliased flag in this way.
+        with testing.expect_deprecated_20(join_aliased_dep):
+            self.assert_compile(
+                sess.query(User)
+                .join(User.orders, aliased=True)
+                .join(
+                    Item,
+                    and_(
+                        Order.id == order_items.c.order_id,
+                        order_items.c.item_id == Item.id,
+                    ),
+                    from_joinpoint=True,
+                    aliased=True,
+                ),
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users "
+                "JOIN orders AS orders_1 ON users.id = orders_1.user_id "
+                "JOIN items AS items_1 "
+                "ON orders_1.id = order_items.order_id "
+                "AND order_items.item_id = items_1.id",
+                use_default_dialect=True,
+            )
+
+        # nothing is deprecated here but it is comparing to the above
+        # that nothing is adapted.
+        oalias = aliased(Order, orders.select().subquery())
+        self.assert_compile(
+            sess.query(User)
+            .join(oalias, User.orders)
+            .join(
+                Item,
+                and_(
+                    oalias.id == order_items.c.order_id,
+                    order_items.c.item_id == Item.id,
+                ),
+            ),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN "
+            "(SELECT orders.id AS id, orders.user_id AS user_id, "
+            "orders.address_id AS address_id, orders.description "
+            "AS description, orders.isopen AS isopen FROM orders) AS anon_1 "
+            "ON users.id = anon_1.user_id JOIN items "
+            "ON anon_1.id = order_items.order_id "
+            "AND order_items.item_id = items.id",
+            use_default_dialect=True,
+        )
+
+        # query.join(<stuff>, aliased=True).join(target, sql_expression)
+        # or: query.join(path_to_some_joined_table_mapper).join(target,
+        # sql_expression)
+
+    def test_overlap_with_aliases(self):
+        orders, User, users = (
+            self.tables.orders,
+            self.classes.User,
+            self.tables.users,
+        )
+
+        oalias = orders.alias("oalias")
+
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            result = (
+                create_session()
+                .query(User)
+                .select_from(users.join(oalias))
+                .filter(
+                    oalias.c.description.in_(["order 1", "order 2", "order 3"])
+                )
+                .join("orders", "items")
+                .order_by(User.id)
+                .all()
+            )
+        assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
+
+        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
+            result = (
+                create_session()
+                .query(User)
+                .select_from(users.join(oalias))
+                .filter(
+                    oalias.c.description.in_(["order 1", "order 2", "order 3"])
+                )
+                .join("orders", "items")
+                .filter_by(id=4)
+                .all()
+            )
+        assert [User(id=7, name="jack")] == result
+
+    def test_reset_joinpoint(self):
+        User = self.classes.User
+
+        for aliased_ in (True, False):
+            warnings = (
+                join_strings_dep,
+                join_chain_dep,
+            )
+            if aliased_:
+                warnings += (join_aliased_dep,)
+            # load a user who has an order that contains item id 3 and address
+            # id 1 (order 3, owned by jack)
+            with testing.expect_deprecated_20(*warnings):
+                result = (
+                    create_session()
+                    .query(User)
+                    .join("orders", "items", aliased=aliased_)
+                    .filter_by(id=3)
+                    .reset_joinpoint()
+                    .join("orders", "address", aliased=aliased_)
+                    .filter_by(id=1)
+                    .all()
+                )
+            assert [User(id=7, name="jack")] == result
+
+            with testing.expect_deprecated_20(*warnings):
+                result = (
+                    create_session()
+                    .query(User)
+                    .join("orders", "items", aliased=aliased_, isouter=True)
+                    .filter_by(id=3)
+                    .reset_joinpoint()
+                    .join("orders", "address", aliased=aliased_, isouter=True)
+                    .filter_by(id=1)
+                    .all()
+                )
+            assert [User(id=7, name="jack")] == result
+
+            with testing.expect_deprecated_20(*warnings):
+                result = (
+                    create_session()
+                    .query(User)
+                    .outerjoin("orders", "items", aliased=aliased_)
+                    .filter_by(id=3)
+                    .reset_joinpoint()
+                    .outerjoin("orders", "address", aliased=aliased_)
+                    .filter_by(id=1)
+                    .all()
+                )
+            assert [User(id=7, name="jack")] == result
+
+
+class AliasFromCorrectLeftTest(
+    fixtures.DeclarativeMappedTest, AssertsCompiledSQL
+):
+    run_create_tables = None
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Object(Base):
+            __tablename__ = "object"
+
+            type = Column(String(30))
+            __mapper_args__ = {
+                "polymorphic_identity": "object",
+                "polymorphic_on": type,
+            }
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+
+        class A(Object):
+            __tablename__ = "a"
+
+            __mapper_args__ = {"polymorphic_identity": "a"}
+
+            id = Column(Integer, ForeignKey("object.id"), primary_key=True)
+
+            b_list = relationship(
+                "B", secondary="a_b_association", backref="a_list"
+            )
+
+        class B(Object):
+            __tablename__ = "b"
+
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+            id = Column(Integer, ForeignKey("object.id"), primary_key=True)
+
+        class ABAssociation(Base):
+            __tablename__ = "a_b_association"
+
+            a_id = Column(Integer, ForeignKey("a.id"), primary_key=True)
+            b_id = Column(Integer, ForeignKey("b.id"), primary_key=True)
+
+        class X(Base):
+            __tablename__ = "x"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(30))
+
+            obj_id = Column(Integer, ForeignKey("object.id"))
+            obj = relationship("Object", backref="x_list")
+
+    def test_join_prop_to_string(self):
+        A, B, X = self.classes("A", "B", "X")
+
+        s = Session()
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = s.query(B).join(B.a_list, "x_list").filter(X.name == "x1")
+
+        self.assert_compile(
+            q,
+            "SELECT object.type AS object_type, b.id AS b_id, "
+            "object.id AS object_id, object.name AS object_name "
+            "FROM object JOIN b ON object.id = b.id "
+            "JOIN a_b_association AS a_b_association_1 "
+            "ON b.id = a_b_association_1.b_id "
+            "JOIN ("
+            "object AS object_1 "
+            "JOIN a AS a_1 ON object_1.id = a_1.id"
+            ") ON a_1.id = a_b_association_1.a_id "
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
+        )
+
+    def test_join_prop_to_prop(self):
+        A, B, X = self.classes("A", "B", "X")
+
+        s = Session()
+
+        # B -> A, but both are Object.  So when we say A.x_list, make sure
+        # we pick the correct right side
+        with testing.expect_deprecated_20(join_chain_dep):
+            q = s.query(B).join(B.a_list, A.x_list).filter(X.name == "x1")
+
+        self.assert_compile(
+            q,
+            "SELECT object.type AS object_type, b.id AS b_id, "
+            "object.id AS object_id, object.name AS object_name "
+            "FROM object JOIN b ON object.id = b.id "
+            "JOIN a_b_association AS a_b_association_1 "
+            "ON b.id = a_b_association_1.b_id "
+            "JOIN ("
+            "object AS object_1 "
+            "JOIN a AS a_1 ON object_1.id = a_1.id"
+            ") ON a_1.id = a_b_association_1.a_id "
+            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
+        )
+
+
+class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+    __dialect__ = "default"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("parent_id", Integer, ForeignKey("nodes.id")),
+            Column("data", String(30)),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Node(cls.Comparable):
+            def append(self, node):
+                self.children.append(node)
+
+    @classmethod
+    def setup_mappers(cls):
+        Node, nodes = cls.classes.Node, cls.tables.nodes
+
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node,
+                    lazy="select",
+                    join_depth=3,
+                    backref=backref("parent", remote_side=[nodes.c.id]),
+                )
+            },
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node = cls.classes.Node
+
+        sess = create_session(connection)
+        n1 = Node(data="n1")
+        n1.append(Node(data="n11"))
+        n1.append(Node(data="n12"))
+        n1.append(Node(data="n13"))
+        n1.children[1].append(Node(data="n121"))
+        n1.children[1].append(Node(data="n122"))
+        n1.children[1].append(Node(data="n123"))
+        sess.add(n1)
+        sess.flush()
+        sess.close()
+
+    def test_join_1(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
+            node = (
+                sess.query(Node)
+                .join("children", aliased=True)
+                .filter_by(data="n122")
+                .first()
+            )
+        assert node.data == "n12"
+
+    def test_join_2(self):
+        Node = self.classes.Node
+        sess = create_session()
+        with testing.expect_deprecated_20(join_aliased_dep):
+            ret = (
+                sess.query(Node.data)
+                .join(Node.children, aliased=True)
+                .filter_by(data="n122")
+                .all()
+            )
+        assert ret == [("n12",)]
+
+    def test_join_3_filter_by(self):
+        Node = self.classes.Node
+        sess = create_session()
+        with testing.expect_deprecated_20(
+            join_strings_dep, join_aliased_dep, join_chain_dep
+        ):
+            q = (
+                sess.query(Node)
+                .join("children", "children", aliased=True)
+                .filter_by(data="n122")
+            )
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
+            checkparams={"data_1": "n122"},
+        )
+        node = q.first()
+        eq_(node.data, "n1")
+
+    def test_join_3_filter(self):
+        Node = self.classes.Node
+        sess = create_session()
+        with testing.expect_deprecated_20(
+            join_strings_dep, join_aliased_dep, join_chain_dep
+        ):
+            q = (
+                sess.query(Node)
+                .join("children", "children", aliased=True)
+                .filter(Node.data == "n122")
+            )
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
+            checkparams={"data_1": "n122"},
+        )
+        node = q.first()
+        eq_(node.data, "n1")
+
+    def test_join_4_filter_by(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
+            q = (
+                sess.query(Node)
+                .filter_by(data="n122")
+                .join("parent", aliased=True)
+                .filter_by(data="n12")
+                .join("parent", aliased=True, from_joinpoint=True)
+                .filter_by(data="n1")
+            )
+
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
+            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
+            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
+        )
+
+        node = q.first()
+        eq_(node.data, "n122")
+
+    def test_join_4_filter(self):
+        Node = self.classes.Node
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
+            q = (
+                sess.query(Node)
+                .filter(Node.data == "n122")
+                .join("parent", aliased=True)
+                .filter(Node.data == "n12")
+                .join("parent", aliased=True, from_joinpoint=True)
+                .filter(Node.data == "n1")
+            )
+
+        self.assert_compile(
+            q,
+            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
+            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
+            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
+            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
+            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
+            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
+        )
+
+        node = q.first()
+        eq_(node.data, "n122")
+
+    def test_string_or_prop_aliased_one(self):
+        """test that join('foo') behaves the same as join(Cls.foo) in a self
+        referential scenario.
+
+        """
+
+        Node = self.classes.Node
+
+        sess = create_session()
+        nalias = aliased(
+            Node, sess.query(Node).filter_by(data="n1").subquery()
+        )
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            q1 = (
+                sess.query(nalias)
+                .join(nalias.children, aliased=True)
+                .join(Node.children, from_joinpoint=True)
+                .filter(Node.data == "n1")
+            )
+
+        with testing.expect_deprecated_20(join_aliased_dep, join_strings_dep):
+            q2 = (
+                sess.query(nalias)
+                .join(nalias.children, aliased=True)
+                .join("children", from_joinpoint=True)
+                .filter(Node.data == "n1")
+            )
+
+        for q in (q1, q2):
+            self.assert_compile(
+                q,
+                "SELECT anon_1.id AS anon_1_id, anon_1.parent_id AS "
+                "anon_1_parent_id, anon_1.data AS anon_1_data FROM "
+                "(SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
+                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
+                "AS anon_1 JOIN nodes AS nodes_1 ON anon_1.id = "
+                "nodes_1.parent_id JOIN nodes "
+                "ON nodes_1.id = nodes.parent_id "
+                "WHERE nodes_1.data = :data_2",
+                use_default_dialect=True,
+                checkparams={"data_1": "n1", "data_2": "n1"},
+            )
+
+    def test_string_or_prop_aliased_two(self):
+        Node = self.classes.Node
+
+        sess = create_session()
+        nalias = aliased(
+            Node, sess.query(Node).filter_by(data="n1").subquery()
+        )
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            q1 = (
+                sess.query(Node)
+                .filter(Node.data == "n1")
+                .join(nalias.children, aliased=True)
+                .filter(nalias.data == "n2")
+                .join(Node.children, aliased=True, from_joinpoint=True)
+                .filter(Node.data == "n3")
+                .join(Node.children, from_joinpoint=True)
+                .filter(Node.data == "n4")
+            )
+
+        with testing.expect_deprecated_20(join_aliased_dep, join_strings_dep):
+            q2 = (
+                sess.query(Node)
+                .filter(Node.data == "n1")
+                .join(nalias.children, aliased=True)
+                .filter(nalias.data == "n2")
+                .join("children", aliased=True, from_joinpoint=True)
+                .filter(Node.data == "n3")
+                .join("children", from_joinpoint=True)
+                .filter(Node.data == "n4")
+            )
+
+        for q in (q1, q2):
+            self.assert_compile(
+                q,
+                "SELECT nodes.id AS nodes_id, nodes.parent_id "
+                "AS nodes_parent_id, nodes.data AS nodes_data "
+                "FROM (SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
+                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
+                "AS anon_1 JOIN nodes AS nodes_1 "
+                "ON anon_1.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
+                "ON nodes_1.id = nodes_2.parent_id JOIN nodes "
+                "ON nodes_2.id = nodes.parent_id WHERE nodes.data = :data_2 "
+                "AND anon_1.data = :data_3 AND nodes_2.data = :data_4 "
+                "AND nodes_2.data = :data_5",
+                use_default_dialect=True,
+                checkparams={
+                    "data_1": "n1",
+                    "data_2": "n1",
+                    "data_3": "n2",
+                    "data_4": "n3",
+                    "data_5": "n4",
+                },
+            )
+
+
+class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
+    run_setup_mappers = "once"
+
+    def test_multiple_adaption(self):
+        """test that multiple filter() adapters get chained together "
+        and work correctly within a multiple-entry join()."""
+
+        people, Company, Machine, engineers, machines, Engineer = (
+            self.tables.people,
+            self.classes.Company,
+            self.classes.Machine,
+            self.tables.engineers,
+            self.tables.machines,
+            self.classes.Engineer,
+        )
+
+        sess = create_session()
+
+        mach_alias = aliased(Machine, machines.select().subquery())
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            self.assert_compile(
+                sess.query(Company)
+                .join(people.join(engineers), Company.employees)
+                .join(mach_alias, Engineer.machines, from_joinpoint=True)
+                .filter(Engineer.name == "dilbert")
+                .filter(mach_alias.name == "foo"),
+                "SELECT companies.company_id AS companies_company_id, "
+                "companies.name AS companies_name "
+                "FROM companies JOIN (people "
+                "JOIN engineers ON people.person_id = "
+                "engineers.person_id) ON companies.company_id = "
+                "people.company_id JOIN "
+                "(SELECT machines.machine_id AS machine_id, "
+                "machines.name AS name, "
+                "machines.engineer_id AS engineer_id "
+                "FROM machines) AS anon_1 "
+                "ON engineers.person_id = anon_1.engineer_id "
+                "WHERE people.name = :name_1 AND anon_1.name = :name_2",
+                use_default_dialect=True,
+            )
+
+    def test_prop_with_polymorphic_1(self):
+        Person, Manager, Paperwork = (
+            self.classes.Person,
+            self.classes.Manager,
+            self.classes.Paperwork,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(join_strings_dep, w_polymorphic_dep):
+            self.assert_compile(
+                sess.query(Person)
+                .with_polymorphic(Manager)
+                .order_by(Person.person_id)
+                .join("paperwork")
+                .filter(Paperwork.description.like("%review%")),
+                "SELECT people.person_id AS people_person_id, "
+                "people.company_id AS"
+                " people_company_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "managers.person_id AS managers_person_id, "
+                "managers.status AS managers_status, managers.manager_name AS "
+                "managers_manager_name FROM people "
+                "LEFT OUTER JOIN managers "
+                "ON people.person_id = managers.person_id "
+                "JOIN paperwork "
+                "ON people.person_id = paperwork.person_id "
+                "WHERE paperwork.description LIKE :description_1 "
+                "ORDER BY people.person_id",
+                use_default_dialect=True,
+            )
+
+    def test_prop_with_polymorphic_2(self):
+        Person, Manager, Paperwork = (
+            self.classes.Person,
+            self.classes.Manager,
+            self.classes.Paperwork,
+        )
+
+        sess = create_session()
+
+        with testing.expect_deprecated_20(
+            join_strings_dep, w_polymorphic_dep, join_aliased_dep
+        ):
+            self.assert_compile(
+                sess.query(Person)
+                .with_polymorphic(Manager)
+                .order_by(Person.person_id)
+                .join("paperwork", aliased=True)
+                .filter(Paperwork.description.like("%review%")),
+                "SELECT people.person_id AS people_person_id, "
+                "people.company_id AS people_company_id, "
+                "people.name AS people_name, people.type AS people_type, "
+                "managers.person_id AS managers_person_id, "
+                "managers.status AS managers_status, "
+                "managers.manager_name AS managers_manager_name "
+                "FROM people LEFT OUTER JOIN managers "
+                "ON people.person_id = managers.person_id "
+                "JOIN paperwork AS paperwork_1 "
+                "ON people.person_id = paperwork_1.person_id "
+                "WHERE paperwork_1.description "
+                "LIKE :description_1 ORDER BY people.person_id",
+                use_default_dialect=True,
+            )
+
+
+class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+    run_setup_mappers = "once"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("table1", metadata, Column("id", Integer, primary_key=True))
+        Table(
+            "table2",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("t1_id", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        table1, table2 = cls.tables.table1, cls.tables.table2
+
+        class T1(cls.Comparable):
+            pass
+
+        class T2(cls.Comparable):
+            pass
+
+        mapper(T1, table1)
+        mapper(T2, table2)
+
+    def test_mapped_to_select_implicit_left_w_aliased(self):
+        T1, T2 = self.classes.T1, self.classes.T2
+
+        sess = Session()
+        subq = (
+            sess.query(T2.t1_id, func.count(T2.id).label("count"))
+            .group_by(T2.t1_id)
+            .subquery()
+        )
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            assert_raises_message(
+                sa_exc.InvalidRequestError,
+                r"The aliased=True parameter on query.join\(\) only works "
+                "with "
+                "an ORM entity, not a plain selectable, as the target.",
+                # this doesn't work, so have it raise an error
+                sess.query(T1.id)
+                .join(subq, subq.c.t1_id == T1.id, aliased=True)
+                ._compile_context,
+            )
+
+
+class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "t1",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
+        Table(
+            "t2",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", String(30)),
+        )
+
+        Table(
+            "t1t2_1",
+            metadata,
+            Column("t1id", Integer, ForeignKey("t1.id")),
+            Column("t2id", Integer, ForeignKey("t2.id")),
+        )
+
+        Table(
+            "t1t2_2",
+            metadata,
+            Column("t1id", Integer, ForeignKey("t1.id")),
+            Column("t2id", Integer, ForeignKey("t2.id")),
+        )
+
+    def test_basic(self):
+        t2, t1t2_1, t1t2_2, t1 = (
+            self.tables.t2,
+            self.tables.t1t2_1,
+            self.tables.t1t2_2,
+            self.tables.t1,
+        )
+
+        class T1(object):
+            pass
+
+        class T2(object):
+            pass
+
+        mapper(
+            T1,
+            t1,
+            properties={
+                "t2s_1": relationship(T2, secondary=t1t2_1),
+                "t2s_2": relationship(T2, secondary=t1t2_2),
+            },
+        )
+        mapper(T2, t2)
+
+        with testing.expect_deprecated_20(join_strings_dep):
+            q = (
+                create_session()
+                .query(T1)
+                .join("t2s_1")
+                .filter(t2.c.id == 5)
+                .reset_joinpoint()
+                .join("t2s_2")
+            )
+        self.assert_compile(
+            q,
+            "SELECT t1.id AS t1_id, t1.data AS t1_data FROM t1 "
+            "JOIN t1t2_1 AS t1t2_1_1 "
+            "ON t1.id = t1t2_1_1.t1id JOIN t2 ON t2.id = t1t2_1_1.t2id "
+            "JOIN t1t2_2 AS t1t2_2_1 "
+            "ON t1.id = t1t2_2_1.t1id JOIN t2 ON t2.id = t1t2_2_1.t2id "
+            "WHERE t2.id = :id_1",
+            use_default_dialect=True,
+        )

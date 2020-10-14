@@ -193,6 +193,12 @@ class Load(Generative, LoaderOption):
             else:
                 ent = path.entity
 
+            util.warn_deprecated_20(
+                "Using strings to indicate column or "
+                "relationship paths in loader options is deprecated "
+                "and will be removed in SQLAlchemy 2.0.  Please use "
+                "the class-bound attribute directly."
+            )
             try:
                 # use getattr on the class to work around
                 # synonyms, hybrids, etc.

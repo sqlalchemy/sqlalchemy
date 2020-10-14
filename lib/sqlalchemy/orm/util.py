@@ -1628,11 +1628,35 @@ def with_parent(instance, prop, from_entity=None):
     :func:`_orm.relationship()`
     configuration.
 
+    E.g.::
+
+        stmt = select(Address).where(with_parent(some_user, Address.user))
+
+
     The SQL rendered is the same as that rendered when a lazy loader
     would fire off from the given parent on that attribute, meaning
     that the appropriate state is taken from the parent object in
     Python without the need to render joins to the parent table
     in the rendered statement.
+
+    The given property may also make use of :meth:`_orm.PropComparator.of_type`
+    to indicate the left side of the criteria::
+
+
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        stmt = select(a1, a2).where(
+            with_parent(u1, User.addresses.of_type(a2))
+        )
+
+    The above use is equivalent to using the
+    :func:`_orm.with_parent.from_entity` argument::
+
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        stmt = select(a1, a2).where(
+            with_parent(u1, User.addresses, from_entity=a2)
+        )
 
     :param instance:
       An instance which has some :func:`_orm.relationship`.
@@ -1642,6 +1666,9 @@ def with_parent(instance, prop, from_entity=None):
       what relationship from the instance should be used to reconcile the
       parent/child relationship.
 
+      .. deprecated:: 1.4 Using strings is deprecated and will be removed
+         in SQLAlchemy 2.0.  Please use the class-bound attribute directly.
+
     :param from_entity:
       Entity in which to consider as the left side.  This defaults to the
       "zero" entity of the :class:`_query.Query` itself.
@@ -1650,9 +1677,16 @@ def with_parent(instance, prop, from_entity=None):
 
     """
     if isinstance(prop, util.string_types):
+        util.warn_deprecated_20(
+            "Using strings to indicate relationship names in the ORM "
+            "with_parent() function is deprecated and will be removed "
+            "SQLAlchemy 2.0.  Please use the class-bound attribute directly."
+        )
         mapper = object_mapper(instance)
         prop = getattr(mapper.class_, prop).property
     elif isinstance(prop, attributes.QueryableAttribute):
+        if prop._of_type:
+            from_entity = prop._of_type
         prop = prop.property
 
     return prop._with_parent(instance, from_entity=from_entity)
