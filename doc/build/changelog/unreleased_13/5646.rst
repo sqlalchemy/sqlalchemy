@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 5646
+
+    Added SQL Server code "01000" to the list of disconnect codes.
+
