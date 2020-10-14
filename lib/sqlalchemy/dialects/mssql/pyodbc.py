@@ -52,7 +52,7 @@ name must be URL encoded which means using plus signs for spaces::
 
 Other keywords interpreted by the Pyodbc dialect to be passed to
 ``pyodbc.connect()`` in both the DSN and hostname cases include:
-``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``, 
+``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``,
 ``authentication`` (e.g., ``authentication=ActiveDirectoryIntegrated``).
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
@@ -451,8 +451,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):
             code = e.args[0]
-            if code in (
+            if code in {
                 "08S01",
+                "01000",
                 "01002",
                 "08003",
                 "08007",
@@ -461,7 +462,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 "HYT00",
                 "HY010",
                 "10054",
-            ):
+            }:
                 return True
         return super(MSDialect_pyodbc, self).is_disconnect(
             e, connection, cursor
