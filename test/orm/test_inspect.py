@@ -436,14 +436,16 @@ class TestORMInspection(_fixtures.FixtureTest):
 
     def _random_names(self):
         import random
+        import keyword
 
-        return [
+        names = {
             "".join(
                 random.choice("abcdegfghijklmnopqrstuvwxyz")
                 for i in range(random.randint(3, 15))
             )
             for j in range(random.randint(4, 12))
-        ]
+        }
+        return list(names.difference(keyword.kwlist))
 
     def _ordered_name_fixture(self, glbls, clsname, base, supercls):
         import random
