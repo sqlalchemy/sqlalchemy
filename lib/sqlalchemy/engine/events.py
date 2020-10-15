@@ -330,7 +330,7 @@ class ConnectionEvents(event.Events):
         * exception re-writing
         * Establishing or disabling whether a connection or the owning
           connection pool is invalidated or expired in response to a
-          specific exception.
+          specific exception [1]_.
 
         The hook is called while the cursor from the failed operation
         (if any) is still open and accessible.   Special cleanup operations
@@ -340,21 +340,17 @@ class ConnectionEvents(event.Events):
         the scope of this hook; the rollback of the per-statement transaction
         also occurs after the hook is called.
 
-        For the common case of detecting a "disconnect" situation which
-        is not currently handled by the SQLAlchemy dialect, the
-        :attr:`.ExceptionContext.is_disconnect` flag can be set to True which
-        will cause the exception to be considered as a disconnect situation,
-        which typically results in the connection pool being invalidated::
+        .. note::
 
-            @event.listens_for(Engine, "handle_error")
-            def handle_exception(context):
-                if isinstance(context.original_exception, pyodbc.Error):
-                    for code in (
-                        '08S01', '01002', '08003',
-                        '08007', '08S02', '08001', 'HYT00', 'HY010'):
-
-                        if code in str(context.original_exception):
-                            context.is_disconnect = True
+            .. [1] The pool "pre_ping" handler enabled using the
+                :paramref:`_sa.create_engine.pool_pre_ping` parameter does
+                **not** consult this event before deciding if the "ping"
+                returned false, as opposed to receiving an unhandled error.
+                For this use case, the :ref:`legacy recipe based on
+                engine_connect() may be used
+                <pool_disconnects_pessimistic_custom>`.  A future API allow
+                more comprehensive customization of the "disconnect"
+                detection mechanism across all functions.
 
         A handler function has two options for replacing
         the SQLAlchemy-constructed exception into one that is user
@@ -478,23 +474,11 @@ class ConnectionEvents(event.Events):
          typically to pre-execute a SELECT of a default value for the purposes
          of an INSERT statement.
 
-        .. versionadded:: 0.9.0
-
         .. seealso::
-
-            :ref:`pool_disconnects_pessimistic` - illustrates how to use
-            :meth:`_events.ConnectionEvents.engine_connect`
-            to transparently ensure pooled connections are connected to the
-            database.
 
             :meth:`_events.PoolEvents.checkout`
             the lower-level pool checkout event
             for an individual DBAPI connection
-
-            :meth:`_events.ConnectionEvents.set_connection_execution_options`
-            - a copy
-            of a :class:`_engine.Connection` is also made when the
-            :meth:`_engine.Connection.execution_options` method is called.
 
         """
 

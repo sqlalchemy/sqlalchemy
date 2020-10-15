@@ -1556,6 +1556,16 @@ class ExceptionContext(object):
     a connection and pool invalidation can be invoked or prevented by
     changing this flag.
 
+
+    .. note:: The pool "pre_ping" handler enabled using the
+        :paramref:`_sa.create_engine.pool_pre_ping` parameter does **not**
+        consult this event before deciding if the "ping" returned false,
+        as opposed to receiving an unhandled error.   For this use case, the
+        :ref:`legacy recipe based on engine_connect() may be used
+        <pool_disconnects_pessimistic_custom>`.  A future API allow more
+        comprehensive customization of the "disconnect" detection mechanism
+        across all functions.
+
     """
 
     invalidate_pool_on_disconnect = True
