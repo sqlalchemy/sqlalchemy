@@ -212,6 +212,8 @@ to three times before giving up, propagating the database error last received.
 .. versionadded:: 1.2 Added "pre-ping" capability to the :class:`_pool.Pool`
    class.
 
+.. _pool_disconnects_pessimistic_custom:
+
 Custom / Legacy Pessimistic Ping
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
