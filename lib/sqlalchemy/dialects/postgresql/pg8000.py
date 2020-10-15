@@ -234,8 +234,6 @@ class PGExecutionContext_pg8000(PGExecutionContext):
         if not self.compiled:
             return
 
-        self.set_input_sizes()
-
 
 class PGCompiler_pg8000(PGCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
@@ -264,6 +262,8 @@ class PGDialect_pg8000(PGDialect):
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
+
+    use_setinputsizes = True
 
     # reversed as of pg8000 1.16.6.  1.16.5 and lower
     # are no longer compatible
@@ -406,6 +406,20 @@ class PGDialect_pg8000(PGDialect):
         cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
         cursor.execute("COMMIT")
         cursor.close()
+
+    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+        if self.positional:
+            cursor.setinputsizes(
+                *[dbtype for key, dbtype, sqltype in list_of_tuples]
+            )
+        else:
+            cursor.setinputsizes(
+                **{
+                    key: dbtype
+                    for key, dbtype, sqltype in list_of_tuples
+                    if dbtype
+                }
+            )
 
     def do_begin_twophase(self, connection, xid):
         connection.connection.tpc_begin((0, xid, ""))

@@ -971,7 +971,7 @@ class SQLCompiler(Compiled):
 
     @util.memoized_instancemethod
     def _get_set_input_sizes_lookup(
-        self, translate=None, include_types=None, exclude_types=None
+        self, include_types=None, exclude_types=None
     ):
         if not hasattr(self, "bind_names"):
             return None
@@ -986,7 +986,7 @@ class SQLCompiler(Compiled):
         # for a dialect impl, also subclass Emulated first which overrides
         # this behavior in those cases to behave like the default.
 
-        if not include_types and not exclude_types:
+        if include_types is None and exclude_types is None:
 
             def _lookup_type(typ):
                 dialect_impl = typ._unwrapped_dialect_impl(dialect)
@@ -1001,12 +1001,12 @@ class SQLCompiler(Compiled):
                 if (
                     dbtype is not None
                     and (
-                        not exclude_types
+                        exclude_types is None
                         or dbtype not in exclude_types
                         and type(dialect_impl) not in exclude_types
                     )
                     and (
-                        not include_types
+                        include_types is None
                         or dbtype in include_types
                         or type(dialect_impl) in include_types
                     )

@@ -687,14 +687,11 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         if self.compiled._quoted_bind_names:
             self._setup_quoted_bind_names()
 
-        self.set_input_sizes(
-            self.compiled._quoted_bind_names,
-            include_types=self.dialect._include_setinputsizes,
-        )
-
         self._generate_out_parameter_vars()
 
         self._generate_cursor_outputtype_handler()
+
+        self.include_set_input_sizes = self.dialect._include_setinputsizes
 
     def post_exec(self):
         if self.compiled and self.out_parameters and self.compiled.returning:
@@ -745,6 +742,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     supports_unicode_statements = True
     supports_unicode_binds = True
+
+    use_setinputsizes = True
 
     driver = "cx_oracle"
 
@@ -1171,6 +1170,35 @@ class OracleDialect_cx_oracle(OracleDialect):
             oci_prepared = connection.info["cx_oracle_prepared"]
             if oci_prepared:
                 self.do_commit(connection.connection)
+
+    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+        if self.positional:
+            # not usually used, here to support if someone is modifying
+            # the dialect to use positional style
+            cursor.setinputsizes(
+                *[dbtype for key, dbtype, sqltype in list_of_tuples]
+            )
+        else:
+            collection = (
+                (key, dbtype)
+                for key, dbtype, sqltype in list_of_tuples
+                if dbtype
+            )
+            if context and context.compiled:
+                quoted_bind_names = context.compiled._quoted_bind_names
+                collection = (
+                    (quoted_bind_names.get(key, key), dbtype)
+                    for key, dbtype in collection
+                )
+
+            if not self.supports_unicode_binds:
+                # oracle 8 only
+                collection = (
+                    (self.dialect._encoder(key)[0], dbtype)
+                    for key, dbtype in collection
+                )
+
+            cursor.setinputsizes(**{key: dbtype for key, dbtype in collection})
 
     def do_recover_twophase(self, connection):
         connection.info.pop("cx_oracle_prepared", None)

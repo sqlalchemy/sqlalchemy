@@ -56,6 +56,7 @@ class DefaultDialect(interfaces.Dialect):
     supports_alter = True
     supports_comments = False
     inline_comments = False
+    use_setinputsizes = False
 
     # the first value we'd get for an autoincrement
     # column.
@@ -782,6 +783,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     returned_default_rows = None
     execution_options = util.immutabledict()
 
+    include_set_input_sizes = None
+    exclude_set_input_sizes = None
+
     cursor_fetch_strategy = _cursor._DEFAULT_FETCH
 
     cache_stats = None
@@ -1477,9 +1481,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             self.compiled.postfetch
         )
 
-    def set_input_sizes(
-        self, translate=None, include_types=None, exclude_types=None
-    ):
+    def _set_input_sizes(self):
         """Given a cursor and ClauseParameters, call the appropriate
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
@@ -1488,14 +1490,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         currently cx_oracle.
 
         """
-        if self.isddl:
-            return None
+        if self.isddl or self.is_text:
+            return
 
         inputsizes = self.compiled._get_set_input_sizes_lookup(
-            translate=translate,
-            include_types=include_types,
-            exclude_types=exclude_types,
+            include_types=self.include_set_input_sizes,
+            exclude_types=self.exclude_set_input_sizes,
         )
+
         if inputsizes is None:
             return
 
@@ -1506,82 +1508,52 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             )
 
         if self.dialect.positional:
-            positional_inputsizes = []
-            for key in self.compiled.positiontup:
-                bindparam = self.compiled.binds[key]
-                if bindparam in self.compiled.literal_execute_params:
-                    continue
-
-                if key in self._expanded_parameters:
-                    if bindparam.type._is_tuple_type:
-                        num = len(bindparam.type.types)
-                        dbtypes = inputsizes[bindparam]
-                        positional_inputsizes.extend(
-                            [
-                                dbtypes[idx % num]
-                                for idx, key in enumerate(
-                                    self._expanded_parameters[key]
-                                )
-                            ]
-                        )
-                    else:
-                        dbtype = inputsizes.get(bindparam, None)
-                        positional_inputsizes.extend(
-                            dbtype for dbtype in self._expanded_parameters[key]
-                        )
-                else:
-                    dbtype = inputsizes[bindparam]
-                    positional_inputsizes.append(dbtype)
-            try:
-                self.cursor.setinputsizes(*positional_inputsizes)
-            except BaseException as e:
-                self.root_connection._handle_dbapi_exception(
-                    e, None, None, None, self
-                )
+            items = [
+                (key, self.compiled.binds[key])
+                for key in self.compiled.positiontup
+            ]
         else:
-            keyword_inputsizes = {}
-            for bindparam, key in self.compiled.bind_names.items():
-                if bindparam in self.compiled.literal_execute_params:
-                    continue
+            items = [
+                (key, bindparam)
+                for bindparam, key in self.compiled.bind_names.items()
+            ]
 
-                if key in self._expanded_parameters:
-                    if bindparam.type._is_tuple_type:
-                        num = len(bindparam.type.types)
-                        dbtypes = inputsizes[bindparam]
-                        keyword_inputsizes.update(
-                            [
-                                (key, dbtypes[idx % num])
-                                for idx, key in enumerate(
-                                    self._expanded_parameters[key]
-                                )
-                            ]
+        generic_inputsizes = []
+        for key, bindparam in items:
+            if bindparam in self.compiled.literal_execute_params:
+                continue
+
+            if key in self._expanded_parameters:
+                if bindparam.type._is_tuple_type:
+                    num = len(bindparam.type.types)
+                    dbtypes = inputsizes[bindparam]
+                    generic_inputsizes.extend(
+                        (
+                            paramname,
+                            dbtypes[idx % num],
+                            bindparam.type.types[idx % num],
                         )
-                    else:
-                        dbtype = inputsizes.get(bindparam, None)
-                        if dbtype is not None:
-                            keyword_inputsizes.update(
-                                (expand_key, dbtype)
-                                for expand_key in self._expanded_parameters[
-                                    key
-                                ]
-                            )
+                        for idx, paramname in enumerate(
+                            self._expanded_parameters[key]
+                        )
+                    )
                 else:
                     dbtype = inputsizes.get(bindparam, None)
-                    if dbtype is not None:
-                        if translate:
-                            # TODO: this part won't work w/ the
-                            # expanded_parameters feature, e.g. for cx_oracle
-                            # quoted bound names
-                            key = translate.get(key, key)
-                        if not self.dialect.supports_unicode_binds:
-                            key = self.dialect._encoder(key)[0]
-                        keyword_inputsizes[key] = dbtype
-            try:
-                self.cursor.setinputsizes(**keyword_inputsizes)
-            except BaseException as e:
-                self.root_connection._handle_dbapi_exception(
-                    e, None, None, None, self
-                )
+                    generic_inputsizes.extend(
+                        (paramname, dbtype, bindparam.type)
+                        for paramname in self._expanded_parameters[key]
+                    )
+            else:
+                dbtype = inputsizes.get(bindparam, None)
+                generic_inputsizes.append((key, dbtype, bindparam.type))
+        try:
+            self.dialect.do_set_input_sizes(
+                self.cursor, generic_inputsizes, self
+            )
+        except BaseException as e:
+            self.root_connection._handle_dbapi_exception(
+                e, None, None, None, self
+            )
 
     def _exec_default(self, column, default, type_):
         if default.is_sequence:

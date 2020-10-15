@@ -1553,6 +1553,9 @@ class Connection(Connectable):
 
         context.pre_exec()
 
+        if dialect.use_setinputsizes:
+            context._set_input_sizes()
+
         cursor, statement, parameters = (
             context.cursor,
             context.statement,

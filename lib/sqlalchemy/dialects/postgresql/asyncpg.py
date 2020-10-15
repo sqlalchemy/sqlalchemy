@@ -245,7 +245,7 @@ class PGExecutionContext_asyncpg(PGExecutionContext):
         # we have to exclude ENUM because "enum" not really a "type"
         # we can cast to, it has to be the name of the type itself.
         # for now we just omit it from casting
-        self.set_input_sizes(exclude_types={AsyncAdapt_asyncpg_dbapi.ENUM})
+        self.exclude_set_input_sizes = {AsyncAdapt_asyncpg_dbapi.ENUM}
 
     def create_server_side_cursor(self):
         return self._dbapi_connection.cursor(server_side=True)
@@ -687,6 +687,8 @@ class PGDialect_asyncpg(PGDialect):
     statement_compiler = PGCompiler_asyncpg
     preparer = PGIdentifierPreparer_asyncpg
 
+    use_setinputsizes = True
+
     use_native_uuid = True
 
     colspecs = util.update_copy(
@@ -786,6 +788,20 @@ class PGDialect_asyncpg(PGDialect):
             return isinstance(
                 e, self.dbapi.InterfaceError
             ) and "connection is closed" in str(e)
+
+    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+        if self.positional:
+            cursor.setinputsizes(
+                *[dbtype for key, dbtype, sqltype in list_of_tuples]
+            )
+        else:
+            cursor.setinputsizes(
+                **{
+                    key: dbtype
+                    for key, dbtype, sqltype in list_of_tuples
+                    if dbtype
+                }
+            )
 
     def on_connect(self):
         super_connect = super(PGDialect_asyncpg, self).on_connect()

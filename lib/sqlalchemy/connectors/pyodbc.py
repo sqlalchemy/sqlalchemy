@@ -24,6 +24,8 @@ class PyODBCConnector(Connector):
     supports_native_decimal = True
     default_paramstyle = "named"
 
+    use_setinputsizes = True
+
     # for non-DSN connections, this *may* be used to
     # hold the desired driver name
     pyodbc_driver_name = None
@@ -154,6 +156,21 @@ class PyODBCConnector(Connector):
                 if allow_chars:
                     version.append(n)
         return tuple(version)
+
+    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+        # the rules for these types seems a little strange, as you can pass
+        # non-tuples as well as tuples, however it seems to assume "0"
+        # for the subsequent values if you don't pass a tuple which fails
+        # for types such as pyodbc.SQL_WLONGVARCHAR, which is the datatype
+        # that ticket #5649 is targeting.
+        cursor.setinputsizes(
+            [
+                (dbtype, None, None)
+                if not isinstance(dbtype, tuple)
+                else dbtype
+                for key, dbtype, sqltype in list_of_tuples
+            ]
+        )
 
     def set_isolation_level(self, connection, level):
         # adjust for ConnectionFairy being present

@@ -229,6 +229,7 @@ class _EventKey(object):
                 "No listeners found for event %s / %r / %s "
                 % (self.target, self.identifier, self.fn)
             )
+
         dispatch_reg = _key_to_collection.pop(key)
 
         for collection_ref, listener_ref in dispatch_reg.items():

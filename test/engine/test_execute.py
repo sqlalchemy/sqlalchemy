@@ -3300,3 +3300,224 @@ class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
                 "'branching' of new connections.",
                 connection.connect,
             )
+
+
+class SetInputSizesTest(fixtures.TablesTest):
+    __backend__ = True
+
+    __requires__ = ("independent_connections",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("user_id", INT, primary_key=True, autoincrement=False),
+            Column("user_name", VARCHAR(20)),
+        )
+
+    @testing.fixture
+    def input_sizes_fixture(self):
+        canary = mock.Mock()
+
+        def do_set_input_sizes(cursor, list_of_tuples, context):
+            if not engine.dialect.positional:
+                # sort by "user_id", "user_name", or otherwise
+                # param name for a non-positional dialect, so that we can
+                # confirm the ordering.  mostly a py2 thing probably can't
+                # occur on py3.6+ since we are passing dictionaries with
+                # "user_id", "user_name"
+                list_of_tuples = sorted(
+                    list_of_tuples, key=lambda elem: elem[0]
+                )
+            canary.do_set_input_sizes(cursor, list_of_tuples, context)
+
+        def pre_exec(self):
+            self.translate_set_input_sizes = None
+            self.include_set_input_sizes = None
+            self.exclude_set_input_sizes = None
+
+        engine = testing_engine()
+        engine.connect().close()
+
+        # the idea of this test is we fully replace the dialect
+        # do_set_input_sizes with a mock, and we can then intercept
+        # the setting passed to the dialect.  the test table uses very
+        # "safe" datatypes so that the DBAPI does not actually need
+        # setinputsizes() called in order to work.
+
+        with mock.patch.object(
+            engine.dialect, "use_setinputsizes", True
+        ), mock.patch.object(
+            engine.dialect, "do_set_input_sizes", do_set_input_sizes
+        ), mock.patch.object(
+            engine.dialect.execution_ctx_cls, "pre_exec", pre_exec
+        ):
+            yield engine, canary
+
+    def test_set_input_sizes_no_event(self, input_sizes_fixture):
+        engine, canary = input_sizes_fixture
+
+        with engine.connect() as conn:
+            conn.execute(
+                self.tables.users.insert(),
+                [
+                    {"user_id": 1, "user_name": "n1"},
+                    {"user_id": 2, "user_name": "n2"},
+                ],
+            )
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.do_set_input_sizes(
+                    mock.ANY,
+                    [
+                        (
+                            "user_id",
+                            mock.ANY,
+                            testing.eq_type_affinity(Integer),
+                        ),
+                        (
+                            "user_name",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                    ],
+                    mock.ANY,
+                )
+            ],
+        )
+
+    def test_set_input_sizes_expanding_param(self, input_sizes_fixture):
+        engine, canary = input_sizes_fixture
+
+        with engine.connect() as conn:
+            conn.execute(
+                select(self.tables.users).where(
+                    self.tables.users.c.user_name.in_(["x", "y", "z"])
+                )
+            )
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.do_set_input_sizes(
+                    mock.ANY,
+                    [
+                        (
+                            "user_name_1_1",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                        (
+                            "user_name_1_2",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                        (
+                            "user_name_1_3",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                    ],
+                    mock.ANY,
+                )
+            ],
+        )
+
+    @testing.requires.tuple_in
+    def test_set_input_sizes_expanding_tuple_param(self, input_sizes_fixture):
+        engine, canary = input_sizes_fixture
+
+        from sqlalchemy import tuple_
+
+        with engine.connect() as conn:
+            conn.execute(
+                select(self.tables.users).where(
+                    tuple_(
+                        self.tables.users.c.user_id,
+                        self.tables.users.c.user_name,
+                    ).in_([(1, "x"), (2, "y")])
+                )
+            )
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.do_set_input_sizes(
+                    mock.ANY,
+                    [
+                        (
+                            "param_1_1_1",
+                            mock.ANY,
+                            testing.eq_type_affinity(Integer),
+                        ),
+                        (
+                            "param_1_1_2",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                        (
+                            "param_1_2_1",
+                            mock.ANY,
+                            testing.eq_type_affinity(Integer),
+                        ),
+                        (
+                            "param_1_2_2",
+                            mock.ANY,
+                            testing.eq_type_affinity(String),
+                        ),
+                    ],
+                    mock.ANY,
+                )
+            ],
+        )
+
+    def test_set_input_sizes_event(self, input_sizes_fixture):
+        engine, canary = input_sizes_fixture
+
+        SPECIAL_STRING = mock.Mock()
+
+        @event.listens_for(engine, "do_setinputsizes")
+        def do_setinputsizes(
+            inputsizes, cursor, statement, parameters, context
+        ):
+            for k in inputsizes:
+                if k.type._type_affinity is String:
+                    inputsizes[k] = (
+                        SPECIAL_STRING,
+                        None,
+                        0,
+                    )
+
+        with engine.connect() as conn:
+            conn.execute(
+                self.tables.users.insert(),
+                [
+                    {"user_id": 1, "user_name": "n1"},
+                    {"user_id": 2, "user_name": "n2"},
+                ],
+            )
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.do_set_input_sizes(
+                    mock.ANY,
+                    [
+                        (
+                            "user_id",
+                            mock.ANY,
+                            testing.eq_type_affinity(Integer),
+                        ),
+                        (
+                            "user_name",
+                            (SPECIAL_STRING, None, 0),
+                            testing.eq_type_affinity(String),
+                        ),
+                    ],
+                    mock.ANY,
+                )
+            ],
+        )

@@ -792,10 +792,9 @@ class DialectEvents(event.Events):
         or a dictionary of string parameter keys to DBAPI type objects for
         a named bound parameter execution style.
 
-        Most dialects **do not use** this method at all; the only built-in
-        dialect which uses this hook is the cx_Oracle dialect.   The hook here
-        is made available so as to allow customization of how datatypes are set
-        up with the  cx_Oracle DBAPI.
+        The setinputsizes hook overall is only used for dialects which include
+        the flag ``use_setinputsizes=True``.  Dialects which use this
+        include cx_Oracle, pg8000, asyncpg, and pyodbc dialects.
 
         .. versionadded:: 1.2.9
 

@@ -569,6 +569,21 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def do_set_input_sizes(self, cursor, list_of_tuples, context):
+        """invoke the cursor.setinputsizes() method with appropriate arguments
+
+        This hook is called if the dialect.use_inputsizes flag is set to True.
+        Parameter data is passed in a list of tuples (paramname, dbtype,
+        sqltype), where ``paramname`` is the key of the parameter in the
+        statement, ``dbtype`` is the DBAPI datatype and ``sqltype`` is the
+        SQLAlchemy type. The order of tuples is in the correct parameter order.
+
+        .. versionadded:: 1.4
+
+
+        """
+        raise NotImplementedError()
+
     def create_xid(self):
         """Create a two-phase transaction ID.
 
