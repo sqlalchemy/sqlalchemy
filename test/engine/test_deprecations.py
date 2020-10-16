@@ -91,7 +91,7 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
         conn = e.connect()
 
         with testing.expect_deprecated_20(
-            r"The Connection.connect\(\) function/method is considered",
+            r"The Connection.connect\(\) method is considered",
             r"The .close\(\) method on a so-called 'branched' connection is "
             r"deprecated as of 1.4, as are 'branched' connections overall, "
             r"and will be removed in a future release.",
@@ -108,13 +108,13 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
         stmt = table.insert().values(a=1)
         with testing.expect_deprecated_20(
-            r"The Engine.execute\(\) function/method is considered legacy",
+            r"The Engine.execute\(\) method is considered legacy",
         ):
             testing.db.execute(stmt)
 
         stmt = select(table)
         with testing.expect_deprecated_20(
-            r"The Engine.execute\(\) function/method is considered legacy",
+            r"The Engine.execute\(\) method is considered legacy",
         ):
             eq_(testing.db.execute(stmt).fetchall(), [(1,)])
 
@@ -125,13 +125,13 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
         stmt = table.insert().values(a=1)
         with testing.expect_deprecated_20(
-            r"The Executable.execute\(\) function/method is considered legacy",
+            r"The Executable.execute\(\) method is considered legacy",
         ):
             stmt.execute()
 
         stmt = select(table)
         with testing.expect_deprecated_20(
-            r"The Executable.execute\(\) function/method is considered legacy",
+            r"The Executable.execute\(\) method is considered legacy",
         ):
             eq_(stmt.execute().fetchall(), [(1,)])
 
@@ -581,7 +581,7 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
         metadata = self.metadata
         table = Table("user", metadata)
         with testing.expect_deprecated_20(
-            r"The Inspector.reflecttable\(\) function/method is considered "
+            r"The Inspector.reflecttable\(\) method is considered "
         ):
             res = inspector.reflecttable(table, None)
         exp = inspector.reflect_table(table, None)
@@ -597,7 +597,7 @@ class ExecutionOptionsTest(fixtures.TestBase):
         c2 = conn.execution_options(foo="bar")
 
         with testing.expect_deprecated_20(
-            r"The Connection.connect\(\) function/method is considered "
+            r"The Connection.connect\(\) method is considered "
         ):
             c2_branch = c2.connect()
         eq_(c2_branch._execution_options, {"foo": "bar"})

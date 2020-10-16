@@ -62,7 +62,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         #   }, None, 'pjoin')
 
         with testing.expect_deprecated_20(
-            r"The Join.alias\(\) function/method is considered legacy"
+            r"The Join.alias\(\) method is considered legacy"
         ):
             join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
             # join = None

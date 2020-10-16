@@ -577,9 +577,7 @@ class ConcreteTest(fixtures.MappedTest):
         # test adaption of the column by wrapping the query in a
         # subquery
 
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             eq_(
                 len(
                     session.connection()
@@ -593,9 +591,7 @@ class ConcreteTest(fixtures.MappedTest):
                 ),
                 2,
             )
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             eq_(
                 set(
                     [

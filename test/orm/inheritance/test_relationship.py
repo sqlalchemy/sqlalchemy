@@ -1736,9 +1736,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         # this query is coming out instead which is equivalent, but not
         # totally sure where this happens
 
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             self.assert_compile(
                 s.query(Sub2).from_self().join(Sub2.ep1).join(Sub2.ep2),
                 "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
@@ -1789,9 +1787,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
         # this query is coming out instead which is equivalent, but not
         # totally sure where this happens
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
 
             self.assert_compile(
                 # adding Sub2 to the entities list helps it,

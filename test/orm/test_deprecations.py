@@ -76,7 +76,7 @@ join_aliased_dep = (
 )
 
 w_polymorphic_dep = (
-    r"The Query.with_polymorphic\(\) function/method is "
+    r"The Query.with_polymorphic\(\) method is "
     "considered legacy as of the 1.x series"
 )
 
@@ -946,9 +946,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
             )
 
     def _from_self_deprecated(self):
-        return testing.expect_deprecated_20(
-            r"The Query.from_self\(\) function/method"
-        )
+        return testing.expect_deprecated_20(r"The Query.from_self\(\) method")
 
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
@@ -982,9 +980,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def _from_self_deprecated(self):
-        return testing.expect_deprecated_20(
-            r"The Query.from_self\(\) function/method"
-        )
+        return testing.expect_deprecated_20(r"The Query.from_self\(\) method")
 
     def test_illegal_operations(self):
 
@@ -1826,9 +1822,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
 class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
     def _from_self_deprecated(self):
-        return testing.expect_deprecated_20(
-            r"The Query.from_self\(\) function/method"
-        )
+        return testing.expect_deprecated_20(r"The Query.from_self\(\) method")
 
     @classmethod
     def setup_classes(cls):

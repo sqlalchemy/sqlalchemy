@@ -162,9 +162,17 @@ def moved_20(message, **kw):
 
 
 def deprecated_20(api_name, alternative=None, **kw):
+    type_reg = re.match("^:(attr|func|meth):", api_name)
+    if type_reg:
+        type_ = {"attr": "attribute", "func": "function", "meth": "method"}[
+            type_reg.group(1)
+        ]
+    else:
+        type_ = "construct"
     message = (
-        "The %s function/method is considered legacy as of the "
-        "1.x series of SQLAlchemy and will be removed in 2.0." % api_name
+        "The %s %s is considered legacy as of the "
+        "1.x series of SQLAlchemy and will be removed in 2.0."
+        % (api_name, type_)
     )
 
     if alternative:

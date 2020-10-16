@@ -1553,9 +1553,7 @@ class _PolymorphicTestBase(object):
         palias = aliased(Person)
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             eq_(
                 sess.query(Person, palias)
                 .filter(Person.company_id == palias.company_id)
@@ -1575,9 +1573,7 @@ class _PolymorphicTestBase(object):
 
         expected = [(m1, e1), (m1, e2), (m1, b1)]
 
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             eq_(
                 sess.query(palias, palias2)
                 .filter(palias.company_id == palias2.company_id)
