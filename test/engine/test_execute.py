@@ -3292,7 +3292,7 @@ class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
     def test_no_branching(self, connection):
         with testing.expect_deprecated(
-            r"The Connection.connect\(\) function/method is considered legacy"
+            r"The Connection.connect\(\) method is considered legacy"
         ):
             assert_raises_message(
                 NotImplementedError,

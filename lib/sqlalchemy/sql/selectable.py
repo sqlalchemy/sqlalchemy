@@ -1221,7 +1221,14 @@ class Join(roles.DMLTableRole, FromClause):
         ).select_from(self)
 
     @property
+    @util.deprecated_20(
+        ":attr:`.Executable.bind`",
+        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
+    )
     def bind(self):
+        """Return the bound engine associated with either the left or right
+        side of this :class:`_sql.Join`."""
+
         return self.left.bind or self.right.bind
 
     @util.preload_module("sqlalchemy.sql.util")
@@ -3487,7 +3494,15 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0].selected_columns
 
     @property
+    @util.deprecated_20(
+        ":attr:`.Executable.bind`",
+        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
+    )
     def bind(self):
+        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
+        to which this :class:`.Executable` is bound, or None if none found.
+
+        """
         if self._bind:
             return self._bind
         for s in self.selects:
@@ -5348,7 +5363,15 @@ class Select(
         return CompoundSelect._create_intersect_all(self, other, **kwargs)
 
     @property
+    @util.deprecated_20(
+        ":attr:`.Executable.bind`",
+        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
+    )
     def bind(self):
+        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
+        to which this :class:`.Executable` is bound, or None if none found.
+
+        """
         if self._bind:
             return self._bind
 

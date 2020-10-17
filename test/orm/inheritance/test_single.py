@@ -284,9 +284,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         Engineer = self.classes.Engineer
 
         sess = create_session()
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             self.assert_compile(
                 sess.query(Engineer).from_self(),
                 "SELECT anon_1.employees_employee_id AS "
@@ -423,9 +421,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         sess = create_session()
         col = func.count(literal_column("*"))
-        with testing.expect_deprecated(
-            r"The Query.from_self\(\) function/method"
-        ):
+        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             self.assert_compile(
                 sess.query(Engineer.employee_id).from_self(col),
                 "SELECT count(*) AS count_1 "

@@ -724,7 +724,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         j1 = self.table1.join(self.table2)
 
         with testing.expect_deprecated_20(
-            r"The Join.alias\(\) function/method is considered legacy"
+            r"The Join.alias\(\) method is considered legacy"
         ):
             self.assert_compile(
                 j1.alias(),
@@ -737,7 +737,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
         with testing.expect_deprecated_20(
-            r"The Join.alias\(\) function/method is considered legacy"
+            r"The Join.alias\(\) method is considered legacy"
         ):
             self.assert_compile(
                 j1.alias(flat=True),
@@ -769,7 +769,7 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         # test alias of the join
 
         with testing.expect_deprecated(
-            r"The Join.alias\(\) function/method is considered legacy"
+            r"The Join.alias\(\) method is considered legacy"
         ):
             j2 = jjj.alias("foo")
             assert (
@@ -1589,7 +1589,7 @@ class CursorResultTest(fixtures.TablesTest):
         ).first()
 
         with testing.expect_deprecated_20(
-            r"The Row.keys\(\) function/method is considered legacy "
+            r"The Row.keys\(\) method is considered legacy "
         ):
             eq_(r.keys(), ["user_id", "user_name"])
 

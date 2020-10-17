@@ -50,13 +50,13 @@ def setup_filters():
         #
         # Core execution
         #
-        r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
+        r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method",
         r"The current statement is being autocommitted using implicit "
         "autocommit,",
         r"The connection.execute\(\) method in SQLAlchemy 2.0 will accept "
         "parameters as a single dictionary or a single sequence of "
         "dictionaries only.",
-        r"The Connection.connect\(\) function/method is considered legacy",
+        r"The Connection.connect\(\) method is considered legacy",
         r".*DefaultGenerator.execute\(\)",
         r"The autoload parameter is deprecated and will be removed ",
         #
@@ -65,10 +65,11 @@ def setup_filters():
         #
         r"The MetaData.bind argument is deprecated",
         r"The ``bind`` argument for schema methods that invoke SQL ",
+        r"The Executable.bind attribute is considered legacy ",
         #
         # result sets
         #
-        r"The Row.keys\(\) function/method",
+        r"The Row.keys\(\) method",
         r"Using non-integer/slice indices on Row ",
         #
         # Core SQL constructs
@@ -106,18 +107,18 @@ def setup_filters():
         #
         # ORM Query
         #
-        r"The Query\.get\(\) function",
-        r"The Query\.from_self\(\) function",
-        r"The Query\.with_parent\(\) function",
-        r"The Query\.with_parent\(\) function",
-        r"The Query\.select_entity_from\(\) function",
+        r"The Query\.get\(\) method",
+        r"The Query\.from_self\(\) method",
+        r"The Query\.with_parent\(\) method",
+        r"The Query\.with_parent\(\) method",
+        r"The Query\.select_entity_from\(\) method",
         r"The ``aliased`` and ``from_joinpoint`` keyword arguments",
         r"Using strings to indicate relationship names in Query.join",
         r"Using strings to indicate column or relationship paths in "
         "loader options",
         r"Using strings to indicate relationship names in the ORM "
         r"with_parent\(\)",
-        r"The Query.with_polymorphic\(\) function/method is considered "
+        r"The Query.with_polymorphic\(\) method is considered "
         "legacy as of the 1.x series",
         r"Passing a chain of multiple join conditions to Query.join\(\) "
         r"is deprecated and will be removed in SQLAlchemy 2.0.",
@@ -130,7 +131,7 @@ def setup_filters():
         r".*object is being merged into a Session along the backref "
         "cascade path",
         r"Passing bind arguments to Session.execute\(\) as keyword arguments",
-        r"The Session.transaction function/method",
+        r"The Session.transaction attribute",
         r"The merge_result\(\) method is superseded by the "
         r"merge_frozen_result\(\)",
         r"The Session.begin.subtransactions flag is deprecated",
