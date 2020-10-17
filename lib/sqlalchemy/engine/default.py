@@ -1507,6 +1507,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 inputsizes, self.cursor, self.statement, self.parameters, self
             )
 
+        has_escaped_names = bool(self.compiled.escaped_bind_names)
+        if has_escaped_names:
+            escaped_bind_names = self.compiled.escaped_bind_names
+
         if self.dialect.positional:
             items = [
                 (key, self.compiled.binds[key])
@@ -1529,7 +1533,11 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     dbtypes = inputsizes[bindparam]
                     generic_inputsizes.extend(
                         (
-                            paramname,
+                            (
+                                escaped_bind_names.get(paramname, paramname)
+                                if has_escaped_names
+                                else paramname
+                            ),
                             dbtypes[idx % num],
                             bindparam.type.types[idx % num],
                         )
@@ -1540,12 +1548,29 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 else:
                     dbtype = inputsizes.get(bindparam, None)
                     generic_inputsizes.extend(
-                        (paramname, dbtype, bindparam.type)
+                        (
+                            (
+                                escaped_bind_names.get(paramname, paramname)
+                                if has_escaped_names
+                                else paramname
+                            ),
+                            dbtype,
+                            bindparam.type,
+                        )
                         for paramname in self._expanded_parameters[key]
                     )
             else:
                 dbtype = inputsizes.get(bindparam, None)
-                generic_inputsizes.append((key, dbtype, bindparam.type))
+
+                escaped_name = (
+                    escaped_bind_names.get(key, key)
+                    if has_escaped_names
+                    else key
+                )
+
+                generic_inputsizes.append(
+                    (escaped_name, dbtype, bindparam.type)
+                )
         try:
             self.dialect.do_set_input_sizes(
                 self.cursor, generic_inputsizes, self

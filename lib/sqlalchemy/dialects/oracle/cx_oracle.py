@@ -598,28 +598,20 @@ class OracleCompiler_cx_oracle(OracleCompiler):
             # need quoting :).    names that include illegal characters
             # won't work however.
             quoted_name = '"%s"' % name
-            self._quoted_bind_names[name] = quoted_name
-            return OracleCompiler.bindparam_string(self, quoted_name, **kw)
-        else:
-            return OracleCompiler.bindparam_string(self, name, **kw)
+            kw["escaped_from"] = name
+            name = quoted_name
+
+        return OracleCompiler.bindparam_string(self, name, **kw)
 
 
 class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     out_parameters = None
 
-    def _setup_quoted_bind_names(self):
-        quoted_bind_names = self.compiled._quoted_bind_names
-        if quoted_bind_names:
-            for param in self.parameters:
-                for fromname, toname in quoted_bind_names.items():
-                    param[toname] = param[fromname]
-                    del param[fromname]
-
     def _generate_out_parameter_vars(self):
         # check for has_out_parameters or RETURNING, create cx_Oracle.var
         # objects if so
         if self.compiled.returning or self.compiled.has_out_parameters:
-            quoted_bind_names = self.compiled._quoted_bind_names
+            quoted_bind_names = self.compiled.escaped_bind_names
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
                     name = self.compiled.bind_names[bindparam]
@@ -683,9 +675,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             return
 
         self.out_parameters = {}
-
-        if self.compiled._quoted_bind_names:
-            self._setup_quoted_bind_names()
 
         self._generate_out_parameter_vars()
 
@@ -1184,12 +1173,6 @@ class OracleDialect_cx_oracle(OracleDialect):
                 for key, dbtype, sqltype in list_of_tuples
                 if dbtype
             )
-            if context and context.compiled:
-                quoted_bind_names = context.compiled._quoted_bind_names
-                collection = (
-                    (quoted_bind_names.get(key, key), dbtype)
-                    for key, dbtype in collection
-                )
 
             if not self.supports_unicode_binds:
                 # oracle 8 only

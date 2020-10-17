@@ -740,7 +740,7 @@ class SelectableTest(
         assert u2.corresponding_column(s1.selected_columns.col1) is u2.c.col1
         assert u2.corresponding_column(s2.selected_columns.col1) is u2.c.col1
 
-    def test_foo(self):
+    def test_union_alias_misc(self):
         s1 = select(table1.c.col1, table1.c.col2)
         s2 = select(table1.c.col2, table1.c.col1)
 

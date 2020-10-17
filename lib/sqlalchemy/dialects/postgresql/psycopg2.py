@@ -644,7 +644,14 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    pass
+    def bindparam_string(self, name, **kw):
+        if "%" in name and not kw.get("post_compile", False):
+            # psycopg2 will not allow a percent sign in a
+            # pyformat parameter name even if it is doubled
+            kw["escaped_from"] = name
+            name = name.replace("%", "P")
+
+        return PGCompiler.bindparam_string(self, name, **kw)
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):

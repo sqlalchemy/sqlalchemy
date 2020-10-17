@@ -941,6 +941,24 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS z FROM keyed) AS anon_2) AS anon_1",
         )
 
+    @testing.combinations("per cent", "per % cent", "%percent")
+    def test_percent_names_collide_with_anonymizing(self, name):
+        table1 = table("t1", column(name))
+
+        jj = select(table1.c[name]).subquery()
+        jjj = join(table1, jj, table1.c[name] == jj.c[name])
+
+        j2 = jjj.select().apply_labels().subquery("foo")
+
+        self.assert_compile(
+            j2.select(),
+            'SELECT foo."t1_%(name)s", foo."anon_1_%(name)s" FROM '
+            '(SELECT t1."%(name)s" AS "t1_%(name)s", anon_1."%(name)s" '
+            'AS "anon_1_%(name)s" FROM t1 JOIN (SELECT t1."%(name)s" AS '
+            '"%(name)s" FROM t1) AS anon_1 ON t1."%(name)s" = '
+            'anon_1."%(name)s") AS foo' % {"name": name},
+        )
+
     def test_exists(self):
         s = select(table1.c.myid).where(table1.c.myid == 5)
 

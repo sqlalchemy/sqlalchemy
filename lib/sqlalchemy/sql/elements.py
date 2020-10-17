@@ -957,9 +957,11 @@ class ColumnElement(
         # as the identifier, because a column and its annotated version are
         # the same thing in a SQL statement
         if isinstance(seed, _anonymous_label):
-            return _anonymous_label("%s%%(%d %s)s" % (seed, hash(self), ""))
+            return _anonymous_label.safe_construct(
+                hash(self), "", enclosing_label=seed
+            )
 
-        return _anonymous_label("%%(%d %s)s" % (hash(self), seed or "anon"))
+        return _anonymous_label.safe_construct(hash(self), seed or "anon")
 
     @util.memoized_property
     def anon_label(self):
@@ -1324,21 +1326,17 @@ class BindParameter(roles.InElementRole, ColumnElement):
             key = quoted_name(key, quote)
 
         if unique:
-            self.key = _anonymous_label(
-                "%%(%d %s)s"
-                % (
-                    id(self),
-                    re.sub(r"[%\(\) \$]+", "_", key).strip("_")
-                    if key is not None
-                    and not isinstance(key, _anonymous_label)
-                    else "param",
-                )
+            self.key = _anonymous_label.safe_construct(
+                id(self),
+                re.sub(r"[%\(\) \$]+", "_", key).strip("_")
+                if key is not None and not isinstance(key, _anonymous_label)
+                else "param",
             )
             self._key_is_anon = True
         elif key:
             self.key = key
         else:
-            self.key = _anonymous_label("%%(%d param)s" % id(self))
+            self.key = _anonymous_label.safe_construct(id(self), "param")
             self._key_is_anon = True
 
         # identifying key that won't change across
@@ -1407,8 +1405,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
     def _clone(self, maintain_key=False):
         c = ClauseElement._clone(self)
         if not maintain_key and self.unique:
-            c.key = _anonymous_label(
-                "%%(%d %s)s" % (id(c), c._orig_key or "param")
+            c.key = _anonymous_label.safe_construct(
+                id(c), c._orig_key or "param"
             )
         return c
 
@@ -1442,8 +1440,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
     def _convert_to_unique(self):
         if not self.unique:
             self.unique = True
-            self.key = _anonymous_label(
-                "%%(%d %s)s" % (id(self), self._orig_key or "param")
+            self.key = _anonymous_label.safe_construct(
+                id(self), self._orig_key or "param"
             )
 
     def __getstate__(self):
@@ -1459,8 +1457,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
 
     def __setstate__(self, state):
         if state.get("unique", False):
-            state["key"] = _anonymous_label(
-                "%%(%d %s)s" % (id(self), state.get("_orig_key", "param"))
+            state["key"] = _anonymous_label.safe_construct(
+                id(self), state.get("_orig_key", "param")
             )
         self.__dict__.update(state)
 
@@ -4188,8 +4186,8 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
             self.name = name
             self._resolve_label = self.name
         else:
-            self.name = _anonymous_label(
-                "%%(%d %s)s" % (id(self), getattr(element, "name", "anon"))
+            self.name = _anonymous_label.safe_construct(
+                id(self), getattr(element, "name", "anon")
             )
 
         self.key = self._label = self._key_label = self.name
@@ -4247,9 +4245,8 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
         self._element = clone(self._element, **kw)
         if anonymize_labels:
-            self.name = self._resolve_label = _anonymous_label(
-                "%%(%d %s)s"
-                % (id(self), getattr(self.element, "name", "anon"))
+            self.name = self._resolve_label = _anonymous_label.safe_construct(
+                id(self), getattr(self.element, "name", "anon")
             )
             self.key = self._label = self._key_label = self.name
 
@@ -4890,17 +4887,39 @@ class _anonymous_label(_truncated_label):
 
     __slots__ = ()
 
+    @classmethod
+    def safe_construct(cls, seed, body, enclosing_label=None):
+        # type: (int, str, Optional[_anonymous_label]) -> _anonymous_label
+
+        label = "%%(%d %s)s" % (seed, body.replace("%", "%%"))
+        if enclosing_label:
+            label = "%s%s" % (enclosing_label, label)
+
+        return _anonymous_label(label)
+
     def __add__(self, other):
+        if "%" in other and not isinstance(other, _anonymous_label):
+            other = util.text_type(other).replace("%", "%%")
+        else:
+            other = util.text_type(other)
+
         return _anonymous_label(
             quoted_name(
-                util.text_type.__add__(self, util.text_type(other)), self.quote
+                util.text_type.__add__(self, other),
+                self.quote,
             )
         )
 
     def __radd__(self, other):
+        if "%" in other and not isinstance(other, _anonymous_label):
+            other = util.text_type(other).replace("%", "%%")
+        else:
+            other = util.text_type(other)
+
         return _anonymous_label(
             quoted_name(
-                util.text_type.__add__(util.text_type(other), self), self.quote
+                util.text_type.__add__(other, self),
+                self.quote,
             )
         )
 

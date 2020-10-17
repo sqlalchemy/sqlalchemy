@@ -1343,26 +1343,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def percent_schema_names(self):
-        return skip_if(
-            [
-                (
-                    "+psycopg2",
-                    None,
-                    None,
-                    "psycopg2 2.4 no longer accepts percent "
-                    "sign in bind placeholders",
-                ),
-                (
-                    "+psycopg2cffi",
-                    None,
-                    None,
-                    "psycopg2cffi does not accept percent signs in "
-                    "bind placeholders",
-                ),
-                ("mysql", None, None, "executemany() doesn't work here"),
-                ("mariadb", None, None, "executemany() doesn't work here"),
-            ]
-        )
+        return exclusions.open()
 
     @property
     def order_by_label_with_expression(self):

@@ -1432,7 +1432,7 @@ class AliasedReturnsRows(NoInit, FromClause):
                 name = getattr(selectable, "name", None)
                 if isinstance(name, _anonymous_label):
                     name = None
-            name = _anonymous_label("%%(%d %s)s" % (id(self), name or "anon"))
+            name = _anonymous_label.safe_construct(id(self), name or "anon")
         self.name = name
 
     def _refresh_for_new_column(self, column):

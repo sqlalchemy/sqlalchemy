@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql, postgresql
+    :tickets: 5653
+
+    Improved support for column names that contain percent signs in the string,
+    including repaired issues involving anoymous labels that also embedded a
+    column name with a percent sign in it, as well as re-established support
+    for bound parameter names with percent signs embedded on the psycopg2
+    dialect, using a late-escaping process similar to that used by the
+    cx_Oracle dialect.
+
