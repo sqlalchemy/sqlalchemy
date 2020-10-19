@@ -475,6 +475,9 @@ reverted when a connection is returned to the connection pool.
 
       :ref:`session_transaction_isolation` - for the ORM
 
+      :ref:`faq_execute_retry_autocommit` - a recipe that uses DBAPI autocommit
+      to transparently reconnect to the database for read-only operations
+
 .. _engine_stream_results:
 
 Using Server Side Cursors (a.k.a. stream results)

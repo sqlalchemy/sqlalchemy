@@ -1383,3 +1383,184 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             assert conn.invalidated
         finally:
             conn.invalidate()
+
+
+class ReconnectRecipeTest(fixtures.TestBase):
+    """Test for the reconnect recipe given at doc/build/faq/connections.rst.
+
+    Make sure the above document is updated if changes are made here.
+
+    """
+
+    # this recipe works on PostgreSQL also but only if the connection
+    # is cut off from the server side, otherwise the connection.cursor()
+    # method rightly fails because we explicitly closed the connection.
+    # since we don't have a fixture
+    # that can do this we currently rely on the MySQL drivers that allow
+    # us to call cursor() even when the connection were closed.   In order
+    # to get a real "cut the server off" kind of fixture we'd need to do
+    # something in provisioning that seeks out the TCP connection at the
+    # OS level and kills it.
+    __only_on__ = ("mysql+mysqldb", "mysql+pymysql")
+
+    future = False
+
+    def make_engine(self, engine):
+        num_retries = 3
+        retry_interval = 0.5
+
+        def _run_with_retries(fn, context, cursor, statement, *arg, **kw):
+            for retry in range(num_retries + 1):
+                try:
+                    fn(cursor, statement, context=context, *arg)
+                except engine.dialect.dbapi.Error as raw_dbapi_err:
+                    connection = context.root_connection
+                    if engine.dialect.is_disconnect(
+                        raw_dbapi_err, connection, cursor
+                    ):
+                        if retry > num_retries:
+                            raise
+                        engine.logger.error(
+                            "disconnection error, retrying operation",
+                            exc_info=True,
+                        )
+                        connection.invalidate()
+
+                        if self.future:
+                            connection.rollback()
+                        else:
+                            trans = connection.get_transaction()
+                            if trans:
+                                trans.rollback()
+
+                        time.sleep(retry_interval)
+                        context.cursor = (
+                            cursor
+                        ) = connection.connection.cursor()
+                    else:
+                        raise
+                else:
+                    return True
+
+        e = engine.execution_options(isolation_level="AUTOCOMMIT")
+
+        @event.listens_for(e, "do_execute_no_params")
+        def do_execute_no_params(cursor, statement, context):
+            return _run_with_retries(
+                context.dialect.do_execute_no_params,
+                context,
+                cursor,
+                statement,
+            )
+
+        @event.listens_for(e, "do_execute")
+        def do_execute(cursor, statement, parameters, context):
+            return _run_with_retries(
+                context.dialect.do_execute,
+                context,
+                cursor,
+                statement,
+                parameters,
+            )
+
+        return e
+
+    __backend__ = True
+
+    def setup(self):
+        self.engine = engines.reconnecting_engine(
+            options=dict(future=self.future)
+        )
+        self.meta = MetaData()
+        self.table = Table(
+            "sometable",
+            self.meta,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+        self.meta.create_all(self.engine)
+
+    def teardown(self):
+        self.meta.drop_all(self.engine)
+        self.engine.dispose()
+
+    def test_restart_on_execute_no_txn(self):
+        engine = self.make_engine(self.engine)
+
+        with engine.connect() as conn:
+            eq_(conn.execute(select(1)).scalar(), 1)
+
+            self.engine.test_shutdown()
+            self.engine.test_restart()
+
+            eq_(conn.execute(select(1)).scalar(), 1)
+
+    def test_restart_on_execute_txn(self):
+        engine = self.make_engine(self.engine)
+
+        with engine.begin() as conn:
+            eq_(conn.execute(select(1)).scalar(), 1)
+
+            self.engine.test_shutdown()
+            self.engine.test_restart()
+
+            eq_(conn.execute(select(1)).scalar(), 1)
+
+    def test_autocommits_txn(self):
+        engine = self.make_engine(self.engine)
+
+        with engine.begin() as conn:
+            conn.execute(
+                self.table.insert(),
+                [
+                    {"id": 1, "name": "some name 1"},
+                    {"id": 2, "name": "some name 2"},
+                    {"id": 3, "name": "some name 3"},
+                ],
+            )
+
+            self.engine.test_shutdown()
+            self.engine.test_restart()
+
+            eq_(
+                conn.execute(
+                    select(self.table).order_by(self.table.c.id)
+                ).fetchall(),
+                [(1, "some name 1"), (2, "some name 2"), (3, "some name 3")],
+            )
+
+    def test_fail_on_executemany_txn(self):
+        engine = self.make_engine(self.engine)
+
+        with engine.begin() as conn:
+            conn.execute(
+                self.table.insert(),
+                [
+                    {"id": 1, "name": "some name 1"},
+                    {"id": 2, "name": "some name 2"},
+                    {"id": 3, "name": "some name 3"},
+                ],
+            )
+
+            self.engine.test_shutdown()
+            self.engine.test_restart()
+
+            assert_raises(
+                exc.DBAPIError,
+                conn.execute,
+                self.table.insert(),
+                [
+                    {"id": 4, "name": "some name 4"},
+                    {"id": 5, "name": "some name 5"},
+                    {"id": 6, "name": "some name 6"},
+                ],
+            )
+            if self.future:
+                conn.rollback()
+            else:
+                trans = conn.get_transaction()
+                trans.rollback()
+
+
+class FutureReconnectRecipeTest(ReconnectRecipeTest):
+    future = True

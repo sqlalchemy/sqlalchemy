@@ -174,15 +174,18 @@ application does not need to be concerned about organizing operations
 to be able to recover from stale connections checked out from the pool.
 
 It is critical to note that the pre-ping approach **does not accommodate for
-connections dropped in the middle of transactions or other SQL operations**.
-If the database becomes unavailable while a transaction is in progress, the
-transaction will be lost and the database error will be raised.   While
-the :class:`_engine.Connection` object will detect a "disconnect" situation and
+connections dropped in the middle of transactions or other SQL operations**. If
+the database becomes unavailable while a transaction is in progress, the
+transaction will be lost and the database error will be raised.   While the
+:class:`_engine.Connection` object will detect a "disconnect" situation and
 recycle the connection as well as invalidate the rest of the connection pool
-when this condition occurs,
-the individual operation where the exception was raised will be lost, and it's
-up to the application to either abandon
-the operation, or retry the whole transaction again.
+when this condition occurs, the individual operation where the exception was
+raised will be lost, and it's up to the application to either abandon the
+operation, or retry the whole transaction again.  If the engine is
+configured using DBAPI-level autocommit connections, as described at
+:ref:`dbapi_autocommit`, a connection **may** be reconnected transparently
+mid-operation using events.  See the section :ref:`faq_execute_retry` for
+an example.
 
 Pessimistic testing of connections upon checkout is achievable by
 using the :paramref:`_pool.Pool.pre_ping` argument, available from :func:`_sa.create_engine`
