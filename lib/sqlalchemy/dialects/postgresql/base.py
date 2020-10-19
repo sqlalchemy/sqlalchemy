@@ -1951,7 +1951,7 @@ class PGCompiler(compiler.SQLCompiler):
                 "Additional column names not matching "
                 "any column keys in table '%s': %s"
                 % (
-                    self.statement.table.name,
+                    self.current_executable.table.name,
                     (", ".join("'%s'" % c for c in set_parameters)),
                 )
             )

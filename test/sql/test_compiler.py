@@ -74,6 +74,7 @@ from sqlalchemy.sql import compiler
 from sqlalchemy.sql import label
 from sqlalchemy.sql import table
 from sqlalchemy.sql.expression import _literal_as_text
+from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.testing import assert_raises
@@ -83,6 +84,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import mock
 from sqlalchemy.util import u
 
 
@@ -144,6 +146,53 @@ keyed = Table(
     Column("y", Integer, key="coly"),
     Column("z", Integer),
 )
+
+
+class TestCompilerFixture(fixtures.TestBase, AssertsCompiledSQL):
+    def test_dont_access_statement(self):
+        def visit_foobar(self, element, **kw):
+            self.statement.table
+
+        class Foobar(ClauseElement):
+            __visit_name__ = "foobar"
+
+        with mock.patch.object(
+            testing.db.dialect.statement_compiler,
+            "visit_foobar",
+            visit_foobar,
+            create=True,
+        ):
+            assert_raises_message(
+                NotImplementedError,
+                "compiler accessed .statement; use "
+                "compiler.current_executable",
+                self.assert_compile,
+                Foobar(),
+                "",
+            )
+
+    def test_no_stack(self):
+        def visit_foobar(self, element, **kw):
+            self.current_executable.table
+
+        class Foobar(ClauseElement):
+            __visit_name__ = "foobar"
+
+        with mock.patch.object(
+            testing.db.dialect.statement_compiler,
+            "visit_foobar",
+            visit_foobar,
+            create=True,
+        ):
+            compiler = testing.db.dialect.statement_compiler(
+                testing.db.dialect, None
+            )
+            assert_raises_message(
+                IndexError,
+                "Compiler does not have a stack entry",
+                compiler.process,
+                Foobar(),
+            )
 
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):

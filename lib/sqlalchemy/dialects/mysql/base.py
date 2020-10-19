@@ -1383,6 +1383,8 @@ class MySQLCompiler(compiler.SQLCompiler):
         return self._render_json_extract_from_binary(binary, operator, **kw)
 
     def visit_on_duplicate_key_update(self, on_duplicate, **kw):
+        statement = self.current_executable
+
         if on_duplicate._parameter_ordering:
             parameter_ordering = [
                 elements._column_as_key(key)
@@ -1390,14 +1392,12 @@ class MySQLCompiler(compiler.SQLCompiler):
             ]
             ordered_keys = set(parameter_ordering)
             cols = [
-                self.statement.table.c[key]
+                statement.table.c[key]
                 for key in parameter_ordering
-                if key in self.statement.table.c
-            ] + [
-                c for c in self.statement.table.c if c.key not in ordered_keys
-            ]
+                if key in statement.table.c
+            ] + [c for c in statement.table.c if c.key not in ordered_keys]
         else:
-            cols = self.statement.table.c
+            cols = statement.table.c
 
         clauses = []
         # traverses through all table columns to preserve table column order
