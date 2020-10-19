@@ -2171,10 +2171,9 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
 
         # if we are against a lambda statement we might not be the
         # topmost object that received per-execute annotations
-        top_level_stmt = compiler.statement
+
         if (
-            top_level_stmt._annotations.get("synchronize_session", None)
-            == "fetch"
+            compiler._annotations.get("synchronize_session", None) == "fetch"
             and compiler.dialect.full_returning
         ):
             new_stmt = new_stmt.returning(*mapper.primary_key)
@@ -2287,8 +2286,6 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
         ext_info = statement.table._annotations["parententity"]
         self.mapper = mapper = ext_info.mapper
 
-        top_level_stmt = compiler.statement
-
         self.extra_criteria_entities = {}
 
         extra_criteria_attributes = {}
@@ -2305,7 +2302,7 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
 
         if (
             mapper
-            and top_level_stmt._annotations.get("synchronize_session", None)
+            and compiler._annotations.get("synchronize_session", None)
             == "fetch"
             and compiler.dialect.full_returning
         ):

@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5656
+
+    Fixed structural compiler issue where some constructs such as MySQL /
+    PostgreSQL "on conflict / on duplicate key" would rely upon the state of
+    the :class:`_sql.Compiler` object being fixed against their statement as
+    the top level statement, which would fail in cases where those statements
+    are branched from a different context, such as a DDL construct linked to a
+    SQL statement.
+
