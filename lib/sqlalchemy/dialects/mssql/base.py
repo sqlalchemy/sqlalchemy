@@ -3177,7 +3177,7 @@ class MSDialect(default.DefaultDialect):
                 C.c.table_name == tablename,
                 C.c.table_schema == owner,
             ),
-        )
+        ).order_by(TC.c.constraint_name, C.c.ordinal_position)
         c = connection.execution_options(future_result=True).execute(s)
         constraint_name = None
         for row in c.mappings():

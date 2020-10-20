@@ -7,6 +7,7 @@ from sqlalchemy import DDL
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -237,6 +238,63 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     "referred_schema": "test_schema",
                     "referred_table": "subject",
                     "referred_columns": ["id"],
+                }
+            ],
+        )
+
+    @testing.provide_metadata
+    def test_pk_fk_column_order(self):
+        # test for issue #5661
+        metadata = self.metadata
+
+        Table(
+            "primary",
+            metadata,
+            Column("id", Integer),
+            Column("attr", Integer),
+            Column("name", types.VARCHAR(20)),
+            PrimaryKeyConstraint("name", "id", "attr", name="primary_pk"),
+            schema=testing.config.test_schema,
+        )
+
+        Table(
+            "foreign",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("pid", Integer),
+            Column("pattr", Integer),
+            Column("pname", types.VARCHAR(20)),
+            ForeignKeyConstraint(
+                ["pname", "pid", "pattr"],
+                [
+                    "%s.primary.name" % testing.config.test_schema,
+                    "%s.primary.id" % testing.config.test_schema,
+                    "%s.primary.attr" % testing.config.test_schema
+                ],
+                name="fk_primary_name_id_attr",
+            ),
+            schema=testing.config.test_schema,
+        )
+
+        metadata.create_all()
+
+        insp = inspect(testing.db)
+        eq_(
+            insp.get_pk_constraint("primary", testing.config.test_schema),
+            {
+                "name": "primary_pk",
+                "constrained_columns": ["name", "id", "attr"],
+            },
+        )
+        eq_(
+            insp.get_foreign_keys("foreign", testing.config.test_schema),
+            [
+                {
+                    "name": "fk_primary_name_id_attr",
+                    "constrained_columns": ["pname", "pid", "pattr"],
+                    "referred_schema": "test_schema",
+                    "referred_table": "primary",
+                    "referred_columns": ["name", "id", "attr"],
                 }
             ],
         )
