@@ -1,0 +1,6 @@
+.. change::
+    :tags: mssql, sqlite, reflection
+    :tickets: 5661
+
+    Fixed issue with composite primary key columns not being reported
+    in the correct order. Patch courtesy @fulpm.
