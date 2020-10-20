@@ -512,7 +512,7 @@ AssociationProxy now provides standard column operators for a column-oriented ta
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Given an :class:`.AssociationProxy` where the target is a database column,
-as opposed to an object reference::
+and is **not** an object reference or another association proxy::
 
     class User(Base):
         # ...

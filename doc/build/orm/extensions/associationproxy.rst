@@ -367,29 +367,32 @@ present on ``UserKeyword``::
         name = Column(String(64))
 
         # the same 'user_keywords'->'keyword' proxy as in
-        # the basic dictionary example
+        # the basic dictionary example.
         keywords = association_proxy(
-                    'user_keywords',
-                    'keyword',
-                    creator=lambda k, v:
-                                UserKeyword(special_key=k, keyword=v)
-                    )
+            'user_keywords',
+            'keyword',
+            creator=lambda k, v: UserKeyword(special_key=k, keyword=v)
+        )
+
+        # another proxy that is directly column-targeted
+        special_keys = association_proxy("user_keywords", "special_key")
 
         def __init__(self, name):
             self.name = name
 
     class UserKeyword(Base):
         __tablename__ = 'user_keyword'
-        user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
-        keyword_id = Column(Integer, ForeignKey('keyword.id'),
-                                                        primary_key=True)
+        user_id = Column(ForeignKey('user.id'), primary_key=True)
+        keyword_id = Column(ForeignKey('keyword.id'), primary_key=True)
         special_key = Column(String)
-        user = relationship(User, backref=backref(
+        user = relationship(
+            User,
+            backref=backref(
                 "user_keywords",
                 collection_class=attribute_mapped_collection("special_key"),
                 cascade="all, delete-orphan"
-                )
             )
+        )
 
         # the relationship to Keyword is now called
         # 'kw'
@@ -445,54 +448,67 @@ Querying with Association Proxies
 ---------------------------------
 
 The :class:`.AssociationProxy` features simple SQL construction capabilities
-which relate down to the underlying :func:`_orm.relationship` in use as well
-as the target attribute.  For example, the :meth:`.RelationshipProperty.Comparator.any`
-and :meth:`.RelationshipProperty.Comparator.has` operations are available, and will produce
-a "nested" EXISTS clause, such as in our basic association object example::
+which work at the class level in a similar way as other ORM-mapped attributes.
+Class-bound attributes such as ``User.keywords`` and ``User.special_keys``
+in the preceding example will provide for a SQL generating construct
+when accessed at the class level.
 
-    >>> print(session.query(User).filter(User.keywords.any(keyword='jek')))
-    SELECT user.id AS user_id, user.name AS user_name
-    FROM user
+.. note:: The primary purpose of the association proxy extension is to allow
+   for improved persistence and object-access patterns with mapped object
+   instances that are already loaded.  The class-bound querying feature
+   is of limited use and will not replace the need to refer to the underlying
+   attributes when constructing SQL queries with JOINs, eager loading
+   options, etc.
+
+The SQL generated takes the form of a correlated subquery against
+the EXISTS SQL operator so that it can be used in a WHERE clause without
+the need for additional modifications to the enclosing query.  If the
+immediate target of an association proxy is a **mapped column expression**,
+standard column operators can be used which will be embedded in the subquery.
+For example a straight equality operator::
+
+    >>> print(session.query(User).filter(User.special_keys == "jek"))
+    SELECT "user".id AS user_id, "user".name AS user_name
+    FROM "user"
     WHERE EXISTS (SELECT 1
     FROM user_keyword
-    WHERE user.id = user_keyword.user_id AND (EXISTS (SELECT 1
+    WHERE "user".id = user_keyword.user_id AND user_keyword.special_key = :special_key_1)
+
+a LIKE operator::
+
+    >>> print(session.query(User).filter(User.special_keys.like("%jek")))
+    SELECT "user".id AS user_id, "user".name AS user_name
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM user_keyword
+    WHERE "user".id = user_keyword.user_id AND user_keyword.special_key LIKE :special_key_1)
+
+For association proxies where the immediate target is a **related object or collection,
+or another association proxy or attribute on the related object**, relationship-oriented
+operators can be used instead, such as :meth:`_orm.PropComparator.has` and
+:meth:`_orm.PropComparator.any`.   The ``User.keywords`` attribute is in fact
+two association proxies linked together, so when using this proxy for generating
+SQL phrases, we get two levels of EXISTS subqueries::
+
+    >>> print(session.query(User).filter(User.keywords.any(Keyword.keyword == "jek")))
+    SELECT "user".id AS user_id, "user".name AS user_name
+    FROM "user"
+    WHERE EXISTS (SELECT 1
+    FROM user_keyword
+    WHERE "user".id = user_keyword.user_id AND (EXISTS (SELECT 1
     FROM keyword
     WHERE keyword.id = user_keyword.keyword_id AND keyword.keyword = :keyword_1)))
 
-For a proxy to a scalar attribute, ``__eq__()`` is supported::
+This is not the most efficient form of SQL, so while association proxies can be
+convenient for generating WHERE criteria quickly, SQL results should be
+inspected and "unrolled" into explicit JOIN criteria for best use, especially
+when chaining association proxies together.
 
-    >>> print(session.query(UserKeyword).filter(UserKeyword.keyword == 'jek'))
-    SELECT user_keyword.*
-    FROM user_keyword
-    WHERE EXISTS (SELECT 1
-        FROM keyword
-        WHERE keyword.id = user_keyword.keyword_id AND keyword.keyword = :keyword_1)
 
-and ``.contains()`` is available for a proxy to a scalar collection::
+.. versionchanged:: 1.3 Association proxy features distinct querying modes
+   based on the type of target.   See :ref:`change_4351`.
 
-    >>> print(session.query(User).filter(User.keywords.contains('jek')))
-    SELECT user.*
-    FROM user
-    WHERE EXISTS (SELECT 1
-    FROM userkeywords, keyword
-    WHERE user.id = userkeywords.user_id
-        AND keyword.id = userkeywords.keyword_id
-        AND keyword.keyword = :keyword_1)
 
-:class:`.AssociationProxy` can be used with :meth:`_query.Query.join` somewhat manually
-using the :attr:`~.AssociationProxy.attr` attribute in a star-args context::
-
-    q = session.query(User).join(*User.keywords.attr)
-
-:attr:`~.AssociationProxy.attr` is composed of :attr:`.AssociationProxy.local_attr` and :attr:`.AssociationProxy.remote_attr`,
-which are just synonyms for the actual proxied attributes, and can also
-be used for querying::
-
-    uka = aliased(UserKeyword)
-    ka = aliased(Keyword)
-    q = session.query(User).\
-            join(uka, User.keywords.local_attr).\
-            join(ka, User.keywords.remote_attr)
 
 .. _cascade_scalar_deletes:
 
