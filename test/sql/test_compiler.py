@@ -31,6 +31,7 @@ from sqlalchemy import exists
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Index
 from sqlalchemy import Integer
 from sqlalchemy import intersect
 from sqlalchemy import join
@@ -4469,6 +4470,40 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             "a INTEGER NOT NULL, "
             "b INTEGER NOT NULL, "
             "PRIMARY KEY (a, b))",
+        )
+
+    def test_create_table_exists(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        self.assert_compile(
+            schema.CreateTable(t1, if_not_exists=True),
+            "CREATE TABLE IF NOT EXISTS t1 (q INTEGER)",
+        )
+
+    def test_drop_table_exists(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        self.assert_compile(
+            schema.DropTable(t1, if_exists=True),
+            "DROP TABLE IF EXISTS t1",
+        )
+
+    def test_create_index_exists(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        idx = Index("my_idx", t1.c.q)
+        self.assert_compile(
+            schema.CreateIndex(idx, if_not_exists=True),
+            "CREATE INDEX IF NOT EXISTS my_idx ON t1 (q)",
+        )
+
+    def test_drop_index_exists(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        idx = Index("my_idx", t1.c.q)
+        self.assert_compile(
+            schema.DropIndex(idx, if_exists=True),
+            "DROP INDEX IF EXISTS my_idx",
         )
 
     def test_create_table_suffix(self):

@@ -1543,7 +1543,13 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
         text = "CREATE "
         if index.unique:
             text += "UNIQUE "
-        text += "INDEX %s ON %s (%s)" % (
+
+        text += "INDEX "
+
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+
+        text += "%s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=True),
             preparer.format_table(index.table, use_schema=False),
             ", ".join(

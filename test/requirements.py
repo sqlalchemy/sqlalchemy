@@ -78,6 +78,19 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(no_support("sqlite", "not supported by database"))
 
     @property
+    def table_ddl_if_exists(self):
+        """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
+
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
+
+    @property
+    def index_ddl_if_exists(self):
+        """target platform supports IF NOT EXISTS / IF EXISTS for indexes."""
+
+        # mariadb but not mysql, tested up to mysql 8
+        return only_on(["postgresql", "mariadb", "sqlite"])
+
+    @property
     def on_update_cascade(self):
         """target database must support ON UPDATE..CASCADE behavior in
         foreign keys."""

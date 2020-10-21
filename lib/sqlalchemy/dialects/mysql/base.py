@@ -2031,7 +2031,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if index_prefix:
             text += index_prefix + " "
 
-        text += "INDEX %s ON %s " % (name, table)
+        text += "INDEX "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+        text += "%s ON %s " % (name, table)
 
         length = index.dialect_options[self.dialect.name]["length"]
         if length is not None:
@@ -2081,8 +2084,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
     def visit_drop_index(self, drop):
         index = drop.element
+        text = "\nDROP INDEX "
+        if drop.if_exists:
+            text += "IF EXISTS "
 
-        return "\nDROP INDEX %s ON %s" % (
+        return text + "%s ON %s" % (
             self._prepared_index_name(index, include_schema=False),
             self.preparer.format_table(index.table),
         )
