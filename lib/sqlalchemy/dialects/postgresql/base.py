@@ -2262,6 +2262,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             if concurrently:
                 text += "CONCURRENTLY "
 
+        if create.if_not_exists and self.dialect.supports_exists_index:
+            text += "IF NOT EXISTS "
+
         text += "%s ON %s " % (
             self._prepared_index_name(index, include_schema=False),
             preparer.format_table(index.table),
@@ -2344,6 +2347,9 @@ class PGDDLCompiler(compiler.DDLCompiler):
             concurrently = index.dialect_options["postgresql"]["concurrently"]
             if concurrently:
                 text += "CONCURRENTLY "
+
+        if drop.if_exists and self.dialect.supports_exists_index:
+            text += "IF EXISTS "
 
         text += self._prepared_index_name(index, include_schema=True)
         return text
@@ -2758,6 +2764,9 @@ class PGDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
+
+    supports_exists_table = True
+    supports_exists_index = True
 
     supports_native_enum = True
     supports_native_boolean = True

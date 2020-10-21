@@ -1,0 +1,8 @@
+.. change::
+    :tags: schema, usecase
+    :tickets: 2843
+
+    The create/drop clause constructs :class:`CreateTable`, :class:`DropTable`,
+    :class:`CreateIndex` and :class:`DropIndex` now support the EXISTS
+    operator. If a dialect does not support the EXISTS operator then EXISTS
+    will be ignored. Pull request courtesy Ramon Williams.

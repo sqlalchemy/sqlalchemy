@@ -2005,7 +2005,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if index_prefix:
             text += index_prefix + " "
 
-        text += "INDEX %s ON %s " % (name, table)
+        text += "INDEX "
+        if create.if_not_exists and self.dialect.supports_exists_index:
+            text += "IF NOT EXISTS "
+        text += "%s ON %s " % (name, table)
 
         length = index.dialect_options[self.dialect.name]["length"]
         if length is not None:
@@ -2055,8 +2058,11 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
     def visit_drop_index(self, drop):
         index = drop.element
+        text = "\nDROP INDEX "
+        if drop.if_exists and self.dialect.supports_exists_index:
+            text += "IF EXISTS "
 
-        return "\nDROP INDEX %s ON %s" % (
+        return text + "%s ON %s" % (
             self._prepared_index_name(index, include_schema=False),
             self.preparer.format_table(index.table),
         )
@@ -2454,6 +2460,9 @@ class MySQLDialect(default.DefaultDialect):
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
     max_index_name_length = 64
+
+    supports_exists_table = True
+    supports_exists_index = False
 
     supports_native_enum = True
 

@@ -2590,6 +2590,9 @@ class MSDialect(default.DefaultDialect):
     # T-SQL's actual default is -9223372036854775808
     default_sequence_base = 1
 
+    supports_exists_table = False
+    supports_exists_index = False
+
     supports_native_boolean = False
     non_native_boolean_check_constraint = False
     supports_unicode_binds = True

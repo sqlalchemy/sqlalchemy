@@ -1397,6 +1397,8 @@ class OracleExecutionContext(default.DefaultExecutionContext):
 class OracleDialect(default.DefaultDialect):
     name = "oracle"
     supports_alter = True
+    supports_exist_table = False
+    supports_exists_index = False
     supports_unicode_statements = False
     supports_unicode_binds = False
     max_identifier_length = 128

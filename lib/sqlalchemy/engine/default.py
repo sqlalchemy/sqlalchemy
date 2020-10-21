@@ -56,6 +56,9 @@ class DefaultDialect(interfaces.Dialect):
     supports_alter = True
     supports_comments = False
     inline_comments = False
+
+    supports_exists_table = False
+    supports_exists_index = False
     use_setinputsizes = False
 
     # the first value we'd get for an autoincrement

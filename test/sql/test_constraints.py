@@ -1340,3 +1340,79 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
+
+    @testing.skip_if("postgresql < 9.1")
+    def test_create_table_if_not_exists(self):
+        t, t2 = self._constraint_create_fixture()
+
+        # If a dialect doesn't support EXISTS, EXISTS will be ignored silently.
+        if testing.db.dialect.supports_exists_table:
+            if testing.db.dialect.name == "mssql":
+                stmt = (
+                    "CREATE TABLE IF NOT EXISTS tbl "
+                    "(a INTEGER NULL, b INTEGER NULL)"
+                )
+            else:
+                stmt = "CREATE TABLE IF NOT EXISTS tbl (a INTEGER, b INTEGER)"
+
+        else:
+            if testing.db.dialect.name == "mssql":
+                stmt = "CREATE TABLE tbl (a INTEGER NULL, b INTEGER NULL)"
+            else:
+                stmt = "CREATE TABLE tbl (a INTEGER, b INTEGER)"
+
+        self.assert_compile(
+            schema.CreateTable(t, if_not_exists=True),
+            stmt,
+            dialect=testing.db.dialect,
+        )
+
+    @testing.skip_if("postgresql < 9.5")
+    def test_create_index_if_not_exists(self):
+        t, t2 = self._constraint_create_fixture()
+        idx = Index("idx_name", t.c.a)
+
+        # If a dialect doesn't support EXISTS, EXISTS will be ignored silently.
+        if testing.db.dialect.supports_exists_index:
+            stmt = "CREATE INDEX IF NOT EXISTS idx_name ON tbl (a)"
+        else:
+            stmt = "CREATE INDEX idx_name ON tbl (a)"
+        self.assert_compile(
+            schema.CreateIndex(idx, if_not_exists=True),
+            stmt,
+            dialect=testing.db.dialect,
+        )
+
+    @testing.skip_if("postgresql < 8.2")
+    def test_drop_table_if_exists(self):
+        t, t2 = self._constraint_create_fixture()
+
+        # If a dialect doesn't support EXISTS, EXISTS will be ignored silently.
+        if testing.db.dialect.supports_exists_table:
+            stmt = "DROP TABLE IF EXISTS tbl"
+        else:
+            stmt = "DROP TABLE tbl"
+        self.assert_compile(
+            schema.DropTable(t, if_exists=True),
+            stmt,
+            dialect=testing.db.dialect,
+        )
+
+    @testing.skip_if("postgresql < 8.2")
+    def test_drop_index_if_exists(self):
+        t, t2 = self._constraint_create_fixture()
+        idx = Index("idx_name", t.c.a)
+
+        # If a dialect doesn't support EXISTS, EXISTS will be ignored silently.
+        if testing.db.dialect.supports_exists_index:
+            stmt = "DROP INDEX IF EXISTS idx_name"
+        else:
+            stmt = "DROP INDEX idx_name"
+
+        if testing.db.dialect.name in ("mysql", "mariadb", "mssql"):
+            stmt += " ON tbl"
+        self.assert_compile(
+            schema.DropIndex(idx, if_exists=True),
+            stmt,
+            dialect=testing.db.dialect,
+        )
