@@ -230,7 +230,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         eq_(jill.ufoo, "moonbeam")
 
-    def test_evaluate_dont_refresh_expired_objects(self):
+    @testing.combinations(
+        (False, False),
+        (False, True),
+        (True, False),
+        (True, True),
+    )
+    def test_evaluate_dont_refresh_expired_objects(
+        self, expire_jane_age, add_filter_criteria
+    ):
         User = self.classes.User
 
         sess = Session()
@@ -239,28 +247,74 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         sess.expire(john)
         sess.expire(jill)
-        sess.expire(jane, ["name"])
+
+        if expire_jane_age:
+            sess.expire(jane, ["name", "age"])
+        else:
+            sess.expire(jane, ["name"])
 
         with self.sql_execution_asserter() as asserter:
             # using 1.x style for easier backport
-            sess.query(User).update(
-                {"age": User.age + 10}, synchronize_session="evaluate"
-            )
+            if add_filter_criteria:
+                sess.query(User).filter(User.name != None).update(
+                    {"age": User.age + 10}, synchronize_session="evaluate"
+                )
+            else:
+                sess.query(User).update(
+                    {"age": User.age + 10}, synchronize_session="evaluate"
+                )
 
-        asserter.assert_(
-            CompiledSQL(
-                "UPDATE users SET age_int=(users.age_int + :age_int_1)",
-                [{"age_int_1": 10}],
-            ),
-        )
+        if add_filter_criteria:
+            if expire_jane_age:
+                asserter.assert_(
+                    # it has to unexpire jane.name, because jane is not fully
+                    # expired and the critiera needs to look at this particular
+                    # key
+                    CompiledSQL(
+                        "SELECT users.age_int AS users_age_int, "
+                        "users.name AS users_name FROM users "
+                        "WHERE users.id = :param_1",
+                        [{"param_1": 4}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE users "
+                        "SET age_int=(users.age_int + :age_int_1) "
+                        "WHERE users.name IS NOT NULL",
+                        [{"age_int_1": 10}],
+                    ),
+                )
+            else:
+                asserter.assert_(
+                    # it has to unexpire jane.name, because jane is not fully
+                    # expired and the critiera needs to look at this particular
+                    # key
+                    CompiledSQL(
+                        "SELECT users.name AS users_name FROM users "
+                        "WHERE users.id = :param_1",
+                        [{"param_1": 4}],
+                    ),
+                    CompiledSQL(
+                        "UPDATE users SET "
+                        "age_int=(users.age_int + :age_int_1) "
+                        "WHERE users.name IS NOT NULL",
+                        [{"age_int_1": 10}],
+                    ),
+                )
+        else:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + :age_int_1)",
+                    [{"age_int_1": 10}],
+                ),
+            )
 
         with self.sql_execution_asserter() as asserter:
             eq_(john.age, 35)  # needs refresh
             eq_(jack.age, 57)  # no SQL needed
             eq_(jill.age, 39)  # needs refresh
-            eq_(jane.age, 47)  # no SQL needed
+            eq_(jane.age, 47)  # needs refresh
 
-        asserter.assert_(
+        to_assert = [
             # refresh john
             CompiledSQL(
                 "SELECT users.age_int AS users_age_int, "
@@ -275,7 +329,19 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 "WHERE users.id = :param_1",
                 [{"param_1": 3}],
             ),
-        )
+        ]
+
+        if expire_jane_age and not add_filter_criteria:
+            to_assert.append(
+                # refresh jane
+                CompiledSQL(
+                    "SELECT users.age_int AS users_age_int, "
+                    "users.name AS users_name FROM users "
+                    "WHERE users.id = :param_1",
+                    [{"param_1": 4}],
+                )
+            )
+        asserter.assert_(*to_assert)
 
     def test_fetch_dont_refresh_expired_objects(self):
         User = self.classes.User
@@ -290,14 +356,18 @@ class UpdateDeleteTest(fixtures.MappedTest):
 
         with self.sql_execution_asserter() as asserter:
             # using 1.x style for easier backport
-            sess.query(User).update(
+            sess.query(User).filter(User.name != None).update(
                 {"age": User.age + 10}, synchronize_session="fetch"
             )
 
         asserter.assert_(
-            CompiledSQL("SELECT users.id AS users_id FROM users"),
             CompiledSQL(
-                "UPDATE users SET age_int=(users.age_int + :age_int_1)",
+                "SELECT users.id AS users_id FROM users "
+                "WHERE users.name IS NOT NULL"
+            ),
+            CompiledSQL(
+                "UPDATE users SET age_int=(users.age_int + :age_int_1) "
+                "WHERE users.name IS NOT NULL",
                 [{"age_int_1": 10}],
             ),
         )

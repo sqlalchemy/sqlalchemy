@@ -1786,7 +1786,9 @@ class BulkEvaluate(BulkUD):
                 pk,
                 identity_token,
             ), obj in query.session.identity_map.items()
-            if issubclass(cls, target_cls) and eval_condition(obj)
+            if issubclass(cls, target_cls)
+            and not attributes.instance_state(obj).expired
+            and eval_condition(obj)
         ]
 
 
@@ -1957,9 +1959,8 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
             # only evaluate unmodified attributes
             to_evaluate = state.unmodified.intersection(evaluated_keys)
             for key in to_evaluate:
-                if key not in dict_:
-                    continue
-                dict_[key] = self.value_evaluators[key](obj)
+                if key in dict_:
+                    dict_[key] = self.value_evaluators[key](obj)
 
             state.manager.dispatch.refresh(state, None, to_evaluate)
 
