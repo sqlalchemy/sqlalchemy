@@ -1957,6 +1957,8 @@ class BulkUpdateEvaluate(BulkEvaluate, BulkUpdate):
             # only evaluate unmodified attributes
             to_evaluate = state.unmodified.intersection(evaluated_keys)
             for key in to_evaluate:
+                if key not in dict_:
+                    continue
                 dict_[key] = self.value_evaluators[key](obj)
 
             state.manager.dispatch.refresh(state, None, to_evaluate)
