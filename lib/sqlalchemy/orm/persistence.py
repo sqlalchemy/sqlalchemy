@@ -1978,6 +1978,7 @@ class BulkUDCompileState(CompileState):
             state.obj()
             for state in session.identity_map.all_states()
             if state.mapper.isa(mapper)
+            and not state.expired
             and eval_condition(state.obj())
             and (
                 update_options._refresh_identity_token is None
@@ -2209,9 +2210,8 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             # only evaluate unmodified attributes
             to_evaluate = state.unmodified.intersection(evaluated_keys)
             for key in to_evaluate:
-                if key not in dict_:
-                    continue
-                dict_[key] = update_options._value_evaluators[key](obj)
+                if key in dict_:
+                    dict_[key] = update_options._value_evaluators[key](obj)
 
             state.manager.dispatch.refresh(state, None, to_evaluate)
 

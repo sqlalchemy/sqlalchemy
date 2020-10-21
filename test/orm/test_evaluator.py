@@ -10,9 +10,11 @@ from sqlalchemy import or_
 from sqlalchemy import String
 from sqlalchemy import tuple_
 from sqlalchemy.orm import evaluator
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
@@ -285,7 +287,24 @@ class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
             name = Column(String(50), primary_key=True)
             parent = relationship(Parent)
 
-    def test_delete(self):
+    def test_delete_not_expired(self):
+        Parent, Child = self.classes("Parent", "Child")
+
+        session = Session(expire_on_commit=False)
+
+        p = Parent(id=1)
+        session.add(p)
+        session.commit()
+
+        c = Child(name="foo", parent=p)
+        session.add(c)
+        session.commit()
+
+        session.query(Child).filter(Child.parent == p).delete("evaluate")
+
+        is_(inspect(c).deleted, True)
+
+    def test_delete_expired(self):
         Parent, Child = self.classes("Parent", "Child")
 
         session = Session()
@@ -300,4 +319,8 @@ class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
 
         session.query(Child).filter(Child.parent == p).delete("evaluate")
 
-        is_(inspect(c).deleted, True)
+        # because it's expired
+        is_(inspect(c).deleted, False)
+
+        # but it's gone
+        assert_raises(orm_exc.ObjectDeletedError, lambda: c.name)
