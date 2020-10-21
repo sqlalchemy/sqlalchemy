@@ -276,6 +276,111 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
         eq_(jill.ufoo, "moonbeam")
 
+    def test_evaluate_dont_refresh_expired_objects(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        sess.expire(john)
+        sess.expire(jill)
+        sess.expire(jane, ["name"])
+
+        with self.sql_execution_asserter() as asserter:
+            # using 1.x style for easier backport
+            sess.query(User).update(
+                {"age": User.age + 10}, synchronize_session="evaluate"
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET age_int=(users.age_int + :age_int_1)",
+                [{"age_int_1": 10}],
+            ),
+        )
+
+        with self.sql_execution_asserter() as asserter:
+            eq_(john.age, 35)  # needs refresh
+            eq_(jack.age, 57)  # no SQL needed
+            eq_(jill.age, 39)  # needs refresh
+            eq_(jane.age, 47)  # no SQL needed
+
+        asserter.assert_(
+            # refresh john
+            CompiledSQL(
+                "SELECT users.age_int AS users_age_int, "
+                "users.id AS users_id, users.name AS users_name FROM users "
+                "WHERE users.id = :param_1",
+                [{"param_1": 1}],
+            ),
+            # refresh jill
+            CompiledSQL(
+                "SELECT users.age_int AS users_age_int, "
+                "users.id AS users_id, users.name AS users_name FROM users "
+                "WHERE users.id = :param_1",
+                [{"param_1": 3}],
+            ),
+        )
+
+    def test_fetch_dont_refresh_expired_objects(self):
+        User = self.classes.User
+
+        sess = Session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        sess.expire(john)
+        sess.expire(jill)
+        sess.expire(jane, ["name"])
+
+        with self.sql_execution_asserter() as asserter:
+            # using 1.x style for easier backport
+            sess.query(User).update(
+                {"age": User.age + 10}, synchronize_session="fetch"
+            )
+
+        if testing.db.dialect.full_returning:
+            asserter.assert_(
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + %(age_int_1)s) "
+                    "RETURNING users.id",
+                    [{"age_int_1": 10}],
+                    dialect="postgresql",
+                ),
+            )
+        else:
+            asserter.assert_(
+                CompiledSQL("SELECT users.id FROM users"),
+                CompiledSQL(
+                    "UPDATE users SET age_int=(users.age_int + :age_int_1)",
+                    [{"age_int_1": 10}],
+                ),
+            )
+
+        with self.sql_execution_asserter() as asserter:
+            eq_(john.age, 35)  # needs refresh
+            eq_(jack.age, 57)  # no SQL needed
+            eq_(jill.age, 39)  # needs refresh
+            eq_(jane.age, 47)  # no SQL needed
+
+        asserter.assert_(
+            # refresh john
+            CompiledSQL(
+                "SELECT users.age_int AS users_age_int, "
+                "users.id AS users_id, users.name AS users_name FROM users "
+                "WHERE users.id = :param_1",
+                [{"param_1": 1}],
+            ),
+            # refresh jill
+            CompiledSQL(
+                "SELECT users.age_int AS users_age_int, "
+                "users.id AS users_id, users.name AS users_name FROM users "
+                "WHERE users.id = :param_1",
+                [{"param_1": 3}],
+            ),
+        )
+
     def test_delete(self):
         User = self.classes.User
 

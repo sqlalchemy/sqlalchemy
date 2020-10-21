@@ -2209,6 +2209,8 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             # only evaluate unmodified attributes
             to_evaluate = state.unmodified.intersection(evaluated_keys)
             for key in to_evaluate:
+                if key not in dict_:
+                    continue
                 dict_[key] = update_options._value_evaluators[key](obj)
 
             state.manager.dispatch.refresh(state, None, to_evaluate)
@@ -2264,7 +2266,8 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
 
             to_evaluate = state.unmodified.intersection(evaluated_keys)
             for key in to_evaluate:
-                dict_[key] = update_options._value_evaluators[key](obj)
+                if key in dict_:
+                    dict_[key] = update_options._value_evaluators[key](obj)
             state.manager.dispatch.refresh(state, None, to_evaluate)
 
             state._commit(dict_, list(to_evaluate))

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5664
+
+    Fixed bug in :meth:`_orm.Query.update` where objects in the
+    :class:`_orm.Session` that were already expired would be unnecessarily
+    SELECTed individually when they were refreshed by the "evaluate"
+    synchronize strategy.
