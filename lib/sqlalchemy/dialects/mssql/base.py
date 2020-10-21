@@ -3168,16 +3168,20 @@ class MSDialect(default.DefaultDialect):
         C = ischema.key_constraints.alias("C")
 
         # Primary key constraints
-        s = sql.select(
-            C.c.column_name, TC.c.constraint_type, C.c.constraint_name
-        ).where(
-            sql.and_(
-                TC.c.constraint_name == C.c.constraint_name,
-                TC.c.table_schema == C.c.table_schema,
-                C.c.table_name == tablename,
-                C.c.table_schema == owner,
-            ),
-        ).order_by(TC.c.constraint_name, C.c.ordinal_position)
+        s = (
+            sql.select(
+                C.c.column_name, TC.c.constraint_type, C.c.constraint_name
+            )
+            .where(
+                sql.and_(
+                    TC.c.constraint_name == C.c.constraint_name,
+                    TC.c.table_schema == C.c.table_schema,
+                    C.c.table_name == tablename,
+                    C.c.table_schema == owner,
+                ),
+            )
+            .order_by(TC.c.constraint_name, C.c.ordinal_position)
+        )
         c = connection.execution_options(future_result=True).execute(s)
         constraint_name = None
         for row in c.mappings():
