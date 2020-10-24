@@ -430,34 +430,85 @@ By default, the log level is set to ``logging.WARN`` within the entire
 ``sqlalchemy`` namespace so that no log operations occur, even within an
 application that has logging enabled otherwise.
 
-The ``echo`` flags present as keyword arguments to
-:func:`~sqlalchemy.create_engine` and others as well as the ``echo`` property
-on :class:`~sqlalchemy.engine.Engine`, when set to ``True``, will first
-attempt to ensure that logging is enabled. Unfortunately, the ``logging``
-module provides no way of determining if output has already been configured
-(note we are referring to if a logging configuration has been set up, not just
-that the logging level is set). For this reason, any ``echo=True`` flags will
-result in a call to ``logging.basicConfig()`` using sys.stdout as the
-destination. It also sets up a default format using the level name, timestamp,
-and logger name. Note that this configuration has the affect of being
-configured **in addition** to any existing logger configurations. Therefore,
-**when using Python logging, ensure all echo flags are set to False at all
-times**, to avoid getting duplicate log lines.
-
-The logger name of instance such as an :class:`~sqlalchemy.engine.Engine`
-or :class:`~sqlalchemy.pool.Pool` defaults to using a truncated hex identifier
-string. To set this to a specific name, use the "logging_name" and
-"pool_logging_name" keyword arguments with :func:`sqlalchemy.create_engine`.
-
 .. note::
 
-   The SQLAlchemy :class:`_engine.Engine` conserves Python function call overhead
-   by only emitting log statements when the current logging level is detected
-   as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this level when
-   a new connection is procured from the connection pool.  Therefore when
-   changing the logging configuration for an already-running application, any
-   :class:`_engine.Connection` that's currently active, or more commonly a
-   :class:`~.orm.session.Session` object that's active in a transaction, won't log any
-   SQL according to the new configuration until a new :class:`_engine.Connection`
-   is procured (in the case of :class:`~.orm.session.Session`, this is
-   after the current transaction ends and a new one begins).
+   The SQLAlchemy :class:`_engine.Engine` conserves Python function call
+   overhead by only emitting log statements when the current logging level is
+   detected as ``logging.INFO`` or ``logging.DEBUG``.  It only checks this
+   level when a new connection is procured from the connection pool.  Therefore
+   when changing the logging configuration for an already-running application,
+   any :class:`_engine.Connection` that's currently active, or more commonly a
+   :class:`~.orm.session.Session` object that's active in a transaction, won't
+   log any SQL according to the new configuration until a new
+   :class:`_engine.Connection` is procured (in the case of
+   :class:`~.orm.session.Session`, this is after the current transaction ends
+   and a new one begins).
+
+More on the Echo Flag
+---------------------
+
+As mentioned previously, the :paramref:`_sa.create_engine.echo` and :paramref:`_sa.create_engine.echo_pool`
+parameters are a shortcut to immediate logging to ``sys.stdout``::
+
+
+    >>> from sqlalchemy import create_engine, text
+    >>> e = create_engine("sqlite://", echo=True, echo_pool='debug')
+    >>> with e.connect() as conn:
+    ...    print(conn.scalar(text("select 'hi'")))
+    ...
+    2020-10-24 12:54:57,701 DEBUG sqlalchemy.pool.impl.SingletonThreadPool Created new connection <sqlite3.Connection object at 0x7f287819ac60>
+    2020-10-24 12:54:57,701 DEBUG sqlalchemy.pool.impl.SingletonThreadPool Connection <sqlite3.Connection object at 0x7f287819ac60> checked out from pool
+    2020-10-24 12:54:57,702 INFO sqlalchemy.engine.Engine select 'hi'
+    2020-10-24 12:54:57,702 INFO sqlalchemy.engine.Engine ()
+    hi
+    2020-10-24 12:54:57,703 DEBUG sqlalchemy.pool.impl.SingletonThreadPool Connection <sqlite3.Connection object at 0x7f287819ac60> being returned to pool
+    2020-10-24 12:54:57,704 DEBUG sqlalchemy.pool.impl.SingletonThreadPool Connection <sqlite3.Connection object at 0x7f287819ac60> rollback-on-return
+
+Use of these flags is roughly equivalent to::
+
+    import logging
+    logging.basicConfig()
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
+
+It's important to note that these two flags work **independently** of any
+existing logging configuration, and will make use of ``logging.basicConfig()``
+unconditionally.  This has the effect of being configured **in addition** to
+any existing logger configurations. Therefore, **when configuring logging
+explicitly, ensure all echo flags are set to False at all times**, to avoid
+getting duplicate log lines.
+
+Setting the Logging Name
+-------------------------
+
+The logger name of instance such as an :class:`~sqlalchemy.engine.Engine` or
+:class:`~sqlalchemy.pool.Pool` defaults to using a truncated hex identifier
+string. To set this to a specific name, use the
+:paramref:`_sa.create_engine.logging_name` and
+:paramref:`_sa.create_engine.pool_logging_name`  with
+:func:`sqlalchemy.create_engine`::
+
+    >>> from sqlalchemy import create_engine
+    >>> from sqlalchemy import text
+    >>> e = create_engine("sqlite://", echo=True, logging_name='myengine')
+    >>> with e.connect() as conn:
+    ...     conn.execute(text("select 'hi'"))
+    ...
+    2020-10-24 12:47:04,291 INFO sqlalchemy.engine.Engine.myengine select 'hi'
+    2020-10-24 12:47:04,292 INFO sqlalchemy.engine.Engine.myengine ()
+
+Hiding Parameters
+------------------
+
+The logging emitted by :class:`_engine.Engine` also indicates an excerpt
+of the SQL parameters that are present for a particular statement.  To prevent
+these parameters from being logged for privacy purposes, enable the
+:paramref:`_sa.create_engine.hide_parameters` flag::
+
+    >>> e = create_engine("sqlite://", echo=True, hide_parameters=True)
+    >>> with e.connect() as conn:
+    ...     conn.execute(text("select :some_private_name"), {"some_private_name": "pii"})
+    ...
+    2020-10-24 12:48:32,808 INFO sqlalchemy.engine.Engine select ?
+    2020-10-24 12:48:32,808 INFO sqlalchemy.engine.Engine [SQL parameters hidden due to hide_parameters=True]
+
