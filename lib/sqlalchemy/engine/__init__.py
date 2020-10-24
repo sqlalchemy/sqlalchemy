@@ -187,6 +187,7 @@ def create_engine(*args, **kwargs):
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
+
     :param echo_pool=False: if True, the connection pool will log
         informational output such as when connections are invalidated
         as well as when connections are recycled to the default log handler,
@@ -278,6 +279,11 @@ def create_engine(*args, **kwargs):
 
         .. versionadded:: 1.3.8
 
+        .. seealso::
+
+            :ref:`dbengine_logging` - further detail on how to configure
+            logging.
+
     :param implicit_returning=True: When ``True``, a RETURNING-
         compatible construct, if available, will be used to
         fetch newly generated primary key values when a single row
@@ -356,6 +362,13 @@ def create_engine(*args, **kwargs):
         "sqlalchemy.engine" logger. Defaults to a hexstring of the
         object's id.
 
+        .. seealso::
+
+            :ref:`dbengine_logging` - further detail on how to configure
+            logging.
+
+
+
     :param max_identifier_length: integer; override the max_identifier_length
         determined by the dialect.  if ``None`` or zero, has no effect.  This
         is the database's configured maximum number of characters that may be
@@ -414,6 +427,13 @@ def create_engine(*args, **kwargs):
        the "name" field of logging records generated within the
        "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
        id.
+
+
+       .. seealso::
+
+            :ref:`dbengine_logging` - further detail on how to configure
+            logging.
+
 
     :param pool_pre_ping: boolean, if True will enable the connection pool
         "pre-ping" feature that tests connections for liveness upon
