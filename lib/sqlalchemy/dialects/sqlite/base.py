@@ -1839,6 +1839,7 @@ class SQLiteDialect(default.DefaultDialect):
             constraint_name = result.group(1) if result else None
 
         cols = self.get_columns(connection, table_name, schema, **kw)
+        cols.sort(key=lambda col: col.get("primary_key"))
         pkeys = []
         for col in cols:
             if col["primary_key"]:
