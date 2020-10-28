@@ -599,14 +599,14 @@ def adapt_criterion_to_null(crit, nulls):
             binary.left = binary.right
             binary.right = Null()
             binary.operator = operators.is_
-            binary.negate = operators.isnot
+            binary.negate = operators.is_not
         elif (
             isinstance(binary.right, BindParameter)
             and binary.right._identifying_key in nulls
         ):
             binary.right = Null()
             binary.operator = operators.is_
-            binary.negate = operators.isnot
+            binary.negate = operators.is_not
 
     return visitors.cloned_traverse(crit, {}, {"binary": visit_binary})
 
