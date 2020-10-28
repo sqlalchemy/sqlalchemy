@@ -1213,7 +1213,7 @@ class OracleCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
-    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+    def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
         return "DECODE(%s, %s, 0, 1) = 0" % (
             self.process(binary.left),
             self.process(binary.right),

@@ -56,9 +56,9 @@ _notimplemented_ops = set(
     getattr(operators, op)
     for op in (
         "like_op",
-        "notlike_op",
+        "not_like_op",
         "ilike_op",
-        "notilike_op",
+        "not_ilike_op",
         "startswith_op",
         "between_op",
         "endswith_op",

@@ -2109,6 +2109,24 @@ class TableDeprecationTest(fixtures.TestBase):
 
 
 class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
+    """
+    Several operators were renamed for SqlAlchemy 2.0 in #5429 and #5435
+
+    This test class is designed to ensure the deprecated legacy operators
+    are still available and equivalent to their modern replacements.
+
+    These tests should be removed when the legacy operators are removed.
+
+    Note: Although several of these tests simply check to see if two functions
+    are the same, some platforms in the test matrix require an `==` comparison
+    and will fail on an `is` comparison.
+
+    .. seealso::
+
+        :ref:`change_5429`
+        :ref:`change_5435`
+    """
+
     __dialect__ = "default"
 
     def test_issue_5429_compile(self):
@@ -2123,27 +2141,19 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         # is_not
         assert hasattr(operators, "is_not")  # modern
         assert hasattr(operators, "isnot")  # legacy
-        assert operators.is_not is operators.isnot
+        assert operators.is_not == operators.isnot
         # not_in
         assert hasattr(operators, "not_in_op")  # modern
         assert hasattr(operators, "notin_op")  # legacy
-        assert operators.not_in_op is operators.notin_op
+        assert operators.not_in_op == operators.notin_op
 
         # precedence mapping
+        # since they are the same item, only 1 precedence check needed
         # is_not
-        assert operators.is_not in operators._PRECEDENCE  # modern
         assert operators.isnot in operators._PRECEDENCE  # legacy
-        assert (
-            operators._PRECEDENCE[operators.is_not]
-            == operators._PRECEDENCE[operators.isnot]
-        )
+
         # not_in_op
-        assert operators.not_in_op in operators._PRECEDENCE  # modern
         assert operators.notin_op in operators._PRECEDENCE  # legacy
-        assert (
-            operators._PRECEDENCE[operators.not_in_op]
-            == operators._PRECEDENCE[operators.notin_op]
-        )
 
         # ColumnOperators
         # is_not
@@ -2168,8 +2178,53 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         # is_not
         assert hasattr(assertions, "is_not")  # modern
         assert hasattr(assertions, "is_not_")  # legacy
-        assert assertions.is_not is assertions.is_not_
+        assert assertions.is_not == assertions.is_not_
         # not_in
         assert hasattr(assertions, "not_in")  # modern
         assert hasattr(assertions, "not_in_")  # legacy
-        assert assertions.not_in is assertions.not_in_
+        assert assertions.not_in == assertions.not_in_
+
+    def test_issue_5435_operators(self):
+        # (modern, legacy, in_precendence)
+        _operator_changes = (
+            ("is_false", "isfalse", True),
+            ("is_true", "istrue", True),
+            ("is_not_distinct_from", "isnot_distinct_from", True),
+            ("not_between_op", "notbetween_op", True),
+            ("not_contains_op", "notcontains_op", False),
+            ("not_endswith_op", "notendswith_op", False),
+            ("not_ilike_op", "notilike_op", True),
+            ("not_like_op", "notlike_op", True),
+            ("not_match_op", "notmatch_op", True),
+            ("not_startswith_op", "notstartswith_op", False),
+            ("nulls_first_op", "nullsfirst_op", False),
+            ("nulls_last_op", "nullslast_op", False),
+        )
+        for (_modern, _legacy, _in_precedence) in _operator_changes:
+            # core operators
+            assert hasattr(operators, _modern)
+            assert hasattr(operators, _legacy)
+            _op_modern = getattr(operators, _modern)
+            _op_legacy = getattr(operators, _legacy)
+            assert _op_modern == _op_legacy
+            # since they are the same item, only 1 precedence check needed
+            if _in_precedence:
+                assert _op_legacy in operators._PRECEDENCE
+            else:
+                assert _op_legacy not in operators._PRECEDENCE
+
+        # (modern, legacy)
+        _column_operator_changes = (
+            ("is_not_distinct_from", "isnot_distinct_from"),
+            ("not_ilike", "notilike"),
+            ("not_like", "notlike"),
+            ("nulls_first", "nullsfirst"),
+            ("nulls_last", "nullslast"),
+        )
+        for (_modern, _legacy) in _column_operator_changes:
+            # Column operators
+            assert hasattr(operators.ColumnOperators, _modern)
+            assert hasattr(operators.ColumnOperators, _legacy)
+            _op_modern = getattr(operators.ColumnOperators, _modern)
+            _op_legacy = getattr(operators.ColumnOperators, _legacy)
+            assert _op_modern == _op_legacy

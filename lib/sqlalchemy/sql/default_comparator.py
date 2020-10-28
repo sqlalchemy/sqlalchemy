@@ -57,7 +57,10 @@ def _boolean_compare(
                 negate=negate,
                 modifiers=kwargs,
             )
-        elif op in (operators.is_distinct_from, operators.isnot_distinct_from):
+        elif op in (
+            operators.is_distinct_from,
+            operators.is_not_distinct_from,
+        ):
             return BinaryExpression(
                 expr,
                 coercions.expect(roles.ConstExprRole, obj),
@@ -87,7 +90,7 @@ def _boolean_compare(
             else:
                 raise exc.ArgumentError(
                     "Only '=', '!=', 'is_()', 'is_not()', "
-                    "'is_distinct_from()', 'isnot_distinct_from()' "
+                    "'is_distinct_from()', 'is_not_distinct_from()' "
                     "operators can be used with None/True/False"
                 )
     else:
@@ -205,7 +208,7 @@ def _match_impl(expr, op, other, **kw):
             operator=operators.match_op,
         ),
         result_type=type_api.MATCHTYPE,
-        negate=operators.notmatch_op
+        negate=operators.not_match_op
         if op is operators.match_op
         else operators.match_op,
         **kw
@@ -241,7 +244,7 @@ def _between_impl(expr, op, cleft, cright, **kw):
             group_contents=False,
         ),
         op,
-        negate=operators.notbetween_op
+        negate=operators.not_between_op
         if op is operators.between_op
         else operators.between_op,
         modifiers=kw,
@@ -315,29 +318,29 @@ operator_lookup = {
     "gt": (_boolean_compare, operators.le),
     "ge": (_boolean_compare, operators.lt),
     "eq": (_boolean_compare, operators.ne),
-    "is_distinct_from": (_boolean_compare, operators.isnot_distinct_from),
-    "isnot_distinct_from": (_boolean_compare, operators.is_distinct_from),
-    "like_op": (_boolean_compare, operators.notlike_op),
-    "ilike_op": (_boolean_compare, operators.notilike_op),
-    "notlike_op": (_boolean_compare, operators.like_op),
-    "notilike_op": (_boolean_compare, operators.ilike_op),
-    "contains_op": (_boolean_compare, operators.notcontains_op),
-    "startswith_op": (_boolean_compare, operators.notstartswith_op),
-    "endswith_op": (_boolean_compare, operators.notendswith_op),
+    "is_distinct_from": (_boolean_compare, operators.is_not_distinct_from),
+    "is_not_distinct_from": (_boolean_compare, operators.is_distinct_from),
+    "like_op": (_boolean_compare, operators.not_like_op),
+    "ilike_op": (_boolean_compare, operators.not_ilike_op),
+    "not_like_op": (_boolean_compare, operators.like_op),
+    "not_ilike_op": (_boolean_compare, operators.ilike_op),
+    "contains_op": (_boolean_compare, operators.not_contains_op),
+    "startswith_op": (_boolean_compare, operators.not_startswith_op),
+    "endswith_op": (_boolean_compare, operators.not_endswith_op),
     "desc_op": (_scalar, UnaryExpression._create_desc),
     "asc_op": (_scalar, UnaryExpression._create_asc),
-    "nullsfirst_op": (_scalar, UnaryExpression._create_nullsfirst),
-    "nullslast_op": (_scalar, UnaryExpression._create_nullslast),
+    "nulls_first_op": (_scalar, UnaryExpression._create_nulls_first),
+    "nulls_last_op": (_scalar, UnaryExpression._create_nulls_last),
     "in_op": (_in_impl, operators.not_in_op),
     "not_in_op": (_in_impl, operators.in_op),
     "is_": (_boolean_compare, operators.is_),
     "is_not": (_boolean_compare, operators.is_not),
     "collate": (_collate_impl,),
     "match_op": (_match_impl,),
-    "notmatch_op": (_match_impl,),
+    "not_match_op": (_match_impl,),
     "distinct_op": (_distinct_impl,),
     "between_op": (_between_impl,),
-    "notbetween_op": (_between_impl,),
+    "not_between_op": (_between_impl,),
     "neg": (_neg_impl,),
     "getitem": (_getitem_impl,),
     "lshift": (_unsupported_impl,),

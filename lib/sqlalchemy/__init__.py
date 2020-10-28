@@ -61,8 +61,10 @@ from .sql import literal_column  # noqa
 from .sql import modifier  # noqa
 from .sql import not_  # noqa
 from .sql import null  # noqa
-from .sql import nullsfirst  # noqa
-from .sql import nullslast  # noqa
+from .sql import nullsfirst  # noqa; deprecated 1.4; see #5435
+from .sql import nullslast  # noqa; deprecated 1.4; see #5435
+from .sql import nulls_first  # noqa
+from .sql import nulls_last  # noqa
 from .sql import or_  # noqa
 from .sql import outerjoin  # noqa
 from .sql import outparam  # noqa

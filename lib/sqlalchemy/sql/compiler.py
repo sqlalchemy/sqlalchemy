@@ -185,10 +185,10 @@ OPERATORS = {
     operators.ge: " >= ",
     operators.eq: " = ",
     operators.is_distinct_from: " IS DISTINCT FROM ",
-    operators.isnot_distinct_from: " IS NOT DISTINCT FROM ",
+    operators.is_not_distinct_from: " IS NOT DISTINCT FROM ",
     operators.concat_op: " || ",
     operators.match_op: " MATCH ",
-    operators.notmatch_op: " NOT MATCH ",
+    operators.not_match_op: " NOT MATCH ",
     operators.in_op: " IN ",
     operators.not_in_op: " NOT IN ",
     operators.comma_op: ", ",
@@ -206,8 +206,8 @@ OPERATORS = {
     # modifiers
     operators.desc_op: " DESC",
     operators.asc_op: " ASC",
-    operators.nullsfirst_op: " NULLS FIRST",
-    operators.nullslast_op: " NULLS LAST",
+    operators.nulls_first_op: " NULLS FIRST",
+    operators.nulls_last_op: " NULLS LAST",
 }
 
 FUNCTIONS = {
@@ -1860,7 +1860,7 @@ class SQLCompiler(Compiled):
                 "Unary expression has no operator or modifier"
             )
 
-    def visit_istrue_unary_operator(self, element, operator, **kw):
+    def visit_is_true_unary_operator(self, element, operator, **kw):
         if (
             element._is_implicitly_boolean
             or self.dialect.supports_native_boolean
@@ -1869,7 +1869,11 @@ class SQLCompiler(Compiled):
         else:
             return "%s = 1" % self.process(element.element, **kw)
 
-    def visit_isfalse_unary_operator(self, element, operator, **kw):
+    def visit_istrue_unary_operator(self, element, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_is_true_unary_operator(element, operator, **kw)
+
+    def visit_is_false_unary_operator(self, element, operator, **kw):
         if (
             element._is_implicitly_boolean
             or self.dialect.supports_native_boolean
@@ -1878,10 +1882,18 @@ class SQLCompiler(Compiled):
         else:
             return "%s = 0" % self.process(element.element, **kw)
 
-    def visit_notmatch_op_binary(self, binary, operator, **kw):
+    def visit_isfalse_unary_operator(self, element, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_is_false_unary_operator(element, operator, **kw)
+
+    def visit_not_match_op_binary(self, binary, operator, **kw):
         return "NOT %s" % self.visit_binary(
             binary, override_operator=operators.match_op
         )
+
+    def visit_notmatch_op_binary(self, element, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_match_op_binary(element, operator, **kw)
 
     def visit_empty_set_expr(self, element_types):
         raise NotImplementedError(
@@ -2083,11 +2095,15 @@ class SQLCompiler(Compiled):
         binary.right = percent.__add__(binary.right).__add__(percent)
         return self.visit_like_op_binary(binary, operator, **kw)
 
-    def visit_notcontains_op_binary(self, binary, operator, **kw):
+    def visit_not_contains_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
         binary.right = percent.__add__(binary.right).__add__(percent)
-        return self.visit_notlike_op_binary(binary, operator, **kw)
+        return self.visit_not_like_op_binary(binary, operator, **kw)
+
+    def visit_notcontains_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_contains_op_binary(binary, operator, **kw)
 
     def visit_startswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
@@ -2095,11 +2111,15 @@ class SQLCompiler(Compiled):
         binary.right = percent.__radd__(binary.right)
         return self.visit_like_op_binary(binary, operator, **kw)
 
-    def visit_notstartswith_op_binary(self, binary, operator, **kw):
+    def visit_not_startswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
         binary.right = percent.__radd__(binary.right)
-        return self.visit_notlike_op_binary(binary, operator, **kw)
+        return self.visit_not_like_op_binary(binary, operator, **kw)
+
+    def visit_notstartswith_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_startswith_op_binary(binary, operator, **kw)
 
     def visit_endswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
@@ -2107,11 +2127,15 @@ class SQLCompiler(Compiled):
         binary.right = percent.__add__(binary.right)
         return self.visit_like_op_binary(binary, operator, **kw)
 
-    def visit_notendswith_op_binary(self, binary, operator, **kw):
+    def visit_not_endswith_op_binary(self, binary, operator, **kw):
         binary = binary._clone()
         percent = self._like_percent_literal
         binary.right = percent.__add__(binary.right)
-        return self.visit_notlike_op_binary(binary, operator, **kw)
+        return self.visit_not_like_op_binary(binary, operator, **kw)
+
+    def visit_notendswith_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_endswith_op_binary(binary, operator, **kw)
 
     def visit_like_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
@@ -2126,7 +2150,7 @@ class SQLCompiler(Compiled):
             else ""
         )
 
-    def visit_notlike_op_binary(self, binary, operator, **kw):
+    def visit_not_like_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return "%s NOT LIKE %s" % (
             binary.left._compiler_dispatch(self, **kw),
@@ -2136,6 +2160,10 @@ class SQLCompiler(Compiled):
             if escape
             else ""
         )
+
+    def visit_notlike_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_like_op_binary(binary, operator, **kw)
 
     def visit_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
@@ -2148,7 +2176,7 @@ class SQLCompiler(Compiled):
             else ""
         )
 
-    def visit_notilike_op_binary(self, binary, operator, **kw):
+    def visit_not_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return "lower(%s) NOT LIKE lower(%s)" % (
             binary.left._compiler_dispatch(self, **kw),
@@ -2159,19 +2187,27 @@ class SQLCompiler(Compiled):
             else ""
         )
 
+    def visit_notilike_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_ilike_op_binary(binary, operator, **kw)
+
     def visit_between_op_binary(self, binary, operator, **kw):
         symmetric = binary.modifiers.get("symmetric", False)
         return self._generate_generic_binary(
             binary, " BETWEEN SYMMETRIC " if symmetric else " BETWEEN ", **kw
         )
 
-    def visit_notbetween_op_binary(self, binary, operator, **kw):
+    def visit_not_between_op_binary(self, binary, operator, **kw):
         symmetric = binary.modifiers.get("symmetric", False)
         return self._generate_generic_binary(
             binary,
             " NOT BETWEEN SYMMETRIC " if symmetric else " NOT BETWEEN ",
             **kw
         )
+
+    def visit_notbetween_op_binary(self, binary, operator, **kw):
+        # deprecated 1.4; see #5435
+        return self.visit_not_between_op_binary(binary, operator, **kw)
 
     def visit_regexp_match_op_binary(self, binary, operator, **kw):
         raise exc.CompileError(

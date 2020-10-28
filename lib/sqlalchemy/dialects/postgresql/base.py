@@ -1865,7 +1865,7 @@ class PGCompiler(compiler.SQLCompiler):
             else ""
         )
 
-    def visit_notilike_op_binary(self, binary, operator, **kw):
+    def visit_not_ilike_op_binary(self, binary, operator, **kw):
         escape = binary.modifiers.get("escape", None)
         return "%s NOT ILIKE %s" % (
             self.process(binary.left, **kw),
@@ -3850,10 +3850,10 @@ class PGDialect(default.DefaultDialect):
                     if col_flags & 0x01:
                         col_sorting += ("desc",)
                         if not (col_flags & 0x02):
-                            col_sorting += ("nullslast",)
+                            col_sorting += ("nulls_last",)
                     else:
                         if col_flags & 0x02:
-                            col_sorting += ("nullsfirst",)
+                            col_sorting += ("nulls_first",)
                     if col_sorting:
                         sorting[col_idx] = col_sorting
                 if sorting:
