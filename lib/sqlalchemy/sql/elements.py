@@ -766,7 +766,7 @@ class ColumnElement(
             against in (operators.and_, operators.or_, operators._asbool)
             and self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity
         ):
-            return AsBoolean(self, operators.istrue, operators.isfalse)
+            return AsBoolean(self, operators.is_true, operators.is_false)
         elif against in (operators.any_op, operators.all_op):
             return Grouping(self)
         else:
@@ -774,7 +774,7 @@ class ColumnElement(
 
     def _negate(self):
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
-            return AsBoolean(self, operators.isfalse, operators.istrue)
+            return AsBoolean(self, operators.is_false, operators.is_true)
         else:
             return super(ColumnElement, self)._negate()
 
@@ -3096,7 +3096,7 @@ class UnaryExpression(ColumnElement):
 
     :class:`.UnaryExpression` is the basis for several unary operators
     including those used by :func:`.desc`, :func:`.asc`, :func:`.distinct`,
-    :func:`.nullsfirst` and :func:`.nullslast`.
+    :func:`.nulls_first` and :func:`.nulls_last`.
 
     """
 
@@ -3126,31 +3126,35 @@ class UnaryExpression(ColumnElement):
         self.wraps_column_expression = wraps_column_expression
 
     @classmethod
-    def _create_nullsfirst(cls, column):
+    def _create_nulls_first(cls, column):
         """Produce the ``NULLS FIRST`` modifier for an ``ORDER BY`` expression.
 
-        :func:`.nullsfirst` is intended to modify the expression produced
+        :func:`.nulls_first` is intended to modify the expression produced
         by :func:`.asc` or :func:`.desc`, and indicates how NULL values
         should be handled when they are encountered during ordering::
 
 
-            from sqlalchemy import desc, nullsfirst
+            from sqlalchemy import desc, nulls_first
 
             stmt = select(users_table).order_by(
-                nullsfirst(desc(users_table.c.name)))
+                nulls_first(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
 
             SELECT id, name FROM user ORDER BY name DESC NULLS FIRST
 
-        Like :func:`.asc` and :func:`.desc`, :func:`.nullsfirst` is typically
+        Like :func:`.asc` and :func:`.desc`, :func:`.nulls_first` is typically
         invoked from the column expression itself using
-        :meth:`_expression.ColumnElement.nullsfirst`,
+        :meth:`_expression.ColumnElement.nulls_first`,
         rather than as its standalone
         function version, as in::
 
             stmt = select(users_table).order_by(
-                users_table.c.name.desc().nullsfirst())
+                users_table.c.name.desc().nulls_first())
+
+        .. versionchanged:: 1.4 :func:`.nulls_first` is renamed from
+            :func:`.nullsfirst` in previous releases.
+            The previous name remains available for backwards compatibility.
 
         .. seealso::
 
@@ -3158,43 +3162,47 @@ class UnaryExpression(ColumnElement):
 
             :func:`.desc`
 
-            :func:`.nullslast`
+            :func:`.nulls_last`
 
             :meth:`_expression.Select.order_by`
 
         """
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
-            modifier=operators.nullsfirst_op,
+            modifier=operators.nulls_first_op,
             wraps_column_expression=False,
         )
 
     @classmethod
-    def _create_nullslast(cls, column):
+    def _create_nulls_last(cls, column):
         """Produce the ``NULLS LAST`` modifier for an ``ORDER BY`` expression.
 
-        :func:`.nullslast` is intended to modify the expression produced
+        :func:`.nulls_last` is intended to modify the expression produced
         by :func:`.asc` or :func:`.desc`, and indicates how NULL values
         should be handled when they are encountered during ordering::
 
 
-            from sqlalchemy import desc, nullslast
+            from sqlalchemy import desc, nulls_last
 
             stmt = select(users_table).order_by(
-                nullslast(desc(users_table.c.name)))
+                nulls_last(desc(users_table.c.name)))
 
         The SQL expression from the above would resemble::
 
             SELECT id, name FROM user ORDER BY name DESC NULLS LAST
 
-        Like :func:`.asc` and :func:`.desc`, :func:`.nullslast` is typically
+        Like :func:`.asc` and :func:`.desc`, :func:`.nulls_last` is typically
         invoked from the column expression itself using
-        :meth:`_expression.ColumnElement.nullslast`,
+        :meth:`_expression.ColumnElement.nulls_last`,
         rather than as its standalone
         function version, as in::
 
             stmt = select(users_table).order_by(
-                users_table.c.name.desc().nullslast())
+                users_table.c.name.desc().nulls_last())
+
+        .. versionchanged:: 1.4 :func:`.nulls_last` is renamed from
+            :func:`.nullslast` in previous releases.
+            The previous name remains available for backwards compatibility.
 
         .. seealso::
 
@@ -3202,14 +3210,14 @@ class UnaryExpression(ColumnElement):
 
             :func:`.desc`
 
-            :func:`.nullsfirst`
+            :func:`.nulls_first`
 
             :meth:`_expression.Select.order_by`
 
         """
         return UnaryExpression(
             coercions.expect(roles.ByOfRole, column),
-            modifier=operators.nullslast_op,
+            modifier=operators.nulls_last_op,
             wraps_column_expression=False,
         )
 
@@ -3243,9 +3251,9 @@ class UnaryExpression(ColumnElement):
 
             :func:`.asc`
 
-            :func:`.nullsfirst`
+            :func:`.nulls_first`
 
-            :func:`.nullslast`
+            :func:`.nulls_last`
 
             :meth:`_expression.Select.order_by`
 
@@ -3285,9 +3293,9 @@ class UnaryExpression(ColumnElement):
 
             :func:`.desc`
 
-            :func:`.nullsfirst`
+            :func:`.nulls_first`
 
-            :func:`.nullslast`
+            :func:`.nulls_last`
 
             :meth:`_expression.Select.order_by`
 

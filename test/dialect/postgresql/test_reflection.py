@@ -1063,12 +1063,12 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         )
 
         eq_(
-            compile_exprs([t2.c.name.desc(), t2.c.aname.desc().nullslast()]),
+            compile_exprs([t2.c.name.desc(), t2.c.aname.desc().nulls_last()]),
             compile_exprs(r2.expressions),
         )
 
         eq_(
-            compile_exprs([t2.c.name.nullsfirst(), t2.c.aname]),
+            compile_exprs([t2.c.name.nulls_first(), t2.c.aname]),
             compile_exprs(r3.expressions),
         )
 

@@ -1349,7 +1349,7 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
         id_="iaaa",
         argnames="col_a_value, col_b_value, expected_row_count_for_is",
     )
-    def test_is_or_isnot_distinct_from(
+    def test_is_or_is_not_distinct_from(
         self, col_a_value, col_b_value, expected_row_count_for_is, connection
     ):
         tbl = self.tables.is_distinct_test
@@ -1371,7 +1371,7 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             1 if expected_row_count_for_is == 0 else 0
         )
         result = connection.execute(
-            tbl.select(tbl.c.col_a.isnot_distinct_from(tbl.c.col_b))
+            tbl.select(tbl.c.col_a.is_not_distinct_from(tbl.c.col_b))
         ).fetchall()
         eq_(
             len(result),
