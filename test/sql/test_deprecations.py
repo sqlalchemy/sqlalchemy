@@ -47,6 +47,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
@@ -2109,6 +2110,24 @@ class TableDeprecationTest(fixtures.TestBase):
 
 
 class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
+    """
+    Several operators were renamed for SqlAlchemy 2.0 in #5429 and #5435
+
+    This test class is designed to ensure the deprecated legacy operators
+    are still available and equivalent to their modern replacements.
+
+    These tests should be removed when the legacy operators are removed.
+
+    Note: Although several of these tests simply check to see if two functions
+    are the same, some platforms in the test matrix require an `==` comparison
+    and will fail on an `is` comparison.
+
+    .. seealso::
+
+        :ref:`change_5429`
+        :ref:`change_5435`
+    """
+
     __dialect__ = "default"
 
     def test_issue_5429_compile(self):
@@ -2123,27 +2142,19 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         # is_not
         assert hasattr(operators, "is_not")  # modern
         assert hasattr(operators, "isnot")  # legacy
-        assert operators.is_not is operators.isnot
+        is_(operators.is_not, operators.isnot)
         # not_in
         assert hasattr(operators, "not_in_op")  # modern
         assert hasattr(operators, "notin_op")  # legacy
-        assert operators.not_in_op is operators.notin_op
+        is_(operators.not_in_op, operators.notin_op)
 
         # precedence mapping
+        # since they are the same item, only 1 precedence check needed
         # is_not
-        assert operators.is_not in operators._PRECEDENCE  # modern
         assert operators.isnot in operators._PRECEDENCE  # legacy
-        assert (
-            operators._PRECEDENCE[operators.is_not]
-            == operators._PRECEDENCE[operators.isnot]
-        )
+
         # not_in_op
-        assert operators.not_in_op in operators._PRECEDENCE  # modern
         assert operators.notin_op in operators._PRECEDENCE  # legacy
-        assert (
-            operators._PRECEDENCE[operators.not_in_op]
-            == operators._PRECEDENCE[operators.notin_op]
-        )
 
         # ColumnOperators
         # is_not
@@ -2168,8 +2179,101 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         # is_not
         assert hasattr(assertions, "is_not")  # modern
         assert hasattr(assertions, "is_not_")  # legacy
-        assert assertions.is_not is assertions.is_not_
+        assert assertions.is_not == assertions.is_not_
         # not_in
         assert hasattr(assertions, "not_in")  # modern
         assert hasattr(assertions, "not_in_")  # legacy
-        assert assertions.not_in is assertions.not_in_
+        assert assertions.not_in == assertions.not_in_
+
+    @testing.combinations(
+        (
+            "is_not_distinct_from",
+            "isnot_distinct_from",
+            "a IS NOT DISTINCT FROM b",
+        ),
+        ("not_contains_op", "notcontains_op", "a NOT LIKE '%' || b || '%'"),
+        ("not_endswith_op", "notendswith_op", "a NOT LIKE '%' || b"),
+        ("not_ilike_op", "notilike_op", "lower(a) NOT LIKE lower(b)"),
+        ("not_like_op", "notlike_op", "a NOT LIKE b"),
+        ("not_match_op", "notmatch_op", "NOT a MATCH b"),
+        ("not_startswith_op", "notstartswith_op", "a NOT LIKE b || '%'"),
+    )
+    def test_issue_5435_binary_operators(self, modern, legacy, txt):
+        a, b = column("a"), column("b")
+        _op_modern = getattr(operators, modern)
+        _op_legacy = getattr(operators, legacy)
+
+        eq_(str(_op_modern(a, b)), txt)
+
+        eq_(str(_op_modern(a, b)), str(_op_legacy(a, b)))
+
+    @testing.combinations(
+        ("nulls_first_op", "nullsfirst_op", "a NULLS FIRST"),
+        ("nulls_last_op", "nullslast_op", "a NULLS LAST"),
+    )
+    def test_issue_5435_unary_operators(self, modern, legacy, txt):
+        a = column("a")
+        _op_modern = getattr(operators, modern)
+        _op_legacy = getattr(operators, legacy)
+
+        eq_(str(_op_modern(a)), txt)
+
+        eq_(str(_op_modern(a)), str(_op_legacy(a)))
+
+    @testing.combinations(
+        ("not_between_op", "notbetween_op", "a NOT BETWEEN b AND c")
+    )
+    def test_issue_5435_between_operators(self, modern, legacy, txt):
+        a, b, c = column("a"), column("b"), column("c")
+        _op_modern = getattr(operators, modern)
+        _op_legacy = getattr(operators, legacy)
+
+        eq_(str(_op_modern(a, b, c)), txt)
+
+        eq_(str(_op_modern(a, b, c)), str(_op_legacy(a, b, c)))
+
+    @testing.combinations(
+        ("is_false", "isfalse", True),
+        ("is_true", "istrue", True),
+        ("is_not_distinct_from", "isnot_distinct_from", True),
+        ("not_between_op", "notbetween_op", True),
+        ("not_contains_op", "notcontains_op", False),
+        ("not_endswith_op", "notendswith_op", False),
+        ("not_ilike_op", "notilike_op", True),
+        ("not_like_op", "notlike_op", True),
+        ("not_match_op", "notmatch_op", True),
+        ("not_startswith_op", "notstartswith_op", False),
+        ("nulls_first_op", "nullsfirst_op", False),
+        ("nulls_last_op", "nullslast_op", False),
+    )
+    def test_issue_5435_operators_precedence(
+        self, _modern, _legacy, _in_precedence
+    ):
+        # (modern, legacy, in_precendence)
+        # core operators
+        assert hasattr(operators, _modern)
+        assert hasattr(operators, _legacy)
+        _op_modern = getattr(operators, _modern)
+        _op_legacy = getattr(operators, _legacy)
+        assert _op_modern == _op_legacy
+        # since they are the same item, only 1 precedence check needed
+        if _in_precedence:
+            assert _op_legacy in operators._PRECEDENCE
+        else:
+            assert _op_legacy not in operators._PRECEDENCE
+
+    @testing.combinations(
+        ("is_not_distinct_from", "isnot_distinct_from"),
+        ("not_ilike", "notilike"),
+        ("not_like", "notlike"),
+        ("nulls_first", "nullsfirst"),
+        ("nulls_last", "nullslast"),
+    )
+    def test_issue_5435_operators_column(self, _modern, _legacy):
+        # (modern, legacy)
+        # Column operators
+        assert hasattr(operators.ColumnOperators, _modern)
+        assert hasattr(operators.ColumnOperators, _legacy)
+        _op_modern = getattr(operators.ColumnOperators, _modern)
+        _op_legacy = getattr(operators.ColumnOperators, _legacy)
+        assert _op_modern == _op_legacy

@@ -379,16 +379,23 @@ class ColumnOperators(Operators):
         """
         return self.operate(is_distinct_from, other)
 
-    def isnot_distinct_from(self, other):
+    def is_not_distinct_from(self, other):
         """Implement the ``IS NOT DISTINCT FROM`` operator.
 
         Renders "a IS NOT DISTINCT FROM b" on most platforms;
         on some such as SQLite may render "a IS b".
 
+        .. versionchanged:: 1.4 The ``is_not_distinct_from()`` operator is
+           renamed from ``isnot_distinct_from()`` in previous releases.
+           The previous name remains available for backwards compatibility.
+
         .. versionadded:: 1.1
 
         """
-        return self.operate(isnot_distinct_from, other)
+        return self.operate(is_not_distinct_from, other)
+
+    # deprecated 1.4; see #5435
+    isnot_distinct_from = is_not_distinct_from
 
     def __gt__(self, other):
         """Implement the ``>`` operator.
@@ -627,11 +634,15 @@ class ColumnOperators(Operators):
     # deprecated 1.4; see #5429
     notin_ = not_in
 
-    def notlike(self, other, escape=None):
+    def not_like(self, other, escape=None):
         """implement the ``NOT LIKE`` operator.
 
         This is equivalent to using negation with
         :meth:`.ColumnOperators.like`, i.e. ``~x.like(y)``.
+
+        .. versionchanged:: 1.4 The ``not_like()`` operator is renamed from
+           ``notlike()`` in previous releases.  The previous name remains
+           available for backwards compatibility.
 
         .. seealso::
 
@@ -640,11 +651,18 @@ class ColumnOperators(Operators):
         """
         return self.operate(notlike_op, other, escape=escape)
 
-    def notilike(self, other, escape=None):
+    # deprecated 1.4; see #5435
+    notlike = not_like
+
+    def not_ilike(self, other, escape=None):
         """implement the ``NOT ILIKE`` operator.
 
         This is equivalent to using negation with
         :meth:`.ColumnOperators.ilike`, i.e. ``~x.ilike(y)``.
+
+        .. versionchanged:: 1.4 The ``not_ilike()`` operator is renamed from
+           ``notilike()`` in previous releases.  The previous name remains
+           available for backwards compatibility.
 
         .. seealso::
 
@@ -652,6 +670,9 @@ class ColumnOperators(Operators):
 
         """
         return self.operate(notilike_op, other, escape=escape)
+
+    # deprecated 1.4; see #5435
+    notilike = not_ilike
 
     def is_(self, other):
         """Implement the ``IS`` operator.
@@ -677,7 +698,6 @@ class ColumnOperators(Operators):
         .. versionchanged:: 1.4 The ``is_not()`` operator is renamed from
            ``isnot()`` in previous releases.  The previous name remains
            available for backwards compatibility.
-
 
         .. seealso:: :meth:`.ColumnOperators.is_`
 
@@ -1043,15 +1063,31 @@ class ColumnOperators(Operators):
         parent object."""
         return self.operate(asc_op)
 
-    def nullsfirst(self):
-        """Produce a :func:`_expression.nullsfirst` clause against the
-        parent object."""
-        return self.operate(nullsfirst_op)
+    def nulls_first(self):
+        """Produce a :func:`_expression.nulls_first` clause against the
+        parent object.
 
-    def nullslast(self):
-        """Produce a :func:`_expression.nullslast` clause against the
-        parent object."""
-        return self.operate(nullslast_op)
+        .. versionchanged:: 1.4 The ``nulls_first()`` operator is
+           renamed from ``nullsfirst()`` in previous releases.
+           The previous name remains available for backwards compatibility.
+        """
+        return self.operate(nulls_first_op)
+
+    # deprecated 1.4; see #5435
+    nullsfirst = nulls_first
+
+    def nulls_last(self):
+        """Produce a :func:`_expression.nulls_last` clause against the
+        parent object.
+
+        .. versionchanged:: 1.4 The ``nulls_last()`` operator is
+           renamed from ``nullslast()`` in previous releases.
+           The previous name remains available for backwards compatibility.
+        """
+        return self.operate(nulls_last_op)
+
+    # deprecated 1.4; see #5429
+    nullslast = nulls_last
 
     def collate(self, collation):
         """Produce a :func:`_expression.collate` clause against
@@ -1260,12 +1296,20 @@ def exists():
     raise NotImplementedError()
 
 
-def istrue(a):
+def is_true(a):
     raise NotImplementedError()
 
 
-def isfalse(a):
+# 1.4 deprecated; see #5435
+istrue = is_true
+
+
+def is_false(a):
     raise NotImplementedError()
+
+
+# 1.4 deprecated; see #5435
+isfalse = is_false
 
 
 @comparison_op
@@ -1274,8 +1318,12 @@ def is_distinct_from(a, b):
 
 
 @comparison_op
-def isnot_distinct_from(a, b):
-    return a.isnot_distinct_from(b)
+def is_not_distinct_from(a, b):
+    return a.is_not_distinct_from(b)
+
+
+# deprecated 1.4; see #5435
+isnot_distinct_from = is_not_distinct_from
 
 
 @comparison_op
@@ -1306,8 +1354,12 @@ def like_op(a, b, escape=None):
 
 
 @comparison_op
-def notlike_op(a, b, escape=None):
+def not_like_op(a, b, escape=None):
     return a.notlike(b, escape=escape)
+
+
+# 1.4 deprecated; see #5435
+notlike_op = not_like_op
 
 
 @comparison_op
@@ -1316,8 +1368,12 @@ def ilike_op(a, b, escape=None):
 
 
 @comparison_op
-def notilike_op(a, b, escape=None):
-    return a.notilike(b, escape=escape)
+def not_ilike_op(a, b, escape=None):
+    return a.not_ilike(b, escape=escape)
+
+
+# 1.4 deprecated; see #5435
+notilike_op = not_ilike_op
 
 
 @comparison_op
@@ -1326,8 +1382,12 @@ def between_op(a, b, c, symmetric=False):
 
 
 @comparison_op
-def notbetween_op(a, b, c, symmetric=False):
-    return a.notbetween(b, c, symmetric=symmetric)
+def not_between_op(a, b, c, symmetric=False):
+    return ~a.between(b, c, symmetric=symmetric)
+
+
+# 1.4 deprecated; see #5435
+notbetween_op = not_between_op
 
 
 @comparison_op
@@ -1382,8 +1442,12 @@ def startswith_op(a, b, escape=None, autoescape=False):
 
 
 @comparison_op
-def notstartswith_op(a, b, escape=None, autoescape=False):
+def not_startswith_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.startswith, b, escape, autoescape)
+
+
+# 1.4 deprecated; see #5435
+notstartswith_op = not_startswith_op
 
 
 @comparison_op
@@ -1392,8 +1456,12 @@ def endswith_op(a, b, escape=None, autoescape=False):
 
 
 @comparison_op
-def notendswith_op(a, b, escape=None, autoescape=False):
+def not_endswith_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.endswith, b, escape, autoescape)
+
+
+# 1.4 deprecated; see #5435
+notendswith_op = not_endswith_op
 
 
 @comparison_op
@@ -1402,8 +1470,12 @@ def contains_op(a, b, escape=None, autoescape=False):
 
 
 @comparison_op
-def notcontains_op(a, b, escape=None, autoescape=False):
+def not_contains_op(a, b, escape=None, autoescape=False):
     return ~_escaped_like_impl(a.contains, b, escape, autoescape)
+
+
+# 1.4 deprecated; see #5435
+notcontains_op = not_contains_op
 
 
 @comparison_op
@@ -1426,8 +1498,12 @@ def regexp_replace_op(a, b, replacement, flags=None):
 
 
 @comparison_op
-def notmatch_op(a, b, **kw):
-    return a.notmatch(b, **kw)
+def not_match_op(a, b, **kw):
+    return ~a.match(b, **kw)
+
+
+# 1.4 deprecated; see #5429
+notmatch_op = not_match_op
 
 
 def comma_op(a, b):
@@ -1450,12 +1526,20 @@ def asc_op(a):
     return a.asc()
 
 
-def nullsfirst_op(a):
-    return a.nullsfirst()
+def nulls_first_op(a):
+    return a.nulls_first()
 
 
-def nullslast_op(a):
-    return a.nullslast()
+# 1.4 deprecated; see #5435
+nullsfirst_op = nulls_first_op
+
+
+def nulls_last_op(a):
+    return a.nulls_last()
+
+
+# 1.4 deprecated; see #5435
+nullslast_op = nulls_last_op
 
 
 def json_getitem_op(a, b):
@@ -1475,7 +1559,7 @@ def is_commutative(op):
 
 
 def is_ordering_modifier(op):
-    return op in (asc_op, desc_op, nullsfirst_op, nullslast_op)
+    return op in (asc_op, desc_op, nulls_first_op, nulls_last_op)
 
 
 def is_natural_self_precedent(op):
@@ -1486,7 +1570,7 @@ def is_natural_self_precedent(op):
     )
 
 
-_booleans = (inv, istrue, isfalse, and_, or_)
+_booleans = (inv, is_true, is_false, and_, or_)
 
 
 def is_boolean(op):
@@ -1543,14 +1627,14 @@ _PRECEDENCE = {
     concat_op: 6,
     filter_op: 6,
     match_op: 5,
-    notmatch_op: 5,
+    not_match_op: 5,
     regexp_match_op: 5,
     not_regexp_match_op: 5,
     regexp_replace_op: 5,
     ilike_op: 5,
-    notilike_op: 5,
+    not_ilike_op: 5,
     like_op: 5,
-    notlike_op: 5,
+    not_like_op: 5,
     in_op: 5,
     not_in_op: 5,
     is_: 5,
@@ -1558,17 +1642,17 @@ _PRECEDENCE = {
     eq: 5,
     ne: 5,
     is_distinct_from: 5,
-    isnot_distinct_from: 5,
+    is_not_distinct_from: 5,
     gt: 5,
     lt: 5,
     ge: 5,
     le: 5,
     between_op: 5,
-    notbetween_op: 5,
+    not_between_op: 5,
     distinct_op: 5,
     inv: 5,
-    istrue: 5,
-    isfalse: 5,
+    is_true: 5,
+    is_false: 5,
     and_: 3,
     or_: 2,
     comma_op: -1,

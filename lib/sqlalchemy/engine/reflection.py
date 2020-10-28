@@ -581,7 +581,7 @@ class Inspector(object):
 
         * ``column_sorting`` -
           optional dict mapping column names to tuple of sort keywords,
-          which may include ``asc``, ``desc``, ``nullsfirst``, ``nullslast``.
+          which may include ``asc``, ``desc``, ``nulls_first``, ``nulls_last``.
 
           .. versionadded:: 1.3.5
 
@@ -1006,8 +1006,8 @@ class Inspector(object):
     _index_sort_exprs = [
         ("asc", operators.asc_op),
         ("desc", operators.desc_op),
-        ("nullsfirst", operators.nullsfirst_op),
-        ("nullslast", operators.nullslast_op),
+        ("nulls_first", operators.nulls_first_op),
+        ("nulls_last", operators.nulls_last_op),
     ]
 
     def _reflect_indexes(

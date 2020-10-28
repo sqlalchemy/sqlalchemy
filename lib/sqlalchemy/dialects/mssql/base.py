@@ -2077,7 +2077,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self.process(binary.right),
         )
 
-    def visit_isnot_distinct_from_binary(self, binary, operator, **kw):
+    def visit_is_not_distinct_from_binary(self, binary, operator, **kw):
         return "EXISTS (SELECT %s INTERSECT SELECT %s)" % (
             self.process(binary.left),
             self.process(binary.right),
@@ -2165,7 +2165,7 @@ class MSSQLStrictCompiler(MSSQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_notin_op_binary(self, binary, operator, **kw):
+    def visit_not_in_op_binary(self, binary, operator, **kw):
         kw["literal_execute"] = True
         return "%s NOT IN %s" % (
             self.process(binary.left, **kw),
