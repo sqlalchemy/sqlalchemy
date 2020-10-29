@@ -13,10 +13,12 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -783,18 +785,60 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         )
         return User, Address
 
+    def _user_minus_edwood(self, User, Address):
+        return [
+            User(
+                addresses=[
+                    Address(email_address="jack@bean.com", id=1, user_id=7)
+                ],
+                id=7,
+                name="jack",
+            ),
+            User(
+                addresses=[
+                    Address(
+                        email_address="ed@bettyboop.com",
+                        id=3,
+                        user_id=8,
+                    ),
+                    Address(email_address="ed@lala.com", id=4, user_id=8),
+                ],
+                id=8,
+                name="ed",
+            ),
+            User(
+                addresses=[
+                    Address(email_address="fred@fred.com", id=5, user_id=9)
+                ],
+                id=9,
+                name="fred",
+            ),
+            User(addresses=[], id=10, name="chuck"),
+        ]
+
     def test_joinedload_local_criteria(self, user_address_fixture):
         User, Address = user_address_fixture
 
         s = Session(testing.db, future=True)
 
-        stmt = select(User).options(
-            joinedload(User.addresses.and_(Address.email_address != "email")),
+        stmt = (
+            select(User)
+            .options(
+                joinedload(
+                    User.addresses.and_(Address.email_address != "ed@wood.com")
+                ),
+            )
+            .order_by(User.id)
         )
 
         with self.sql_execution_asserter() as asserter:
 
-            s.execute(stmt)
+            result = s.execute(stmt)
+
+            eq_(
+                result.scalars().unique().all(),
+                self._user_minus_edwood(*user_address_fixture),
+            )
 
         asserter.assert_(
             CompiledSQL(
@@ -803,8 +847,159 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 "users LEFT OUTER JOIN addresses AS addresses_1 "
                 "ON users.id = addresses_1.user_id "
                 "AND addresses_1.email_address != :email_address_1 "
-                "ORDER BY addresses_1.id",
-                [{"email_address_1": "email"}],
+                "ORDER BY users.id, addresses_1.id",
+                [{"email_address_1": "ed@wood.com"}],
+            ),
+        )
+
+    def test_selectinload_local_criteria(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        stmt = (
+            select(User)
+            .options(
+                selectinload(
+                    User.addresses.and_(Address.email_address != "ed@wood.com")
+                ),
+            )
+            .order_by(User.id)
+        )
+
+        with self.sql_execution_asserter() as asserter:
+
+            result = s.execute(stmt)
+
+            eq_(
+                result.scalars().unique().all(),
+                self._user_minus_edwood(*user_address_fixture),
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users ORDER BY users.id"
+            ),
+            CompiledSQL(
+                "SELECT addresses.user_id AS addresses_user_id, "
+                "addresses.id AS addresses_id, addresses.email_address "
+                "AS addresses_email_address FROM addresses "
+                "WHERE addresses.user_id IN ([POSTCOMPILE_primary_keys]) "
+                "AND addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [
+                    {
+                        "primary_keys": [7, 8, 9, 10],
+                        "email_address_1": "ed@wood.com",
+                    }
+                ],
+            ),
+        )
+
+    def test_lazyload_local_criteria(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        stmt = (
+            select(User)
+            .options(
+                lazyload(
+                    User.addresses.and_(Address.email_address != "ed@wood.com")
+                ),
+            )
+            .order_by(User.id)
+        )
+
+        with self.sql_execution_asserter() as asserter:
+
+            result = s.execute(stmt)
+
+            eq_(
+                result.scalars().unique().all(),
+                self._user_minus_edwood(*user_address_fixture),
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users ORDER BY users.id"
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 7, "email_address_1": "ed@wood.com"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 8, "email_address_1": "ed@wood.com"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 9, "email_address_1": "ed@wood.com"}],
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses WHERE :param_1 = addresses.user_id "
+                "AND addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [{"param_1": 10, "email_address_1": "ed@wood.com"}],
+            ),
+        )
+
+    def test_subqueryload_local_criteria(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        stmt = (
+            select(User)
+            .options(
+                subqueryload(
+                    User.addresses.and_(Address.email_address != "ed@wood.com")
+                ),
+            )
+            .order_by(User.id)
+        )
+
+        with self.sql_execution_asserter() as asserter:
+
+            result = s.execute(stmt)
+
+            eq_(
+                result.scalars().unique().all(),
+                self._user_minus_edwood(*user_address_fixture),
+            )
+
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT users.id, users.name FROM users ORDER BY users.id"
+            ),
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id "
+                "AS addresses_user_id, addresses.email_address "
+                "AS addresses_email_address, anon_1.users_id "
+                "AS anon_1_users_id FROM (SELECT users.id AS users_id "
+                "FROM users) AS anon_1 JOIN addresses ON anon_1.users_id = "
+                "addresses.user_id AND "
+                "addresses.email_address != :email_address_1 "
+                "ORDER BY addresses.id",
+                [{"email_address_1": "ed@wood.com"}],
             ),
         )
 
