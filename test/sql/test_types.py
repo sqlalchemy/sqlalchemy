@@ -2174,7 +2174,6 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             binary_table.select(order_by=binary_table.c.primary_id),
             text(
                 "select * from binary_table order by binary_table.primary_id",
-                bind=testing.db,
             ).columns(
                 **{
                     "pickled": PickleType,

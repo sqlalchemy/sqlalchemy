@@ -2815,6 +2815,13 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     _fetch_clause_options = None
     _for_update_arg = None
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_sql.select.bind` argument is deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(
         self,
         _label_style=LABEL_STYLE_NONE,
