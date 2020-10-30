@@ -1798,7 +1798,8 @@ class SessionEvents(event.Events):
         ),
     )
     def after_bulk_update(self, update_context):
-        """Execute after a bulk update operation to the session.
+        """Execute after an ORM UPDATE against a WHERE expression has been
+        invoked.
 
         This is called as a result of the :meth:`_query.Query.update` method.
 
@@ -1837,7 +1838,8 @@ class SessionEvents(event.Events):
         ),
     )
     def after_bulk_delete(self, delete_context):
-        """Execute after a bulk delete operation to the session.
+        """Execute after ORM DELETE against a WHERE expression has been
+        invoked.
 
         This is called as a result of the :meth:`_query.Query.delete` method.
 

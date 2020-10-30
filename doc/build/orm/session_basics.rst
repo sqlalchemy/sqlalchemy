@@ -524,10 +524,10 @@ Further discussion on the refresh / expire concept can be found at
 
 
 
-.. _bulk_update_delete:
+.. _orm_expression_update_delete:
 
-Bulk UPDATE and DELETE
-----------------------
+UPDATE and DELETE with arbitrary WHERE clause
+---------------------------------------------
 
 The sections above on :meth:`_orm.Session.flush` and :meth:`_orm.Session.delete`
 detail how rows can be inserted, updated and deleted in the database,
@@ -536,7 +536,7 @@ objets in the application.   The :class:`_orm.Session` can also emit UPDATE
 and DELETE statements with arbitrary WHERE clauses as well, and at the same
 time refresh locally present objects which match those rows.
 
-To emit a bulk UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` method
+To emit an ORM-enabled UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` method
 may be used::
 
     session.query(User).filter(User.nane == "squidward").\
@@ -550,7 +550,7 @@ via a separate SELECT statement or via RETURNING if the backend database support
 objects locally present in memory will be updated in memory based on these
 primary key identities.
 
-For bulk UPDATEs in :term:`2.0 style`, :meth:`_orm.Session.execute` is used with the
+For ORM-enabled UPDATEs in :term:`2.0 style`, :meth:`_orm.Session.execute` is used with the
 Core :class:`_sql.Update` construct.  The :meth:`_orm.Session` must
 be configured with :paramref:`_orm.Session.future` set to ``True``::
 
@@ -570,12 +570,12 @@ DELETEs work in the same way as UPDATE except there is no "values / set"
 clause established.  When synchronize_session is used, matching objects
 within the :class:`_orm.Session` will be marked as deleted and expunged.
 
-Bulk delete, :term:`1.x style`::
+ORM-enabled delete, :term:`1.x style`::
 
     session.query(User).filter(User.nane == "squidward").\
         delete(synchronize_session="fetch")
 
-Bulk delete, :term:`2.0 style`.  The :meth:`_orm.Session` must
+ORM-enabled delete, :term:`2.0 style`.  The :meth:`_orm.Session` must
 be configured with :paramref:`_orm.Session.future` set to ``True``::
 
     session = Session(future=True)
@@ -586,7 +586,7 @@ be configured with :paramref:`_orm.Session.future` set to ``True``::
     session.execute(stmt)
 
 
-With both the 1.x and 2.0 form of bulk updates and deletes, the following
+With both the 1.x and 2.0 form of ORM-enabled updates and deletes, the following
 values for ``synchronize_session`` are supported:
 
 * ``False`` - don't synchronize the session. This option is the most
@@ -623,11 +623,11 @@ values for ``synchronize_session`` are supported:
     value of ``True``.
 
 
-.. warning:: **Additional Caveats for bulk updates and deletes**
+.. warning:: **Additional Caveats for ORM-enabled updates and deletes**
 
-    The bulk UPDATE and DELETE features bypass ORM unit-of-work automation in
-    favor being able to emit a single UPDATE or DELETE statement at once
-    without complexity.
+    The ORM-enabled UPDATE and DELETE features bypass ORM unit-of-work
+    automation in favor being able to emit a single UPDATE or DELETE statement
+    that matches multiple rows at once without complexity.
 
     * The operations do not offer in-Python cascading of
       relationships - it is assumed that ON UPDATE CASCADE and/or
@@ -649,7 +649,7 @@ values for ``synchronize_session`` are supported:
       statement emitted which may reduce performance.   Use SQL echoing when
       developing to evaluate the impact of SQL emitted.
 
-    * Bulk UPDATEs and DELETEs do not handle joined table inheritance
+    * ORM-enabled UPDATEs and DELETEs do not handle joined table inheritance
       automatically.   If the operation is against multiple tables, typically
       individual UPDATE / DELETE statements against the individual tables
       should be used.   Some databases support multiple table UPDATEs.
@@ -670,7 +670,7 @@ values for ``synchronize_session`` are supported:
       UPDATE or DELETE statement being emitted, as well as taken into account
       during the "synchronize" process.
 
-    * In order to intercept bulk UPDATE and DELETE operations with event
+    * In order to intercept ORM-enabled UPDATE and DELETE operations with event
       handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
 
 

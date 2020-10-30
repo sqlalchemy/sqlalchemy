@@ -3033,7 +3033,7 @@ class Query(
         return self._from_self(col).scalar()
 
     def delete(self, synchronize_session="evaluate"):
-        r"""Perform a bulk delete query.
+        r"""Perform a DELETE with an arbitrary WHERE clause.
 
         Deletes rows matched by this query from the database.
 
@@ -3047,20 +3047,21 @@ class Query(
 
         .. warning::
 
-            See the section :ref:`bulk_update_delete` for important caveats
-            and warnings, including limitations when using bulk UPDATE
+            See the section :ref:`orm_expression_update_delete` for important
+            caveats and warnings, including limitations when using bulk UPDATE
             and DELETE with mapper inheritance configurations.
 
         :param synchronize_session: chooses the strategy to update the
          attributes on objects in the session.   See the section
-         :ref:`bulk_update_delete` for a discussion of these strategies.
+         :ref:`orm_expression_update_delete` for a discussion of these
+         strategies.
 
         :return: the count of rows matched as returned by the database's
           "row count" feature.
 
         .. seealso::
 
-            :ref:`bulk_update_delete`
+            :ref:`orm_expression_update_delete`
 
         """
 
@@ -3087,7 +3088,7 @@ class Query(
         return result.rowcount
 
     def update(self, values, synchronize_session="evaluate", update_args=None):
-        r"""Perform a bulk update query.
+        r"""Perform an UPDATE with an arbitrary WHERE clause.
 
         Updates rows matched by this query in the database.
 
@@ -3101,9 +3102,9 @@ class Query(
 
         .. warning::
 
-            See the section :ref:`bulk_update_delete` for important caveats
-            and warnings, including limitations when using bulk UPDATE
-            and DELETE with mapper inheritance configurations.
+            See the section :ref:`orm_expression_update_delete` for important
+            caveats and warnings, including limitations when using arbitrary
+            UPDATE and DELETE with mapper inheritance configurations.
 
         :param values: a dictionary with attributes names, or alternatively
          mapped attributes or SQL expressions, as keys, and literal
@@ -3117,7 +3118,8 @@ class Query(
 
         :param synchronize_session: chooses the strategy to update the
          attributes on objects in the session.   See the section
-         :ref:`bulk_update_delete` for a discussion of these strategies.
+         :ref:`orm_expression_update_delete` for a discussion of these
+         strategies.
 
         :param update_args: Optional dictionary, if present will be passed
          to the underlying :func:`_expression.update`
@@ -3132,7 +3134,7 @@ class Query(
 
         .. seealso::
 
-            :ref:`bulk_update_delete`
+            :ref:`orm_expression_update_delete`
 
 
         """
