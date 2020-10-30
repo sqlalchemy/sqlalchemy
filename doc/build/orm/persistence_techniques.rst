@@ -668,22 +668,29 @@ ORM extension.   An example of use is at: :ref:`examples_sharding`.
 Bulk Operations
 ===============
 
-.. note::  Bulk Operations mode is a new series of operations made available
-   on the :class:`.Session` object for the purpose of invoking INSERT and
-   UPDATE statements with greatly reduced Python overhead, at the expense
-   of much less functionality, automation, and error checking.
-   As of SQLAlchemy 1.0, these features should be considered as "beta", and
-   additionally are intended for advanced users.
+.. deepalchemy:: Bulk operations are essentially lower-functionality versions
+   of the Unit of Work's facilities for emitting INSERT and UPDATE statements
+   on primary key targeted rows.   These routines were added to suit some
+   cases where many rows being inserted or updated could be run into the
+   database without as much of the usual unit of work overhead, in that
+   most unit of work features are **disabled**.
+
+   There is **usually no need to use these routines, and they are not easy
+   to use as there are many missing behaviors that are usually expected when
+   using ORM objects**; for efficient
+   bulk inserts, it's better to use the Core :class:`_sql.Insert` construct
+   directly.   Please read all caveats at :ref:`bulk_operations_caveats`.
 
 .. versionadded:: 1.0.0
 
-Bulk operations on the :class:`.Session` include :meth:`.Session.bulk_save_objects`,
-:meth:`.Session.bulk_insert_mappings`, and :meth:`.Session.bulk_update_mappings`.
-The purpose of these methods is to directly expose internal elements of the unit of work system,
-such that facilities for emitting INSERT and UPDATE statements given dictionaries
-or object states can be utilized alone, bypassing the normal unit of work
-mechanics of state, relationship and attribute management.   The advantages
-to this approach is strictly one of reduced Python overhead:
+Bulk INSERT/per-row UPDATE operations on the :class:`.Session` include
+:meth:`.Session.bulk_save_objects`, :meth:`.Session.bulk_insert_mappings`, and
+:meth:`.Session.bulk_update_mappings`. The purpose of these methods is to
+directly expose internal elements of the unit of work system, such that
+facilities for emitting INSERT and UPDATE statements given dictionaries or
+object states can be utilized alone, bypassing the normal unit of work
+mechanics of state, relationship and attribute management.   The advantages to
+this approach is strictly one of reduced Python overhead:
 
 * The flush() process, including the survey of all objects, their state,
   their cascade status, the status of all objects associated with them
@@ -773,8 +780,13 @@ flag should be disabled so that rows can be batched together.   The example
 suite in :ref:`examples_performance` should be carefully studied in order
 to gain familiarity with how fast bulk performance can be achieved.
 
-ORM Compatibility
------------------
+.. _bulk_operations_caveats:
+
+ORM Compatibility / Caveats
+----------------------------
+
+.. warning::  Be sure to familiarize with these limitations before using the
+   bulk routines.
 
 The bulk insert / update methods lose a significant amount of functionality
 versus traditional ORM use.   The following is a listing of features that
@@ -788,7 +800,10 @@ are **not available** when using these methods:
 * Session-management on the given objects, including attachment to the
   session, identity map management.
 
-* Functionality related to primary key mutation, ON UPDATE cascade
+* Functionality related to primary key mutation, ON UPDATE cascade -
+  **mutation of primary key columns will not work** - as the original PK
+  value of each row is not available, so the WHERE criteria cannot be
+  generated.
 
 * SQL expression inserts / updates (e.g. :ref:`flush_embedded_sql_expressions`) -
   having to evaluate these would prevent INSERT and UPDATE statements from
