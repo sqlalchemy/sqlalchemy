@@ -2713,9 +2713,10 @@ class Session(_SessionClassMethods):
             and SQL clause support are **silently omitted** in favor of raw
             INSERT/UPDATES of records.
 
-            **Please read the list of caveats at** :ref:`bulk_operations`
-            **before using this method, and fully test and confirm the
-            functionality of all code developed using these systems.**
+            **Please read the list of caveats at**
+            :ref:`bulk_operations_caveats` **before using this method, and
+            fully test and confirm the functionality of all code developed
+            using these systems.**
 
         :param objects: a sequence of mapped object instances.  The mapped
          objects are persisted as is, and are **not** associated with the
@@ -2813,9 +2814,10 @@ class Session(_SessionClassMethods):
             and SQL clause support are **silently omitted** in favor of raw
             INSERT of records.
 
-            **Please read the list of caveats at** :ref:`bulk_operations`
-            **before using this method, and fully test and confirm the
-            functionality of all code developed using these systems.**
+            **Please read the list of caveats at**
+            :ref:`bulk_operations_caveats` **before using this method, and
+            fully test and confirm the functionality of all code developed
+            using these systems.**
 
         :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
          object,
@@ -2905,9 +2907,10 @@ class Session(_SessionClassMethods):
             and SQL clause support are **silently omitted** in favor of raw
             UPDATES of records.
 
-            **Please read the list of caveats at** :ref:`bulk_operations`
-            **before using this method, and fully test and confirm the
-            functionality of all code developed using these systems.**
+            **Please read the list of caveats at**
+            :ref:`bulk_operations_caveats` **before using this method, and
+            fully test and confirm the functionality of all code developed
+            using these systems.**
 
         :param mapper: a mapped class, or the actual :class:`_orm.Mapper`
          object,
