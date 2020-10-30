@@ -55,8 +55,10 @@ from .expression import literal_column  # noqa
 from .expression import modifier  # noqa
 from .expression import not_  # noqa
 from .expression import null  # noqa
-from .expression import nullsfirst  # noqa
-from .expression import nullslast  # noqa
+from .expression import nullsfirst  # noqa; deprecated 1.4; see #5435
+from .expression import nullslast  # noqa; deprecated 1.4; see #5435
+from .expression import nulls_first  # noqa
+from .expression import nulls_last  # noqa
 from .expression import or_  # noqa
 from .expression import outerjoin  # noqa
 from .expression import outparam  # noqa

@@ -98,9 +98,9 @@ Functions listed here are more commonly available as methods from any
 
 .. autofunction:: label
 
-.. autofunction:: nullsfirst
+.. autofunction:: nulls_first
 
-.. autofunction:: nullslast
+.. autofunction:: nulls_last
 
 .. autofunction:: over
 

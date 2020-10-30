@@ -97,7 +97,8 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         (operators.is_distinct_from, True),
         (operators.is_distinct_from, False),
         (operators.is_distinct_from, None),
-        (operators.isnot_distinct_from, True),
+        (operators.is_not_distinct_from, True),
+        (operators.isnot_distinct_from, True),  # deprecated 1.4; See #5429
         (operators.is_, True),
         (operators.is_not, True),
         (operators.isnot, True),  # deprecated 1.4; See #5429
@@ -105,9 +106,11 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
         (operators.is_not, False),
         (operators.isnot, False),  # deprecated 1.4; See #5429
         (operators.like_op, right_column),
-        (operators.notlike_op, right_column),
+        (operators.not_like_op, right_column),
+        (operators.notlike_op, right_column),  # deprecated 1.4; See #5435
         (operators.ilike_op, right_column),
-        (operators.notilike_op, right_column),
+        (operators.not_ilike_op, right_column),
+        (operators.notilike_op, right_column),  # deprecated 1.4; See #5435
         (operators.is_, right_column),
         (operators.is_not, right_column),
         (operators.isnot, right_column),  # deprecated 1.4; See #5429
@@ -1422,7 +1425,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_operator_precedence_collate_6(self):
         self.assert_compile(
             select(self.table1.c.name).order_by(
-                self.table1.c.name.collate("utf-8").desc().nullslast()
+                self.table1.c.name.collate("utf-8").desc().nulls_last()
             ),
             "SELECT mytable.name FROM mytable "
             'ORDER BY mytable.name COLLATE "utf-8" DESC NULLS LAST',
@@ -1616,35 +1619,35 @@ class IsDistinctFromTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_isnot_distinct_from(self):
+    def test_is_not_distinct_from(self):
         self.assert_compile(
-            self.table1.c.myid.isnot_distinct_from(1),
+            self.table1.c.myid.is_not_distinct_from(1),
             "mytable.myid IS NOT DISTINCT FROM :myid_1",
         )
 
-    def test_isnot_distinct_from_sqlite(self):
+    def test_is_not_distinct_from_sqlite(self):
         self.assert_compile(
-            self.table1.c.myid.isnot_distinct_from(1),
+            self.table1.c.myid.is_not_distinct_from(1),
             "mytable.myid IS ?",
             dialect=sqlite.dialect(),
         )
 
-    def test_isnot_distinct_from_postgresql(self):
+    def test_is_not_distinct_from_postgresql(self):
         self.assert_compile(
-            self.table1.c.myid.isnot_distinct_from(1),
+            self.table1.c.myid.is_not_distinct_from(1),
             "mytable.myid IS NOT DISTINCT FROM %(myid_1)s",
             dialect=postgresql.dialect(),
         )
 
-    def test_not_isnot_distinct_from(self):
+    def test_not_is_not_distinct_from(self):
         self.assert_compile(
-            ~self.table1.c.myid.isnot_distinct_from(1),
+            ~self.table1.c.myid.is_not_distinct_from(1),
             "mytable.myid IS DISTINCT FROM :myid_1",
         )
 
-    def test_not_isnot_distinct_from_postgresql(self):
+    def test_not_is_not_distinct_from_postgresql(self):
         self.assert_compile(
-            ~self.table1.c.myid.isnot_distinct_from(1),
+            ~self.table1.c.myid.is_not_distinct_from(1),
             "mytable.myid IS DISTINCT FROM %(myid_1)s",
             dialect=postgresql.dialect(),
         )
@@ -2656,30 +2659,30 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"x_1": "a%b_c"},
         )
 
-    def test_notlike(self):
+    def test_not_like(self):
         self.assert_compile(
-            column("x").notlike("y"),
+            column("x").not_like("y"),
             "x NOT LIKE :x_1",
             checkparams={"x_1": "y"},
         )
 
-    def test_notlike_escape(self):
+    def test_not_like_escape(self):
         self.assert_compile(
-            column("x").notlike("a%b_c", escape="\\"),
+            column("x").not_like("a%b_c", escape="\\"),
             "x NOT LIKE :x_1 ESCAPE '\\'",
             checkparams={"x_1": "a%b_c"},
         )
 
-    def test_notilike(self):
+    def test_not_ilike(self):
         self.assert_compile(
-            column("x").notilike("y"),
+            column("x").not_ilike("y"),
             "lower(x) NOT LIKE lower(:x_1)",
             checkparams={"x_1": "y"},
         )
 
-    def test_notilike_escape(self):
+    def test_not_ilike_escape(self):
         self.assert_compile(
-            column("x").notilike("a%b_c", escape="\\"),
+            column("x").not_ilike("a%b_c", escape="\\"),
             "lower(x) NOT LIKE lower(:x_1) ESCAPE '\\'",
             checkparams={"x_1": "a%b_c"},
         )

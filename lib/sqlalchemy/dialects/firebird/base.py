@@ -439,7 +439,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
     # def visit_contains_op_binary(self, binary, operator, **kw):
     # cant use CONTAINING b.c. it's case insensitive.
 
-    # def visit_notcontains_op_binary(self, binary, operator, **kw):
+    # def visit_not_contains_op_binary(self, binary, operator, **kw):
     # cant use NOT CONTAINING b.c. it's case insensitive.
 
     def visit_now_func(self, fn, **kw):
@@ -451,7 +451,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
             binary.right._compiler_dispatch(self, **kw),
         )
 
-    def visit_notstartswith_op_binary(self, binary, operator, **kw):
+    def visit_not_startswith_op_binary(self, binary, operator, **kw):
         return "%s NOT STARTING WITH %s" % (
             binary.left._compiler_dispatch(self, **kw),
             binary.right._compiler_dispatch(self, **kw),

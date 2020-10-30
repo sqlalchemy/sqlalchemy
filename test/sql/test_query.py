@@ -480,7 +480,7 @@ class QueryTest(fixtures.TestBase):
         for labels in False, True:
             a_eq(
                 users.select(
-                    order_by=[users.c.user_name.nullsfirst()],
+                    order_by=[users.c.user_name.nulls_first()],
                     use_labels=labels,
                 ),
                 [(1, None), (3, "a"), (2, "b")],
@@ -488,22 +488,7 @@ class QueryTest(fixtures.TestBase):
 
             a_eq(
                 users.select(
-                    order_by=[users.c.user_name.nullslast()], use_labels=labels
-                ),
-                [(3, "a"), (2, "b"), (1, None)],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[asc(users.c.user_name).nullsfirst()],
-                    use_labels=labels,
-                ),
-                [(1, None), (3, "a"), (2, "b")],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[asc(users.c.user_name).nullslast()],
+                    order_by=[users.c.user_name.nulls_last()],
                     use_labels=labels,
                 ),
                 [(3, "a"), (2, "b"), (1, None)],
@@ -511,39 +496,7 @@ class QueryTest(fixtures.TestBase):
 
             a_eq(
                 users.select(
-                    order_by=[users.c.user_name.desc().nullsfirst()],
-                    use_labels=labels,
-                ),
-                [(1, None), (2, "b"), (3, "a")],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[users.c.user_name.desc().nullslast()],
-                    use_labels=labels,
-                ),
-                [(2, "b"), (3, "a"), (1, None)],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[desc(users.c.user_name).nullsfirst()],
-                    use_labels=labels,
-                ),
-                [(1, None), (2, "b"), (3, "a")],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[desc(users.c.user_name).nullslast()],
-                    use_labels=labels,
-                ),
-                [(2, "b"), (3, "a"), (1, None)],
-            )
-
-            a_eq(
-                users.select(
-                    order_by=[users.c.user_name.nullsfirst(), users.c.user_id],
+                    order_by=[asc(users.c.user_name).nulls_first()],
                     use_labels=labels,
                 ),
                 [(1, None), (3, "a"), (2, "b")],
@@ -551,7 +504,58 @@ class QueryTest(fixtures.TestBase):
 
             a_eq(
                 users.select(
-                    order_by=[users.c.user_name.nullslast(), users.c.user_id],
+                    order_by=[asc(users.c.user_name).nulls_last()],
+                    use_labels=labels,
+                ),
+                [(3, "a"), (2, "b"), (1, None)],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[users.c.user_name.desc().nulls_first()],
+                    use_labels=labels,
+                ),
+                [(1, None), (2, "b"), (3, "a")],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[users.c.user_name.desc().nulls_last()],
+                    use_labels=labels,
+                ),
+                [(2, "b"), (3, "a"), (1, None)],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[desc(users.c.user_name).nulls_first()],
+                    use_labels=labels,
+                ),
+                [(1, None), (2, "b"), (3, "a")],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[desc(users.c.user_name).nulls_last()],
+                    use_labels=labels,
+                ),
+                [(2, "b"), (3, "a"), (1, None)],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[
+                        users.c.user_name.nulls_first(),
+                        users.c.user_id,
+                    ],
+                    use_labels=labels,
+                ),
+                [(1, None), (3, "a"), (2, "b")],
+            )
+
+            a_eq(
+                users.select(
+                    order_by=[users.c.user_name.nulls_last(), users.c.user_id],
                     use_labels=labels,
                 ),
                 [(3, "a"), (2, "b"), (1, None)],

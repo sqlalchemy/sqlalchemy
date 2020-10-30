@@ -993,7 +993,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            sql.column("x").isnot_distinct_from(False), "x IS 0"
+            sql.column("x").is_not_distinct_from(False), "x IS 0"
         )
 
     def test_localtime(self):

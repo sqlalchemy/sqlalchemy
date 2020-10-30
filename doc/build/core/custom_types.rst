@@ -307,7 +307,7 @@ method::
         impl = VARCHAR
 
         def coerce_compared_value(self, op, value):
-            if op in (operators.like_op, operators.notlike_op):
+            if op in (operators.like_op, operators.not_like_op):
                 return String()
             else:
                 return self

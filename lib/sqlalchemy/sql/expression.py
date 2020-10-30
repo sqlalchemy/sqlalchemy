@@ -67,8 +67,8 @@ __all__ = [
     "literal_column",
     "not_",
     "null",
-    "nullsfirst",
-    "nullslast",
+    "nulls_first",
+    "nulls_last",
     "or_",
     "outparam",
     "outerjoin",
@@ -220,12 +220,14 @@ union_all = public_factory(
     CompoundSelect._create_union_all, ".sql.expression.union_all"
 )
 exists = public_factory(Exists, ".sql.expression.exists")
-nullsfirst = public_factory(
-    UnaryExpression._create_nullsfirst, ".sql.expression.nullsfirst"
+nulls_first = public_factory(
+    UnaryExpression._create_nulls_first, ".sql.expression.nulls_first"
 )
-nullslast = public_factory(
-    UnaryExpression._create_nullslast, ".sql.expression.nullslast"
+nullsfirst = nulls_first  # deprecated 1.4; see #5435
+nulls_last = public_factory(
+    UnaryExpression._create_nulls_last, ".sql.expression.nulls_last"
 )
+nullslast = nulls_last  # deprecated 1.4; see #5435
 asc = public_factory(UnaryExpression._create_asc, ".sql.expression.asc")
 desc = public_factory(UnaryExpression._create_desc, ".sql.expression.desc")
 distinct = public_factory(

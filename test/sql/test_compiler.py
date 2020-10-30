@@ -1697,7 +1697,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             table2.select().order_by(
                 table2.c.otherid,
-                table2.c.othername.desc().nullsfirst(),
+                table2.c.othername.desc().nulls_first(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid, "
@@ -1707,7 +1707,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             table2.select().order_by(
                 table2.c.otherid,
-                table2.c.othername.desc().nullslast(),
+                table2.c.othername.desc().nulls_last(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid, "
@@ -1716,8 +1716,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid.nullslast(),
-                table2.c.othername.desc().nullsfirst(),
+                table2.c.otherid.nulls_last(),
+                table2.c.othername.desc().nulls_first(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid NULLS LAST, "
@@ -1726,7 +1726,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid.nullsfirst(),
+                table2.c.otherid.nulls_first(),
                 table2.c.othername.desc(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
@@ -1736,8 +1736,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             table2.select().order_by(
-                table2.c.otherid.nullsfirst(),
-                table2.c.othername.desc().nullslast(),
+                table2.c.otherid.nulls_first(),
+                table2.c.othername.desc().nulls_last(),
             ),
             "SELECT myothertable.otherid, myothertable.othername FROM "
             "myothertable ORDER BY myothertable.otherid NULLS FIRST, "
