@@ -329,7 +329,13 @@ class DefaultRequirements(SuiteRequirements):
                 config, "sqlite"
             ) and config.db.dialect.dbapi.sqlite_version_info >= (3, 15, 0)
 
-        return only_on(["mysql", "mariadb", "postgresql", _sqlite_tuple_in])
+        return only_on(
+            ["mysql", "mariadb", "postgresql", _sqlite_tuple_in, "oracle"]
+        )
+
+    @property
+    def tuple_in_w_empty(self):
+        return self.tuple_in + skip_if(["oracle"])
 
     @property
     def independent_cursors(self):

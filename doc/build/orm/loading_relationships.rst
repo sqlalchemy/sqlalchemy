@@ -751,26 +751,19 @@ Select IN loading
 -----------------
 
 Select IN loading is similar in operation to subquery eager loading, however
-the SELECT statement which is emitted has a much simpler structure than
-that of subquery eager loading.  Additionally, select IN loading applies
-itself to subsets of the load result at a time, so unlike joined and subquery
-eager loading, is compatible with batching of results using
-:meth:`_query.Query.yield_per`, provided the database driver supports simultaneous
-cursors.
-
-Overall, especially as of the 1.3 series of SQLAlchemy, selectin loading
-is the most simple and efficient way to eagerly load collections of objects
-in most cases.  The only scenario in which selectin eager loading is not feasible
-is when the model is using composite primary keys, and the backend database
-does not support tuples with IN, which includes SQLite, Oracle and
-SQL Server.
+the SELECT statement which is emitted has a much simpler structure than that of
+subquery eager loading.  In most cases, selectin loading is the most simple and
+efficient way to eagerly load collections of objects.  The only scenario in
+which selectin eager loading is not feasible is when the model is using
+composite primary keys, and the backend database does not support tuples with
+IN, which currently includes SQL Server.
 
 .. versionadded:: 1.2
 
 "Select IN" eager loading is provided using the ``"selectin"`` argument to
 :paramref:`_orm.relationship.lazy` or by using the :func:`.selectinload` loader
 option.   This style of loading emits a SELECT that refers to the primary key
-values of the parent object, or in the case of a simple many-to-one
+values of the parent object, or in the case of a many-to-one
 relationship to the those of the child objects, inside of an IN clause, in
 order to load related associations:
 
@@ -793,28 +786,22 @@ order to load related associations:
         addresses.user_id AS addresses_user_id
     FROM addresses
     WHERE addresses.user_id IN (?, ?)
-    ORDER BY addresses.user_id, addresses.id
     (5, 7)
 
 Above, the second SELECT refers to ``addresses.user_id IN (5, 7)``, where the
 "5" and "7" are the primary key values for the previous two ``User``
 objects loaded; after a batch of objects are completely loaded, their primary
 key values are injected into the ``IN`` clause for the second SELECT.
-Because the relationship between ``User`` and ``Address`` provides that the
+Because the relationship between ``User`` and ``Address`` has a simple [1]_
+primary join condition and provides that the
 primary key values for ``User`` can be derived from ``Address.user_id``, the
 statement has no joins or subqueries at all.
 
 .. versionchanged:: 1.3 selectin loading can omit the JOIN for a simple
    one-to-many collection.
 
-.. versionchanged:: 1.3.6 selectin loading can also omit the JOIN for a simple
-   many-to-one relationship.
-
-For collections, in the case where the primary key of the parent object isn't
-present in the related row, "selectin" loading will also JOIN to the parent
-table so that the parent primary key values are present.  This also takes place
-for a non-collection, many-to-one load where the related column values are not
-loaded on the parent objects and would otherwise need to be loaded:
+For simple [1]_ many-to-one loads, a JOIN is also not needed as the foreign key
+value from the parent object is used:
 
 .. sourcecode:: python+sql
 
@@ -826,19 +813,26 @@ loaded on the parent objects and would otherwise need to be loaded:
         addresses.user_id AS addresses_user_id
         FROM addresses
     SELECT
-        addresses_1.id AS addresses_1_id,
         users.id AS users_id,
         users.name AS users_name,
         users.fullname AS users_fullname,
         users.nickname AS users_nickname
-    FROM addresses AS addresses_1
-    JOIN users ON users.id = addresses_1.user_id
-    WHERE addresses_1.id IN (?, ?)
-    ORDER BY addresses_1.id
+    FROM users
+    WHERE users.id IN (?, ?)
     (1, 2)
 
-"Select IN" loading is the newest form of eager loading added to SQLAlchemy
-as of the 1.2 series.   Things to know about this kind of loading include:
+.. versionchanged:: 1.3.6 selectin loading can also omit the JOIN for a simple
+   many-to-one relationship.
+
+.. [1] by "simple" we mean that the :paramref:`_orm.relationship.primaryjoin`
+   condition expresses an equality comparison between the primary key of the
+   "one" side and a straight foreign key of the "many" side, without any
+   additional criteria.
+
+Select IN loading also supports many-to-many relationships, where it currently
+will JOIN across all three tables to match rows from one side to the other.
+
+Things to know about this kind of loading include:
 
 * The SELECT statement emitted by the "selectin" loader strategy, unlike
   that of "subquery", does not
@@ -851,53 +845,30 @@ as of the 1.2 series.   Things to know about this kind of loading include:
   is always linking directly to a parent primary key and can't really
   return the wrong result.
 
-* "selectin" loading, unlike joined or subquery eager loading, always emits
-  its SELECT in terms of the immediate parent objects just loaded, and not the
+* "selectin" loading, unlike joined or subquery eager loading, always emits its
+  SELECT in terms of the immediate parent objects just loaded, and not the
   original type of object at the top of the chain.  So if eager loading many
-  levels deep, "selectin" loading still uses no more than one JOIN, and usually
-  no JOINs, in the statement.   In comparison, joined and subquery eager
-  loading always refer to multiple JOINs up to the original parent.
+  levels deep, "selectin" loading still will not require any JOINs for simple
+  one-to-many or many-to-one relationships.   In comparison, joined and
+  subquery eager loading always refer to multiple JOINs up to the original
+  parent.
 
-* "selectin" loading produces a SELECT statement of a predictable structure,
-  independent of that of the original query.  As such, taking advantage of
-  a new feature with :meth:`.ColumnOperators.in_` that allows it to work
-  with cached queries, the selectin loader makes full use of the
-  :mod:`sqlalchemy.ext.baked` extension to cache generated SQL and greatly
-  cut down on internal function call overhead.
-
-* The strategy will only query for at most 500 parent primary key values at a
+* The strategy emits a SELECT for up to 500 parent primary key values at a
   time, as the primary keys are rendered into a large IN expression in the
   SQL statement.   Some databases like Oracle have a hard limit on how large
   an IN expression can be, and overall the size of the SQL string shouldn't
-  be arbitrarily large.   So for large result sets, "selectin" loading
-  will emit a SELECT per 500 parent rows returned.   These SELECT statements
-  emit with minimal Python overhead due to the "baked" queries and also minimal
-  SQL overhead as they query against primary key directly.
-
-* "selectin" loading is the only eager loading that can work in conjunction with
-  the "batching" feature provided by :meth:`_query.Query.yield_per`, provided
-  the database driver supports simultaneous cursors.   As it only
-  queries for related items against specific result objects, "selectin" loading
-  allows for eagerly loaded collections against arbitrarily large result sets
-  with a top limit on memory use when used with :meth:`_query.Query.yield_per`.
-
-  Current database drivers that support simultaneous cursors include
-  SQLite, PostgreSQL.   The MySQL drivers mysqlclient and pymysql currently
-  **do not** support simultaneous cursors, nor do the ODBC drivers for
-  SQL Server.
+  be arbitrarily large.
 
 * As "selectin" loading relies upon IN, for a mapping with composite primary
   keys, it must use the "tuple" form of IN, which looks like ``WHERE
   (table.column_a, table.column_b) IN ((?, ?), (?, ?), (?, ?))``. This syntax
-  is not supported on every database; within the dialects that are included
-  with SQLAlchemy, it is known to be supported by modern PostgreSQL, MySQL and
-  SQLite versions.  Therefore **selectin loading is not platform-agnostic for
-  composite primary keys**. There is no special logic in SQLAlchemy to check
+  is not currently supported on SQL Server and for SQLite requires at least
+  version 3.15.  There is no special logic in SQLAlchemy to check
   ahead of time which platforms support this syntax or not; if run against a
   non-supporting platform, the database will return an error immediately.   An
   advantage to SQLAlchemy just running the SQL out for it to fail is that if a
   particular database does start supporting this syntax, it will work without
-  any changes to SQLAlchemy.
+  any changes to SQLAlchemy (as was the case with SQLite).
 
 In general, "selectin" loading is probably superior to "subquery" eager loading
 in most ways, save for the syntax requirement with composite primary keys
