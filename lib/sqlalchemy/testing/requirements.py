@@ -307,6 +307,11 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def tuple_in_w_empty(self):
+        """Target platform tuple IN w/ empty set"""
+        return self.tuple_in
+
+    @property
     def duplicate_names_in_cursor_description(self):
         """target platform supports a SELECT statement that has
         the same name repeated more than once in the columns list."""

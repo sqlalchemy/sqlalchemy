@@ -261,7 +261,7 @@ class DefaultRequirements(SuiteRequirements):
                 config, "sqlite"
             ) and config.db.dialect.dbapi.sqlite_version_info >= (3, 15, 0)
 
-        return only_on(["mysql", "postgresql", _sqlite_tuple_in])
+        return only_on(["mysql", "postgresql", _sqlite_tuple_in, "oracle"])
 
     @property
     def independent_cursors(self):
@@ -348,6 +348,10 @@ class DefaultRequirements(SuiteRequirements):
             raise NotImplementedError()
 
         return {"default": default, "supported": levels}
+
+    @property
+    def tuple_in_w_empty(self):
+        return self.tuple_in + skip_if(["oracle"])
 
     @property
     def autocommit(self):

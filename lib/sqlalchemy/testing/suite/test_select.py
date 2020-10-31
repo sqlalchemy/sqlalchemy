@@ -407,7 +407,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
         self._assert_result(stmt, [], params={"q": [], "p": []})
 
-    @testing.requires.tuple_in
+    @testing.requires.tuple_in_w_empty
     def test_empty_heterogeneous_tuples(self):
         table = self.tables.some_table
 
@@ -423,7 +423,7 @@ class ExpandingBoundInTest(fixtures.TablesTest):
 
         self._assert_result(stmt, [], params={"q": []})
 
-    @testing.requires.tuple_in
+    @testing.requires.tuple_in_w_empty
     def test_empty_homogeneous_tuples(self):
         table = self.tables.some_table
 
