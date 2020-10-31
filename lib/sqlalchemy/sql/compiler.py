@@ -447,9 +447,6 @@ class Compiled(object):
 
         :param statement: :class:`_expression.ClauseElement` to be compiled.
 
-        :param bind: Optional Engine or Connection to compile this
-          statement against.
-
         :param schema_translate_map: dictionary of schema names to be
          translated when forming the resultant SQL
 

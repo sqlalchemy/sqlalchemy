@@ -4331,6 +4331,9 @@ class MetaData(SchemaItem):
           A :class:`.Connectable` used to access the database; if None, uses
           the existing bind on this ``MetaData``, if any.
 
+          .. note:: the "bind" argument will be required in
+             SQLAlchemy 2.0.
+
         :param schema:
           Optional, query and reflect tables from an alternate schema.
           If None, the schema associated with this :class:`_schema.MetaData`

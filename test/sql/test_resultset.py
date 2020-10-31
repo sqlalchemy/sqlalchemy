@@ -310,9 +310,7 @@ class CursorResultTest(fixtures.TablesTest):
             addresses.insert(), address_id=1, user_id=2, address="foo@bar.com"
         )
 
-        r = connection.execute(
-            text("select * from addresses", bind=testing.db)
-        ).first()
+        r = connection.execute(text("select * from addresses")).first()
         eq_(r[0:1], (1,))
         eq_(r[1:], (2, "foo@bar.com"))
         eq_(r[:-1], (1, 2))
@@ -327,9 +325,7 @@ class CursorResultTest(fixtures.TablesTest):
             addresses.insert(), address_id=1, user_id=2, address="foo@bar.com"
         )
 
-        r = connection.execute(
-            text("select * from addresses", bind=testing.db)
-        )
+        r = connection.execute(text("select * from addresses"))
         eq_(
             r.mappings().all(),
             [{"address_id": 1, "user_id": 2, "address": "foo@bar.com"}],
@@ -483,7 +479,6 @@ class CursorResultTest(fixtures.TablesTest):
                 "from users "
                 "UNION select users.user_id, "
                 "users.user_name from users",
-                bind=testing.db,
             ).execution_options(sqlite_raw_colnames=True)
         ).first()
 
@@ -513,7 +508,6 @@ class CursorResultTest(fixtures.TablesTest):
                 "from users "
                 "UNION select users.user_id, "
                 "users.user_name from users",
-                bind=testing.db,
             )
         ).first()
         eq_(r._mapping["user_id"], 1)
@@ -538,7 +532,6 @@ class CursorResultTest(fixtures.TablesTest):
                 'select users.user_id AS "users.user_id", '
                 'users.user_name AS "users.user_name" '
                 "from users",
-                bind=testing.db,
             ).execution_options(sqlite_raw_colnames=True)
         ).first()
         eq_(r._mapping["users.user_id"], 1)

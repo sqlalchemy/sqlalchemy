@@ -1568,6 +1568,13 @@ class TextClause(
 
     @classmethod
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_sql.text.bind` argument is deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def _create_text(cls, text, bind=None):
         r"""Construct a new :class:`_expression.TextClause` clause,
         representing

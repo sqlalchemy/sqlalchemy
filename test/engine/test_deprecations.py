@@ -1,8 +1,12 @@
 import re
 
 import sqlalchemy as tsa
+import sqlalchemy as sa
 from sqlalchemy import create_engine
+from sqlalchemy import DDL
+from sqlalchemy import engine
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -14,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import ThreadLocalMetaData
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
@@ -53,6 +58,175 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
     def check_usage(self, inspector):
         with inspector._operation_context() as conn:
             is_instance_of(conn, Connection)
+
+    def test_bind_close_engine(self):
+        e = testing.db
+        with e.connect() as conn:
+            assert not conn.closed
+        assert conn.closed
+
+    def test_bind_create_drop_err_metadata(self):
+        metadata = MetaData()
+        Table("test_table", metadata, Column("foo", Integer))
+        for meth in [metadata.create_all, metadata.drop_all]:
+            assert_raises_message(
+                exc.UnboundExecutionError,
+                "MetaData object is not bound to an Engine or Connection.",
+                meth,
+            )
+
+    def test_bind_create_drop_err_table(self):
+        metadata = MetaData()
+        table = Table("test_table", metadata, Column("foo", Integer))
+
+        for meth in [table.create, table.drop]:
+            assert_raises_message(
+                exc.UnboundExecutionError,
+                (
+                    "Table object 'test_table' is not bound to an Engine or "
+                    "Connection."
+                ),
+                meth,
+            )
+
+    def test_bind_create_drop_bound(self):
+
+        for meta in (MetaData, ThreadLocalMetaData):
+            for bind in (testing.db, testing.db.connect()):
+                if meta is ThreadLocalMetaData:
+                    with testing.expect_deprecated(
+                        "ThreadLocalMetaData is deprecated"
+                    ):
+                        metadata = meta()
+                else:
+                    metadata = meta()
+                table = Table("test_table", metadata, Column("foo", Integer))
+                metadata.bind = bind
+                assert metadata.bind is table.bind is bind
+                metadata.create_all()
+
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated and will "
+                    "be removed in a future release."
+                ):
+                    assert table.exists()
+                metadata.drop_all()
+                table.create()
+                table.drop()
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated and will "
+                    "be removed in a future release."
+                ):
+                    assert not table.exists()
+
+                if meta is ThreadLocalMetaData:
+                    with testing.expect_deprecated(
+                        "ThreadLocalMetaData is deprecated"
+                    ):
+                        metadata = meta()
+                else:
+                    metadata = meta()
+
+                table = Table("test_table", metadata, Column("foo", Integer))
+
+                metadata.bind = bind
+
+                assert metadata.bind is table.bind is bind
+                metadata.create_all()
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated and will "
+                    "be removed in a future release."
+                ):
+                    assert table.exists()
+                metadata.drop_all()
+                table.create()
+                table.drop()
+                with testing.expect_deprecated(
+                    r"The Table.exists\(\) method is deprecated and will "
+                    "be removed in a future release."
+                ):
+                    assert not table.exists()
+                if isinstance(bind, engine.Connection):
+                    bind.close()
+
+    def test_bind_create_drop_constructor_bound(self):
+        for bind in (testing.db, testing.db.connect()):
+            try:
+                for args in (([bind], {}), ([], {"bind": bind})):
+                    metadata = MetaData(*args[0], **args[1])
+                    table = Table(
+                        "test_table", metadata, Column("foo", Integer)
+                    )
+                    assert metadata.bind is table.bind is bind
+                    metadata.create_all()
+                    is_true(inspect(bind).has_table(table.name))
+                    metadata.drop_all()
+                    table.create()
+                    table.drop()
+                    is_false(inspect(bind).has_table(table.name))
+            finally:
+                if isinstance(bind, engine.Connection):
+                    bind.close()
+
+    def test_bind_implicit_execution(self):
+        metadata = MetaData()
+        table = Table(
+            "test_table",
+            metadata,
+            Column("foo", Integer),
+            test_needs_acid=True,
+        )
+        conn = testing.db.connect()
+        metadata.create_all(bind=conn)
+        try:
+            trans = conn.begin()
+            metadata.bind = conn
+            t = table.insert()
+            assert t.bind is conn
+            table.insert().execute(foo=5)
+            table.insert().execute(foo=6)
+            table.insert().execute(foo=7)
+            trans.rollback()
+            metadata.bind = None
+            assert (
+                conn.exec_driver_sql(
+                    "select count(*) from test_table"
+                ).scalar()
+                == 0
+            )
+        finally:
+            metadata.drop_all(bind=conn)
+
+    def test_bind_clauseelement(self):
+        metadata = MetaData()
+        table = Table("test_table", metadata, Column("foo", Integer))
+        metadata.create_all(bind=testing.db)
+        try:
+            for elem in [
+                table.select,
+                lambda **kwargs: sa.func.current_timestamp(**kwargs).select(),
+                # func.current_timestamp().select,
+                lambda **kwargs: text("select * from test_table", **kwargs),
+            ]:
+                for bind in (testing.db, testing.db.connect()):
+                    try:
+                        with testing.expect_deprecated_20(
+                            "The .*bind argument is deprecated"
+                        ):
+                            e = elem(bind=bind)
+                        assert e.bind is bind
+                        e.execute().close()
+                    finally:
+                        if isinstance(bind, engine.Connection):
+                            bind.close()
+
+                e = elem()
+                assert e.bind is None
+                assert_raises(exc.UnboundExecutionError, e.execute)
+        finally:
+            if isinstance(bind, engine.Connection):
+                bind.close()
+            metadata.drop_all(bind=testing.db)
 
     def test_inspector_constructor_engine(self):
         with testing.expect_deprecated(
@@ -970,3 +1144,54 @@ class EngineEventsTest(fixtures.TestBase):
             r"\"ConnectionEvents.after_execute\" event listener",
         ):
             e1.execute(select(1))
+
+
+class DDLExecutionTest(fixtures.TestBase):
+    def setup(self):
+        self.engine = engines.mock_engine()
+        self.metadata = MetaData(self.engine)
+        self.users = Table(
+            "users",
+            self.metadata,
+            Column("user_id", Integer, primary_key=True),
+            Column("user_name", String(40)),
+        )
+
+    @testing.requires.sqlite
+    def test_ddl_execute(self):
+        engine = create_engine("sqlite:///")
+        cx = engine.connect()
+        table = self.users
+        ddl = DDL("SELECT 1")
+
+        eng_msg = r"The Engine.execute\(\) method is considered legacy"
+        ddl_msg = r"The DDL.execute\(\) method is considered legacy"
+        for spec in (
+            (engine.execute, ddl, eng_msg),
+            (engine.execute, ddl, table, eng_msg),
+            (ddl.execute, engine, ddl_msg),
+            (ddl.execute, engine, table, ddl_msg),
+            (ddl.execute, cx, ddl_msg),
+            (ddl.execute, cx, table, ddl_msg),
+        ):
+            fn = spec[0]
+            arg = spec[1:-1]
+            warning = spec[-1]
+
+            with testing.expect_deprecated_20(warning):
+                r = fn(*arg)
+            eq_(list(r), [(1,)])
+
+        for fn, kw in ((ddl.execute, {}), (ddl.execute, dict(target=table))):
+            with testing.expect_deprecated_20(ddl_msg):
+                assert_raises(exc.UnboundExecutionError, fn, **kw)
+
+        for bind in engine, cx:
+            ddl.bind = bind
+            for fn, kw in (
+                (ddl.execute, {}),
+                (ddl.execute, dict(target=table)),
+            ):
+                with testing.expect_deprecated_20(ddl_msg):
+                    r = fn(**kw)
+                eq_(list(r), [(1,)])

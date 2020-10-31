@@ -78,6 +78,14 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
             self, multiparams, params, execution_options
         )
 
+    @util.deprecated_20(
+        ":meth:`.DDL.execute`",
+        alternative="All statement execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`_engine.Connection.execute` method of "
+        ":class:`_engine.Connection`, "
+        "or in the ORM by the :meth:`.Session.execute` method of "
+        ":class:`.Session`.",
+    )
     def execute(self, bind=None, target=None):
         """Execute this DDL immediately.
 
@@ -149,7 +157,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
     @_generative
     def execute_if(self, dialect=None, callable_=None, state=None):
         r"""Return a callable that will execute this
-        DDLElement conditionally.
+        :class:`_ddl.DDLElement` conditionally within an event handler.
 
         Used to provide a wrapper for event listening::
 
@@ -289,6 +297,13 @@ class DDL(DDLElement):
 
     __visit_name__ = "ddl"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.DDL.bind` argument is deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(self, statement, context=None, bind=None):
         """Create a DDL statement.
 
