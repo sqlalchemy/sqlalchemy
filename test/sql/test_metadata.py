@@ -741,7 +741,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ),
             (
                 Table("bar", MetaData(), Column("x", String)),
-                "Table('bar', MetaData(bind=None), "
+                "Table('bar', MetaData(), "
                 "Column('x', String(), table=<bar>), schema=None)",
             ),
             (
@@ -4138,13 +4138,13 @@ class CatchAllEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
                 "Column->t1",
                 "ForeignKeyConstraint->Table",
                 "ForeignKeyConstraint->t1",
-                "Table->MetaData(bind=None)",
+                "Table->MetaData()",
                 "Table->MetaData",
                 "PrimaryKeyConstraint->Table",
                 "PrimaryKeyConstraint->t2",
                 "Column->Table",
                 "Column->t2",
-                "Table->MetaData(bind=None)",
+                "Table->MetaData()",
             ],
         )
 

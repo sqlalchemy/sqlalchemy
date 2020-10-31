@@ -499,6 +499,8 @@ class PropComparator(operators.ColumnOperators):
 
         .. seealso::
 
+            :ref:`orm_queryguide_join_on_augmented`
+
             :ref:`loader_option_criteria`
 
             :func:`.with_loader_criteria`

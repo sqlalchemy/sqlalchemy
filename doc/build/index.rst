@@ -43,9 +43,7 @@ SQLAlchemy Documentation
     Core and ORM working styles more closely than ever.   The new tutorial introduces
     both concepts in parallel.  New users and those starting new projects should start here!
 
-    * **SQLAlchemy 2.0 (Coming Soon)** - SQLAlchemy 2.0's main tutorial
-
-    * **SQLAlchemy Querying Guide (Coming Soon)** - reference documentation for writing queries
+    * :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial
 
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
 
@@ -79,18 +77,17 @@ SQLAlchemy Documentation
       :doc:`Mapper Configuration <orm/mapper_config>` |
       :doc:`Relationship Configuration <orm/relationships>`
 
+    * **ORM Usage:**
+      :doc:`Session Usage and Guidelines <orm/session>` |
+      :doc:`Querying Data, Loading Objects <orm/loading_objects>` |
+      :doc:`AsyncIO Support <orm/extensions/asyncio>`
+
     * **Configuration Extensions:**
-      :doc:`Declarative Extension <orm/extensions/declarative/index>` |
       :doc:`Association Proxy <orm/extensions/associationproxy>` |
       :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
       :doc:`Automap <orm/extensions/automap>` |
       :doc:`Mutable Scalars <orm/extensions/mutable>` |
-      :doc:`Indexable <orm/extensions/indexable>`
-
-    * **ORM Usage:**
-      :doc:`Session Usage and Guidelines <orm/session>` |
-      :doc:`Loading Objects <orm/loading_objects>` |
-      :doc:`AsyncIO Support <orm/extensions/asyncio>`
+      :doc:`All extensions <orm/extensions/index>`
 
     * **Extending the ORM:**
       :doc:`ORM Events and Internals <orm/extending>`

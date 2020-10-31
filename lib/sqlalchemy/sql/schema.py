@@ -638,13 +638,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             )
 
         insp = inspection.inspect(autoload_with)
-        insp.reflect_table(
-            self,
-            include_columns,
-            exclude_columns,
-            resolve_fks,
-            _extend_on=_extend_on,
-        )
+        with insp._inspection_context() as conn_insp:
+            conn_insp.reflect_table(
+                self,
+                include_columns,
+                exclude_columns,
+                resolve_fks,
+                _extend_on=_extend_on,
+            )
 
     @property
     def _sorted_constraints(self):
@@ -2824,7 +2825,16 @@ class DefaultClause(FetchedValue):
 
 
 class Constraint(DialectKWArgs, SchemaItem):
-    """A table-level SQL constraint."""
+    """A table-level SQL constraint.
+
+    :class:`_schema.Constraint` serves as the base class for the series of
+    constraint objects that can be associated with :class:`_schema.Table`
+    objects, including :class:`_schema.PrimaryKeyConstraint`,
+    :class:`_schema.ForeignKeyConstraint`
+    :class:`_schema.UniqueConstraint`, and
+    :class:`_schema.CheckConstraint`.
+
+    """
 
     __visit_name__ = "constraint"
 
@@ -2856,27 +2866,17 @@ class Constraint(DialectKWArgs, SchemaItem):
 
             .. versionadded:: 1.0.0
 
-        :param _create_rule:
-          a callable which is passed the DDLCompiler object during
-          compilation. Returns True or False to signal inline generation of
-          this Constraint.
-
-          The AddConstraint and DropConstraint DDL constructs provide
-          DDLElement's more comprehensive "conditional DDL" approach that is
-          passed a database connection when DDL is being issued. _create_rule
-          is instead called during any CREATE TABLE compilation, where there
-          may not be any transaction/connection in progress. However, it
-          allows conditional compilation of the constraint even for backends
-          which do not support addition of constraints through ALTER TABLE,
-          which currently includes SQLite.
-
-          _create_rule is used by some types to create constraints.
-          Currently, its call signature is subject to change at any time.
-
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  See
             the documentation regarding an individual dialect at
             :ref:`dialect_toplevel` for detail on documented arguments.
+
+        :param _create_rule:
+          used internally by some datatypes that also create constraints.
+
+        :param _type_bound:
+          used internally to indicate that this constraint is associated with
+          a specific datatype.
 
         """
 
@@ -4158,7 +4158,10 @@ class MetaData(SchemaItem):
     """
 
     def __repr__(self):
-        return "MetaData(bind=%r)" % self.bind
+        if self.bind:
+            return "MetaData(bind=%r)" % self.bind
+        else:
+            return "MetaData()"
 
     def __contains__(self, table_or_key):
         if not isinstance(table_or_key, util.string_types):

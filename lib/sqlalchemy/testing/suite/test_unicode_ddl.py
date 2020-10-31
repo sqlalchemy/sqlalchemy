@@ -188,7 +188,7 @@ class UnicodeSchemaTest(fixtures.TablesTest):
             eq_(
                 repr(t),
                 (
-                    "Table('\\u6e2c\\u8a66', MetaData(bind=None), "
+                    "Table('\\u6e2c\\u8a66', MetaData(), "
                     "Column('\\u6e2c\\u8a66_id', Integer(), "
                     "table=<\u6e2c\u8a66>), "
                     "schema=None)"
@@ -198,7 +198,7 @@ class UnicodeSchemaTest(fixtures.TablesTest):
             eq_(
                 repr(t),
                 (
-                    "Table('測試', MetaData(bind=None), "
+                    "Table('測試', MetaData(), "
                     "Column('測試_id', Integer(), "
                     "table=<測試>), "
                     "schema=None)"

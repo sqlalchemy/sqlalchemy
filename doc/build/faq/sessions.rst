@@ -67,8 +67,9 @@ Three ways, from most common to least:
    :class:`.Session.refresh`.  See :ref:`session_expire` for detail on this.
 
 3. We can run whole queries while setting them to definitely overwrite
-   already-loaded objects as they read rows by using
-   :meth:`_query.Query.populate_existing`.
+   already-loaded objects as they read rows by using "populate existing".
+   This is an exection option described at
+   :ref:`orm_queryguide_populate_existing`.
 
 But remember, **the ORM cannot see changes in rows if our isolation
 level is repeatable read or higher, unless we start a new transaction**.

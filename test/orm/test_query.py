@@ -4453,19 +4453,55 @@ class YieldTest(_fixtures.FixtureTest):
         except StopIteration:
             pass
 
+    def test_yield_per_and_execution_options_legacy(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = create_session()
+
+        @event.listens_for(sess, "do_orm_execute")
+        def check(ctx):
+            eq_(ctx.load_options._yield_per, 15)
+            eq_(
+                {
+                    k: v
+                    for k, v in ctx.execution_options.items()
+                    if not k.startswith("_")
+                },
+                {"max_row_buffer": 15, "stream_results": True, "foo": "bar"},
+            )
+
+        q = sess.query(User).yield_per(15)
+        q = q.execution_options(foo="bar")
+
+        q.all()
+
     def test_yield_per_and_execution_options(self):
         self._eagerload_mappings()
 
         User = self.classes.User
 
         sess = create_session()
-        q = sess.query(User).yield_per(15)
-        q = q.execution_options(foo="bar")
-        assert q.load_options._yield_per
-        eq_(
-            q._execution_options,
-            {"stream_results": True, "foo": "bar", "max_row_buffer": 15},
-        )
+
+        @event.listens_for(sess, "do_orm_execute")
+        def check(ctx):
+            eq_(ctx.load_options._yield_per, 15)
+            eq_(
+                {
+                    k: v
+                    for k, v in ctx.execution_options.items()
+                    if not k.startswith("_")
+                },
+                {
+                    "max_row_buffer": 15,
+                    "stream_results": True,
+                    "yield_per": 15,
+                },
+            )
+
+        stmt = select(User).execution_options(yield_per=15)
+        sess.execute(stmt)
 
     def test_no_joinedload_opt(self):
         self._eagerload_mappings()

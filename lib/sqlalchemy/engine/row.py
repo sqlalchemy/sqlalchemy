@@ -500,10 +500,14 @@ class RowMapping(BaseRow, collections_abc.Mapping):
     """A ``Mapping`` that maps column names and objects to :class:`.Row` values.
 
     The :class:`.RowMapping` is available from a :class:`.Row` via the
-    :attr:`.Row._mapping` attribute and supplies Python mapping (i.e.
-    dictionary) access to the  contents of the row.   This includes support
-    for testing of containment of specific keys (string column names or
-    objects), as well as iteration of keys, values, and items::
+    :attr:`.Row._mapping` attribute, as well as from the iterable interface
+    provided by the :class:`.MappingResult` object returned by the
+    :meth:`_engine.Result.mappings` method.
+
+    :class:`.RowMapping` supplies Python mapping (i.e. dictionary) access to
+    the  contents of the row.   This includes support for testing of
+    containment of specific keys (string column names or objects), as well
+    as iteration of keys, values, and items::
 
         for row in result:
             if 'a' in row._mapping:

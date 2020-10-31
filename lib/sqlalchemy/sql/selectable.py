@@ -700,14 +700,15 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     @util.memoized_property
     def columns(self):
         """A named-based collection of :class:`_expression.ColumnElement`
-        objects
-        maintained by this :class:`_expression.FromClause`.
+        objects maintained by this :class:`_expression.FromClause`.
 
         The :attr:`.columns`, or :attr:`.c` collection, is the gateway
         to the construction of SQL expressions using table-bound or
         other selectable-bound columns::
 
             select(mytable).where(mytable.c.somecolumn == 5)
+
+        :return: a :class:`.ColumnCollection` object.
 
         """
 
@@ -734,8 +735,12 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     @util.memoized_property
     def primary_key(self):
-        """Return the collection of :class:`_schema.Column` objects
-        which comprise the primary key of this FromClause.
+        """Return the iterable collection of :class:`_schema.Column` objects
+        which comprise the primary key of this :class:`_selectable.FromClause`.
+
+        For a :class:`_schema.Table` object, this collection is represented
+        by the :class:`_schema.PrimaryKeyConstraint` which itself is an
+        iterable collection of :class:`_schema.Column` objects.
 
         """
         self._init_collections()
@@ -771,7 +776,16 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     c = property(
         attrgetter("columns"),
-        doc="An alias for the :attr:`.columns` attribute.",
+        doc="""
+        A named-based collection of :class:`_expression.ColumnElement`
+        objects maintained by this :class:`_expression.FromClause`.
+
+        The :attr:`_sql.FromClause.c` attribute is an alias for the
+        :attr:`_sql.FromClause.columns` atttribute.
+
+        :return: a :class:`.ColumnCollection`
+
+        """,
     )
     _select_iterable = property(attrgetter("columns"))
 
@@ -1227,7 +1241,9 @@ class Join(roles.DMLTableRole, FromClause):
     )
     def bind(self):
         """Return the bound engine associated with either the left or right
-        side of this :class:`_sql.Join`."""
+        side of this :class:`_sql.Join`.
+
+        """
 
         return self.left.bind or self.right.bind
 
@@ -1441,10 +1457,14 @@ class AliasedReturnsRows(NoInit, FromClause):
 
     @property
     def description(self):
+        name = self.name
+        if isinstance(name, _anonymous_label):
+            name = "anon_1"
+
         if util.py3k:
-            return self.name
+            return name
         else:
-            return self.name.encode("ascii", "backslashreplace")
+            return name.encode("ascii", "backslashreplace")
 
     @property
     def original(self):
@@ -1693,8 +1713,18 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
     """Represent a Common Table Expression.
 
     The :class:`_expression.CTE` object is obtained using the
-    :meth:`_expression.SelectBase.cte` method from any selectable.
-    See that method for complete examples.
+    :meth:`_sql.SelectBase.cte` method from any SELECT statement. A less often
+    available syntax also allows use of the :meth:`_sql.HasCTE.cte` method
+    present on :term:`DML` constructs such as :class:`_sql.Insert`,
+    :class:`_sql.Update` and
+    :class:`_sql.Delete`.   See the :meth:`_sql.HasCTE.cte` method for
+    usage details on CTEs.
+
+    .. seealso::
+
+        :ref:`tutorial_subqueries_ctes` - in the 2.0 tutorial
+
+        :meth:`_sql.HasCTE.cte` - examples of calling styles
 
     """
 
@@ -1955,7 +1985,7 @@ class HasCTE(roles.HasCTERole):
 
         .. seealso::
 
-            :meth:`.orm.query.Query.cte` - ORM version of
+            :meth:`_orm.Query.cte` - ORM version of
             :meth:`_expression.HasCTE.cte`.
 
         """
@@ -2546,9 +2576,28 @@ class SelectBase(
     def as_scalar(self):
         return self.scalar_subquery()
 
+    def exists(self):
+        """Return an :class:`_sql.Exists` representation of this selectable,
+        which can be used as a column expression.
+
+        The returned object is an instance of :class:`_sql.Exists`.
+
+        .. seealso::
+
+            :func:`_sql.exists`
+
+            :ref:`tutorial_exists` - in the :term:`2.0 style` tutorial.
+
+        .. versionadded:: 1.4
+
+        """
+        return Exists(self)
+
     def scalar_subquery(self):
         """Return a 'scalar' representation of this selectable, which can be
         used as a column expression.
+
+        The returned object is an instance of :class:`_sql.ScalarSelect`.
 
         Typically, a select statement which has only one column in its columns
         clause is eligible to be used as a scalar expression.  The scalar
@@ -2562,6 +2611,12 @@ class SelectBase(
 
         .. versionchanged: 1.4 - the ``.as_scalar()`` method was renamed to
            :meth:`_expression.SelectBase.scalar_subquery`.
+
+        .. seealso::
+
+            :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
+
+            :ref:`scalar_selects` - in the 1.x tutorial
 
         """
         if self._label_style is not LABEL_STYLE_NONE:
@@ -3784,12 +3839,12 @@ class SelectState(util.MemoizedSlots, CompileState):
 
             if not len(froms):
                 raise exc.InvalidRequestError(
-                    "Select statement '%s"
+                    "Select statement '%r"
                     "' returned no FROM clauses "
                     "due to auto-correlation; "
                     "specify correlate(<tables>) "
                     "to control correlation "
-                    "manually." % self
+                    "manually." % self.statement
                 )
 
         return froms
@@ -4001,7 +4056,9 @@ class Select(
 
         :func:`_sql.select`
 
-        :ref:`coretutorial_selecting` - in the Core tutorial
+        :ref:`coretutorial_selecting` - in the 1.x tutorial
+
+        :ref:`tutorial_selecting_data` - in the 2.0 tutorial
 
     """
 
@@ -4498,8 +4555,8 @@ class Select(
 
         .. seealso::
 
-            :ref:`orm_tutorial_literal_sql` - usage examples in the
-            ORM tutorial
+            :ref:`orm_queryguide_selecting_text` - usage examples in the
+            ORM Querying Guide
 
         """
         meth = SelectState.get_plugin_class(self).from_statement
@@ -4555,6 +4612,10 @@ class Select(
 
         .. seealso::
 
+            :ref:`tutorial_select_join` - in the :doc:`/tutorial/index`
+
+            :ref:`orm_queryguide_joins` - in the :ref:`queryguide_toplevel`
+
             :meth:`_expression.Select.join_from`
 
             :meth:`_expression.Select.outerjoin`
@@ -4606,6 +4667,10 @@ class Select(
 
         .. seealso::
 
+            :ref:`tutorial_select_join` - in the :doc:`/tutorial/index`
+
+            :ref:`orm_queryguide_joins` - in the :ref:`queryguide_toplevel`
+
             :meth:`_expression.Select.join`
 
         """  # noqa: E501
@@ -4654,6 +4719,10 @@ class Select(
            See the notes for this change at :ref:`change_select_join`.
 
         .. seealso::
+
+            :ref:`tutorial_select_join` - in the :doc:`/tutorial/index`
+
+            :ref:`orm_queryguide_joins` - in the :ref:`queryguide_toplevel`
 
             :meth:`_expression.Select.join`
 
@@ -4910,7 +4979,7 @@ class Select(
     _whereclause = whereclause
 
     @_generative
-    def where(self, whereclause):
+    def where(self, *whereclause):
         """Return a new :func:`_expression.select` construct with
         the given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
@@ -4918,9 +4987,10 @@ class Select(
         """
 
         assert isinstance(self._where_criteria, tuple)
-        self._where_criteria += (
-            coercions.expect(roles.WhereHavingRole, whereclause),
-        )
+
+        for criterion in list(whereclause):
+            where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
+            self._where_criteria += (where_criteria,)
 
     @_generative
     def having(self, having):
@@ -5407,6 +5477,24 @@ class Select(
 
 
 class ScalarSelect(roles.InElementRole, Generative, Grouping):
+    """Represent a scalar subquery.
+
+
+    A :class:`_sql.ScalarSubquery` is created by invoking the
+    :meth:`_sql.SelectBase.scalar_subquery` method.   The object
+    then participates in other SQL expressions as a SQL column expression
+    within the :class:`_sql.ColumnElement` hierarchy.
+
+    .. seealso::
+
+        :meth:`_sql.SelectBase.scalar_subquery`
+
+        :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
+
+        :ref:`scalar_selects` - in the 1.x tutorial
+
+    """
+
     _from_objects = []
     _is_from_container = True
     _is_implicitly_boolean = False
@@ -5437,9 +5525,79 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
     def self_group(self, **kwargs):
         return self
 
+    @_generative
+    def correlate(self, *fromclauses):
+        r"""Return a new :class:`_expression.ScalarSelect`
+        which will correlate the given FROM
+        clauses to that of an enclosing :class:`_expression.Select`.
+
+        This method is mirrored from the :meth:`_sql.Select.correlate` method
+        of the underlying :class:`_sql.Select`.  The method applies the
+        :meth:_sql.Select.correlate` method, then returns a new
+        :class:`_sql.ScalarSelect` against that statement.
+
+        .. versionadded:: 1.4 Previously, the
+           :meth:`_sql.ScalarSelect.correlate`
+           method was only available from :class:`_sql.Select`.
+
+        :param \*fromclauses: a list of one or more
+         :class:`_expression.FromClause`
+         constructs, or other compatible constructs (i.e. ORM-mapped
+         classes) to become part of the correlate collection.
+
+        .. seealso::
+
+            :meth:`_expression.ScalarSelect.correlate_except`
+
+            :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
+
+            :ref:`correlated_subqueries` - in the 1.x tutorial
+
+
+        """
+        self.element = self.element.correlate(*fromclauses)
+
+    @_generative
+    def correlate_except(self, *fromclauses):
+        r"""Return a new :class:`_expression.ScalarSelect`
+        which will omit the given FROM
+        clauses from the auto-correlation process.
+
+        This method is mirrored from the
+        :meth:`_sql.Select.correlate_except` method of the underlying
+        :class:`_sql.Select`.  The method applies the
+        :meth:_sql.Select.correlate_except` method, then returns a new
+        :class:`_sql.ScalarSelect` against that statement.
+
+        .. versionadded:: 1.4 Previously, the
+           :meth:`_sql.ScalarSelect.correlate_except`
+           method was only available from :class:`_sql.Select`.
+
+        :param \*fromclauses: a list of one or more
+         :class:`_expression.FromClause`
+         constructs, or other compatible constructs (i.e. ORM-mapped
+         classes) to become part of the correlate-exception collection.
+
+        .. seealso::
+
+            :meth:`_expression.ScalarSelect.correlate`
+
+            :ref:`tutorial_scalar_subquery` - in the 2.0 tutorial
+
+            :ref:`correlated_subqueries` - in the 1.x tutorial
+
+
+        """
+
+        self.element = self.element.correlate_except(*fromclauses)
+
 
 class Exists(UnaryExpression):
-    """Represent an ``EXISTS`` clause."""
+    """Represent an ``EXISTS`` clause.
+
+    See :func:`_sql.exists` for a description of usage.
+
+    """
 
     _from_objects = []
     inherit_cache = True
@@ -5447,11 +5605,22 @@ class Exists(UnaryExpression):
     def __init__(self, *args, **kwargs):
         """Construct a new :class:`_expression.Exists` construct.
 
-        The modern form of :func:`.exists` is to invoke with no arguments,
-        which will produce an ``"EXISTS *"`` construct.   A WHERE clause
-        is then added using the :meth:`.Exists.where` method::
+        The :func:`_sql.exists` can be invoked by itself to produce an
+        :class:`_sql.Exists` construct, which will accept simple WHERE
+        criteria::
 
             exists_criteria = exists().where(table1.c.col1 == table2.c.col2)
+
+        However, for greater flexibility in constructing the SELECT, an
+        existing :class:`_sql.Select` construct may be converted to an
+        :class:`_sql.Exists`, most conveniently by making use of the
+        :meth:`_sql.SelectBase.exists` method::
+
+            exists_criteria = (
+                select(table2.c.col2).
+                where(table1.c.col1 == table2.c.col2).
+                exists()
+            )
 
         The EXISTS criteria is then used inside of an enclosing SELECT::
 
@@ -5460,9 +5629,13 @@ class Exists(UnaryExpression):
         The above statement will then be of the form::
 
             SELECT col1 FROM table1 WHERE EXISTS
-            (SELECT * FROM table2 WHERE table2.col2 = table1.col1)
+            (SELECT table2.col2 FROM table2 WHERE table2.col2 = table1.col1)
 
-        """
+        .. seealso::
+
+            :ref:`tutorial_exists` - in the :term:`2.0 style` tutorial.
+
+        """  # noqa E501
         if args and isinstance(args[0], (SelectBase, ScalarSelect)):
             s = args[0]
         else:
@@ -5531,6 +5704,13 @@ class Exists(UnaryExpression):
         return Select._create_select_from_fromclause(self, [self], **kwargs)
 
     def correlate(self, *fromclause):
+        """Apply correlation to the subquery noted by this :class:`_sql.Exists`.
+
+        .. seealso::
+
+            :meth:`_sql.ScalarSelect.correlate`
+
+        """
         e = self._clone()
         e.element = self._regroup(
             lambda element: element.correlate(*fromclause)
@@ -5538,6 +5718,14 @@ class Exists(UnaryExpression):
         return e
 
     def correlate_except(self, *fromclause):
+        """Apply correlation to the subquery noted by this :class:`_sql.Exists`.
+
+        .. seealso::
+
+            :meth:`_sql.ScalarSelect.correlate_except`
+
+        """
+
         e = self._clone()
         e.element = self._regroup(
             lambda element: element.correlate_except(*fromclause)
@@ -5551,6 +5739,11 @@ class Exists(UnaryExpression):
         method of the select
         statement contained.
 
+        .. note:: it is typically preferable to build a :class:`_sql.Select`
+           statement first, including the desired WHERE clause, then use the
+           :meth:`_sql.SelectBase.exists` method to produce an
+           :class:`_sql.Exists` object at once.
+
         """
         e = self._clone()
         e.element = self._regroup(lambda element: element.select_from(*froms))
@@ -5560,6 +5753,12 @@ class Exists(UnaryExpression):
         """Return a new :func:`_expression.exists` construct with the
         given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
+
+
+        .. note:: it is typically preferable to build a :class:`_sql.Select`
+           statement first, including the desired WHERE clause, then use the
+           :meth:`_sql.SelectBase.exists` method to produce an
+           :class:`_sql.Exists` object at once.
 
         """
         e = self._clone()

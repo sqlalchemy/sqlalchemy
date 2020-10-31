@@ -1662,7 +1662,6 @@ class TextClause(
 
             :ref:`sqlexpression_text` - in the Core tutorial
 
-            :ref:`orm_tutorial_literal_sql` - in the ORM tutorial
 
         """
         return TextClause(text, bind=bind)

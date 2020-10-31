@@ -56,7 +56,10 @@ class DocTest(fixtures.TestBase):
         self._teardown_create_table_patcher()
         self._teardown_logger()
 
-    def _run_doctest_for_content(self, name, content):
+    def _run_doctest(self, *fnames):
+        here = os.path.dirname(__file__)
+        sqla_base = os.path.normpath(os.path.join(here, "..", ".."))
+
         optionflags = (
             doctest.ELLIPSIS
             | doctest.NORMALIZE_WHITESPACE
@@ -68,23 +71,33 @@ class DocTest(fixtures.TestBase):
             optionflags=optionflags,
             checker=_get_unicode_checker(),
         )
-        globs = {"print_function": print_function}
         parser = doctest.DocTestParser()
-        test = parser.get_doctest(content, globs, name, name, 0)
-        runner.run(test)
-        runner.summarize()
-        assert not runner.failures
+        globs = {"print_function": print_function}
 
-    def _run_doctest(self, fname):
-        here = os.path.dirname(__file__)
-        sqla_base = os.path.normpath(os.path.join(here, "..", ".."))
-        path = os.path.join(sqla_base, "doc/build", fname)
-        if not os.path.exists(path):
-            config.skip_test("Can't find documentation file %r" % path)
-        with open(path) as file_:
-            content = file_.read()
-            content = re.sub(r"{(?:stop|sql|opensql)}", "", content)
-            self._run_doctest_for_content(fname, content)
+        for fname in fnames:
+            path = os.path.join(sqla_base, "doc/build", fname)
+            if not os.path.exists(path):
+                config.skip_test("Can't find documentation file %r" % path)
+            with open(path) as file_:
+                content = file_.read()
+                content = re.sub(r"{(?:stop|sql|opensql)}", "", content)
+
+                test = parser.get_doctest(content, globs, fname, fname, 0)
+                runner.run(test, clear_globs=False)
+                runner.summarize()
+                globs.update(test.globs)
+                assert not runner.failures
+
+    def test_20_style(self):
+        self._run_doctest(
+            "tutorial/index.rst",
+            "tutorial/engine.rst",
+            "tutorial/dbapi_transactions.rst",
+            "tutorial/metadata.rst",
+            "tutorial/data.rst",
+            "tutorial/orm_data_manipulation.rst",
+            "tutorial/orm_related_objects.rst",
+        )
 
     def test_orm(self):
         self._run_doctest("orm/tutorial.rst")
@@ -92,6 +105,12 @@ class DocTest(fixtures.TestBase):
     @testing.emits_warning()
     def test_core(self):
         self._run_doctest("core/tutorial.rst")
+
+    def test_core_operators(self):
+        self._run_doctest("core/operators.rst")
+
+    def test_orm_queryguide(self):
+        self._run_doctest("orm/queryguide.rst")
 
 
 # unicode checker courtesy pytest

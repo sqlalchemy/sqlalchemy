@@ -1,3 +1,5 @@
+.. _loading_columns:
+
 .. currentmodule:: sqlalchemy.orm
 
 ===============
@@ -277,10 +279,8 @@ Column Deferral API
 Column Bundles
 ==============
 
-The :class:`.Bundle` may be used to query for groups of columns under one
+The :class:`_orm.Bundle` may be used to query for groups of columns under one
 namespace.
-
-.. versionadded:: 0.9.0
 
 The bundle allows columns to be grouped together::
 
@@ -292,7 +292,7 @@ The bundle allows columns to be grouped together::
 
 The bundle can be subclassed to provide custom behaviors when results
 are fetched.  The method :meth:`.Bundle.create_row_processor` is given
-the :class:`_query.Query` and a set of "row processor" functions at query execution
+the statement object and a set of "row processor" functions at query execution
 time; these processor functions when given a result row will return the
 individual attribute value, which can then be adapted into any kind of
 return data structure.  Below illustrates replacing the usual :class:`.Row`
@@ -308,6 +308,11 @@ return structure with a straight Python dictionary::
                             zip(labels, (proc(row) for proc in procs))
                         )
             return proc
+
+.. note::
+
+    The :class:`_orm.Bundle` construct only applies to column expressions.
+    It does not apply to ORM attributes mapped using :func:`_orm.relationship`.
 
 .. versionchanged:: 1.0
 

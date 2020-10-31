@@ -4,6 +4,35 @@
 Object Relational Tutorial (1.x API)
 ====================================
 
+.. admonition:: About this document
+
+    This tutorial covers the well known SQLAlchemy ORM API
+    that has been in use for many years.  As of SQLAlchemy 1.4, there are two
+    distinct styles of ORM use known as :term:`1.x style` and :term:`2.0
+    style`, the latter of which makes a wide range of changes most prominently
+    around how ORM queries are constructed and executed.
+
+    The plan is that in SQLAlchemy 2.0, the 1.x style of ORM use will be
+    considered legacy and no longer featured in documentation and many
+    aspects of it will be removed.  However, the most central element of
+    :term:`1.x style` ORM use, the :class:`_orm.Query` object, will still
+    remain available for long-term legacy use cases.
+
+    This tutorial is applicable to users who want to learn how SQLAlchemy has
+    been used for many years, particularly those users working with existing
+    applications or related learning material that is in 1.x style.
+
+    For an introduction to SQLAlchemy from the new 1.4/2.0 perspective,
+    see :ref:`unified_tutorial`.
+
+    .. seealso::
+
+        :ref:`change_5159`
+
+        :ref:`migration_20_toplevel`
+
+        :ref:`unified_tutorial`
+
 The SQLAlchemy Object Relational Mapper presents a method of associating
 user-defined Python classes with database tables, and instances of those
 classes (objects) with rows in their corresponding tables. It includes a
@@ -168,7 +197,7 @@ this information for a specific table is called the :class:`_schema.Table` objec
 one for us.  We can see this object by inspecting the ``__table__`` attribute::
 
     >>> User.__table__ # doctest: +NORMALIZE_WHITESPACE
-    Table('users', MetaData(bind=None),
+    Table('users', MetaData(),
                 Column('id', Integer(), table=<users>, primary_key=True, nullable=False),
                 Column('name', String(), table=<users>),
                 Column('fullname', String(), table=<users>),
@@ -217,8 +246,6 @@ the actual ``CREATE TABLE`` statement:
         nickname VARCHAR,
         PRIMARY KEY (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
     COMMIT
 
@@ -1223,8 +1250,6 @@ already been created:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
     COMMIT
 
@@ -2089,10 +2114,7 @@ Create new tables:
         PRIMARY KEY (id),
         UNIQUE (keyword)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
-    <BLANKLINE>
     CREATE TABLE posts (
         id INTEGER NOT NULL,
         user_id INTEGER,
@@ -2101,10 +2123,7 @@ Create new tables:
         PRIMARY KEY (id),
         FOREIGN KEY(user_id) REFERENCES users (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
-    <BLANKLINE>
     CREATE TABLE post_keywords (
         post_id INTEGER NOT NULL,
         keyword_id INTEGER NOT NULL,
@@ -2112,8 +2131,6 @@ Create new tables:
         FOREIGN KEY(post_id) REFERENCES posts (id),
         FOREIGN KEY(keyword_id) REFERENCES keywords (id)
     )
-    <BLANKLINE>
-    <BLANKLINE>
     [...] ()
     COMMIT
 

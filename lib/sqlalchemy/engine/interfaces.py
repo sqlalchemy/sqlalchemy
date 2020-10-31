@@ -1139,7 +1139,8 @@ class CreateEnginePlugin(object):
             :class:`_engine.URL` object should impliement the
             :meth:`_engine.CreateEnginePlugin.update_url` method.
 
-        :param kwargs: The keyword arguments passed to :func:`.create_engine`.
+        :param kwargs: The keyword arguments passed to
+         :func:`_sa.create_engine`.
 
         """
         self.url = url

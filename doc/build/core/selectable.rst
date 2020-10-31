@@ -65,7 +65,7 @@ Selectable Class Documentation
 --------------------------------
 
 The classes here are generated using the constructors listed at
-:ref:`fromclause_foundational_constructors` and
+:ref:`selectable_foundational_constructors` and
 :ref:`fromclause_modifier_constructors`.
 
 .. autoclass:: Alias
@@ -141,6 +141,7 @@ The classes here are generated using the constructors listed at
 
 .. autoclass:: TextualSelect
    :members:
+   :inherited-members:
 
 .. autoclass:: Values
    :members:

@@ -21,13 +21,6 @@ API Reference
 
    * :meth:`_orm.as_declarative`
 
-.. autofunction:: instrument_declarative
-
-.. autoclass:: AbstractConcreteBase
-
-.. autoclass:: ConcreteBase
-
-.. autoclass:: DeferredReflection
-   :members:
-
+See :ref:`declarative_toplevel` for the remaining Declarative extension
+classes.
 
