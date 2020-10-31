@@ -1367,7 +1367,7 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
             expected_row_count_for_is,
         )
 
-        expected_row_count_for_isnot = (
+        expected_row_count_for_is_not = (
             1 if expected_row_count_for_is == 0 else 0
         )
         result = connection.execute(
@@ -1375,5 +1375,5 @@ class IsOrIsNotDistinctFromTest(fixtures.TablesTest):
         ).fetchall()
         eq_(
             len(result),
-            expected_row_count_for_isnot,
+            expected_row_count_for_is_not,
         )

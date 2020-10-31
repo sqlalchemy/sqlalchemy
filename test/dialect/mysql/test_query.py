@@ -34,7 +34,7 @@ class IdiosyncrasyTest(fixtures.TestBase):
         )
 
         is_(
-            connection.scalar(select(cast(true().isnot(true()), Boolean))),
+            connection.scalar(select(cast(true().is_not(true()), Boolean))),
             False,
         )
 
