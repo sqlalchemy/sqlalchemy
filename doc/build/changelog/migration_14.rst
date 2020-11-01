@@ -25,6 +25,16 @@ What's New in SQLAlchemy 1.4?
 Major API changes and features - General
 =========================================
 
+.. _change_5634:
+
+Python 3.6 is the minimum Python 3 version; Python 2.7 still supported
+----------------------------------------------------------------------
+
+As Python 3.5 reached EOL in September of 2020, SQLAlchemy 1.4 now places
+version 3.6 as the minimum Python 3 version.  Python 2.7 is still supported,
+however the SQLAlchemy 1.4 series will be the last series to support Python 2.
+
+
 .. _change_5159:
 
 ORM Query is internally unified with select, update, delete; 2.0 style execution available

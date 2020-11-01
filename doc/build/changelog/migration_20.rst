@@ -129,9 +129,9 @@ that release 1.4 will be the last Python 2 supporting version, even if
 there is a SQLAlchemy 1.5 (which is also unlikely at the moment).
 
 In order to use SQLAlchemy 2.0, the application will need to be runnable on
-at least **Python 3.6** as of this writing; Python 3.5, still supported
-by SQLAlchemy 1.4, is EOL as of September, 2020.  Throughout the 1.4 series,
-the application can remain running on Python 2.7 or on at least Python 3.5.
+at least **Python 3.6** as of this writing.  SQLAlchemy 1.4 now supports
+Python 3.6 or newer within the Python 3 series; throughout the 1.4 series,
+the application can remain running on Python 2.7 or on at least Python 3.6.
 
 .. _migration_20_deprecations_mode:
 
