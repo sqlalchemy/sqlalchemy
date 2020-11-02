@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4699
-
-    Improved declarative inheritance scanning to not get tripped up when the
-    same base class appears multiple times in the base inheritance list.
-

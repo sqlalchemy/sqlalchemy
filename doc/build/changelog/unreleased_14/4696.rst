@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4696
-
-    The internal attribute symbols NO_VALUE and NEVER_SET have been unified, as
-    there was no meaningful difference between these two symbols, other than a
-    few codepaths where they were differentiated in subtle and undocumented
-    ways, these have been fixed.
-

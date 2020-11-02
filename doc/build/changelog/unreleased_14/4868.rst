@@ -1,7 +1,0 @@
-.. change::
-    :tags: change, sql
-    :tickets: 4868
-
-    Added a core :class:`Values` object that enables a VALUES construct
-    to be used in the FROM clause of an SQL statement for databases that
-    support it (mainly PostgreSQL and SQL Server).

@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4718
-
-    Fixed issue in polymorphic loading internals which would fall back to a
-    more expensive, soon-to-be-deprecated form of result column lookup within
-    certain unexpiration scenarios in conjunction with the use of
-    "with_polymorphic".
