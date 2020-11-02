@@ -1,7 +1,0 @@
-.. change::
-    :tags: mssql, engine
-    :tickets: 4809
-
-    Deprecated the ``legacy_schema_aliasing`` parameter to
-    :meth:`_sa.create_engine`.   This is a long-outdated parameter that has
-    defaulted to False since version 1.1.

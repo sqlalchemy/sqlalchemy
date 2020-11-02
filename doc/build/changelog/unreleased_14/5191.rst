@@ -1,6 +1,0 @@
-.. change::
-    :tags: sql, usecase
-    :tickets: 5191
-
-    Change the method ``__str`` of :class:`ColumnCollection` to avoid
-    confusing it with a python list of string.

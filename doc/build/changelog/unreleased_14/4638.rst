@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, removed
-    :tickets: 4638
-
-    All long-deprecated "extension" classes have been removed, including
-    MapperExtension, SessionExtension, PoolListener, ConnectionProxy,
-    AttributeExtension.  These classes have been deprecated since version 0.7
-    long superseded by the event listener system.
-

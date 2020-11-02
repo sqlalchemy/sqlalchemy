@@ -1,9 +1,0 @@
-.. change::
-    :tags: change, platform
-    :tickets: 5400
-
-    The ``importlib_metadata`` library is used to scan for setuptools
-    entrypoints rather than pkg_resources.   as importlib_metadata is a small
-    library that is included as of Python 3.8, the compatibility library is
-    installed as a dependency for Python versions older than 3.8.
-

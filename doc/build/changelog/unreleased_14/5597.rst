@@ -1,6 +1,0 @@
-.. change::
-    :tags: mssql, bug, schema
-    :tickets: 5597
-
-    Fixed an issue where :meth:`_reflection.has_table` always returned
-    ``False`` for temporary tables.

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 3858
-
-    An ``UnmappedInstanceError`` is now raised for :class:`.InstrumentedAttribute`
-    if an instance is an unmapped object. Prior to this an ``AttributeError``
-    was raised. Pull request courtesy Ramon Williams.

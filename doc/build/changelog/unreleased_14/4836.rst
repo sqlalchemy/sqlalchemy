@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 4836
-
-    An exception is now raised if the ORM loads a row for a polymorphic
-    instance that has a primary key but the discriminator column is NULL, as
-    discriminator columns should not be null.
-
-
