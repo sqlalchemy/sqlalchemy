@@ -2,11 +2,12 @@
     :tags: bug, orm
     :tickets: 4829
 
-    Added new entity-targeting capabilities to the :class:`_query.Query` object to
+    Added new entity-targeting capabilities to the ORM query context
     help with the case where the :class:`.Session` is using a bind dictionary
     against mapped classes, rather than a single bind, and the :class:`_query.Query`
     is against a Core statement that was ultimately generated from a method
-    such as :meth:`_query.Query.subquery`; a deep search is performed to locate
-    any ORM entity related to the query in order to locate a mapper if
-    one is not otherwise present.
+    such as :meth:`_query.Query.subquery`.  First implemented using a deep
+    search, the current approach leverages the unified :func:`_sql.select`
+    construct to keep track of the first mapper that is part of
+    the construct.
 

@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, engine
+    :tags: deprecated, engine
     :tickets: 4877
 
     Deprecated the behavior by which a :class:`_schema.Column` can be used as the key

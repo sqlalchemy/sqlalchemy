@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, sql
+    :tags: removed, sql
 
     Removed the ``sqlalchemy.sql.visitors.iterate_depthfirst`` and
     ``sqlalchemy.sql.visitors.traverse_depthfirst`` functions.  These functions

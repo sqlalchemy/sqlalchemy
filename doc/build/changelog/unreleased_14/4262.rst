@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, types
+    :tags: bug, schema
     :tickets: 4262
 
     Cleaned up the internal ``str()`` for datatypes so that all types produce a

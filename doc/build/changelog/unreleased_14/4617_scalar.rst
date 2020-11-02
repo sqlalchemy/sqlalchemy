@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, sql
+    :tags: renamed, sql
     :tickets: 4617
 
     The :meth:`_expression.SelectBase.as_scalar` and :meth:`_query.Query.as_scalar` methods have

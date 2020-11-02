@@ -1,6 +1,5 @@
 .. change::
-    :tags: change, sql
-    :tickets: 5526
+    :tags: deprecated, sql
 
     The :class:`_schema.Table` class now raises a deprecation warning
     when columns with the same name are defined. To replace a column a new

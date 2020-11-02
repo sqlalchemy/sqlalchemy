@@ -1,5 +1,5 @@
 .. change::
-   :tags: deprecations, schema
+   :tags: renamed, schema
    :tickets: 5413
 
    Renamed the :meth:`_schema.Table.tometadata` method to

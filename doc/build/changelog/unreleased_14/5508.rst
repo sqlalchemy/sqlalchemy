@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, orm
+    :tags: feature, orm
     :tickets: 5508
 
     The ORM Declarative system is now unified into the ORM itself, with new

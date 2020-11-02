@@ -1,5 +1,5 @@
 .. change::
-    :tags: usecase, engine
+    :tags: deprecated, engine
     :tickets: 5131
 
     The :meth:`_engine.Connection.connect` method is deprecated as is the concept of

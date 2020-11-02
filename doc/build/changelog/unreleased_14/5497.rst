@@ -1,5 +1,5 @@
 .. change::
-    :tags: engine, change
+    :tags: engine, bug
     :tickets: 5497
 
     Adjusted the dialect initialization process such that the

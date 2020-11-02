@@ -1,5 +1,5 @@
 .. change::
-    :tags: change,engine
+    :tags: feature, sql
     :tickets: 4753
 
     The :func:`_expression.select` construct and related constructs now allow for

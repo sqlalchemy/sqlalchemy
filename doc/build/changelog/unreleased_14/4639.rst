@@ -1,5 +1,5 @@
 .. change::
-    :tags: feature, performance
+    :tags: performance, sql
     :tickets: 4639
 
     An all-encompassing reorganization and refactoring of Core and ORM

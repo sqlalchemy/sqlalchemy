@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, tests
+    :tags: change, general
     :tickets: 4789
 
     "python setup.py test" is no longer a test runner, as this is deprecated by

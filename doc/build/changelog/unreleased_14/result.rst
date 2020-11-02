@@ -1,5 +1,5 @@
 .. change::
-    :tags: feature, core
+    :tags: feature, engine
     :tickets: 5087, 4395, 4959
 
     Implemented an all-new :class:`_result.Result` object that replaces the previous

@@ -53,6 +53,7 @@ source_suffix = ".rst"
 # section names used by the changelog extension.
 changelog_sections = [
     "general",
+    "platform",
     "orm",
     "orm declarative",
     "orm querying",
@@ -60,6 +61,7 @@ changelog_sections = [
     "engine",
     "sql",
     "schema",
+    "extensions",
     "postgresql",
     "mysql",
     "sqlite",
@@ -70,10 +72,14 @@ changelog_sections = [
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
     "feature",
-    "changed",
     "usecase",
-    "removed",
+    "change",
+    "changed",
+    "performance",
     "bug",
+    "deprecated",
+    "removed",
+    "renamed",
     "moved",
 ]
 

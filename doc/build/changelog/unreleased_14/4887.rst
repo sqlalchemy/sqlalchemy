@@ -15,7 +15,7 @@
 
 
 .. change::
-    :tags: usecase, ext
+    :tags: usecase, extensions
     :tickets: 4887
 
     Custom compiler constructs created using the :mod:`sqlalchemy.ext.compiled`

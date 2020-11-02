@@ -1,5 +1,5 @@
 .. change::
-    :tags: orm
+    :tags: orm, deprecated
     :tickets: 5192
 
     The :func:`.eagerload` and :func:`.relation` were old aliases and are

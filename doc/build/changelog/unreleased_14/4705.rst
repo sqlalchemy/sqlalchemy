@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, orm
+    :tags: deprecated, orm
     :tickets: 4705, 5202
 
     Using strings to represent relationship names in ORM operations such as

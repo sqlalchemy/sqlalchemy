@@ -5,14 +5,14 @@
     version of the pg8000 driver for PostgreSQL.  Changes to the dialect
     include:
 
-        * All data types are now sent as text rather than binary.
+    * All data types are now sent as text rather than binary.
 
-        * Using adapters, custom types can be plugged in to pg8000.
+    * Using adapters, custom types can be plugged in to pg8000.
 
-        * Previously, named prepared statements were used for all statements.
-          Now unnamed prepared statements are used by default, and named
-          prepared statements can be used explicitly by calling the
-          Connection.prepare() method, which returns a PreparedStatement
-          object.
+    * Previously, named prepared statements were used for all statements.
+      Now unnamed prepared statements are used by default, and named
+      prepared statements can be used explicitly by calling the
+      Connection.prepare() method, which returns a PreparedStatement
+      object.
 
     Pull request courtesy Tony Locke.

@@ -1,5 +1,5 @@
 .. change::
-    :tags: change, engine
+    :tags: deprecated, engine
     :tickets: 4634
 
     The :paramref:`_schema.MetaData.bind` argument as well as the overall
@@ -15,7 +15,7 @@
 
 
 .. change::
-    :tags: change, ext
+    :tags: change, extensions
     :tickets: 5142
 
     Added new parameter :paramref:`_automap.AutomapBase.prepare.autoload_with`

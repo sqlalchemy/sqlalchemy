@@ -1,5 +1,5 @@
 .. change::
-    :tags: changed, engine
+    :tags: deprecated, engine
     :tickets: 4755
 
     Deprecated remaining engine-level introspection and utility methods
@@ -9,7 +9,7 @@
     introspection tasks are suited by the :class:`_reflection.Inspector` object.
 
 .. change::
-    :tags: changed, engine
+    :tags: removed, engine
     :tickets: 4755
 
     The internal dialect method ``Dialect.reflecttable`` has been removed.  A
@@ -20,7 +20,7 @@
 
 
 .. change::
-    :tags: changed, engine
+    :tags: removed, engine
     :tickets: 4755
 
     The long-deprecated ``Inspector.get_table_names.order_by`` parameter has

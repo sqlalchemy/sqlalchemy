@@ -1,20 +1,20 @@
 .. change::
-   :tags: change, engine
+   :tags: engine, removed
    :tickets: 4643
 
-   Remove deprecated method ``get_primary_keys` in the :class:`.Dialect` and
+   Remove deprecated method ``get_primary_keys`` in the :class:`.Dialect` and
    :class:`_reflection.Inspector` classes. Please refer to the
    :meth:`.Dialect.get_pk_constraint` and :meth:`_reflection.Inspector.get_primary_keys`
    methods.
 
    Remove deprecated event ``dbapi_error`` and the method
-   ``ConnectionEvents.dbapi_error`. Please refer to the
+   ``ConnectionEvents.dbapi_error``. Please refer to the
    :meth:`_events.ConnectionEvents.handle_error` event.
-   This chance also removes the attributes ``ExecutionContext.is_disconnect``
-   and ``ExecutionContext.exception``
+   This change also removes the attributes ``ExecutionContext.is_disconnect``
+   and ``ExecutionContext.exception``.
 
 .. change::
-   :tags: change, postgresql
+   :tags: removed, postgresql
    :tickets: 4643
 
    Remove support for deprecated engine URLs of the form ``postgres://``;
@@ -22,7 +22,7 @@
    using ``postgresql://``.
 
 .. change::
-   :tags: change, mysql
+   :tags: removed, mysql
    :tickets: 4643
 
    Remove deprecated dialect ``mysql+gaerdbms`` that has been deprecated
@@ -33,7 +33,7 @@
    enum or the set are quoted by SQLAlchemy when needed automatically.
 
 .. change::
-   :tags: change, orm
+   :tags: removed, orm
    :tickets: 4643
 
    Remove deprecated function ``comparable_property``. Please refer to the
@@ -56,18 +56,18 @@
    Remove deprecated parameter ``mapper.order_by``. Use :meth:`_query.Query.order_by`
    to determine the ordering of a result set.
 
-   Remove deprecated parameter ``Session._enable_transaction_accounting`.
+   Remove deprecated parameter ``Session._enable_transaction_accounting``.
 
    Remove deprecated parameter ``Session.is_modified.passive``.
 
 .. change::
-   :tags: change, types
+   :tags: removed, schema
    :tickets: 4643
 
    Remove deprecated class ``Binary``. Please use :class:`.LargeBinary`.
 
 .. change::
-   :tags: change, sql, core
+   :tags: removed, sql
    :tickets: 4643
 
    Remove deprecated methods ``Compiled.compile``, ``ClauseElement.__and__`` and
@@ -78,7 +78,7 @@
    :attr:`.func` namespace.
 
 .. change::
-   :tags: change, sql
+   :tags: removed,  sql
    :tickets: 4643
 
    Remove deprecated parameters ``text.bindparams`` and ``text.typemap``.

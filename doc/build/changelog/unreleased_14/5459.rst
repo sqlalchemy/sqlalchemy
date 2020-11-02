@@ -1,5 +1,5 @@
 .. change::
-    :tags: engine, change
+    :tags: mysql, feature
     :tickets: 5459
 
     Added support for MariaDB Connector/Python to the mysql dialect. Original

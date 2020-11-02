@@ -1,5 +1,5 @@
 .. change::
-    :tags: usecase, orm
+    :tags: feature, orm
     :tickets: 5027
 
     Added support for direct mapping of Python classes that are defined using

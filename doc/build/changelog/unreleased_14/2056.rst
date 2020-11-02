@@ -1,5 +1,5 @@
 .. change::
-    :tags: reflection, usecase
+    :tags: engine, feature
     :tickets: 2056
 
     Added new reflection method :meth:`.Inspector.get_sequence_names` which
