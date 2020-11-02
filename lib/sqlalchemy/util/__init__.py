@@ -157,6 +157,7 @@ from .langhelpers import set_creation_order  # noqa
 from .langhelpers import string_or_unprintable  # noqa
 from .langhelpers import symbol  # noqa
 from .langhelpers import unbound_method_to_callable  # noqa
+from .langhelpers import walk_subclasses  # noqa
 from .langhelpers import warn  # noqa
 from .langhelpers import warn_exception  # noqa
 from .langhelpers import warn_limited  # noqa

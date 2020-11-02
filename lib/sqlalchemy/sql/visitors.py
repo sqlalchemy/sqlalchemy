@@ -24,6 +24,7 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 """
 
 from collections import deque
+import operator
 
 from .. import exc
 from .. import util
@@ -63,26 +64,24 @@ def _generate_compiler_dispatch(cls):
             % cls.__name__
         )
 
-    code = (
-        "def _compiler_dispatch(self, visitor, **kw):\n"
-        "    try:\n"
-        "        meth = visitor.visit_%(name)s\n"
-        "    except AttributeError as err:\n"
-        "        util.raise_(\n"
-        "            exc.UnsupportedCompilationError(visitor, cls), \n"
-        "            replace_context=err)\n"
-        "    else:\n"
-        "        return meth(self, **kw)\n"
-    ) % {"name": visit_name}
+    name = "visit_%s" % visit_name
+    getter = operator.attrgetter(name)
 
-    _compiler_dispatch = langhelpers._exec_code_in_env(
-        code, {"exc": exc, "cls": cls, "util": util}, "_compiler_dispatch"
-    )
+    def _compiler_dispatch(self, visitor, **kw):
+        """Look for an attribute named "visit_<visit_name>" on the
+        visitor, and call it with the same kw params.
 
-    _compiler_dispatch.__doc__ = """Look for an attribute named "visit_"
-        + self.__visit_name__ on the visitor, and call it with the same
-        kw params.
         """
+        try:
+            meth = getter(visitor)
+        except AttributeError as err:
+            util.raise_(
+                exc.UnsupportedCompilationError(visitor, cls),
+                replace_context=err,
+            )
+        else:
+            return meth(self, **kw)
+
     cls._compiler_dispatch = (
         cls._original_compiler_dispatch
     ) = _compiler_dispatch

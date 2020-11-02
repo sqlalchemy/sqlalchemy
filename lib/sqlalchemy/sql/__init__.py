@@ -55,10 +55,10 @@ from .expression import literal_column  # noqa
 from .expression import modifier  # noqa
 from .expression import not_  # noqa
 from .expression import null  # noqa
-from .expression import nullsfirst  # noqa; deprecated 1.4; see #5435
-from .expression import nullslast  # noqa; deprecated 1.4; see #5435
 from .expression import nulls_first  # noqa
 from .expression import nulls_last  # noqa
+from .expression import nullsfirst  # noqa
+from .expression import nullslast  # noqa
 from .expression import or_  # noqa
 from .expression import outerjoin  # noqa
 from .expression import outparam  # noqa
@@ -106,7 +106,8 @@ def __go(lcls):
     from .elements import AnnotatedColumnElement
     from .elements import ClauseList  # noqa
     from .selectable import AnnotatedFromClause  # noqa
-    from .traversals import _preconfigure_traversals
+
+    # from .traversals import _preconfigure_traversals
 
     from . import base
     from . import coercions
@@ -133,7 +134,9 @@ def __go(lcls):
     _prepare_annotations(FromClause, AnnotatedFromClause)
     _prepare_annotations(ClauseList, Annotated)
 
-    _preconfigure_traversals(ClauseElement)
+    # this is expensive at import time; elements that are used can create
+    # their traversals on demand
+    # _preconfigure_traversals(ClauseElement)
 
     _sa_util.preloaded.import_prefix("sqlalchemy.sql")
 

@@ -35,8 +35,9 @@ class _ModuleRegistry:
     name. Example: ``sqlalchemy.sql.util`` becomes ``preloaded.sql_util``.
     """
 
-    def __init__(self, prefix="sqlalchemy"):
+    def __init__(self, prefix="sqlalchemy."):
         self.module_registry = set()
+        self.prefix = prefix
 
     def preload_module(self, *deps):
         """Adds the specified modules to the list to load.
@@ -52,8 +53,13 @@ class _ModuleRegistry:
         specified path.
         """
         for module in self.module_registry:
-            key = module.split("sqlalchemy.")[-1].replace(".", "_")
-            if module.startswith(path) and key not in self.__dict__:
+            if self.prefix:
+                key = module.split(self.prefix)[-1].replace(".", "_")
+            else:
+                key = module
+            if (
+                not path or module.startswith(path)
+            ) and key not in self.__dict__:
                 compat.import_(module, globals(), locals())
                 self.__dict__[key] = sys.modules[module]
 

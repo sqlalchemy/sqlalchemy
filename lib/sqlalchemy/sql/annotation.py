@@ -354,9 +354,5 @@ def _new_annotation_type(cls, base_cls):
 
 
 def _prepare_annotations(target_hierarchy, base_cls):
-    stack = [target_hierarchy]
-    while stack:
-        cls = stack.pop()
-        stack.extend(cls.__subclasses__())
-
+    for cls in util.walk_subclasses(target_hierarchy):
         _new_annotation_type(cls, base_cls)

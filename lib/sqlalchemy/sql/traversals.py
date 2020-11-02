@@ -33,12 +33,7 @@ def compare(obj1, obj2, **kw):
 
 
 def _preconfigure_traversals(target_hierarchy):
-
-    stack = [target_hierarchy]
-    while stack:
-        cls = stack.pop()
-        stack.extend(cls.__subclasses__())
-
+    for cls in util.walk_subclasses(target_hierarchy):
         if hasattr(cls, "_traverse_internals"):
             cls._generate_cache_attrs()
             _copy_internals.generate_dispatch(
