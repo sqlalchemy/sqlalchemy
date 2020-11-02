@@ -174,12 +174,6 @@ jobs:
           echo $version
           echo "::set-output name=python-version::$version"
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ steps.linux-py-version.outputs.python-version }}
-          architecture: ${{ matrix.architecture }}
-
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
         # otherwise it gets tagged with `dev0`
@@ -193,6 +187,8 @@ jobs:
         run: |
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
+        # This should run before setting up python, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
+        # See https://github.com/RalfG/python-wheels-manylinux-build/issues/26#issuecomment-720736647
       - name: Create wheel for manylinux
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
@@ -207,6 +203,12 @@ jobs:
           # This flag should be removed once sqlalchemy supports pep517
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
           pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ steps.linux-py-version.outputs.python-version }}
+          architecture: ${{ matrix.architecture }}
 
       - name: Check created wheel
         # check that the wheel is compatible with the current installation.
@@ -332,6 +334,8 @@ jobs:
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
+        # This should run before setting up python, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
+        # See https://github.com/RalfG/python-wheels-manylinux-build/issues/26#issuecomment-720736647
       - name: Create wheel for manylinux2014
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
@@ -385,6 +389,7 @@ jobs:
           asset_content_type: application/zip # application/octet-stream
 
       - name: Set up Python for twine
+        # Setup python after creating the wheel, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
         uses: actions/setup-python@v2
         with:
