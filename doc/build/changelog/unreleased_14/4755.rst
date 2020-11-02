@@ -1,0 +1,35 @@
+.. change::
+    :tags: deprecated, engine
+    :tickets: 4755
+
+    Deprecated remaining engine-level introspection and utility methods
+    including :meth:`_engine.Engine.run_callable`, :meth:`_engine.Engine.transaction`,
+    :meth:`_engine.Engine.table_names`, :meth:`_engine.Engine.has_table`.   The utility
+    methods are superseded by modern context-manager patterns, and the table
+    introspection tasks are suited by the :class:`_reflection.Inspector` object.
+
+.. change::
+    :tags: removed, engine
+    :tickets: 4755
+
+    The internal dialect method ``Dialect.reflecttable`` has been removed.  A
+    review of third party dialects has not found any making use of this method,
+    as it was already documented as one that should not be used by external
+    dialects.  Additionally, the private ``Engine._run_visitor`` method
+    is also removed.
+
+
+.. change::
+    :tags: removed, engine
+    :tickets: 4755
+
+    The long-deprecated ``Inspector.get_table_names.order_by`` parameter has
+    been removed.
+
+.. change::
+    :tags: feature, engine
+    :tickets: 4755
+
+    The :paramref:`_schema.Table.autoload_with` parameter now accepts an :class:`_reflection.Inspector` object
+    directly, as well as any :class:`_engine.Engine` or :class:`_engine.Connection` as was the case before.
+

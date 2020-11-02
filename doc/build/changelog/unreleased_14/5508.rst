@@ -1,0 +1,17 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 5508
+
+    The ORM Declarative system is now unified into the ORM itself, with new
+    import spaces under ``sqlalchemy.orm`` and new kinds of mappings.  Support
+    for decorator-based mappings without using a base class, support for
+    classical style-mapper() calls that have access to the declarative class
+    registry for relationships, and full integration of Declarative with 3rd
+    party class attribute systems like ``dataclasses`` and ``attrs`` is now
+    supported.
+
+    .. seealso::
+
+        :ref:`change_5508`
+
+        :ref:`change_5027`

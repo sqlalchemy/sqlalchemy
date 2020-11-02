@@ -1,0 +1,10 @@
+.. change::
+    :tags: removed, platform
+    :tickets: 5634
+
+    Dropped support for python 3.4 and 3.5 that has reached EOL. SQLAlchemy 1.4
+    series requires python 2.7 or 3.6+.
+
+    .. seealso::
+
+        :ref:`change_5634`

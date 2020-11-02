@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 1653
+
+    The evaluator that takes place within the ORM bulk update and delete for
+    synchronize_session="evaluate" now supports the IN and NOT IN operators.
+    Tuple IN is also supported.
+

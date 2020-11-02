@@ -1,0 +1,32 @@
+.. change::
+    :tags: firebird, deprecated
+    :tickets: 5189
+
+    The Firebird dialect is deprecated, as there is now a 3rd party
+    dialect that supports this database.
+
+.. change::
+    :tags: misc, deprecated
+    :tickets: 5189
+
+    The Sybase dialect is deprecated.
+
+
+.. change::
+    :tags: mssql, deprecated
+    :tickets: 5189
+
+    The adodbapi and mxODBC dialects are deprecated.
+
+
+.. change::
+    :tags: mysql, deprecated
+    :tickets: 5189
+
+    The OurSQL dialect is deprecated.
+
+.. change::
+    :tags: postgresql, deprecated
+    :tickets: 5189
+
+    The pygresql and py-postgresql dialects are deprecated.

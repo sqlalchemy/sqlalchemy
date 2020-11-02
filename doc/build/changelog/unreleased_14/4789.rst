@@ -1,0 +1,7 @@
+.. change::
+    :tags: change, general
+    :tickets: 4789
+
+    "python setup.py test" is no longer a test runner, as this is deprecated by
+    Pypa.   Please use "tox" with no arguments for a basic test run.
+

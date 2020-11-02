@@ -1,0 +1,25 @@
+.. change::
+    :tags: deprecated, engine
+    :tickets: 4634
+
+    The :paramref:`_schema.MetaData.bind` argument as well as the overall
+    concept of "bound metadata" is deprecated in SQLAlchemy 1.4 and will be
+    removed in SQLAlchemy 2.0.  The parameter as well as related functions now
+    emit a :class:`_exc.RemovedIn20Warning` when :ref:`deprecation_20_mode` is
+    in use.
+
+    .. seealso::
+
+        :ref:`migration_20_implicit_execution`
+
+
+
+.. change::
+    :tags: change, extensions
+    :tickets: 5142
+
+    Added new parameter :paramref:`_automap.AutomapBase.prepare.autoload_with`
+    which supersedes :paramref:`_automap.AutomapBase.prepare.reflect`
+    and :paramref:`_automap.AutomapBase.prepare.engine`.
+
+

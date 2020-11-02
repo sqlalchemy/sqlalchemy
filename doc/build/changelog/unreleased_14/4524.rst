@@ -1,0 +1,8 @@
+.. change::
+   :tags: performance, engine
+   :tickets: 4524
+
+   The pool "pre-ping" feature has been refined to not invoke for a DBAPI
+   connection that was just opened in the same checkout operation.  pre ping
+   only applies to a DBAPI connection that's been checked into the pool
+   and is being checked out again.

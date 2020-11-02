@@ -1,0 +1,11 @@
+.. change::
+    :tags: deprecated, engine
+    :tickets: 4878
+
+    The :paramref:`.case_sensitive` flag on :func:`_sa.create_engine` is
+    deprecated; this flag was part of the transition of the result row object
+    to allow case sensitive column matching as the default, while providing
+    backwards compatibility for the former matching method.   All string access
+    for a row should be assumed to be case sensitive just like any other Python
+    mapping.
+

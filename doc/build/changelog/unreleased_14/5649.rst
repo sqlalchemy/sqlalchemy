@@ -1,0 +1,11 @@
+.. change::
+    :tags: feature, engine, pyodbc
+    :tickets: 5649
+
+    Reworked the "setinputsizes()" set of dialect hooks to be correctly
+    extensible for any arbirary DBAPI, by allowing dialects individual hooks
+    that may invoke cursor.setinputsizes() in the appropriate style for that
+    DBAPI.   In particular this is intended to support pyodbc's style of usage
+    which is fundamentally different from that of cx_Oracle.  Added support
+    for pyodbc.
+

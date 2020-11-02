@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 5576
+
+    Add support to ``FETCH {FIRST | NEXT} [ count ]
+    {ROW | ROWS} {ONLY | WITH TIES}`` in the select for the supported
+    backends, currently PostgreSQL, Oracle and MSSQL.

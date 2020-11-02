@@ -1,0 +1,21 @@
+.. change::
+    :tags: change, performance, engine, py3k
+    :tickets: 5315
+
+    Disabled the "unicode returns" check that runs on dialect startup when
+    running under Python 3, which for many years has occurred in order to test
+    the current DBAPI's behavior for whether or not it returns Python Unicode
+    or Py2K strings for the VARCHAR and NVARCHAR datatypes.  The check still
+    occurs by default under Python 2, however the mechanism to test the
+    behavior will be removed in SQLAlchemy 2.0 when Python 2 support is also
+    removed.
+
+    This logic was very effective when it was needed, however now that Python 3
+    is standard, all DBAPIs are expected to return Python 3 strings for
+    character datatypes.  In the unlikely case that a third party DBAPI does
+    not support this, the conversion logic within :class:`.String` is still
+    available and the third party dialect may specify this in its upfront
+    dialect flags by setting the dialect level flag ``returns_unicode_strings``
+    to one of :attr:`.String.RETURNS_CONDITIONAL` or
+    :attr:`.String.RETURNS_BYTES`, both of which will enable Unicode conversion
+    even under Python 3.

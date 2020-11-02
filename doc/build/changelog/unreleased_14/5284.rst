@@ -1,0 +1,16 @@
+.. change::
+    :tags: change, sql
+    :tickets: 5284
+
+    The :func:`_expression.select` construct is moving towards a new calling
+    form that is ``select(col1, col2, col3, ..)``, with all other keyword
+    arguments removed, as these are all suited using generative methods.    The
+    single list of column or table arguments passed to ``select()`` is still
+    accepted, however is no longer necessary if expressions are passed in a
+    simple positional style.   Other keyword arguments are disallowed when this
+    form is used.
+
+
+    .. seealso::
+
+        :ref:`change_5284`

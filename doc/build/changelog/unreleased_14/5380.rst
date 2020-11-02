@@ -1,0 +1,24 @@
+.. change::
+    :tags: feature, sql
+    :tickets: 5380
+
+    Along with the new transparent statement caching feature introduced as part
+    of :ticket:`4369`, a new feature intended to decrease the Python overhead
+    of creating statements is added, allowing lambdas to be used when
+    indicating arguments being passed to a statement object such as select(),
+    Query(), update(), etc., as well as allowing the construction of full
+    statements within lambdas in a similar manner as that of the "baked query"
+    system.   The rationale of using lambdas is adapted from that of the "baked
+    query" approach which uses lambdas to encapsulate any amount of Python code
+    into a callable that only needs to be called when the statement is first
+    constructed into a string.  The new feature however is more sophisticated
+    in that Python literal values that would be passed as parameters are
+    automatically extracted, so that there is no longer a need to use
+    bindparam() objects with such queries.   Use of the feature is optional and
+    can be used to as small or as great a degree as is desired, while still
+    allowing statements to be fully cacheable.
+
+    .. seealso::
+
+        :ref:`engine_lambda_caching`
+

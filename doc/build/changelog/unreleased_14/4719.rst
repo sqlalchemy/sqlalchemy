@@ -1,0 +1,14 @@
+.. change::
+    :tags: deprecated, orm
+    :tickets: 4719
+
+    Calling the :meth:`_query.Query.instances` method without passing a
+    :class:`.QueryContext` is deprecated.   The original use case for this was
+    that a :class:`_query.Query` could yield ORM objects when given only the entities
+    to be selected as well as a DBAPI cursor object.  However, for this to work
+    correctly there is essential metadata that is passed from a SQLAlchemy
+    :class:`_engine.ResultProxy` that is derived from the mapped column expressions,
+    which comes originally from the :class:`.QueryContext`.   To retrieve ORM
+    results from arbitrary SELECT statements, the :meth:`_query.Query.from_statement`
+    method should be used.
+

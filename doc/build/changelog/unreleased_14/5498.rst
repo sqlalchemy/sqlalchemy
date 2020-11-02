@@ -1,0 +1,6 @@
+.. change::
+    :tags: sql, postgresql
+    :tickets: 5498
+
+    Allow specifying the data type when creating a :class:`.Sequence` in
+    PostgreSQL by using the parameter :paramref:`.Sequence.data_type`.

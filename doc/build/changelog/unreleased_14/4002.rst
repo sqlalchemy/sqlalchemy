@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4002
+
+    Deprecate usage of ``DISTINCT ON`` in dialect other than PostgreSQL.
+    Deprecate old usage of string distinct in MySQL dialect

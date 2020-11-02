@@ -1,0 +1,20 @@
+.. change::
+    :tags: orm, change
+    :tickets: 4395
+
+    The automatic uniquing of rows on the client side is turned off for the new
+    :term:`2.0 style` of ORM querying.  This improves both clarity and
+    performance.  However, uniquing of rows on the client side is generally
+    necessary when using joined eager loading for collections, as there
+    will be duplicates of the primary entity for each element in the
+    collection because a join was used.  This uniquing must now be manually
+    enabled and can be achieved using the new
+    :meth:`_engine.Result.unique` modifier.   To avoid silent failure, the ORM
+    explicitly requires the method be called when the result of an ORM
+    query in 2.0 style makes use of joined load collections.    The newer
+    :func:`_orm.selectinload` strategy is likely preferable for eager loading
+    of collections in any case.
+
+    .. seealso::
+
+        :ref:`joinedload_not_uniqued`

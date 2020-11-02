@@ -1,0 +1,6 @@
+.. change::
+    :tags: renamed, engine
+    :tickets: 5244
+
+    The :meth:`_reflection.Inspector.reflecttable` was renamed to
+    :meth:`_reflection.Inspector.reflect_table`.

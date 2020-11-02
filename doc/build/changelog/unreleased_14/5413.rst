@@ -1,0 +1,7 @@
+.. change::
+   :tags: renamed, schema
+   :tickets: 5413
+
+   Renamed the :meth:`_schema.Table.tometadata` method to
+   :meth:`_schema.Table.to_metadata`.  The previous name remains with a
+   deprecation warning.

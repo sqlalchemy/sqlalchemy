@@ -1,0 +1,8 @@
+.. change::
+    :tags: feature, mssql, sql
+    :tickets: 4384
+
+    Added support for the :class:`_types.JSON` datatype on the SQL Server
+    dialect using the :class:`_mssql.JSON` implementation, which implements SQL
+    Server's JSON functionality against the ``NVARCHAR(max)`` datatype as per
+    SQL Server documentation. Implementation courtesy Gord Thompson.

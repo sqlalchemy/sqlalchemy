@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 4262
+
+    Cleaned up the internal ``str()`` for datatypes so that all types produce a
+    string representation without any dialect present, including that it works
+    for third-party dialect types without that dialect being present.  The
+    string representation defaults to being the UPPERCASE name of that type
+    with nothing else.
+

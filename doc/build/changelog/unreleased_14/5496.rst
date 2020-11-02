@@ -1,0 +1,14 @@
+.. change::
+    :tags: usecase, mysql
+    :tickets: 5496
+
+    Added a new dialect token "mariadb" that may be used in place of "mysql" in
+    the :func:`_sa.create_engine` URL.  This will deliver a MariaDB dialect
+    subclass of the MySQLDialect in use that forces the "is_mariadb" flag to
+    True.  The dialect will raise an error if a server version string that does
+    not indicate MariaDB in use is received.   This is useful for
+    MariaDB-specific testing scenarios as well as to support applications that
+    are hardcoding to MariaDB-only concepts.  As MariaDB and MySQL featuresets
+    and usage patterns continue to diverge, this pattern may become more
+    prominent.
+

@@ -1,0 +1,7 @@
+.. change::
+   :tags: orm, removed
+   :tickets: 4642
+
+   Remove the deprecated loader options ``joinedload_all``, ``subqueryload_all``,
+   ``lazyload_all``, ``selectinload_all``. The normal version with method chaining
+   should be used in their place.
