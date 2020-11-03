@@ -1040,7 +1040,7 @@ class DMLWhereBase(object):
 
         """
 
-        for criterion in list(whereclause):
+        for criterion in whereclause:
             where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
             self._where_criteria += (where_criteria,)
 

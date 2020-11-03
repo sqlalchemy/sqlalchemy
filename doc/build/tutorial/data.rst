@@ -24,13 +24,14 @@ The components of this section are as follows:
 
 * :ref:`tutorial_core_insert` - to get some data into the database, we introduce
   and demonstrate the Core :class:`_sql.Insert` construct.   INSERTs from an
-  ORM perspective are described later, at :ref:`tutorial_orm_data_manipulation`.
+  ORM perspective are described in the next section
+  :ref:`tutorial_orm_data_manipulation`.
 
 * :ref:`tutorial_selecting_data` - this section will describe in detail
   the :class:`_sql.Select` construct, which is the most commonly used object
   in SQLAlchemy.  The :class:`_sql.Select` construct emits SELECT statements
   for both Core and ORM centric applications and both use cases will be
-  described here.   Additional ORM use cases are also noted in he later
+  described here.   Additional ORM use cases are also noted in the later
   section :ref:`tutorial_select_relationships` as well as the
   :ref:`queryguide_toplevel`.
 
@@ -64,7 +65,7 @@ new data into a table.
 The insert() SQL Expression Construct
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A simple example of :class:`_sql.Insert` illustrates the target table
+A simple example of :class:`_sql.Insert` illustrating the target table
 and the VALUES clause at once::
 
     >>> from sqlalchemy import insert
@@ -248,16 +249,13 @@ as well as the values for server defaults.   However the RETURNING clause
 may also be specified explicitly using the :meth:`_sql.Insert.returning`
 method; in this case, the :class:`_engine.Result`
 object that's returned when the statement is executed has rows which
-can be fetched.  It is only supported for single-statement
-forms, and for some backends may only support single-row INSERT statements
-overall::
+can be fetched::
 
     >>> insert_stmt = insert(address_table).returning(address_table.c.id, address_table.c.email_address)
     >>> print(insert_stmt)
     {opensql}INSERT INTO address (id, user_id, email_address)
     VALUES (:id, :user_id, :email_address)
     RETURNING address.id, address.email_address
-
 
 It can also be combined with :meth:`_sql.Insert.from_select`,
 as in the example below that builds upon the example stated in
@@ -271,6 +269,27 @@ as in the example below that builds upon the example stated in
     {opensql}INSERT INTO address (user_id, email_address)
     SELECT user_account.id, user_account.name || :name_1 AS anon_1
     FROM user_account RETURNING address.id, address.email_address
+
+.. tip::
+
+    The RETURNING feature is also supported by UPDATE and DELETE statements,
+    which will be introduced later in this tutorial.
+    The RETURNING feature is generally [1]_ only
+    supported for statement executions that use a single set of bound
+    parameters; that is, it wont work with the "executemany" form introduced
+    at :ref:`tutorial_multiple_parameters`.    Additionally, some dialects
+    such as the Oracle dialect only allow RETURNING to return a single row
+    overall, meaning it won't work with "INSERT..FROM SELECT" nor will it
+    work with multiple row :class:`_sql.Update` or :class:`_sql.Delete`
+    forms.
+
+    .. [1] There is internal support for the
+       :mod:`_postgresql.psycopg2` dialect to INSERT many rows at once
+       and also support RETURNING, which is leveraged by the SQLAlchemy
+       ORM.   However this feature has not been generalized to all dialects
+       and is not yet part of SQLAlchemy's regular API.
+
+
 
 .. seealso::
 
@@ -353,6 +372,16 @@ complete entities, such as instances of the ``User`` class, as column values:
     [...] ('spongebob',){stop}
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
     {opensql}ROLLBACK{stop}
+
+.. topic:: select() from a Table vs. ORM class
+
+    While the SQL generated in these examples looks the same whether we invoke
+    ``select(user_table)`` or ``select(User)``, in the more general case
+    they do not necessarily render the same thing, as an ORM-mapped class
+    may be mapped to other kinds of "selectables" besides tables.  The
+    ``select()`` that's against an ORM entity also indicates that ORM-mapped
+    instances should be returned in a result, which is not the case when
+    SELECTing from a :class:`_schema.Table` object.
 
 The following sections will discuss the SELECT construct in more detail.
 
@@ -455,7 +484,7 @@ or ``user_id > 10``, by making use of standard Python operators in
 conjunction with
 :class:`_schema.Column` and similar objects.   For boolean expressions, most
 Python operators such as ``==``, ``!=``, ``<``, ``>=`` etc. generate new
-SQL Expression objects, rather than plain boolean True/False values::
+SQL Expression objects, rather than plain boolean ``True``/``False`` values::
 
     >>> print(user_table.c.name == 'squidward')
     user_account.name = :name_1
@@ -561,9 +590,10 @@ clause::
     {opensql}SELECT user_account.name, address.email_address
     FROM user_account, address
 
-In order to JOIN these two tables together, two methods that are
-most straightforward are :meth:`_sql.Select.join_from`, which
-allows us to indicate the left and right side of the JOIN explicitly::
+In order to JOIN these two tables together, we typically use one of two methods
+on :class:`_sql.Select`.  The first is the :meth:`_sql.Select.join_from`
+method, which allows us to indicate the left and right side of the JOIN
+explicitly::
 
     >>> print(
     ...     select(user_table.c.name, address_table.c.email_address).
@@ -573,7 +603,7 @@ allows us to indicate the left and right side of the JOIN explicitly::
     FROM user_account JOIN address ON user_account.id = address.user_id
 
 
-the other is the :meth:`_sql.Select.join` method, which indicates only the
+The other is the the :meth:`_sql.Select.join` method, which indicates only the
 right side of the JOIN, the left hand-side is inferred::
 
     >>> print(
@@ -586,8 +616,8 @@ right side of the JOIN, the left hand-side is inferred::
 .. sidebar::  The ON Clause is inferred
 
     When using :meth:`_sql.Select.join_from` or :meth:`_sql.Select.join`, we may
-    observe that the ON clause of the join is also inferred for us in simple cases.
-    More on that in the next section.
+    observe that the ON clause of the join is also inferred for us in simple
+    foreign key cases. More on that in the next section.
 
 We also have the option add elements to the FROM clause explicitly, if it is not
 inferred the way we want from the columns clause.  We use the
@@ -621,7 +651,7 @@ produce the SQL ``count()`` function::
 Setting the ON Clause
 ~~~~~~~~~~~~~~~~~~~~~
 
-The previous examples on JOIN illustrated that the :class:`_sql.Select` construct
+The previous examples of JOIN illustrated that the :class:`_sql.Select` construct
 can join between two tables and produce the ON clause automatically.  This
 occurs in those examples because the ``user_table`` and ``address_table``
 :class:`_sql.Table` objects include a single :class:`_schema.ForeignKeyConstraint`
@@ -644,9 +674,10 @@ same SQL Expression mechanics as we saw about in :ref:`tutorial_select_where_cla
 .. container:: orm-header
 
     **ORM Tip** - there's another way to generate the ON clause when using
-    ORM entities as well, when using the :func:`_orm.relationship` construct
-    that can be seen in the mapping set up at :ref:`tutorial_declaring_mapped_classes`.
-    This is a whole subject onto itself, which is introduced more fully
+    ORM entities that make use of the :func:`_orm.relationship` construct,
+    like the mapping set up in the previous section at
+    :ref:`tutorial_declaring_mapped_classes`.
+    This is a whole subject onto itself, which is introduced at length
     at :ref:`tutorial_joining_relationships`.
 
 OUTER and FULL join
@@ -661,16 +692,21 @@ and FULL OUTER JOIN, respectively::
     ...     select(user_table).join(address_table, isouter=True)
     ... )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
-    FROM user_account LEFT OUTER JOIN address ON user_account.id = address.user_id
+    FROM user_account LEFT OUTER JOIN address ON user_account.id = address.user_id{stop}
 
     >>> print(
     ...     select(user_table).join(address_table, full=True)
     ... )
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
-    FROM user_account FULL OUTER JOIN address ON user_account.id = address.user_id
+    FROM user_account FULL OUTER JOIN address ON user_account.id = address.user_id{stop}
 
 There is also a method :meth:`_sql.Select.outerjoin` that is equivalent to
 using ``.join(..., isouter=True)``.
+
+.. tip::
+
+    SQL also has a "RIGHT OUTER JOIN".  SQLAlchemy doesn't render this directly;
+    instead, reverse the order of the tables and use "LEFT OUTER JOIN".
 
 ORDER BY
 ^^^^^^^^^
@@ -706,8 +742,8 @@ value in a set of values.
 SQLAlchemy provides for SQL functions in an open-ended way using a namespace
 known as :data:`_sql.func`.  This is a special constructor object which
 will create new instances of :class:`_functions.Function` when given the name
-of a particular SQL function, which can be any name, as well as zero or
-more arguments to pass to the function, which are like in all other cases
+of a particular SQL function, which can have any name, as well as zero or
+more arguments to pass to the function, which are, like in all other cases,
 SQL Expression constructs.   For example, to
 render the SQL COUNT() function against the ``user_account.id`` column,
 we call upon the name ``count()`` name::
@@ -752,7 +788,7 @@ than one address:
 Ordering or Grouping by a Label
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-An important technique in particular on some database backends is the ability
+An important technique, in particular on some database backends, is the ability
 to ORDER BY or GROUP BY an expression that is already stated in the columns
 clause, without re-stating the expression in the ORDER BY or GROUP BY clause
 and instead using the column name or labeled name from the COLUMNS clause.
@@ -946,6 +982,13 @@ in a "recursive" style, and may in more elaborate cases be composed from the
 RETURNING clause of an INSERT, UPDATE or DELETE statement.  The docstring
 for :class:`_sql.CTE` includes details on these additional patterns.
 
+In both cases, the subquery and CTE were named at the SQL level using an
+"anonymous" name.  In the Python code, we don't need to provide these names
+at all.  The object identity of the :class:`_sql.Subquery` or :class:`_sql.CTE`
+instances serves as the syntactical identity of the object when rendered.
+A name that will be rendered in the SQL can be provided by passing it as the
+first argument of the :meth:`_sql.Select.subquery` or :meth:`_sql.Select.cte` methods.
+
 .. seealso::
 
     :meth:`_sql.Select.subquery` - further detail on subqueries
@@ -1020,11 +1063,6 @@ Another example follows, which is exactly the same except it makes use of the
     User(id=2, name='sandy', fullname='Sandy Cheeks') Address(id=2, email_address='sandy@sqlalchemy.org')
     User(id=2, name='sandy', fullname='Sandy Cheeks') Address(id=3, email_address='sandy@squirrelpower.org')
     {opensql}ROLLBACK{stop}
-
-In both cases, the subquery and CTE were named at the SQL level using an
-"anonymous" name.  In the Python code, we don't need to provide these names
-at all.  The object identity of the :class:`_sql.Subquery` or :class:`_sql.CTE`
-instances serves as the syntactical identity of the object when rendered.
 
 .. _tutorial_scalar_subquery:
 
@@ -1385,7 +1423,8 @@ tuples so that this order may be controlled [1]_::
   {opensql}UPDATE some_table SET y=:y, x=(some_table.y + :y_1)
 
 
-.. [1] While Python dictionaries are `guaranteed to be insert ordered
+.. [1] While Python dictionaries are
+   `guaranteed to be insert ordered
    <https://mail.python.org/pipermail/python-dev/2017-December/151283.html>`_
    as of Python 3.7, the
    :meth:`_sql.Update.ordered_values` method stilll provides an additional
@@ -1403,14 +1442,12 @@ delete rows from a table.
 
 The :func:`_sql.delete` statement from an API perspective is very similar to
 that of the :func:`_sql.update` construct, traditionally returning no rows but
-allowing for a RETURNING variant.
+allowing for a RETURNING variant on some database backends.
 
 ::
 
     >>> from sqlalchemy import delete
-    >>> stmt = (
-    ...     delete(user_table).where(user_table.c.name == 'patrick')
-    ... )
+    >>> stmt = delete(user_table).where(user_table.c.name == 'patrick')
     >>> print(stmt)
     {opensql}DELETE FROM user_account WHERE user_account.name = :name_1
 
@@ -1511,7 +1548,7 @@ be iterated::
     >>> print(update_stmt)
     {opensql}UPDATE user_account SET fullname=:fullname
     WHERE user_account.name = :name_1
-    RETURNING user_account.id, user_account.name
+    RETURNING user_account.id, user_account.name{stop}
 
     >>> delete_stmt = (
     ...     delete(user_table).where(user_table.c.name == 'patrick').
@@ -1520,7 +1557,7 @@ be iterated::
     >>> print(delete_stmt)
     {opensql}DELETE FROM user_account
     WHERE user_account.name = :name_1
-    RETURNING user_account.id, user_account.name
+    RETURNING user_account.id, user_account.name{stop}
 
 Further Reading for UPDATE, DELETE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

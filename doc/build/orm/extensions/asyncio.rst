@@ -1,7 +1,7 @@
 .. _asyncio_toplevel:
 
-asyncio
-=======
+Asynchronous I/O (asyncio)
+==========================
 
 Support for Python asyncio.    Support for Core and ORM usage is
 included, using asyncio-compatible dialects.

@@ -41,7 +41,8 @@ facts:
    driver that SQLAlchemy uses to interact with a particular database.  In
    this case, we're using the name ``pysqlite``, which in modern Python
    use is the `sqlite3 <http://docs.python.org/library/sqlite3.html>`_ standard
-   library interface for SQLite.
+   library interface for SQLite. If omitted, SQLAlchemy will use a default
+   :term:`DBAPI` for the particular database selected.
 
 3. How do we locate the database?   In this case, our URL includes the phrase
    ``/:memory:``, which is an indicator to the ``sqlite3`` module that we

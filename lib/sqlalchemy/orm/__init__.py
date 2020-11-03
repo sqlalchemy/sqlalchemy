@@ -16,6 +16,10 @@ documentation for an overview of how this module is used.
 from . import exc  # noqa
 from . import mapper as mapperlib  # noqa
 from . import strategy_options
+from .attributes import AttributeEvent  # noqa
+from .attributes import InstrumentedAttribute  # noqa
+from .attributes import QueryableAttribute  # noqa
+from .context import QueryContext  # noqa
 from .decl_api import as_declarative  # noqa
 from .decl_api import declarative_base  # noqa
 from .decl_api import declared_attr  # noqa
@@ -24,14 +28,21 @@ from .decl_api import registry  # noqa
 from .decl_api import synonym_for  # noqa
 from .descriptor_props import CompositeProperty  # noqa
 from .descriptor_props import SynonymProperty  # noqa
+from .identity import IdentityMap  # noqa
+from .instrumentation import ClassManager  # noqa
 from .interfaces import EXT_CONTINUE  # noqa
 from .interfaces import EXT_SKIP  # noqa
 from .interfaces import EXT_STOP  # noqa
+from .interfaces import InspectionAttr  # noqa
+from .interfaces import InspectionAttrInfo  # noqa
 from .interfaces import MANYTOMANY  # noqa
 from .interfaces import MANYTOONE  # noqa
 from .interfaces import MapperProperty  # noqa
+from .interfaces import NOT_EXTENSION  # noqa
 from .interfaces import ONETOMANY  # noqa
 from .interfaces import PropComparator  # noqa
+from .loading import merge_frozen_result  # noqa
+from .loading import merge_result  # noqa
 from .mapper import _mapper_registry
 from .mapper import class_mapper  # noqa
 from .mapper import configure_mappers  # noqa
@@ -54,9 +65,13 @@ from .session import ORMExecuteState  # noqa
 from .session import Session  # noqa
 from .session import sessionmaker  # noqa
 from .session import SessionTransaction  # noqa
+from .state import AttributeState  # noqa
+from .state import InstanceState  # noqa
 from .strategy_options import Load  # noqa
+from .unitofwork import UOWTransaction  # noqa
 from .util import aliased  # noqa
 from .util import Bundle  # noqa
+from .util import CascadeOptions  # noqa
 from .util import join  # noqa
 from .util import LoaderCriteriaOption  # noqa
 from .util import object_mapper  # noqa

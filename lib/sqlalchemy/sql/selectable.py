@@ -4988,7 +4988,7 @@ class Select(
 
         assert isinstance(self._where_criteria, tuple)
 
-        for criterion in list(whereclause):
+        for criterion in whereclause:
             where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
             self._where_criteria += (where_criteria,)
 

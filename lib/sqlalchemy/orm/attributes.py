@@ -512,7 +512,7 @@ OP_BULK_REPLACE = util.symbol("BULK_REPLACE")
 OP_MODIFIED = util.symbol("MODIFIED")
 
 
-class Event(object):
+class AttributeEvent(object):
     """A token propagated throughout the course of a chain of attribute
     events.
 
@@ -549,7 +549,7 @@ class Event(object):
 
     def __eq__(self, other):
         return (
-            isinstance(other, Event)
+            isinstance(other, AttributeEvent)
             and other.impl is self.impl
             and other.op == self.op
         )
@@ -560,6 +560,9 @@ class Event(object):
 
     def hasparent(self, state):
         return self.impl.hasparent(state)
+
+
+Event = AttributeEvent
 
 
 class AttributeImpl(object):

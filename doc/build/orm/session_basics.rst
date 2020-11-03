@@ -556,7 +556,7 @@ Core :class:`_sql.Update` construct::
 
     from sqlalchemy import update
 
-    stmt = update(User).where(User.nane == "squidward").values(name="spongebob")).\
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob")).\
         execution_options(synchronize_session="fetch")
 
     session.execute(stmt)
@@ -570,14 +570,14 @@ within the :class:`_orm.Session` will be marked as deleted and expunged.
 
 ORM-enabled delete, :term:`1.x style`::
 
-    session.query(User).filter(User.nane == "squidward").\
+    session.query(User).filter(User.name == "squidward").\
         delete(synchronize_session="fetch")
 
 ORM-enabled delete, :term:`2.0 style`::
 
     from sqlalchemy import delete
 
-    stmt = delete(User).where(User.nane == "squidward").execution_options(synchronize_session="fetch")
+    stmt = delete(User).where(User.name == "squidward").execution_options(synchronize_session="fetch")
 
     session.execute(stmt)
 
