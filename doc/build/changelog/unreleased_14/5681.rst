@@ -1,0 +1,9 @@
+.. change::
+    :tags: platform, performance
+    :tickets: 5681
+
+    Adjusted some elements related to internal class production at import time
+    which added significant latency to the time spent to import the library vs.
+    that of 1.3.   The time is now about 20-30% slower than 1.3 instead of
+    200%.
+
