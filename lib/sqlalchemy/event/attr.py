@@ -127,10 +127,8 @@ class _ClsLevelDispatch(RefCollection):
             raise exc.InvalidRequestError(
                 "Can't assign an event directly to the %s class" % target
             )
-        stack = [target]
-        while stack:
-            cls = stack.pop(0)
-            stack.extend(cls.__subclasses__())
+
+        for cls in util.walk_subclasses(target):
             if cls is not target and cls not in self._clslevel:
                 self.update_subclass(cls)
             else:
@@ -148,10 +146,7 @@ class _ClsLevelDispatch(RefCollection):
             raise exc.InvalidRequestError(
                 "Can't assign an event directly to the %s class" % target
             )
-        stack = [target]
-        while stack:
-            cls = stack.pop(0)
-            stack.extend(cls.__subclasses__())
+        for cls in util.walk_subclasses(target):
             if cls is not target and cls not in self._clslevel:
                 self.update_subclass(cls)
             else:
@@ -178,10 +173,7 @@ class _ClsLevelDispatch(RefCollection):
 
     def remove(self, event_key):
         target = event_key.dispatch_target
-        stack = [target]
-        while stack:
-            cls = stack.pop(0)
-            stack.extend(cls.__subclasses__())
+        for cls in util.walk_subclasses(target):
             if cls in self._clslevel:
                 self._clslevel[cls].remove(event_key._listen_fn)
         registry._removed_from_collection(event_key, self)

@@ -10,6 +10,7 @@ modules, classes, hierarchies, attributes, functions, and methods.
 
 """
 
+import collections
 from functools import update_wrapper
 import hashlib
 import inspect
@@ -81,6 +82,20 @@ class safe_reraise(object):
                 )
             self._exc_info = None  # remove potential circular references
             compat.raise_(value, with_traceback=traceback)
+
+
+def walk_subclasses(cls):
+    seen = set()
+
+    stack = [cls]
+    while stack:
+        cls = stack.pop()
+        if cls in seen:
+            continue
+        else:
+            seen.add(cls)
+        stack.extend(cls.__subclasses__())
+        yield cls
 
 
 def string_or_unprintable(element):
@@ -1782,15 +1797,22 @@ def inject_docstring_text(doctext, injecttext, pos):
     return "\n".join(lines)
 
 
+_param_reg = re.compile(r"(\s+):param (.+?):")
+
+
 def inject_param_text(doctext, inject_params):
-    doclines = doctext.splitlines()
+    doclines = collections.deque(doctext.splitlines())
     lines = []
+
+    # TODO: this is not working for params like ":param case_sensitive=True:"
 
     to_inject = None
     while doclines:
-        line = doclines.pop(0)
+        line = doclines.popleft()
+
+        m = _param_reg.match(line)
+
         if to_inject is None:
-            m = re.match(r"(\s+):param (.+?):", line)
             if m:
                 param = m.group(2).lstrip("*")
                 if param in inject_params:
@@ -1805,23 +1827,16 @@ def inject_param_text(doctext, inject_params):
                             indent = " " * len(m2.group(1))
 
                     to_inject = indent + inject_params[param]
-        elif line.lstrip().startswith(":param "):
-            lines.append("\n")
-            lines.append(to_inject)
-            lines.append("\n")
+        elif m:
+            lines.extend(["\n", to_inject, "\n"])
             to_inject = None
         elif not line.rstrip():
-            lines.append(line)
-            lines.append(to_inject)
-            lines.append("\n")
+            lines.extend([line, to_inject, "\n"])
             to_inject = None
         elif line.endswith("::"):
             # TODO: this still wont cover if the code example itself has blank
             # lines in it, need to detect those via indentation.
-            lines.append(line)
-            lines.append(
-                doclines.pop(0)
-            )  # the blank line following a code example
+            lines.extend([line, doclines.popleft()])
             continue
         lines.append(line)
 

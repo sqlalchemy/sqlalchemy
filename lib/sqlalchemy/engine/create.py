@@ -92,7 +92,7 @@ def create_engine(url, **kwargs):
 
         :ref:`connections_toplevel`
 
-    :param case_sensitive=True: if False, result column names
+    :param case_sensitive: if False, result column names
        will match in a case-insensitive fashion, that is,
        ``row['SomeColumn']``.
 

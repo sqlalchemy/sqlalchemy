@@ -864,7 +864,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
 
         from sqlalchemy.orm.context import ORMCompileState
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 # NOTE: this test was broken in
