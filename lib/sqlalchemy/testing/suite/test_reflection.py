@@ -1326,13 +1326,17 @@ class NormalizedNameTest(fixtures.TablesTest):
 
     def test_reflect_lowercase_forced_tables(self):
 
-        m2 = MetaData(testing.db)
-        t2_ref = Table(quoted_name("t2", quote=True), m2, autoload=True)
+        m2 = MetaData()
+        t2_ref = Table(
+            quoted_name("t2", quote=True), m2, autoload_with=testing.db
+        )
         t1_ref = m2.tables["t1"]
         assert t2_ref.c.t1id.references(t1_ref.c.id)
 
-        m3 = MetaData(testing.db)
-        m3.reflect(only=lambda name, m: name.lower() in ("t1", "t2"))
+        m3 = MetaData()
+        m3.reflect(
+            testing.db, only=lambda name, m: name.lower() in ("t1", "t2")
+        )
         assert m3.tables["t2"].c.t1id.references(m3.tables["t1"].c.id)
 
     def test_get_table_names(self):

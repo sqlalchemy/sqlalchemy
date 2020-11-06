@@ -81,8 +81,8 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             sa.event.listen(metadata, "before_drop", sa.DDL(ddl))
 
     def test_foreign_table_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("test_foreigntable", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("test_foreigntable", metadata, autoload_with=testing.db)
         eq_(
             set(table.columns.keys()),
             set(["id", "data"]),
@@ -221,8 +221,8 @@ class MaterializedViewReflectionTest(
         )
 
     def test_mview_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("test_mview", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("test_mview", metadata, autoload_with=testing.db)
         eq_(
             set(table.columns.keys()),
             set(["id", "data"]),
@@ -230,9 +230,10 @@ class MaterializedViewReflectionTest(
         )
 
     def test_mview_select(self):
-        metadata = MetaData(testing.db)
-        table = Table("test_mview", metadata, autoload=True)
-        eq_(table.select().execute().fetchall(), [(89, "d1")])
+        metadata = MetaData()
+        table = Table("test_mview", metadata, autoload_with=testing.db)
+        with testing.db.connect() as conn:
+            eq_(conn.execute(table.select()).fetchall(), [(89, "d1")])
 
     def test_get_view_names(self):
         insp = inspect(testing.db)
@@ -349,8 +350,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
     def test_table_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("testtable", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("testtable", metadata, autoload_with=testing.db)
         eq_(
             set(table.columns.keys()),
             set(["question", "answer"]),
@@ -359,8 +360,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         assert isinstance(table.c.answer.type, Integer)
 
     def test_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("testtable", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("testtable", metadata, autoload_with=testing.db)
         eq_(
             str(table.columns.answer.server_default.arg),
             "42",
@@ -371,25 +372,28 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         ), "Expected reflected column to not be nullable."
 
     def test_enum_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("enum_test", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("enum_test", metadata, autoload_with=testing.db)
         eq_(table.c.data.type.enums, ["test"])
 
     def test_array_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("array_test", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("array_test", metadata, autoload_with=testing.db)
         eq_(table.c.data.type.__class__, ARRAY)
         eq_(table.c.data.type.item_type.__class__, INTEGER)
 
     def test_quoted_remote_schema_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("quote_test", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("quote_test", metadata, autoload_with=testing.db)
         eq_(table.c.data.type.__class__, INTEGER)
 
     def test_table_is_reflected_test_schema(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
         table = Table(
-            "testtable", metadata, autoload=True, schema="test_schema"
+            "testtable",
+            metadata,
+            autoload_with=testing.db,
+            schema="test_schema",
         )
         eq_(
             set(table.columns.keys()),
@@ -399,9 +403,12 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         assert isinstance(table.c.anything.type, Integer)
 
     def test_schema_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
         table = Table(
-            "testtable", metadata, autoload=True, schema="test_schema"
+            "testtable",
+            metadata,
+            autoload_with=testing.db,
+            schema="test_schema",
         )
         eq_(
             str(table.columns.answer.server_default.arg),
@@ -413,8 +420,8 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         ), "Expected reflected column to be nullable."
 
     def test_crosschema_domain_is_reflected(self):
-        metadata = MetaData(testing.db)
-        table = Table("crosschema", metadata, autoload=True)
+        metadata = MetaData()
+        table = Table("crosschema", metadata, autoload_with=testing.db)
         eq_(
             str(table.columns.answer.server_default.arg),
             "0",
@@ -430,13 +437,15 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         ischema_names = base.PGDialect.ischema_names
         base.PGDialect.ischema_names = {}
         try:
-            m2 = MetaData(testing.db)
-            assert_raises(exc.SAWarning, Table, "testtable", m2, autoload=True)
+            m2 = MetaData()
+            assert_raises(
+                exc.SAWarning, Table, "testtable", m2, autoload_with=testing.db
+            )
 
             @testing.emits_warning("Did not recognize type")
             def warns():
-                m3 = MetaData(testing.db)
-                t3 = Table("testtable", m3, autoload=True)
+                m3 = MetaData()
+                t3 = Table("testtable", m3, autoload_with=testing.db)
                 assert t3.c.answer.type.__class__ == sa.types.NullType
 
         finally:
@@ -461,8 +470,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             PrimaryKeyConstraint("p2", "p1"),
         )
         meta1.create_all()
-        meta2 = MetaData(testing.db)
-        subject = Table("subject", meta2, autoload=True)
+        meta2 = MetaData()
+        subject = Table("subject", meta2, autoload_with=testing.db)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
 
     @testing.provide_metadata
@@ -478,9 +487,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("ref", Integer, ForeignKey("subject.id$")),
         )
         meta1.create_all()
-        meta2 = MetaData(testing.db)
-        subject = Table("subject", meta2, autoload=True)
-        referer = Table("referer", meta2, autoload=True)
+        meta2 = MetaData()
+        subject = Table("subject", meta2, autoload_with=testing.db)
+        referer = Table("referer", meta2, autoload_with=testing.db)
         self.assert_(
             (subject.c["id$"] == referer.c.ref).compare(
                 subject.join(referer).onclause
@@ -496,7 +505,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         ).create(testing.db)
 
         m = MetaData()
-        t = Table("t", m, autoload=True, autoload_with=testing.db)
+        t = Table("t", m, autoload_with=testing.db)
         eq_(
             t.c.x.server_default.arg.text,
             "'%s'::character varying" % ("abcd" * 40),
@@ -507,23 +516,25 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_renamed_sequence_reflection(self):
         metadata = self.metadata
         Table("t", metadata, Column("id", Integer, primary_key=True))
-        metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table("t", m2, autoload=True, implicit_returning=False)
+        metadata.create_all(testing.db)
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=testing.db, implicit_returning=False)
         eq_(t2.c.id.server_default.arg.text, "nextval('t_id_seq'::regclass)")
-        r = t2.insert().execute()
-        eq_(r.inserted_primary_key, (1,))
+        with testing.db.begin() as conn:
+            r = conn.execute(t2.insert())
+            eq_(r.inserted_primary_key, (1,))
         testing.db.connect().execution_options(
             autocommit=True
         ).exec_driver_sql("alter table t_id_seq rename to foobar_id_seq")
-        m3 = MetaData(testing.db)
-        t3 = Table("t", m3, autoload=True, implicit_returning=False)
+        m3 = MetaData()
+        t3 = Table("t", m3, autoload_with=testing.db, implicit_returning=False)
         eq_(
             t3.c.id.server_default.arg.text,
             "nextval('foobar_id_seq'::regclass)",
         )
-        r = t3.insert().execute()
-        eq_(r.inserted_primary_key, (2,))
+        with testing.db.begin() as conn:
+            r = conn.execute(t3.insert())
+            eq_(r.inserted_primary_key, (2,))
 
     @testing.provide_metadata
     def test_altered_type_autoincrement_pk_reflection(self):
@@ -538,8 +549,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         testing.db.connect().execution_options(
             autocommit=True
         ).exec_driver_sql("alter table t alter column id type varchar(50)")
-        m2 = MetaData(testing.db)
-        t2 = Table("t", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=testing.db)
         eq_(t2.c.id.autoincrement, False)
         eq_(t2.c.x.autoincrement, False)
 
@@ -551,8 +562,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         testing.db.connect().execution_options(
             autocommit=True
         ).exec_driver_sql("alter table t rename id to t_id")
-        m2 = MetaData(testing.db)
-        t2 = Table("t", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t", m2, autoload_with=testing.db)
         eq_([c.name for c in t2.primary_key], ["t_id"])
 
     @testing.provide_metadata
@@ -589,9 +600,12 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             schema="test_schema",
         )
         meta1.create_all()
-        meta2 = MetaData(testing.db)
+        meta2 = MetaData()
         addresses = Table(
-            "email_addresses", meta2, autoload=True, schema="test_schema"
+            "email_addresses",
+            meta2,
+            autoload_with=testing.db,
+            schema="test_schema",
         )
         users = Table("users", meta2, must_exist=True, schema="test_schema")
         j = join(users, addresses)
@@ -613,9 +627,11 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             schema="test_schema",
         )
         meta1.create_all()
-        meta2 = MetaData(testing.db)
-        subject = Table("subject", meta2, autoload=True)
-        referer = Table("referer", meta2, schema="test_schema", autoload=True)
+        meta2 = MetaData()
+        subject = Table("subject", meta2, autoload_with=testing.db)
+        referer = Table(
+            "referer", meta2, schema="test_schema", autoload_with=testing.db
+        )
         self.assert_(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
@@ -639,11 +655,13 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             schema="test_schema",
         )
         meta1.create_all()
-        meta2 = MetaData(testing.db)
+        meta2 = MetaData()
         subject = Table(
-            "subject", meta2, autoload=True, schema="test_schema_2"
+            "subject", meta2, autoload_with=testing.db, schema="test_schema_2"
         )
-        referer = Table("referer", meta2, autoload=True, schema="test_schema")
+        referer = Table(
+            "referer", meta2, autoload_with=testing.db, schema="test_schema"
+        )
         self.assert_(
             (subject.c.id == referer.c.ref).compare(
                 subject.join(referer).onclause
@@ -675,14 +693,14 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         subject = Table(
             "subject",
             meta2,
-            autoload=True,
+            autoload_with=testing.db,
             schema="test_schema_2",
             postgresql_ignore_search_path=True,
         )
         referer = Table(
             "referer",
             meta2,
-            autoload=True,
+            autoload_with=testing.db,
             schema="test_schema",
             postgresql_ignore_search_path=True,
         )
@@ -710,18 +728,18 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         meta1.create_all()
 
-        meta2 = MetaData(testing.db)
+        meta2 = MetaData()
         subject = Table(
             "subject",
             meta2,
-            autoload=True,
+            autoload_with=testing.db,
             schema=default_schema,
             postgresql_ignore_search_path=True,
         )
         referer = Table(
             "referer",
             meta2,
-            autoload=True,
+            autoload_with=testing.db,
             schema=default_schema,
             postgresql_ignore_search_path=True,
         )
@@ -759,30 +777,33 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
                 "set search_path to test_schema_2, test_schema, public"
             )
 
-            m1 = MetaData(conn)
+            m1 = MetaData()
 
-            Table("some_table", m1, schema="test_schema", autoload=True)
+            Table("some_table", m1, schema="test_schema", autoload_with=conn)
             t2_schema = Table(
-                "some_other_table", m1, schema="test_schema_2", autoload=True
+                "some_other_table",
+                m1,
+                schema="test_schema_2",
+                autoload_with=conn,
             )
 
-            t2_no_schema = Table("some_other_table", m1, autoload=True)
+            t2_no_schema = Table("some_other_table", m1, autoload_with=conn)
 
-            t1_no_schema = Table("some_table", m1, autoload=True)
+            t1_no_schema = Table("some_table", m1, autoload_with=conn)
 
-            m2 = MetaData(conn)
+            m2 = MetaData()
             t1_schema_isp = Table(
                 "some_table",
                 m2,
                 schema="test_schema",
-                autoload=True,
+                autoload_with=conn,
                 postgresql_ignore_search_path=True,
             )
             t2_schema_isp = Table(
                 "some_other_table",
                 m2,
                 schema="test_schema_2",
-                autoload=True,
+                autoload_with=conn,
                 postgresql_ignore_search_path=True,
             )
 
@@ -929,8 +950,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             )
 
         def go():
-            m2 = MetaData(testing.db)
-            t2 = Table("party", m2, autoload=True)
+            m2 = MetaData()
+            t2 = Table("party", m2, autoload_with=testing.db)
             assert len(t2.indexes) == 2
 
             # Make sure indexes are in the order we expect them in
@@ -1039,7 +1060,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         # reflect data
         with testing.db.connect() as conn:
             m2 = MetaData(conn)
-            t2 = Table("party", m2, autoload=True)
+            t2 = Table("party", m2, autoload_with=testing.db)
 
         eq_(len(t2.indexes), 3)
 
@@ -1515,7 +1536,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             "t", self.metadata, Column("x", postgresql.ENUM(name="empty"))
         ).create(testing.db)
 
-        t = Table("t", MetaData(testing.db), autoload_with=testing.db)
+        t = Table("t", MetaData(), autoload_with=testing.db)
         eq_(t.c.x.type.enums, [])
 
     @testing.provide_metadata
@@ -1544,7 +1565,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_("uc_a" in constraints)
 
         # reflection corrects for the dupe
-        reflected = Table("pgsql_uc", MetaData(testing.db), autoload=True)
+        reflected = Table("pgsql_uc", MetaData(), autoload_with=testing.db)
 
         indexes = set(i.name for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)
@@ -1585,7 +1606,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(insp.get_indexes("t"), expected)
 
         # reflection corrects for the dupe
-        reflected = Table("t", MetaData(testing.db), autoload=True)
+        reflected = Table("t", MetaData(), autoload_with=testing.db)
 
         eq_(set(reflected.indexes), set())
 
@@ -1615,7 +1636,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert indexes["ix_a"]["unique"]
         self.assert_("ix_a" not in constraints)
 
-        reflected = Table("pgsql_uc", MetaData(testing.db), autoload=True)
+        reflected = Table("pgsql_uc", MetaData(), autoload_with=testing.db)
 
         indexes = dict((i.name, i) for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)

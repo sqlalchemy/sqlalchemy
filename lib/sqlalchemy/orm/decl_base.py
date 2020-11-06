@@ -635,6 +635,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                         else:
                             args = table_args
 
+                autoload_with = dict_.get("__autoload_with__")
+                if autoload_with:
+                    table_kw["autoload_with"] = autoload_with
+
                 autoload = dict_.get("__autoload__")
                 if autoload:
                     table_kw["autoload"] = True

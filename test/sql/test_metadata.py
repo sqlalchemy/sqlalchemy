@@ -198,8 +198,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             Column("col2", String(20)),
         )
 
-        metadata.create_all()
-        Table("table1", metadata, autoload=True)
+        metadata.create_all(testing.db)
+        Table("table1", metadata, autoload_with=testing.db)
 
         def go():
             Table(
@@ -706,8 +706,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             tsa.exc.NoSuchTableError,
             Table,
             "fake_table",
-            MetaData(testing.db),
-            autoload=True,
+            MetaData(),
+            autoload_with=testing.db,
         )
 
     def test_assorted_repr(self):
@@ -829,10 +829,10 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         def test_pickle_via_reflect():
             # this is the most common use case, pickling the results of a
             # database reflection
-            meta2 = MetaData(bind=testing.db)
-            t1 = Table("mytable", meta2, autoload=True)
-            Table("othertable", meta2, autoload=True)
-            Table("has_comments", meta2, autoload=True)
+            meta2 = MetaData()
+            t1 = Table("mytable", meta2, autoload_with=testing.db)
+            Table("othertable", meta2, autoload_with=testing.db)
+            Table("has_comments", meta2, autoload_with=testing.db)
             meta3 = pickle.loads(pickle.dumps(meta2))
             assert meta3.bind is None
             assert meta3.tables["mytable"] is not t1
@@ -2438,18 +2438,21 @@ class UseExistingTest(fixtures.TablesTest):
 
     @testing.fixture
     def existing_meta(self):
-        meta2 = MetaData(testing.db)
-        Table("users", meta2, autoload=True)
+        meta2 = MetaData()
+        Table("users", meta2, autoload_with=testing.db)
         return meta2
 
     @testing.fixture
     def empty_meta(self):
-        return MetaData(testing.db)
+        return MetaData()
 
     def test_exception_no_flags(self, existing_meta):
         def go():
             Table(
-                "users", existing_meta, Column("name", Unicode), autoload=True
+                "users",
+                existing_meta,
+                Column("name", Unicode),
+                autoload_with=testing.db,
             )
 
         assert_raises_message(
@@ -2517,7 +2520,10 @@ class UseExistingTest(fixtures.TablesTest):
 
     def test_autoload_replace_column(self, empty_meta):
         users = Table(
-            "users", empty_meta, Column("name", Unicode), autoload=True
+            "users",
+            empty_meta,
+            Column("name", Unicode),
+            autoload_with=testing.db,
         )
         assert isinstance(users.c.name.type, Unicode)
 
@@ -2526,7 +2532,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             Column("name", Unicode),
-            autoload=True,
+            autoload_with=testing.db,
             keep_existing=True,
         )
         assert not isinstance(users.c.name.type, Unicode)
@@ -2536,7 +2542,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             quote=True,
-            autoload=True,
+            autoload_with=testing.db,
             keep_existing=True,
         )
         assert not users.name.quote
@@ -2546,7 +2552,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             Column("foo", Integer),
-            autoload=True,
+            autoload_with=testing.db,
             keep_existing=True,
         )
         assert "foo" not in users.c
@@ -2556,7 +2562,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             empty_meta,
             Column("name", Unicode),
-            autoload=True,
+            autoload_with=testing.db,
             keep_existing=True,
         )
         assert isinstance(users.c.name.type, Unicode)
@@ -2567,7 +2573,11 @@ class UseExistingTest(fixtures.TablesTest):
     )
     def test_keep_existing_quote_no_orig(self, empty_meta):
         users = Table(
-            "users", empty_meta, quote=True, autoload=True, keep_existing=True
+            "users",
+            empty_meta,
+            quote=True,
+            autoload_with=testing.db,
+            keep_existing=True,
         )
         assert users.name.quote
 
@@ -2576,7 +2586,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             empty_meta,
             Column("foo", Integer),
-            autoload=True,
+            autoload_with=testing.db,
             keep_existing=True,
         )
         assert "foo" in users.c
@@ -2602,7 +2612,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             Column("name", Unicode),
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
         assert isinstance(users.c.name.type, Unicode)
@@ -2615,7 +2625,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             quote=True,
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
 
@@ -2624,7 +2634,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             existing_meta,
             Column("foo", Integer),
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
         assert "foo" in users.c
@@ -2634,7 +2644,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             empty_meta,
             Column("name", Unicode),
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
         assert isinstance(users.c.name.type, Unicode)
@@ -2648,7 +2658,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             empty_meta,
             quote=True,
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
         assert users.name.quote
@@ -2658,7 +2668,7 @@ class UseExistingTest(fixtures.TablesTest):
             "users",
             empty_meta,
             Column("foo", Integer),
-            autoload=True,
+            autoload_with=testing.db,
             extend_existing=True,
         )
         assert "foo" in users.c

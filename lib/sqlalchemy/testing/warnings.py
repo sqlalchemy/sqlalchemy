@@ -58,8 +58,6 @@ def setup_filters():
         "dictionaries only.",
         r"The Connection.connect\(\) method is considered legacy",
         r".*DefaultGenerator.execute\(\)",
-        r"The autoload parameter is deprecated and will be removed ",
-        #
         #
         # bound metadaa
         #

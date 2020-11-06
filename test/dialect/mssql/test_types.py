@@ -537,9 +537,6 @@ class TypeDDLTest(fixtures.TestBase):
             self.assert_(repr(col))
 
 
-metadata = None
-
-
 class TypeRoundTripTest(
     fixtures.TestBase, AssertsExecutionResults, ComparesTables
 ):
@@ -547,15 +544,9 @@ class TypeRoundTripTest(
 
     __backend__ = True
 
-    @classmethod
-    def setup_class(cls):
-        global metadata
-        metadata = MetaData(testing.db)
-
-    def teardown(self):
-        metadata.drop_all()
-
+    @testing.provide_metadata
     def test_decimal_notation(self):
+        metadata = self.metadata
         numeric_table = Table(
             "numeric_table",
             metadata,
@@ -645,7 +636,10 @@ class TypeRoundTripTest(
                 )
                 eq_(value, returned)
 
+    @testing.provide_metadata
     def test_float(self):
+        metadata = self.metadata
+
         float_table = Table(
             "float_table",
             metadata,
@@ -696,6 +690,7 @@ class TypeRoundTripTest(
 
     # todo this should suppress warnings, but it does not
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
+    @testing.provide_metadata
     def test_dates(self):
         "Exercise type specification for date types."
 
@@ -727,6 +722,8 @@ class TypeRoundTripTest(
             (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", [">=", (10,)]),
         ]
 
+        metadata = self.metadata
+
         table_args = ["test_mssql_dates", metadata]
         for index, spec in enumerate(columns):
             type_, args, kw, res, requires = spec[0:5]
@@ -751,7 +748,7 @@ class TypeRoundTripTest(
             self.assert_(repr(col))
         dates_table.create(checkfirst=True)
         reflected_dates = Table(
-            "test_mssql_dates", MetaData(testing.db), autoload=True
+            "test_mssql_dates", MetaData(), autoload_with=testing.db
         )
         for col in reflected_dates.c:
             self.assert_types_base(col, dates_table.c[col.key])
@@ -915,7 +912,12 @@ class TypeRoundTripTest(
 
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
     @testing.provide_metadata
-    def _test_binary_reflection(self, deprecate_large_types):
+    @testing.combinations(
+        ("legacy_large_types", False),
+        ("sql2012_large_types", True, lambda: testing.only_on("mssql >= 11")),
+        id_="ia",
+    )
+    def test_binary_reflection(self, deprecate_large_types):
         "Exercise type specification for binary types."
 
         columns = [
@@ -951,7 +953,7 @@ class TypeRoundTripTest(
         binary_table = Table(*table_args)
         metadata.create_all()
         reflected_binary = Table(
-            "test_mssql_binary", MetaData(testing.db), autoload=True
+            "test_mssql_binary", MetaData(), autoload_with=testing.db
         )
         for col, spec in zip(reflected_binary.c, columns):
             eq_(
@@ -976,14 +978,9 @@ class TypeRoundTripTest(
                     col.type.length, binary_table.c[col.name].type.length
                 )
 
-    def test_binary_reflection_legacy_large_types(self):
-        self._test_binary_reflection(False)
-
-    @testing.only_on("mssql >= 11")
-    def test_binary_reflection_sql2012_large_types(self):
-        self._test_binary_reflection(True)
-
+    @testing.provide_metadata
     def test_autoincrement(self):
+        metadata = self.metadata
         Table(
             "ai_1",
             metadata,
@@ -1046,10 +1043,10 @@ class TypeRoundTripTest(
             "ai_7",
             "ai_8",
         ]
-        mr = MetaData(testing.db)
+        mr = MetaData()
 
         for name in table_names:
-            tbl = Table(name, mr, autoload=True)
+            tbl = Table(name, mr, autoload_with=testing.db)
             tbl = metadata.tables[name]
 
             # test that the flag itself reflects appropriately

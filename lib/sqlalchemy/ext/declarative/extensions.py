@@ -449,7 +449,6 @@ class DeferredReflection(object):
             table.metadata,
             extend_existing=True,
             autoload_replace=False,
-            autoload=True,
             autoload_with=inspector,
             schema=table.schema,
         )

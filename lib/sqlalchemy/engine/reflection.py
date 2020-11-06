@@ -966,7 +966,6 @@ class Inspector(object):
                     sa_schema.Table(
                         referred_table,
                         table.metadata,
-                        autoload=True,
                         schema=referred_schema,
                         autoload_with=self.bind,
                         _extend_on=_extend_on,
@@ -981,7 +980,6 @@ class Inspector(object):
                     sa_schema.Table(
                         referred_table,
                         table.metadata,
-                        autoload=True,
                         autoload_with=self.bind,
                         schema=sa_schema.BLANK_SCHEMA,
                         _extend_on=_extend_on,

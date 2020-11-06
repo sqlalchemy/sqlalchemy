@@ -69,10 +69,10 @@ class TypeReflectionTest(fixtures.TestBase):
             )
         m.create_all()
 
-        m2 = MetaData(testing.db)
-        tables = [Table("mysql_types", m2, autoload=True)]
+        m2 = MetaData()
+        tables = [Table("mysql_types", m2, autoload_with=testing.db)]
         if use_views:
-            tables.append(Table("mysql_types_v", m2, autoload=True))
+            tables.append(Table("mysql_types_v", m2, autoload_with=testing.db))
 
         for table in tables:
             for i, (reflected_col, spec) in enumerate(zip(table.c, specs)):
@@ -238,7 +238,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         def_table = Table(
             "mysql_def",
-            MetaData(testing.db),
+            MetaData(),
             Column(
                 "c1",
                 VARCHAR(10, collation="utf8_unicode_ci"),
@@ -259,11 +259,14 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 ),
             ),
         )
-        def_table.create()
+
+        def_table.create(testing.db)
         try:
-            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
+            reflected = Table(
+                "mysql_def", MetaData(), autoload_with=testing.db
+            )
         finally:
-            def_table.drop()
+            def_table.drop(testing.db)
         assert def_table.c.c1.server_default.arg == ""
         assert def_table.c.c2.server_default.arg == "0"
         assert def_table.c.c3.server_default.arg == "abc"
@@ -281,13 +284,13 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
             str(reflected.c.c6.server_default.arg).upper(),
         )
-        reflected.create()
+        reflected.create(testing.db)
         try:
             reflected2 = Table(
-                "mysql_def", MetaData(testing.db), autoload=True
+                "mysql_def", MetaData(), autoload_with=testing.db
             )
         finally:
-            reflected.drop()
+            reflected.drop(testing.db)
         assert str(reflected2.c.c1.server_default.arg) == "''"
         assert str(reflected2.c.c2.server_default.arg) == "'0'"
         assert str(reflected2.c.c3.server_default.arg) == "'abc'"
@@ -325,17 +328,18 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         def_table = Table(
             "mysql_def",
-            MetaData(testing.db),
+            MetaData(),
             Column("c1", Integer()),
             comment=comment,
             **kwargs
         )
 
-        def_table.create()
-        try:
-            reflected = Table("mysql_def", MetaData(testing.db), autoload=True)
-        finally:
-            def_table.drop()
+        with testing.db.connect() as conn:
+            def_table.create(conn)
+            try:
+                reflected = Table("mysql_def", MetaData(), autoload_with=conn)
+            finally:
+                def_table.drop(conn)
 
         if testing.against("mariadb"):
             assert def_table.kwargs["mariadb_engine"] == "MEMORY"
@@ -382,153 +386,153 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             # This is explicitly ignored when reflecting schema.
             # assert reflected.kwargs['mysql_auto_increment'] == '5'
 
+    @testing.provide_metadata
     def test_reflection_on_include_columns(self):
         """Test reflection of include_columns to be sure they respect case."""
 
+        meta = self.metadata
         case_table = Table(
             "mysql_case",
-            MetaData(testing.db),
+            meta,
             Column("c1", String(10)),
             Column("C2", String(10)),
             Column("C3", String(10)),
         )
 
-        try:
-            case_table.create()
-            reflected = Table(
-                "mysql_case",
-                MetaData(testing.db),
-                autoload=True,
-                include_columns=["c1", "C2"],
-            )
-            for t in case_table, reflected:
-                assert "c1" in t.c.keys()
-                assert "C2" in t.c.keys()
-            reflected2 = Table(
-                "mysql_case",
-                MetaData(testing.db),
-                autoload=True,
-                include_columns=["c1", "c2"],
-            )
-            assert "c1" in reflected2.c.keys()
-            for c in ["c2", "C2", "C3"]:
-                assert c not in reflected2.c.keys()
-        finally:
-            case_table.drop()
+        case_table.create(testing.db)
+        reflected = Table(
+            "mysql_case",
+            MetaData(),
+            autoload_with=testing.db,
+            include_columns=["c1", "C2"],
+        )
+        for t in case_table, reflected:
+            assert "c1" in t.c.keys()
+            assert "C2" in t.c.keys()
+        reflected2 = Table(
+            "mysql_case",
+            MetaData(),
+            autoload_with=testing.db,
+            include_columns=["c1", "c2"],
+        )
+        assert "c1" in reflected2.c.keys()
+        for c in ["c2", "C2", "C3"]:
+            assert c not in reflected2.c.keys()
 
+    @testing.provide_metadata
     def test_autoincrement(self):
-        meta = MetaData(testing.db)
-        try:
-            Table(
-                "ai_1",
-                meta,
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                Column("int_n", Integer, DefaultClause("0"), primary_key=True),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_2",
-                meta,
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                Column("int_n", Integer, DefaultClause("0"), primary_key=True),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_3",
-                meta,
-                Column(
-                    "int_n",
-                    Integer,
-                    DefaultClause("0"),
-                    primary_key=True,
-                    autoincrement=False,
-                ),
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_4",
-                meta,
-                Column(
-                    "int_n",
-                    Integer,
-                    DefaultClause("0"),
-                    primary_key=True,
-                    autoincrement=False,
-                ),
-                Column(
-                    "int_n2",
-                    Integer,
-                    DefaultClause("0"),
-                    primary_key=True,
-                    autoincrement=False,
-                ),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_5",
-                meta,
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                Column(
-                    "int_n",
-                    Integer,
-                    DefaultClause("0"),
-                    primary_key=True,
-                    autoincrement=False,
-                ),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_6",
-                meta,
-                Column("o1", String(1), DefaultClause("x"), primary_key=True),
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_7",
-                meta,
-                Column("o1", String(1), DefaultClause("x"), primary_key=True),
-                Column("o2", String(1), DefaultClause("x"), primary_key=True),
-                Column("int_y", Integer, primary_key=True, autoincrement=True),
-                mysql_engine="MyISAM",
-            )
-            Table(
-                "ai_8",
-                meta,
-                Column("o1", String(1), DefaultClause("x"), primary_key=True),
-                Column("o2", String(1), DefaultClause("x"), primary_key=True),
-                mysql_engine="MyISAM",
-            )
-            meta.create_all()
+        meta = self.metadata
+        Table(
+            "ai_1",
+            meta,
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_2",
+            meta,
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_3",
+            meta,
+            Column(
+                "int_n",
+                Integer,
+                DefaultClause("0"),
+                primary_key=True,
+                autoincrement=False,
+            ),
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_4",
+            meta,
+            Column(
+                "int_n",
+                Integer,
+                DefaultClause("0"),
+                primary_key=True,
+                autoincrement=False,
+            ),
+            Column(
+                "int_n2",
+                Integer,
+                DefaultClause("0"),
+                primary_key=True,
+                autoincrement=False,
+            ),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_5",
+            meta,
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            Column(
+                "int_n",
+                Integer,
+                DefaultClause("0"),
+                primary_key=True,
+                autoincrement=False,
+            ),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_6",
+            meta,
+            Column("o1", String(1), DefaultClause("x"), primary_key=True),
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_7",
+            meta,
+            Column("o1", String(1), DefaultClause("x"), primary_key=True),
+            Column("o2", String(1), DefaultClause("x"), primary_key=True),
+            Column("int_y", Integer, primary_key=True, autoincrement=True),
+            mysql_engine="MyISAM",
+        )
+        Table(
+            "ai_8",
+            meta,
+            Column("o1", String(1), DefaultClause("x"), primary_key=True),
+            Column("o2", String(1), DefaultClause("x"), primary_key=True),
+            mysql_engine="MyISAM",
+        )
+        meta.create_all(testing.db)
 
-            table_names = [
-                "ai_1",
-                "ai_2",
-                "ai_3",
-                "ai_4",
-                "ai_5",
-                "ai_6",
-                "ai_7",
-                "ai_8",
-            ]
-            mr = MetaData(testing.db)
-            mr.reflect(only=table_names)
+        table_names = [
+            "ai_1",
+            "ai_2",
+            "ai_3",
+            "ai_4",
+            "ai_5",
+            "ai_6",
+            "ai_7",
+            "ai_8",
+        ]
+        mr = MetaData()
+        mr.reflect(testing.db, only=table_names)
 
+        with testing.db.begin() as conn:
             for tbl in [mr.tables[name] for name in table_names]:
                 for c in tbl.c:
                     if c.name.startswith("int_y"):
                         assert c.autoincrement
                     elif c.name.startswith("int_n"):
                         assert not c.autoincrement
-                tbl.insert().execute()
+                conn.execute(tbl.insert())
                 if "int_y" in tbl.c:
-                    assert select(tbl.c.int_y).scalar() == 1
-                    assert list(tbl.select().execute().first()).count(1) == 1
+                    assert conn.scalar(select(tbl.c.int_y)) == 1
+                    assert (
+                        list(conn.execute(tbl.select()).first()).count(1) == 1
+                    )
                 else:
-                    assert 1 not in list(tbl.select().execute().first())
-        finally:
-            meta.drop_all()
+                    assert 1 not in list(conn.execute(tbl.select()).first())
 
     @testing.provide_metadata
     def test_view_reflection(self):
@@ -734,7 +738,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # reflection here favors the unique index, as that's the
         # more "official" MySQL construct
-        reflected = Table("mysql_uc", MetaData(testing.db), autoload=True)
+        reflected = Table("mysql_uc", MetaData(), autoload_with=testing.db)
 
         indexes = dict((i.name, i) for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)

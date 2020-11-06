@@ -81,12 +81,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
         meta2 = MetaData()
         reflected_users = Table(
-            "engine_users", meta2, autoload=True, autoload_with=testing.db
+            "engine_users", meta2, autoload_with=testing.db
         )
         reflected_addresses = Table(
             "engine_email_addresses",
             meta2,
-            autoload=True,
             autoload_with=testing.db,
         )
         self.assert_tables_equal(users, reflected_users)
@@ -147,8 +146,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         ):
             table.create()
 
-        meta2 = MetaData(testing.db)
-        table2 = Table("identity_test", meta2, autoload=True)
+        meta2 = MetaData()
+        table2 = Table("identity_test", meta2, autoload_with=testing.db)
         eq_(table2.c["col1"].dialect_options["mssql"]["identity_start"], None)
         eq_(
             table2.c["col1"].dialect_options["mssql"]["identity_increment"],
@@ -372,7 +371,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             "bar",
             m2,
             schema=referred_schema,
-            autoload=True,
             autoload_with=testing.db,
         )
         eq_(m2.tables["%s.foo" % referred_schema].schema, referred_schema)
@@ -386,7 +384,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata.create_all()
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload=True, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=testing.db)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x"], t2.c.y]))
 
@@ -404,7 +402,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata.create_all()
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload=True, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=testing.db)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x, col"], t2.c.y]))
 
@@ -422,7 +420,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         metadata.create_all()
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload=True, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=testing.db)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x col"], t2.c.y]))
 

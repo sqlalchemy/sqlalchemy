@@ -7,7 +7,6 @@ from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
@@ -2029,28 +2028,26 @@ class DeclarativeTest(DeclarativeTestBase):
         assert Bar.__mapper__.primary_key[0] is Bar.__table__.c.id
         assert Bar.__mapper__.primary_key[1] is Bar.__table__.c.ex
 
+    @testing.provide_metadata
     def test_with_explicit_autoloaded(self):
-        meta = MetaData(testing.db)
+        meta = self.metadata
         t1 = Table(
             "t1",
             meta,
             Column("id", String(50), primary_key=True),
             Column("data", String(50)),
         )
-        meta.create_all()
-        try:
+        meta.create_all(testing.db)
 
-            class MyObj(Base):
+        class MyObj(Base):
 
-                __table__ = Table("t1", Base.metadata, autoload=True)
+            __table__ = Table("t1", Base.metadata, autoload_with=testing.db)
 
-            sess = create_session()
-            m = MyObj(id="someid", data="somedata")
-            sess.add(m)
-            sess.flush()
-            eq_(t1.select().execute().fetchall(), [("someid", "somedata")])
-        finally:
-            meta.drop_all()
+        sess = create_session()
+        m = MyObj(id="someid", data="somedata")
+        sess.add(m)
+        sess.flush()
+        eq_(t1.select().execute().fetchall(), [("someid", "somedata")])
 
     def test_synonym_for(self):
         class User(Base, fixtures.ComparableEntity):

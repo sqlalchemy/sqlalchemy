@@ -486,8 +486,8 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
         Table("t_defaults", m, *columns)
         try:
             m.create_all()
-            m2 = MetaData(db)
-            rt = Table("t_defaults", m2, autoload=True)
+            m2 = MetaData()
+            rt = Table("t_defaults", m2, autoload_with=db)
             expected = [c[1] for c in specs]
             for i, reflected in enumerate(rt.c):
                 eq_(str(reflected.server_default.arg), expected[i])
@@ -505,7 +505,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_default_reflection_2(self):
 
         db = testing.db
-        m = MetaData(db)
+        m = MetaData()
         expected = ["'my_default'", "0"]
         table = """CREATE TABLE r_defaults (
             data VARCHAR(40) DEFAULT 'my_default',
@@ -513,7 +513,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             )"""
         try:
             exec_sql(db, table)
-            rt = Table("r_defaults", m, autoload=True)
+            rt = Table("r_defaults", m, autoload_with=db)
             for i, reflected in enumerate(rt.c):
                 eq_(str(reflected.server_default.arg), expected[i])
         finally:
@@ -527,12 +527,12 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             )"""
         try:
             exec_sql(db, table)
-            m1 = MetaData(db)
-            t1 = Table("r_defaults", m1, autoload=True)
+            m1 = MetaData()
+            t1 = Table("r_defaults", m1, autoload_with=db)
             exec_sql(db, "DROP TABLE r_defaults")
-            t1.create()
-            m2 = MetaData(db)
-            t2 = Table("r_defaults", m2, autoload=True)
+            t1.create(db)
+            m2 = MetaData()
+            t2 = Table("r_defaults", m2, autoload_with=db)
             self.assert_compile(
                 CreateTable(t2),
                 "CREATE TABLE r_defaults (data VARCHAR(40) "
@@ -672,8 +672,10 @@ class DialectTest(
         )
         """,
         )
-        table1 = Table("django_admin_log", metadata, autoload=True)
-        table2 = Table("django_content_type", metadata, autoload=True)
+        table1 = Table("django_admin_log", metadata, autoload_with=testing.db)
+        table2 = Table(
+            "django_content_type", metadata, autoload_with=testing.db
+        )
         j = table1.join(table2)
         assert j.onclause.compare(table1.c.content_type_id == table2.c.id)
 
@@ -708,13 +710,8 @@ class DialectTest(
         # )
         # ''')
 
-        table1 = Table(r'"a"', metadata, autoload=True)
+        table1 = Table(r'"a"', metadata, autoload_with=testing.db)
         assert '"id"' in table1.c
-
-        # table2 = Table(r'"b"', metadata, autoload=True)
-        # j = table1.join(table2)
-        # assert j.onclause.compare(table1.c['"id"']
-        #        == table2.c['"aid"'])
 
     @testing.provide_metadata
     def test_description_encoding(self, connection):
@@ -915,7 +912,6 @@ class AttachedDBTest(fixtures.TestBase):
         alt_master = Table(
             "sqlite_master",
             meta,
-            autoload=True,
             autoload_with=self.conn,
             schema="test_schema",
         )
@@ -925,7 +921,7 @@ class AttachedDBTest(fixtures.TestBase):
         self._fixture()
 
         m2 = MetaData()
-        c2 = Table("created", m2, autoload=True, autoload_with=self.conn)
+        c2 = Table("created", m2, autoload_with=self.conn)
         eq_(len(c2.c), 2)
 
     def test_crud(self):
@@ -1518,7 +1514,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     @classmethod
     def setup_class(cls):
         global metadata, cattable, matchtable
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
         exec_sql(
             testing.db,
             """
@@ -1529,7 +1525,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         """,
         )
-        cattable = Table("cattable", metadata, autoload=True)
+        cattable = Table("cattable", metadata, autoload_with=testing.db)
         exec_sql(
             testing.db,
             """
@@ -1541,39 +1537,47 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         """,
         )
-        matchtable = Table("matchtable", metadata, autoload=True)
-        metadata.create_all()
-        cattable.insert().execute(
-            [
-                {"id": 1, "description": "Python"},
-                {"id": 2, "description": "Ruby"},
-            ]
-        )
-        matchtable.insert().execute(
-            [
-                {
-                    "id": 1,
-                    "title": "Agile Web Development with Rails",
-                    "category_id": 2,
-                },
-                {"id": 2, "title": "Dive Into Python", "category_id": 1},
-                {
-                    "id": 3,
-                    "title": "Programming Matz's Ruby",
-                    "category_id": 2,
-                },
-                {
-                    "id": 4,
-                    "title": "The Definitive Guide to Django",
-                    "category_id": 1,
-                },
-                {"id": 5, "title": "Python in a Nutshell", "category_id": 1},
-            ]
-        )
+        matchtable = Table("matchtable", metadata, autoload_with=testing.db)
+        with testing.db.begin() as conn:
+            metadata.create_all(conn)
+
+            conn.execute(
+                cattable.insert(),
+                [
+                    {"id": 1, "description": "Python"},
+                    {"id": 2, "description": "Ruby"},
+                ],
+            )
+            conn.execute(
+                matchtable.insert(),
+                [
+                    {
+                        "id": 1,
+                        "title": "Agile Web Development with Rails",
+                        "category_id": 2,
+                    },
+                    {"id": 2, "title": "Dive Into Python", "category_id": 1},
+                    {
+                        "id": 3,
+                        "title": "Programming Matz's Ruby",
+                        "category_id": 2,
+                    },
+                    {
+                        "id": 4,
+                        "title": "The Definitive Guide to Django",
+                        "category_id": 1,
+                    },
+                    {
+                        "id": 5,
+                        "title": "Python in a Nutshell",
+                        "category_id": 1,
+                    },
+                ],
+            )
 
     @classmethod
     def teardown_class(cls):
-        metadata.drop_all()
+        metadata.drop_all(testing.db)
 
     def test_expression(self):
         self.assert_compile(
@@ -1582,46 +1586,38 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=sqlite.dialect(),
         )
 
-    def test_simple_match(self):
-        results = (
+    def test_simple_match(self, connection):
+        results = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("python"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([2, 5], [r.id for r in results])
 
-    def test_simple_prefix_match(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match("nut*"))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_prefix_match(self, connection):
+        results = connection.execute(
+            matchtable.select().where(matchtable.c.title.match("nut*"))
+        ).fetchall()
         eq_([5], [r.id for r in results])
 
-    def test_or_match(self):
-        results2 = (
+    def test_or_match(self, connection):
+        results2 = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("nutshell OR ruby"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([3, 5], [r.id for r in results2])
 
-    def test_and_match(self):
-        results2 = (
-            matchtable.select()
-            .where(matchtable.c.title.match("python nutshell"))
-            .execute()
-            .fetchall()
-        )
+    def test_and_match(self, connection):
+        results2 = connection.execute(
+            matchtable.select().where(
+                matchtable.c.title.match("python nutshell")
+            )
+        ).fetchall()
         eq_([5], [r.id for r in results2])
 
-    def test_match_across_joins(self):
-        results = (
+    def test_match_across_joins(self, connection):
+        results = connection.execute(
             matchtable.select()
             .where(
                 and_(
@@ -1630,9 +1626,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             )
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([1, 3], [r.id for r in results])
 
 
@@ -1718,8 +1712,8 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
 
     def test_reflect_tables_fk_no_colref(self):
         meta = MetaData()
-        a = Table("a", meta, autoload=True, autoload_with=testing.db)
-        b = Table("b", meta, autoload=True, autoload_with=testing.db)
+        a = Table("a", meta, autoload_with=testing.db)
+        b = Table("b", meta, autoload_with=testing.db)
 
         assert b.c.id.references(a.c.id)
 
