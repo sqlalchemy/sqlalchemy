@@ -98,6 +98,7 @@ class DefaultDialect(interfaces.Dialect):
             ("pool_recycle", util.asint),
             ("pool_size", util.asint),
             ("max_overflow", util.asint),
+            ("future", util.asbool),
         ]
     )
 

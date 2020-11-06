@@ -394,6 +394,30 @@ class CreateEngineTest(fixtures.TestBase):
         )
         assert e.echo is True
 
+    def test_engine_from_config_future(self):
+        dbapi = mock_dbapi
+
+        config = {
+            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "?fooz=somevalue",
+            "sqlalchemy.future": "true",
+        }
+
+        e = engine_from_config(config, module=dbapi, _initialize=False)
+        assert e._is_future
+
+    def test_engine_from_config_not_future(self):
+        dbapi = mock_dbapi
+
+        config = {
+            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "?fooz=somevalue",
+            "sqlalchemy.future": "false",
+        }
+
+        e = engine_from_config(config, module=dbapi, _initialize=False)
+        assert not e._is_future
+
     def test_pool_reset_on_return_from_config(self):
         dbapi = mock_dbapi
 

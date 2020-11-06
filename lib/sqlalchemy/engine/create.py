@@ -601,7 +601,7 @@ def create_engine(url, **kwargs):
         pool._dialect = dialect
 
     # create engine.
-    if kwargs.pop("future", False):
+    if pop_kwarg("future", False):
         from sqlalchemy import future
 
         default_engine_class = future.Engine
