@@ -170,22 +170,31 @@ def public_factory(target, location, class_location=None):
     class can serve as documentation for the function.
 
     """
+
     if isinstance(target, type):
         fn = target.__init__
         callable_ = target
         doc = (
-            "Construct a new :class:`.%s` object. \n\n"
+            "Construct a new :class:`%s` object. \n\n"
             "This constructor is mirrored as a public API function; "
             "see :func:`sqlalchemy%s` "
             "for a full usage and argument description."
-            % (target.__name__, location)
+            % (
+                class_location if class_location else ".%s" % target.__name__,
+                location,
+            )
         )
+        linked_to_target = target
     else:
         fn = callable_ = target
         doc = (
             "This function is mirrored; see :func:`sqlalchemy%s` "
             "for a description of arguments." % location
         )
+        if compat.py2k or hasattr(fn, "__func__"):
+            linked_to_target = fn.__func__
+        else:
+            linked_to_target = fn
 
     location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
@@ -202,8 +211,9 @@ def %(name)s(%(args)s):
     env = {"cls": callable_, "symbol": symbol}
     exec(code, env)
     decorated = env[location_name]
-    if hasattr(fn, "_linked_to"):
-        linked_to, linked_to_location = fn._linked_to
+
+    if hasattr(linked_to_target, "_linked_to"):
+        linked_to, linked_to_location = linked_to_target._linked_to
         linked_to_doc = linked_to.__doc__
         if class_location is None:
             class_location = "%s.%s" % (target.__module__, target.__name__)
@@ -211,9 +221,11 @@ def %(name)s(%(args)s):
         linked_to_doc = inject_docstring_text(
             linked_to_doc,
             ".. container:: inherited_member\n\n    "
-            "Inherited from :func:`sqlalchemy%s`; this constructor "
-            "creates a :class:`%s` object"
-            % (linked_to_location, class_location),
+            "This documentation is inherited from :func:`sqlalchemy%s`; "
+            "this constructor, :func:`sqlalchemy%s`,   "
+            "creates a :class:`sqlalchemy%s` object.  See that class for "
+            "additional details describing this subclass."
+            % (linked_to_location, location, class_location),
             1,
         )
         decorated.__doc__ = linked_to_doc
@@ -226,14 +238,15 @@ def %(name)s(%(args)s):
             "public_factory location %s is not in sys.modules"
             % (decorated.__module__,)
         )
+
+    if not hasattr(linked_to_target, "_linked_to"):
+        linked_to_target._linked_to = (decorated, location)
+
     if compat.py2k or hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
-        if not hasattr(fn.__func__, "_linked_to"):
-            fn.__func__._linked_to = (decorated, location)
     else:
         fn.__doc__ = doc
-        if not hasattr(fn, "_linked_to"):
-            fn._linked_to = (decorated, location)
+
     return decorated
 
 
