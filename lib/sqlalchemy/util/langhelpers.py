@@ -184,17 +184,12 @@ def public_factory(target, location, class_location=None):
                 location,
             )
         )
-        linked_to_target = target
     else:
         fn = callable_ = target
         doc = (
             "This function is mirrored; see :func:`sqlalchemy%s` "
             "for a description of arguments." % location
         )
-        if compat.py2k or hasattr(fn, "__func__"):
-            linked_to_target = fn.__func__
-        else:
-            linked_to_target = fn
 
     location_name = location.split(".")[-1]
     spec = compat.inspect_getfullargspec(fn)
@@ -212,8 +207,8 @@ def %(name)s(%(args)s):
     exec(code, env)
     decorated = env[location_name]
 
-    if hasattr(linked_to_target, "_linked_to"):
-        linked_to, linked_to_location = linked_to_target._linked_to
+    if hasattr(fn, "_linked_to"):
+        linked_to, linked_to_location = fn._linked_to
         linked_to_doc = linked_to.__doc__
         if class_location is None:
             class_location = "%s.%s" % (target.__module__, target.__name__)
@@ -239,13 +234,14 @@ def %(name)s(%(args)s):
             % (decorated.__module__,)
         )
 
-    if not hasattr(linked_to_target, "_linked_to"):
-        linked_to_target._linked_to = (decorated, location)
-
     if compat.py2k or hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
+        if not hasattr(fn.__func__, "_linked_to"):
+            fn.__func__._linked_to = (decorated, location)
     else:
         fn.__doc__ = doc
+        if not hasattr(fn, "_linked_to"):
+            fn._linked_to = (decorated, location)
 
     return decorated
 
