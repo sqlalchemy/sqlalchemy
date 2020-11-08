@@ -30,6 +30,8 @@ class Insert(StandardInsert):
 
     """
 
+    stringify_dialect = "postgresql"
+
     @util.memoized_property
     def excluded(self):
         """Provide the ``excluded`` namespace for an ON CONFLICT statement
@@ -149,6 +151,8 @@ insert = public_factory(
 
 
 class OnConflictClause(ClauseElement):
+    stringify_dialect = "postgresql"
+
     def __init__(self, constraint=None, index_elements=None, index_where=None):
 
         if constraint is not None:

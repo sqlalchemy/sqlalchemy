@@ -4268,6 +4268,40 @@ class StringifySpecialTest(fixtures.TestBase):
             "use some_hint",
         )
 
+    def test_dialect_specific_sql(self):
+        my_table = table(
+            "my_table", column("id"), column("data"), column("user_email")
+        )
+
+        from sqlalchemy.dialects.postgresql import insert
+
+        insert_stmt = insert(my_table).values(
+            id="some_existing_id", data="inserted value"
+        )
+
+        do_update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=["id"], set_=dict(data="updated value")
+        )
+        eq_ignore_whitespace(
+            str(do_update_stmt),
+            "INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s) "
+            "ON CONFLICT (id) DO UPDATE SET data = %(param_1)s",
+        )
+
+    def test_dialect_specific_ddl(self):
+
+        from sqlalchemy.dialects.postgresql import ExcludeConstraint
+
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("room", Integer, primary_key=True))
+        cons = ExcludeConstraint(("room", "="))
+        tbl.append_constraint(cons)
+
+        eq_ignore_whitespace(
+            str(schema.AddConstraint(cons)),
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+        )
+
 
 class KwargPropagationTest(fixtures.TestBase):
     @classmethod
