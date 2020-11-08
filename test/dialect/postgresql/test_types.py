@@ -273,8 +273,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 (3, util.u("S’il")),
             ],
         )
-        m2 = MetaData(testing.db)
-        t2 = Table("table", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("table", m2, autoload_with=testing.db)
         eq_(
             t2.c.value.type.enums,
             [util.u("réveillé"), util.u("drôle"), util.u("S’il")],
@@ -671,8 +671,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             Column("value2", etype),
         )
         metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table("table", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("table", m2, autoload_with=testing.db)
         eq_(t2.c.value.type.enums, ["one", "two", "three"])
         eq_(t2.c.value.type.name, "onetwothreetype")
         eq_(t2.c.value2.type.enums, ["four", "five", "six"])
@@ -706,8 +706,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             Column("value2", etype),
         )
         metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table("table", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("table", m2, autoload_with=testing.db)
         eq_(t2.c.value.type.enums, ["one", "two", "three"])
         eq_(t2.c.value.type.name, "onetwothreetype")
         eq_(t2.c.value2.type.enums, ["four", "five", "six"])
@@ -821,7 +821,11 @@ class OIDTest(fixtures.TestBase):
         )
         metadata.create_all()
         m2 = MetaData()
-        t2 = Table("table", m2, autoload_with=testing.db, autoload=True)
+        t2 = Table(
+            "table",
+            m2,
+            autoload_with=testing.db,
+        )
         assert isinstance(t2.c.y.type, postgresql.OID)
 
 
@@ -1071,8 +1075,8 @@ class TimePrecisionTest(fixtures.TestBase):
             Column("c6", postgresql.TIMESTAMP(timezone=True, precision=5)),
         )
         t1.create()
-        m2 = MetaData(testing.db)
-        t2 = Table("t1", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t1", m2, autoload_with=testing.db)
         eq_(t2.c.c1.type.precision, None)
         eq_(t2.c.c2.type.precision, 5)
         eq_(t2.c.c3.type.precision, 5)
@@ -1380,8 +1384,8 @@ class ArrayRoundTripTest(object):
             conn.execute(table.insert(), intarr=[4, 5, 6])
 
     def test_reflect_array_column(self):
-        metadata2 = MetaData(testing.db)
-        tbl = Table("arrtable", metadata2, autoload=True)
+        metadata2 = MetaData()
+        tbl = Table("arrtable", metadata2, autoload_with=testing.db)
         assert isinstance(tbl.c.intarr.type, self.ARRAY)
         assert isinstance(tbl.c.strarr.type, self.ARRAY)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
@@ -2156,8 +2160,8 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         special_types_table.c.year_interval.type = postgresql.INTERVAL()
         special_types_table.c.month_interval.type = postgresql.INTERVAL()
 
-        m = MetaData(testing.db)
-        t = Table("sometable", m, autoload=True)
+        m = MetaData()
+        t = Table("sometable", m, autoload_with=testing.db)
 
         self.assert_tables_equal(special_types_table, t, strict_types=True)
         assert t.c.plain_interval.type.precision is None
@@ -2190,8 +2194,8 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             Column("bitvarying5", postgresql.BIT(5, varying=True)),
         )
         t1.create()
-        m2 = MetaData(testing.db)
-        t2 = Table("t1", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t1", m2, autoload_with=testing.db)
         eq_(t2.c.bit1.type.length, 1)
         eq_(t2.c.bit1.type.varying, False)
         eq_(t2.c.bit5.type.length, 5)

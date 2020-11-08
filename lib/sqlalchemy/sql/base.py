@@ -875,7 +875,9 @@ class Executable(Generative):
         """Compile and execute this :class:`.Executable`."""
         e = self.bind
         if e is None:
-            label = getattr(self, "description", self.__class__.__name__)
+            label = (
+                getattr(self, "description", None) or self.__class__.__name__
+            )
             msg = (
                 "This %s is not directly bound to a Connection or Engine. "
                 "Use the .execute() method of a Connection or Engine "

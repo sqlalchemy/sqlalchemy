@@ -4,12 +4,12 @@ from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import decl_api as decl
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -20,7 +20,7 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
     def setup(self):
         global Base, registry
 
-        registry = decl.registry(metadata=MetaData(bind=testing.db))
+        registry = decl.registry(metadata=MetaData())
         Base = registry.generate_base()
 
     def teardown(self):
@@ -66,13 +66,13 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = "users"
-            __autoload__ = True
+            __autoload_with__ = testing.db
             addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = "addresses"
-            __autoload__ = True
+            __autoload_with__ = testing.db
 
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
@@ -98,14 +98,14 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = "users"
-            __autoload__ = True
+            __autoload_with__ = testing.db
             nom = Column("name", String(50), key="nom")
             addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = "addresses"
-            __autoload__ = True
+            __autoload_with__ = testing.db
 
         u1 = User(
             nom="u1", addresses=[Address(email="one"), Address(email="two")]
@@ -133,7 +133,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         class User(fixtures.ComparableMixin):
 
             __tablename__ = "users"
-            __autoload__ = True
+            __autoload_with__ = testing.db
             nom = Column("name", String(50), key="nom")
             addresses = relationship("Address", backref="user")
 
@@ -141,7 +141,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         class Address(fixtures.ComparableMixin):
 
             __tablename__ = "addresses"
-            __autoload__ = True
+            __autoload_with__ = testing.db
 
         u1 = User(
             nom="u1", addresses=[Address(email="one"), Address(email="two")]
@@ -168,13 +168,13 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         class IMHandle(Base, fixtures.ComparableEntity):
 
             __tablename__ = "imhandles"
-            __autoload__ = True
+            __autoload_with__ = testing.db
             user_id = Column("user_id", Integer, ForeignKey("users.id"))
 
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = "users"
-            __autoload__ = True
+            __autoload_with__ = testing.db
             handles = relationship("IMHandle", backref="user")
 
         u1 = User(

@@ -246,8 +246,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(engine)
-        table = Table(table.name, m2, autoload=True)
+        m2 = MetaData()
+        table = Table(table.name, m2, autoload_with=engine)
 
         with self.sql_execution_asserter(engine) as asserter:
             with engine.connect() as conn:
@@ -386,8 +386,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(engine)
-        table = Table(table.name, m2, autoload=True)
+        m2 = MetaData()
+        table = Table(table.name, m2, autoload_with=engine)
 
         with self.sql_execution_asserter(engine) as asserter:
             with engine.connect() as conn:
@@ -632,8 +632,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         # test the same series of events using a reflected version of
         # the table
 
-        m2 = MetaData(engine)
-        table = Table(table.name, m2, autoload=True)
+        m2 = MetaData()
+        table = Table(table.name, m2, autoload_with=engine)
         with engine.connect() as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 

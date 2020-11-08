@@ -66,8 +66,8 @@ class QuoteExecTest(fixtures.TestBase):
         table2.drop()
 
     def test_reflect(self):
-        meta2 = MetaData(testing.db)
-        t2 = Table("WorstCase1", meta2, autoload=True, quote=True)
+        meta2 = MetaData()
+        t2 = Table("WorstCase1", meta2, autoload_with=testing.db, quote=True)
         assert "lowercase" in t2.c
 
         # indicates the DB returns unquoted names as

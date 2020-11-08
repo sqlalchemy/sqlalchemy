@@ -313,42 +313,47 @@ class TypesTest(fixtures.TestBase):
             Column("numbercol2", oracle.NUMBER(9, 3)),
             Column("numbercol3", oracle.NUMBER),
         )
-        t1.create()
-        t1.insert().execute(
-            intcol=1,
-            numericcol=5.2,
-            floatcol1=6.5,
-            floatcol2=8.5,
-            doubleprec=9.5,
-            numbercol1=12,
-            numbercol2=14.85,
-            numbercol3=15.76,
-        )
+        with testing.db.begin() as conn:
+            t1.create(conn)
+            conn.execute(
+                t1.insert(),
+                dict(
+                    intcol=1,
+                    numericcol=5.2,
+                    floatcol1=6.5,
+                    floatcol2=8.5,
+                    doubleprec=9.5,
+                    numbercol1=12,
+                    numbercol2=14.85,
+                    numbercol3=15.76,
+                ),
+            )
 
-        m2 = MetaData(testing.db)
-        t2 = Table("t1", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t1", m2, autoload_with=testing.db)
 
-        for row in (
-            t1.select().execute().first(),
-            t2.select().execute().first(),
-        ):
-            for i, (val, type_) in enumerate(
-                (
-                    (1, int),
-                    (decimal.Decimal("5.2"), decimal.Decimal),
-                    (6.5, float),
-                    (8.5, float),
-                    (9.5, float),
-                    (12, int),
-                    (decimal.Decimal("14.85"), decimal.Decimal),
-                    (15.76, float),
-                )
+        with testing.db.connect() as conn:
+            for row in (
+                conn.execute(t1.select()).first(),
+                conn.execute(t2.select()).first(),
             ):
-                eq_(row[i], val)
-                assert isinstance(row[i], type_), "%r is not %r" % (
-                    row[i],
-                    type_,
-                )
+                for i, (val, type_) in enumerate(
+                    (
+                        (1, int),
+                        (decimal.Decimal("5.2"), decimal.Decimal),
+                        (6.5, float),
+                        (8.5, float),
+                        (9.5, float),
+                        (12, int),
+                        (decimal.Decimal("14.85"), decimal.Decimal),
+                        (15.76, float),
+                    )
+                ):
+                    eq_(row[i], val)
+                    assert isinstance(row[i], type_), "%r is not %r" % (
+                        row[i],
+                        type_,
+                    )
 
     @testing.provide_metadata
     def test_numeric_infinity_float(self, connection):
@@ -743,8 +748,8 @@ class TypesTest(fixtures.TestBase):
             Column("d5", oracle.INTERVAL(second_precision=5)),
         )
         metadata.create_all()
-        m = MetaData(testing.db)
-        t1 = Table("date_types", m, autoload=True)
+        m = MetaData()
+        t1 = Table("date_types", m, autoload_with=testing.db)
         assert isinstance(t1.c.d1.type, oracle.DATE)
         assert isinstance(t1.c.d1.type, DateTime)
         assert isinstance(t1.c.d2.type, oracle.DATE)
@@ -758,10 +763,10 @@ class TypesTest(fixtures.TestBase):
     def _dont_test_reflect_all_types_schema(self):
         types_table = Table(
             "all_types",
-            MetaData(testing.db),
+            MetaData(),
             Column("owner", String(30), primary_key=True),
             Column("type_name", String(30), primary_key=True),
-            autoload=True,
+            autoload_with=testing.db,
             oracle_resolve_synonyms=True,
         )
         for row in types_table.select().execute().fetchall():
@@ -790,8 +795,8 @@ class TypesTest(fixtures.TestBase):
             Column("c_data", sqltypes.NCHAR(20)),
         )
         metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table("tnv", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("tnv", m2, autoload_with=testing.db)
         assert isinstance(t2.c.nv_data.type, sqltypes.NVARCHAR)
         assert isinstance(t2.c.c_data.type, sqltypes.NCHAR)
 
@@ -820,8 +825,8 @@ class TypesTest(fixtures.TestBase):
         metadata = self.metadata
         Table("tnv", metadata, Column("data", sqltypes.Unicode(255)))
         metadata.create_all()
-        m2 = MetaData(testing.db)
-        t2 = Table("tnv", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("tnv", m2, autoload_with=testing.db)
         assert isinstance(t2.c.data.type, sqltypes.VARCHAR)
 
         if testing.against("oracle+cx_oracle"):
@@ -831,10 +836,11 @@ class TypesTest(fixtures.TestBase):
             )
 
         data = u("m’a réveillé.")
-        t2.insert().execute(data=data)
-        res = t2.select().execute().first()["data"]
-        eq_(res, data)
-        assert isinstance(res, util.text_type)
+        with testing.db.begin() as conn:
+            conn.execute(t2.insert(), {"data": data})
+            res = conn.execute(t2.select()).first().data
+            eq_(res, data)
+            assert isinstance(res, util.text_type)
 
     @testing.provide_metadata
     def test_char_length(self):
@@ -848,8 +854,8 @@ class TypesTest(fixtures.TestBase):
             Column("c4", NCHAR(180)),
         )
         t1.create()
-        m2 = MetaData(testing.db)
-        t2 = Table("t1", m2, autoload=True)
+        m2 = MetaData()
+        t2 = Table("t1", m2, autoload_with=testing.db)
         eq_(t2.c.c1.type.length, 50)
         eq_(t2.c.c2.type.length, 250)
         eq_(t2.c.c3.type.length, 200)
