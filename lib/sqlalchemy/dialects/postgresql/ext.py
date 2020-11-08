@@ -52,6 +52,8 @@ class aggregate_order_by(expression.ColumnElement):
 
     __visit_name__ = "aggregate_order_by"
 
+    stringify_dialect = "postgresql"
+
     def __init__(self, target, *order_by):
         self.target = coercions.expect(roles.ExpressionElementRole, target)
 
@@ -95,6 +97,8 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     __visit_name__ = "exclude_constraint"
 
     where = None
+
+    create_drop_stringify_dialect = "postgresql"
 
     @elements._document_text_coercion(
         "where",

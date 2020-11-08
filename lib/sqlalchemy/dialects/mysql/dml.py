@@ -22,6 +22,8 @@ class Insert(StandardInsert):
 
     """
 
+    stringify_dialect = "mysql"
+
     @property
     def inserted(self):
         """Provide the "inserted" namespace for an ON DUPLICATE KEY UPDATE statement
@@ -119,6 +121,8 @@ class OnDuplicateClause(ClauseElement):
     __visit_name__ = "on_duplicate_key_update"
 
     _parameter_ordering = None
+
+    stringify_dialect = "mysql"
 
     def __init__(self, inserted_alias, update):
         self.inserted_alias = inserted_alias

@@ -415,26 +415,29 @@ the indexes.
 SQLAlchemy provides ``ON CONFLICT`` support via the PostgreSQL-specific
 :func:`_postgresql.insert()` function, which provides
 the generative methods :meth:`~.postgresql.Insert.on_conflict_do_update`
-and :meth:`~.postgresql.Insert.on_conflict_do_nothing`::
+and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    insert_stmt = insert(my_table).values(
-        id='some_existing_id',
-        data='inserted value')
+    >>> from sqlalchemy.dialects.postgresql import insert
+    >>> insert_stmt = insert(my_table).values(
+    ...     id='some_existing_id',
+    ...     data='inserted value')
+    >>> do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
+    ...     index_elements=['id']
+    ... )
+    >>> print(do_nothing_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO NOTHING
+    {stop}
 
-    do_nothing_stmt = insert_stmt.on_conflict_do_nothing(
-        index_elements=['id']
-    )
-
-    conn.execute(do_nothing_stmt)
-
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        constraint='pk_my_table',
-        set_=dict(data='updated value')
-    )
-
-    conn.execute(do_update_stmt)
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     constraint='pk_my_table',
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT ON CONSTRAINT pk_my_table DO UPDATE SET data = %(param_1)s
 
 Both methods supply the "target" of the conflict using either the
 named constraint or by column inference:
@@ -442,45 +445,67 @@ named constraint or by column inference:
 * The :paramref:`.Insert.on_conflict_do_update.index_elements` argument
   specifies a sequence containing string column names, :class:`_schema.Column`
   objects, and/or SQL expression elements, which would identify a unique
-  index::
+  index:
 
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        index_elements=['id'],
-        set_=dict(data='updated value')
-    )
+  .. sourcecode:: pycon+sql
 
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        index_elements=[my_table.c.id],
-        set_=dict(data='updated value')
-    )
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     index_elements=['id'],
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
+    {stop}
+
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     index_elements=[my_table.c.id],
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 * When using :paramref:`.Insert.on_conflict_do_update.index_elements` to
   infer an index, a partial index can be inferred by also specifying the
-  use the :paramref:`.Insert.on_conflict_do_update.index_where` parameter::
+  use the :paramref:`.Insert.on_conflict_do_update.index_where` parameter:
 
-    from sqlalchemy.dialects.postgresql import insert
+  .. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(user_email='a@b.com', data='inserted data')
-    stmt = stmt.on_conflict_do_update(
-        index_elements=[my_table.c.user_email],
-        index_where=my_table.c.user_email.like('%@gmail.com'),
-        set_=dict(data=stmt.excluded.data)
-        )
-    conn.execute(stmt)
+    >>> stmt = insert(my_table).values(user_email='a@b.com', data='inserted data')
+    >>> stmt = stmt.on_conflict_do_update(
+    ...     index_elements=[my_table.c.user_email],
+    ...     index_where=my_table.c.user_email.like('%@gmail.com'),
+    ...     set_=dict(data=stmt.excluded.data)
+    ... )
+    >>> print(stmt)
+    {opensql}INSERT INTO my_table (data, user_email)
+    VALUES (%(data)s, %(user_email)s) ON CONFLICT (user_email)
+    WHERE user_email LIKE %(user_email_1)s DO UPDATE SET data = excluded.data
 
 * The :paramref:`.Insert.on_conflict_do_update.constraint` argument is
   used to specify an index directly rather than inferring it.  This can be
-  the name of a UNIQUE constraint, a PRIMARY KEY constraint, or an INDEX::
+  the name of a UNIQUE constraint, a PRIMARY KEY constraint, or an INDEX:
 
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        constraint='my_table_idx_1',
-        set_=dict(data='updated value')
-    )
+  .. sourcecode:: pycon+sql
 
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        constraint='my_table_pk',
-        set_=dict(data='updated value')
-    )
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     constraint='my_table_idx_1',
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT ON CONSTRAINT my_table_idx_1 DO UPDATE SET data = %(param_1)s
+    {stop}
+
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     constraint='my_table_pk',
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT ON CONSTRAINT my_table_pk DO UPDATE SET data = %(param_1)s
+    {stop}
 
 * The :paramref:`.Insert.on_conflict_do_update.constraint` argument may
   also refer to a SQLAlchemy construct representing a constraint,
@@ -492,28 +517,35 @@ named constraint or by column inference:
   construct.  This use is especially convenient
   to refer to the named or unnamed primary key of a :class:`_schema.Table`
   using the
-  :attr:`_schema.Table.primary_key` attribute::
+  :attr:`_schema.Table.primary_key` attribute:
 
-    do_update_stmt = insert_stmt.on_conflict_do_update(
-        constraint=my_table.primary_key,
-        set_=dict(data='updated value')
-    )
+  .. sourcecode:: pycon+sql
+
+    >>> do_update_stmt = insert_stmt.on_conflict_do_update(
+    ...     constraint=my_table.primary_key,
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 ``ON CONFLICT...DO UPDATE`` is used to perform an update of the already
 existing row, using any combination of new values as well as values
 from the proposed insertion.   These values are specified using the
 :paramref:`.Insert.on_conflict_do_update.set_` parameter.  This
 parameter accepts a dictionary which consists of direct values
-for UPDATE::
+for UPDATE:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(id='some_id', data='inserted value')
-    do_update_stmt = stmt.on_conflict_do_update(
-        index_elements=['id'],
-        set_=dict(data='updated value')
-        )
-    conn.execute(do_update_stmt)
+    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
+    >>> do_update_stmt = stmt.on_conflict_do_update(
+    ...     index_elements=['id'],
+    ...     set_=dict(data='updated value')
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s
 
 .. warning::
 
@@ -530,57 +562,70 @@ In order to refer to the proposed insertion row, the special alias
 the :class:`_postgresql.Insert` object; this object is a
 :class:`_expression.ColumnCollection`
 which alias contains all columns of the target
-table::
+table:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(
-        id='some_id',
-        data='inserted value',
-        author='jlh')
-    do_update_stmt = stmt.on_conflict_do_update(
-        index_elements=['id'],
-        set_=dict(data='updated value', author=stmt.excluded.author)
-        )
-    conn.execute(do_update_stmt)
+    >>> stmt = insert(my_table).values(
+    ...     id='some_id',
+    ...     data='inserted value',
+    ...     author='jlh'
+    ... )
+    >>> do_update_stmt = stmt.on_conflict_do_update(
+    ...     index_elements=['id'],
+    ...     set_=dict(data='updated value', author=stmt.excluded.author)
+    ... )
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data, author)
+    VALUES (%(id)s, %(data)s, %(author)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
 
 The :meth:`_expression.Insert.on_conflict_do_update` method also accepts
 a WHERE clause using the :paramref:`.Insert.on_conflict_do_update.where`
-parameter, which will limit those rows which receive an UPDATE::
+parameter, which will limit those rows which receive an UPDATE:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(
-        id='some_id',
-        data='inserted value',
-        author='jlh')
-    on_update_stmt = stmt.on_conflict_do_update(
-        index_elements=['id'],
-        set_=dict(data='updated value', author=stmt.excluded.author)
-        where=(my_table.c.status == 2)
-        )
-    conn.execute(on_update_stmt)
+    >>> stmt = insert(my_table).values(
+    ...     id='some_id',
+    ...     data='inserted value',
+    ...     author='jlh'
+    ... )
+    >>> on_update_stmt = stmt.on_conflict_do_update(
+    ...     index_elements=['id'],
+    ...     set_=dict(data='updated value', author=stmt.excluded.author),
+    ...     where=(my_table.c.status == 2)
+    ... )
+    >>> print(on_update_stmt)
+    {opensql}INSERT INTO my_table (id, data, author)
+    VALUES (%(id)s, %(data)s, %(author)s)
+    ON CONFLICT (id) DO UPDATE SET data = %(param_1)s, author = excluded.author
+    WHERE my_table.status = %(status_1)s
 
 ``ON CONFLICT`` may also be used to skip inserting a row entirely
 if any conflict with a unique or exclusion constraint occurs; below
 this is illustrated using the
-:meth:`~.postgresql.Insert.on_conflict_do_nothing` method::
+:meth:`~.postgresql.Insert.on_conflict_do_nothing` method:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(id='some_id', data='inserted value')
-    stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
-    conn.execute(stmt)
+    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
+    >>> stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+    >>> print(stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT (id) DO NOTHING
 
 If ``DO NOTHING`` is used without specifying any columns or constraint,
 it has the effect of skipping the INSERT for any unique or exclusion
-constraint violation which occurs::
+constraint violation which occurs:
 
-    from sqlalchemy.dialects.postgresql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(id='some_id', data='inserted value')
-    stmt = stmt.on_conflict_do_nothing()
-    conn.execute(stmt)
+    >>> stmt = insert(my_table).values(id='some_id', data='inserted value')
+    >>> stmt = stmt.on_conflict_do_nothing()
+    >>> print(stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%(id)s, %(data)s)
+    ON CONFLICT DO NOTHING
 
 .. versionadded:: 1.1 Added support for PostgreSQL ON CONFLICT clauses
 

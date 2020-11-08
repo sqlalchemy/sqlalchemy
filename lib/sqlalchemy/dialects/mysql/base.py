@@ -454,20 +454,24 @@ values to INSERT versus the values for UPDATE.
 
 SQLAlchemy provides ``ON DUPLICATE KEY UPDATE`` support via the MySQL-specific
 :func:`.mysql.insert()` function, which provides
-the generative method :meth:`~.mysql.Insert.on_duplicate_key_update`::
+the generative method :meth:`~.mysql.Insert.on_duplicate_key_update`:
 
-    from sqlalchemy.dialects.mysql import insert
+.. sourcecode:: pycon+sql
 
-    insert_stmt = insert(my_table).values(
-        id='some_existing_id',
-        data='inserted value')
+    >>> from sqlalchemy.dialects.mysql import insert
 
-    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-        data=insert_stmt.inserted.data,
-        status='U'
-    )
+    >>> insert_stmt = insert(my_table).values(
+    ...     id='some_existing_id',
+    ...     data='inserted value')
 
-    conn.execute(on_duplicate_key_stmt)
+    >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+    ...     data=insert_stmt.inserted.data,
+    ...     status='U'
+    ... )
+    >>> print(on_duplicate_key_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    ON DUPLICATE KEY UPDATE data = VALUES(data), status = %s
+
 
 Unlike PostgreSQL's "ON CONFLICT" phrase, the "ON DUPLICATE KEY UPDATE"
 phrase will always match on any primary key or unique key, and will always
@@ -482,33 +486,51 @@ keyword arguments passed to the
 given column key values (usually the name of the column, unless it
 specifies :paramref:`_schema.Column.key`
 ) as keys and literal or SQL expressions
-as values::
+as values:
 
-    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-        data="some data",
-        updated_at=func.current_timestamp(),
-    )
+.. sourcecode:: pycon+sql
+
+    >>> insert_stmt = insert(my_table).values(
+    ...          id='some_existing_id',
+    ...          data='inserted value')
+
+    >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+    ...     data="some data",
+    ...     updated_at=func.current_timestamp(),
+    ... )
+
+    >>> print(on_duplicate_key_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    ON DUPLICATE KEY UPDATE data = %s, updated_at = CURRENT_TIMESTAMP
 
 In a manner similar to that of :meth:`.UpdateBase.values`, other parameter
-forms are accepted, including a single dictionary::
+forms are accepted, including a single dictionary:
 
-    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-        {"data": "some data", "updated_at": func.current_timestamp()},
-    )
+.. sourcecode:: pycon+sql
+
+    >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+    ...     {"data": "some data", "updated_at": func.current_timestamp()},
+    ... )
 
 as well as a list of 2-tuples, which will automatically provide
 a parameter-ordered UPDATE statement in a manner similar to that described
 at :ref:`updates_order_parameters`.  Unlike the :class:`_expression.Update`
 object,
 no special flag is needed to specify the intent since the argument form is
-this context is unambiguous::
+this context is unambiguous:
 
-    on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
-        [
-            ("data", "some data"),
-            ("updated_at", func.current_timestamp()),
-        ],
-    )
+.. sourcecode:: pycon+sql
+
+    >>> on_duplicate_key_stmt = insert_stmt.on_duplicate_key_update(
+    ...     [
+    ...         ("data", "some data"),
+    ...         ("updated_at", func.current_timestamp()),
+    ...     ]
+    ... )
+
+    >>> print(on_duplicate_key_stmt)
+    {opensql}INSERT INTO my_table (id, data) VALUES (%s, %s)
+    ON DUPLICATE KEY UPDATE data = %s, updated_at = CURRENT_TIMESTAMP
 
 .. versionchanged:: 1.3 support for parameter-ordered UPDATE clause within
    MySQL ON DUPLICATE KEY UPDATE
@@ -528,19 +550,23 @@ In order to refer to the proposed insertion row, the special alias
 :attr:`~.mysql.Insert.inserted` is available as an attribute on
 the :class:`.mysql.Insert` object; this object is a
 :class:`_expression.ColumnCollection` which contains all columns of the target
-table::
+table:
 
-    from sqlalchemy.dialects.mysql import insert
+.. sourcecode:: pycon+sql
 
-    stmt = insert(my_table).values(
-        id='some_id',
-        data='inserted value',
-        author='jlh')
-    do_update_stmt = stmt.on_duplicate_key_update(
-        data="updated value",
-        author=stmt.inserted.author
-    )
-    conn.execute(do_update_stmt)
+    >>> stmt = insert(my_table).values(
+    ...     id='some_id',
+    ...     data='inserted value',
+    ...     author='jlh')
+
+    >>> do_update_stmt = stmt.on_duplicate_key_update(
+    ...     data="updated value",
+    ...     author=stmt.inserted.author
+    ... )
+
+    >>> print(do_update_stmt)
+    {opensql}INSERT INTO my_table (id, data, author) VALUES (%s, %s, %s)
+    ON DUPLICATE KEY UPDATE data = %s, author = VALUES(author)
 
 When rendered, the "inserted" namespace will produce the expression
 ``VALUES(<columnname>)``.

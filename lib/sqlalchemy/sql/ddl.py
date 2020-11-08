@@ -373,6 +373,10 @@ class _CreateDropBase(DDLElement):
         self.element = element
         self.bind = bind
 
+    @property
+    def stringify_dialect(self):
+        return self.element.create_drop_stringify_dialect
+
     def _create_rule_disable(self, compiler):
         """Allow disable of _create_rule using a callable.
 

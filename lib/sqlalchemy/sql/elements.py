@@ -199,6 +199,9 @@ class ClauseElement(
     """
 
     supports_execution = False
+
+    stringify_dialect = "default"
+
     _from_objects = []
     bind = None
     description = None
@@ -435,6 +438,7 @@ class ClauseElement(
         return self
 
     @util.preload_module("sqlalchemy.engine.default")
+    @util.preload_module("sqlalchemy.engine.url")
     def compile(self, bind=None, dialect=None, **kw):
         """Compile this SQL expression.
 
@@ -482,14 +486,20 @@ class ClauseElement(
 
         """
 
-        default = util.preloaded.engine_default
         if not dialect:
             if bind:
                 dialect = bind.dialect
             elif self.bind:
                 dialect = self.bind.dialect
             else:
-                dialect = default.StrCompileDialect()
+                if self.stringify_dialect == "default":
+                    default = util.preloaded.engine_default
+                    dialect = default.StrCompileDialect()
+                else:
+                    url = util.preloaded.engine_url
+                    dialect = url.URL.create(
+                        self.stringify_dialect
+                    ).get_dialect()()
 
         return self._compiler(dialect, **kw)
 

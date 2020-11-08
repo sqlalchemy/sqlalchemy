@@ -100,6 +100,8 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
 
     __visit_name__ = "schema_item"
 
+    create_drop_stringify_dialect = "default"
+
     def _init_items(self, *args, **kw):
         """Initialize the list of child items for this SchemaItem."""
         for item in args:
