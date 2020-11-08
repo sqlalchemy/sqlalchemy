@@ -1113,6 +1113,16 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             "(q, p) IN (VALUES (?, ?), (?, ?))",
         )
 
+    def test_create_table_without_rowid(self):
+        m = MetaData()
+        tbl = Table(
+            "atable", m, Column("id", Integer), sqlite_with_rowid=False
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE atable (id INTEGER) WITHOUT ROWID",
+        )
+
 
 class OnConflictDDLTest(fixtures.TestBase, AssertsCompiledSQL):
 

@@ -584,6 +584,21 @@ or on a per-:class:`_engine.Engine` basis::
 When using the per-:class:`_engine.Engine` execution option, note that
 **Core and ORM queries that use UNION may not function properly**.
 
+SQLite-specific table options
+-----------------------------
+
+One option for CREATE TABLE is supported directly by the SQLite
+dialect in conjunction with the :class:`_schema.Table` construct:
+
+* ``WITHOUT ROWID``::
+
+    Table("some_table", metadata, ..., sqlite_with_rowid=False)
+
+.. seealso::
+
+    `SQLite CREATE TABLE options
+    <https://www.sqlite.org/lang_createtable.html>`_
+
 """  # noqa
 
 import datetime
@@ -1254,6 +1269,11 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
 
         return text
 
+    def post_create_table(self, table):
+        if table.dialect_options["sqlite"]["with_rowid"] is False:
+            return "\n WITHOUT ROWID"
+        return ""
+
 
 class SQLiteTypeCompiler(compiler.GenericTypeCompiler):
     def visit_large_binary(self, type_, **kw):
@@ -1461,7 +1481,13 @@ class SQLiteDialect(default.DefaultDialect):
     isolation_level = None
 
     construct_arguments = [
-        (sa_schema.Table, {"autoincrement": False}),
+        (
+            sa_schema.Table,
+            {
+                "autoincrement": False,
+                "with_rowid": True,
+            },
+        ),
         (sa_schema.Index, {"where": None}),
         (
             sa_schema.Column,
