@@ -718,6 +718,7 @@ sections below.
     * :ref:`loading_toplevel` - details relationship and loading options that
       affect how :func:`_orm.relationship` mapped attributes are loaded
 
+.. _orm_queryguide_execution_options:
 
 ORM Execution Options
 ---------------------

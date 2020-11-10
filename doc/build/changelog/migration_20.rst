@@ -1148,6 +1148,167 @@ declarative decorator and classical mapping forms.
 2.0 Migration - ORM Usage
 =============================================
 
+The biggest visible change in SQLAlchemy 2.0 is the use of
+:meth:`_orm.Session.execute` in conjunction with :func:`_sql.select` to run ORM
+queries, instead of using :meth:`_orm.Session.query`.  As mentioned elsewhere,
+there is no plan to actually remove the :meth:`_orm.Session.query` API itself,
+as it is now implemented by using the new API internally it will remain as a
+legacy API, and both APIs can be used freely.
+
+The table below provides an introduction to the general change in
+calling form with links to documentation for each technique
+presented.  The individual migration notes are in the embedded sections
+following the table, and may include additional notes not summarized here.
+
+
+.. container:: sliding-table
+
+  .. list-table:: **Overview of Major ORM Querying Patterns**
+    :header-rows: 1
+
+    * - :term:`1.x style` form
+      - :term:`2.0 style` form
+      - See Also
+
+    * - ::
+
+          session.query(User).get(42)
+
+      - ::
+
+          session.get(User, 42)
+
+      - :ref:`migration_20_get_to_session`
+
+    * - ::
+
+          session.query(User).all()
+
+      - ::
+
+          session.execute(
+              select(User)
+          ).scalars().all()
+
+      - :ref:`migration_20_unify_select`
+
+        :meth:`_engine.Result.scalars`
+
+    * - ::
+
+          session.query(User).\
+          filter_by(name='some user').one()
+
+      - ::
+
+          session.execute(
+              select(User).
+              filter_by(name="some user")
+          ).scalar_one()
+
+      - :ref:`migration_20_unify_select`
+
+        :meth:`_engine.Result.scalar_one`
+
+    * - ::
+
+            session.query(User).options(
+                joinedload(User.addresses)
+            ).all()
+
+      - ::
+
+            session.execute(
+                select(User).
+                options(
+                  joinedload(User.addresses)
+                )
+            ).unique().all()
+
+      - :ref:`joinedload_not_uniqued`
+
+    * - ::
+
+          session.query(User).\
+              join(Address).\
+              filter(Address.email == 'e@sa.us').\
+              all()
+
+      - ::
+
+          session.execute(
+              select(User).
+              join(Address).
+              where(Address.email == 'e@sa.us')
+          ).scalars().all()
+
+      - :ref:`migration_20_unify_select`
+
+        :ref:`orm_queryguide_joins`
+
+    * - ::
+
+          session.query(User).from_statement(
+              text("select * from users")
+          ).all()
+
+      - ::
+
+          session.execute(
+              select(User).
+              from_statement(
+                  text("select * from users")
+              )
+          ).scalars().all()
+
+      - :ref:`orm_queryguide_selecting_text`
+
+    * - ::
+
+          session.query(User).\
+              join(User.addresses).\
+              options(
+                contains_eager(User.addresses)
+              ).\
+              populate_existing().all()
+
+      - ::
+
+          session.execute(
+              select(User).
+              join(User.addresses).
+              options(contains_eager(User.addresses)).
+              execution_options(populate_existing=True)
+          ).scalars().all()
+
+      -
+
+          :ref:`orm_queryguide_execution_options`
+
+          :ref:`orm_queryguide_populate_existing`
+
+    *
+      - ::
+
+          session.query(User).\
+              filter(User.name == 'foo').\
+              update(
+                  {"fullname": "Foo Bar"},
+                  synchronize_session="evaluate"
+              )
+
+
+      - ::
+
+          session.execute(
+              update(User).
+              where(User.name == 'foo').
+              values(fullname="Foo Bar").
+              execution_options(synchronize_session="evaluate")
+          )
+
+      - :ref:`orm_expression_update_delete`
+
 .. _migration_20_unify_select:
 
 ORM Query Unified with Core Select
@@ -1298,6 +1459,8 @@ the majority of this ORM logic is also cached.
 .. seealso::
 
   :ref:`change_5159`
+
+.. _migration_20_get_to_session:
 
 ORM Query - get() method moves to Session
 ------------------------------------------
@@ -1695,8 +1858,19 @@ ORM rows returned by ``session.execute(stmt)`` are no longer automatically
 "uniqued".    This will normally be a welcome change, except in the case
 where the "joined eager loading" loader strategy is used with collections::
 
-    stmt = select(User).options(joinedload(User.addresses))
+    # In the legacy API, many rows each have the same User primary key, but
+    # only one User per primary key is returned
+    users = session.query(User).options(joinedload(User.addresses))
 
+    # In the new API, uniquing is available but not implicitly
+    # enabled
+    result = session.execute(
+        select(User).options(joinedload(User.addresses))
+    )
+
+    # this actually will raise an error to let the user know that
+    # uniquing should be applied
+    rows = result.all()
 
 **Migrating to 2.0**
 
@@ -1711,8 +1885,10 @@ while still maintaining explicitness::
     stmt = select(User).options(joinedload(User.addresses))
 
     # statement will raise if unique() is not used, due to joinedload()
-    # of a collection.  in all other cases, unique() is not needed
-    rows = session.execute(stmt).unique().execute().all()
+    # of a collection.  in all other cases, unique() is not needed.
+    # By stating unique() explicitly, confusion over discrepancies between
+    # number of objects/ rows returned vs. "SELECT COUNT(*)" is resolved
+    rows = session.execute(stmt).unique().all()
 
 **Discussion**
 
