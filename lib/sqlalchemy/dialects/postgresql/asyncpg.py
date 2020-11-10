@@ -28,7 +28,7 @@ The dialect can also be run as a "synchronous" dialect within the
 an ad-hoc event loop.  This mode of operation is of **limited use**
 and is for special testing scenarios only.  The mode can be enabled by
 adding the SQLAlchemy-specific flag ``async_fallback`` to the URL
-in conjunction with :func:`_sa.craete_engine`::
+in conjunction with :func:`_sa.create_engine`::
 
     # for testing purposes only; do not use in production!
     engine = create_engine("postgresql+asyncpg://user:pass@hostname/dbname?async_fallback=true")
