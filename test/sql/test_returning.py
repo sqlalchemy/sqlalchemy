@@ -57,15 +57,11 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = stmt.returning(t.c.x)
 
-        with testing.expect_warnings(
-            r"The returning\(\) method does not currently "
-            "support multiple additive calls."
-        ):
-            stmt = stmt.returning(t.c.y)
+        stmt = stmt.returning(t.c.y)
 
         self.assert_compile(
             stmt,
-            "%s RETURNING foo.y" % (sql_frag),
+            "%s RETURNING foo.x, foo.y" % (sql_frag),
         )
 
     def test_return_no_return_defaults(self, table_fixture):

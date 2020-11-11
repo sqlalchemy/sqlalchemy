@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 5695
+
+    Multiple calls to "returning", e.g. :meth:`_sql.Insert.returning`,
+    may now be chained to add new columns to the RETURNING clause.
+

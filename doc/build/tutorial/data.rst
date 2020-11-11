@@ -219,14 +219,14 @@ construct automatically.
         ('sandy', 'sandy@squirrelpower.org'))
         COMMIT{stop}
 
-Other INSERT Options
+.. _tutorial_insert_from_select:
+
+INSERT...FROM SELECT
 ^^^^^^^^^^^^^^^^^^^^^
 
-A quick overview of some other patterns that are available with :func:`_sql.insert`:
-
-* **INSERT..FROM SELECT** - the :class:`_sql.Insert` construct can compose
-  an INSERT that gets rows directly from a SELECT using the :meth:`_sql.Insert.from_select`
-  method::
+The :class:`_sql.Insert` construct can compose
+an INSERT that gets rows directly from a SELECT using the :meth:`_sql.Insert.from_select`
+method::
 
     >>> select_stmt = select(user_table.c.id, user_table.c.name + "@aol.com")
     >>> insert_stmt = insert(address_table).from_select(
@@ -237,25 +237,40 @@ A quick overview of some other patterns that are available with :func:`_sql.inse
     SELECT user_account.id, user_account.name || :name_1 AS anon_1
     FROM user_account
 
-  ..
+.. _tutorial_insert_returning:
 
-* **RETURNING clause** - the RETURNING clause for supported backends is used
-  automatically in order to retrieve the last inserted primary key value
-  as well as the values for server defaults.   However the RETURNING clause
-  may also be specified explicitly using the :meth:`_sql.Insert.returning`
-  method; in this case, the :class:`_engine.Result`
-  object that's returned when the statement is executed has rows which
-  can be fetched.  It is only supported for single-statement
-  forms, and for some backends may only support single-row INSERT statements
-  overall.   It can also be combined with :meth:`_sql.Insert.from_select`,
-  as in the example below that builds upon the previous example::
+INSERT...RETURNING
+^^^^^^^^^^^^^^^^^^^^^
 
+The RETURNING clause for supported backends is used
+automatically in order to retrieve the last inserted primary key value
+as well as the values for server defaults.   However the RETURNING clause
+may also be specified explicitly using the :meth:`_sql.Insert.returning`
+method; in this case, the :class:`_engine.Result`
+object that's returned when the statement is executed has rows which
+can be fetched.  It is only supported for single-statement
+forms, and for some backends may only support single-row INSERT statements
+overall::
+
+    >>> insert_stmt = insert(address_table).returning(address_table.c.id, address_table.c.email_address)
+    >>> print(insert_stmt)
+    {opensql}INSERT INTO address (id, user_id, email_address)
+    VALUES (:id, :user_id, :email_address)
+    RETURNING address.id, address.email_address
+
+
+It can also be combined with :meth:`_sql.Insert.from_select`,
+as in the example below that builds upon the example stated in
+:ref:`tutorial_insert_from_select`::
+
+    >>> select_stmt = select(user_table.c.id, user_table.c.name + "@aol.com")
+    >>> insert_stmt = insert(address_table).from_select(
+    ...     ["user_id", "email_address"], select_stmt
+    ... )
     >>> print(insert_stmt.returning(address_table.c.id, address_table.c.email_address))
     {opensql}INSERT INTO address (user_id, email_address)
     SELECT user_account.id, user_account.name || :name_1 AS anon_1
     FROM user_account RETURNING address.id, address.email_address
-
-  ..
 
 .. seealso::
 

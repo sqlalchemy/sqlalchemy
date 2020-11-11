@@ -208,6 +208,7 @@ class UpdateBase(
     named_with_column = False
 
     _return_defaults = None
+    _returning = ()
 
     is_dml = True
 
@@ -334,25 +335,41 @@ class UpdateBase(
     def returning(self, *cols):
         r"""Add a :term:`RETURNING` or equivalent clause to this statement.
 
-        e.g.::
+        e.g.:
 
-            stmt = table.update().\
-                      where(table.c.data == 'value').\
-                      values(status='X').\
-                      returning(table.c.server_flag,
-                                table.c.updated_timestamp)
+        .. sourcecode:: pycon+sql
 
-            for server_flag, updated_timestamp in connection.execute(stmt):
-                print(server_flag, updated_timestamp)
+            >>> stmt = (
+            ...     table.update()
+            ...     .where(table.c.data == "value")
+            ...     .values(status="X")
+            ...     .returning(table.c.server_flag, table.c.updated_timestamp)
+            ... )
+            >>> print(stmt)
+            UPDATE some_table SET status=:status
+            WHERE some_table.data = :data_1
+            RETURNING some_table.server_flag, some_table.updated_timestamp
+
+        The method may be invoked multiple times to add new entries to the
+        list of expressions to be returned.
+
+        .. versionadded:: 1.4.0b2 The method may be invoked multiple times to
+         add new entries to the list of expressions to be returned.
 
         The given collection of column expressions should be derived from the
         table that is the target of the INSERT, UPDATE, or DELETE.  While
         :class:`_schema.Column` objects are typical, the elements can also be
-        expressions::
+        expressions:
 
-            stmt = table.insert().returning(
-                (table.c.first_name + " " + table.c.last_name).
-                label('fullname'))
+        .. sourcecode:: pycon+sql
+
+            >>> stmt = table.insert().returning(
+            ...     (table.c.first_name + " " + table.c.last_name).label("fullname")
+            ... )
+            >>> print(stmt)
+            INSERT INTO some_table (first_name, last_name)
+            VALUES (:first_name, :last_name)
+            RETURNING some_table.first_name || :first_name_1 || some_table.last_name AS fullname
 
         Upon compilation, a RETURNING clause, or database equivalent,
         will be rendered within the statement.   For INSERT and UPDATE,
@@ -382,19 +399,14 @@ class UpdateBase(
           towards efficient fetching of server-side defaults and triggers
           for single-row INSERTs or UPDATEs.
 
+          :ref:`tutorial_insert_returning` - in the :ref:`unified_tutorial`
 
-        """
+        """  # noqa E501
         if self._return_defaults:
             raise exc.InvalidRequestError(
                 "return_defaults() is already configured on this statement"
             )
-        if self._returning:
-            util.warn(
-                "The returning() method does not currently support multiple "
-                "additive calls.  The existing RETURNING clause being "
-                "replaced by new columns."
-            )
-        self._returning = cols
+        self._returning += cols
 
     def _exported_columns_iterator(self):
         """Return the RETURNING columns as a sequence for this statement.
@@ -403,7 +415,7 @@ class UpdateBase(
 
         """
 
-        return self._returning or ()
+        return self._returning
 
     @property
     def exported_columns(self):
@@ -852,9 +864,10 @@ class Insert(ValuesBase):
 
         .. seealso::
 
-            :ref:`coretutorial_insert_expressions` - in the 1.x tutorial
+            :ref:`coretutorial_insert_expressions` - in the
+            :ref:`1.x tutorial <sqlexpression_toplevel>`
 
-            :ref:`tutorial_core_insert` - in the 2.0 tutorial
+            :ref:`tutorial_core_insert` - in the :ref:`unified_tutorial`
 
 
         :param table: :class:`_expression.TableClause`
@@ -1146,9 +1159,10 @@ class Update(DMLWhereBase, ValuesBase):
 
         .. seealso::
 
-            :ref:`inserts_and_updates` - in the 1.x tutorial
+            :ref:`inserts_and_updates` - in the
+            :ref:`1.x tutorial <sqlexpression_toplevel>`
 
-            :ref:`tutorial_core_update_delete` - in the 2.0 tutorial
+            :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
 
 
 
@@ -1238,7 +1252,8 @@ class Update(DMLWhereBase, ValuesBase):
         self._preserve_parameter_order = preserve_parameter_order
         super(Update, self).__init__(table, values, prefixes)
         self._bind = bind
-        self._returning = returning
+        if returning:
+            self._returning = returning
         if whereclause is not None:
             self._where_criteria += (
                 coercions.expect(roles.WhereHavingRole, whereclause),
@@ -1368,9 +1383,10 @@ class Delete(DMLWhereBase, UpdateBase):
 
         .. seealso::
 
-            :ref:`inserts_and_updates` - in the 1.x tutorial
+            :ref:`inserts_and_updates` - in the
+            :ref:`1.x tutorial <sqlexpression_toplevel>`
 
-            :ref:`tutorial_core_update_delete` - in the 2.0 tutorial
+            :ref:`tutorial_core_update_delete` - in the :ref:`unified_tutorial`
 
 
         :param table: The table to delete rows from.
@@ -1389,7 +1405,8 @@ class Delete(DMLWhereBase, UpdateBase):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
-        self._returning = returning
+        if returning:
+            self._returning = returning
 
         if prefixes:
             self._setup_prefixes(prefixes)
