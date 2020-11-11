@@ -686,23 +686,9 @@ class Update(ValuesBase):
          table to be updated.
 
         :param whereclause: Optional SQL expression describing the ``WHERE``
-         condition of the ``UPDATE`` statement.   Modern applications
-         may prefer to use the generative :meth:`~Update.where()`
-         method to specify the ``WHERE`` clause.
-
-         The WHERE clause can refer to multiple tables.
-         For databases which support this, an ``UPDATE FROM`` clause will
-         be generated, or on MySQL, a multi-table update.  The statement
-         will fail on databases that don't have support for multi-table
-         update statements.  A SQL-standard method of referring to
-         additional tables in the WHERE clause is to use a correlated
-         subquery::
-
-            users.update().values(name='ed').where(
-                    users.c.name==select([addresses.c.email_address]).\
-                                where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
-                    )
+         condition of the ``UPDATE`` statement; is equivalent to using the
+         more modern :meth:`~Update.where()` method to specify the ``WHERE``
+         clause.
 
         :param values:
           Optional dictionary which specifies the ``SET`` conditions of the
@@ -806,6 +792,22 @@ class Update(ValuesBase):
         """Return a new update() construct with the given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
+        Both :meth:`_dml.Update.where` and :meth:`_dml.Delete.where`
+        support multiple-table forms, including database-specific
+        ``UPDATE...FROM`` as well as ``DELETE..USING``.  For backends that
+        don't have multiple-table support, a backend agnostic approach
+        to using multiple tables is to make use of correlated subqueries.
+        See the linked tutorial sections below for examples.
+
+        .. seealso::
+
+            :ref:`tutorial_1x_correlated_updates`
+
+            :ref:`multi_table_updates`
+
+            :ref:`multi_table_deletes`
+
+
         """
         if self._whereclause is not None:
             self._whereclause = and_(
@@ -859,27 +861,10 @@ class Delete(UpdateBase):
 
         :param table: The table to delete rows from.
 
-        :param whereclause: A :class:`_expression.ClauseElement`
-          describing the ``WHERE``
-          condition of the ``DELETE`` statement. Note that the
-          :meth:`~Delete.where()` generative method may be used instead.
-
-         The WHERE clause can refer to multiple tables.
-         For databases which support this, a ``DELETE..USING`` or similar
-         clause will be generated.  The statement
-         will fail on databases that don't have support for multi-table
-         delete statements.  A SQL-standard method of referring to
-         additional tables in the WHERE clause is to use a correlated
-         subquery::
-
-            users.delete().where(
-                    users.c.name==select([addresses.c.email_address]).\
-                                where(addresses.c.user_id==users.c.id).\
-                                as_scalar()
-                    )
-
-         .. versionchanged:: 1.2.0
-             The WHERE clause of DELETE can refer to multiple tables.
+        :param whereclause: Optional SQL expression describing the ``WHERE``
+         condition of the ``DELETE`` statement; is equivalent to using the
+         more modern :meth:`~Delete.where()` method to specify the ``WHERE``
+         clause.
 
         .. seealso::
 
@@ -908,7 +893,25 @@ class Delete(UpdateBase):
 
     @_generative
     def where(self, whereclause):
-        """Add the given WHERE clause to a newly returned delete construct."""
+        """Add the given WHERE clause to a newly returned delete construct.
+
+        Both :meth:`_dml.Update.where` and :meth:`_dml.Delete.where`
+        support multiple-table forms, including database-specific
+        ``UPDATE...FROM`` as well as ``DELETE..USING``.  For backends that
+        don't have multiple-table support, a backend agnostic approach
+        to using multiple tables is to make use of correlated subqueries.
+        See the linked tutorial sections below for examples.
+
+        .. seealso::
+
+            :ref:`tutorial_1x_correlated_updates`
+
+            :ref:`multi_table_updates`
+
+            :ref:`multi_table_deletes`
+
+
+        """
 
         if self._whereclause is not None:
             self._whereclause = and_(

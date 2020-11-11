@@ -2149,6 +2149,7 @@ used to achieve this:
     COMMIT
     {stop}<sqlalchemy.engine.result.ResultProxy object at 0x...>
 
+.. _tutorial_1x_correlated_updates:
 
 Correlated Updates
 ------------------
