@@ -1502,7 +1502,7 @@ be iterated::
     ...     delete(user_table).where(user_table.c.name == 'patrick').
     ...     returning(user_table.c.id, user_table.c.name)
     ... )
-    >>> print(delete_stmt.returning(user_table.c.id, user_table.c.name))
+    >>> print(delete_stmt)
     {opensql}DELETE FROM user_account
     WHERE user_account.name = :name_1
     RETURNING user_account.id, user_account.name

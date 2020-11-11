@@ -1,15 +1,19 @@
 import itertools
 
 from sqlalchemy import Boolean
+from sqlalchemy import delete
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import update
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -20,6 +24,76 @@ from sqlalchemy.types import TypeDecorator
 
 
 table = GoofyType = seq = None
+
+
+class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "postgresql"
+
+    @testing.fixture
+    def table_fixture(self):
+        return Table(
+            "foo",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("q", Integer, server_default="5"),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+    @testing.combinations(
+        (
+            insert,
+            "INSERT INTO foo (id, q, x, y) "
+            "VALUES (%(id)s, %(q)s, %(x)s, %(y)s)",
+        ),
+        (update, "UPDATE foo SET id=%(id)s, q=%(q)s, x=%(x)s, y=%(y)s"),
+        (delete, "DELETE FROM foo"),
+        argnames="dml_fn, sql_frag",
+        id_="na",
+    )
+    def test_return_combinations(self, table_fixture, dml_fn, sql_frag):
+        t = table_fixture
+        stmt = dml_fn(t)
+
+        stmt = stmt.returning(t.c.x)
+
+        with testing.expect_warnings(
+            r"The returning\(\) method does not currently "
+            "support multiple additive calls."
+        ):
+            stmt = stmt.returning(t.c.y)
+
+        self.assert_compile(
+            stmt,
+            "%s RETURNING foo.y" % (sql_frag),
+        )
+
+    def test_return_no_return_defaults(self, table_fixture):
+        t = table_fixture
+
+        stmt = t.insert()
+
+        stmt = stmt.returning(t.c.x)
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "RETURNING is already configured on this statement",
+            stmt.return_defaults,
+        )
+
+    def test_return_defaults_no_returning(self, table_fixture):
+        t = table_fixture
+
+        stmt = t.insert()
+
+        stmt = stmt.return_defaults()
+
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"return_defaults\(\) is already configured on this statement",
+            stmt.returning,
+            t.c.x,
+        )
 
 
 class ReturningTest(fixtures.TestBase, AssertsExecutionResults):

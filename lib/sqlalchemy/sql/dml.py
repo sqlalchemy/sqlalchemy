@@ -207,6 +207,8 @@ class UpdateBase(
     _hints = util.immutabledict()
     named_with_column = False
 
+    _return_defaults = None
+
     is_dml = True
 
     @classmethod
@@ -343,11 +345,10 @@ class UpdateBase(
             for server_flag, updated_timestamp in connection.execute(stmt):
                 print(server_flag, updated_timestamp)
 
-        The given collection of column expressions should be derived from
-        the table that is
-        the target of the INSERT, UPDATE, or DELETE.  While
-        :class:`_schema.Column`
-        objects are typical, the elements can also be expressions::
+        The given collection of column expressions should be derived from the
+        table that is the target of the INSERT, UPDATE, or DELETE.  While
+        :class:`_schema.Column` objects are typical, the elements can also be
+        expressions::
 
             stmt = table.insert().returning(
                 (table.c.first_name + " " + table.c.last_name).
@@ -383,6 +384,16 @@ class UpdateBase(
 
 
         """
+        if self._return_defaults:
+            raise exc.InvalidRequestError(
+                "return_defaults() is already configured on this statement"
+            )
+        if self._returning:
+            util.warn(
+                "The returning() method does not currently support multiple "
+                "additive calls.  The existing RETURNING clause being "
+                "replaced by new columns."
+            )
         self._returning = cols
 
     def _exported_columns_iterator(self):
@@ -760,6 +771,10 @@ class ValuesBase(UpdateBase):
             :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
+        if self._returning:
+            raise exc.InvalidRequestError(
+                "RETURNING is already configured on this statement"
+            )
         self._return_defaults = cols or True
 
 
