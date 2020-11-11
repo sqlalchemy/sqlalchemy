@@ -769,8 +769,6 @@ class Insert(ValuesBase):
     The :class:`_expression.Insert` object is created using the
     :func:`_expression.insert()` function.
 
-    .. note - the __init__() method delivers the docstring for this object
-
     """
 
     __visit_name__ = "insert"
@@ -987,6 +985,31 @@ class DMLWhereBase(object):
         """Return a new construct with the given expression(s) added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
+        Both :meth:`_dml.Update.where` and :meth:`_dml.Delete.where`
+        support multiple-table forms, including database-specific
+        ``UPDATE...FROM`` as well as ``DELETE..USING``.  For backends that
+        don't have multiple-table support, a backend agnostic approach
+        to using multiple tables is to make use of correlated subqueries.
+        See the linked tutorial sections below for examples.
+
+        .. seealso::
+
+            **1.x Tutorial Examples**
+
+            :ref:`tutorial_1x_correlated_updates`
+
+            :ref:`multi_table_updates`
+
+            :ref:`multi_table_deletes`
+
+            **2.0 Tutorial Examples**
+
+            :ref:`tutorial_correlated_updates`
+
+            :ref:`tutorial_update_from`
+
+            :ref:`tutorial_multi_table_deletes`
+
         """
 
         for criterion in list(whereclause):
@@ -1039,7 +1062,8 @@ class DMLWhereBase(object):
 class Update(DMLWhereBase, ValuesBase):
     """Represent an Update construct.
 
-    .. note - the __init__() method delivers the docstring for this object
+    The :class:`_expression.Update` object is created using the
+    :func:`_expression.update()` function.
 
     """
 
@@ -1118,23 +1142,9 @@ class Update(DMLWhereBase, ValuesBase):
          table to be updated.
 
         :param whereclause: Optional SQL expression describing the ``WHERE``
-         condition of the ``UPDATE`` statement.   Modern applications
-         may prefer to use the generative :meth:`~Update.where()`
-         method to specify the ``WHERE`` clause.
-
-         The WHERE clause can refer to multiple tables.
-         For databases which support this, an ``UPDATE FROM`` clause will
-         be generated, or on MySQL, a multi-table update.  The statement
-         will fail on databases that don't have support for multi-table
-         update statements.  A SQL-standard method of referring to
-         additional tables in the WHERE clause is to use a correlated
-         subquery::
-
-            users.update().values(name='ed').where(
-                    users.c.name==select(addresses.c.email_address).\
-                                where(addresses.c.user_id==users.c.id).\
-                                scalar_subquery()
-                    )
+         condition of the ``UPDATE`` statement; is equivalent to using the
+         more modern :meth:`~Update.where()` method to specify the ``WHERE``
+         clause.
 
         :param values:
           Optional dictionary which specifies the ``SET`` conditions of the
@@ -1291,7 +1301,8 @@ class Update(DMLWhereBase, ValuesBase):
 class Delete(DMLWhereBase, UpdateBase):
     """Represent a DELETE construct.
 
-    .. note - the __init__() method delivers the docstring for this object
+    The :class:`_expression.Delete` object is created using the
+    :func:`_expression.delete()` function.
 
     """
 
@@ -1349,27 +1360,10 @@ class Delete(DMLWhereBase, UpdateBase):
 
         :param table: The table to delete rows from.
 
-        :param whereclause: A :class:`_expression.ClauseElement`
-          describing the ``WHERE``
-          condition of the ``DELETE`` statement. Note that the
-          :meth:`~Delete.where()` generative method may be used instead.
-
-         The WHERE clause can refer to multiple tables.
-         For databases which support this, a ``DELETE..USING`` or similar
-         clause will be generated.  The statement
-         will fail on databases that don't have support for multi-table
-         delete statements.  A SQL-standard method of referring to
-         additional tables in the WHERE clause is to use a correlated
-         subquery::
-
-            users.delete().where(
-                    users.c.name==select(addresses.c.email_address).\
-                                where(addresses.c.user_id==users.c.id).\
-                                scalar_subquery()
-                    )
-
-         .. versionchanged:: 1.2.0
-             The WHERE clause of DELETE can refer to multiple tables.
+        :param whereclause: Optional SQL expression describing the ``WHERE``
+         condition of the ``DELETE`` statement; is equivalent to using the
+         more modern :meth:`~Delete.where()` method to specify the ``WHERE``
+         clause.
 
         .. seealso::
 

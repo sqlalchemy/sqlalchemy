@@ -1212,6 +1212,8 @@ from a Core-centric perspective.
     use are discussed in the sections :ref:`tutorial_orm_updating` and
     :ref:`tutorial_orm_deleting`.
 
+.. _tutorial_core_update:
+
 The update() SQL Expression Construct
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1279,85 +1281,93 @@ that literal values would normally go:
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT{stop}
 
+
 Other techniques which may be applied to UPDATE include:
 
-* **Correlated Updates**:  a :ref:`correlated subquery <tutorial_scalar_subquery>`
-  may be used anywhere a column expression might be
-  placed::
+.. _tutorial_correlated_updates:
 
-    >>> scalar_subq = (
-    ...   select(address_table.c.email_address).
-    ...   where(address_table.c.user_id == user_table.c.id).
-    ...   order_by(address_table.c.id).
-    ...   limit(1).
-    ...   scalar_subquery()
-    ... )
-    >>> update_stmt = update(user_table).values(fullname=scalar_subq)
-    >>> print(update_stmt)
-    {opensql}UPDATE user_account SET fullname=(SELECT address.email_address
-    FROM address
-    WHERE address.user_id = user_account.id ORDER BY address.id
-    LIMIT :param_1)
+Correlated Updates
+~~~~~~~~~~~~~~~~~~
 
-  ..
+An UPDATE statement can make use of rows in other tables by using a
+:ref:`correlated subquery <tutorial_scalar_subquery>`.  A subuqery may be used
+anywhere a column expression might be placed::
+
+  >>> scalar_subq = (
+  ...   select(address_table.c.email_address).
+  ...   where(address_table.c.user_id == user_table.c.id).
+  ...   order_by(address_table.c.id).
+  ...   limit(1).
+  ...   scalar_subquery()
+  ... )
+  >>> update_stmt = update(user_table).values(fullname=scalar_subq)
+  >>> print(update_stmt)
+  {opensql}UPDATE user_account SET fullname=(SELECT address.email_address
+  FROM address
+  WHERE address.user_id = user_account.id ORDER BY address.id
+  LIMIT :param_1)
 
 
-* **UPDATE..FROM**:  Some databases such as PostgreSQL and MySQL support a syntax
-  "UPDATE FROM" where additional tables may be stated in the FROM clause.
-  This syntax will be generated implicitly when additional tables are located
-  in the WHERE clause of the statement::
+.. _tutorial_update_from:
 
-    >>> update_stmt = (
-    ...    update(user_table).
-    ...    where(user_table.c.id == address_table.c.user_id).
-    ...    where(address_table.c.email_address == 'patrick@aol.com').
-    ...    values(fullname='Pat')
-    ...  )
-    >>> print(update_stmt)
-    {opensql}UPDATE user_account SET fullname=:fullname FROM address
-    WHERE user_account.id = address.user_id AND address.email_address = :email_address_1
+UPDATE..FROM
+~~~~~~~~~~~~~
 
-  ..
+Some databases such as PostgreSQL and MySQL support a syntax "UPDATE FROM"
+where additional tables may be stated directly in a special FROM clause. This
+syntax will be generated implicitly when additional tables are located in the
+WHERE clause of the statement::
 
-* **UPDATE..FROM updating multiple tables**: this is a MySQL specific syntax which
-  requires we refer to :class:`_schema.Table` objects in the VALUES
-  clause in order to refer to additional tables::
+  >>> update_stmt = (
+  ...    update(user_table).
+  ...    where(user_table.c.id == address_table.c.user_id).
+  ...    where(address_table.c.email_address == 'patrick@aol.com').
+  ...    values(fullname='Pat')
+  ...  )
+  >>> print(update_stmt)
+  {opensql}UPDATE user_account SET fullname=:fullname FROM address
+  WHERE user_account.id = address.user_id AND address.email_address = :email_address_1
 
-    >>> update_stmt = (
-    ...    update(user_table).
-    ...    where(user_table.c.id == address_table.c.user_id).
-    ...    where(address_table.c.email_address == 'patrick@aol.com').
-    ...    values(
-    ...        {
-    ...            user_table.c.fullname: "Pat",
-    ...            address_table.c.email_address: "pat@aol.com"
-    ...        }
-    ...    )
-    ...  )
-    >>> from sqlalchemy.dialects import mysql
-    >>> print(update_stmt.compile(dialect=mysql.dialect()))
-    {opensql}UPDATE user_account, address
-    SET address.email_address=%s, user_account.fullname=%s
-    WHERE user_account.id = address.user_id AND address.email_address = %s
 
-  ..
+There is also a MySQL specific syntax that can UPDATE multiple tables. This
+requires we refer to :class:`_schema.Table` objects in the VALUES clause in
+order to refer to additional tables::
 
-* **Parameter Ordered Updates**: Another MySQL-only behavior is that the order
-  of parameters in the SET clause of an UPDATE actually impacts the evaluation
-  of each expression.   For this use case, the :meth:`_sql.Update.ordered_values`
-  method accepts a sequence of tuples so that this order may be controlled [1]_::
+  >>> update_stmt = (
+  ...    update(user_table).
+  ...    where(user_table.c.id == address_table.c.user_id).
+  ...    where(address_table.c.email_address == 'patrick@aol.com').
+  ...    values(
+  ...        {
+  ...            user_table.c.fullname: "Pat",
+  ...            address_table.c.email_address: "pat@aol.com"
+  ...        }
+  ...    )
+  ...  )
+  >>> from sqlalchemy.dialects import mysql
+  >>> print(update_stmt.compile(dialect=mysql.dialect()))
+  {opensql}UPDATE user_account, address
+  SET address.email_address=%s, user_account.fullname=%s
+  WHERE user_account.id = address.user_id AND address.email_address = %s
 
-    >>> update_stmt = (
-    ...     update(some_table).
-    ...     ordered_values(
-    ...         (some_table.c.y, 20),
-    ...         (some_table.c.x, some_table.c.y + 10)
-    ...     )
-    ... )
-    >>> print(update_stmt)
-    {opensql}UPDATE some_table SET y=:y, x=(some_table.y + :y_1)
 
-  ..
+Parameter Ordered Updates
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Another MySQL-only behavior is that the order of parameters in the SET clause
+of an UPDATE actually impacts the evaluation of each expression.   For this use
+case, the :meth:`_sql.Update.ordered_values` method accepts a sequence of
+tuples so that this order may be controlled [1]_::
+
+  >>> update_stmt = (
+  ...     update(some_table).
+  ...     ordered_values(
+  ...         (some_table.c.y, 20),
+  ...         (some_table.c.x, some_table.c.y + 10)
+  ...     )
+  ... )
+  >>> print(update_stmt)
+  {opensql}UPDATE some_table SET y=:y, x=(some_table.y + :y_1)
 
 
 .. [1] While Python dictionaries are `guaranteed to be insert ordered
@@ -1367,6 +1377,7 @@ Other techniques which may be applied to UPDATE include:
    measure of clarity of intent when it is essential that the SET clause
    of a MySQL UPDATE statement proceed in a specific way.
 
+.. _tutorial_deletes:
 
 The delete() SQL Expression Construct
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1388,19 +1399,25 @@ allowing for a RETURNING variant.
     >>> print(stmt)
     {opensql}DELETE FROM user_account WHERE user_account.name = :name_1
 
+
+.. _tutorial_multi_table_deletes:
+
+Multiple Table Deletes
+~~~~~~~~~~~~~~~~~~~~~~
+
 Like :class:`_sql.Update`, :class:`_sql.Delete` supports the use of correlated
 subqueries in the WHERE clause as well as backend-specific multiple table
 syntaxes, such as ``DELETE FROM..USING`` on MySQL::
 
-    >>> delete_stmt = (
-    ...    delete(user_table).
-    ...    where(user_table.c.id == address_table.c.user_id).
-    ...    where(address_table.c.email_address == 'patrick@aol.com')
-    ...  )
-    >>> from sqlalchemy.dialects import mysql
-    >>> print(delete_stmt.compile(dialect=mysql.dialect()))
-    {opensql}DELETE FROM user_account USING user_account, address
-    WHERE user_account.id = address.user_id AND address.email_address = %s
+  >>> delete_stmt = (
+  ...    delete(user_table).
+  ...    where(user_table.c.id == address_table.c.user_id).
+  ...    where(address_table.c.email_address == 'patrick@aol.com')
+  ...  )
+  >>> from sqlalchemy.dialects import mysql
+  >>> print(delete_stmt.compile(dialect=mysql.dialect()))
+  {opensql}DELETE FROM user_account USING user_account, address
+  WHERE user_account.id = address.user_id AND address.email_address = %s
 
 Getting Affected Row Count from UPDATE, DELETE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
