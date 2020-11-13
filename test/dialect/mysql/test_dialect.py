@@ -141,7 +141,6 @@ class DialectTest(fixtures.TestBase):
             make_url(
                 "mysql://scott:tiger@localhost:3306/test"
                 "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem"
-                "&ssl_mode=REQUIRED"
             )
         )[1]
         # args that differ among mysqldb and oursql
@@ -157,7 +156,6 @@ class DialectTest(fixtures.TestBase):
                     "cert": "/cert.pem",
                     "key": "/key.pem",
                 },
-                "ssl_mode": "REQUIRED",
                 "host": "localhost",
                 "user": "scott",
                 "port": 3306,

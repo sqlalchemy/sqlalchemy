@@ -1,6 +1,0 @@
-.. change::
-    :tags: mysql, usecase
-    :tickets: 5692
-
-    Added ``ssl_mode`` dialect keyword to MySQL dialect for use with mysqldb.
-    Pull request courtesy Teodor Moroz.
