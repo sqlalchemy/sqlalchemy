@@ -2417,9 +2417,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
         elements = []
         for expr, name, op in constraint._render_exprs:
             kw["include_table"] = False
-            elements.append(
-                "%s WITH %s" % (self.sql_compiler.process(expr, **kw), op)
+            exclude_element = self.sql_compiler.process(expr, **kw) + (
+                (" " + constraint.ops[expr.key] + " ")
+                if hasattr(expr, "key") and expr.key in constraint.ops
+                else ""
             )
+
+            elements.append("%s WITH %s" % (exclude_element, op))
         text += "EXCLUDE USING %s (%s)" % (
             self.preparer.validate_sql_phrase(
                 constraint.using, IDX_USING
