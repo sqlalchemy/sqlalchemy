@@ -61,8 +61,9 @@ names as keys in the constructor.
 
 In a similar manner as in our Core examples of :class:`_sql.Insert`, we did not
 include a primary key (i.e. an entry for the ``id`` column), since we would
-like to make use of SQLite's auto-incrementing primary key feature which the
-ORM also integrates with.    The value of the ``id`` attribute on the above
+like to make use of the auto-incrementing primary key feature of the database,
+SQLite in this case, which the ORM also integrates with.
+The value of the ``id`` attribute on the above
 objects, if we were to view it, displays itself as ``None``::
 
     >>> squidward
@@ -126,10 +127,11 @@ method:
     INSERT INTO user_account (name, fullname) VALUES (?, ?)
     [...] ('ehkrabs', 'Eugene H. Krabs')
 
-Above we observe the :class:`_orm.Session` was first called upon to emit
-SQL, so it created a new transaction and emitted the appropriate INSERT
-statements for the two objects.   The transaction now **remains open**
-until we call the :meth:`_orm.Session.commit` method.
+Above we observe the :class:`_orm.Session` was first called upon to emit SQL,
+so it created a new transaction and emitted the appropriate INSERT statements
+for the two objects.   The transaction now **remains open** until we call any
+of the :meth:`_orm.Session.commit`, :meth:`_orm.Session.rollback`, or
+:meth:`_orm.Session.close` methods of :class:`_orm.Session`.
 
 While :meth:`_orm.Session.flush` may be used to manually push out pending
 changes to the current transaction, it is usually unnecessary as the
@@ -223,7 +225,7 @@ using the ORM, there are two ways in which this construct is used. The primary
 way is that it is emitted automatically as part of the :term:`unit of work`
 process used by the :class:`_orm.Session`, where an UPDATE statement is emitted
 on a per-primary key basis corresponding to individual objects that have
-changes on them.   A second form of ORM enabled UPDATE is called an "ORM enabled
+changes on them.   A second form of UPDATE is called an "ORM enabled
 UPDATE" and allows us to use the :class:`_sql.Update` construct with the
 :class:`_orm.Session` explicitly; this is described in the next section.
 
@@ -413,8 +415,8 @@ ORM-enabled DELETE Statements
 Like UPDATE operations, there is also an ORM-enabled version of DELETE which we can
 illustrate by using the :func:`_sql.delete` construct with
 :meth:`_orm.Session.execute`.  It also has a feature by which **non expired**
-objects that match the given deletion criteria will be automatically marked
-as "deleted" in the :class:`_orm.Session`:
+objects (see :term:`expired`) that match the given deletion criteria will be
+automatically marked as ":term:`deleted`" in the :class:`_orm.Session`:
 
 .. sourcecode:: pycon+sql
 
@@ -469,7 +471,7 @@ with the exception of a special SQLAlchemy internal state object::
     >>> sandy.__dict__
     {'_sa_instance_state': <sqlalchemy.orm.state.InstanceState object at 0x...>}
 
-This is the "expired" state; accessing the attribute again will autobegin
+This is the ":term:`expired`" state; accessing the attribute again will autobegin
 a new transaction and refresh ``sandy`` with the current database row:
 
 .. sourcecode:: pycon+sql

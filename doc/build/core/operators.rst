@@ -89,8 +89,8 @@ available on descendants of these classes, including:
 * :class:`_sql.ColumnElement` objects more generally, which are the root
   of all Core SQL Expression language column-level expressions
 
-* :class:`_orm.InstrumentedAttribute` objects, which are ORM level mapped
-  attributes.
+* :class:`_orm.InstrumentedAttribute` objects, which are ORM
+  level mapped attributes.
 
 The operators are first introduced in the tutorial sections, including:
 

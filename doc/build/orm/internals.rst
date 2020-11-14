@@ -8,17 +8,17 @@ sections, are listed here.
 
 .. currentmodule:: sqlalchemy.orm
 
-.. autoclass:: sqlalchemy.orm.state.AttributeState
+.. autoclass:: AttributeState
     :members:
 
-.. autoclass:: sqlalchemy.orm.util.CascadeOptions
+.. autoclass:: CascadeOptions
     :members:
 
-.. autoclass:: sqlalchemy.orm.instrumentation.ClassManager
+.. autoclass:: ClassManager
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.ColumnProperty
+.. autoclass:: ColumnProperty
     :members:
 
     .. attribute:: Comparator.expressions
@@ -32,35 +32,35 @@ sections, are listed here.
 
             :ref:`maptojoin` - usage example
 
-.. autoclass:: sqlalchemy.orm.CompositeProperty
+.. autoclass:: CompositeProperty
     :members:
 
 
-.. autoclass:: sqlalchemy.orm.attributes.Event
+.. autoclass:: AttributeEvent
     :members:
 
-.. autoclass:: sqlalchemy.orm.identity.IdentityMap
+.. autoclass:: IdentityMap
     :members:
 
-.. autoclass:: sqlalchemy.orm.base.InspectionAttr
+.. autoclass:: InspectionAttr
     :members:
 
-.. autoclass:: sqlalchemy.orm.base.InspectionAttrInfo
+.. autoclass:: InspectionAttrInfo
     :members:
 
-.. autoclass:: sqlalchemy.orm.state.InstanceState
+.. autoclass:: InstanceState
     :members:
 
 
-.. autoclass:: sqlalchemy.orm.attributes.InstrumentedAttribute
+.. autoclass:: InstrumentedAttribute
     :members: __get__, __set__, __delete__
     :undoc-members:
 
-.. autodata:: sqlalchemy.orm.MANYTOONE
+.. autodata:: MANYTOONE
 
-.. autodata:: sqlalchemy.orm.MANYTOMANY
+.. autodata:: MANYTOMANY
 
-.. autoclass:: sqlalchemy.orm.MapperProperty
+.. autoclass:: MapperProperty
     :members:
 
     .. py:attribute:: info
@@ -83,35 +83,35 @@ sections, are listed here.
 
             :attr:`.SchemaItem.info`
 
-.. autodata:: sqlalchemy.orm.interfaces.NOT_EXTENSION
+.. autodata:: NOT_EXTENSION
 
-.. autofunction:: sqlalchemy.orm.loading.merge_result
+.. autofunction:: merge_result
 
-.. autofunction:: sqlalchemy.orm.loading.merge_frozen_result
+.. autofunction:: merge_frozen_result
 
 
-.. autodata:: sqlalchemy.orm.ONETOMANY
+.. autodata:: ONETOMANY
 
-.. autoclass:: sqlalchemy.orm.PropComparator
+.. autoclass:: PropComparator
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.RelationshipProperty
+.. autoclass:: RelationshipProperty
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.SynonymProperty
+.. autoclass:: SynonymProperty
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.query.QueryContext
+.. autoclass:: QueryContext
     :members:
 
 
-.. autoclass:: sqlalchemy.orm.attributes.QueryableAttribute
+.. autoclass:: QueryableAttribute
     :members:
     :inherited-members:
 
-.. autoclass:: sqlalchemy.orm.session.UOWTransaction
+.. autoclass:: UOWTransaction
     :members:
 

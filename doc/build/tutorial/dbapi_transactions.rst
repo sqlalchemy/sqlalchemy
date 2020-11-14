@@ -337,6 +337,19 @@ which is one of six different formats allowed by the DBAPI specification.
 SQLAlchemy abstracts these formats into just one, which is the "named" format
 using a colon.
 
+.. topic:: Always use bound parameters
+
+    As mentioned at the beginning of this section, textual SQL is not the usual
+    way we work with SQLAlchemy.  However, when using textual SQL, a Python
+    literal value, even non-strings like integers or dates, should **never be
+    stringified into SQL string directly**; a parameter should **always** be
+    used.  This is most famously known as how to avoid SQL injection attacks
+    when the data is untrusted.  However it also allows the SQLAlchemy dialects
+    and/or DBAPI to correctly handle the incoming input for the backend.
+    Outside of plain textual SQL use cases, SQLAlchemy's Core Expression API
+    otherwise ensures that Python literal values are passed as bound parameters
+    where appropriate.
+
 .. _tutorial_multiple_parameters:
 
 Sending Multiple Parameters

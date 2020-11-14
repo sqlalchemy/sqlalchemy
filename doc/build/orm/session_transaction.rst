@@ -235,8 +235,8 @@ Session::
         ])
         session.commit()
 
-Commit at once
-~~~~~~~~~~~~~~~~
+Begin Once
+~~~~~~~~~~
 
 Both :class:`_orm.sessionmaker` and :class:`_future.Engine` feature a
 :meth:`_future.Engine.begin` method that will both procure a new object

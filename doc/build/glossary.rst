@@ -1222,7 +1222,7 @@ Glossary
 
     cursor
         A control structure that enables traversal over the records in a database.
-        In the Python DBAPI, the cursor object in fact the starting point
+        In the Python DBAPI, the cursor object is in fact the starting point
         for statement execution as well as the interface used for fetching
         results.
 

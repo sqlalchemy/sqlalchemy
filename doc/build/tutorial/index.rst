@@ -29,7 +29,7 @@ SQLAlchemy 1.4 / 2.0 Tutorial
     within the 1.4 transitional phase should check out the
     :ref:`migration_20_toplevel` document as well.
 
-    For the newcomer, this document has a **lot** of detail, however at the
+    For the newcomer, this document has a **lot** of detail, however by the
     end they will be considered an **Alchemist**.
 
 SQLAlchemy is presented as two distinct APIs, one building on top of the other.
@@ -104,7 +104,7 @@ The major sections of this tutorial are as follows:
 * :ref:`tutorial_working_with_data` - here we learn how to create, select,
   update and delete data in the database.   The so-called :term:`CRUD`
   operations here are given in terms of SQLAlchemy Core with links out towards
-  their ORM counterparts.  The SELECT operation is deeply introduced at
+  their ORM counterparts.  The SELECT operation that is introduced in detail at
   :ref:`tutorial_selecting_data` applies equally well to Core and ORM.
 
 * :ref:`tutorial_orm_data_manipulation` covers the persistence framework of the
@@ -116,7 +116,7 @@ The major sections of this tutorial are as follows:
   of how it's used, with links to deeper documentation.
 
 * :ref:`tutorial_further_reading` lists a series of major top-level
-  documentation sections which fully document the concepts introduced in this
+  documentation sections which fully documents the concepts introduced in this
   tutorial.
 
 

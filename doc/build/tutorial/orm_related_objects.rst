@@ -8,9 +8,9 @@
 .. _tutorial_orm_related_objects:
 
 Working with Related Objects
-=============================
+============================
 
-In this section, we will cover one more essential ORM concept, which is that of
+In this section, we will cover one more essential ORM concept, which is
 how the ORM interacts with mapped classes that refer to other objects. In the
 section :ref:`tutorial_declaring_mapped_classes`, the mapped class examples
 made use of a construct called :func:`_orm.relationship`.  This construct
@@ -170,7 +170,7 @@ objects are not yet associated with a real database row::
 
 It's at this stage that we can see the very great utility that the unit of
 work process provides; recall in the section :ref:`tutorial_core_insert_values_clause`,
-rows were inserted rows into the ``user_account`` and
+rows were inserted into the ``user_account`` and
 ``address`` tables using some elaborate syntaxes in order to automatically
 associate the ``address.user_id`` columns with those of the ``user_account``
 rows.  Additionally, it was necessary that we emit INSERT for ``user_account``
@@ -199,7 +199,7 @@ newly generated primary key of the ``user_account`` row is applied to the
 .. _tutorial_loading_relationships:
 
 Loading Relationships
-----------------------
+---------------------
 
 In the last step, we called :meth:`_orm.Session.commit` which emitted a COMMIT
 for the transaction, and then per
@@ -266,11 +266,11 @@ section at :ref:`tutorial_orm_loader_strategies`.
 .. _tutorial_select_relationships:
 
 Using Relationships in Queries
--------------------------------
+------------------------------
 
 The previous section introduced the behavior of the :func:`_orm.relationship`
 construct when working with **instances of a mapped class**, above, the
-``u1``, ``a1`` and ``a2`` instances of the ``User`` and ``Address`` class.
+``u1``, ``a1`` and ``a2`` instances of the ``User`` and ``Address`` classes.
 In this section, we introduce the behavior of :func:`_orm.relationship` as it
 applies to **class level behavior of a mapped class**, where it serves in
 several ways to help automate the construction of SQL queries.
@@ -323,7 +323,7 @@ between the two mapped :class:`_schema.Table` objects, not because of the
 .. _tutorial_joining_relationships_aliased:
 
 Joining between Aliased targets
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In the section :ref:`tutorial_orm_entity_aliases` we introduced the
 :func:`_orm.aliased` construct, which is used to apply a SQL alias to an
@@ -391,8 +391,8 @@ email addresses:
 
 .. _tutorial_relationship_exists:
 
-EXISTS forms / has() / any()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+EXISTS forms: has() / any()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In the section :ref:`tutorial_exists`, we introduced the :class:`_sql.Exists`
 object that provides for the SQL EXISTS keyword in conjunction with a
@@ -463,7 +463,7 @@ which belonged to "pearl":
 .. _tutorial_relationship_operators:
 
 Common Relationship Operators
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There are some additional varieties of SQL generation helpers that come with
 :func:`_orm.relationship`, including:
@@ -587,7 +587,7 @@ loader strategies.
       loader strategies
 
 Selectin Load
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 The most useful loader in modern SQLAlchemy is the
 :func:`_orm.selectinload` loader option.  This option solves the most common
@@ -667,7 +667,8 @@ as below where we know that all ``Address`` objects have an associated
     pearl.krabs@gmail.com pkrabs
     pearl@aol.com pkrabs
 
-:func:`_orm.joinedload` also works for collections, however it has the effect
+:func:`_orm.joinedload` also works for collections, meaning one-to-many relationships,
+however it has the effect
 of multiplying out primary rows per related item in a recursive way
 that grows the amount of data sent for a result set by orders of magnitude for
 nested collections and/or larger collections, so its use vs. another option
@@ -777,7 +778,7 @@ arbitrary criteria to a JOIN rendered with :func:`_orm.relationship` to also
 include additional criteria in the ON clause.   The :meth:`_orm.PropComparator.and_`
 method is in fact generally available for most loader options.   For example,
 if we wanted to re-load the names of users and their email addresses, but omitting
-the email addresses at the ``sqlalchemy.org`` domain, we can apply
+the email addresses with the ``sqlalchemy.org`` domain, we can apply
 :meth:`_orm.PropComparator.and_` to the argument passed to
 :func:`_orm.selectinload` to limit this criteria:
 
@@ -839,7 +840,7 @@ Raiseload
 One additional loader strategy worth mentioning is :func:`_orm.raiseload`.
 This option is used to completely block an application from having the
 :term:`N plus one` problem at all by causing what would normally be a lazy
-load to raise instead.   It has two variants that are controlled via
+load to raise an error instead.   It has two variants that are controlled via
 the :paramref:`_orm.raiseload.sql_only` option to block either lazy loads
 that require SQL, versus all "load" operations including those which
 only need to consult the current :class:`_orm.Session`.

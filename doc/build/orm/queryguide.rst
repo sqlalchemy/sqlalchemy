@@ -132,7 +132,6 @@ To invoke a :class:`_sql.Select` with the ORM, it is passed to
     spongebob Spongebob Squarepants
 
 
-
 .. _orm_queryguide_select_columns:
 
 Selecting ORM Entities and Attributes
@@ -145,7 +144,10 @@ are converted into ORM-annotated :class:`_sql.FromClause` and
 
 A :class:`_sql.Select` object that contains ORM-annotated entities is normally
 executed using a :class:`_orm.Session` object, and not a :class:`_future.Connection`
-object, so that ORM-related features may take effect.
+object, so that ORM-related features may take effect, including that
+instances of ORM-mapped objects may be returned.  When using the
+:class:`_future.Connection` directly, result rows will only contain
+column-level data.
 
 Below we select from the ``User`` entity, producing a :class:`_sql.Select`
 that selects from the mapped :class:`_schema.Table` to which ``User`` is mapped::
@@ -213,7 +215,8 @@ as table columns are used::
     ORDER BY user_account.id, address.id
     [...] (){stop}
 
-ORM attributes, themselves known as :class:`_orm.InstrumentedAttribute`
+ORM attributes, themselves known as
+:class:`_orm.InstrumentedAttribute`
 objects, can be used in the same way as any :class:`_sql.ColumnElement`,
 and are delivered in result rows just the same way, such as below
 where we refer to their values by column name within each row::
@@ -428,18 +431,36 @@ JOIN elements in the resulting SQL::
     JOIN order_items AS order_items_1 ON user_order.id = order_items_1.order_id
     JOIN item ON item.id = order_items_1.item_id
 
-.. tip::
+The order in which each call to the :meth:`_sql.Select.join` method
+is significant only to the degree that the "left" side of what we would like
+to join from needs to be present in the list of FROMs before we indicate a
+new target.   :meth:`_sql.Select.join` would not, for example, know how to
+join correctly if we were to specify
+``select(User).join(Order.items).join(User.orders)``, and would raise an
+error.  In correct practice, the :meth:`_sql.Select.join` method is invoked
+in such a way that lines up with how we would want the JOIN clauses in SQL
+to be rendered, and each call should represent a clear link from what
+precedes it.
 
-    as seen in the above example, **the order in which each call to the join()
-    method occurs is important**.    Query would not, for example, know how to
-    join correctly if we were to specify ``User``, then ``Item``, then
-    ``Order``, in our chain of joins; in such a case, depending on the
-    arguments passed, it may raise an error that it doesn't know how to join,
-    or it may produce invalid SQL in which case the database will raise an
-    error. In correct practice, the :meth:`_sql.Select.join` method is invoked
-    in such a way that lines up with how we would want the JOIN clauses in SQL
-    to be rendered, and each call should represent a clear link from what
-    precedes it.
+All of the elements that we target in the FROM clause remain available
+as potential points to continue joining FROM.    We can continue to add
+other elements to join FROM the ``User`` entity above, for example adding
+on the ``User.addresses`` relationship to our chain of joins::
+
+    >>> stmt = (
+    ...     select(User).
+    ...     join(User.orders).
+    ...     join(Order.items).
+    ...     join(User.addresses)
+    ... )
+    >>> print(stmt)
+    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    JOIN user_order ON user_account.id = user_order.user_id
+    JOIN order_items AS order_items_1 ON user_order.id = order_items_1.order_id
+    JOIN item ON item.id = order_items_1.item_id
+    JOIN address ON user_account.id = address.user_id
+
 
 Joins to a Target Entity or Selectable
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -599,7 +620,6 @@ the ``Address`` entity and the custom subquery.  Note we also apply a name
 ``"address"`` to the :func:`_orm.aliased` construct so that we may
 refer to it by name in the result row::
 
-
     >>> address_subq = aliased(Address, subq, name="address")
     >>> stmt = select(User, address_subq).join(address_subq)
     >>> for row in session.execute(stmt):
@@ -639,7 +659,6 @@ to it using :class:`_orm.aliased` refer to distinct sets of columns::
     User(id=2, name='sandy', fullname='Sandy Cheeks') Address(id=3, email_address='squirrel@squirrelpower.org')
 
 
-
 Controlling what to Join From
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -673,8 +692,6 @@ be used::
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
-
-
 
 
 Special Relationship Operators
@@ -788,7 +805,7 @@ The ``populate_existing`` execution option is equvialent to the
 .. _orm_queryguide_autoflush:
 
 Autoflush
-^^^^^^^^^^
+^^^^^^^^^
 
 This option when passed as ``False`` will cause the :class:`_orm.Session`
 to not invoke the "autoflush" step.  It's equivalent to using the
@@ -813,7 +830,7 @@ The ``autoflush`` execution option is equvialent to the
 .. _orm_queryguide_yield_per:
 
 Yield Per
-^^^^^^^^^^
+^^^^^^^^^
 
 The ``yield_per`` execution option is an integer value which will cause the
 :class:`_engine.Result` to yield only a fixed count of rows at a time.  It is
@@ -842,29 +859,32 @@ rows (which are most).
 When ``yield_per`` is used, the
 :paramref:`_engine.Connection.execution_options.stream_results` option is also
 set for the Core execution, so that a streaming / server side cursor will be
-used if the backend supports it (currently known are
-:mod:`~sqlalchemy.dialects.postgresql.psycopg2`,
-:mod:`~sqlalchemy.dialects.mysql.mysqldb` and
-:mod:`~sqlalchemy.dialects.mysql.pymysql`.  Other backends will pre buffer all
-rows.  The memory use of raw database rows is much less than that of an
-ORM-mapped object, but should still be taken into consideration when
-benchmarking.
+used if the backend supports it [1]_
 
 
-The ``yield_per`` execution option **is not compatible subqueryload eager
+The ``yield_per`` execution option **is not compatible with subqueryload eager
 loading or joinedload eager loading when using collections**.  It is
-potentially compatible with "select in" eager loading, **provided the database
-driver supports multiple, independent cursors** (pysqlite and psycopg2 are
-known to work, MySQL and SQL Server ODBC drivers do not).
+potentially compatible with selectinload eager loading, **provided the database
+driver supports multiple, independent cursors** [2]_ .
 
 The ``yield_per`` execution option is equvialent to the
 :meth:`_orm.Query.yield_per` method in :term:`1.x style` ORM queries.
 
+.. [1] currently known are
+   :mod:`_postgresql.psycopg2`,
+   :mod:`_mysql.mysqldb` and
+   :mod:`_mysql.pymysql`.  Other backends will pre buffer
+   all rows.  The memory use of raw database rows is much less than that of an
+   ORM-mapped object, but should still be taken into consideration when
+   benchmarking.
+
+.. [2] the :mod:`_postgresql.psycopg2`
+   and :mod:`_sqlite.pysqlite` drivers are
+   known to work, drivers for MySQL and SQL Server ODBC drivers do not.
+
 .. seealso::
 
     :ref:`engine_stream_results`
-
-
 
 
 ORM Update / Delete with Arbitrary WHERE clause
@@ -876,7 +896,4 @@ The :meth:`_orm.Session.execute` method, in addition to handling ORM-enabled
 any number of database rows while also being able to synchronize the state of
 matching objects locally present in the :class:`_orm.Session`. See the section
 :ref:`orm_expression_update_delete` for background on this feature.
-
-
-
 
