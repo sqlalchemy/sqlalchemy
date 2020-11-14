@@ -171,6 +171,11 @@ class ExcludeConstraint(ColumnCollectionConstraint):
           If set, emit WHERE <predicate> when issuing DDL
           for this constraint.
 
+        :param ops:
+          Optional dictionary.  Used to define operator classes for the
+          elements.
+          See :ref:`_postgresql_operator_classes`
+
         """
         columns = []
         render_exprs = []

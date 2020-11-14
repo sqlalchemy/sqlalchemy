@@ -781,6 +781,8 @@ using the ``postgresql_where`` keyword argument::
 
   Index('my_index', my_table.c.id, postgresql_where=my_table.c.value > 10)
 
+.. _postgresql_operator_classes:
+
 Operator Classes
 ^^^^^^^^^^^^^^^^
 
