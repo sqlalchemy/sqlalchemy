@@ -2418,7 +2418,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         for expr, name, op in constraint._render_exprs:
             kw["include_table"] = False
             exclude_element = self.sql_compiler.process(expr, **kw) + (
-                (" " + constraint.ops[expr.key] + " ")
+                (" " + constraint.ops[expr.key])
                 if hasattr(expr, "key") and expr.key in constraint.ops
                 else ""
             )
