@@ -103,6 +103,12 @@ class DialectTest(fixtures.TestBase):
                 "(Red Hat 4.8.5-11), 64-bit",
                 (10,),
             ),
+            (
+                "PostgreSQL 8.0.2 on i686-pc-linux-gnu, compiled by GCC gcc "
+                "(GCC) 3.4.2 20041017 (Red Hat 3.4.2-6.fc3), "
+                "Redshift 1.0.12103",
+                (8, 0, 2),
+            ),
         ]:
             eq_(dialect._get_server_version_info(mock_conn(string)), version)
 
@@ -763,6 +769,38 @@ class MiscBackendTest(
         assert testing.db.dialect.dbapi.__version__.startswith(
             ".".join(str(x) for x in v)
         )
+
+    @testing.combinations(
+        ((8, 1), False, False),
+        ((8, 1), None, False),
+        ((11, 5), True, False),
+        ((11, 5), False, True),
+    )
+    def test_backslash_escapes_detection(
+        self, version, explicit_setting, expected
+    ):
+        engine = engines.testing_engine()
+
+        def _server_version(conn):
+            return version
+
+        if explicit_setting is not None:
+
+            @event.listens_for(engine, "connect", insert=True)
+            @event.listens_for(engine, "first_connect", insert=True)
+            def connect(dbapi_connection, connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute(
+                    "SET SESSION standard_conforming_strings = %s"
+                    % ("off" if not explicit_setting else "on")
+                )
+                dbapi_connection.commit()
+
+        with mock.patch.object(
+            engine.dialect, "_get_server_version_info", _server_version
+        ):
+            with engine.connect():
+                eq_(engine.dialect._backslash_escapes, expected)
 
     def test_readonly_flag_connection(self):
         with testing.db.connect() as conn:
