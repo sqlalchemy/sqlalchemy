@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 5699
+
+    Use python ``re.search()`` instead of ``re.match()`` as the operation
+    used by the :meth:`Column.regexp_match` method when using sqlite.
+    This matches the behavior of regular expressions on other databases
+    as well as that of well-known SQLite plugins.
