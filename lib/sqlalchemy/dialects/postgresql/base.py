@@ -781,6 +781,8 @@ using the ``postgresql_where`` keyword argument::
 
   Index('my_index', my_table.c.id, postgresql_where=my_table.c.value > 10)
 
+.. _postgresql_operator_classes:
+
 Operator Classes
 ^^^^^^^^^^^^^^^^
 
@@ -797,11 +799,10 @@ The :class:`.Index` construct allows these to be specified via the
             'id': 'int4_ops'
         })
 
-Note that the keys in the ``postgresql_ops`` dictionary are the "key" name of
-the :class:`_schema.Column`, i.e. the name used to access it from the ``.c``
-collection of :class:`_schema.Table`,
-which can be configured to be different than
-the actual name of the column as expressed in the database.
+Note that the keys in the ``postgresql_ops`` dictionaries are the
+"key" name of the :class:`_schema.Column`, i.e. the name used to access it from
+the ``.c`` collection of :class:`_schema.Table`, which can be configured to be
+different than the actual name of the column as expressed in the database.
 
 If ``postgresql_ops`` is to be used against a complex SQL expression such
 as a function call, then to apply to the column it must be given a label
@@ -814,6 +815,14 @@ that is identified in the dictionary by name, e.g.::
             'data_lower': 'text_pattern_ops',
             'id': 'int4_ops'
         })
+
+Operator classes are also supported by the
+:class:`_postgresql.ExcludeConstraint` construct using the
+:paramref:`_postgresql.ExcludeConstraint.ops` parameter. See that parameter for
+details.
+
+.. versionadded:: 1.3.20 added support for operator classes with
+   :class:`_postgresql.ExcludeConstraint`.
 
 
 Index Types
@@ -2417,9 +2426,13 @@ class PGDDLCompiler(compiler.DDLCompiler):
         elements = []
         for expr, name, op in constraint._render_exprs:
             kw["include_table"] = False
-            elements.append(
-                "%s WITH %s" % (self.sql_compiler.process(expr, **kw), op)
+            exclude_element = self.sql_compiler.process(expr, **kw) + (
+                (" " + constraint.ops[expr.key])
+                if hasattr(expr, "key") and expr.key in constraint.ops
+                else ""
             )
+
+            elements.append("%s WITH %s" % (exclude_element, op))
         text += "EXCLUDE USING %s (%s)" % (
             self.preparer.validate_sql_phrase(
                 constraint.using, IDX_USING
