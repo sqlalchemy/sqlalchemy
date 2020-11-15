@@ -1694,6 +1694,9 @@ This document details individual issue-level changes made throughout
         constraints present schema-management maintenance complexities that should
         be opted in to, rather than being turned on by default.
 
+        .. seealso::
+
+            :ref:`change_5367`
 
     .. change::
         :tags: feature, sql
