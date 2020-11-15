@@ -340,7 +340,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         # passing NULL for an expression that needs to be interpreted as
         # a certain type, does the DBAPI have the info it needs to do this.
         date_table = self.tables.date_table
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             result = conn.execute(
                 date_table.insert(), {"date_data": self.data}
             )
@@ -702,7 +702,7 @@ class BooleanTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         # testing "WHERE <column>" renders a compatible expression
         boolean_table = self.tables.boolean_table
 
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 boolean_table.insert(),
                 [
@@ -817,7 +817,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 data_table.insert(),
                 {
@@ -841,7 +841,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 data_table.insert(),
                 {
@@ -864,7 +864,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 data_table.insert(),
                 {
@@ -900,7 +900,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_single_element_round_trip(self, element):
         data_table = self.tables.data_table
         data_element = element
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 data_table.insert(),
                 {
@@ -928,7 +928,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         # support sqlite :memory: database...
         data_table.create(engine, checkfirst=True)
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(
                 data_table.insert(), {"name": "row1", "data": data_element}
             )
@@ -978,7 +978,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_round_trip_none_as_json_null(self):
         col = self.tables.data_table.c["data"]
 
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 self.tables.data_table.insert(), {"name": "r1", "data": None}
             )
@@ -996,7 +996,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
     def test_unicode_round_trip(self):
         # note we include Unicode supplementary characters as well
-        with config.db.connect() as conn:
+        with config.db.begin() as conn:
             conn.execute(
                 self.tables.data_table.insert(),
                 {

@@ -9,7 +9,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
@@ -26,6 +25,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -66,7 +66,7 @@ class ExpireTest(_fixtures.FixtureTest):
         u.name = "foo"
         sess.flush()
         # change the value in the DB
-        users.update(users.c.id == 7, values=dict(name="jack")).execute()
+        sess.execute(users.update(users.c.id == 7, values=dict(name="jack")))
         sess.expire(u)
         # object isn't refreshed yet, using dict to bypass trigger
         assert u.__dict__.get("name") != "jack"
@@ -471,7 +471,7 @@ class ExpireTest(_fixtures.FixtureTest):
         o = sess.query(Order).get(3)
         sess.expire(o)
 
-        orders.update().execute(description="order 3 modified")
+        sess.execute(orders.update(), dict(description="order 3 modified"))
         assert o.isopen == 1
         assert (
             attributes.instance_state(o).dict["description"]
@@ -788,7 +788,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expire(u)
         assert "name" not in u.__dict__
 
-        users.update(users.c.id == 7).execute(name="jack2")
+        sess.execute(users.update(users.c.id == 7), dict(name="jack2"))
         assert u.name == "jack2"
         assert u.uname == "jack2"
         assert "name" in u.__dict__
@@ -812,7 +812,10 @@ class ExpireTest(_fixtures.FixtureTest):
         assert "description" not in o.__dict__
         assert attributes.instance_state(o).dict["isopen"] == 1
 
-        orders.update(orders.c.id == 3).execute(description="order 3 modified")
+        sess.execute(
+            orders.update(orders.c.id == 3),
+            dict(description="order 3 modified"),
+        )
 
         def go():
             assert o.description == "order 3 modified"
@@ -1660,12 +1663,9 @@ class LifecycleTest(fixtures.MappedTest):
     def test_cols_missing_in_load(self):
         Data = self.classes.Data
 
-        sess = create_session()
-
-        d1 = Data(data="d1")
-        sess.add(d1)
-        sess.flush()
-        sess.close()
+        with Session(testing.db) as sess, sess.begin():
+            d1 = Data(data="d1")
+            sess.add(d1)
 
         sess = create_session()
         d1 = sess.query(Data).from_statement(select(Data.id)).first()
@@ -1679,21 +1679,18 @@ class LifecycleTest(fixtures.MappedTest):
     def test_deferred_cols_missing_in_load_state_reset(self):
         Data = self.classes.DataDefer
 
-        sess = create_session()
+        with Session(testing.db) as sess, sess.begin():
+            d1 = Data(data="d1")
+            sess.add(d1)
 
-        d1 = Data(data="d1")
-        sess.add(d1)
-        sess.flush()
-        sess.close()
-
-        sess = create_session()
-        d1 = (
-            sess.query(Data)
-            .from_statement(select(Data.id))
-            .options(undefer(Data.data))
-            .first()
-        )
-        d1.data = "d2"
+        with Session(testing.db) as sess:
+            d1 = (
+                sess.query(Data)
+                .from_statement(select(Data.id))
+                .options(undefer(Data.data))
+                .first()
+            )
+            d1.data = "d2"
 
         # the deferred loader has to clear out any state
         # on the col, including that 'd2' here

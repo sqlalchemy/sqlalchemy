@@ -151,7 +151,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        session = create_session()
+        session = Session()
 
         session.execute(users.insert(), dict(name="Johnny"))
 
@@ -447,7 +447,9 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.commit()
         assert not c.in_transaction()
         assert c.exec_driver_sql("select count(1) from users").scalar() == 1
-        c.exec_driver_sql("delete from users")
+
+        with c.begin():
+            c.exec_driver_sql("delete from users")
         assert c.exec_driver_sql("select count(1) from users").scalar() == 0
 
         c = testing.db.connect()

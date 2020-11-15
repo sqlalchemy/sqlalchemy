@@ -1329,10 +1329,13 @@ class KVChild(object):
         self.value = value
 
 
-class ReconstitutionTest(fixtures.TestBase):
-    def setup(self):
-        metadata = MetaData(testing.db)
-        parents = Table(
+class ReconstitutionTest(fixtures.MappedTest):
+    run_setup_mappers = "each"
+    run_setup_classes = "each"
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
             "parents",
             metadata,
             Column(
@@ -1340,7 +1343,7 @@ class ReconstitutionTest(fixtures.TestBase):
             ),
             Column("name", String(30)),
         )
-        children = Table(
+        Table(
             "children",
             metadata,
             Column(
@@ -1349,22 +1352,23 @@ class ReconstitutionTest(fixtures.TestBase):
             Column("parent_id", Integer, ForeignKey("parents.id")),
             Column("name", String(30)),
         )
-        metadata.create_all()
-        parents.insert().execute(name="p1")
-        self.metadata = metadata
-        self.parents = parents
-        self.children = children
-        Parent.kids = association_proxy("children", "name")
 
-    def teardown(self):
-        self.metadata.drop_all()
-        clear_mappers()
+    @classmethod
+    def insert_data(cls, connection):
+        parents = cls.tables.parents
+        connection.execute(parents.insert(), dict(name="p1"))
+
+    @classmethod
+    def setup_classes(cls):
+        Parent.kids = association_proxy("children", "name")
 
     def test_weak_identity_map(self):
         mapper(
-            Parent, self.parents, properties=dict(children=relationship(Child))
+            Parent,
+            self.tables.parents,
+            properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.children)
+        mapper(Child, self.tables.children)
         session = create_session()
 
         def add_child(parent_name, child_name):
@@ -1380,9 +1384,11 @@ class ReconstitutionTest(fixtures.TestBase):
 
     def test_copy(self):
         mapper(
-            Parent, self.parents, properties=dict(children=relationship(Child))
+            Parent,
+            self.tables.parents,
+            properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.children)
+        mapper(Child, self.tables.children)
         p = Parent("p1")
         p.kids.extend(["c1", "c2"])
         p_copy = copy.copy(p)
@@ -1392,9 +1398,11 @@ class ReconstitutionTest(fixtures.TestBase):
 
     def test_pickle_list(self):
         mapper(
-            Parent, self.parents, properties=dict(children=relationship(Child))
+            Parent,
+            self.tables.parents,
+            properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.children)
+        mapper(Child, self.tables.children)
         p = Parent("p1")
         p.kids.extend(["c1", "c2"])
         r1 = pickle.loads(pickle.dumps(p))
@@ -1407,12 +1415,12 @@ class ReconstitutionTest(fixtures.TestBase):
     def test_pickle_set(self):
         mapper(
             Parent,
-            self.parents,
+            self.tables.parents,
             properties=dict(
                 children=relationship(Child, collection_class=set)
             ),
         )
-        mapper(Child, self.children)
+        mapper(Child, self.tables.children)
         p = Parent("p1")
         p.kids.update(["c1", "c2"])
         r1 = pickle.loads(pickle.dumps(p))
@@ -1425,7 +1433,7 @@ class ReconstitutionTest(fixtures.TestBase):
     def test_pickle_dict(self):
         mapper(
             Parent,
-            self.parents,
+            self.tables.parents,
             properties=dict(
                 children=relationship(
                     KVChild,
@@ -1435,7 +1443,7 @@ class ReconstitutionTest(fixtures.TestBase):
                 )
             ),
         )
-        mapper(KVChild, self.children)
+        mapper(KVChild, self.tables.children)
         p = Parent("p1")
         p.kids.update({"c1": "v1", "c2": "v2"})
         assert p.kids == {"c1": "c1", "c2": "c2"}

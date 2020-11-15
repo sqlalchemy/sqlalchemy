@@ -1951,9 +1951,7 @@ class AccountingFlagsTest(_LocalFixture):
         sess.add(u1)
         sess.commit()
 
-        testing.db.execute(
-            users.update(users.c.name == "ed").values(name="edward")
-        )
+        sess.execute(users.update(users.c.name == "ed").values(name="edward"))
 
         assert u1.name == "ed"
         sess.expire_all()

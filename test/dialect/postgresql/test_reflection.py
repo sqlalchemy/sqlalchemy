@@ -291,63 +291,64 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_class(cls):
-        con = testing.db.connect()
-        for ddl in [
-            'CREATE SCHEMA "SomeSchema"',
-            "CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42",
-            "CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0",
-            "CREATE TYPE testtype AS ENUM ('test')",
-            "CREATE DOMAIN enumdomain AS testtype",
-            "CREATE DOMAIN arraydomain AS INTEGER[]",
-            'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
-        ]:
-            try:
-                con.exec_driver_sql(ddl)
-            except exc.DBAPIError as e:
-                if "already exists" not in str(e):
-                    raise e
-        con.exec_driver_sql(
-            "CREATE TABLE testtable (question integer, answer " "testdomain)"
-        )
-        con.exec_driver_sql(
-            "CREATE TABLE test_schema.testtable(question "
-            "integer, answer test_schema.testdomain, anything "
-            "integer)"
-        )
-        con.exec_driver_sql(
-            "CREATE TABLE crosschema (question integer, answer "
-            "test_schema.testdomain)"
-        )
+        with testing.db.begin() as con:
+            for ddl in [
+                'CREATE SCHEMA "SomeSchema"',
+                "CREATE DOMAIN testdomain INTEGER NOT NULL DEFAULT 42",
+                "CREATE DOMAIN test_schema.testdomain INTEGER DEFAULT 0",
+                "CREATE TYPE testtype AS ENUM ('test')",
+                "CREATE DOMAIN enumdomain AS testtype",
+                "CREATE DOMAIN arraydomain AS INTEGER[]",
+                'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
+            ]:
+                try:
+                    con.exec_driver_sql(ddl)
+                except exc.DBAPIError as e:
+                    if "already exists" not in str(e):
+                        raise e
+            con.exec_driver_sql(
+                "CREATE TABLE testtable (question integer, answer "
+                "testdomain)"
+            )
+            con.exec_driver_sql(
+                "CREATE TABLE test_schema.testtable(question "
+                "integer, answer test_schema.testdomain, anything "
+                "integer)"
+            )
+            con.exec_driver_sql(
+                "CREATE TABLE crosschema (question integer, answer "
+                "test_schema.testdomain)"
+            )
 
-        con.exec_driver_sql(
-            "CREATE TABLE enum_test (id integer, data enumdomain)"
-        )
+            con.exec_driver_sql(
+                "CREATE TABLE enum_test (id integer, data enumdomain)"
+            )
 
-        con.exec_driver_sql(
-            "CREATE TABLE array_test (id integer, data arraydomain)"
-        )
+            con.exec_driver_sql(
+                "CREATE TABLE array_test (id integer, data arraydomain)"
+            )
 
-        con.exec_driver_sql(
-            "CREATE TABLE quote_test "
-            '(id integer, data "SomeSchema"."Quoted.Domain")'
-        )
+            con.exec_driver_sql(
+                "CREATE TABLE quote_test "
+                '(id integer, data "SomeSchema"."Quoted.Domain")'
+            )
 
     @classmethod
     def teardown_class(cls):
-        con = testing.db.connect()
-        con.exec_driver_sql("DROP TABLE testtable")
-        con.exec_driver_sql("DROP TABLE test_schema.testtable")
-        con.exec_driver_sql("DROP TABLE crosschema")
-        con.exec_driver_sql("DROP TABLE quote_test")
-        con.exec_driver_sql("DROP DOMAIN testdomain")
-        con.exec_driver_sql("DROP DOMAIN test_schema.testdomain")
-        con.exec_driver_sql("DROP TABLE enum_test")
-        con.exec_driver_sql("DROP DOMAIN enumdomain")
-        con.exec_driver_sql("DROP TYPE testtype")
-        con.exec_driver_sql("DROP TABLE array_test")
-        con.exec_driver_sql("DROP DOMAIN arraydomain")
-        con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
-        con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
+        with testing.db.begin() as con:
+            con.exec_driver_sql("DROP TABLE testtable")
+            con.exec_driver_sql("DROP TABLE test_schema.testtable")
+            con.exec_driver_sql("DROP TABLE crosschema")
+            con.exec_driver_sql("DROP TABLE quote_test")
+            con.exec_driver_sql("DROP DOMAIN testdomain")
+            con.exec_driver_sql("DROP DOMAIN test_schema.testdomain")
+            con.exec_driver_sql("DROP TABLE enum_test")
+            con.exec_driver_sql("DROP DOMAIN enumdomain")
+            con.exec_driver_sql("DROP TYPE testtype")
+            con.exec_driver_sql("DROP TABLE array_test")
+            con.exec_driver_sql("DROP DOMAIN arraydomain")
+            con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
+            con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
     def test_table_is_reflected(self):
         metadata = MetaData()
@@ -486,7 +487,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("ref", Integer, ForeignKey("subject.id$")),
         )
-        meta1.create_all()
+        meta1.create_all(testing.db)
         meta2 = MetaData()
         subject = Table("subject", meta2, autoload_with=testing.db)
         referer = Table("referer", meta2, autoload_with=testing.db)
@@ -523,9 +524,11 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         with testing.db.begin() as conn:
             r = conn.execute(t2.insert())
             eq_(r.inserted_primary_key, (1,))
-        testing.db.connect().execution_options(
-            autocommit=True
-        ).exec_driver_sql("alter table t_id_seq rename to foobar_id_seq")
+
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql(
+                "alter table t_id_seq rename to foobar_id_seq"
+            )
         m3 = MetaData()
         t3 = Table("t", m3, autoload_with=testing.db, implicit_returning=False)
         eq_(
@@ -545,10 +548,12 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("x", Integer),
         )
-        metadata.create_all()
-        testing.db.connect().execution_options(
-            autocommit=True
-        ).exec_driver_sql("alter table t alter column id type varchar(50)")
+        metadata.create_all(testing.db)
+
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql(
+                "alter table t alter column id type varchar(50)"
+            )
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=testing.db)
         eq_(t2.c.id.autoincrement, False)
@@ -558,10 +563,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
     def test_renamed_pk_reflection(self):
         metadata = self.metadata
         Table("t", metadata, Column("id", Integer, primary_key=True))
-        metadata.create_all()
-        testing.db.connect().execution_options(
-            autocommit=True
-        ).exec_driver_sql("alter table t rename id to t_id")
+        metadata.create_all(testing.db)
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("alter table t rename id to t_id")
         m2 = MetaData()
         t2 = Table("t", m2, autoload_with=testing.db)
         eq_([c.name for c in t2.primary_key], ["t_id"])
@@ -936,13 +940,13 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("name", String(20), index=True),
             Column("aname", String(20)),
         )
-        metadata.create_all()
-        with testing.db.connect() as c:
-            c.exec_driver_sql("create index idx1 on party ((id || name))")
-            c.exec_driver_sql(
+        metadata.create_all(testing.db)
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("create index idx1 on party ((id || name))")
+            conn.exec_driver_sql(
                 "create unique index idx2 on party (id) where name = 'test'"
             )
-            c.exec_driver_sql(
+            conn.exec_driver_sql(
                 """
                 create index idx3 on party using btree
                     (lower(name::text), lower(aname::text))
@@ -1029,7 +1033,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("aname", String(20)),
         )
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
 
             t1.create(conn)
 
@@ -1109,18 +1113,19 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("x", Integer),
         )
-        metadata.create_all()
-        conn = testing.db.connect().execution_options(autocommit=True)
-        conn.exec_driver_sql("CREATE INDEX idx1 ON t (x)")
-        conn.exec_driver_sql("ALTER TABLE t RENAME COLUMN x to y")
+        metadata.create_all(testing.db)
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("CREATE INDEX idx1 ON t (x)")
+            conn.exec_driver_sql("ALTER TABLE t RENAME COLUMN x to y")
 
-        ind = testing.db.dialect.get_indexes(conn, "t", None)
-        expected = [{"name": "idx1", "unique": False, "column_names": ["y"]}]
-        if testing.requires.index_reflects_included_columns.enabled:
-            expected[0]["include_columns"] = []
+            ind = testing.db.dialect.get_indexes(conn, "t", None)
+            expected = [
+                {"name": "idx1", "unique": False, "column_names": ["y"]}
+            ]
+            if testing.requires.index_reflects_included_columns.enabled:
+                expected[0]["include_columns"] = []
 
-        eq_(ind, expected)
-        conn.close()
+            eq_(ind, expected)
 
     @testing.fails_if("postgresql < 8.2", "reloptions not supported")
     @testing.provide_metadata
@@ -1135,9 +1140,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("x", Integer),
         )
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
-        with testing.db.connect().execution_options(autocommit=True) as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql(
                 "CREATE INDEX idx1 ON t (x) WITH (fillfactor = 50)"
             )
@@ -1177,8 +1182,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("x", ARRAY(Integer)),
         )
-        metadata.create_all()
-        with testing.db.connect().execution_options(autocommit=True) as conn:
+        metadata.create_all(testing.db)
+        with testing.db.begin() as conn:
             conn.exec_driver_sql("CREATE INDEX idx1 ON t USING gin (x)")
 
             ind = testing.db.dialect.get_indexes(conn, "t", None)
@@ -1215,7 +1220,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("name", String(20)),
         )
         metadata.create_all()
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
 
             # prior to #5205, this would return:
@@ -1312,8 +1317,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             eq_(fk, fk_ref[fk["name"]])
 
     @testing.provide_metadata
-    def test_inspect_enums_schema(self):
-        conn = testing.db.connect()
+    def test_inspect_enums_schema(self, connection):
         enum_type = postgresql.ENUM(
             "sad",
             "ok",
@@ -1322,8 +1326,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             schema="test_schema",
             metadata=self.metadata,
         )
-        enum_type.create(conn)
-        inspector = inspect(conn)
+        enum_type.create(connection)
+        inspector = inspect(connection)
         eq_(
             inspector.get_enums("test_schema"),
             [

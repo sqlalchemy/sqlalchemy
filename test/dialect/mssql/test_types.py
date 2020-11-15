@@ -221,7 +221,7 @@ class RowVersionTest(fixtures.TablesTest):
             Column("rv", cls(convert_int=convert_int)),
         )
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(t.insert().values(data="foo"))
             last_ts_1 = conn.exec_driver_sql("SELECT @@DBTS").scalar()
 
@@ -545,7 +545,7 @@ class TypeRoundTripTest(
     __backend__ = True
 
     @testing.provide_metadata
-    def test_decimal_notation(self):
+    def test_decimal_notation(self, connection):
         metadata = self.metadata
         numeric_table = Table(
             "numeric_table",
@@ -560,7 +560,7 @@ class TypeRoundTripTest(
                 "numericcol", Numeric(precision=38, scale=20, asdecimal=True)
             ),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         test_items = [
             decimal.Decimal(d)
             for d in (
@@ -623,21 +623,20 @@ class TypeRoundTripTest(
             )
         ]
 
-        with testing.db.connect() as conn:
-            for value in test_items:
-                result = conn.execute(
-                    numeric_table.insert(), dict(numericcol=value)
+        for value in test_items:
+            result = connection.execute(
+                numeric_table.insert(), dict(numericcol=value)
+            )
+            primary_key = result.inserted_primary_key
+            returned = connection.scalar(
+                select(numeric_table.c.numericcol).where(
+                    numeric_table.c.id == primary_key[0]
                 )
-                primary_key = result.inserted_primary_key
-                returned = conn.scalar(
-                    select(numeric_table.c.numericcol).where(
-                        numeric_table.c.id == primary_key[0]
-                    )
-                )
-                eq_(value, returned)
+            )
+            eq_(value, returned)
 
     @testing.provide_metadata
-    def test_float(self):
+    def test_float(self, connection):
         metadata = self.metadata
 
         float_table = Table(
@@ -652,41 +651,47 @@ class TypeRoundTripTest(
             Column("floatcol", Float()),
         )
 
-        metadata.create_all()
-        try:
-            test_items = [
-                float(d)
-                for d in (
-                    "1500000.00000000000000000000",
-                    "-1500000.00000000000000000000",
-                    "1500000",
-                    "0.0000000000000000002",
-                    "0.2",
-                    "-0.0000000000000000002",
-                    "156666.458923543",
-                    "-156666.458923543",
-                    "1",
-                    "-1",
-                    "1234",
-                    "2E-12",
-                    "4E8",
-                    "3E-6",
-                    "3E-7",
-                    "4.1",
-                    "1E-1",
-                    "1E-2",
-                    "1E-3",
-                    "1E-4",
-                    "1E-5",
-                    "1E-6",
-                    "1E-7",
-                    "1E-8",
+        metadata.create_all(connection)
+        test_items = [
+            float(d)
+            for d in (
+                "1500000.00000000000000000000",
+                "-1500000.00000000000000000000",
+                "1500000",
+                "0.0000000000000000002",
+                "0.2",
+                "-0.0000000000000000002",
+                "156666.458923543",
+                "-156666.458923543",
+                "1",
+                "-1",
+                "1234",
+                "2E-12",
+                "4E8",
+                "3E-6",
+                "3E-7",
+                "4.1",
+                "1E-1",
+                "1E-2",
+                "1E-3",
+                "1E-4",
+                "1E-5",
+                "1E-6",
+                "1E-7",
+                "1E-8",
+            )
+        ]
+        for value in test_items:
+            result = connection.execute(
+                float_table.insert(), dict(floatcol=value)
+            )
+            primary_key = result.inserted_primary_key
+            returned = connection.scalar(
+                select(float_table.c.floatcol).where(
+                    float_table.c.id == primary_key[0]
                 )
-            ]
-            for value in test_items:
-                float_table.insert().execute(floatcol=value)
-        except Exception as e:
-            raise e
+            )
+            eq_(value, returned)
 
     # todo this should suppress warnings, but it does not
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
@@ -770,18 +775,17 @@ class TypeRoundTripTest(
         d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
         return t, (d1, t1, d2)
 
-    def test_date_roundtrips(self, date_fixture):
+    def test_date_roundtrips(self, date_fixture, connection):
         t, (d1, t1, d2) = date_fixture
-        with testing.db.begin() as conn:
-            conn.execute(
-                t.insert(), adate=d1, adatetime=d2, atime1=t1, atime2=d2
-            )
+        connection.execute(
+            t.insert(), adate=d1, adatetime=d2, atime1=t1, atime2=d2
+        )
 
-            row = conn.execute(t.select()).first()
-            eq_(
-                (row.adate, row.adatetime, row.atime1, row.atime2),
-                (d1, d2, t1, d2.time()),
-            )
+        row = connection.execute(t.select()).first()
+        eq_(
+            (row.adate, row.adatetime, row.atime1, row.atime2),
+            (d1, d2, t1, d2.time()),
+        )
 
     @testing.metadata_fixture()
     def datetimeoffset_fixture(self, metadata):
@@ -870,45 +874,45 @@ class TypeRoundTripTest(
         dto_param_value,
         expected_offset_hours,
         should_fail,
+        connection,
     ):
         t = datetimeoffset_fixture
         dto_param_value = dto_param_value()
 
-        with testing.db.begin() as conn:
-            if should_fail:
-                assert_raises(
-                    sa.exc.DBAPIError,
-                    conn.execute,
-                    t.insert(),
-                    adatetimeoffset=dto_param_value,
-                )
-                return
-
-            conn.execute(
+        if should_fail:
+            assert_raises(
+                sa.exc.DBAPIError,
+                connection.execute,
                 t.insert(),
                 adatetimeoffset=dto_param_value,
             )
+            return
 
-            row = conn.execute(t.select()).first()
+        connection.execute(
+            t.insert(),
+            adatetimeoffset=dto_param_value,
+        )
 
-            if dto_param_value is None:
-                is_(row.adatetimeoffset, None)
-            else:
-                eq_(
-                    row.adatetimeoffset,
-                    datetime.datetime(
-                        2007,
-                        10,
-                        30,
-                        11,
-                        2,
-                        32,
-                        123456,
-                        util.timezone(
-                            datetime.timedelta(hours=expected_offset_hours)
-                        ),
+        row = connection.execute(t.select()).first()
+
+        if dto_param_value is None:
+            is_(row.adatetimeoffset, None)
+        else:
+            eq_(
+                row.adatetimeoffset,
+                datetime.datetime(
+                    2007,
+                    10,
+                    30,
+                    11,
+                    2,
+                    32,
+                    123456,
+                    util.timezone(
+                        datetime.timedelta(hours=expected_offset_hours)
                     ),
-                )
+                ),
+            )
 
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
     @testing.provide_metadata
@@ -1173,7 +1177,7 @@ class BinaryTest(fixtures.TestBase):
         if expected is None:
             expected = data
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(binary_table.insert(), data=data)
 
             eq_(conn.scalar(select(binary_table.c.data)), expected)

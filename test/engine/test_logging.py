@@ -22,7 +22,7 @@ from sqlalchemy.testing.util import lazy_gc
 
 
 def exec_sql(engine, sql, *args, **kwargs):
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         return conn.exec_driver_sql(sql, *args, **kwargs)
 
 
@@ -56,7 +56,7 @@ class LogParamsTest(fixtures.TestBase):
             [{"data": str(i)} for i in range(100)],
         )
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] [{'data': '0'}, {'data': '1'}, {'data': '2'}, "
             "{'data': '3'}, "
             "{'data': '4'}, {'data': '5'}, {'data': '6'}, {'data': '7'}"
@@ -86,7 +86,7 @@ class LogParamsTest(fixtures.TestBase):
             [{"data": str(i)} for i in range(100)],
         )
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] [SQL parameters hidden due to hide_parameters=True]",
         )
 
@@ -97,7 +97,7 @@ class LogParamsTest(fixtures.TestBase):
             [(str(i),) for i in range(100)],
         )
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] [('0',), ('1',), ('2',), ('3',), ('4',), ('5',), "
             "('6',), ('7',)  ... displaying 10 of 100 total "
             "bound parameter sets ...  ('98',), ('99',)]",
@@ -227,7 +227,7 @@ class LogParamsTest(fixtures.TestBase):
         exec_sql(self.eng, "INSERT INTO foo (data) values (?)", (largeparam,))
 
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] ('%s ... (4702 characters truncated) ... %s',)"
             % (largeparam[0:149], largeparam[-149:]),
         )
@@ -242,7 +242,7 @@ class LogParamsTest(fixtures.TestBase):
         exec_sql(self.eng, "SELECT ?, ?, ?", (lp1, lp2, lp3))
 
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] ('%s', '%s', '%s ... (372 characters truncated) "
             "... %s')" % (lp1, lp2, lp3[0:149], lp3[-149:]),
         )
@@ -261,7 +261,7 @@ class LogParamsTest(fixtures.TestBase):
         )
 
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] [('%s ... (4702 characters truncated) ... %s',), "
             "('%s',), "
             "('%s ... (372 characters truncated) ... %s',)]"
@@ -347,20 +347,20 @@ class LogParamsTest(fixtures.TestBase):
         row = result.first()
 
         eq_(
-            self.buf.buffer[1].message,
+            self.buf.buffer[2].message,
             "[raw sql] ('%s ... (4702 characters truncated) ... %s',)"
             % (largeparam[0:149], largeparam[-149:]),
         )
 
         if util.py3k:
             eq_(
-                self.buf.buffer[3].message,
+                self.buf.buffer[5].message,
                 "Row ('%s ... (4702 characters truncated) ... %s',)"
                 % (largeparam[0:149], largeparam[-149:]),
             )
         else:
             eq_(
-                self.buf.buffer[3].message,
+                self.buf.buffer[5].message,
                 "Row (u'%s ... (4703 characters truncated) ... %s',)"
                 % (largeparam[0:148], largeparam[-149:]),
             )
@@ -495,7 +495,8 @@ class LoggingNameTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
 
     def _assert_names_in_execute(self, eng, eng_name, pool_name):
-        eng.execute(select(1))
+        with eng.connect() as conn:
+            conn.execute(select(1))
         assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
@@ -505,7 +506,8 @@ class LoggingNameTest(fixtures.TestBase):
             )
 
     def _assert_no_name_in_execute(self, eng):
-        eng.execute(select(1))
+        with eng.connect() as conn:
+            conn.execute(select(1))
         assert self.buf.buffer
         for name in [b.name for b in self.buf.buffer]:
             assert name in (
@@ -548,7 +550,8 @@ class LoggingNameTest(fixtures.TestBase):
 
     def test_named_logger_names_after_dispose(self):
         eng = self._named_engine()
-        eng.execute(select(1))
+        with eng.connect() as conn:
+            conn.execute(select(1))
         eng.dispose()
         eq_(eng.logging_name, "myenginename")
         eq_(eng.pool.logging_name, "mypoolname")
@@ -568,7 +571,8 @@ class LoggingNameTest(fixtures.TestBase):
 
     def test_named_logger_execute_after_dispose(self):
         eng = self._named_engine()
-        eng.execute(select(1))
+        with eng.connect() as conn:
+            conn.execute(select(1))
         eng.dispose()
         self._assert_names_in_execute(eng, "myenginename", "mypoolname")
 
@@ -599,7 +603,8 @@ class EchoTest(fixtures.TestBase):
 
         # do an initial execute to clear out 'first connect'
         # messages
-        e.execute(select(10)).close()
+        with e.connect() as conn:
+            conn.execute(select(10)).close()
         self.buf.flush()
 
         return e
@@ -637,16 +642,25 @@ class EchoTest(fixtures.TestBase):
         e2 = self._testing_engine()
 
         e1.echo = True
-        e1.execute(select(1)).close()
-        e2.execute(select(2)).close()
+
+        with e1.connect() as conn:
+            conn.execute(select(1)).close()
+
+        with e2.connect() as conn:
+            conn.execute(select(2)).close()
 
         e1.echo = False
-        e1.execute(select(3)).close()
-        e2.execute(select(4)).close()
+
+        with e1.connect() as conn:
+            conn.execute(select(3)).close()
+        with e2.connect() as conn:
+            conn.execute(select(4)).close()
 
         e2.echo = True
-        e1.execute(select(5)).close()
-        e2.execute(select(6)).close()
+        with e1.connect() as conn:
+            conn.execute(select(5)).close()
+        with e2.connect() as conn:
+            conn.execute(select(6)).close()
 
         assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
         assert self.buf.buffer[2].getMessage().startswith("SELECT 6")

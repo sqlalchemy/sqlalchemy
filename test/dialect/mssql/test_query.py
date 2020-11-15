@@ -9,7 +9,6 @@ from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import literal
-from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import select
@@ -26,22 +25,15 @@ from sqlalchemy.testing.assertsql import CursorSQL
 from sqlalchemy.testing.assertsql import DialectSQL
 from sqlalchemy.util import ue
 
-metadata = None
-cattable = None
-matchtable = None
 
-
-class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
+class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
     __only_on__ = "mssql"
     __dialect__ = mssql.MSDialect()
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global metadata, cattable
-        metadata = MetaData(testing.db)
-
-        cattable = Table(
+    def define_tables(cls, metadata):
+        Table(
             "cattable",
             metadata,
             Column("id", Integer),
@@ -49,82 +41,82 @@ class IdentityInsertTest(fixtures.TestBase, AssertsCompiledSQL):
             PrimaryKeyConstraint("id", name="PK_cattable"),
         )
 
-    def setup(self):
-        metadata.create_all()
-
-    def teardown(self):
-        metadata.drop_all()
-
     def test_compiled(self):
+        cattable = self.tables.cattable
         self.assert_compile(
             cattable.insert().values(id=9, description="Python"),
             "INSERT INTO cattable (id, description) "
             "VALUES (:id, :description)",
         )
 
-    def test_execute(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert().values(id=9, description="Python"))
+    def test_execute(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values(id=9, description="Python"))
 
-            cats = conn.execute(cattable.select().order_by(cattable.c.id))
-            eq_([(9, "Python")], list(cats))
+        cats = conn.execute(cattable.select().order_by(cattable.c.id))
+        eq_([(9, "Python")], list(cats))
 
-            result = conn.execute(cattable.insert().values(description="PHP"))
-            eq_(result.inserted_primary_key, (10,))
-            lastcat = conn.execute(
-                cattable.select().order_by(desc(cattable.c.id))
-            )
-            eq_((10, "PHP"), lastcat.first())
+        result = conn.execute(cattable.insert().values(description="PHP"))
+        eq_(result.inserted_primary_key, (10,))
+        lastcat = conn.execute(cattable.select().order_by(desc(cattable.c.id)))
+        eq_((10, "PHP"), lastcat.first())
 
-    def test_executemany(self):
-        with testing.db.connect() as conn:
-            conn.execute(
-                cattable.insert(),
-                [
-                    {"id": 89, "description": "Python"},
-                    {"id": 8, "description": "Ruby"},
-                    {"id": 3, "description": "Perl"},
-                    {"id": 1, "description": "Java"},
-                ],
-            )
-            cats = conn.execute(cattable.select().order_by(cattable.c.id))
-            eq_(
-                [(1, "Java"), (3, "Perl"), (8, "Ruby"), (89, "Python")],
-                list(cats),
-            )
-            conn.execute(
-                cattable.insert(),
-                [{"description": "PHP"}, {"description": "Smalltalk"}],
-            )
-            lastcats = conn.execute(
-                cattable.select().order_by(desc(cattable.c.id)).limit(2)
-            )
-            eq_([(91, "Smalltalk"), (90, "PHP")], list(lastcats))
+    def test_executemany(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(
+            cattable.insert(),
+            [
+                {"id": 89, "description": "Python"},
+                {"id": 8, "description": "Ruby"},
+                {"id": 3, "description": "Perl"},
+                {"id": 1, "description": "Java"},
+            ],
+        )
+        cats = conn.execute(cattable.select().order_by(cattable.c.id))
+        eq_(
+            [(1, "Java"), (3, "Perl"), (8, "Ruby"), (89, "Python")],
+            list(cats),
+        )
+        conn.execute(
+            cattable.insert(),
+            [{"description": "PHP"}, {"description": "Smalltalk"}],
+        )
+        lastcats = conn.execute(
+            cattable.select().order_by(desc(cattable.c.id)).limit(2)
+        )
+        eq_([(91, "Smalltalk"), (90, "PHP")], list(lastcats))
 
-    def test_insert_plain_param(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert(), id=5)
-            eq_(conn.scalar(select(cattable.c.id)), 5)
+    def test_insert_plain_param(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert(), id=5)
+        eq_(conn.scalar(select(cattable.c.id)), 5)
 
-    def test_insert_values_key_plain(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert().values(id=5))
-            eq_(conn.scalar(select(cattable.c.id)), 5)
+    def test_insert_values_key_plain(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values(id=5))
+        eq_(conn.scalar(select(cattable.c.id)), 5)
 
-    def test_insert_values_key_expression(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert().values(id=literal(5)))
-            eq_(conn.scalar(select(cattable.c.id)), 5)
+    def test_insert_values_key_expression(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values(id=literal(5)))
+        eq_(conn.scalar(select(cattable.c.id)), 5)
 
-    def test_insert_values_col_plain(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert().values({cattable.c.id: 5}))
-            eq_(conn.scalar(select(cattable.c.id)), 5)
+    def test_insert_values_col_plain(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values({cattable.c.id: 5}))
+        eq_(conn.scalar(select(cattable.c.id)), 5)
 
-    def test_insert_values_col_expression(self):
-        with testing.db.connect() as conn:
-            conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
-            eq_(conn.scalar(select(cattable.c.id)), 5)
+    def test_insert_values_col_expression(self, connection):
+        conn = connection
+        cattable = self.tables.cattable
+        conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
+        eq_(conn.scalar(select(cattable.c.id)), 5)
 
 
 class QueryUnicodeTest(fixtures.TestBase):
@@ -391,37 +383,35 @@ def full_text_search_missing():
     """Test if full text search is not implemented and return False if
     it is and True otherwise."""
 
-    try:
-        connection = testing.db.connect()
-        try:
-            connection.exec_driver_sql(
-                "CREATE FULLTEXT CATALOG Catalog AS " "DEFAULT"
-            )
-            return False
-        except Exception:
-            return True
-    finally:
-        connection.close()
+    if not testing.against("mssql"):
+        return True
+
+    with testing.db.connect() as conn:
+        result = conn.exec_driver_sql(
+            "SELECT cast(SERVERPROPERTY('IsFullTextInstalled') as integer)"
+        )
+        return result.scalar() == 0
 
 
-class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     __only_on__ = "mssql"
     __skip_if__ = (full_text_search_missing,)
     __backend__ = True
 
+    run_setup_tables = "once"
+    run_inserts = run_deletes = "once"
+
     @classmethod
-    def setup_class(cls):
-        global metadata, cattable, matchtable
-        metadata = MetaData(testing.db)
-        cattable = Table(
+    def define_tables(cls, metadata):
+        Table(
             "cattable",
             metadata,
             Column("id", Integer),
             Column("description", String(50)),
             PrimaryKeyConstraint("id", name="PK_cattable"),
         )
-        matchtable = Table(
+        Table(
             "matchtable",
             metadata,
             Column("id", Integer),
@@ -429,24 +419,65 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("category_id", Integer, ForeignKey("cattable.id")),
             PrimaryKeyConstraint("id", name="PK_matchtable"),
         )
-        DDL(
-            """CREATE FULLTEXT INDEX
+
+        event.listen(
+            metadata,
+            "before_create",
+            DDL("CREATE FULLTEXT CATALOG Catalog AS DEFAULT"),
+        )
+        event.listen(
+            metadata,
+            "after_create",
+            DDL(
+                """CREATE FULLTEXT INDEX
                        ON cattable (description)
                        KEY INDEX PK_cattable"""
-        ).execute_at("after-create", matchtable)
-        DDL(
-            """CREATE FULLTEXT INDEX
+            ),
+        )
+        event.listen(
+            metadata,
+            "after_create",
+            DDL(
+                """CREATE FULLTEXT INDEX
                        ON matchtable (title)
                        KEY INDEX PK_matchtable"""
-        ).execute_at("after-create", matchtable)
-        metadata.create_all()
-        cattable.insert().execute(
+            ),
+        )
+
+        event.listen(
+            metadata,
+            "after_drop",
+            DDL("DROP FULLTEXT CATALOG Catalog"),
+        )
+
+    @classmethod
+    def setup_bind(cls):
+        return testing.db.execution_options(isolation_level="AUTOCOMMIT")
+
+    @classmethod
+    def setup_class(cls):
+        with testing.db.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as conn:
+            try:
+                conn.exec_driver_sql("DROP FULLTEXT CATALOG Catalog")
+            except:
+                pass
+        super(MatchTest, cls).setup_class()
+
+    @classmethod
+    def insert_data(cls, connection):
+        cattable, matchtable = cls.tables("cattable", "matchtable")
+
+        connection.execute(
+            cattable.insert(),
             [
                 {"id": 1, "description": "Python"},
                 {"id": 2, "description": "Ruby"},
-            ]
+            ],
         )
-        matchtable.insert().execute(
+        connection.execute(
+            matchtable.insert(),
             [
                 {
                     "id": 1,
@@ -461,62 +492,53 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 },
                 {"id": 4, "title": "Guide to Django", "category_id": 1},
                 {"id": 5, "title": "Python in a Nutshell", "category_id": 1},
-            ]
+            ],
         )
-        DDL("WAITFOR DELAY '00:00:05'").execute(bind=engines.testing_engine())
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
-        connection = testing.db.connect()
-        connection.exec_driver_sql("DROP FULLTEXT CATALOG Catalog")
-        connection.close()
+        # apparently this is needed!   index must run asynchronously
+        connection.execute(DDL("WAITFOR DELAY '00:00:05'"))
 
     def test_expression(self):
+        matchtable = self.tables.matchtable
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "CONTAINS (matchtable.title, ?)",
         )
 
-    def test_simple_match(self):
-        results = (
+    def test_simple_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("python"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([2, 5], [r.id for r in results])
 
-    def test_simple_match_with_apostrophe(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match("Matz's"))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_match_with_apostrophe(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
+            matchtable.select().where(matchtable.c.title.match("Matz's"))
+        ).fetchall()
         eq_([3], [r.id for r in results])
 
-    def test_simple_prefix_match(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match('"nut*"'))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_prefix_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
+            matchtable.select().where(matchtable.c.title.match('"nut*"'))
+        ).fetchall()
         eq_([5], [r.id for r in results])
 
-    def test_simple_inflectional_match(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match('FORMSOF(INFLECTIONAL, "dives")'))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_inflectional_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
+            matchtable.select().where(
+                matchtable.c.title.match('FORMSOF(INFLECTIONAL, "dives")')
+            )
+        ).fetchall()
         eq_([2], [r.id for r in results])
 
-    def test_or_match(self):
-        results1 = (
+    def test_or_match(self, connection):
+        matchtable = self.tables.matchtable
+        results1 = connection.execute(
             matchtable.select()
             .where(
                 or_(
@@ -525,31 +547,25 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             )
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([3, 5], [r.id for r in results1])
-        results2 = (
+        results2 = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("nutshell OR ruby"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([3, 5], [r.id for r in results2])
 
-    def test_and_match(self):
-        results1 = (
-            matchtable.select()
-            .where(
+    def test_and_match(self, connection):
+        matchtable = self.tables.matchtable
+        results1 = connection.execute(
+            matchtable.select().where(
                 and_(
                     matchtable.c.title.match("python"),
                     matchtable.c.title.match("nutshell"),
                 )
             )
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([5], [r.id for r in results1])
         results2 = (
             matchtable.select()
@@ -559,8 +575,10 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         eq_([5], [r.id for r in results2])
 
-    def test_match_across_joins(self):
-        results = (
+    def test_match_across_joins(self, connection):
+        matchtable = self.tables.matchtable
+        cattable = self.tables.cattable
+        results = connection.execute(
             matchtable.select()
             .where(
                 and_(
@@ -572,7 +590,5 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             )
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([1, 3, 5], [r.id for r in results])

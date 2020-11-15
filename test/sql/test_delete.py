@@ -308,32 +308,31 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         )
 
     @testing.requires.delete_from
-    def test_exec_two_table(self):
+    def test_exec_two_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings
 
-        with testing.db.connect() as conn:
-            conn.execute(dingalings.delete())  # fk violation otherwise
+        connection.execute(dingalings.delete())  # fk violation otherwise
 
-            conn.execute(
-                addresses.delete()
-                .where(users.c.id == addresses.c.user_id)
-                .where(users.c.name == "ed")
-            )
+        connection.execute(
+            addresses.delete()
+            .where(users.c.id == addresses.c.user_id)
+            .where(users.c.name == "ed")
+        )
 
-            expected = [
-                (1, 7, "x", "jack@bean.com"),
-                (5, 9, "x", "fred@fred.com"),
-            ]
-        self._assert_table(addresses, expected)
+        expected = [
+            (1, 7, "x", "jack@bean.com"),
+            (5, 9, "x", "fred@fred.com"),
+        ]
+        self._assert_table(connection, addresses, expected)
 
     @testing.requires.delete_from
-    def test_exec_three_table(self):
+    def test_exec_three_table(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses
         dingalings = self.tables.dingalings
 
-        testing.db.execute(
+        connection.execute(
             dingalings.delete()
             .where(users.c.id == addresses.c.user_id)
             .where(users.c.name == "ed")
@@ -341,34 +340,33 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         )
 
         expected = [(2, 5, "ding 2/5")]
-        self._assert_table(dingalings, expected)
+        self._assert_table(connection, dingalings, expected)
 
     @testing.requires.delete_from
-    def test_exec_two_table_plus_alias(self):
+    def test_exec_two_table_plus_alias(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings
 
-        with testing.db.connect() as conn:
-            conn.execute(dingalings.delete())  # fk violation otherwise
-            a1 = addresses.alias()
-            conn.execute(
-                addresses.delete()
-                .where(users.c.id == addresses.c.user_id)
-                .where(users.c.name == "ed")
-                .where(a1.c.id == addresses.c.id)
-            )
+        connection.execute(dingalings.delete())  # fk violation otherwise
+        a1 = addresses.alias()
+        connection.execute(
+            addresses.delete()
+            .where(users.c.id == addresses.c.user_id)
+            .where(users.c.name == "ed")
+            .where(a1.c.id == addresses.c.id)
+        )
 
         expected = [(1, 7, "x", "jack@bean.com"), (5, 9, "x", "fred@fred.com")]
-        self._assert_table(addresses, expected)
+        self._assert_table(connection, addresses, expected)
 
     @testing.requires.delete_from
-    def test_exec_alias_plus_table(self):
+    def test_exec_alias_plus_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
         dingalings = self.tables.dingalings
 
         d1 = dingalings.alias()
 
-        testing.db.execute(
+        connection.execute(
             delete(d1)
             .where(users.c.id == addresses.c.user_id)
             .where(users.c.name == "ed")
@@ -376,8 +374,8 @@ class DeleteFromRoundTripTest(fixtures.TablesTest):
         )
 
         expected = [(2, 5, "ding 2/5")]
-        self._assert_table(dingalings, expected)
+        self._assert_table(connection, dingalings, expected)
 
-    def _assert_table(self, table, expected):
+    def _assert_table(self, connection, table, expected):
         stmt = table.select().order_by(table.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)

@@ -840,7 +840,15 @@ class Connection(Connectable):
     def _commit_impl(self, autocommit=False):
         assert not self.__branch_from
 
-        if autocommit:
+        # AUTOCOMMIT isolation-level is a dialect-specific concept, however
+        # if a connection has this set as the isolation level, we can skip
+        # the "autocommit" warning as the operation will do "autocommit"
+        # in any case
+        if (
+            autocommit
+            and self._execution_options.get("isolation_level", None)
+            != "AUTOCOMMIT"
+        ):
             util.warn_deprecated_20(
                 "The current statement is being autocommitted using "
                 "implicit autocommit, which will be removed in "
@@ -2687,9 +2695,11 @@ class Engine(Connectable, log.Identified):
         self.pool = self.pool.recreate()
         self.dispatch.engine_disposed(self)
 
-    def _execute_default(self, default):
+    def _execute_default(
+        self, default, multiparams=(), params=util.EMPTY_DICT
+    ):
         with self.connect() as conn:
-            return conn._execute_default(default, (), {})
+            return conn._execute_default(default, multiparams, params)
 
     @contextlib.contextmanager
     def _optional_conn_ctx_manager(self, connection=None):

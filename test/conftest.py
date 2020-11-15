@@ -12,6 +12,8 @@ import sys
 import pytest
 
 
+os.environ["SQLALCHEMY_WARN_20"] = "true"
+
 collect_ignore_glob = []
 
 # minimum version for a py3k only test is at

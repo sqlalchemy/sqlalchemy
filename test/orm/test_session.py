@@ -12,7 +12,6 @@ from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import close_all_sessions
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import make_transient
@@ -35,6 +34,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -48,33 +48,33 @@ class ExecutionTest(_fixtures.FixtureTest):
     __backend__ = True
 
     @testing.requires.sequences
-    def test_sequence_execute(self):
+    def test_sequence_execute(self, connection):
         seq = Sequence("some_sequence")
-        seq.create(testing.db)
+        seq.create(connection)
         try:
-            sess = create_session(bind=testing.db)
-            eq_(sess.execute(seq), testing.db.dialect.default_sequence_base)
+            sess = Session(connection)
+            eq_(sess.execute(seq), connection.dialect.default_sequence_base)
         finally:
-            seq.drop(testing.db)
+            seq.drop(connection)
 
-    def test_textual_execute(self):
+    def test_textual_execute(self, connection):
         """test that Session.execute() converts to text()"""
 
         users = self.tables.users
 
-        sess = create_session(bind=self.metadata.bind)
-        users.insert().execute(id=7, name="jack")
+        with Session(bind=connection) as sess:
+            sess.execute(users.insert(), dict(id=7, name="jack"))
 
-        # use :bindparam style
-        eq_(
-            sess.execute(
-                "select * from users where id=:id", {"id": 7}
-            ).fetchall(),
-            [(7, "jack")],
-        )
+            # use :bindparam style
+            eq_(
+                sess.execute(
+                    "select * from users where id=:id", {"id": 7}
+                ).fetchall(),
+                [(7, "jack")],
+            )
 
-        # use :bindparam style
-        eq_(sess.scalar("select id from users where id=:id", {"id": 7}), 7)
+            # use :bindparam style
+            eq_(sess.scalar("select id from users where id=:id", {"id": 7}), 7)
 
     def test_parameter_execute(self):
         users = self.tables.users
@@ -104,7 +104,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         c.exec_driver_sql("select * from users")
 
         mapper(User, users)
-        s = create_session(bind=c)
+        s = Session(bind=c)
         s.add(User(name="first"))
         s.flush()
         c.exec_driver_sql("select * from users")
@@ -118,7 +118,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         c.exec_driver_sql("select * from users")
 
         mapper(User, users)
-        s = create_session(bind=c)
+        s = Session(bind=c)
         s.add(User(name="first"))
         s.flush()
         c.exec_driver_sql("select * from users")
@@ -189,7 +189,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
-        sess = create_session(autocommit=False, bind=conn1)
+        sess = Session(autocommit=False, bind=conn1)
         u = User(name="x")
         sess.add(u)
         sess.flush()
@@ -415,7 +415,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         conn1 = bind.connect()
         conn2 = bind.connect()
 
-        sess = create_session(bind=conn1, autocommit=False, autoflush=True)
+        sess = Session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.name = "ed"
         sess.add(u)
@@ -600,7 +600,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         conn1 = testing.db.connect()
-        sess = create_session(bind=conn1, autocommit=False, autoflush=True)
+        sess = Session(bind=conn1, autocommit=False, autoflush=True)
         u = User()
         u.name = "ed"
         sess.add(u)
@@ -620,7 +620,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        session = create_session(autocommit=True)
+        session = Session(testing.db, autocommit=True)
 
         session.add(User(name="ed"))
 
@@ -629,7 +629,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         session.commit()
 
     def test_active_flag_autocommit(self):
-        sess = create_session(bind=config.db, autocommit=True)
+        sess = Session(bind=config.db, autocommit=True)
         assert not sess.is_active
         sess.begin()
         assert sess.is_active
@@ -637,7 +637,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert not sess.is_active
 
     def test_active_flag_autobegin(self):
-        sess = create_session(bind=config.db, autocommit=False)
+        sess = Session(bind=config.db, autocommit=False)
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -646,7 +646,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
 
     def test_active_flag_autobegin_future(self):
-        sess = create_session(bind=config.db, future=True)
+        sess = Session(bind=config.db, future=True)
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -655,7 +655,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
 
     def test_active_flag_partial_rollback(self):
-        sess = create_session(bind=config.db, autocommit=False)
+        sess = Session(bind=config.db, autocommit=False)
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -693,7 +693,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
 
         s.add(user)
-        s.flush()
+        s.commit()
         user = s.query(User).one()
         s.expunge(user)
         assert user not in s
@@ -703,8 +703,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         s.add(user)
         assert user in s
         assert user in s.dirty
-        s.flush()
-        s.expunge_all()
+        s.commit()
         assert s.query(User).count() == 1
         user = s.query(User).one()
         assert user.name == "fred"
@@ -766,8 +765,9 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        for s in (create_session(), create_session()):
-            users.delete().execute()
+
+        with create_session() as s:
+            s.execute(users.delete())
             u1 = User(name="ed")
             s.add(u1)
             s.flush()
@@ -1774,7 +1774,8 @@ class DisposedStates(fixtures.MappedTest):
 
     def _test_session(self, **kwargs):
         T = self.classes.T
-        sess = create_session(**kwargs)
+
+        sess = Session(config.db, **kwargs)
 
         data = o1, o2, o3, o4, o5 = [
             T("t1"),
@@ -1786,7 +1787,7 @@ class DisposedStates(fixtures.MappedTest):
 
         sess.add_all(data)
 
-        sess.flush()
+        sess.commit()
 
         o1.data = "t1modified"
         o5.data = "t5modified"
@@ -1925,7 +1926,7 @@ class SessionInterface(fixtures.TestBase):
 
         def raises_(method, *args, **kw):
             watchdog.add(method)
-            callable_ = getattr(create_session(), method)
+            callable_ = getattr(Session(), method)
             if is_class:
                 assert_raises(
                     sa.orm.exc.UnmappedClassError, callable_, *args, **kw

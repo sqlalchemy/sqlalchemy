@@ -53,10 +53,10 @@ class ShardTest(object):
         def id_generator(ctx):
             # in reality, might want to use a separate transaction for this.
 
-            c = db1.connect()
-            nextid = c.execute(ids.select().with_for_update()).scalar()
-            c.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
-            return nextid
+            with db1.begin() as c:
+                nextid = c.execute(ids.select().with_for_update()).scalar()
+                c.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
+                return nextid
 
         weather_locations = Table(
             "weather_locations",
@@ -80,7 +80,8 @@ class ShardTest(object):
         for db in (db1, db2, db3, db4):
             meta.create_all(db)
 
-        db1.execute(ids.insert(), nextid=1)
+        with db1.begin() as conn:
+            conn.execute(ids.insert(), dict(nextid=1))
 
         self.setup_session()
         self.setup_mappers()
@@ -762,7 +763,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
                 )
 
         e2 = testing_engine()
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             for i in [2, 4]:
                 conn.exec_driver_sql(
                     "CREATE SCHEMA IF NOT EXISTS shard%s" % (i,)
@@ -784,7 +785,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
         for i in [1, 3]:
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
-        with self.postgresql_engine.connect() as conn:
+        with self.postgresql_engine.begin() as conn:
             self.metadata.drop_all(conn)
             for i in [2, 4]:
                 conn.exec_driver_sql("DROP SCHEMA shard%s CASCADE" % (i,))

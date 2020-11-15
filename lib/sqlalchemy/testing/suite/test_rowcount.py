@@ -58,12 +58,14 @@ class RowCountTest(fixtures.TablesTest):
 
         assert len(r) == len(self.data)
 
-    def test_update_rowcount1(self):
+    def test_update_rowcount1(self, connection):
         employees_table = self.tables.employees
 
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
-        r = employees_table.update(department == "C").execute(department="Z")
+        r = connection.execute(
+            employees_table.update(department == "C"), {"department": "Z"}
+        )
         assert r.rowcount == 3
 
     def test_update_rowcount2(self, connection):

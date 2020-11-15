@@ -23,6 +23,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import table
@@ -1271,6 +1272,165 @@ class KeyTargetingTest(fixtures.TablesTest):
             in_(stmt.c.keyed2_b, row)
 
 
+class PKIncrementTest(fixtures.TablesTest):
+    run_define_tables = "each"
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "aitable",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Sequence("ai_id_seq", optional=True),
+                primary_key=True,
+            ),
+            Column("int1", Integer),
+            Column("str1", String(20)),
+        )
+
+    def _test_autoincrement(self, connection):
+        aitable = self.tables.aitable
+
+        ids = set()
+        rs = connection.execute(aitable.insert(), int1=1)
+        last = rs.inserted_primary_key[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        rs = connection.execute(aitable.insert(), str1="row 2")
+        last = rs.inserted_primary_key[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        rs = connection.execute(aitable.insert(), int1=3, str1="row 3")
+        last = rs.inserted_primary_key[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        rs = connection.execute(
+            aitable.insert().values({"int1": func.length("four")})
+        )
+        last = rs.inserted_primary_key[0]
+        self.assert_(last)
+        self.assert_(last not in ids)
+        ids.add(last)
+
+        eq_(
+            ids,
+            set(
+                range(
+                    testing.db.dialect.default_sequence_base,
+                    testing.db.dialect.default_sequence_base + 4,
+                )
+            ),
+        )
+
+        eq_(
+            list(connection.execute(aitable.select().order_by(aitable.c.id))),
+            [
+                (testing.db.dialect.default_sequence_base, 1, None),
+                (testing.db.dialect.default_sequence_base + 1, None, "row 2"),
+                (testing.db.dialect.default_sequence_base + 2, 3, "row 3"),
+                (testing.db.dialect.default_sequence_base + 3, 4, None),
+            ],
+        )
+
+    def test_autoincrement_autocommit(self):
+        with testing.db.connect() as conn:
+            with testing.expect_deprecated_20(
+                "The current statement is being autocommitted using "
+                "implicit autocommit, "
+            ):
+                self._test_autoincrement(conn)
+
+
+class ConnectionlessCursorResultTest(fixtures.TablesTest):
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+
+    def test_connectionless_autoclose_rows_exhausted(self):
+        users = self.tables.users
+        with testing.db.begin() as conn:
+            conn.execute(users.insert(), dict(user_id=1, user_name="john"))
+
+        with testing.expect_deprecated_20(
+            r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method"
+        ):
+            result = testing.db.execute(text("select * from users"))
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), (1, "john"))
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    @testing.requires.returning
+    def test_connectionless_autoclose_crud_rows_exhausted(self):
+        users = self.tables.users
+        stmt = (
+            users.insert()
+            .values(user_id=1, user_name="john")
+            .returning(users.c.user_id)
+        )
+        with testing.expect_deprecated_20(
+            r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method"
+        ):
+            result = testing.db.execute(stmt)
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), (1,))
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    def test_connectionless_autoclose_no_rows(self):
+        with testing.expect_deprecated_20(
+            r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method"
+        ):
+            result = testing.db.execute(text("select * from users"))
+        connection = result.connection
+        assert not connection.closed
+        eq_(result.fetchone(), None)
+        assert connection.closed
+
+    @testing.requires.updateable_autoincrement_pks
+    def test_connectionless_autoclose_no_metadata(self):
+        with testing.expect_deprecated_20(
+            r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method"
+        ):
+            result = testing.db.execute(text("update users set user_id=5"))
+        connection = result.connection
+        assert connection.closed
+
+        assert_raises_message(
+            exc.ResourceClosedError,
+            "This result object does not return rows.",
+            result.fetchone,
+        )
+        assert_raises_message(
+            exc.ResourceClosedError,
+            "This result object does not return rows.",
+            result.keys,
+        )
+
+
 class CursorResultTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -1436,7 +1596,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_pickled_rows(self):
         users = self.tables.users
         addresses = self.tables.addresses
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(users.delete())
             conn.execute(
                 users.insert(),
@@ -2319,3 +2479,93 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         _op_modern = getattr(operators.ColumnOperators, _modern)
         _op_legacy = getattr(operators.ColumnOperators, _legacy)
         assert _op_modern == _op_legacy
+
+
+class LegacySequenceExecTest(fixtures.TestBase):
+    __requires__ = ("sequences",)
+    __backend__ = True
+
+    @classmethod
+    def setup_class(cls):
+        cls.seq = Sequence("my_sequence")
+        cls.seq.create(testing.db)
+
+    @classmethod
+    def teardown_class(cls):
+        cls.seq.drop(testing.db)
+
+    def _assert_seq_result(self, ret):
+        """asserts return of next_value is an int"""
+
+        assert isinstance(ret, util.int_types)
+        assert ret >= testing.db.dialect.default_sequence_base
+
+    def test_implicit_connectionless(self):
+        with testing.expect_deprecated_20(
+            r"The MetaData.bind argument is deprecated"
+        ):
+            s = Sequence("my_sequence", metadata=MetaData(testing.db))
+
+        with testing.expect_deprecated_20(
+            r"The DefaultGenerator.execute\(\) method is considered legacy "
+            "as of the 1.x",
+        ):
+            self._assert_seq_result(s.execute())
+
+    def test_explicit(self, connection):
+        s = Sequence("my_sequence")
+        with testing.expect_deprecated_20(
+            r"The DefaultGenerator.execute\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(s.execute(connection))
+
+    def test_explicit_optional(self):
+        """test dialect executes a Sequence, returns nextval, whether
+        or not "optional" is set"""
+
+        s = Sequence("my_sequence", optional=True)
+        with testing.expect_deprecated_20(
+            r"The DefaultGenerator.execute\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(s.execute(testing.db))
+
+    def test_func_implicit_connectionless_execute(self):
+        """test func.next_value().execute()/.scalar() works
+        with connectionless execution."""
+
+        with testing.expect_deprecated_20(
+            r"The MetaData.bind argument is deprecated"
+        ):
+            s = Sequence("my_sequence", metadata=MetaData(testing.db))
+        with testing.expect_deprecated_20(
+            r"The Executable.execute\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(s.next_value().execute().scalar())
+
+    def test_func_explicit(self):
+        s = Sequence("my_sequence")
+        with testing.expect_deprecated_20(
+            r"The Engine.scalar\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(testing.db.scalar(s.next_value()))
+
+    def test_func_implicit_connectionless_scalar(self):
+        """test func.next_value().execute()/.scalar() works. """
+
+        with testing.expect_deprecated_20(
+            r"The MetaData.bind argument is deprecated"
+        ):
+            s = Sequence("my_sequence", metadata=MetaData(testing.db))
+        with testing.expect_deprecated_20(
+            r"The Executable.execute\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(s.next_value().scalar())
+
+    def test_func_embedded_select(self):
+        """test can use next_value() in select column expr"""
+
+        s = Sequence("my_sequence")
+        with testing.expect_deprecated_20(
+            r"The Engine.scalar\(\) method is considered legacy"
+        ):
+            self._assert_seq_result(testing.db.scalar(select(s.next_value())))

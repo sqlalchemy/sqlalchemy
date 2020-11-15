@@ -206,7 +206,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             schema=symbol_name,
         )
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn = conn.execution_options(
                 schema_translate_map={symbol_name: testing.config.test_schema}
             )

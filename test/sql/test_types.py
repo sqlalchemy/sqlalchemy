@@ -535,49 +535,48 @@ class _UserDefinedTypeFixture(object):
 class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
     __backend__ = True
 
-    def _data_fixture(self):
+    def _data_fixture(self, connection):
         users = self.tables.users
-        with testing.db.connect() as conn:
-            conn.execute(
-                users.insert(),
-                dict(
-                    user_id=2,
-                    goofy="jack",
-                    goofy2="jack",
-                    goofy4=util.u("jack"),
-                    goofy7=util.u("jack"),
-                    goofy8=12,
-                    goofy9=12,
-                ),
-            )
-            conn.execute(
-                users.insert(),
-                dict(
-                    user_id=3,
-                    goofy="lala",
-                    goofy2="lala",
-                    goofy4=util.u("lala"),
-                    goofy7=util.u("lala"),
-                    goofy8=15,
-                    goofy9=15,
-                ),
-            )
-            conn.execute(
-                users.insert(),
-                dict(
-                    user_id=4,
-                    goofy="fred",
-                    goofy2="fred",
-                    goofy4=util.u("fred"),
-                    goofy7=util.u("fred"),
-                    goofy8=9,
-                    goofy9=9,
-                ),
-            )
+        connection.execute(
+            users.insert(),
+            dict(
+                user_id=2,
+                goofy="jack",
+                goofy2="jack",
+                goofy4=util.u("jack"),
+                goofy7=util.u("jack"),
+                goofy8=12,
+                goofy9=12,
+            ),
+        )
+        connection.execute(
+            users.insert(),
+            dict(
+                user_id=3,
+                goofy="lala",
+                goofy2="lala",
+                goofy4=util.u("lala"),
+                goofy7=util.u("lala"),
+                goofy8=15,
+                goofy9=15,
+            ),
+        )
+        connection.execute(
+            users.insert(),
+            dict(
+                user_id=4,
+                goofy="fred",
+                goofy2="fred",
+                goofy4=util.u("fred"),
+                goofy7=util.u("fred"),
+                goofy8=9,
+                goofy9=9,
+            ),
+        )
 
     def test_processing(self, connection):
         users = self.tables.users
-        self._data_fixture()
+        self._data_fixture(connection)
 
         result = connection.execute(
             users.select().order_by(users.c.user_id)
@@ -601,7 +600,7 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
 
     def test_plain_in(self, connection):
         users = self.tables.users
-        self._data_fixture()
+        self._data_fixture(connection)
 
         stmt = (
             select(users.c.user_id, users.c.goofy8)
@@ -613,7 +612,7 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
 
     def test_expanding_in(self, connection):
         users = self.tables.users
-        self._data_fixture()
+        self._data_fixture(connection)
 
         stmt = (
             select(users.c.user_id, users.c.goofy8)
@@ -1225,41 +1224,38 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.only_on("sqlite")
     @testing.provide_metadata
-    def test_round_trip(self):
+    def test_round_trip(self, connection):
         variant = self.UTypeOne().with_variant(self.UTypeTwo(), "sqlite")
 
         t = Table("t", self.metadata, Column("x", variant))
-        with testing.db.connect() as conn:
-            t.create(conn)
+        t.create(connection)
 
-            conn.execute(t.insert(), x="foo")
+        connection.execute(t.insert(), x="foo")
 
-            eq_(conn.scalar(select(t.c.x).where(t.c.x == "foo")), "fooUTWO")
+        eq_(connection.scalar(select(t.c.x).where(t.c.x == "foo")), "fooUTWO")
 
     @testing.only_on("sqlite")
     @testing.provide_metadata
-    def test_round_trip_sqlite_datetime(self):
+    def test_round_trip_sqlite_datetime(self, connection):
         variant = DateTime().with_variant(
             dialects.sqlite.DATETIME(truncate_microseconds=True), "sqlite"
         )
 
         t = Table("t", self.metadata, Column("x", variant))
-        with testing.db.connect() as conn:
-            t.create(conn)
+        t.create(connection)
 
-            conn.execute(
-                t.insert(), x=datetime.datetime(2015, 4, 18, 10, 15, 17, 4839)
-            )
+        connection.execute(
+            t.insert(), x=datetime.datetime(2015, 4, 18, 10, 15, 17, 4839)
+        )
 
-            eq_(
-                conn.scalar(
-                    select(t.c.x).where(
-                        t.c.x
-                        == datetime.datetime(2015, 4, 18, 10, 15, 17, 1059)
-                    )
-                ),
-                datetime.datetime(2015, 4, 18, 10, 15, 17),
-            )
+        eq_(
+            connection.scalar(
+                select(t.c.x).where(
+                    t.c.x == datetime.datetime(2015, 4, 18, 10, 15, 17, 1059)
+                )
+            ),
+            datetime.datetime(2015, 4, 18, 10, 15, 17),
+        )
 
 
 class UnicodeTest(fixtures.TestBase):
@@ -1702,14 +1698,25 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             2,
         )
 
-        with testing.db.connect() as conn:
-            self.metadata.create_all(conn)
+        self.metadata.create_all(testing.db)
+
+        # not using the connection fixture because we need to rollback and
+        # start again in the middle
+        with testing.db.connect() as connection:
+            # postgresql needs this in order to continue after the exception
+            trans = connection.begin()
             assert_raises(
                 (exc.DBAPIError,),
-                conn.exec_driver_sql,
+                connection.exec_driver_sql,
                 "insert into my_table " "(data) values('four')",
             )
-            conn.exec_driver_sql("insert into my_table (data) values ('two')")
+            trans.rollback()
+
+            with connection.begin():
+                connection.exec_driver_sql(
+                    "insert into my_table (data) values ('two')"
+                )
+                eq_(connection.execute(select(t.c.data)).scalar(), "two")
 
     @testing.requires.enforces_check_constraints
     @testing.provide_metadata
@@ -1747,34 +1754,44 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             2,
         )
 
-        with testing.db.connect() as conn:
-            self.metadata.create_all(conn)
+        self.metadata.create_all(testing.db)
+
+        # not using the connection fixture because we need to rollback and
+        # start again in the middle
+        with testing.db.connect() as connection:
+            # postgresql needs this in order to continue after the exception
+            trans = connection.begin()
             assert_raises(
                 (exc.DBAPIError,),
-                conn.exec_driver_sql,
+                connection.exec_driver_sql,
                 "insert into my_table " "(data) values('two')",
             )
-            conn.exec_driver_sql("insert into my_table (data) values ('four')")
+            trans.rollback()
 
-    def test_skip_check_constraint(self):
-        with testing.db.connect() as conn:
-            conn.exec_driver_sql(
-                "insert into non_native_enum_table "
-                "(id, someotherenum) values(1, 'four')"
-            )
-            eq_(
-                conn.exec_driver_sql(
-                    "select someotherenum from non_native_enum_table"
-                ).scalar(),
-                "four",
-            )
-            assert_raises_message(
-                LookupError,
-                "'four' is not among the defined enum values. "
-                "Enum name: None. Possible values: one, two, three",
-                conn.scalar,
-                select(self.tables.non_native_enum_table.c.someotherenum),
-            )
+            with connection.begin():
+                connection.exec_driver_sql(
+                    "insert into my_table (data) values ('four')"
+                )
+                eq_(connection.execute(select(t.c.data)).scalar(), "four")
+
+    def test_skip_check_constraint(self, connection):
+        connection.exec_driver_sql(
+            "insert into non_native_enum_table "
+            "(id, someotherenum) values(1, 'four')"
+        )
+        eq_(
+            connection.exec_driver_sql(
+                "select someotherenum from non_native_enum_table"
+            ).scalar(),
+            "four",
+        )
+        assert_raises_message(
+            LookupError,
+            "'four' is not among the defined enum values. "
+            "Enum name: None. Possible values: one, two, three",
+            connection.scalar,
+            select(self.tables.non_native_enum_table.c.someotherenum),
+        )
 
     def test_non_native_round_trip(self, connection):
         non_native_enum_table = self.tables["non_native_enum_table"]
@@ -2086,15 +2103,15 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(e.length, 42)
 
 
-binary_table = MyPickleType = metadata = None
+MyPickleType = None
 
 
-class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
+class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global binary_table, MyPickleType, metadata
+    def define_tables(cls, metadata):
+        global MyPickleType
 
         class MyPickleType(types.TypeDecorator):
             impl = PickleType
@@ -2109,8 +2126,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
                     value.stuff = "this is the right stuff"
                 return value
 
-        metadata = MetaData(testing.db)
-        binary_table = Table(
+        Table(
             "binary_table",
             metadata,
             Column(
@@ -2125,19 +2141,11 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
             Column("pickled", PickleType),
             Column("mypickle", MyPickleType),
         )
-        metadata.create_all()
-
-    @engines.close_first
-    def teardown(self):
-        with testing.db.connect() as conn:
-            conn.execute(binary_table.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
     @testing.requires.non_broken_binary
     def test_round_trip(self, connection):
+        binary_table = self.tables.binary_table
+
         testobj1 = pickleable.Foo("im foo 1")
         testobj2 = pickleable.Foo("im foo 2")
         testobj3 = pickleable.Foo("im foo 3")
@@ -2197,6 +2205,7 @@ class BinaryTest(fixtures.TestBase, AssertsExecutionResults):
     @testing.requires.binary_comparisons
     def test_comparison(self, connection):
         """test that type coercion occurs on comparison for binary"""
+        binary_table = self.tables.binary_table
 
         expr = binary_table.c.data == "foo"
         assert isinstance(expr.right.type, LargeBinary)
@@ -2419,17 +2428,17 @@ class ArrayTest(fixtures.TestBase):
         assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
 
 
-test_table = meta = MyCustomType = MyTypeDec = None
+MyCustomType = MyTypeDec = None
 
 
 class ExpressionTest(
-    fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
+    fixtures.TablesTest, AssertsExecutionResults, AssertsCompiledSQL
 ):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
-        global test_table, meta, MyCustomType, MyTypeDec
+    def define_tables(cls, metadata):
+        global MyCustomType, MyTypeDec
 
         class MyCustomType(types.UserDefinedType):
             def get_col_spec(self):
@@ -2463,10 +2472,9 @@ class ExpressionTest(
             def process_result_value(self, value, dialect):
                 return value + "BIND_OUT"
 
-        meta = MetaData(testing.db)
-        test_table = Table(
+        Table(
             "test",
-            meta,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("data", String(30)),
             Column("atimestamp", Date),
@@ -2474,25 +2482,22 @@ class ExpressionTest(
             Column("bvalue", MyTypeDec(50)),
         )
 
-        meta.create_all()
-
-        with testing.db.connect() as conn:
-            conn.execute(
-                test_table.insert(),
-                {
-                    "id": 1,
-                    "data": "somedata",
-                    "atimestamp": datetime.date(2007, 10, 15),
-                    "avalue": 25,
-                    "bvalue": "foo",
-                },
-            )
-
     @classmethod
-    def teardown_class(cls):
-        meta.drop_all()
+    def insert_data(cls, connection):
+        test_table = cls.tables.test
+        connection.execute(
+            test_table.insert(),
+            {
+                "id": 1,
+                "data": "somedata",
+                "atimestamp": datetime.date(2007, 10, 15),
+                "avalue": 25,
+                "bvalue": "foo",
+            },
+        )
 
     def test_control(self, connection):
+        test_table = self.tables.test
         assert (
             connection.exec_driver_sql("select avalue from test").scalar()
             == 250
@@ -2513,6 +2518,9 @@ class ExpressionTest(
 
     def test_bind_adapt(self, connection):
         # test an untyped bind gets the left side's type
+
+        test_table = self.tables.test
+
         expr = test_table.c.atimestamp == bindparam("thedate")
         eq_(expr.right.type._type_affinity, Date)
 
@@ -2565,6 +2573,8 @@ class ExpressionTest(
         )
 
     def test_grouped_bind_adapt(self):
+        test_table = self.tables.test
+
         expr = test_table.c.atimestamp == elements.Grouping(
             bindparam("thedate")
         )
@@ -2579,6 +2589,8 @@ class ExpressionTest(
         eq_(expr.right.element.element.type._type_affinity, Date)
 
     def test_bind_adapt_update(self):
+        test_table = self.tables.test
+
         bp = bindparam("somevalue")
         stmt = test_table.update().values(avalue=bp)
         compiled = stmt.compile()
@@ -2586,13 +2598,17 @@ class ExpressionTest(
         eq_(compiled.binds["somevalue"].type._type_affinity, MyCustomType)
 
     def test_bind_adapt_insert(self):
+        test_table = self.tables.test
         bp = bindparam("somevalue")
+
         stmt = test_table.insert().values(avalue=bp)
         compiled = stmt.compile()
         eq_(bp.type._type_affinity, types.NullType)
         eq_(compiled.binds["somevalue"].type._type_affinity, MyCustomType)
 
     def test_bind_adapt_expression(self):
+        test_table = self.tables.test
+
         bp = bindparam("somevalue")
         stmt = test_table.c.avalue == bp
         eq_(bp.type._type_affinity, types.NullType)
@@ -2629,6 +2645,8 @@ class ExpressionTest(
         is_(literal(data).type.__class__, expected)
 
     def test_typedec_operator_adapt(self, connection):
+        test_table = self.tables.test
+
         expr = test_table.c.bvalue + "hi"
 
         assert expr.type.__class__ is MyTypeDec
@@ -2846,6 +2864,8 @@ class ExpressionTest(
         eq_(expr.type, types.NULLTYPE)
 
     def test_distinct(self, connection):
+        test_table = self.tables.test
+
         s = select(distinct(test_table.c.avalue))
         eq_(connection.execute(s).scalar(), 25)
 
@@ -3004,17 +3024,18 @@ class NumericRawSQLTest(fixtures.TestBase):
 
     __backend__ = True
 
-    def _fixture(self, metadata, type_, data):
+    def _fixture(self, connection, metadata, type_, data):
         t = Table("t", metadata, Column("val", type_))
-        metadata.create_all()
-        with testing.db.connect() as conn:
-            conn.execute(t.insert(), val=data)
+        metadata.create_all(connection)
+        connection.execute(t.insert(), val=data)
 
     @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
     @testing.provide_metadata
     def test_decimal_fp(self, connection):
         metadata = self.metadata
-        self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45.5"))
+        self._fixture(
+            connection, metadata, Numeric(10, 5), decimal.Decimal("45.5")
+        )
         val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45.5"))
@@ -3023,7 +3044,9 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_decimal_int(self, connection):
         metadata = self.metadata
-        self._fixture(metadata, Numeric(10, 5), decimal.Decimal("45"))
+        self._fixture(
+            connection, metadata, Numeric(10, 5), decimal.Decimal("45")
+        )
         val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45"))
@@ -3031,7 +3054,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_ints(self, connection):
         metadata = self.metadata
-        self._fixture(metadata, Integer, 45)
+        self._fixture(connection, metadata, Integer, 45)
         val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, util.int_types)
         eq_(val, 45)
@@ -3039,7 +3062,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     @testing.provide_metadata
     def test_float(self, connection):
         metadata = self.metadata
-        self._fixture(metadata, Float, 46.583)
+        self._fixture(connection, metadata, Float, 46.583)
         val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, float)
 
@@ -3050,19 +3073,14 @@ class NumericRawSQLTest(fixtures.TestBase):
             eq_(val, 46.583)
 
 
-interval_table = metadata = None
-
-
-class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
+class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
 
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global interval_table, metadata
-        metadata = MetaData(testing.db)
-        interval_table = Table(
-            "intervaltable",
+    def define_tables(cls, metadata):
+        Table(
+            "intervals",
             metadata,
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
@@ -3074,16 +3092,6 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("non_native_interval", Interval(native=False)),
         )
-        metadata.create_all()
-
-    @engines.close_first
-    def teardown(self):
-        with testing.db.connect() as conn:
-            conn.execute(interval_table.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
     def test_non_native_adapt(self):
         interval = Interval(native=False)
@@ -3092,30 +3100,32 @@ class IntervalTest(fixtures.TestBase, AssertsExecutionResults):
         assert adapted.native is False
         eq_(str(adapted), "DATETIME")
 
-    def test_roundtrip(self):
+    def test_roundtrip(self, connection):
+        interval_table = self.tables.intervals
+
         small_delta = datetime.timedelta(days=15, seconds=5874)
         delta = datetime.timedelta(14)
-        with testing.db.begin() as conn:
-            conn.execute(
-                interval_table.insert(),
-                native_interval=small_delta,
-                native_interval_args=delta,
-                non_native_interval=delta,
-            )
-            row = conn.execute(interval_table.select()).first()
+        connection.execute(
+            interval_table.insert(),
+            native_interval=small_delta,
+            native_interval_args=delta,
+            non_native_interval=delta,
+        )
+        row = connection.execute(interval_table.select()).first()
         eq_(row.native_interval, small_delta)
         eq_(row.native_interval_args, delta)
         eq_(row.non_native_interval, delta)
 
-    def test_null(self):
-        with testing.db.begin() as conn:
-            conn.execute(
-                interval_table.insert(),
-                id=1,
-                native_inverval=None,
-                non_native_interval=None,
-            )
-            row = conn.execute(interval_table.select()).first()
+    def test_null(self, connection):
+        interval_table = self.tables.intervals
+
+        connection.execute(
+            interval_table.insert(),
+            id=1,
+            native_inverval=None,
+            non_native_interval=None,
+        )
+        row = connection.execute(interval_table.select()).first()
         eq_(row.native_interval, None)
         eq_(row.native_interval_args, None)
         eq_(row.non_native_interval, None)
@@ -3215,25 +3225,24 @@ class BooleanTest(
             )
 
     @testing.requires.non_native_boolean_unconstrained
-    def test_nonnative_processor_coerces_integer_to_boolean(self):
+    def test_nonnative_processor_coerces_integer_to_boolean(self, connection):
         boolean_table = self.tables.boolean_table
-        with testing.db.connect() as conn:
-            conn.exec_driver_sql(
-                "insert into boolean_table (id, unconstrained_value) "
-                "values (1, 5)"
-            )
+        connection.exec_driver_sql(
+            "insert into boolean_table (id, unconstrained_value) "
+            "values (1, 5)"
+        )
 
-            eq_(
-                conn.exec_driver_sql(
-                    "select unconstrained_value from boolean_table"
-                ).scalar(),
-                5,
-            )
+        eq_(
+            connection.exec_driver_sql(
+                "select unconstrained_value from boolean_table"
+            ).scalar(),
+            5,
+        )
 
-            eq_(
-                conn.scalar(select(boolean_table.c.unconstrained_value)),
-                True,
-            )
+        eq_(
+            connection.scalar(select(boolean_table.c.unconstrained_value)),
+            True,
+        )
 
     def test_bind_processor_coercion_native_true(self):
         proc = Boolean().bind_processor(

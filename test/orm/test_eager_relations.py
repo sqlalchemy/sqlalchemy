@@ -4808,6 +4808,8 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
 
 class SubqueryTest(fixtures.MappedTest):
+    run_deletes = "each"
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -4830,7 +4832,12 @@ class SubqueryTest(fixtures.MappedTest):
             Column("score2", sa.Float),
         )
 
-    def test_label_anonymizing(self):
+    @testing.combinations(
+        (True, "score"),
+        (True, None),
+        (False, None),
+    )
+    def test_label_anonymizing(self, labeled, labelname):
         """Eager loading works with subqueries with labels,
 
         Even if an explicit labelname which conflicts with a label on the
@@ -4859,75 +4866,65 @@ class SubqueryTest(fixtures.MappedTest):
             def prop_score(self):
                 return self.score1 * self.score2
 
-        for labeled, labelname in [
-            (True, "score"),
-            (True, None),
-            (False, None),
-        ]:
-            sa.orm.clear_mappers()
+        tag_score = tags_table.c.score1 * tags_table.c.score2
+        user_score = sa.select(
+            sa.func.sum(tags_table.c.score1 * tags_table.c.score2)
+        ).where(
+            tags_table.c.user_id == users_table.c.id,
+        )
 
-            tag_score = tags_table.c.score1 * tags_table.c.score2
-            user_score = sa.select(
-                sa.func.sum(tags_table.c.score1 * tags_table.c.score2)
-            ).where(
-                tags_table.c.user_id == users_table.c.id,
+        if labeled:
+            tag_score = tag_score.label(labelname)
+            user_score = user_score.label(labelname)
+        else:
+            user_score = user_score.scalar_subquery()
+
+        mapper(
+            Tag,
+            tags_table,
+            properties={"query_score": sa.orm.column_property(tag_score)},
+        )
+
+        mapper(
+            User,
+            users_table,
+            properties={
+                "tags": relationship(Tag, backref="user", lazy="joined"),
+                "query_score": sa.orm.column_property(user_score),
+            },
+        )
+
+        session = create_session()
+        session.add(
+            User(
+                name="joe",
+                tags=[
+                    Tag(score1=5.0, score2=3.0),
+                    Tag(score1=55.0, score2=1.0),
+                ],
             )
-
-            if labeled:
-                tag_score = tag_score.label(labelname)
-                user_score = user_score.label(labelname)
-            else:
-                user_score = user_score.scalar_subquery()
-
-            mapper(
-                Tag,
-                tags_table,
-                properties={"query_score": sa.orm.column_property(tag_score)},
+        )
+        session.add(
+            User(
+                name="bar",
+                tags=[
+                    Tag(score1=5.0, score2=4.0),
+                    Tag(score1=50.0, score2=1.0),
+                    Tag(score1=15.0, score2=2.0),
+                ],
             )
+        )
+        session.flush()
+        session.expunge_all()
 
-            mapper(
-                User,
-                users_table,
-                properties={
-                    "tags": relationship(Tag, backref="user", lazy="joined"),
-                    "query_score": sa.orm.column_property(user_score),
-                },
-            )
+        for user in session.query(User).all():
+            eq_(user.query_score, user.prop_score)
 
-            session = create_session()
-            session.add(
-                User(
-                    name="joe",
-                    tags=[
-                        Tag(score1=5.0, score2=3.0),
-                        Tag(score1=55.0, score2=1.0),
-                    ],
-                )
-            )
-            session.add(
-                User(
-                    name="bar",
-                    tags=[
-                        Tag(score1=5.0, score2=4.0),
-                        Tag(score1=50.0, score2=1.0),
-                        Tag(score1=15.0, score2=2.0),
-                    ],
-                )
-            )
-            session.flush()
-            session.expunge_all()
+        def go():
+            u = session.query(User).filter_by(name="joe").one()
+            eq_(u.query_score, u.prop_score)
 
-            for user in session.query(User).all():
-                eq_(user.query_score, user.prop_score)
-
-            def go():
-                u = session.query(User).filter_by(name="joe").one()
-                eq_(u.query_score, u.prop_score)
-
-            self.assert_sql_count(testing.db, go, 1)
-
-            for t in (tags_table, users_table):
-                t.delete().execute()
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class CorrelatedSubqueryTest(fixtures.MappedTest):

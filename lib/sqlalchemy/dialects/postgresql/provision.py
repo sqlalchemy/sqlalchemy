@@ -13,7 +13,7 @@ from ...testing.provision import temp_table_keyword_args
 def _pg_create_db(cfg, eng, ident):
     template_db = cfg.options.postgresql_templatedb
 
-    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+    with eng.execution_options(isolation_level="AUTOCOMMIT").begin() as conn:
         try:
             _pg_drop_db(cfg, conn, ident)
         except Exception:
@@ -51,15 +51,16 @@ def _pg_create_db(cfg, eng, ident):
 @drop_db.for_db("postgresql")
 def _pg_drop_db(cfg, eng, ident):
     with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
-        conn.execute(
-            text(
-                "select pg_terminate_backend(pid) from pg_stat_activity "
-                "where usename=current_user and pid != pg_backend_pid() "
-                "and datname=:dname"
-            ),
-            dname=ident,
-        )
-        conn.exec_driver_sql("DROP DATABASE %s" % ident)
+        with conn.begin():
+            conn.execute(
+                text(
+                    "select pg_terminate_backend(pid) from pg_stat_activity "
+                    "where usename=current_user and pid != pg_backend_pid() "
+                    "and datname=:dname"
+                ),
+                dname=ident,
+            )
+            conn.exec_driver_sql("DROP DATABASE %s" % ident)
 
 
 @temp_table_keyword_args.for_db("postgresql")

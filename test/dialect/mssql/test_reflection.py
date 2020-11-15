@@ -741,14 +741,9 @@ class IdentityReflectionTest(fixtures.TablesTest):
 
     @testing.requires.views
     def test_reflect_views(self, connection):
-        try:
-            with testing.db.connect() as conn:
-                conn.exec_driver_sql("CREATE VIEW view1 AS SELECT * FROM t1")
-            insp = inspect(testing.db)
-            for col in insp.get_columns("view1"):
-                is_true("dialect_options" not in col)
-                is_true("identity" in col)
-                eq_(col["identity"], {})
-        finally:
-            with testing.db.connect() as conn:
-                conn.exec_driver_sql("DROP VIEW view1")
+        connection.exec_driver_sql("CREATE VIEW view1 AS SELECT * FROM t1")
+        insp = inspect(connection)
+        for col in insp.get_columns("view1"):
+            is_true("dialect_options" not in col)
+            is_true("identity" in col)
+            eq_(col["identity"], {})

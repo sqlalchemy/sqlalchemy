@@ -12,7 +12,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -23,6 +22,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -141,7 +141,9 @@ class NaturalPKTest(fixtures.MappedTest):
         sess.flush()
         assert sess.query(User).get("jack") is u1
 
-        users.update(values={User.username: "jack"}).execute(username="ed")
+        sess.execute(
+            users.update(values={User.username: "jack"}), dict(username="ed")
+        )
 
         # expire/refresh works off of primary key.  the PK is gone
         # in this case so there's no way to look it up.  criterion-
@@ -1089,7 +1091,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         a1 = u1.addresses[0]
 
         eq_(
-            sa.select(addresses.c.username).execute().fetchall(),
+            sess.execute(sa.select(addresses.c.username)).fetchall(),
             [("jack",), ("jack",)],
         )
 
@@ -1099,7 +1101,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         sess.flush()
         assert u1.addresses[0].username == "ed"
         eq_(
-            sa.select(addresses.c.username).execute().fetchall(),
+            sess.execute(sa.select(addresses.c.username)).fetchall(),
             [("ed",), ("ed",)],
         )
 
@@ -1141,7 +1143,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
         eq_(a1.username, None)
 
         eq_(
-            sa.select(addresses.c.username).execute().fetchall(),
+            sess.execute(sa.select(addresses.c.username)).fetchall(),
             [(None,), (None,)],
         )
 
@@ -1454,7 +1456,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(a1.username, "ed")
         eq_(a2.username, "ed")
         eq_(
-            sa.select(addresses.c.username).execute().fetchall(),
+            sess.execute(sa.select(addresses.c.username)).fetchall(),
             [("ed",), ("ed",)],
         )
 
@@ -1465,7 +1467,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         eq_(a1.username, "jack")
         eq_(a2.username, "jack")
         eq_(
-            sa.select(addresses.c.username).execute().fetchall(),
+            sess.execute(sa.select(addresses.c.username)).fetchall(),
             [("jack",), ("jack",)],
         )
 

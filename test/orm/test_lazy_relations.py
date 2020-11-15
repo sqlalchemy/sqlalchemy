@@ -1302,18 +1302,22 @@ class O2MWOSideFixedTest(fixtures.MappedTest):
     def _fixture(self, include_other):
         city, person = self.tables.city, self.tables.person
 
-        if include_other:
-            city.insert().execute({"id": 1, "deleted": False})
+        with testing.db.begin() as conn:
+            if include_other:
+                conn.execute(city.insert(), {"id": 1, "deleted": False})
 
-            person.insert().execute(
-                {"id": 1, "city_id": 1}, {"id": 2, "city_id": 1}
+                conn.execute(
+                    person.insert(),
+                    {"id": 1, "city_id": 1},
+                    {"id": 2, "city_id": 1},
+                )
+
+            conn.execute(city.insert(), {"id": 2, "deleted": True})
+
+            conn.execute(
+                person.insert(),
+                [{"id": 3, "city_id": 2}, {"id": 4, "city_id": 2}],
             )
-
-        city.insert().execute({"id": 2, "deleted": True})
-
-        person.insert().execute(
-            {"id": 3, "city_id": 2}, {"id": 4, "city_id": 2}
-        )
 
     def test_lazyload_assert_expected_sql(self):
         self._fixture(True)

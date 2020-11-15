@@ -806,7 +806,7 @@ class GetTest(QueryTest):
 
     @testing.provide_metadata
     @testing.requires.unicode_connections
-    def test_unicode(self):
+    def test_unicode(self, connection):
         """test that Query.get properly sets up the type for the bind
         parameter. using unicode would normally fail on postgresql, mysql and
         oracle unless it is converted to an encoded string"""
@@ -818,19 +818,20 @@ class GetTest(QueryTest):
             Column("id", Unicode(40), primary_key=True),
             Column("data", Unicode(40)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         ustring = util.b("petit voix m\xe2\x80\x99a").decode("utf-8")
 
-        table.insert().execute(id=ustring, data=ustring)
+        connection.execute(table.insert(), dict(id=ustring, data=ustring))
 
         class LocalFoo(self.classes.Base):
             pass
 
         mapper(LocalFoo, table)
-        eq_(
-            create_session().query(LocalFoo).get(ustring),
-            LocalFoo(id=ustring, data=ustring),
-        )
+        with Session(connection) as sess:
+            eq_(
+                sess.get(LocalFoo, ustring),
+                LocalFoo(id=ustring, data=ustring),
+            )
 
     def test_populate_existing(self):
         User, Address = self.classes.User, self.classes.Address

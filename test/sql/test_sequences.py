@@ -95,64 +95,6 @@ class SequenceDDLTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class LegacySequenceExecTest(fixtures.TestBase):
-    __requires__ = ("sequences",)
-    __backend__ = True
-
-    @classmethod
-    def setup_class(cls):
-        cls.seq = Sequence("my_sequence")
-        cls.seq.create(testing.db)
-
-    @classmethod
-    def teardown_class(cls):
-        cls.seq.drop(testing.db)
-
-    def _assert_seq_result(self, ret):
-        """asserts return of next_value is an int"""
-
-        assert isinstance(ret, util.int_types)
-        assert ret >= testing.db.dialect.default_sequence_base
-
-    def test_implicit_connectionless(self):
-        s = Sequence("my_sequence", metadata=MetaData(testing.db))
-        self._assert_seq_result(s.execute())
-
-    def test_explicit(self, connection):
-        s = Sequence("my_sequence")
-        self._assert_seq_result(s.execute(connection))
-
-    def test_explicit_optional(self):
-        """test dialect executes a Sequence, returns nextval, whether
-        or not "optional" is set"""
-
-        s = Sequence("my_sequence", optional=True)
-        self._assert_seq_result(s.execute(testing.db))
-
-    def test_func_implicit_connectionless_execute(self):
-        """test func.next_value().execute()/.scalar() works
-        with connectionless execution."""
-
-        s = Sequence("my_sequence", metadata=MetaData(testing.db))
-        self._assert_seq_result(s.next_value().execute().scalar())
-
-    def test_func_explicit(self):
-        s = Sequence("my_sequence")
-        self._assert_seq_result(testing.db.scalar(s.next_value()))
-
-    def test_func_implicit_connectionless_scalar(self):
-        """test func.next_value().execute()/.scalar() works. """
-
-        s = Sequence("my_sequence", metadata=MetaData(testing.db))
-        self._assert_seq_result(s.next_value().scalar())
-
-    def test_func_embedded_select(self):
-        """test can use next_value() in select column expr"""
-
-        s = Sequence("my_sequence")
-        self._assert_seq_result(testing.db.scalar(select(s.next_value())))
-
-
 class SequenceExecTest(fixtures.TestBase):
     __requires__ = ("sequences",)
     __backend__ = True
@@ -247,7 +189,7 @@ class SequenceExecTest(fixtures.TestBase):
         s = Sequence("my_sequence_here", metadata=metadata)
 
         e = engines.testing_engine(options={"implicit_returning": False})
-        with e.connect() as conn:
+        with e.begin() as conn:
 
             t1.create(conn)
             s.create(conn)
@@ -279,7 +221,7 @@ class SequenceExecTest(fixtures.TestBase):
         t1.create(testing.db)
 
         e = engines.testing_engine(options={"implicit_returning": True})
-        with e.connect() as conn:
+        with e.begin() as conn:
             r = conn.execute(t1.insert().values(x=s.next_value()))
             self._assert_seq_result(r.inserted_primary_key[0])
 
@@ -476,7 +418,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
 
         engine = engines.testing_engine(options={"implicit_returning": False})
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             result = conn.execute(sometable.insert(), dict(name="somename"))
 
             eq_(result.postfetch_cols(), [sometable.c.obj_id])

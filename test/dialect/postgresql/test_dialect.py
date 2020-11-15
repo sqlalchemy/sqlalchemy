@@ -36,6 +36,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -51,7 +52,7 @@ from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.util import u
 from sqlalchemy.util import ue
-from ...engine import test_execute
+from ...engine import test_deprecations
 
 if True:
     from sqlalchemy.dialects.postgresql.psycopg2 import (
@@ -195,6 +196,20 @@ class ExecuteManyMode(object):
 
     options = None
 
+    @config.fixture()
+    def connection(self):
+        eng = engines.testing_engine(options=self.options)
+
+        conn = eng.connect()
+        trans = conn.begin()
+        try:
+            yield conn
+        finally:
+            if trans.is_active:
+                trans.rollback()
+            conn.close()
+            eng.dispose()
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -213,20 +228,12 @@ class ExecuteManyMode(object):
             Column(ue("\u6e2c\u8a66"), Integer),
         )
 
-    def setup(self):
-        super(ExecuteManyMode, self).setup()
-        self.engine = engines.testing_engine(options=self.options)
-
-    def teardown(self):
-        self.engine.dispose()
-        super(ExecuteManyMode, self).teardown()
-
-    def test_insert(self):
+    def test_insert(self, connection):
         from psycopg2 import extras
 
-        values_page_size = self.engine.dialect.executemany_values_page_size
-        batch_page_size = self.engine.dialect.executemany_batch_page_size
-        if self.engine.dialect.executemany_mode & EXECUTEMANY_VALUES:
+        values_page_size = connection.dialect.executemany_values_page_size
+        batch_page_size = connection.dialect.executemany_batch_page_size
+        if connection.dialect.executemany_mode & EXECUTEMANY_VALUES:
             meth = extras.execute_values
             stmt = "INSERT INTO data (x, y) VALUES %s"
             expected_kwargs = {
@@ -234,7 +241,7 @@ class ExecuteManyMode(object):
                 "page_size": values_page_size,
                 "fetch": False,
             }
-        elif self.engine.dialect.executemany_mode & EXECUTEMANY_BATCH:
+        elif connection.dialect.executemany_mode & EXECUTEMANY_BATCH:
             meth = extras.execute_batch
             stmt = "INSERT INTO data (x, y) VALUES (%(x)s, %(y)s)"
             expected_kwargs = {"page_size": batch_page_size}
@@ -244,24 +251,23 @@ class ExecuteManyMode(object):
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
-            with self.engine.connect() as conn:
-                conn.execute(
-                    self.tables.data.insert(),
-                    [
-                        {"x": "x1", "y": "y1"},
-                        {"x": "x2", "y": "y2"},
-                        {"x": "x3", "y": "y3"},
-                    ],
-                )
+            connection.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"},
+                ],
+            )
 
-                eq_(
-                    conn.execute(select(self.tables.data)).fetchall(),
-                    [
-                        (1, "x1", "y1", 5),
-                        (2, "x2", "y2", 5),
-                        (3, "x3", "y3", 5),
-                    ],
-                )
+            eq_(
+                connection.execute(select(self.tables.data)).fetchall(),
+                [
+                    (1, "x1", "y1", 5),
+                    (2, "x2", "y2", 5),
+                    (3, "x3", "y3", 5),
+                ],
+            )
         eq_(
             mock_exec.mock_calls,
             [
@@ -278,14 +284,13 @@ class ExecuteManyMode(object):
             ],
         )
 
-    def test_insert_no_page_size(self):
+    def test_insert_no_page_size(self, connection):
         from psycopg2 import extras
 
-        values_page_size = self.engine.dialect.executemany_values_page_size
-        batch_page_size = self.engine.dialect.executemany_batch_page_size
+        values_page_size = connection.dialect.executemany_values_page_size
+        batch_page_size = connection.dialect.executemany_batch_page_size
 
-        eng = self.engine
-        if eng.dialect.executemany_mode & EXECUTEMANY_VALUES:
+        if connection.dialect.executemany_mode & EXECUTEMANY_VALUES:
             meth = extras.execute_values
             stmt = "INSERT INTO data (x, y) VALUES %s"
             expected_kwargs = {
@@ -293,7 +298,7 @@ class ExecuteManyMode(object):
                 "page_size": values_page_size,
                 "fetch": False,
             }
-        elif eng.dialect.executemany_mode & EXECUTEMANY_BATCH:
+        elif connection.dialect.executemany_mode & EXECUTEMANY_BATCH:
             meth = extras.execute_batch
             stmt = "INSERT INTO data (x, y) VALUES (%(x)s, %(y)s)"
             expected_kwargs = {"page_size": batch_page_size}
@@ -303,15 +308,14 @@ class ExecuteManyMode(object):
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
-            with eng.connect() as conn:
-                conn.execute(
-                    self.tables.data.insert(),
-                    [
-                        {"x": "x1", "y": "y1"},
-                        {"x": "x2", "y": "y2"},
-                        {"x": "x3", "y": "y3"},
-                    ],
-                )
+            connection.execute(
+                self.tables.data.insert(),
+                [
+                    {"x": "x1", "y": "y1"},
+                    {"x": "x2", "y": "y2"},
+                    {"x": "x3", "y": "y3"},
+                ],
+            )
 
         eq_(
             mock_exec.mock_calls,
@@ -356,7 +360,7 @@ class ExecuteManyMode(object):
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
-            with eng.connect() as conn:
+            with eng.begin() as conn:
                 conn.execute(
                     self.tables.data.insert(),
                     [
@@ -398,11 +402,10 @@ class ExecuteManyMode(object):
 
         eq_(connection.execute(table.select()).all(), [(1, 1), (2, 2), (3, 3)])
 
-    def test_update_fallback(self):
+    def test_update_fallback(self, connection):
         from psycopg2 import extras
 
-        batch_page_size = self.engine.dialect.executemany_batch_page_size
-        eng = self.engine
+        batch_page_size = connection.dialect.executemany_batch_page_size
         meth = extras.execute_batch
         stmt = "UPDATE data SET y=%(yval)s WHERE data.x = %(xval)s"
         expected_kwargs = {"page_size": batch_page_size}
@@ -410,18 +413,17 @@ class ExecuteManyMode(object):
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
-            with eng.connect() as conn:
-                conn.execute(
-                    self.tables.data.update()
-                    .where(self.tables.data.c.x == bindparam("xval"))
-                    .values(y=bindparam("yval")),
-                    [
-                        {"xval": "x1", "yval": "y5"},
-                        {"xval": "x3", "yval": "y6"},
-                    ],
-                )
+            connection.execute(
+                self.tables.data.update()
+                .where(self.tables.data.c.x == bindparam("xval"))
+                .values(y=bindparam("yval")),
+                [
+                    {"xval": "x1", "yval": "y5"},
+                    {"xval": "x3", "yval": "y6"},
+                ],
+            )
 
-        if eng.dialect.executemany_mode & EXECUTEMANY_BATCH:
+        if connection.dialect.executemany_mode & EXECUTEMANY_BATCH:
             eq_(
                 mock_exec.mock_calls,
                 [
@@ -439,36 +441,34 @@ class ExecuteManyMode(object):
         else:
             eq_(mock_exec.mock_calls, [])
 
-    def test_not_sane_rowcount(self):
-        self.engine.connect().close()
-        if self.engine.dialect.executemany_mode & EXECUTEMANY_BATCH:
-            assert not self.engine.dialect.supports_sane_multi_rowcount
+    def test_not_sane_rowcount(self, connection):
+        if connection.dialect.executemany_mode & EXECUTEMANY_BATCH:
+            assert not connection.dialect.supports_sane_multi_rowcount
         else:
-            assert self.engine.dialect.supports_sane_multi_rowcount
+            assert connection.dialect.supports_sane_multi_rowcount
 
-    def test_update(self):
-        with self.engine.connect() as conn:
-            conn.execute(
-                self.tables.data.insert(),
-                [
-                    {"x": "x1", "y": "y1"},
-                    {"x": "x2", "y": "y2"},
-                    {"x": "x3", "y": "y3"},
-                ],
-            )
+    def test_update(self, connection):
+        connection.execute(
+            self.tables.data.insert(),
+            [
+                {"x": "x1", "y": "y1"},
+                {"x": "x2", "y": "y2"},
+                {"x": "x3", "y": "y3"},
+            ],
+        )
 
-            conn.execute(
-                self.tables.data.update()
-                .where(self.tables.data.c.x == bindparam("xval"))
-                .values(y=bindparam("yval")),
-                [{"xval": "x1", "yval": "y5"}, {"xval": "x3", "yval": "y6"}],
-            )
-            eq_(
-                conn.execute(
-                    select(self.tables.data).order_by(self.tables.data.c.id)
-                ).fetchall(),
-                [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
-            )
+        connection.execute(
+            self.tables.data.update()
+            .where(self.tables.data.c.x == bindparam("xval"))
+            .values(y=bindparam("yval")),
+            [{"xval": "x1", "yval": "y5"}, {"xval": "x3", "yval": "y6"}],
+        )
+        eq_(
+            connection.execute(
+                select(self.tables.data).order_by(self.tables.data.c.id)
+            ).fetchall(),
+            [(1, "x1", "y5", 5), (2, "x2", "y2", 5), (3, "x3", "y6", 5)],
+        )
 
 
 class ExecutemanyBatchModeTest(ExecuteManyMode, fixtures.TablesTest):
@@ -578,7 +578,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
             [(pk,) for pk in range(1 + first_pk, total_rows + first_pk)],
         )
 
-    def test_insert_w_newlines(self):
+    def test_insert_w_newlines(self, connection):
         from psycopg2 import extras
 
         t = self.tables.data
@@ -606,15 +606,14 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
             extras, "execute_values", side_effect=meth
         ) as mock_exec:
 
-            with self.engine.connect() as conn:
-                conn.execute(
-                    ins,
-                    [
-                        {"id": 1, "y": "y1", "z": 1},
-                        {"id": 2, "y": "y2", "z": 2},
-                        {"id": 3, "y": "y3", "z": 3},
-                    ],
-                )
+            connection.execute(
+                ins,
+                [
+                    {"id": 1, "y": "y1", "z": 1},
+                    {"id": 2, "y": "y2", "z": 2},
+                    {"id": 3, "y": "y3", "z": 3},
+                ],
+            )
 
         eq_(
             mock_exec.mock_calls,
@@ -629,12 +628,12 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                     ),
                     template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
                     fetch=False,
-                    page_size=conn.dialect.executemany_values_page_size,
+                    page_size=connection.dialect.executemany_values_page_size,
                 )
             ],
         )
 
-    def test_insert_modified_by_event(self):
+    def test_insert_modified_by_event(self, connection):
         from psycopg2 import extras
 
         t = self.tables.data
@@ -664,33 +663,33 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
             extras, "execute_batch", side_effect=meth
         ) as mock_batch:
 
-            with self.engine.connect() as conn:
-
-                # create an event hook that will change the statement to
-                # something else, meaning the dialect has to detect that
-                # insert_single_values_expr is no longer useful
-                @event.listens_for(conn, "before_cursor_execute", retval=True)
-                def before_cursor_execute(
-                    conn, cursor, statement, parameters, context, executemany
-                ):
-                    statement = (
-                        "INSERT INTO data (id, y, z) VALUES "
-                        "(%(id)s, %(y)s, %(z)s)"
-                    )
-                    return statement, parameters
-
-                conn.execute(
-                    ins,
-                    [
-                        {"id": 1, "y": "y1", "z": 1},
-                        {"id": 2, "y": "y2", "z": 2},
-                        {"id": 3, "y": "y3", "z": 3},
-                    ],
+            # create an event hook that will change the statement to
+            # something else, meaning the dialect has to detect that
+            # insert_single_values_expr is no longer useful
+            @event.listens_for(
+                connection, "before_cursor_execute", retval=True
+            )
+            def before_cursor_execute(
+                conn, cursor, statement, parameters, context, executemany
+            ):
+                statement = (
+                    "INSERT INTO data (id, y, z) VALUES "
+                    "(%(id)s, %(y)s, %(z)s)"
                 )
+                return statement, parameters
+
+            connection.execute(
+                ins,
+                [
+                    {"id": 1, "y": "y1", "z": 1},
+                    {"id": 2, "y": "y2", "z": 2},
+                    {"id": 3, "y": "y3", "z": 3},
+                ],
+            )
 
         eq_(mock_values.mock_calls, [])
 
-        if self.engine.dialect.executemany_mode & EXECUTEMANY_BATCH:
+        if connection.dialect.executemany_mode & EXECUTEMANY_BATCH:
             eq_(
                 mock_batch.mock_calls,
                 [
@@ -727,10 +726,10 @@ class ExecutemanyFlagOptionsTest(fixtures.TablesTest):
             ("values_only", EXECUTEMANY_VALUES),
             ("values_plus_batch", EXECUTEMANY_VALUES_PLUS_BATCH),
         ]:
-            self.engine = engines.testing_engine(
+            connection = engines.testing_engine(
                 options={"executemany_mode": opt}
             )
-            is_(self.engine.dialect.executemany_mode, expected)
+            is_(connection.dialect.executemany_mode, expected)
 
     def test_executemany_wrong_flag_options(self):
         for opt in [1, True, "batch_insert"]:
@@ -1082,7 +1081,7 @@ $$ LANGUAGE plpgsql;
         t.create(connection, checkfirst=True)
 
     @testing.provide_metadata
-    def test_schema_roundtrips(self):
+    def test_schema_roundtrips(self, connection):
         meta = self.metadata
         users = Table(
             "users",
@@ -1091,33 +1090,37 @@ $$ LANGUAGE plpgsql;
             Column("name", String(50)),
             schema="test_schema",
         )
-        users.create()
-        users.insert().execute(id=1, name="name1")
-        users.insert().execute(id=2, name="name2")
-        users.insert().execute(id=3, name="name3")
-        users.insert().execute(id=4, name="name4")
+        users.create(connection)
+        connection.execute(users.insert(), dict(id=1, name="name1"))
+        connection.execute(users.insert(), dict(id=2, name="name2"))
+        connection.execute(users.insert(), dict(id=3, name="name3"))
+        connection.execute(users.insert(), dict(id=4, name="name4"))
         eq_(
-            users.select().where(users.c.name == "name2").execute().fetchall(),
+            connection.execute(
+                users.select().where(users.c.name == "name2")
+            ).fetchall(),
             [(2, "name2")],
         )
         eq_(
-            users.select(use_labels=True)
-            .where(users.c.name == "name2")
-            .execute()
-            .fetchall(),
+            connection.execute(
+                users.select().apply_labels().where(users.c.name == "name2")
+            ).fetchall(),
             [(2, "name2")],
         )
-        users.delete().where(users.c.id == 3).execute()
+        connection.execute(users.delete().where(users.c.id == 3))
         eq_(
-            users.select().where(users.c.name == "name3").execute().fetchall(),
+            connection.execute(
+                users.select().where(users.c.name == "name3")
+            ).fetchall(),
             [],
         )
-        users.update().where(users.c.name == "name4").execute(name="newname")
+        connection.execute(
+            users.update().where(users.c.name == "name4"), dict(name="newname")
+        )
         eq_(
-            users.select(use_labels=True)
-            .where(users.c.id == 4)
-            .execute()
-            .fetchall(),
+            connection.execute(
+                users.select().apply_labels().where(users.c.id == 4)
+            ).fetchall(),
             [(4, "newname")],
         )
 
@@ -1233,7 +1236,7 @@ $$ LANGUAGE plpgsql;
             ne_(conn.connection.status, STATUS_IN_TRANSACTION)
 
 
-class AutocommitTextTest(test_execute.AutocommitTextTest):
+class AutocommitTextTest(test_deprecations.AutocommitTextTest):
     __only_on__ = "postgresql"
 
     def test_grant(self):

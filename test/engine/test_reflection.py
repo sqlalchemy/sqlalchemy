@@ -2016,7 +2016,7 @@ def createIndexes(con, schema=None):
 
 @testing.requires.views
 def _create_views(con, schema=None):
-    with testing.db.connect() as conn:
+    with testing.db.begin() as conn:
         for table_name in ("users", "email_addresses"):
             fullname = table_name
             if schema:
@@ -2031,7 +2031,7 @@ def _create_views(con, schema=None):
 
 @testing.requires.views
 def _drop_views(con, schema=None):
-    with testing.db.connect() as conn:
+    with testing.db.begin() as conn:
         for table_name in ("email_addresses", "users"):
             fullname = table_name
             if schema:
@@ -2047,7 +2047,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.requires.denormalized_names
     def setup(self):
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql(
                 """
             CREATE TABLE weird_casing(
@@ -2060,7 +2060,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.requires.denormalized_names
     def teardown(self):
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql("drop table weird_casing")
 
     @testing.requires.denormalized_names
