@@ -143,6 +143,44 @@ as well as the ``__tablename__`` attribute, in a dynamic style using the
 :func:`_orm.declared_attr` method decorator.   See the section
 :ref:`declarative_mixins` for examples on how this is often used.
 
+.. _orm_declarative_table_schema_name:
+
+Explicit Schema Name with Declarative Table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The schema name for a :class:`_schema.Table` as documented at
+:ref:`schema_table_schema_name` is applied to an individual :class:`_schema.Table`
+using the :paramref:`_schema.Table.schema` argument.   When using Declarative
+tables, this option is passed like any other to the ``__table_args__``
+dictionary::
+
+
+    class MyClass(Base):
+        __tablename__ = 'sometable'
+        __table_args__ = {'schema': 'some_schema'}
+
+
+The schema name can also be applied to all :class:`_schema.Table` objects
+globally by using the :paramref:`_schema.MetaData.schema` parameter documented
+at :ref:`schema_metadata_schema_name`.   The :class:`_schema.MetaData` object
+may be constructed separately and passed either to :func:`_orm.registry`
+or :func:`_orm.declarative_base`::
+
+    from sqlalchemy import metadata
+    metadata = MetaData(schema="some_schema")
+
+    Base = declarative_base(metadata = metadata)
+
+
+    class MyClass(Base):
+        # will use "some_schema" by default
+        __tablename__ = 'sometable'
+
+
+.. seealso::
+
+    :ref:`schema_table_schema_name` - in the :ref:`metadata_toplevel` documentation.
+
 .. _orm_declarative_table_adding_columns:
 
 Adding New Columns

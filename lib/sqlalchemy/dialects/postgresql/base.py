@@ -225,6 +225,46 @@ SERIALIZABLE isolation.
 .. versionadded:: 1.4 added support for the ``postgresql_readonly``
    and ``postgresql_deferrable`` execution options.
 
+.. _postgresql_alternate_search_path:
+
+Setting Alternate Search Paths on Connect
+------------------------------------------
+
+The PostgreSQL ``search_path`` variable refers to the list of schema names
+that will be implicitly referred towards when a particular table or other
+object is referenced in a SQL statement.  As detailed in the next section
+:ref:`postgresql_schema_reflection`, SQLAlchemy is generally organized around
+the concept of keeping this variable at its default value of ``public``,
+however, in order to have it set to any arbirary name or names when connections
+are used automatically, the "SET SESSION search_path" command may be invoked
+for all connections in a pool using the following event handler, as discussed
+at :ref:`schema_set_default_connections`::
+
+    from sqlalchemy import event
+    from sqlalchemy import create_engine
+
+    engine = create_engine("postgresql+psycopg2://scott:tiger@host/dbname")
+
+    @event.listens_for(engine, "connect", insert=True)
+    def set_search_path(dbapi_connection, connection_record):
+        existing_autocommit = dbapi_connection.autocommit
+        dbapi_connection.autocommit = True
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET SESSION search_path='%s'" % schema_name)
+        cursor.close()
+        dbapi_connection.autocommit = existing_autocommit
+
+The reason the recipe is complicated by use of the ``.autocommit`` DBAPI
+attribute is so that when the ``SET SESSION search_path`` directive is invoked,
+it is invoked outside of the scope of any tranasction and therefore will not
+be reverted when the DBAPI connection has a rollback.
+
+.. seealso::
+
+  :ref:`schema_set_default_connections` - in the :ref:`metadata_toplevel` documentation
+
+
+
 
 .. _postgresql_schema_reflection:
 

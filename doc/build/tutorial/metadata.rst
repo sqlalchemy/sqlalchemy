@@ -358,6 +358,11 @@ objects can usually be declared without an explicit "name" field inside
 the constructor, as the Declarative process will name them automatically
 based on the attribute name that was used.
 
+.. seealso::
+
+    :ref:`orm_declarative_mapping` - overview of Declarative class mapping
+
+
 Other Mapped Class Details
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

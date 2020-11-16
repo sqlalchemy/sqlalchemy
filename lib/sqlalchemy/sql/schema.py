@@ -3982,48 +3982,10 @@ class MetaData(SchemaItem):
            :class:`.Sequence`, and potentially other objects associated with
            this :class:`_schema.MetaData`. Defaults to ``None``.
 
-           When this value is set, any :class:`_schema.Table` or
-           :class:`.Sequence`
-           which specifies ``None`` for the schema parameter will instead
-           have this schema name defined.  To build a :class:`_schema.Table`
-           or :class:`.Sequence` that still has ``None`` for the schema
-           even when this parameter is present, use the :attr:`.BLANK_SCHEMA`
-           symbol.
-
-           .. note::
-
-                As referred above, the :paramref:`_schema.MetaData.schema`
-                parameter
-                only refers to the **default value** that will be applied to
-                the :paramref:`_schema.Table.schema` parameter of an incoming
-                :class:`_schema.Table` object.   It does not refer to how the
-                :class:`_schema.Table` is catalogued within the
-                :class:`_schema.MetaData`,
-                which remains consistent vs. a :class:`_schema.MetaData`
-                collection
-                that does not define this parameter.  The
-                :class:`_schema.Table`
-                within the :class:`_schema.MetaData`
-                will still be keyed based on its
-                schema-qualified name, e.g.
-                ``my_metadata.tables["some_schema.my_table"]``.
-
-                The current behavior of the :class:`_schema.ForeignKey`
-                object is to
-                circumvent this restriction, where it can locate a table given
-                the table name alone, where the schema will be assumed to be
-                present from this value as specified on the owning
-                :class:`_schema.MetaData` collection.  However,
-                this implies  that a
-                table qualified with BLANK_SCHEMA cannot currently be referred
-                to by string name from :class:`_schema.ForeignKey`.
-                Other parts of
-                SQLAlchemy such as Declarative may not have similar behaviors
-                built in, however may do so in a future release, along with a
-                consistent method of referring to a table in BLANK_SCHEMA.
-
-
            .. seealso::
+
+                :ref:`schema_metadata_schema_name` - details on how the
+                :paramref:`_schema.MetaData.schema` parameter is used.
 
                 :paramref:`_schema.Table.schema`
 
