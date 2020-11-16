@@ -242,7 +242,8 @@ class ORMCompileState(CompileState):
         except KeyError:
             assert False, "statement had 'orm' plugin but no plugin_subject"
         else:
-            bind_arguments["mapper"] = plugin_subject.mapper
+            if plugin_subject:
+                bind_arguments["mapper"] = plugin_subject.mapper
 
         if load_options._autoflush:
             session._autoflush()
@@ -342,9 +343,9 @@ class ORMFromStatementCompileState(ORMCompileState):
         self._polymorphic_adapters = {}
         self._no_yield_pers = set()
 
-        _QueryEntity.to_compile_state(self, statement_container._raw_columns)
-
         self.compile_options = statement_container._compile_options
+
+        _QueryEntity.to_compile_state(self, statement_container._raw_columns)
 
         self.current_path = statement_container._compile_options._current_path
 
@@ -494,9 +495,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             )
             self._setup_with_polymorphics()
 
-        _QueryEntity.to_compile_state(self, select_statement._raw_columns)
-
         self.compile_options = select_statement._compile_options
+
+        _QueryEntity.to_compile_state(self, select_statement._raw_columns)
 
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
@@ -2365,6 +2366,14 @@ class _BundleEntity(_QueryEntity):
                     )
 
         self.supports_single_entity = self.bundle.single_entity
+        if (
+            self.supports_single_entity
+            and not compile_state.compile_options._use_legacy_query_style
+        ):
+            util.warn_deprecated_20(
+                "The Bundle.single_entity flag has no effect when "
+                "using 2.0 style execution."
+            )
 
     @property
     def mapper(self):

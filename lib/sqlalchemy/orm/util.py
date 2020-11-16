@@ -1361,11 +1361,26 @@ class Bundle(ORMColumnsClauseRole, SupportsCloneAnnotations, InspectionAttr):
         # ensure existing entity_namespace remains
         annotations = {"bundle": self, "entity_namespace": self}
         annotations.update(self._annotations)
-        return expression.ClauseList(
-            _literal_as_text_role=roles.ColumnsClauseRole,
-            group=False,
-            *[e._annotations.get("bundle", e) for e in self.exprs]
-        )._annotate(annotations)
+
+        plugin_subject = self.exprs[0]._propagate_attrs.get(
+            "plugin_subject", self.entity
+        )
+        return (
+            expression.ClauseList(
+                _literal_as_text_role=roles.ColumnsClauseRole,
+                group=False,
+                *[e._annotations.get("bundle", e) for e in self.exprs]
+            )
+            ._annotate(annotations)
+            ._set_propagate_attrs(
+                # the Bundle *must* use the orm plugin no matter what.  the
+                # subject can be None but it's much better if it's not.
+                {
+                    "compile_state_plugin": "orm",
+                    "plugin_subject": plugin_subject,
+                }
+            )
+        )
 
     @property
     def clauses(self):

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5702
+
+    Fixed regression where the :paramref:`.Bundle.single_entity` flag would
+    take effect for a :class:`.Bundle` even though it were not set.
+    Additionally, this flag is legacy as it only makes sense for the
+    :class:`_orm.Query` object and not 2.0 style execution.  a deprecation
+    warning is emitted when used with new-style execution.

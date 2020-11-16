@@ -247,7 +247,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             ],
         )
 
-    def test_single_entity(self):
+    def test_single_entity_legacy_query(self):
         Data = self.classes.Data
         sess = Session()
 
@@ -258,11 +258,79 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
         )
 
-    def test_single_entity_future(self):
+    def test_labeled_cols_non_single_entity_legacy_query(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
+
+        eq_(
+            sess.query(b1).filter(b1.c.x.between("d3d1", "d5d1")).all(),
+            [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],
+        )
+
+    def test_labeled_cols_single_entity_legacy_query(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle(
+            "b1", Data.d1.label("x"), Data.d2.label("y"), single_entity=True
+        )
+
+        eq_(
+            sess.query(b1).filter(b1.c.x.between("d3d1", "d5d1")).all(),
+            [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
+        )
+
+    def test_labeled_cols_as_rows_future(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
+
+        stmt = select(b1).filter(b1.c.x.between("d3d1", "d5d1"))
+
+        eq_(
+            sess.execute(stmt).all(),
+            [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],
+        )
+
+    def test_labeled_cols_as_scalars_future(self):
+        Data = self.classes.Data
+        sess = Session()
+
+        b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
+
+        stmt = select(b1).filter(b1.c.x.between("d3d1", "d5d1"))
+        eq_(
+            sess.execute(stmt).scalars().all(),
+            [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
+        )
+
+    def test_single_entity_flag_is_legacy_w_future(self):
         Data = self.classes.Data
         sess = Session(testing.db, future=True)
 
+        # flag has no effect
         b1 = Bundle("b1", Data.d1, Data.d2, single_entity=True)
+
+        stmt = select(b1).filter(b1.c.d1.between("d3d1", "d5d1"))
+
+        with testing.expect_deprecated_20(
+            "The Bundle.single_entity flag has no effect when "
+            "using 2.0 style execution."
+        ):
+            rows = sess.execute(stmt).all()
+        eq_(
+            rows,
+            [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],
+        )
+
+    def test_as_scalars_future(self):
+        Data = self.classes.Data
+        sess = Session(testing.db)
+
+        b1 = Bundle("b1", Data.d1, Data.d2)
 
         stmt = select(b1).filter(b1.c.d1.between("d3d1", "d5d1"))
         eq_(
@@ -445,4 +513,26 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(func.row_number().over(order_by=b1)),
             "SELECT row_number() OVER (ORDER BY data.id, data.d1, data.d2) "
             "AS anon_1 FROM data",
+        )
+
+    def test_non_mapped_columns_non_single_entity(self):
+        data_table = self.tables.data
+
+        b1 = Bundle("b1", data_table.c.d1, data_table.c.d2)
+
+        sess = Session()
+        eq_(
+            sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
+            [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],
+        )
+
+    def test_non_mapped_columns_single_entity(self):
+        data_table = self.tables.data
+
+        b1 = Bundle("b1", data_table.c.d1, data_table.c.d2, single_entity=True)
+
+        sess = Session()
+        eq_(
+            sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
+            [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
         )

@@ -176,7 +176,9 @@ class HasCacheKey(object):
                             obj["compile_state_plugin"],
                             obj["plugin_subject"]._gen_cache_key(
                                 anon_map, bindparams
-                            ),
+                            )
+                            if obj["plugin_subject"]
+                            else None,
                         )
                     elif meth is InternalTraversal.dp_annotations_key:
                         # obj is here is the _annotations dict.   however, we

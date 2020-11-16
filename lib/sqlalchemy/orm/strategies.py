@@ -2730,7 +2730,14 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         q = sql.lambda_stmt(
             lambda: sql.select(
                 orm_util.Bundle("pk", *pk_cols), effective_entity
-            ).apply_labels(),
+            )
+            .apply_labels()
+            ._set_propagate_attrs(
+                {
+                    "compile_state_plugin": "orm",
+                    "plugin_subject": effective_entity,
+                }
+            ),
             lambda_cache=self._query_cache,
             global_track_bound_values=False,
             track_on=(self, effective_entity) + tuple(pk_cols),
