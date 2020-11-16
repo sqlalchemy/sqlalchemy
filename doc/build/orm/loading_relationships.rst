@@ -1135,20 +1135,20 @@ in fact associated with the collection.
     loaded.
 
     If we have a previous query in the session that has loaded the collection,
-    future queries will use the collection as is, it won't be reloaded
-    according to filter criteria. It may be necessary to expunge instances to
+    future queries will use the collection as is - it won't be reloaded
+    according to filter criteria. It may be necessary to use
+    :meth:`.Query.populate_existing` or :meth:`.Session.expunge` to
     get the desired behaviour::
 
         user = session.query(User)
         user.addresses
 
-        # if we don't include the following line, q.addresses will
-        # include all of the addresses - not just those we filter
-        session.expunge(user)
-
+        # if we don't include `.populate_existing()`, q.addresses will
+        # include all of the addresses, not just those we filter
         q = session.query(User).join(User.addresses).\
                     filter(Address.email.like('%ed%')).\
-                    options(contains_eager(User.addresses))
+                    options(contains_eager(User.addresses)).\
+                    populate_existing()
 
     In addition, the **collection will fully reload normally** once the
     object or attribute is expired.  This expiration occurs whenever the
