@@ -820,13 +820,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             where="room > 100",
             deferrable=True,
             initially="immediate",
+            ops={"room": "my_opclass"},
         )
         tbl.append_constraint(cons)
         self.assert_compile(
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD CONSTRAINT my_name "
             "EXCLUDE USING gist "
-            "(room WITH =, during WITH "
+            "(room my_opclass WITH =, during WITH "
             "&&) WHERE "
             "(room > 100) DEFERRABLE INITIALLY immediate",
             dialect=postgresql.dialect(),
@@ -932,6 +933,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist "
             "(room WITH =) WHERE (testtbl.room IN ('12'))",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_exclude_constraint_ops_many(self):
+        m = MetaData()
+        tbl = Table(
+            "testtbl", m, Column("room", String), Column("during", TSRANGE)
+        )
+        cons = ExcludeConstraint(
+            ("room", "="),
+            ("during", "&&"),
+            ops={"room": "first_opsclass", "during": "second_opclass"},
+        )
+        tbl.append_constraint(cons)
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            "ALTER TABLE testtbl ADD EXCLUDE USING gist "
+            "(room first_opsclass WITH =, during second_opclass WITH &&)",
             dialect=postgresql.dialect(),
         )
 
