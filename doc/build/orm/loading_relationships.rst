@@ -1134,6 +1134,22 @@ in fact associated with the collection.
     conflicting with entries that are already in the database but not locally
     loaded.
 
+    If we have a previous query in the session that has loaded the collection,
+    future queries will use the collection as is, it won't be reloaded
+    according to filter criteria. It may be necessary to expunge instances to
+    get the desired behaviour::
+
+        user = session.query(User)
+        user.addresses
+
+        # if we don't include the following line, q.addresses will
+        # include all of the addresses - not just those we filter
+        session.expunge(user)
+
+        q = session.query(User).join(User.addresses).\
+                    filter(Address.email.like('%ed%')).\
+                    options(contains_eager(User.addresses))
+
     In addition, the **collection will fully reload normally** once the
     object or attribute is expired.  This expiration occurs whenever the
     :meth:`.Session.commit`, :meth:`.Session.rollback` methods are used
