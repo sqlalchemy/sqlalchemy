@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, sql
     :tickets: 5691
+    :versions: 1.4.0b2
 
     A warning is emmitted if a returning() method such as
     :meth:`_sql.Insert.returning` is called multiple times, as this does not

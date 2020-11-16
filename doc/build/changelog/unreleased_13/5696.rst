@@ -1,6 +1,7 @@
 .. change::
     :tags: mysql, sql
     :tickets: 5696
+    :versions: 1.4.0b2
 
     Added missing keywords to the ``RESERVED_WORDS`` list for the MySQL
     dialect: ``action``, ``level``, ``mode``, ``status``, ``text``, ``time``.
