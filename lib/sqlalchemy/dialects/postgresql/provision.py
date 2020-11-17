@@ -5,6 +5,7 @@ from ... import text
 from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import log
+from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
 
 
@@ -64,3 +65,15 @@ def _pg_drop_db(cfg, eng, ident):
 @temp_table_keyword_args.for_db("postgresql")
 def _postgresql_temp_table_keyword_args(cfg, eng):
     return {"prefixes": ["TEMPORARY"]}
+
+
+@set_default_schema_on_connection.for_db("postgresql")
+def _postgresql_set_default_schema_on_connection(
+    cfg, dbapi_connection, schema_name
+):
+    existing_autocommit = dbapi_connection.autocommit
+    dbapi_connection.autocommit = True
+    cursor = dbapi_connection.cursor()
+    cursor.execute("SET SESSION search_path='%s'" % schema_name)
+    cursor.close()
+    dbapi_connection.autocommit = existing_autocommit

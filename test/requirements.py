@@ -553,6 +553,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql"])
 
     @property
+    def default_schema_name_switch(self):
+        return only_on(["postgresql", "oracle"])
+
+    @property
     def unique_constraint_reflection(self):
         return fails_on_everything_except(
             "postgresql", "mysql", "mariadb", "sqlite", "oracle"

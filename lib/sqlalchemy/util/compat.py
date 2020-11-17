@@ -47,6 +47,24 @@ FullArgSpec = collections.namedtuple(
     ],
 )
 
+
+class nullcontext(object):
+    """Context manager that does no additional processing.
+
+    Vendored from Python 3.7.
+
+    """
+
+    def __init__(self, enter_result=None):
+        self.enter_result = enter_result
+
+    def __enter__(self):
+        return self.enter_result
+
+    def __exit__(self, *excinfo):
+        pass
+
+
 try:
     import threading
 except ImportError:

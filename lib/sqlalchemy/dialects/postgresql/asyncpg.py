@@ -491,7 +491,7 @@ class AsyncAdapt_asyncpg_connection:
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
         self._connection = connection
-        self.isolation_level = "read_committed"
+        self.isolation_level = self._isolation_setting = "read_committed"
         self.readonly = False
         self.deferrable = False
         self._transaction = None
@@ -512,10 +512,21 @@ class AsyncAdapt_asyncpg_connection:
         else:
             raise error
 
+    @property
+    def autocommit(self):
+        return self.isolation_level == "autocommit"
+
+    @autocommit.setter
+    def autocommit(self, value):
+        if value:
+            self.isolation_level = "autocommit"
+        else:
+            self.isolation_level = self._isolation_setting
+
     def set_isolation_level(self, level):
         if self._started:
             self.rollback()
-        self.isolation_level = level
+        self.isolation_level = self._isolation_setting = level
 
     async def _start_transaction(self):
         if self.isolation_level == "autocommit":

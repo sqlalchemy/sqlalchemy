@@ -1587,7 +1587,9 @@ class OracleDialect(default.DefaultDialect):
 
     def _get_default_schema_name(self, connection):
         return self.normalize_name(
-            connection.exec_driver_sql("SELECT USER FROM DUAL").scalar()
+            connection.exec_driver_sql(
+                "select sys_context( 'userenv', 'current_schema' ) from dual"
+            ).scalar()
         )
 
     def _resolve_synonym(

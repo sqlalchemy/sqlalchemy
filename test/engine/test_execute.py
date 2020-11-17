@@ -1441,6 +1441,111 @@ class EngineEventsTest(fixtures.TestBase):
             eq_(canary.be1.call_count, 2)
             eq_(canary.be2.call_count, 2)
 
+    @testing.combinations((True, False), (True, True), (False, False))
+    def test_insert_connect_is_definitely_first(
+        self, mock_out_on_connect, add_our_own_onconnect
+    ):
+        """test issue #5708.
+
+        We want to ensure that a single "connect" event may be invoked
+        *before* dialect initialize as well as before dialect on_connects.
+
+        This is also partially reliant on the changes we made as a result of
+        #5497, however here we go further with the changes and remove use
+        of the pool first_connect() event entirely so that the startup
+        for a dialect is fully consistent.
+
+        """
+        if mock_out_on_connect:
+            if add_our_own_onconnect:
+
+                def our_connect(connection):
+                    m1.our_connect("our connect event")
+
+                patcher = mock.patch.object(
+                    config.db.dialect.__class__,
+                    "on_connect",
+                    lambda self: our_connect,
+                )
+            else:
+                patcher = mock.patch.object(
+                    config.db.dialect.__class__,
+                    "on_connect",
+                    lambda self: None,
+                )
+        else:
+            patcher = util.nullcontext()
+
+        with patcher:
+            e1 = create_engine(config.db_url)
+
+            initialize = e1.dialect.initialize
+
+            def init(connection):
+                initialize(connection)
+
+            with mock.patch.object(
+                e1.dialect, "initialize", side_effect=init
+            ) as m1:
+
+                @event.listens_for(e1, "connect", insert=True)
+                def go1(dbapi_conn, xyz):
+                    m1.foo("custom event first")
+
+                @event.listens_for(e1, "connect")
+                def go2(dbapi_conn, xyz):
+                    m1.foo("custom event last")
+
+                c1 = e1.connect()
+
+                m1.bar("ok next connection")
+
+                c2 = e1.connect()
+
+                # this happens with sqlite singletonthreadpool.
+                # we can almost use testing.requires.independent_connections
+                # but sqlite file backend will also have independent
+                # connections here.
+                its_the_same_connection = (
+                    c1.connection.connection is c2.connection.connection
+                )
+                c1.close()
+                c2.close()
+
+        if add_our_own_onconnect:
+            calls = [
+                mock.call.foo("custom event first"),
+                mock.call.our_connect("our connect event"),
+                mock.call(mock.ANY),
+                mock.call.foo("custom event last"),
+                mock.call.bar("ok next connection"),
+            ]
+        else:
+            calls = [
+                mock.call.foo("custom event first"),
+                mock.call(mock.ANY),
+                mock.call.foo("custom event last"),
+                mock.call.bar("ok next connection"),
+            ]
+
+        if not its_the_same_connection:
+            if add_our_own_onconnect:
+                calls.extend(
+                    [
+                        mock.call.foo("custom event first"),
+                        mock.call.our_connect("our connect event"),
+                        mock.call.foo("custom event last"),
+                    ]
+                )
+            else:
+                calls.extend(
+                    [
+                        mock.call.foo("custom event first"),
+                        mock.call.foo("custom event last"),
+                    ]
+                )
+        eq_(m1.mock_calls, calls)
+
     def test_new_exec_driver_sql_no_events(self):
         m1 = Mock()
 

@@ -493,6 +493,26 @@ class PoolEventsTest(PoolTestBase):
         p.connect()
         eq_(canary, ["connect"])
 
+    def test_connect_insert_event(self):
+        p = self._queuepool_fixture()
+        canary = []
+
+        def connect_one(*arg, **kw):
+            canary.append("connect_one")
+
+        def connect_two(*arg, **kw):
+            canary.append("connect_two")
+
+        def connect_three(*arg, **kw):
+            canary.append("connect_three")
+
+        event.listen(p, "connect", connect_one)
+        event.listen(p, "connect", connect_two, insert=True)
+        event.listen(p, "connect", connect_three)
+
+        p.connect()
+        eq_(canary, ["connect_two", "connect_one", "connect_three"])
+
     def test_connect_event_fires_subsequent(self):
         p, canary = self._connect_event_fixture()
 
