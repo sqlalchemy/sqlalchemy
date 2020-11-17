@@ -425,22 +425,66 @@ in the same way as if we had used ``user_table`` directly::
     {opensql}SELECT user_account.id, user_account.name, user_account.fullname
     FROM user_account
 
-To select from individual columns using ORM entities, the class-bound
-attributes can be passed directly which are resolved into the
+When executing a statement like the above using the ORM :meth:`_orm.Session.execute`
+method, there is an important difference when we select from a full entity
+such as ``User``, as opposed to ``user_table``, which is that the **entity
+itself is returned as a single column within each row**.  That is, when we fetch rows from
+the above statement, as there is only the ``User`` entity in the list of
+things to fetch, we get back :class:`_engine.Row` objects that have only one column, which contain
+instances of the ``User`` class::
+
+    >>> row = session.execute(select(User)).first()
+    {opensql}BEGIN...
+    SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    [...] (){stop}
+    >>> row
+    (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
+
+The above :class:`_engine.Row` has just one column, representing the ``User`` entity::
+
+    >>> row[0]
+    User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+
+Alternatively, we can select individual columns from an ORM entity, by
+using the class-bound
+attributes; when these are passed to a construct such as :func:`_sql.select`,
+they are resolved into the
 :class:`_schema.Column` or other SQL expression represented by each attribute::
 
     >>> print(select(User.name, User.fullname))
     {opensql}SELECT user_account.name, user_account.fullname
     FROM user_account
 
-.. tip::
+When we invoke *this* statement using :meth:`_orm.Session.execute`, we now
+receive rows that have individual columns per value::
 
-    When ORM-related objects are used within the :class:`_sql.Select`
-    construct, they are resolved into the underlying :class:`_schema.Table` and
-    :class:`_schema.Column` and similar Core constructs they represent; at the
-    same time, they apply a **plugin** to the core :class:`_sql.Select`
-    construct such that a new set of ORM-specific behaviors make take
-    effect when the construct is being compiled.
+    >>> row = session.execute(select(User.name, User.fullname)).first()
+    {opensql}SELECT user_account.name, user_account.fullname
+    FROM user_account
+    [...] (){stop}
+    >>> row
+    ('spongebob', 'Spongebob Squarepants')
+
+The approaches can also be mixed, as below where we SELECT the ``name``
+attribute of the ``User`` entity as the first column, and combine it with full
+``Address`` entities in the second column::
+
+    >>> session.execute(
+    ...     select(User.name, Address).
+    ...     where(User.id==Address.user_id).
+    ...     order_by(Address.id)
+    ... ).all()
+    {opensql}SELECT user_account.name, address.id, address.email_address, address.user_id
+    FROM user_account, address
+    WHERE user_account.id = address.user_id ORDER BY address.id
+    [...] (){stop}
+    [('spongebob', Address(id=1, email_address='spongebob@sqlalchemy.org')),
+    ('sandy', Address(id=2, email_address='sandy@sqlalchemy.org')),
+    ('sandy', Address(id=3, email_address='sandy@squirrelpower.org'))]
+
+Approaches towards selecting ORM entities and columns as well as common methods
+for converting rows are discussed further at :ref:`orm_queryguide_select_columns`.
 
 .. seealso::
 
