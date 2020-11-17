@@ -2408,7 +2408,6 @@ class IdentityOptions(object):
         cycle=None,
         cache=None,
         order=None,
-        data_type=None,
     ):
         """Construct a :class:`.IdentityOptions` object.
 
@@ -2427,7 +2426,6 @@ class IdentityOptions(object):
          sequence which are calculated in advance.
         :param order: optional boolean value; if ``True``, renders the
          ORDER keyword.
-        :param data_type: The type to be returned by the sequence.
 
         """
         self.start = start
@@ -2439,10 +2437,6 @@ class IdentityOptions(object):
         self.cycle = cycle
         self.cache = cache
         self.order = order
-        if data_type is not None:
-            self.data_type = to_instance(data_type)
-        else:
-            self.data_type = None
 
 
 class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
@@ -2652,7 +2646,6 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
             cycle=cycle,
             cache=cache,
             order=order,
-            data_type=data_type,
         )
         self.name = quoted_name(name, quote)
         self.optional = optional
@@ -2666,6 +2659,10 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
         self._key = _get_table_key(name, schema)
         if metadata:
             self._set_metadata(metadata)
+        if data_type is not None:
+            self.data_type = to_instance(data_type)
+        else:
+            self.data_type = None
 
     @util.memoized_property
     def is_callable(self):
