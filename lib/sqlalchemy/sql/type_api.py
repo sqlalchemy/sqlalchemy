@@ -470,13 +470,18 @@ class TypeEngine(Traversible):
                     "sqlalchemy.sql.sqltypes",
                     "sqlalchemy.sql.type_api",
                 )
-                and t._is_generic_type()
+                and hasattr(t, '_is_generic_type') and t._is_generic_type()
             ):
                 if t in (TypeEngine, UserDefinedType):
                     return NULLTYPE.__class__
                 return t
         else:
             return self.__class__
+
+    def as_generic(self):
+        """Return an instance of the generic type corresponding to this type"""
+
+        return util.constructor_copy(self, self._generic_type_affinity())
 
     def dialect_impl(self, dialect):
         """Return a dialect-specific implementation for this

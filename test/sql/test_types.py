@@ -383,6 +383,26 @@ class TypeAffinityTest(fixtures.TestBase):
         assert t1.dialect_impl(d)._type_affinity is postgresql.UUID
 
 
+class AsGenericTest(fixtures.TestBase):
+    @testing.combinations(
+        (String(), String()),
+        (VARCHAR(length=100), String(length=100)),
+        (NVARCHAR(length=100), Unicode(length=100)),
+        (DATE(), Date()),
+    )
+    def test_as_generic(self, t1, t2):
+        assert repr(t1.as_generic()) == repr(t2)
+
+    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
+    def test_as_generic_all_types(self, type_):
+        if issubclass(type_, ARRAY):
+            t1 = type_(String)
+        else:
+            t1 = type_()
+
+        t1.as_generic()
+
+
 class PickleTypesTest(fixtures.TestBase):
     @testing.combinations(
         ("Boo", Boolean()),
