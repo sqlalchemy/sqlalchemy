@@ -14,6 +14,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -885,6 +886,17 @@ class QueuePoolTest(PoolTestBase):
 
         assert_raises(tsa.exc.TimeoutError, p.connect)
         assert int(time.time() - now) == 2
+
+    @testing.requires.timing_intensive
+    def test_timeout_subsecond_precision(self):
+        p = self._queuepool_fixture(pool_size=1, max_overflow=0, timeout=0.5)
+        c1 = p.connect()  # noqa
+        with expect_raises(tsa.exc.TimeoutError):
+            now = time.time()
+            c2 = p.connect()  # noqa
+        # Python timing is not very accurate, the time diff should be very
+        # close to 0.5s but we give 200ms of slack.
+        assert 0.3 <= time.time() - now <= 0.7, "Pool timeout not respected"
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
