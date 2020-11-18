@@ -63,11 +63,14 @@ a :class:`_schema.Column` explicitly mapped to a class can have a different attr
 name than the column.  But what if we aren't listing out :class:`_schema.Column`
 objects explicitly, and instead are automating the production of :class:`_schema.Table`
 objects using reflection (e.g. as described in :ref:`metadata_reflection_toplevel`)?
-In this case we can make use of the :meth:`.DDLEvents.column_reflect` event
+In this case we can make use of the :meth:`_events.DDLEvents.column_reflect` event
 to intercept the production of :class:`_schema.Column` objects and provide them
-with the :attr:`_schema.Column.key` of our choice::
+with the :attr:`_schema.Column.key` of our choice.   The event is most easily
+associated with the :class:`_schema.MetaData` object that's in use,
+such as below we use the one linked to the :class:`_orm.declarative_base`
+instance::
 
-    @event.listens_for(Table, "column_reflect")
+    @event.listens_for(Base.metadata, "column_reflect")
     def column_reflect(inspector, table, column_info):
         # set column.key = "attr_<lower_case_name>"
         column_info['key'] = "attr_%s" % column_info['name'].lower()
@@ -79,14 +82,14 @@ with our event that adds a new ".key" element, such as in a mapping as below::
         __table__ = Table("some_table", Base.metadata,
                     autoload_with=some_engine)
 
-If we want to qualify our event to only react for the specific :class:`_schema.MetaData`
-object above, we can check for it in our event::
+The approach also works with the :ref:`automap_toplevel` extension.  See
+the section :ref:`automap_intercepting_columns` for background.
 
-    @event.listens_for(Table, "column_reflect")
-    def column_reflect(inspector, table, column_info):
-        if table.metadata is Base.metadata:
-            # set column.key = "attr_<lower_case_name>"
-            column_info['key'] = "attr_%s" % column_info['name'].lower()
+.. seealso::
+
+    :meth:`_events.DDLEvents.column_reflect`
+
+    :ref:`automap_intercepting_columns` - in the :ref:`automap_toplevel` documentation
 
 .. _column_prefix:
 

@@ -213,8 +213,31 @@ class DDLEvents(event.Events):
         """Called for each unit of 'column info' retrieved when
         a :class:`_schema.Table` is being reflected.
 
-        Currently, this event may only be applied to the :class:`_schema.Table`
-        class directly::
+        This event is most easily used by applying it to a specific
+        :class:`_schema.MetaData` instance, where it will take effect for
+        all :class:`_schema.Table` objects within that
+        :class:`_schema.MetaData` that undergo reflection::
+
+            metadata = MetaData()
+
+            @event.listens_for(metadata, 'column_reflect')
+            def receive_column_reflect(inspector, table, column_info):
+                # receives for all Table objects that are reflected
+                # under this MetaData
+
+
+            # will use the above event hook
+            my_table = Table("my_table", metadata, autoload_with=some_engine)
+
+
+        .. versionadded:: 1.4.0b2 The :meth:`_events.DDLEvents.column_reflect`
+           hook may now be applied to a :class:`_schema.MetaData` object as
+           well as the :class:`_schema.MetaData` class itself where it will
+           take place for all :class:`_schema.Table` objects associated with
+           the targeted :class:`_schema.MetaData`.
+
+        It may also be applied to the :class:`_schema.Table` class across
+        the board::
 
             from sqlalchemy import Table
 
@@ -222,7 +245,8 @@ class DDLEvents(event.Events):
             def receive_column_reflect(inspector, table, column_info):
                 # receives for all Table objects that are reflected
 
-        Or applied using the
+        It can also be applied to a specific :class:`_schema.Table` at the
+        point that one is being reflected using the
         :paramref:`_schema.Table.listeners` parameter::
 
             t1 = Table(
@@ -257,14 +281,6 @@ class DDLEvents(event.Events):
               or :func:`_expression.text` object as well.  Is applied to the
               :paramref:`_schema.Column.server_default` parameter
 
-              .. versionchanged:: 1.1.6
-
-                    The :meth:`.DDLEvents.column_reflect` event allows a non
-                    string :class:`.FetchedValue`,
-                    :func:`_expression.text`, or derived object to be
-                    specified as the value of ``default`` in the column
-                    dictionary.
-
         The event is called before any action is taken against
         this dictionary, and the contents can be modified; the following
         additional keys may be added to the dictionary to further modify
@@ -289,5 +305,13 @@ class DDLEvents(event.Events):
         be established for any copies made of the target object,
         i.e. those copies that are generated when
         :meth:`_schema.Table.to_metadata` is used.
+
+        .. seealso::
+
+            :ref:`mapper_automated_reflection_schemes` -
+            in the ORM mapping documentation
+
+            :ref:`automap_intercepting_columns` -
+            in the :ref:`automap_toplevel` documentation
 
         """

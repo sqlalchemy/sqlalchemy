@@ -3,6 +3,7 @@ import unicodedata
 import sqlalchemy as sa
 from sqlalchemy import Computed
 from sqlalchemy import DefaultClause
+from sqlalchemy import event
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import Identity
@@ -2267,6 +2268,41 @@ class ColumnEventsTest(fixtures.RemovesEvents, fixtures.TestBase):
             eq_(str(table.c.x.server_default.arg), "1")
 
         self._do_test("x", {"default": my_default}, assert_text_of_one)
+
+    def test_listen_metadata_obj(self):
+        m1 = MetaData()
+
+        m2 = MetaData()
+
+        canary = []
+
+        @event.listens_for(m1, "column_reflect")
+        def go(insp, table, info):
+            canary.append(info["name"])
+
+        Table("related", m1, autoload_with=testing.db)
+
+        Table("related", m2, autoload_with=testing.db)
+
+        eq_(canary, ["q", "x", "y"])
+
+    def test_listen_metadata_cls(self):
+        m1 = MetaData()
+
+        m2 = MetaData()
+
+        canary = []
+
+        def go(insp, table, info):
+            canary.append(info["name"])
+
+        self.event_listen(MetaData, "column_reflect", go)
+
+        Table("related", m1, autoload_with=testing.db)
+
+        Table("related", m2, autoload_with=testing.db)
+
+        eq_(canary, ["q", "x", "y", "q", "x", "y"])
 
 
 class ComputedColumnTest(fixtures.ComputedReflectionFixtureTest):

@@ -389,8 +389,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         which will be passed to :func:`.event.listen` upon construction.
         This alternate hook to :func:`.event.listen` allows the establishment
         of a listener function specific to this :class:`_schema.Table` before
-        the "autoload" process begins.  Particularly useful for
-        the :meth:`.DDLEvents.column_reflect` event::
+        the "autoload" process begins.  Historically this has been intended
+        for use with the :meth:`.DDLEvents.column_reflect` event, however
+        note that this event hook may now be associated with the
+        :class:`_schema.MetaData` object directly::
 
             def listen_for_reflect(table, column_info):
                 "handle the column reflection event"
@@ -402,6 +404,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 listeners=[
                     ('column_reflect', listen_for_reflect)
                 ])
+
+        .. seealso::
+
+            :meth:`_events.DDLEvents.column_reflect`
 
     :param must_exist: When ``True``, indicates that this Table must already
         be present in the given :class:`_schema.MetaData` collection, else

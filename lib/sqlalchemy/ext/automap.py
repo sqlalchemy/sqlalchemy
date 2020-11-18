@@ -529,6 +529,36 @@ the :meth:`.AutomapBase.prepare` method is required; if not called, the classes
 we've declared are in an un-mapped state.
 
 
+.. _automap_intercepting_columns:
+
+Intercepting Column Definitions
+===============================
+
+The :class:`_schema.MetaData` and :class:`_schema.Table` objects support an
+event hook :meth:`_events.DDLEvents.column_reflect` that may be used to intercept
+the information reflected about a database column before the :class:`_schema.Column`
+object is constructed.   For example if we wanted to map columns using a
+naming convention such as ``"attr_<columnname>"``, the event could
+be applied as::
+
+    @event.listens_for(Base.metadata, "column_reflect")
+    def column_reflect(inspector, table, column_info):
+        # set column.key = "attr_<lower_case_name>"
+        column_info['key'] = "attr_%s" % column_info['name'].lower()
+
+    # run reflection
+    Base.prepare(engine, reflect=True)
+
+.. versionadded:: 1.4.0b2 the :meth:`_events.DDLEvents.column_reflect` event
+   may be applied to a :class:`_schema.MetaData` object.
+
+.. seealso::
+
+      :meth:`_events.DDLEvents.column_reflect`
+
+      :ref:`mapper_automated_reflection_schemes` - in the ORM mapping documentation
+
+
 """  # noqa
 from .declarative import declarative_base as _declarative_base
 from .. import util

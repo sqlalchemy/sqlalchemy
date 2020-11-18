@@ -841,6 +841,7 @@ class Inspector(object):
 
         orig_name = col_d["name"]
 
+        table.metadata.dispatch.column_reflect(self, table, col_d)
         table.dispatch.column_reflect(self, table, col_d)
 
         # fetch name again as column_reflect is allowed to
