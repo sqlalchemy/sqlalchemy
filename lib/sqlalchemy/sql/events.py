@@ -213,22 +213,49 @@ class DDLEvents(event.Events):
         """Called for each unit of 'column info' retrieved when
         a :class:`_schema.Table` is being reflected.
 
+        Currently, this event may only be applied to the :class:`_schema.Table`
+        class directly::
+
+            from sqlalchemy import Table
+
+            @event.listens_for(Table, 'column_reflect')
+            def receive_column_reflect(inspector, table, column_info):
+                # receives for all Table objects that are reflected
+
+        Or applied using the
+        :paramref:`_schema.Table.listeners` parameter::
+
+            t1 = Table(
+                "my_table",
+                autoload_with=some_engine,
+                listeners=[
+                    ('column_reflect', receive_column_reflect)
+                ]
+            )
+
+        A future release will allow it to be associated with a specific
+        :class:`_schema.MetaData` object as well.
+
         The dictionary of column information as returned by the
         dialect is passed, and can be modified.  The dictionary
         is that returned in each element of the list returned
         by :meth:`.reflection.Inspector.get_columns`:
 
-            * ``name`` - the column's name
+            * ``name`` - the column's name, is applied to the
+              :paramref:`_schema.Column.name` parameter
 
             * ``type`` - the type of this column, which should be an instance
-              of :class:`~sqlalchemy.types.TypeEngine`
+              of :class:`~sqlalchemy.types.TypeEngine`, is applied to the
+              :paramref:`_schema.Column.type` parameter
 
-            * ``nullable`` - boolean flag if the column is NULL or NOT NULL
+            * ``nullable`` - boolean flag if the column is NULL or NOT NULL,
+              is applied to the :paramref:`_schema.Column.nullable` parameter
 
             * ``default`` - the column's server default value.  This is
               normally specified as a plain string SQL expression, however the
               event can pass a :class:`.FetchedValue`, :class:`.DefaultClause`,
-              or :func:`_expression.text` object as well.
+              or :func:`_expression.text` object as well.  Is applied to the
+              :paramref:`_schema.Column.server_default` parameter
 
               .. versionchanged:: 1.1.6
 
@@ -238,47 +265,24 @@ class DDLEvents(event.Events):
                     specified as the value of ``default`` in the column
                     dictionary.
 
-            * ``attrs``  - dict containing optional column attributes
-
         The event is called before any action is taken against
-        this dictionary, and the contents can be modified.
-        The :class:`_schema.Column` specific arguments ``info``, ``key``,
-        and ``quote`` can also be added to the dictionary and
-        will be passed to the constructor of :class:`_schema.Column`.
+        this dictionary, and the contents can be modified; the following
+        additional keys may be added to the dictionary to further modify
+        how the :class:`_schema.Column` is constructed:
 
-        Note that this event is only meaningful if either
-        associated with the :class:`_schema.Table` class across the
-        board, e.g.::
 
-            from sqlalchemy.schema import Table
-            from sqlalchemy import event
+            * ``key`` - the string key that will be used to access this
+              :class:`_schema.Column` in the ``.c`` collection; will be applied
+              to the :paramref:`_schema.Column.key` parameter. Is also used
+              for ORM mapping.  See the section
+              :ref:`mapper_automated_reflection_schemes` for an example.
 
-            def listen_for_reflect(inspector, table, column_info):
-                "receive a column_reflect event"
-                # ...
+            * ``quote`` - force or un-force quoting on the column name;
+              is applied to the :paramref:`_schema.Column.quote` parameter.
 
-            event.listen(
-                    Table,
-                    'column_reflect',
-                    listen_for_reflect)
-
-        ...or with a specific :class:`_schema.Table` instance using
-        the ``listeners`` argument::
-
-            def listen_for_reflect(inspector, table, column_info):
-                "receive a column_reflect event"
-                # ...
-
-            t = Table(
-                'sometable',
-                autoload=True,
-                listeners=[
-                    ('column_reflect', listen_for_reflect)
-                ])
-
-        This because the reflection process initiated by ``autoload=True``
-        completes within the scope of the constructor for
-        :class:`_schema.Table`.
+            * ``info`` - a dictionary of arbitrary data to follow along with
+              the :class:`_schema.Column`, is applied to the
+              :paramref:`_schema.Column.info` parameter.
 
         :func:`.event.listen` also accepts the ``propagate=True``
         modifier for this event; when True, the listener function will
