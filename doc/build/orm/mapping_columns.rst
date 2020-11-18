@@ -73,7 +73,7 @@ with our event that adds a new ".key" element, such as in a mapping as below::
 
     class MyClass(Base):
         __table__ = Table("some_table", Base.metadata,
-                    autoload=True, autoload_with=some_engine)
+                    autoload_with=some_engine)
 
 If we want to qualify our event to only react for the specific :class:`_schema.MetaData`
 object above, we can check for it in our event::
