@@ -4,6 +4,8 @@ import threading
 import time
 import weakref
 
+import pytest
+
 import sqlalchemy as tsa
 from sqlalchemy import event
 from sqlalchemy import pool
@@ -865,6 +867,17 @@ class QueuePoolTest(PoolTestBase):
 
         assert_raises(tsa.exc.TimeoutError, p.connect)
         assert int(time.time() - now) == 2
+
+    @testing.requires.timing_intensive
+    def test_timeout_subsecond_precision(self):
+        p = self._queuepool_fixture(pool_size=1, max_overflow=0, timeout=0.5)
+        c1 = p.connect()  # noqa
+        with pytest.raises(tsa.exc.TimeoutError, match=r".* timeout 0.50 .*"):
+            now = time.time()
+            c2 = p.connect()  # noqa
+        # Python timing is not very accurate, the time diff should be very
+        # close to 0.5s but we give 200ms of slack.
+        assert 0.3 <= time.time() - now <= 0.7, "Pool timeout not respected"
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive

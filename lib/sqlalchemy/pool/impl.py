@@ -40,7 +40,7 @@ class QueuePool(Pool):
         creator,
         pool_size=5,
         max_overflow=10,
-        timeout=30,
+        timeout=30.0,
         use_lifo=False,
         **kw
     ):
@@ -73,7 +73,9 @@ class QueuePool(Pool):
           connections. Defaults to 10.
 
         :param timeout: The number of seconds to wait before giving up
-          on returning a connection. Defaults to 30.
+          on returning a connection. Defaults to 30.0. This can be a float
+          but is subject to the limitations of Python time functions which
+          may not be reliable in the tens of milliseconds.
 
         :param use_lifo: use LIFO (last-in-first-out) when retrieving
           connections instead of FIFO (first-in-first-out). Using LIFO, a
@@ -129,7 +131,7 @@ class QueuePool(Pool):
             else:
                 raise exc.TimeoutError(
                     "QueuePool limit of size %d overflow %d reached, "
-                    "connection timed out, timeout %d"
+                    "connection timed out, timeout %0.2f"
                     % (self.size(), self.overflow(), self._timeout),
                     code="3o7r",
                 )
