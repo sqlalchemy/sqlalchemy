@@ -1,4 +1,5 @@
 from sqlalchemy import exc
+from sqlalchemy import testing
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -6,6 +7,11 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.util import await_fallback
 from sqlalchemy.util import await_only
 from sqlalchemy.util import greenlet_spawn
+
+try:
+    from greenlet import greenlet
+except ImportError:
+    greenlet = None
 
 
 async def run1():
@@ -101,3 +107,34 @@ class TestAsyncioCompat(fixtures.TestBase):
             await greenlet_spawn(go)
 
         await to_await
+
+    @async_test
+    @testing.requires.python37
+    async def test_contextvars(self):
+        import asyncio
+        import contextvars
+
+        var = contextvars.ContextVar("var")
+        concurrency = 5
+
+        async def async_inner(val):
+            eq_(val, var.get())
+            return var.get()
+
+        def inner(val):
+            retval = await_only(async_inner(val))
+            eq_(val, var.get())
+            eq_(retval, val)
+            return retval
+
+        async def task(val):
+            var.set(val)
+            return await greenlet_spawn(inner, val)
+
+        values = {
+            await coro
+            for coro in asyncio.as_completed(
+                [task(i) for i in range(concurrency)]
+            )
+        }
+        eq_(values, set(range(concurrency)))

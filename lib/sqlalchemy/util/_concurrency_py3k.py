@@ -8,6 +8,16 @@ import greenlet
 
 from .. import exc
 
+try:
+    from contextvars import copy_context as _copy_context
+
+    # If greenlet.gr_context is present in current version of greenlet,
+    # it will be set with a copy of the current context on creation.
+    # Refs: https://github.com/python-greenlet/greenlet/pull/198
+    getattr(greenlet.greenlet, "gr_context")
+except (ImportError, AttributeError):
+    _copy_context = None
+
 
 # implementation based on snaury gist at
 # https://gist.github.com/snaury/202bf4f22c41ca34e56297bae5f33fef
@@ -18,6 +28,8 @@ class _AsyncIoGreenlet(greenlet.greenlet):
     def __init__(self, fn, driver):
         greenlet.greenlet.__init__(self, fn, driver)
         self.driver = driver
+        if _copy_context is not None:
+            self.gr_context = _copy_context()
 
 
 def await_only(awaitable: Coroutine) -> Any:
