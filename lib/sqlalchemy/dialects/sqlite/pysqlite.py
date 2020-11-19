@@ -128,7 +128,7 @@ Regular Expression Support
 .. versionadded:: 1.4
 
 Support for the :meth:`_sql.ColumnOperators.regexp_match` operator is provided
-using Python's re.match_ function.  SQLite itself does not include a working
+using Python's re.search_ function.  SQLite itself does not include a working
 regular expression operator; instead, it includes a non-implemented placeholder
 operator ``REGEXP`` that calls a user-defined function that must be provided.
 
@@ -137,7 +137,7 @@ as follows::
 
 
     def regexp(a, b):
-        return bool(re.match(a, b))
+        return re.search(a, b) is not None
 
     sqlite_connection.create_function(
         "regexp", 2, regexp,
@@ -154,9 +154,9 @@ details.
 
 .. _create_function: https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.create_function
 
-.. _re.match: https://docs.python.org/3/library/re.html#re.match
+.. _re.search: https://docs.python.org/3/library/re.html#re.search
 
-.. _Python regular expressions: https://docs.python.org/3/library/re.html#re.match
+.. _Python regular expressions: https://docs.python.org/3/library/re.html#re.search
 
 
 
@@ -508,7 +508,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         def regexp(a, b):
             if b is None:
                 return None
-            return bool(re.match(a, b))
+            return re.search(a, b) is not None
 
         def set_regexp(connection):
             if hasattr(connection, "connection"):
