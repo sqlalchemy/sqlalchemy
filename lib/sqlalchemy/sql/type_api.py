@@ -456,12 +456,12 @@ class TypeEngine(Traversible):
         else:
             return self.__class__
 
-    @classmethod
-    def _is_generic_type(cls):
-        n = cls.__name__
-        return n.upper() != n
-
     def _generic_type_affinity(self):
+        best_camelcase = None
+        best_uppercase = None
+
+        if not isinstance(self, (TypeEngine, UserDefinedType)):
+            return self.__class__
 
         for t in self.__class__.__mro__:
             if (
@@ -470,13 +470,15 @@ class TypeEngine(Traversible):
                     "sqlalchemy.sql.sqltypes",
                     "sqlalchemy.sql.type_api",
                 )
-                and hasattr(t, '_is_generic_type') and t._is_generic_type()
+                and issubclass(t, TypeEngine)
+                and t is not TypeEngine
             ):
-                if t in (TypeEngine, UserDefinedType):
-                    return NULLTYPE.__class__
-                return t
-        else:
-            return self.__class__
+                if t.__name__.isupper() and not best_uppercase:
+                    best_uppercase = t
+                elif not t.__name__.isupper() and not best_camelcase:
+                    best_camelcase = t
+
+        return best_camelcase or best_uppercase or NULLTYPE.__class__
 
     def as_generic(self):
         """Return an instance of the generic type corresponding to this type"""

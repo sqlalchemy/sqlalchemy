@@ -6,6 +6,7 @@ import operator
 import os
 
 import sqlalchemy as sa
+import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy import and_
 from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
@@ -389,6 +390,8 @@ class AsGenericTest(fixtures.TestBase):
         (VARCHAR(length=100), String(length=100)),
         (NVARCHAR(length=100), Unicode(length=100)),
         (DATE(), Date()),
+        (pg.JSON(), sa.JSON()),
+        (pg.ARRAY(sa.String), sa.ARRAY(sa.String)),
     )
     def test_as_generic(self, t1, t2):
         assert repr(t1.as_generic()) == repr(t2)
