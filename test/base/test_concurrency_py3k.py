@@ -110,7 +110,6 @@ class TestAsyncioCompat(fixtures.TestBase):
 
     @async_test
     @testing.requires.python37
-    @testing.skip_if(lambda: not hasattr(greenlet, "gr_context"))
     async def test_contextvars(self):
         import asyncio
         import contextvars
