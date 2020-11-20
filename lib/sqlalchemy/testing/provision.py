@@ -313,3 +313,11 @@ def get_temp_table_name(cfg, eng, base_name):
     use. The mssql dialect's implementation will need a "#" prepended.
     """
     return base_name
+
+
+@register.init
+def set_default_schema_on_connection(cfg, dbapi_connection, schema_name):
+    raise NotImplementedError(
+        "backend does not implement a schema name set function: %s"
+        % (cfg.db.url,)
+    )

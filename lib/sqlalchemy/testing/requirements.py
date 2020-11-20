@@ -458,6 +458,13 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def default_schema_name_switch(self):
+        """target dialect implements provisioning module including
+        set_default_schema_on_connection"""
+
+        return exclusions.closed()
+
+    @property
     def server_side_cursors(self):
         """Target dialect must support server side cursors."""
 

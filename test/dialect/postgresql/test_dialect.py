@@ -39,6 +39,7 @@ from sqlalchemy.engine import url
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
@@ -801,6 +802,55 @@ class MiscBackendTest(
         ):
             with engine.connect():
                 eq_(engine.dialect._backslash_escapes, expected)
+
+    def test_dbapi_autocommit_attribute(self):
+        """all the supported DBAPIs have an .autocommit attribute.  make
+        sure it works and preserves isolation level.
+
+        This is added in particular to support the asyncpg dialect that
+        has a DBAPI compatibility layer.
+
+        """
+
+        with testing.db.connect().execution_options(
+            isolation_level="SERIALIZABLE"
+        ) as conn:
+            dbapi_conn = conn.connection.connection
+
+            is_false(dbapi_conn.autocommit)
+
+            with conn.begin():
+
+                existing_isolation = conn.exec_driver_sql(
+                    "show transaction isolation level"
+                ).scalar()
+                eq_(existing_isolation.upper(), "SERIALIZABLE")
+
+                txid1 = conn.exec_driver_sql("select txid_current()").scalar()
+                txid2 = conn.exec_driver_sql("select txid_current()").scalar()
+                eq_(txid1, txid2)
+
+            dbapi_conn.autocommit = True
+
+            with conn.begin():
+                # magic way to see if we are in autocommit mode from
+                # the server's perspective
+                txid1 = conn.exec_driver_sql("select txid_current()").scalar()
+                txid2 = conn.exec_driver_sql("select txid_current()").scalar()
+                ne_(txid1, txid2)
+
+            dbapi_conn.autocommit = False
+
+            with conn.begin():
+
+                existing_isolation = conn.exec_driver_sql(
+                    "show transaction isolation level"
+                ).scalar()
+                eq_(existing_isolation.upper(), "SERIALIZABLE")
+
+                txid1 = conn.exec_driver_sql("select txid_current()").scalar()
+                txid2 = conn.exec_driver_sql("select txid_current()").scalar()
+                eq_(txid1, txid2)
 
     def test_readonly_flag_connection(self):
         with testing.db.connect() as conn:

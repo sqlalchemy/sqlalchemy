@@ -24,6 +24,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import config
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -63,6 +65,50 @@ class DialectTest(fixtures.TestBase):
             lambda self, vers: (5, 3, 1),
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock())
+
+
+class DefaultSchemaNameTest(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "oracle"
+
+    def test_default_name_is_the_user(self):
+        default_schema_name = testing.db.dialect.default_schema_name
+
+        with testing.db.connect() as conn:
+            oracles_known_default_schema_name = (
+                testing.db.dialect.normalize_name(
+                    conn.exec_driver_sql("SELECT USER FROM DUAL").scalar()
+                )
+            )
+
+        eq_(oracles_known_default_schema_name, default_schema_name)
+
+    def test_default_schema_detected(self):
+        default_schema_name = testing.db.dialect.default_schema_name
+
+        eng = engines.testing_engine()
+
+        with eng.connect() as conn:
+            eq_(
+                testing.db.dialect._get_default_schema_name(conn),
+                default_schema_name,
+            )
+
+            conn.exec_driver_sql(
+                "ALTER SESSION SET CURRENT_SCHEMA=%s" % config.test_schema
+            )
+
+            eq_(
+                testing.db.dialect._get_default_schema_name(conn),
+                config.test_schema,
+            )
+
+            conn.invalidate()
+
+            eq_(
+                testing.db.dialect._get_default_schema_name(conn),
+                default_schema_name,
+            )
 
 
 class EncodingErrorsTest(fixtures.TestBase):

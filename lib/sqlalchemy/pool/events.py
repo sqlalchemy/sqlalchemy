@@ -58,7 +58,9 @@ class PoolEvents(event.Events):
     def _listen(cls, event_key, **kw):
         target = event_key.dispatch_target
 
-        event_key.base_listen(asyncio=target._is_asyncio)
+        kw.setdefault("asyncio", target._is_asyncio)
+
+        event_key.base_listen(**kw)
 
     def connect(self, dbapi_connection, connection_record):
         """Called at the moment a particular DBAPI connection is first

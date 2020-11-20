@@ -7,6 +7,7 @@ from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
 from ...testing.provision import run_reap_dbs
+from ...testing.provision import set_default_schema_on_connection
 from ...testing.provision import temp_table_keyword_args
 from ...testing.provision import update_db_opts
 
@@ -106,3 +107,12 @@ def _oracle_temp_table_keyword_args(cfg, eng):
         "prefixes": ["GLOBAL TEMPORARY"],
         "oracle_on_commit": "PRESERVE ROWS",
     }
+
+
+@set_default_schema_on_connection.for_db("oracle")
+def _oracle_set_default_schema_on_connection(
+    cfg, dbapi_connection, schema_name
+):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("ALTER SESSION SET CURRENT_SCHEMA=%s" % schema_name)
+    cursor.close()

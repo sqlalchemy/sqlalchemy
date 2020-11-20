@@ -657,17 +657,14 @@ def create_engine(url, **kwargs):
             dialect.initialize(c)
             dialect.do_rollback(c.connection)
 
-        if do_on_connect:
-            event.listen(
-                pool, "connect", first_connect, _once_unless_exception=True
-            )
-        else:
-            event.listen(
-                pool,
-                "first_connect",
-                first_connect,
-                _once_unless_exception=True,
-            )
+        # previously, the "first_connect" event was used here, which was then
+        # scaled back if the "on_connect" handler were present.  now,
+        # since "on_connect" is virtually always present, just use
+        # "connect" event with once_unless_exception in all cases so that
+        # the connection event flow is consistent in all cases.
+        event.listen(
+            pool, "connect", first_connect, _once_unless_exception=True
+        )
 
     dialect_cls.engine_created(engine)
     if entrypoint is not dialect_cls:
