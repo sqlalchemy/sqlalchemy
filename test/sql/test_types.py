@@ -6,7 +6,6 @@ import operator
 import os
 
 import sqlalchemy as sa
-import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy import and_
 from sqlalchemy import ARRAY
 from sqlalchemy import BigInteger
@@ -59,6 +58,7 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
