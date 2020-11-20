@@ -1994,6 +1994,19 @@ class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
 
 
 class SessionTest(fixtures.RemovesEvents, _LocalFixture):
+    def test_transaction_attr(self):
+        s1 = Session(testing.db)
+
+        with testing.expect_deprecated_20(
+            "The Session.transaction attribute is considered legacy as "
+            "of the 1.x series"
+        ):
+            s1.transaction
+
+    def test_session_str(self):
+        s1 = Session(testing.db)
+        str(s1)
+
     def test_subtransactions_deprecated(self):
         s1 = Session(testing.db)
         s1.begin()

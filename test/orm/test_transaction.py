@@ -48,7 +48,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             mapper(User, users)
             s = create_session(bind=c)
             s.begin()
-            tran = s.transaction
+            tran = s._legacy_transaction()
             s.add(User(name="first"))
             s.flush()
             c.exec_driver_sql("select * from users")
@@ -58,7 +58,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             u = User(name="third")
             s.add(u)
             s.flush()
-            assert s.transaction is tran
+            assert s._legacy_transaction() is tran
             tran.close()
         finally:
             c.close()
@@ -564,7 +564,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.add(User(name="u2"))
 
         t2.commit()
-        assert sess.transaction is t1
+        assert sess._legacy_transaction() is t1
 
         sess.close()
 
@@ -1024,9 +1024,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         mapper(User, users)
         session = create_session(autocommit=False)
         session.add(User(name="ed"))
-        session.transaction.commit()
+        session._legacy_transaction().commit()
 
-        is_not(session.transaction, None)
+        is_not(session._legacy_transaction(), None)
 
     def test_no_autocommit_with_explicit_commit_future(self):
         User, users = self.classes.User, self.tables.users
@@ -1034,10 +1034,10 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         mapper(User, users)
         session = create_session(testing.db, autocommit=False, future=True)
         session.add(User(name="ed"))
-        session.transaction.commit()
+        session._legacy_transaction().commit()
 
         # new in 1.4
-        is_(session.transaction, None)
+        is_(session._legacy_transaction(), None)
 
     @testing.requires.python2
     @testing.requires.savepoints_w_release
@@ -1278,7 +1278,7 @@ class SubtransactionRecipeTest(FixtureTest):
         sess.add(User(name="u2"))
 
         t2.commit()
-        assert sess.transaction is t1
+        assert sess._legacy_transaction() is t1
 
         sess.close()
 
@@ -1317,7 +1317,7 @@ class SubtransactionRecipeTest(FixtureTest):
 
             try:
                 with subtransaction_recipe(sess):
-                    assert sess.transaction
+                    assert sess._legacy_transaction()
                     raise Exception("force rollback")
             except:
                 pass
@@ -1921,7 +1921,7 @@ class SavepointTest(_LocalFixture):
         nested_trans = trans._connections[self.bind][1]
         nested_trans._do_commit()
 
-        is_(s.transaction, trans)
+        is_(s._legacy_transaction(), trans)
 
         with expect_warnings("nested transaction already deassociated"):
             # this previously would raise
@@ -1932,12 +1932,12 @@ class SavepointTest(_LocalFixture):
         assert u1 not in s.new
 
         is_(trans._state, _session.CLOSED)
-        is_not(s.transaction, trans)
-        is_(s.transaction._state, _session.ACTIVE)
+        is_not(s._legacy_transaction(), trans)
+        is_(s._legacy_transaction()._state, _session.ACTIVE)
 
-        is_(s.transaction.nested, False)
+        is_(s._legacy_transaction().nested, False)
 
-        is_(s.transaction._parent, None)
+        is_(s._legacy_transaction()._parent, None)
 
 
 class AccountingFlagsTest(_LocalFixture):
@@ -2118,7 +2118,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
     def test_explicit_begin(self):
         s1 = Session(testing.db)
         with s1.begin() as trans:
-            is_(trans, s1.transaction)
+            is_(trans, s1._legacy_transaction())
             s1.connection()
 
         is_(s1._transaction, None)
@@ -2152,12 +2152,12 @@ class ContextManagerPlusFutureTest(FixtureTest):
 
         # rolls back the whole transaction
         s1.rollback()
-        is_(s1.transaction, None)
+        is_(s1._legacy_transaction(), None)
 
         eq_(s1.connection().scalar(select(func.count()).select_from(users)), 0)
 
         s1.commit()
-        is_(s1.transaction, None)
+        is_(s1._legacy_transaction(), None)
 
     @testing.requires.savepoints
     def test_old_rollback_is_local(self):
@@ -2180,19 +2180,19 @@ class ContextManagerPlusFutureTest(FixtureTest):
         # rolls back only the savepoint
         s1.rollback()
 
-        is_(s1.transaction, t1)
+        is_(s1._legacy_transaction(), t1)
 
         eq_(s1.connection().scalar(select(func.count()).select_from(users)), 1)
 
         s1.commit()
         eq_(s1.connection().scalar(select(func.count()).select_from(users)), 1)
-        is_not(s1.transaction, None)
+        is_not(s1._legacy_transaction(), None)
 
     def test_session_as_ctx_manager_one(self):
         users = self.tables.users
 
         with Session(testing.db) as sess:
-            is_not(sess.transaction, None)
+            is_not(sess._legacy_transaction(), None)
 
             sess.connection().execute(
                 users.insert().values(id=1, name="user1")
@@ -2202,9 +2202,9 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 sess.connection().execute(users.select()).all(), [(1, "user1")]
             )
 
-            is_not(sess.transaction, None)
+            is_not(sess._legacy_transaction(), None)
 
-        is_not(sess.transaction, None)
+        is_not(sess._legacy_transaction(), None)
 
         # did not commit
         eq_(sess.connection().execute(users.select()).all(), [])
@@ -2213,7 +2213,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
         users = self.tables.users
 
         with Session(testing.db, future=True) as sess:
-            is_(sess.transaction, None)
+            is_(sess._legacy_transaction(), None)
 
             sess.connection().execute(
                 users.insert().values(id=1, name="user1")
@@ -2223,9 +2223,9 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 sess.connection().execute(users.select()).all(), [(1, "user1")]
             )
 
-            is_not(sess.transaction, None)
+            is_not(sess._legacy_transaction(), None)
 
-        is_(sess.transaction, None)
+        is_(sess._legacy_transaction(), None)
 
         # did not commit
         eq_(sess.connection().execute(users.select()).all(), [])
@@ -2235,7 +2235,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
 
         try:
             with Session(testing.db) as sess:
-                is_not(sess.transaction, None)
+                is_not(sess._legacy_transaction(), None)
 
                 sess.connection().execute(
                     users.insert().values(id=1, name="user1")
@@ -2244,14 +2244,14 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 raise Exception("force rollback")
         except:
             pass
-        is_not(sess.transaction, None)
+        is_not(sess._legacy_transaction(), None)
 
     def test_session_as_ctx_manager_two_future(self):
         users = self.tables.users
 
         try:
             with Session(testing.db, future=True) as sess:
-                is_(sess.transaction, None)
+                is_(sess._legacy_transaction(), None)
 
                 sess.connection().execute(
                     users.insert().values(id=1, name="user1")
@@ -2260,7 +2260,7 @@ class ContextManagerPlusFutureTest(FixtureTest):
                 raise Exception("force rollback")
         except:
             pass
-        is_(sess.transaction, None)
+        is_(sess._legacy_transaction(), None)
 
     def test_begin_context_manager(self):
         users = self.tables.users

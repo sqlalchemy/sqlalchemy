@@ -501,7 +501,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         sess.flush()
         assert u1 not in sess
         assert_raises(sa.exc.InvalidRequestError, sess.add, u1)
-        assert sess.transaction is not None
+        assert sess.in_transaction()
         sess.rollback()
         assert u1 in sess
 

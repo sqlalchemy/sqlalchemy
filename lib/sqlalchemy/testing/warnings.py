@@ -63,7 +63,6 @@ def setup_filters():
         #
         r"The MetaData.bind argument is deprecated",
         r"The ``bind`` argument for schema methods that invoke SQL ",
-        r"The Executable.bind attribute is considered legacy ",
         r"The Function.bind argument",
         r"The select.bind argument",
         #
@@ -131,7 +130,6 @@ def setup_filters():
         r".*object is being merged into a Session along the backref "
         "cascade path",
         r"Passing bind arguments to Session.execute\(\) as keyword arguments",
-        r"The Session.transaction attribute",
         r"The merge_result\(\) method is superseded by the "
         r"merge_frozen_result\(\)",
         r"The Session.begin.subtransactions flag is deprecated",
