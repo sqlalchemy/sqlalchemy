@@ -405,7 +405,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         c = testing.db.connect()
         sess = create_session(bind=c)
         sess.begin()
-        transaction = sess.transaction
+        transaction = sess._legacy_transaction()
         u = User(name="u1")
         sess.add(u)
         sess.flush()

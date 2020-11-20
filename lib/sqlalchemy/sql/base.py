@@ -909,6 +909,7 @@ class Executable(Generative):
     @util.deprecated_20(
         ":attr:`.Executable.bind`",
         alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
+        enable_warnings=False,
     )
     def bind(self):
         """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`

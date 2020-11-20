@@ -3307,7 +3307,7 @@ class TransactionTest(fixtures.MappedTest):
             assert False
         except Exception:
             # Flush needs to rollback also when commit fails
-            assert session.transaction is None
+            assert session._legacy_transaction() is None
 
         # todo: on 8.3 at least, the failed commit seems to close the cursor?
         # needs investigation.  leaving in the DDL above now to help verify

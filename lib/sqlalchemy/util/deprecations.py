@@ -112,7 +112,11 @@ def deprecated_20_cls(
 
 
 def deprecated(
-    version, message=None, add_deprecation_to_docstring=True, warning=None
+    version,
+    message=None,
+    add_deprecation_to_docstring=True,
+    warning=None,
+    enable_warnings=True,
 ):
     """Decorates a function and issues a deprecation warning on use.
 
@@ -157,7 +161,12 @@ def deprecated(
 
     def decorate(fn):
         return _decorate_with_warning(
-            fn, warning, message % dict(func=fn.__name__), version, header
+            fn,
+            warning,
+            message % dict(func=fn.__name__),
+            version,
+            header,
+            enable_warnings=enable_warnings,
         )
 
     return decorate
@@ -188,6 +197,16 @@ def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
             else "becomes a legacy construct",
         )
     )
+
+    if ":attr:" in api_name:
+        attribute_ok = kw.pop("warn_on_attribute_access", False)
+        if not attribute_ok:
+            assert kw.get("enable_warnings") is False, (
+                "attribute %s will emit a warning on read access.  "
+                "If you *really* want this, "
+                "add warn_on_attribute_access=True.  Otherwise please add "
+                "enable_warnings=False." % api_name
+            )
 
     if alternative:
         message += " " + alternative
@@ -347,7 +366,7 @@ def _decorate_cls_with_warning(
 
 
 def _decorate_with_warning(
-    func, wtype, message, version, docstring_header=None
+    func, wtype, message, version, docstring_header=None, enable_warnings=True
 ):
     """Wrap a function with a warnings.warn and augmented docstring."""
 
@@ -363,7 +382,9 @@ def _decorate_with_warning(
 
     @decorator
     def warned(fn, *args, **kwargs):
-        skip_warning = kwargs.pop("_sa_skip_warning", False)
+        skip_warning = not enable_warnings or kwargs.pop(
+            "_sa_skip_warning", False
+        )
         if not skip_warning:
             _warn_with_version(message, version, wtype, stacklevel=3)
         return fn(*args, **kwargs)

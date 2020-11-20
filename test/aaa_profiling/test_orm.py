@@ -108,7 +108,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
         # down from 185 on this this is a small slice of a usually
         # bigger operation so using a small variance
 
-        sess2.transaction  # autobegin
+        sess2._legacy_transaction()  # autobegin
 
         @profiling.function_call_count(variance=0.20)
         def go1():
@@ -118,7 +118,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         # third call, merge object already present. almost no calls.
 
-        sess2.transaction  # autobegin
+        sess2._legacy_transaction()  # autobegin
 
         @profiling.function_call_count(variance=0.10, warmup=1)
         def go2():
@@ -138,7 +138,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
         # using sqlite3 the C extension took it back up to approx. 1257
         # (py2.6)
 
-        sess2.transaction  # autobegin
+        sess2._legacy_transaction()  # autobegin
 
         @profiling.function_call_count(variance=0.10)
         def go():

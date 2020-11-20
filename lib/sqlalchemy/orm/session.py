@@ -1053,6 +1053,7 @@ class Session(_SessionClassMethods):
         ":meth:`_orm.Session.begin`.  To access "
         "the current root transaction, use "
         ":meth:`_orm.Session.get_transaction`.",
+        warn_on_attribute_access=True,
     )
     def transaction(self):
         """The current active or inactive :class:`.SessionTransaction`.
@@ -1065,6 +1066,9 @@ class Session(_SessionClassMethods):
 
 
         """
+        return self._legacy_transaction()
+
+    def _legacy_transaction(self):
         if not self.future:
             self._autobegin()
         return self._transaction

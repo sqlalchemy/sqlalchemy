@@ -90,6 +90,48 @@ class BoundMetadataTest(fixtures.TestBase):
 
         assert "t" not in inspect(testing.db).get_table_names()
 
+    def test_bind_arg_text(self):
+        with testing.expect_deprecated_20(
+            "The text.bind argument is deprecated and will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            t1 = text("ASdf", bind=testing.db)
+
+        # no warnings emitted
+        is_(t1.bind, testing.db)
+        eq_(str(t1), "ASdf")
+
+    def test_bind_arg_function(self):
+        with testing.expect_deprecated_20(
+            "The text.bind argument is deprecated and will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            f1 = func.foobar(bind=testing.db)
+
+        # no warnings emitted
+        is_(f1.bind, testing.db)
+        eq_(str(f1), "foobar()")
+
+    def test_bind_arg_select(self):
+        with testing.expect_deprecated_20(
+            "The select.bind argument is deprecated and will be "
+            "removed in SQLAlchemy 2.0."
+        ):
+            s1 = select([column("q")], bind=testing.db)
+
+        # no warnings emitted
+        is_(s1.bind, testing.db)
+        eq_(str(s1), "SELECT q")
+
+    def test_bind_attr_join_no_warning(self):
+        t1 = table("t1", column("a"))
+        t2 = table("t2", column("b"))
+        j1 = join(t1, t2, t1.c.a == t2.c.b)
+
+        # no warnings emitted
+        is_(j1.bind, None)
+        eq_(str(j1), "t1 JOIN t2 ON t1.a = t2.b")
+
 
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
