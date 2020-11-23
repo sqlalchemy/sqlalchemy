@@ -481,7 +481,19 @@ class TypeEngine(Traversible):
         return best_camelcase or best_uppercase or NULLTYPE.__class__
 
     def as_generic(self):
-        """Return an instance of the generic type corresponding to this type"""
+        """
+        Return an instance of the generic type corresponding to this type.
+
+        >>> from sqlalchemy.dialects.mysql import INTEGER
+        >>> INTEGER(display_width=4).as_generic()
+        Integer()
+
+        >>> from sqlalchemy.dialects.mysql import NVARCHAR
+        >>> NVARCHAR(length=100).as_generic()
+        Unicode(length=100)
+
+        .. versionadded:: 1.4.0b2
+        """
 
         return util.constructor_copy(self, self._generic_type_affinity())
 
