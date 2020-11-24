@@ -10,6 +10,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types as sqltypes
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import eq_
@@ -28,6 +29,14 @@ class OnConflictTest(fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
+        )
+
+        Table(
+            "users_schema",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+            schema=config.test_schema,
         )
 
         class SpecialType(sqltypes.TypeDecorator):
@@ -174,6 +183,99 @@ class OnConflictTest(fixtures.TablesTest):
             i = insert(users)
             i = i.on_conflict_do_update(
                 index_elements=[users.c.id], set_=dict(name=i.excluded.name)
+            )
+            result = conn.execute(i, dict(id=1, name="name1"))
+
+            eq_(result.inserted_primary_key, (1,))
+            eq_(result.returned_defaults, None)
+
+            eq_(
+                conn.execute(users.select().where(users.c.id == 1)).fetchall(),
+                [(1, "name1")],
+            )
+
+    def test_on_conflict_do_update_schema(self):
+        users = self.tables.get("%s.users_schema" % config.test_schema)
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), dict(id=1, name="name1"))
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name=i.excluded.name)
+            )
+            result = conn.execute(i, dict(id=1, name="name1"))
+
+            eq_(result.inserted_primary_key, (1,))
+            eq_(result.returned_defaults, None)
+
+            eq_(
+                conn.execute(users.select().where(users.c.id == 1)).fetchall(),
+                [(1, "name1")],
+            )
+
+    def test_on_conflict_do_update_column_as_key_set(self):
+        users = self.tables.users
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), dict(id=1, name="name1"))
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: i.excluded.name},
+            )
+            result = conn.execute(i, dict(id=1, name="name1"))
+
+            eq_(result.inserted_primary_key, (1,))
+            eq_(result.returned_defaults, None)
+
+            eq_(
+                conn.execute(users.select().where(users.c.id == 1)).fetchall(),
+                [(1, "name1")],
+            )
+
+    def test_on_conflict_do_update_clauseelem_as_key_set(self):
+        users = self.tables.users
+
+        class MyElem(object):
+            def __init__(self, expr):
+                self.expr = expr
+
+            def __clause_element__(self):
+                return self.expr
+
+        with testing.db.connect() as conn:
+            conn.execute(
+                users.insert(),
+                {"id": 1, "name": "name1"},
+            )
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={MyElem(users.c.name): i.excluded.name},
+            ).values({MyElem(users.c.id): 1, MyElem(users.c.name): "name1"})
+            result = conn.execute(i)
+
+            eq_(result.inserted_primary_key, (1,))
+            eq_(result.returned_defaults, None)
+
+            eq_(
+                conn.execute(users.select().where(users.c.id == 1)).fetchall(),
+                [(1, "name1")],
+            )
+
+    def test_on_conflict_do_update_column_as_key_set_schema(self):
+        users = self.tables.get("%s.users_schema" % config.test_schema)
+
+        with testing.db.connect() as conn:
+            conn.execute(users.insert(), dict(id=1, name="name1"))
+
+            i = insert(users)
+            i = i.on_conflict_do_update(
+                index_elements=[users.c.id],
+                set_={users.c.name: i.excluded.name},
             )
             result = conn.execute(i, dict(id=1, name="name1"))
 

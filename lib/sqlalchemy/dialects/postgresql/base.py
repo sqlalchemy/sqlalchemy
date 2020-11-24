@@ -2147,22 +2147,28 @@ class PGCompiler(compiler.SQLCompiler):
         cols = insert_statement.table.c
         for c in cols:
             col_key = c.key
+
             if col_key in set_parameters:
                 value = set_parameters.pop(col_key)
-                if coercions._is_literal(value):
-                    value = elements.BindParameter(None, value, type_=c.type)
+            elif c in set_parameters:
+                value = set_parameters.pop(c)
+            else:
+                continue
 
-                else:
-                    if (
-                        isinstance(value, elements.BindParameter)
-                        and value.type._isnull
-                    ):
-                        value = value._clone()
-                        value.type = c.type
-                value_text = self.process(value.self_group(), use_schema=False)
+            if coercions._is_literal(value):
+                value = elements.BindParameter(None, value, type_=c.type)
 
-                key_text = self.preparer.quote(col_key)
-                action_set_ops.append("%s = %s" % (key_text, value_text))
+            else:
+                if (
+                    isinstance(value, elements.BindParameter)
+                    and value.type._isnull
+                ):
+                    value = value._clone()
+                    value.type = c.type
+            value_text = self.process(value.self_group(), use_schema=False)
+
+            key_text = self.preparer.quote(col_key)
+            action_set_ops.append("%s = %s" % (key_text, value_text))
 
         # check for names that don't match columns
         if set_parameters:

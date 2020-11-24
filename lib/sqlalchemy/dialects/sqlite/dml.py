@@ -5,6 +5,8 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from ... import util
+from ...sql import coercions
+from ...sql import roles
 from ...sql.base import _generative
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
@@ -65,12 +67,16 @@ class Insert(StandardInsert):
          conditional target index.
 
         :param set\_:
-         Required argument. A dictionary or other mapping object
-         with column names as keys and expressions or literals as values,
-         specifying the ``SET`` actions to take.
-         If the target :class:`_schema.Column` specifies a ".
-         key" attribute distinct
-         from the column name, that key should be used.
+         A dictionary or other mapping object
+         where the keys are either names of columns in the target table,
+         or :class:`_schema.Column` objects or other ORM-mapped columns
+         matching that of the target table, and expressions or literals
+         as values, specifying the ``SET`` actions to take.
+
+         .. versionadded:: 1.4 The
+            :paramref:`_sqlite.Insert.on_conflict_do_update.set_`
+            parameter supports :class:`_schema.Column` objects from the target
+            :class:`_schema.Table` as keys.
 
          .. warning:: This dictionary does **not** take into account
             Python-specified default UPDATE values or generation functions,
@@ -155,6 +161,7 @@ class OnConflictDoUpdate(OnConflictClause):
         if not isinstance(set_, dict) or not set_:
             raise ValueError("set parameter must be a non-empty dictionary")
         self.update_values_to_set = [
-            (key, value) for key, value in set_.items()
+            (coercions.expect(roles.DMLColumnRole, key), value)
+            for key, value in set_.items()
         ]
         self.update_whereclause = where
