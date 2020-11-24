@@ -78,7 +78,7 @@ class DocTest(fixtures.TestBase):
             path = os.path.join(sqla_base, "doc/build", fname)
             if not os.path.exists(path):
                 config.skip_test("Can't find documentation file %r" % path)
-            with open(path) as file_:
+            with open(path, encoding="utf-8") as file_:
                 content = file_.read()
                 content = re.sub(r"{(?:stop|sql|opensql)}", "", content)
 
