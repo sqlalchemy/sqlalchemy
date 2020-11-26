@@ -153,7 +153,7 @@ class as follows::
 
         id = Column(Integer, primary_key=True)
         name = Column(String(50), nullable=False)
-        xmin = Column("xmin", Integer, system=True, server_default=FetchedValue())
+        xmin = Column("xmin", String, system=True, server_default=FetchedValue())
 
         __mapper_args__ = {
             'version_id_col': xmin,
@@ -167,7 +167,9 @@ automatically providing the new value of the version id counter.
 
     In the above scenario, as ``xmin`` is a system column provided by PostgreSQL,
     we use the ``system=True`` argument to mark it as a system-provided
-    column, omitted from the ``CREATE TABLE`` statement.
+    column, omitted from the ``CREATE TABLE`` statement.   The datatype of this
+    column is an internal PostgreSQL type called ``xid`` which acts mostly
+    like a string, so we use the :class:`_types.String` datatype.
 
 
 The ORM typically does not actively fetch the values of database-generated
