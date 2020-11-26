@@ -401,7 +401,12 @@ def surface_selectables_only(clause):
         elif isinstance(elem, FromGrouping):
             stack.append(elem.element)
         elif isinstance(elem, ColumnClause):
-            stack.append(elem.table)
+            if elem.table is not None:
+                stack.append(elem.table)
+            else:
+                yield elem
+        elif elem is not None:
+            yield elem
 
 
 def extract_first_column_annotation(column, annotation_name):
