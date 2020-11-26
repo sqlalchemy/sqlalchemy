@@ -3766,7 +3766,7 @@ class sessionmaker(_SessionClassMethods):
 
         Session = sessionmaker(engine)
 
-        wih Session.begin() as session:
+        with Session.begin() as session:
             session.add(some_object)
             session.add(some_other_object)
         # commits transaction, closes session
