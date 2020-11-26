@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5722
+    :versions: 1.4.0b2
+
+    Established support for :class:`_schema.Column` objects as well as ORM
+    instrumented attributes as keys in the ``set_`` dictionary passed to the
+    :meth:`_postgresql.Insert.on_conflict_do_update` and
+    :meth:`_sqlite.Insert.on_conflict_do_update` methods, which match to the
+    :class:`_schema.Column` objects in the ``.c`` collection of the target
+    :class:`_schema.Table`. Previously,  only string column names were
+    expected; a column expression would be assumed to be an out-of-table
+    expression that would render fully along with a warning.

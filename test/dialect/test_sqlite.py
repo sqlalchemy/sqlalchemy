@@ -2921,6 +2921,53 @@ class OnConflictTest(fixtures.TablesTest):
             [(10, "I'm a name")],
         )
 
+    def test_on_conflict_do_update_column_keys(self, connection):
+        users = self.tables.users
+
+        conn = connection
+        conn.execute(users.insert(), dict(id=1, name="name1"))
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            index_elements=users.primary_key.columns,
+            set_={users.c.id: 10, users.c.name: "I'm a name"},
+        ).values(id=1, name="name4")
+
+        result = conn.execute(i)
+        eq_(result.inserted_primary_key, (1,))
+
+        eq_(
+            conn.execute(users.select().where(users.c.id == 10)).fetchall(),
+            [(10, "I'm a name")],
+        )
+
+    def test_on_conflict_do_update_clauseelem_keys(self, connection):
+        users = self.tables.users
+
+        class MyElem(object):
+            def __init__(self, expr):
+                self.expr = expr
+
+            def __clause_element__(self):
+                return self.expr
+
+        conn = connection
+        conn.execute(users.insert(), dict(id=1, name="name1"))
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            index_elements=users.primary_key.columns,
+            set_={MyElem(users.c.id): 10, MyElem(users.c.name): "I'm a name"},
+        ).values({MyElem(users.c.id): 1, MyElem(users.c.name): "name4"})
+
+        result = conn.execute(i)
+        eq_(result.inserted_primary_key, (1,))
+
+        eq_(
+            conn.execute(users.select().where(users.c.id == 10)).fetchall(),
+            [(10, "I'm a name")],
+        )
+
     def test_on_conflict_do_update_multivalues(self, connection):
         users = self.tables.users
 

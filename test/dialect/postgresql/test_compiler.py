@@ -1864,6 +1864,31 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         )
 
+    def test_do_update_set_clause_column_keys(self):
+        i = insert(self.table_with_metadata).values(myid=1, name="foo")
+        i = i.on_conflict_do_update(
+            index_elements=["myid"],
+            set_=OrderedDict(
+                [
+                    (self.table_with_metadata.c.name, "I'm a name"),
+                    (self.table_with_metadata.c.description, None),
+                ]
+            ),
+        )
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (myid, name) VALUES "
+            "(%(myid)s, %(name)s) ON CONFLICT (myid) "
+            "DO UPDATE SET name = %(param_1)s, "
+            "description = %(param_2)s",
+            {
+                "myid": 1,
+                "name": "foo",
+                "param_1": "I'm a name",
+                "param_2": None,
+            },
+        )
+
     def test_do_update_set_clause_literal(self):
         i = insert(self.table_with_metadata).values(myid=1, name="foo")
         i = i.on_conflict_do_update(
