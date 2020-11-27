@@ -1182,6 +1182,26 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "FOR UPDATE OF mytable_1, table2",
         )
 
+        # ensure of=text() for of works
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(
+                of=text("table1")
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF table1",
+        )
+
+        # ensure literal_column of works
+        self.assert_compile(
+            table1.select(table1.c.myid == 7).with_for_update(
+                of=literal_column("table1")
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %(myid_1)s "
+            "FOR UPDATE OF table1",
+        )
+
     def test_for_update_with_schema(self):
         m = MetaData()
         table1 = Table(
