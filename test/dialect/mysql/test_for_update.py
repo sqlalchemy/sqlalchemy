@@ -9,8 +9,10 @@ from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.exc import ProgrammingError
@@ -364,6 +366,27 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE OF mytable",
+            dialect=self.for_update_of_dialect,
+        )
+
+    def test_for_update_textual_of(self):
+        self.assert_compile(
+            self.table1.select(self.table1.c.myid == 7).with_for_update(
+                of=text("mytable")
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR UPDATE OF mytable",
+            dialect=self.for_update_of_dialect,
+        )
+
+        self.assert_compile(
+            self.table1.select(self.table1.c.myid == 7).with_for_update(
+                of=literal_column("mytable")
+            ),
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable WHERE mytable.myid = %s "
+            "FOR UPDATE OF mytable",
             dialect=self.for_update_of_dialect,
         )
 
