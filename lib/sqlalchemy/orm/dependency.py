@@ -43,6 +43,7 @@ class DependencyProcessor(object):
         else:
             self._passive_update_flag = attributes.PASSIVE_OFF
 
+        self.sort_key = "%s_%s" % (self.parent._sort_key, prop.key)
         self.key = prop.key
         if not self.prop.synchronize_pairs:
             raise sa_exc.ArgumentError(

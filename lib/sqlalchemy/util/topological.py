@@ -10,25 +10,23 @@
 from .. import util
 from ..exc import CircularDependencyError
 
-
 __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 
 
-def sort_as_subsets(tuples, allitems, deterministic_order=False):
+def sort_as_subsets(tuples, allitems):
 
     edges = util.defaultdict(set)
     for parent, child in tuples:
         edges[child].add(parent)
 
-    Set = util.OrderedSet if deterministic_order else set
+    todo = list(allitems)
+    todo_set = set(allitems)
 
-    todo = Set(allitems)
-
-    while todo:
-        output = Set()
+    while todo_set:
+        output = []
         for node in todo:
-            if todo.isdisjoint(edges[node]):
-                output.add(node)
+            if todo_set.isdisjoint(edges[node]):
+                output.append(node)
 
         if not output:
             raise CircularDependencyError(
@@ -37,18 +35,23 @@ def sort_as_subsets(tuples, allitems, deterministic_order=False):
                 _gen_edges(edges),
             )
 
-        todo.difference_update(output)
+        todo_set.difference_update(output)
+        todo = [t for t in todo if t in todo_set]
         yield output
 
 
-def sort(tuples, allitems, deterministic_order=False):
+def sort(tuples, allitems, deterministic_order=True):
     """sort the given list of items by dependency.
 
     'tuples' is a list of tuples representing a partial ordering.
-    'deterministic_order' keeps items within a dependency tier in list order.
+
+    deterministic_order is no longer used, the order is now always
+    deterministic given the order of "allitems".    the flag is there
+    for backwards compatibility with Alembic.
+
     """
 
-    for set_ in sort_as_subsets(tuples, allitems, deterministic_order):
+    for set_ in sort_as_subsets(tuples, allitems):
         for s in set_:
             yield s
 
