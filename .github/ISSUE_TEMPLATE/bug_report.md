@@ -14,8 +14,10 @@ assignees: ''
 <!-- A clear and concise description of what you expected to happen. -->
 
 **To Reproduce**
-Please try to provide a [Minimal, Complete, and Verifiable](http://stackoverflow.com/help/mcve) example. 
-See also [Reporting Bugs](https://www.sqlalchemy.org/participate.html#bugs) on the website, and some [example issues](https://github.com/sqlalchemy/sqlalchemy/issues?q=label%3A%22great+mcve%22)
+Please try to provide a [Minimal, Complete, and Verifiable](http://stackoverflow.com/help/mcve) example.
+See also [Reporting Bugs](https://www.sqlalchemy.org/participate.html#bugs) on the website, and some [example issues](https://github.com/sqlalchemy/sqlalchemy/issues?q=label%3A%22great+mcve%22).
+
+**Please do not use Flask-SQLAlchemy or any other third-party extensions or dependencies in test cases**.  The test case must illustrate the problem **without** using any third party SQLAlchemy extensions.  Otherwise, please report the bug to those projects first.
 
 ```py
 # Insert code here
@@ -28,7 +30,7 @@ See also [Reporting Bugs](https://www.sqlalchemy.org/participate.html#bugs) on t
 ```
 
 **Versions.**
- - OS: 
+ - OS:
  - Python:
  - SQLAlchemy:
  - Database:
