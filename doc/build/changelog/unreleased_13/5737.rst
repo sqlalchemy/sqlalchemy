@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5737
+    :versions: 1.4.0b2
+
+    Fixed bug involving the ``restore_load_context`` option of ORM events such
+    as :meth:`_orm.InstanceEvents.load` such that the flag would not be carried
+    along to subclasses which were mapped after the event handler were first
+    established.
+
+

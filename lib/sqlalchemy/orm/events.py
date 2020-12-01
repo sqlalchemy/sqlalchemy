@@ -540,7 +540,13 @@ class _EventsHold(event.RefCollection):
                 collection = target.all_holds[target.class_] = {}
 
             event.registry._stored_in_collection(event_key, target)
-            collection[event_key._key] = (event_key, raw, propagate, retval)
+            collection[event_key._key] = (
+                event_key,
+                raw,
+                propagate,
+                retval,
+                kw,
+            )
 
             if propagate:
                 stack = list(target.class_.__subclasses__())
@@ -567,7 +573,13 @@ class _EventsHold(event.RefCollection):
         for subclass in class_.__mro__:
             if subclass in cls.all_holds:
                 collection = cls.all_holds[subclass]
-                for event_key, raw, propagate, retval in collection.values():
+                for (
+                    event_key,
+                    raw,
+                    propagate,
+                    retval,
+                    kw,
+                ) in collection.values():
                     if propagate or subclass is class_:
                         # since we can't be sure in what order different
                         # classes in a hierarchy are triggered with
@@ -575,7 +587,7 @@ class _EventsHold(event.RefCollection):
                         # assignment, instead of using the generic propagate
                         # flag.
                         event_key.with_dispatch_target(subject).listen(
-                            raw=raw, propagate=False, retval=retval
+                            raw=raw, propagate=False, retval=retval, **kw
                         )
 
 

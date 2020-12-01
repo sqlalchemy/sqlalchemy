@@ -716,6 +716,32 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
         event.listen(target, event_name, fn, restore_load_context=True)
         s.query(A).all()
 
+    @testing.combinations(
+        ("load", lambda instance, context: instance.unloaded),
+        (
+            "refresh",
+            lambda instance, context, attrs: instance.unloaded,
+        ),
+    )
+    def test_flag_resolves_existing_for_subclass(self, event_name, fn):
+        Base = declarative_base()
+
+        event.listen(
+            Base, event_name, fn, propagate=True, restore_load_context=True
+        )
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            unloaded = deferred(Column(String(50)))
+
+        s = Session(testing.db)
+
+        a1 = s.query(A).all()[0]
+        if event_name == "refresh":
+            s.refresh(a1)
+        s.close()
+
     @_combinations
     def test_flag_resolves(self, target, event_name, fn):
         A = self.classes.A
