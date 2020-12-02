@@ -169,7 +169,7 @@ to the given filter criteria::
 
 When using limiting criteria, if a particular collection is already loaded
 it won't be refreshed; to ensure the new criteria takes place, apply
-the :meth:`_orm.Query.populate_existing` option::
+the :meth:`_query.Query.populate_existing` option::
 
     session.query(A).options(lazyload(A.bs.and_(B.id > 5))).populate_existing()
 
@@ -1062,10 +1062,9 @@ and additionally establish this as the basis for eager loading of ``User.address
                 options(contains_eager(User.addresses))
 
 
-If the "eager" portion of the statement is "aliased", the ``alias`` keyword
-argument to :func:`~sqlalchemy.orm.contains_eager` may be used to indicate it.
-This is sent as a reference to an :func:`.aliased` or :class:`_expression.Alias`
-construct:
+If the "eager" portion of the statement is "aliased", the path
+should be specified using :meth:`.PropComparator.of_type`, which allows
+the specific :func:`_orm.aliased` construct to be passed:
 
 .. sourcecode:: python+sql
 
@@ -1074,8 +1073,8 @@ construct:
 
     # construct a Query object which expects the "addresses" results
     query = session.query(User).\
-        outerjoin(adalias, User.addresses).\
-        options(contains_eager(User.addresses, alias=adalias))
+        outerjoin(User.addresses.of_type(adalias)).\
+        options(contains_eager(User.addresses.of_type(adalias)))
 
     # get results normally
     r = query.all()
@@ -1092,13 +1091,7 @@ construct:
 
 The path given as the argument to :func:`.contains_eager` needs
 to be a full path from the starting entity. For example if we were loading
-``Users->orders->Order->items->Item``, the string version would look like::
-
-    query(User).options(
-        contains_eager('orders').
-        contains_eager('items'))
-
-Or using the class-bound descriptor::
+``Users->orders->Order->items->Item``, the option would be used as::
 
     query(User).options(
         contains_eager(User.orders).
@@ -1114,64 +1107,43 @@ by writing our SQL to load a subset of elements for collections or
 scalar attributes.
 
 As an example, we can load a ``User`` object and eagerly load only particular
-addresses into its ``.addresses`` collection just by filtering::
+addresses into its ``.addresses`` collection by filtering the joined data,
+routing it using :func:`_orm.contains_eager`, also using
+:meth:`_query.Query.populate_existing` to ensure any already-loaded collections
+are overwritten::
 
-    q = session.query(User).join(User.addresses).\
-                filter(Address.email.like('%ed%')).\
-                options(contains_eager(User.addresses))
+    q = session.query(User).\
+            join(User.addresses).\
+            filter(Address.email_address.like('%@aol.com')).\
+            options(contains_eager(User.addresses)).\
+            populate_existing()
 
 The above query will load only ``User`` objects which contain at
-least ``Address`` object that contains the substring ``'ed'`` in its
+least ``Address`` object that contains the substring ``'aol.com'`` in its
 ``email`` field; the ``User.addresses`` collection will contain **only**
 these ``Address`` entries, and *not* any other ``Address`` entries that are
 in fact associated with the collection.
 
-.. warning::
+.. tip::  In all cases, the SQLAlchemy ORM does **not overwrite already loaded
+   attributes and collections** unless told to do so.   As there is an
+   :term:`identity map` in use, it is often the case that an ORM query is
+   returning objects that were in fact already present and loaded in memory.
+   Therefore, when using :func:`_orm.contains_eager` to populate a collection
+   in an alternate way, it is usually a good idea to use
+   :meth:`_query.Query.populate_existing` as illustrated above so that an
+   already-loaded collection is refreshed with the new data.
+   :meth:`_query.Query.populate_existing` will reset **all** attributes that were
+   already present, including pending changes, so make sure all data is flushed
+   before using it.   Using the :class:`_orm.Session` with its default behavior
+   of :ref:`autoflush <session_flushing>` is sufficient.
 
-    Keep in mind that when we load only a subset of objects into a collection,
-    that collection no longer represents what's actually in the database.  If
-    we attempted to add entries to this collection, we might find ourselves
-    conflicting with entries that are already in the database but not locally
-    loaded.
-
-    In addition, the **collection will fully reload normally** once the
-    object or attribute is expired.  This expiration occurs whenever the
-    :meth:`.Session.commit`, :meth:`.Session.rollback` methods are used
-    assuming default session settings, or the :meth:`.Session.expire_all`
-    or :meth:`.Session.expire` methods are used.
-
-    For these reasons, prefer returning separate fields in a tuple rather
-    than artificially altering a collection, when an object plus a custom
-    set of related objects is desired::
-
-        q = session.query(User, Address).join(User.addresses).\
-                    filter(Address.email.like('%ed%'))
-
-
-Advanced Usage with Arbitrary Statements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The ``alias`` argument can be more creatively used, in that it can be made
-to represent any set of arbitrary names to match up into a statement.
-Below it is linked to a :func:`_expression.select` which links a set of column objects
-to a string SQL statement::
-
-    # label the columns of the addresses table
-    eager_columns = select(
-        addresses.c.address_id.label('a1'),
-        addresses.c.email_address.label('a2'),
-        addresses.c.user_id.label('a3')
-    )
-
-    # select from a raw SQL statement which uses those label names for the
-    # addresses table.  contains_eager() matches them up.
-    query = session.query(User).\
-        from_statement("select users.*, addresses.address_id as a1, "
-                "addresses.email_address as a2, "
-                "addresses.user_id as a3 "
-                "from users left outer join "
-                "addresses on users.user_id=addresses.user_id").\
-        options(contains_eager(User.addresses, alias=eager_columns))
+.. note::   The customized collection we load using :func:`_orm.contains_eager`
+   is not "sticky"; that is, the next time this collection is loaded, it will
+   be loaded with its usual default contents.   The collection is subject
+   to being reloaded if the object is expired, which occurs whenever the
+   :meth:`.Session.commit`, :meth:`.Session.rollback` methods are used
+   assuming default session settings, or the :meth:`.Session.expire_all`
+   or :meth:`.Session.expire` methods are used.
 
 Creating Custom Load Rules
 --------------------------
