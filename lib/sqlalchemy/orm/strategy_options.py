@@ -1030,40 +1030,18 @@ def contains_eager(loadopt, attr, alias=None):
     ``User`` entity, and the returned ``Order`` objects would have the
     ``Order.user`` attribute pre-populated.
 
-    When making use of aliases with :func:`.contains_eager`, the path
-    should be specified using :meth:`.PropComparator.of_type`::
+    It may also be used for customizing the entries in an eagerly loaded
+    collection; queries will normally want to use the
+    :meth:`_query.Query.populate_existing` method assuming the primary
+    collection of parent objects may already have been loaded::
 
-        user_alias = aliased(User)
-        sess.query(Order).\
-                join((user_alias, Order.user)).\
-                options(contains_eager(Order.user.of_type(user_alias)))
+        sess.query(User).\
+            join(User.addresses).\
+            filter(Address.email_address.like('%@aol.com')).\
+            options(contains_eager(User.addresses)).\
+            populate_existing()
 
-    :meth:`.PropComparator.of_type` is also used to indicate a join
-    against specific subclasses of an inherting mapper, or
-    of a :func:`.with_polymorphic` construct::
-
-        # employees of a particular subtype
-        sess.query(Company).\
-            outerjoin(Company.employees.of_type(Manager)).\
-            options(
-                contains_eager(
-                    Company.employees.of_type(Manager),
-                )
-            )
-
-        # employees of a multiple subtypes
-        wp = with_polymorphic(Employee, [Manager, Engineer])
-        sess.query(Company).\
-            outerjoin(Company.employees.of_type(wp)).\
-            options(
-                contains_eager(
-                    Company.employees.of_type(wp),
-                )
-            )
-
-    The :paramref:`.contains_eager.alias` parameter is used for a similar
-    purpose, however the :meth:`.PropComparator.of_type` approach should work
-    in all cases and is more effective and explicit.
+    See the section :ref:`contains_eager` for complete usage details.
 
     .. seealso::
 
@@ -1706,7 +1684,7 @@ def with_expression(loadopt, key, expression):
 
     .. note:: the target attribute is populated only if the target object
        is **not currently loaded** in the current :class:`_orm.Session`
-       unless the :meth:`_orm.Query.populate_existing` method is used.
+       unless the :meth:`_query.Query.populate_existing` method is used.
        Please refer to :ref:`mapper_querytime_expression` for complete
        usage details.
 
