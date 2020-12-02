@@ -17,6 +17,7 @@ from .compat import binary_types
 from .compat import collections_abc
 from .compat import itertools_filterfalse
 from .compat import py2k
+from .compat import py37
 from .compat import string_types
 from .compat import threading
 
@@ -235,101 +236,128 @@ class ImmutableProperties(ImmutableContainer, Properties):
     __slots__ = ()
 
 
-class OrderedDict(dict):
-    """A dict that returns keys/values/items in the order they were added."""
+def _ordered_dictionary_sort(d, key=None):
+    """Sort an OrderedDict in-place."""
 
-    __slots__ = ("_list",)
+    items = [(k, d[k]) for k in sorted(d, key=key)]
 
-    def __reduce__(self):
-        return OrderedDict, (self.items(),)
+    d.clear()
 
-    def __init__(self, ____sequence=None, **kwargs):
-        self._list = []
-        if ____sequence is None:
-            if kwargs:
-                self.update(**kwargs)
-        else:
-            self.update(____sequence, **kwargs)
+    d.update(items)
 
-    def clear(self):
-        self._list = []
-        dict.clear(self)
 
-    def copy(self):
-        return self.__copy__()
+if py37:
+    OrderedDict = dict
+    sort_dictionary = _ordered_dictionary_sort
 
-    def __copy__(self):
-        return OrderedDict(self)
+else:
+    # prevent sort_dictionary from being used against a plain dictionary
+    # for Python < 3.7
 
-    def sort(self, *arg, **kw):
-        self._list.sort(*arg, **kw)
+    def sort_dictionary(d, key=None):
+        """Sort an OrderedDict in place."""
 
-    def update(self, ____sequence=None, **kwargs):
-        if ____sequence is not None:
-            if hasattr(____sequence, "keys"):
-                for key in ____sequence.keys():
-                    self.__setitem__(key, ____sequence[key])
+        d._ordered_dictionary_sort(key=key)
+
+    class OrderedDict(dict):
+        """Dictionary that maintains insertion order.
+
+        Superseded by Python dict as of Python 3.7
+
+        """
+
+        __slots__ = ("_list",)
+
+        def _ordered_dictionary_sort(self, key=None):
+            _ordered_dictionary_sort(self, key=key)
+
+        def __reduce__(self):
+            return OrderedDict, (self.items(),)
+
+        def __init__(self, ____sequence=None, **kwargs):
+            self._list = []
+            if ____sequence is None:
+                if kwargs:
+                    self.update(**kwargs)
             else:
-                for key, value in ____sequence:
-                    self[key] = value
-        if kwargs:
-            self.update(kwargs)
+                self.update(____sequence, **kwargs)
 
-    def setdefault(self, key, value):
-        if key not in self:
-            self.__setitem__(key, value)
-            return value
-        else:
-            return self.__getitem__(key)
+        def clear(self):
+            self._list = []
+            dict.clear(self)
 
-    def __iter__(self):
-        return iter(self._list)
+        def copy(self):
+            return self.__copy__()
 
-    def keys(self):
-        return list(self)
+        def __copy__(self):
+            return OrderedDict(self)
 
-    def values(self):
-        return [self[key] for key in self._list]
+        def update(self, ____sequence=None, **kwargs):
+            if ____sequence is not None:
+                if hasattr(____sequence, "keys"):
+                    for key in ____sequence.keys():
+                        self.__setitem__(key, ____sequence[key])
+                else:
+                    for key, value in ____sequence:
+                        self[key] = value
+            if kwargs:
+                self.update(kwargs)
 
-    def items(self):
-        return [(key, self[key]) for key in self._list]
+        def setdefault(self, key, value):
+            if key not in self:
+                self.__setitem__(key, value)
+                return value
+            else:
+                return self.__getitem__(key)
 
-    if py2k:
+        def __iter__(self):
+            return iter(self._list)
 
-        def itervalues(self):
-            return iter(self.values())
+        def keys(self):
+            return list(self)
 
-        def iterkeys(self):
-            return iter(self)
+        def values(self):
+            return [self[key] for key in self._list]
 
-        def iteritems(self):
-            return iter(self.items())
+        def items(self):
+            return [(key, self[key]) for key in self._list]
 
-    def __setitem__(self, key, obj):
-        if key not in self:
-            try:
-                self._list.append(key)
-            except AttributeError:
-                # work around Python pickle loads() with
-                # dict subclass (seems to ignore __setstate__?)
-                self._list = [key]
-        dict.__setitem__(self, key, obj)
+        if py2k:
 
-    def __delitem__(self, key):
-        dict.__delitem__(self, key)
-        self._list.remove(key)
+            def itervalues(self):
+                return iter(self.values())
 
-    def pop(self, key, *default):
-        present = key in self
-        value = dict.pop(self, key, *default)
-        if present:
+            def iterkeys(self):
+                return iter(self)
+
+            def iteritems(self):
+                return iter(self.items())
+
+        def __setitem__(self, key, obj):
+            if key not in self:
+                try:
+                    self._list.append(key)
+                except AttributeError:
+                    # work around Python pickle loads() with
+                    # dict subclass (seems to ignore __setstate__?)
+                    self._list = [key]
+            dict.__setitem__(self, key, obj)
+
+        def __delitem__(self, key):
+            dict.__delitem__(self, key)
             self._list.remove(key)
-        return value
 
-    def popitem(self):
-        item = dict.popitem(self)
-        self._list.remove(item[0])
-        return item
+        def pop(self, key, *default):
+            present = key in self
+            value = dict.pop(self, key, *default)
+            if present:
+                self._list.remove(key)
+            return value
+
+        def popitem(self):
+            item = dict.popitem(self)
+            self._list.remove(item[0])
+            return item
 
 
 class OrderedSet(set):

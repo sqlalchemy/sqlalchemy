@@ -131,6 +131,33 @@ class OrderedDictTest(fixtures.TestBase):
         o3 = copy.copy(o)
         eq_(list(o3.keys()), list(o.keys()))
 
+    def test_no_sort_legacy_dictionary(self):
+        d1 = {"c": 1, "b": 2, "a": 3}
+
+        if testing.requires.python37.enabled:
+            util.sort_dictionary(d1)
+            eq_(list(d1), ["a", "b", "c"])
+        else:
+            assert_raises(AttributeError, util.sort_dictionary, d1)
+
+    def test_sort_dictionary(self):
+        o = util.OrderedDict()
+
+        o["za"] = 1
+        o["az"] = 2
+        o["cc"] = 3
+
+        eq_(
+            list(o),
+            ["za", "az", "cc"],
+        )
+
+        util.sort_dictionary(o)
+        eq_(list(o), ["az", "cc", "za"])
+
+        util.sort_dictionary(o, lambda key: key[1])
+        eq_(list(o), ["za", "cc", "az"])
+
 
 class OrderedSetTest(fixtures.TestBase):
     def test_mutators_against_iter(self):

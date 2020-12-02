@@ -35,6 +35,7 @@ from ._collections import OrderedSet  # noqa
 from ._collections import PopulateDict  # noqa
 from ._collections import Properties  # noqa
 from ._collections import ScopedRegistry  # noqa
+from ._collections import sort_dictionary  # noqa
 from ._collections import ThreadLocalRegistry  # noqa
 from ._collections import to_column_set  # noqa
 from ._collections import to_list  # noqa

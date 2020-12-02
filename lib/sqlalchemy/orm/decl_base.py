@@ -569,7 +569,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         our_stuff = self.properties
 
         # set up attributes in the order they were created
-        our_stuff.sort(key=lambda key: our_stuff[key]._creation_order)
+        util.sort_dictionary(
+            our_stuff, key=lambda key: our_stuff[key]._creation_order
+        )
 
         # extract columns from the class dict
         declared_columns = self.declared_columns
