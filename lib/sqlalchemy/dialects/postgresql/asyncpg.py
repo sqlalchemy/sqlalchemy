@@ -480,6 +480,7 @@ class AsyncAdapt_asyncpg_connection:
         "dbapi",
         "_connection",
         "isolation_level",
+        "_isolation_setting",
         "readonly",
         "deferrable",
         "_transaction",
@@ -573,6 +574,8 @@ class AsyncAdapt_asyncpg_connection:
 
 
 class AsyncAdaptFallback_asyncpg_connection(AsyncAdapt_asyncpg_connection):
+    __slots__ = ()
+
     await_ = staticmethod(await_fallback)
 
 
