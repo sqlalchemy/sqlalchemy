@@ -712,12 +712,12 @@ class Inspector(object):
         table reflection.  Direct usage is like::
 
             from sqlalchemy import create_engine, MetaData, Table
-            from sqlalchemy.engine.reflection import Inspector
+            from sqlalchemy import inspect
 
             engine = create_engine('...')
             meta = MetaData()
             user_table = Table('user', meta)
-            insp = Inspector.from_engine(engine)
+            insp = inspect(engine)
             insp.reflect_table(user_table, None)
 
         .. versionchanged:: 1.4 Renamed from ``reflecttable`` to

@@ -131,9 +131,9 @@ lists of schema, table, column, and constraint descriptions from a given
 database is also available. This is known as the "Inspector"::
 
     from sqlalchemy import create_engine
-    from sqlalchemy.engine import reflection
+    from sqlalchemy import inspect
     engine = create_engine('...')
-    insp = reflection.Inspector.from_engine(engine)
+    insp = inspect(engine)
     print(insp.get_table_names())
 
 .. autoclass:: sqlalchemy.engine.reflection.Inspector
