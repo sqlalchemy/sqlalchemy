@@ -1782,7 +1782,7 @@ class Query(object):
         ``FOR UPDATE`` clause.
 
         The behavior of this method is identical to that of
-        :meth:`_expression.SelectBase.with_for_update`.
+        :meth:`_expression.GenerativeSelect.with_for_update`.
         When called with no arguments,
         the resulting ``SELECT`` statement will have a ``FOR UPDATE`` clause
         appended.  When additional arguments are specified, backend-specific
