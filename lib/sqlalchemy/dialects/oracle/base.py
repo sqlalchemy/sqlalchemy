@@ -1329,9 +1329,11 @@ class OracleDDLCompiler(compiler.DDLCompiler):
         text = super(OracleDDLCompiler, self).get_identity_options(
             identity_options
         )
-        return text.replace("NO MINVALUE", "NOMINVALUE").replace(
-            "NO MAXVALUE", "NOMAXVALUE"
-        )
+        text = text.replace("NO MINVALUE", "NOMINVALUE")
+        text = text.replace("NO MAXVALUE", "NOMAXVALUE")
+        text = text.replace("NO CYCLE", "NOCYCLE")
+        text = text.replace("NO ORDER", "NOORDER")
+        return text
 
     def visit_computed_column(self, generated):
         text = "GENERATED ALWAYS AS (%s)" % self.sql_compiler.process(
