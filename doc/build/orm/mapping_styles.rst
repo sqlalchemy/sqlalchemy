@@ -237,6 +237,7 @@ An example of a mapping using ``@dataclass`` is as follows::
     from sqlalchemy import String
     from sqlalchemy import Table
     from sqlalchemy.orm import registry
+    from sqlalchemy.orm import relationship
 
     mapper_registry = registry()
 
@@ -258,6 +259,11 @@ An example of a mapping using ``@dataclass`` is as follows::
         nickname: str = None
         addresses: List[Address] = field(default_factory=list)
 
+        __mapper_args__ = {
+            "properties" : {
+                "addresses": relationship("Address")
+            }
+        }
 
     @mapper_registry.mapped
     @dataclass
