@@ -234,6 +234,9 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_default_reflection(self):
         """Test reflection of column defaults."""
 
+        # TODO: this test is a mess.   should be broken into individual
+        # combinations
+
         from sqlalchemy.dialects.mysql import VARCHAR
 
         def_table = Table(
@@ -258,6 +261,8 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                     )
                 ),
             ),
+            Column("c7", mysql.DOUBLE(), DefaultClause("0.0000")),
+            Column("c8", mysql.DOUBLE(22, 6), DefaultClause("0.0000")),
         )
 
         def_table.create(testing.db)
@@ -280,6 +285,15 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         assert reflected.c.c5.default is None
         assert reflected.c.c5.server_default is None
         assert reflected.c.c6.default is None
+        assert str(reflected.c.c7.server_default.arg) in ("0", "'0'")
+
+        # this is because the numeric is 6 decimal places, MySQL
+        # formats it to that many places.
+        assert str(reflected.c.c8.server_default.arg) in (
+            "0.000000",
+            "'0.000000'",
+        )
+
         assert re.match(
             r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
             str(reflected.c.c6.server_default.arg).upper(),
@@ -300,6 +314,11 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         assert reflected.c.c5.default is None
         assert reflected.c.c5.server_default is None
         assert reflected.c.c6.default is None
+        assert str(reflected.c.c7.server_default.arg) in ("0", "'0'")
+        assert str(reflected.c.c8.server_default.arg) in (
+            "0.000000",
+            "'0.000000'",
+        )
         assert re.match(
             r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
             str(reflected.c.c6.server_default.arg).upper(),
