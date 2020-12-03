@@ -1114,6 +1114,24 @@ message for details.
 
     :ref:`error_bbf0`
 
+
+AsyncIO Exceptions
+==================
+
+.. _error_xd1r:
+
+AwaitRequired
+-------------
+
+The SQLAlchemy async mode requires an async driver to be used to connect to the db.
+This error is usually raised when trying to use the async version of SQLAlchemy
+with a non compatible :term:`DBAPI`.
+
+.. seealso::
+
+    :ref:`asyncio extension <asyncio_toplevel>`
+
+
 Core Exception Classes
 ======================
 

@@ -79,7 +79,9 @@ def await_fallback(awaitable: Coroutine) -> Any:
     return current.driver.switch(awaitable)
 
 
-async def greenlet_spawn(fn: Callable, *args, **kwargs) -> Any:
+async def greenlet_spawn(
+    fn: Callable, *args, _require_await=False, **kwargs
+) -> Any:
     """Runs a sync function ``fn`` in a new greenlet.
 
     The sync function can then use :func:`await_` to wait for async
@@ -95,9 +97,11 @@ async def greenlet_spawn(fn: Callable, *args, **kwargs) -> Any:
     # is interrupted by await_, context is not dead and result is a
     # coroutine to wait. If the context is dead the function has
     # returned, and its result can be returned.
+    switch_occurred = False
     try:
         result = context.switch(*args, **kwargs)
         while not context.dead:
+            switch_occurred = True
             try:
                 # wait for a coroutine from await_ and then return its
                 # result back to it.
@@ -112,6 +116,12 @@ async def greenlet_spawn(fn: Callable, *args, **kwargs) -> Any:
     finally:
         # clean up to avoid cycle resolution by gc
         del context.driver
+    if _require_await and not switch_occurred:
+        raise exc.AwaitRequired(
+            "The current operation required an async execution but none was "
+            "detected. This will usually happen when using a non compatible "
+            "DBAPI driver. Please ensure that an async DBAPI is used."
+        )
     return result
 
 

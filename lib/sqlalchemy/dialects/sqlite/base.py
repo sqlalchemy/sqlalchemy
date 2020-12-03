@@ -419,8 +419,8 @@ From version 3.24.0 onwards, SQLite supports "upserts" (update or insert)
 of rows into a table via the ``ON CONFLICT`` clause of the ``INSERT``
 statement. A candidate row will only be inserted if that row does not violate
 any unique or primary key constraints. In the case of a unique constraint violation, a
-secondary action can occur which can be either “DO UPDATE”, indicating that
-the data in the target row should be updated, or “DO NOTHING”, which indicates
+secondary action can occur which can be either "DO UPDATE", indicating that
+the data in the target row should be updated, or "DO NOTHING", which indicates
 to silently skip this row.
 
 Conflicts are determined using columns that are part of existing unique
@@ -469,7 +469,7 @@ and :meth:`_sqlite.Insert.on_conflict_do_nothing`:
 Specifying the Target
 ^^^^^^^^^^^^^^^^^^^^^
 
-Both methods supply the “target” of the conflict using column inference:
+Both methods supply the "target" of the conflict using column inference:
 
 * The :paramref:`_sqlite.Insert.on_conflict_do_update.index_elements` argument
   specifies a sequence containing string column names, :class:`_schema.Column`
