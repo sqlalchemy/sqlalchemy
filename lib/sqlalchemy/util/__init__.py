@@ -57,6 +57,7 @@ from .compat import byte_buffer  # noqa
 from .compat import callable  # noqa
 from .compat import cmp  # noqa
 from .compat import cpython  # noqa
+from .compat import dataclass_fields  # noqa
 from .compat import decode_backslashreplace  # noqa
 from .compat import dottedgetter  # noqa
 from .compat import has_refcount_gc  # noqa
