@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql, reflection
+    :tickets: 5744
+    :versions: 1.4.0b2
+
+    Fixed issue where reflecting a server default on MariaDB only that
+    contained a decimal point in the value would fail to be reflected
+    correctly, leading towards a reflected table that lacked any server
+    default.
+
