@@ -1011,31 +1011,29 @@ class RealReconnectTest(fixtures.TestBase):
         self.engine.dispose()
 
     def test_reconnect(self):
-        conn = self.engine.connect()
+        with self.engine.connect() as conn:
 
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.closed
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.closed
 
-        self.engine.test_shutdown()
+            self.engine.test_shutdown()
 
-        _assert_invalidated(conn.execute, select(1))
+            _assert_invalidated(conn.execute, select(1))
 
-        assert not conn.closed
-        assert conn.invalidated
+            assert not conn.closed
+            assert conn.invalidated
 
-        assert conn.invalidated
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.invalidated
+            assert conn.invalidated
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.invalidated
 
-        # one more time
-        self.engine.test_shutdown()
-        _assert_invalidated(conn.execute, select(1))
+            # one more time
+            self.engine.test_shutdown()
+            _assert_invalidated(conn.execute, select(1))
 
-        assert conn.invalidated
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.invalidated
-
-        conn.close()
+            assert conn.invalidated
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.invalidated
 
     @testing.requires.independent_connections
     def test_multiple_invalidate(self):
@@ -1056,52 +1054,52 @@ class RealReconnectTest(fixtures.TestBase):
         assert self.engine.pool is p2
 
     def test_branched_invalidate_branch_to_parent(self):
-        c1 = self.engine.connect()
+        with self.engine.connect() as c1:
 
-        with patch.object(self.engine.pool, "logger") as logger:
+            with patch.object(self.engine.pool, "logger") as logger:
+                c1_branch = c1.connect()
+                eq_(c1_branch.execute(select(1)).scalar(), 1)
+
+                self.engine.test_shutdown()
+
+                _assert_invalidated(c1_branch.execute, select(1))
+                assert c1.invalidated
+                assert c1_branch.invalidated
+
+                c1_branch._revalidate_connection()
+                assert not c1.invalidated
+                assert not c1_branch.invalidated
+
+            assert "Invalidate connection" in logger.mock_calls[0][1][0]
+
+    def test_branched_invalidate_parent_to_branch(self):
+        with self.engine.connect() as c1:
+
             c1_branch = c1.connect()
             eq_(c1_branch.execute(select(1)).scalar(), 1)
 
             self.engine.test_shutdown()
 
-            _assert_invalidated(c1_branch.execute, select(1))
+            _assert_invalidated(c1.execute, select(1))
             assert c1.invalidated
             assert c1_branch.invalidated
 
-            c1_branch._revalidate_connection()
+            c1._revalidate_connection()
             assert not c1.invalidated
             assert not c1_branch.invalidated
 
-        assert "Invalidate connection" in logger.mock_calls[0][1][0]
-
-    def test_branched_invalidate_parent_to_branch(self):
-        c1 = self.engine.connect()
-
-        c1_branch = c1.connect()
-        eq_(c1_branch.execute(select(1)).scalar(), 1)
-
-        self.engine.test_shutdown()
-
-        _assert_invalidated(c1.execute, select(1))
-        assert c1.invalidated
-        assert c1_branch.invalidated
-
-        c1._revalidate_connection()
-        assert not c1.invalidated
-        assert not c1_branch.invalidated
-
     def test_branch_invalidate_state(self):
-        c1 = self.engine.connect()
+        with self.engine.connect() as c1:
 
-        c1_branch = c1.connect()
+            c1_branch = c1.connect()
 
-        eq_(c1_branch.execute(select(1)).scalar(), 1)
+            eq_(c1_branch.execute(select(1)).scalar(), 1)
 
-        self.engine.test_shutdown()
+            self.engine.test_shutdown()
 
-        _assert_invalidated(c1_branch.execute, select(1))
-        assert not c1_branch.closed
-        assert not c1_branch._still_open_and_dbapi_connection_is_valid
+            _assert_invalidated(c1_branch.execute, select(1))
+            assert not c1_branch.closed
+            assert not c1_branch._still_open_and_dbapi_connection_is_valid
 
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
@@ -1112,38 +1110,39 @@ class RealReconnectTest(fixtures.TestBase):
             # assert cursor is None
 
         self.engine.dialect.is_disconnect = is_disconnect
-        conn = self.engine.connect()
-        self.engine.test_shutdown()
-        with expect_warnings(
-            "An exception has occurred during handling .*", py2konly=True
-        ):
-            assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
+
+        with self.engine.connect() as conn:
+            self.engine.test_shutdown()
+            with expect_warnings(
+                "An exception has occurred during handling .*", py2konly=True
+            ):
+                assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
     def test_rollback_on_invalid_plain(self):
-        conn = self.engine.connect()
-        trans = conn.begin()
-        conn.invalidate()
-        trans.rollback()
+        with self.engine.connect() as conn:
+            trans = conn.begin()
+            conn.invalidate()
+            trans.rollback()
 
     @testing.requires.two_phase_transactions
     def test_rollback_on_invalid_twophase(self):
-        conn = self.engine.connect()
-        trans = conn.begin_twophase()
-        conn.invalidate()
-        trans.rollback()
+        with self.engine.connect() as conn:
+            trans = conn.begin_twophase()
+            conn.invalidate()
+            trans.rollback()
 
     @testing.requires.savepoints
     def test_rollback_on_invalid_savepoint(self):
-        conn = self.engine.connect()
-        conn.begin()
-        trans2 = conn.begin_nested()
-        conn.invalidate()
-        trans2.rollback()
+        with self.engine.connect() as conn:
+            conn.begin()
+            trans2 = conn.begin_nested()
+            conn.invalidate()
+            trans2.rollback()
 
     def test_invalidate_twice(self):
-        conn = self.engine.connect()
-        conn.invalidate()
-        conn.invalidate()
+        with self.engine.connect() as conn:
+            conn.invalidate()
+            conn.invalidate()
 
     @testing.skip_if(
         [lambda: util.py3k, "oracle+cx_oracle"], "Crashes on py3k+cx_oracle"
@@ -1182,93 +1181,92 @@ class RealReconnectTest(fixtures.TestBase):
         engine = engines.reconnecting_engine(
             options=dict(poolclass=pool.NullPool)
         )
-        conn = engine.connect()
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.closed
-        engine.test_shutdown()
-        _assert_invalidated(conn.execute, select(1))
-        assert not conn.closed
-        assert conn.invalidated
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.invalidated
+        with engine.connect() as conn:
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.closed
+            engine.test_shutdown()
+            _assert_invalidated(conn.execute, select(1))
+            assert not conn.closed
+            assert conn.invalidated
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.invalidated
 
     def test_close(self):
-        conn = self.engine.connect()
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.closed
+        with self.engine.connect() as conn:
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.closed
 
-        self.engine.test_shutdown()
+            self.engine.test_shutdown()
 
-        _assert_invalidated(conn.execute, select(1))
+            _assert_invalidated(conn.execute, select(1))
 
-        conn.close()
-        conn = self.engine.connect()
-        eq_(conn.execute(select(1)).scalar(), 1)
+        with self.engine.connect() as conn:
+            eq_(conn.execute(select(1)).scalar(), 1)
 
     def test_with_transaction(self):
-        conn = self.engine.connect()
-        trans = conn.begin()
-        assert trans.is_valid
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.closed
-        self.engine.test_shutdown()
-        _assert_invalidated(conn.execute, select(1))
-        assert not conn.closed
-        assert conn.invalidated
-        assert trans.is_active
-        assert not trans.is_valid
+        with self.engine.connect() as conn:
+            trans = conn.begin()
+            assert trans.is_valid
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.closed
+            self.engine.test_shutdown()
+            _assert_invalidated(conn.execute, select(1))
+            assert not conn.closed
+            assert conn.invalidated
+            assert trans.is_active
+            assert not trans.is_valid
 
-        assert_raises_message(
-            tsa.exc.PendingRollbackError,
-            "Can't reconnect until invalid transaction is rolled back",
-            conn.execute,
-            select(1),
-        )
-        assert trans.is_active
-        assert not trans.is_valid
+            assert_raises_message(
+                tsa.exc.PendingRollbackError,
+                "Can't reconnect until invalid transaction is rolled back",
+                conn.execute,
+                select(1),
+            )
+            assert trans.is_active
+            assert not trans.is_valid
 
-        assert_raises_message(
-            tsa.exc.PendingRollbackError,
-            "Can't reconnect until invalid transaction is rolled back",
-            trans.commit,
-        )
+            assert_raises_message(
+                tsa.exc.PendingRollbackError,
+                "Can't reconnect until invalid transaction is rolled back",
+                trans.commit,
+            )
 
-        # becomes inactive
-        assert not trans.is_active
-        assert not trans.is_valid
+            # becomes inactive
+            assert not trans.is_active
+            assert not trans.is_valid
 
-        # still asks us to rollback
-        assert_raises_message(
-            tsa.exc.PendingRollbackError,
-            "Can't reconnect until invalid transaction is rolled back",
-            conn.execute,
-            select(1),
-        )
+            # still asks us to rollback
+            assert_raises_message(
+                tsa.exc.PendingRollbackError,
+                "Can't reconnect until invalid transaction is rolled back",
+                conn.execute,
+                select(1),
+            )
 
-        # still asks us..
-        assert_raises_message(
-            tsa.exc.PendingRollbackError,
-            "Can't reconnect until invalid transaction is rolled back",
-            trans.commit,
-        )
+            # still asks us..
+            assert_raises_message(
+                tsa.exc.PendingRollbackError,
+                "Can't reconnect until invalid transaction is rolled back",
+                trans.commit,
+            )
 
-        # still...it's being consistent in what it is asking.
-        assert_raises_message(
-            tsa.exc.PendingRollbackError,
-            "Can't reconnect until invalid transaction is rolled back",
-            conn.execute,
-            select(1),
-        )
+            # still...it's being consistent in what it is asking.
+            assert_raises_message(
+                tsa.exc.PendingRollbackError,
+                "Can't reconnect until invalid transaction is rolled back",
+                conn.execute,
+                select(1),
+            )
 
-        #  OK!
-        trans.rollback()
-        assert not trans.is_active
-        assert not trans.is_valid
+            #  OK!
+            trans.rollback()
+            assert not trans.is_active
+            assert not trans.is_valid
 
-        # conn still invalid but we can reconnect
-        assert conn.invalidated
-        eq_(conn.execute(select(1)).scalar(), 1)
-        assert not conn.invalidated
+            # conn still invalid but we can reconnect
+            assert conn.invalidated
+            eq_(conn.execute(select(1)).scalar(), 1)
+            assert not conn.invalidated
 
 
 class RecycleTest(fixtures.TestBase):
@@ -1369,6 +1367,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             "+pymysql",
             "+pg8000",
             "+asyncpg",
+            "+aiomysql",
         ],
         "Buffers the result set and doesn't check for connection close",
     )

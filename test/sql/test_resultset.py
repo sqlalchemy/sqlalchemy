@@ -291,14 +291,40 @@ class CursorResultTest(fixtures.TablesTest):
     def test_fetchmany(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
-        connection.execute(users.insert(), user_id=8, user_name="ed")
-        connection.execute(users.insert(), user_id=9, user_name="fred")
+        connection.execute(
+            users.insert(),
+            [{"user_id": i, "user_name": "n%d" % i} for i in range(7, 15)],
+        )
         r = connection.execute(users.select())
         rows = []
         for row in r.fetchmany(size=2):
             rows.append(row)
         eq_(len(rows), 2)
+
+    def test_fetchmany_arraysize_default(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [{"user_id": i, "user_name": "n%d" % i} for i in range(1, 150)],
+        )
+        r = connection.execute(users.select())
+        arraysize = r.cursor.arraysize
+        rows = list(r.fetchmany())
+
+        eq_(len(rows), min(arraysize, 150))
+
+    def test_fetchmany_arraysize_set(self, connection):
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [{"user_id": i, "user_name": "n%d" % i} for i in range(7, 15)],
+        )
+        r = connection.execute(users.select())
+        r.cursor.arraysize = 4
+        rows = list(r.fetchmany())
+        eq_(len(rows), 4)
 
     def test_column_slices(self, connection):
         users = self.tables.users
