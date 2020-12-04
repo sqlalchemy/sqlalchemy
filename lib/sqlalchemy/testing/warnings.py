@@ -30,6 +30,11 @@ def setup_filters():
     warnings.filterwarnings(
         "ignore", category=DeprecationWarning, message=".*inspect.get.*argspec"
     )
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message="The loop argument is deprecated",
+    )
 
     # ignore things that are deprecated *as of* 2.0 :)
     warnings.filterwarnings(

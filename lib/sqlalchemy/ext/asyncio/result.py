@@ -17,7 +17,14 @@ if util.TYPE_CHECKING:
     from ...engine.result import Row
 
 
-class AsyncResult(FilterResult):
+class AsyncCommon(FilterResult):
+    async def close(self):
+        """Close this result."""
+
+        await greenlet_spawn(self._real_result.close)
+
+
+class AsyncResult(AsyncCommon):
     """An asyncio wrapper around a :class:`_result.Result` object.
 
     The :class:`_asyncio.AsyncResult` only applies to statement executions that
@@ -370,7 +377,7 @@ class AsyncResult(FilterResult):
         return AsyncMappingResult(self._real_result)
 
 
-class AsyncScalarResult(FilterResult):
+class AsyncScalarResult(AsyncCommon):
     """A wrapper for a :class:`_asyncio.AsyncResult` that returns scalar values
     rather than :class:`_row.Row` values.
 
@@ -500,7 +507,7 @@ class AsyncScalarResult(FilterResult):
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
 
-class AsyncMappingResult(FilterResult):
+class AsyncMappingResult(AsyncCommon):
     """A wrapper for a :class:`_asyncio.AsyncResult` that returns dictionary values
     rather than :class:`_engine.Row` values.
 
