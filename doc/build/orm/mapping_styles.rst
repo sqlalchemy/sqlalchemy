@@ -230,6 +230,7 @@ An example of a mapping using ``@dataclass`` is as follows::
     from dataclasses import dataclass
     from dataclasses import field
     from typing import List
+    from typing import Optional
 
     from sqlalchemy import Column
     from sqlalchemy import ForeignKey
@@ -254,9 +255,9 @@ An example of a mapping using ``@dataclass`` is as follows::
             Column("nickname", String(12)),
         )
         id: int = field(init=False)
-        name: str = None
-        fullname: str = None
-        nickname: str = None
+        name: Optional[str] = None
+        fullname: Optional[str] = None
+        nickname: Optional[str] = None
         addresses: List[Address] = field(default_factory=list)
 
         __mapper_args__ = {
@@ -277,7 +278,7 @@ An example of a mapping using ``@dataclass`` is as follows::
         )
         id: int = field(init=False)
         user_id: int = field(init=False)
-        email_address: str = None
+        email_address: Optional[str] = None
 
 In the above example, the ``User.id``, ``Address.id``, and ``Address.user_id``
 attributes are defined as ``field(init=False)``. This means that parameters for
