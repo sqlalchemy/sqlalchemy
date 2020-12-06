@@ -666,6 +666,13 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     def _type_affinity(self):
         return sqltypes.Interval
 
+    def as_generic(self):
+        return sqltypes.Interval(
+            native=True,
+            second_precision=self.second_precision,
+            day_precision=self.day_precision,
+        )
+
 
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.

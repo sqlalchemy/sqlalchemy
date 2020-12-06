@@ -17,7 +17,6 @@ from .visitors import TraversibleType
 from .. import exc
 from .. import util
 
-
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
 INTEGERTYPE = None
@@ -456,6 +455,7 @@ class TypeEngine(Traversible):
         else:
             return self.__class__
 
+    @util.memoized_property
     def _generic_type_affinity(self):
         best_camelcase = None
         best_uppercase = None
@@ -472,6 +472,7 @@ class TypeEngine(Traversible):
                 )
                 and issubclass(t, TypeEngine)
                 and t is not TypeEngine
+                and t.__name__[0] != "_"
             ):
                 if t.__name__.isupper() and not best_uppercase:
                     best_uppercase = t
@@ -480,9 +481,11 @@ class TypeEngine(Traversible):
 
         return best_camelcase or best_uppercase or NULLTYPE.__class__
 
-    def as_generic(self):
+    def as_generic(self, allow_nulltype=False):
         """
-        Return an instance of the generic type corresponding to this type.
+        Return an instance of the generic type corresponding to this type using
+        heuristic rule. The method may be overridden if this heuristic rule is not
+        sufficient.
 
         >>> from sqlalchemy.dialects.mysql import INTEGER
         >>> INTEGER(display_width=4).as_generic()
@@ -494,8 +497,38 @@ class TypeEngine(Traversible):
 
         .. versionadded:: 1.4.0b2
         """
+        from sqlalchemy import Enum
 
-        return util.constructor_copy(self, self._generic_type_affinity())
+        if isinstance(self, Enum):
+            if hasattr(self, "enums"):
+                args = self.enums
+            else:
+                raise NotImplementedError(
+                    "TypeEngine.as_generic() heuristic "
+                    "is undefined for types that inherit Enum but do not have "
+                    "an `enums` attribute."
+                )
+        else:
+            args = ()
+
+        if (
+            not allow_nulltype
+            and self._generic_type_affinity == NULLTYPE.__class__
+        ):
+            raise NotImplementedError(
+                "Default TypeEngine.as_generic() "
+                "heuristic method was unsuccessful for {}. A custom "
+                "as_generic() method must be implemented for this "
+                "type class.".format(
+                    self.__class__.__module__ + "." + self.__class__.__name__
+                )
+            )
+
+        return util.constructor_copy(self, self._generic_type_affinity, *args)
+
+    @classmethod
+    def _uses_as_generic_heuristic(cls):
+        return cls.as_generic == TypeEngine.as_generic
 
     def dialect_impl(self, dialect):
         """Return a dialect-specific implementation for this

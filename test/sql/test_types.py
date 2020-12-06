@@ -58,6 +58,7 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
@@ -70,6 +71,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.sqltypes import TypeEngine
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -392,6 +394,9 @@ class AsGenericTest(fixtures.TestBase):
         (DATE(), Date()),
         (pg.JSON(), sa.JSON()),
         (pg.ARRAY(sa.String), sa.ARRAY(sa.String)),
+        (Enum("a", "b", "c"), Enum("a", "b", "c")),
+        (pg.ENUM("a", "b", "c"), Enum("a", "b", "c")),
+        (mysql.ENUM("a", "b", "c"), Enum("a", "b", "c")),
     )
     def test_as_generic(self, t1, t2):
         assert repr(t1.as_generic()) == repr(t2)
@@ -403,7 +408,38 @@ class AsGenericTest(fixtures.TestBase):
         else:
             t1 = type_()
 
-        t1.as_generic()
+        try:
+            gentype = t1.as_generic()
+        except NotImplementedError as e:
+            pass
+        else:
+            if t1.__class__._uses_as_generic_heuristic():
+                assert isinstance(t1, gentype.__class__)
+
+            assert isinstance(gentype, TypeEngine)
+
+    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
+    def test_as_generic_all_types_allow_nulltype(self, type_):
+        if issubclass(type_, ARRAY):
+            t1 = type_(String)
+        else:
+            t1 = type_()
+
+        # The `allow_nulltype` argument may not be available in custom
+        # implementations of as_generic() which override the
+        # TypeEngine.as_generic heuristic.
+        if t1.__class__._uses_as_generic_heuristic():
+            gentype = t1.as_generic(allow_nulltype=True)
+        else:
+            gentype = t1.as_generic()
+
+        if isinstance(gentype, types.NULLTYPE.__class__):
+            return
+
+        if t1.__class__._uses_as_generic_heuristic():
+            assert isinstance(t1, gentype.__class__)
+
+        assert isinstance(gentype, TypeEngine)
 
 
 class PickleTypesTest(fixtures.TestBase):
