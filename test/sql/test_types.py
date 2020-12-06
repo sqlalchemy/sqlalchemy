@@ -59,6 +59,7 @@ from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
+import sqlalchemy.dialects.oracle as oracle
 import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
@@ -397,12 +398,23 @@ class AsGenericTest(fixtures.TestBase):
         (Enum("a", "b", "c"), Enum("a", "b", "c")),
         (pg.ENUM("a", "b", "c"), Enum("a", "b", "c")),
         (mysql.ENUM("a", "b", "c"), Enum("a", "b", "c")),
+        (pg.INTERVAL(precision=5), Interval(native=True, second_precision=5)),
+        (
+            oracle.INTERVAL(second_precision=5, day_precision=5),
+            Interval(native=True, day_precision=5, second_precision=5),
+        ),
     )
     def test_as_generic(self, t1, t2):
         assert repr(t1.as_generic()) == repr(t2)
 
-    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
-    def test_as_generic_all_types(self, type_):
+    @testing.combinations(
+        *[
+            (t,)
+            for t in _all_types(omit_special_types=True)
+            if t._uses_as_generic_heuristic()
+        ]
+    )
+    def test_as_generic_all_types_heuristic(self, type_):
         if issubclass(type_, ARRAY):
             t1 = type_(String)
         else:
@@ -410,35 +422,31 @@ class AsGenericTest(fixtures.TestBase):
 
         try:
             gentype = t1.as_generic()
-        except NotImplementedError as e:
+        except NotImplementedError:
             pass
         else:
-            if t1.__class__._uses_as_generic_heuristic():
-                assert isinstance(t1, gentype.__class__)
-
+            assert isinstance(t1, gentype.__class__)
             assert isinstance(gentype, TypeEngine)
 
-    @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
-    def test_as_generic_all_types_allow_nulltype(self, type_):
+        gentype = t1.as_generic(allow_nulltype=True)
+        if not isinstance(gentype, types.NULLTYPE.__class__):
+            assert isinstance(t1, gentype.__class__)
+            assert isinstance(gentype, TypeEngine)
+
+    @testing.combinations(
+        *[
+            (t,)
+            for t in _all_types(omit_special_types=True)
+            if not t._uses_as_generic_heuristic()
+        ]
+    )
+    def test_as_generic_all_types_custom(self, type_):
         if issubclass(type_, ARRAY):
             t1 = type_(String)
         else:
             t1 = type_()
 
-        # The `allow_nulltype` argument may not be available in custom
-        # implementations of as_generic() which override the
-        # TypeEngine.as_generic heuristic.
-        if t1.__class__._uses_as_generic_heuristic():
-            gentype = t1.as_generic(allow_nulltype=True)
-        else:
-            gentype = t1.as_generic()
-
-        if isinstance(gentype, types.NULLTYPE.__class__):
-            return
-
-        if t1.__class__._uses_as_generic_heuristic():
-            assert isinstance(t1, gentype.__class__)
-
+        gentype = t1.as_generic()
         assert isinstance(gentype, TypeEngine)
 
 

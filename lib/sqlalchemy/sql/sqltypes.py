@@ -1982,6 +1982,9 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
         self.second_precision = second_precision
         self.day_precision = day_precision
 
+    def __repr__(self):
+        return util.generic_repr(self)
+
     @property
     def python_type(self):
         return dt.timedelta
