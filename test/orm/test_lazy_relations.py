@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy import SmallInteger
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import configure_mappers
@@ -1423,7 +1424,7 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
         bmp = bm._props
         configure_mappers()
         # Bug is order-dependent, must sort the "zc" property to the end
-        bmp.sort()
+        util.sort_dictionary(bmp, key=lambda item: item[0])
 
     def test_lazy_doesnt_interfere(self):
         A, B, C = self.classes("A", "B", "C")

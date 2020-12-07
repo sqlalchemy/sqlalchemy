@@ -238,7 +238,7 @@ class LoadTest(PathTest, QueryTest):
 
         l1 = Load(User)
         l2 = l1.joinedload("addresses")
-        to_bind = l2.context.values()[0]
+        to_bind = list(l2.context.values())[0]
         eq_(
             l1.context,
             {("loader", self._make_path([User, "addresses"])): to_bind},

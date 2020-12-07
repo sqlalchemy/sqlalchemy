@@ -6,6 +6,7 @@ from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
@@ -69,7 +70,18 @@ class Canary(object):
         return value
 
 
-class CollectionsTest(fixtures.ORMTest):
+class OrderedDictFixture(object):
+    @testing.fixture
+    def ordered_dict_mro(self):
+        if testing.requires.python37.enabled:
+            return type("ordered", (collections.MappedCollection,), {})
+        else:
+            return type(
+                "ordered", (util.OrderedDict, collections.MappedCollection), {}
+            )
+
+
+class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
     class Entity(object):
         def __init__(self, a=None, b=None, c=None):
             self.a = a
@@ -1287,8 +1299,8 @@ class CollectionsTest(fixtures.ORMTest):
         self._test_dict_bulk(MyEasyDict)
         self.assert_(getattr(MyEasyDict, "_sa_instrumented") == id(MyEasyDict))
 
-    def test_dict_subclass3(self):
-        class MyOrdered(util.OrderedDict, collections.MappedCollection):
+    def test_dict_subclass3(self, ordered_dict_mro):
+        class MyOrdered(ordered_dict_mro):
             def __init__(self):
                 collections.MappedCollection.__init__(self, lambda e: e.a)
                 util.OrderedDict.__init__(self)
@@ -1680,7 +1692,7 @@ class CollectionsTest(fixtures.ORMTest):
         self.assert_(e3 in canary.data)
 
 
-class DictHelpersTest(fixtures.MappedTest):
+class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1922,8 +1934,8 @@ class DictHelpersTest(fixtures.MappedTest):
         )
         self._test_composite_mapped(collection_class)
 
-    def test_mixin(self):
-        class Ordered(util.OrderedDict, collections.MappedCollection):
+    def test_mixin(self, ordered_dict_mro):
+        class Ordered(ordered_dict_mro):
             def __init__(self):
                 collections.MappedCollection.__init__(self, lambda v: v.a)
                 util.OrderedDict.__init__(self)
@@ -1931,8 +1943,8 @@ class DictHelpersTest(fixtures.MappedTest):
         collection_class = Ordered
         self._test_scalar_mapped(collection_class)
 
-    def test_mixin2(self):
-        class Ordered2(util.OrderedDict, collections.MappedCollection):
+    def test_mixin2(self, ordered_dict_mro):
+        class Ordered2(ordered_dict_mro):
             def __init__(self, keyfunc):
                 collections.MappedCollection.__init__(self, keyfunc)
                 util.OrderedDict.__init__(self)
