@@ -483,9 +483,9 @@ class TypeEngine(Traversible):
 
     def as_generic(self, allow_nulltype=False):
         """
-        Return an instance of the generic type corresponding to this type using
-        heuristic rule. The method may be overridden if this heuristic rule is not
-        sufficient.
+        Return an instance of the generic type corresponding to this type
+        using heuristic rule. The method may be overridden if this
+        heuristic rule is not sufficient.
 
         >>> from sqlalchemy.dialects.mysql import INTEGER
         >>> INTEGER(display_width=4).as_generic()
