@@ -2,6 +2,7 @@ from sqlalchemy import Column
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
@@ -54,6 +55,30 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert Point.id.__clause_element__().table is table
         assert alias.id.__clause_element__().table is not table
+
+    def test_named_entity(self):
+        class Point(object):
+            pass
+
+        self._fixture(Point)
+
+        alias = aliased(Point, name="pp")
+
+        self.assert_compile(
+            select(alias), "SELECT pp.id, pp.x, pp.y FROM point AS pp"
+        )
+
+    def test_named_selectable(self):
+        class Point(object):
+            pass
+
+        table = self._fixture(Point)
+
+        alias = aliased(table, name="pp")
+
+        self.assert_compile(
+            select(alias), "SELECT pp.id, pp.x, pp.y FROM point AS pp"
+        )
 
     def test_not_instantiatable(self):
         class Point(object):

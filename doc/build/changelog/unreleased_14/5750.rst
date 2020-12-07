@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5750
+
+    Fixed regression where creating an :class:`_orm.aliased` construct against
+    a plain selectable and including a name would raise an assertionerror.
+
