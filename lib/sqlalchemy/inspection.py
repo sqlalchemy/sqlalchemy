@@ -20,7 +20,7 @@ cases it will return the object itself.
 The rationale for :func:`_sa.inspect` is twofold.  One is that
 it replaces the need to be aware of a large variety of "information
 getting" functions in SQLAlchemy, such as
-:meth:`_reflection.Inspector.from_engine`,
+:meth:`_reflection.Inspector.from_engine` (deprecated in 1.4),
 :func:`.orm.attributes.instance_state`, :func:`_orm.class_mapper`,
 and others.    The other is that the return value of :func:`_sa.inspect`
 is guaranteed to obey a documented API, thus allowing third party
