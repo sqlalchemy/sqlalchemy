@@ -17,7 +17,6 @@ from .visitors import TraversibleType
 from .. import exc
 from .. import util
 
-
 # these are back-assigned by sqltypes.
 BOOLEANTYPE = None
 INTEGERTYPE = None
@@ -372,10 +371,7 @@ class TypeEngine(Traversible):
 
         """
 
-        return (
-            self.__class__.bind_expression.__code__
-            is not TypeEngine.bind_expression.__code__
-        )
+        return util.method_is_overridden(self, TypeEngine.bind_expression)
 
     @staticmethod
     def _to_instance(cls_or_self):
@@ -456,12 +452,13 @@ class TypeEngine(Traversible):
         else:
             return self.__class__
 
-    @classmethod
-    def _is_generic_type(cls):
-        n = cls.__name__
-        return n.upper() != n
-
+    @util.memoized_property
     def _generic_type_affinity(self):
+        best_camelcase = None
+        best_uppercase = None
+
+        if not isinstance(self, (TypeEngine, UserDefinedType)):
+            return self.__class__
 
         for t in self.__class__.__mro__:
             if (
@@ -470,13 +467,56 @@ class TypeEngine(Traversible):
                     "sqlalchemy.sql.sqltypes",
                     "sqlalchemy.sql.type_api",
                 )
-                and t._is_generic_type()
+                and issubclass(t, TypeEngine)
+                and t is not TypeEngine
+                and t.__name__[0] != "_"
             ):
-                if t in (TypeEngine, UserDefinedType):
-                    return NULLTYPE.__class__
-                return t
-        else:
-            return self.__class__
+                if t.__name__.isupper() and not best_uppercase:
+                    best_uppercase = t
+                elif not t.__name__.isupper() and not best_camelcase:
+                    best_camelcase = t
+
+        return best_camelcase or best_uppercase or NULLTYPE.__class__
+
+    def as_generic(self, allow_nulltype=False):
+        """
+        Return an instance of the generic type corresponding to this type
+        using heuristic rule. The method may be overridden if this
+        heuristic rule is not sufficient.
+
+        >>> from sqlalchemy.dialects.mysql import INTEGER
+        >>> INTEGER(display_width=4).as_generic()
+        Integer()
+
+        >>> from sqlalchemy.dialects.mysql import NVARCHAR
+        >>> NVARCHAR(length=100).as_generic()
+        Unicode(length=100)
+
+        .. versionadded:: 1.4.0b2
+
+
+        .. seealso::
+
+            :ref:`metadata_reflection_dbagnostic_types` - describes the
+            use of :meth:`_types.TypeEngine.as_generic` in conjunction with
+            the :meth:`_sql.DDLEvents.column_reflect` event, which is its
+            intended use.
+
+        """
+        if (
+            not allow_nulltype
+            and self._generic_type_affinity == NULLTYPE.__class__
+        ):
+            raise NotImplementedError(
+                "Default TypeEngine.as_generic() "
+                "heuristic method was unsuccessful for {}. A custom "
+                "as_generic() method must be implemented for this "
+                "type class.".format(
+                    self.__class__.__module__ + "." + self.__class__.__name__
+                )
+            )
+
+        return util.constructor_copy(self, self._generic_type_affinity)
 
     def dialect_impl(self, dialect):
         """Return a dialect-specific implementation for this
@@ -1171,18 +1211,16 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         """
 
-        return (
-            self.__class__.process_bind_param.__code__
-            is not TypeDecorator.process_bind_param.__code__
+        return util.method_is_overridden(
+            self, TypeDecorator.process_bind_param
         )
 
     @util.memoized_property
     def _has_literal_processor(self):
         """memoized boolean, check if process_literal_param is implemented."""
 
-        return (
-            self.__class__.process_literal_param.__code__
-            is not TypeDecorator.process_literal_param.__code__
+        return util.method_is_overridden(
+            self, TypeDecorator.process_literal_param
         )
 
     def literal_processor(self, dialect):
@@ -1278,9 +1316,9 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         exception throw.
 
         """
-        return (
-            self.__class__.process_result_value.__code__
-            is not TypeDecorator.process_result_value.__code__
+
+        return util.method_is_overridden(
+            self, TypeDecorator.process_result_value
         )
 
     def result_processor(self, dialect, coltype):
@@ -1322,10 +1360,11 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     @util.memoized_property
     def _has_bind_expression(self):
+
         return (
-            self.__class__.bind_expression.__code__
-            is not TypeDecorator.bind_expression.__code__
-        ) or self.impl._has_bind_expression
+            util.method_is_overridden(self, TypeDecorator.bind_expression)
+            or self.impl._has_bind_expression
+        )
 
     def bind_expression(self, bindparam):
         return self.impl.bind_expression(bindparam)
@@ -1340,9 +1379,9 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
 
         return (
-            self.__class__.column_expression.__code__
-            is not TypeDecorator.column_expression.__code__
-        ) or self.impl._has_column_expression
+            util.method_is_overridden(self, TypeDecorator.column_expression)
+            or self.impl._has_column_expression
+        )
 
     def column_expression(self, column):
         return self.impl.column_expression(column)
