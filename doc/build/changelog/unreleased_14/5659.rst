@@ -1,0 +1,7 @@
+.. change::
+    :tags: datatypes, feature
+    :tickets: 5659
+
+    Added :meth:`_types.TypeEngine.as_generic` to map dialect-specific types,
+    e.g., ``INTEGER`` with the "best match" generic SQLAlchemy type,
+    e.g., ``Integer``. Pull request courtesy Andrew Hannigan.
