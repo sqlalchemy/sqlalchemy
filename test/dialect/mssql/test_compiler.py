@@ -18,6 +18,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
@@ -1253,6 +1254,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y])
         self.assert_compile(
             schema.CreateIndex(idx), "CREATE INDEX foo ON test (x) INCLUDE (y)"
+        )
+
+    def test_index_include_where(self):
+        metadata = MetaData()
+        tbl = Table(
+            "test",
+            metadata,
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("z", Integer),
+        )
+        idx = Index(
+            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where=tbl.c.y > 1
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
+        )
+
+        idx = Index(
+            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where=text("y > 1")
+        )
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
         )
 
     def test_try_cast(self):
