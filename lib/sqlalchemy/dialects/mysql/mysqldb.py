@@ -211,16 +211,25 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # FOUND_ROWS must be set in CLIENT_FLAGS to enable
         # supports_sane_rowcount.
         client_flag = opts.get("client_flag", 0)
+
+        client_flag_found_rows = self._found_rows_client_flag()
+        if client_flag_found_rows is not None:
+            client_flag |= client_flag_found_rows
+            opts["client_flag"] = client_flag
+        return [[], opts]
+
+    def _found_rows_client_flag(self):
         if self.dbapi is not None:
             try:
                 CLIENT_FLAGS = __import__(
                     self.dbapi.__name__ + ".constants.CLIENT"
                 ).constants.CLIENT
-                client_flag |= CLIENT_FLAGS.FOUND_ROWS
             except (AttributeError, ImportError):
-                self.supports_sane_rowcount = False
-            opts["client_flag"] = client_flag
-        return [[], opts]
+                return None
+            else:
+                return CLIENT_FLAGS.FOUND_ROWS
+        else:
+            return None
 
     def _extract_error_code(self, exception):
         return exception.args[0]

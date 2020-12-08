@@ -1,0 +1,10 @@
+.. change::
+    :tags: feature, mysql
+    :tickets: 5747
+
+    Added support for the aiomysql driver when using the asyncio SQLAlchemy
+    extension.
+
+    .. seealso::
+
+      :ref:`aiomysql`
