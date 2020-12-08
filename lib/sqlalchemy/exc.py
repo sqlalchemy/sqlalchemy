@@ -285,6 +285,15 @@ class NoReferenceError(InvalidRequestError):
     """Raised by ``ForeignKey`` to indicate a reference cannot be resolved."""
 
 
+class AwaitRequired(InvalidRequestError):
+    """Error raised by the async greenlet spawn if no async operation
+    was awaited when it required one
+
+    """
+
+    code = "xd1r"
+
+
 class NoReferencedTableError(NoReferenceError):
     """Raised by ``ForeignKey`` when the referred ``Table`` cannot be
     located.
@@ -353,10 +362,6 @@ class DontWrapMixin(object):
                     raise MyCustomException("invalid!")
 
     """
-
-
-# Moved to orm.exc; compatibility definition installed by orm import until 0.6
-UnmappedColumnError = None
 
 
 class StatementError(SQLAlchemyError):

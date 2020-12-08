@@ -16,12 +16,14 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
 from sqlalchemy.testing import async_test
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.asyncio import assert_raises_message_async
 from sqlalchemy.util.concurrency import greenlet_spawn
 
 
@@ -254,12 +256,12 @@ class AsyncEngineTest(EngineFixture):
 
         async with async_engine.connect() as conn:
             trans = conn.begin()
-            await assert_raises_message_async(
+            with expect_raises_message(
                 asyncio_exc.AsyncContextNotStarted,
                 "AsyncTransaction context has not been started "
                 "and object has not been awaited.",
-                trans.rollback(),
-            )
+            ):
+                await trans.rollback(),
 
     @async_test
     async def test_pool_exhausted(self, async_engine):
@@ -270,11 +272,8 @@ class AsyncEngineTest(EngineFixture):
             pool_timeout=0.1,
         )
         async with engine.connect():
-            await assert_raises_message_async(
-                asyncio.TimeoutError,
-                "",
-                engine.connect(),
-            )
+            with expect_raises(asyncio.TimeoutError):
+                await engine.connect()
 
     @async_test
     async def test_create_async_engine_server_side_cursor(self, async_engine):
@@ -530,14 +529,10 @@ class AsyncResultTest(EngineFixture):
                 select(users).where(users.c.user_name == "nonexistent")
             )
 
-            async def go():
+            with expect_raises_message(
+                exc.NoResultFound, "No row was found when one was required"
+            ):
                 await result.one()
-
-            await assert_raises_message_async(
-                exc.NoResultFound,
-                "No row was found when one was required",
-                go(),
-            )
 
     @async_test
     async def test_one_multi_result(self, async_engine):
@@ -547,11 +542,38 @@ class AsyncResultTest(EngineFixture):
                 select(users).where(users.c.user_name.in_(["name3", "name5"]))
             )
 
-            async def go():
-                await result.one()
-
-            await assert_raises_message_async(
+            with expect_raises_message(
                 exc.MultipleResultsFound,
                 "Multiple rows were found when exactly one was required",
-                go(),
+            ):
+                await result.one()
+
+
+class TextSyncDBAPI(fixtures.TestBase):
+    @testing.fixture
+    def async_engine(self):
+        return create_async_engine("sqlite:///:memory:")
+
+    @async_test
+    @combinations(
+        lambda conn: conn.exec_driver_sql("select 1"),
+        lambda conn: conn.stream(text("select 1")),
+        lambda conn: conn.execute(text("select 1")),
+        argnames="case",
+    )
+    async def test_sync_driver_execution(self, async_engine, case):
+        with expect_raises_message(
+            exc.AwaitRequired,
+            "The current operation required an async execution but none was",
+        ):
+            async with async_engine.connect() as conn:
+                await case(conn)
+
+    @async_test
+    async def test_sync_driver_run_sync(self, async_engine):
+        async with async_engine.connect() as conn:
+            res = await conn.run_sync(
+                lambda conn: conn.scalar(text("select 1"))
             )
+            assert res == 1
+            assert await conn.run_sync(lambda _: 2) == 2

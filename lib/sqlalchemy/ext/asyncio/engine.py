@@ -243,6 +243,7 @@ class AsyncConnection(StartableContext, AsyncConnectable):
             statement,
             parameters,
             execution_options,
+            _require_await=True,
         )
         if result.context._is_server_side:
             raise async_exc.AsyncMethodRequired(
@@ -272,6 +273,7 @@ class AsyncConnection(StartableContext, AsyncConnectable):
             util.EMPTY_DICT.merge_with(
                 execution_options, {"stream_results": True}
             ),
+            _require_await=True,
         )
         if not result.context._is_server_side:
             # TODO: real exception here
@@ -322,6 +324,7 @@ class AsyncConnection(StartableContext, AsyncConnectable):
             statement,
             parameters,
             execution_options,
+            _require_await=True,
         )
         if result.context._is_server_side:
             raise async_exc.AsyncMethodRequired(

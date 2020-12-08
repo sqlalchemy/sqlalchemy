@@ -138,3 +138,16 @@ class TestAsyncioCompat(fixtures.TestBase):
             )
         }
         eq_(values, set(range(concurrency)))
+
+    @async_test
+    async def test_require_await(self):
+        def run():
+            return 1 + 1
+
+        assert (await greenlet_spawn(run)) == 2
+
+        with expect_raises_message(
+            exc.AwaitRequired,
+            "The current operation required an async execution but none was",
+        ):
+            await greenlet_spawn(run, _require_await=True)
