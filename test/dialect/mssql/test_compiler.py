@@ -20,6 +20,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
@@ -1299,7 +1300,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         idx = Index(
-            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where="y > 1"
+            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where=text("y > 1")
         )
         self.assert_compile(
             schema.CreateIndex(idx),
