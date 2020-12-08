@@ -1290,18 +1290,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("y", Integer),
             Column("z", Integer),
         )
-        idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y],
-                    mssql_where=tbl.c.y > 1)
+        idx = Index(
+            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where=tbl.c.y > 1
+        )
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1"
+            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
         )
 
-        idx = Index("foo", tbl.c.x, mssql_include=[tbl.c.y],
-                    mssql_where="y > 1")
+        idx = Index(
+            "foo", tbl.c.x, mssql_include=[tbl.c.y], mssql_where="y > 1"
+        )
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1"
+            "CREATE INDEX foo ON test (x) INCLUDE (y) WHERE y > 1",
         )
 
     def test_try_cast(self):
