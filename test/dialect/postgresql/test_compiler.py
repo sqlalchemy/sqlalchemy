@@ -458,7 +458,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx3 = Index(
             "test_idx2",
             tbl.c.data,
-            postgresql_where="data > 'a' AND data < 'b''s'",
+            postgresql_where=text("data > 'a' AND data < 'b''s'"),
         )
         self.assert_compile(
             schema.CreateIndex(idx3),

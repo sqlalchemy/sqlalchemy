@@ -173,11 +173,14 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_statement_text_coercion(self):
-        is_true(
-            expect(
-                roles.CoerceTextStatementRole, "select * from table"
-            ).compare(text("select * from table"))
-        )
+        with testing.expect_deprecated_20(
+            "Using plain strings to indicate SQL statements"
+        ):
+            is_true(
+                expect(
+                    roles.CoerceTextStatementRole, "select * from table"
+                ).compare(text("select * from table"))
+            )
 
     def test_select_statement_no_text_coercion(self):
         assert_raises_message(

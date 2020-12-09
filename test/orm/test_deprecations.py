@@ -2003,6 +2003,33 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         ):
             s1.transaction
 
+    def test_textual_execute(self, connection):
+        """test that Session.execute() converts to text()"""
+
+        users = self.tables.users
+
+        with Session(bind=connection) as sess:
+            sess.execute(users.insert(), dict(id=7, name="jack"))
+
+            with testing.expect_deprecated_20(
+                "Using plain strings to indicate SQL statements "
+                "without using the text"
+            ):
+                # use :bindparam style
+                eq_(
+                    sess.execute(
+                        "select * from users where id=:id", {"id": 7}
+                    ).fetchall(),
+                    [(7, "jack")],
+                )
+
+            with testing.expect_deprecated_20(
+                "Using plain strings to indicate SQL statements "
+                "without using the text"
+            ):
+                # use :bindparam style
+                eq_(sess.scalar("select id from users where id=:id", {"id": 7}), 7)
+
     def test_session_str(self):
         s1 = Session(testing.db)
         str(s1)

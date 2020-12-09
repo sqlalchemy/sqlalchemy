@@ -682,6 +682,10 @@ class DDLExpressionImpl(_Deannotate, _CoerceLiterals, RoleImpl):
     _coerce_consts = True
 
     def _text_coercion(self, element, argname=None):
+        # see #5754 for why we can't easily deprecate this coercion.
+        # essentially expressions like postgresql_where would have to be
+        # text() as they come back from reflection and we don't want to
+        # have text() elements wired into the inspection dictionaries.
         return elements.TextClause(element)
 
 
@@ -769,21 +773,6 @@ class StatementImpl(_NoTextCoercion, RoleImpl):
 class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
 
-    def _dont_literal_coercion(self, element, **kw):
-        if callable(element) and hasattr(element, "__code__"):
-            return lambdas.StatementLambdaElement(
-                element,
-                self._role_class,
-                additional_cache_criteria=kw.get(
-                    "additional_cache_criteria", ()
-                ),
-                tracked=kw["tra"],
-            )
-        else:
-            return super(CoerceTextStatementImpl, self)._literal_coercion(
-                element, **kw
-            )
-
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
@@ -795,8 +784,12 @@ class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
             )
 
     def _text_coercion(self, element, argname=None):
-        # TODO: this should emit deprecation warning,
-        # see deprecation warning in engine/base.py execute()
+        util.warn_deprecated_20(
+            "Using plain strings to indicate SQL statements without using "
+            "the text() construct is  "
+            "deprecated and will be removed in version 2.0.  Ensure plain "
+            "SQL statements are passed using the text() construct."
+        )
         return elements.TextClause(element)
 
 

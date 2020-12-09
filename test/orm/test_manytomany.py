@@ -387,7 +387,7 @@ class M2MTest(fixtures.MappedTest):
         p1.place_id
         p1.transitions
 
-        sess.execute("delete from place_input", mapper=Place)
+        sess.execute(place_input.delete(), mapper=Place)
         p1.place_id = 7
 
         assert_raises_message(
@@ -400,7 +400,7 @@ class M2MTest(fixtures.MappedTest):
 
         p1.place_id
         p1.transitions
-        sess.execute("delete from place_input", mapper=Place)
+        sess.execute(place_input.delete(), mapper=Place)
         p1.transitions.remove(t1)
         assert_raises_message(
             orm_exc.StaleDataError,
