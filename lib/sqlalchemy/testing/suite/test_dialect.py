@@ -119,6 +119,28 @@ class IsolationLevelTest(fixtures.TestBase):
 
             eq_(conn.get_isolation_level(), existing)
 
+    def test_all_levels(self):
+        levels = requirements.get_isolation_levels(config)
+
+        all_levels = levels["supported"]
+
+        for level in set(all_levels).difference(["AUTOCOMMIT"]):
+            with config.db.connect() as conn:
+                conn.execution_options(isolation_level=level)
+
+                eq_(conn.get_isolation_level(), level)
+
+                trans = conn.begin()
+                trans.rollback()
+
+                eq_(conn.get_isolation_level(), level)
+
+            with config.db.connect() as conn:
+                eq_(
+                    conn.get_isolation_level(),
+                    levels["default"],
+                )
+
 
 class AutocommitTest(fixtures.TablesTest):
 

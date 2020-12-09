@@ -38,18 +38,15 @@ This step is also required when using table reflection, i.e. autoload=True::
         autoload=True
   )
 
+
+.. _oracle_isolation_level:
+
 Transaction Isolation Level / Autocommit
 ----------------------------------------
 
-The Oracle database supports "READ COMMITTED" and "SERIALIZABLE" modes
-of isolation, however the SQLAlchemy Oracle dialect currently only has
-explicit support for "READ COMMITTED".  It is possible to emit a
-"SET TRANSACTION" statement on a connection in order to use SERIALIZABLE
-isolation, however the SQLAlchemy dialect will remain unaware of this setting,
-such as if the :meth:`_engine.Connection.get_isolation_level` method is used;
-this method is hardcoded to return "READ COMMITTED" right now.
-
-The AUTOCOMMIT isolation level is also supported by the cx_Oracle dialect.
+The Oracle database supports "READ COMMITTED" and "SERIALIZABLE" modes of
+isolation. The AUTOCOMMIT isolation level is also supported by the cx_Oracle
+dialect.
 
 To set using per-connection execution options::
 
@@ -58,15 +55,27 @@ To set using per-connection execution options::
         isolation_level="AUTOCOMMIT"
     )
 
+For ``READ COMMITTED`` and ``SERIALIZABLE``, the Oracle dialect sets the
+level at the session level using ``ALTER SESSION``, which is reverted back
+to its default setting when the connection is returned to the connection
+pool.
+
 Valid values for ``isolation_level`` include:
 
 * ``READ COMMITTED``
 * ``AUTOCOMMIT``
+* ``SERIALIZABLE``
 
+.. note:: The implementation :meth:`_engine.Connection.get_isolation_level`
+   implemented by the Oracle dialect necessarily forces the start of
+   a transaction using the Oracle LOCAL_TRANSACTION_ID function; otherwise
+   no level is normally readable.
 
 .. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_oracle dialect
-   as well as the notion of a default isolation level, currently hardcoded
-   to "READ COMMITTED".
+   as well as the notion of a default isolation level
+
+.. versionadded:: 1.3.21 Added support for SERIALIZABLE as well as live
+   reading of the isolation level.
 
 .. seealso::
 
@@ -1394,19 +1403,13 @@ class OracleDialect(default.DefaultDialect):
             connection, additional_tests
         )
 
-    _isolation_lookup = ["READ COMMITTED"]
+    _isolation_lookup = ["READ COMMITTED", "SERIALIZABLE"]
 
     def get_isolation_level(self, connection):
-        return "READ COMMITTED"
+        raise NotImplementedError("implemented by cx_Oracle dialect")
 
     def set_isolation_level(self, connection, level):
-        # prior to adding AUTOCOMMIT support for cx_Oracle, the Oracle dialect
-        # had no notion of setting the isolation level.  As Oracle
-        # does not have a straightforward way of getting the isolation level
-        # if a server-side transaction is not yet in progress, we currently
-        # hardcode to only support "READ COMMITTED" and "AUTOCOMMIT" at the
-        # cx_oracle level.  See #5200.
-        pass
+        raise NotImplementedError("implemented by cx_Oracle dialect")
 
     def has_table(self, connection, table_name, schema=None):
         if not schema:

@@ -338,6 +338,12 @@ class DBAPIProxyCursor(object):
     def __getattr__(self, key):
         return getattr(self.cursor, key)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
 
 class DBAPIProxyConnection(object):
     """Proxy a DBAPI connection.

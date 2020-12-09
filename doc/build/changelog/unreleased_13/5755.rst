@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, oracle
+    :tickets: 5755
+
+    Implemented support for the SERIALIZABLE isolation level for Oracle
+    databases, as well as a real implementation for
+    :meth:`_engine.Connection.get_isolation_level`.
+
+    .. seealso::
+
+        :ref:`oracle_isolation_level`

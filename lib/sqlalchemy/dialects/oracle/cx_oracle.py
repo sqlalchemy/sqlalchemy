@@ -924,6 +924,66 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         self._detect_decimal_char(connection)
 
+    def get_isolation_level(self, connection):
+        # sources:
+
+        # general idea of transaction id, have to start one, etc.
+        # https://stackoverflow.com/questions/10711204/how-to-check-isoloation-level
+
+        # how to decode xid cols from v$transaction to match
+        # https://asktom.oracle.com/pls/apex/f?p=100:11:0::::P11_QUESTION_ID:9532779900346079444
+
+        # Oracle tuple comparison without using IN:
+        # https://www.sql-workbench.eu/comparison/tuple_comparison.html
+
+        with connection.cursor() as cursor:
+            # this is the only way to ensure a transaction is started without
+            # actually running DML.   There's no way to see the configured
+            # isolation level without getting it from v$transaction which
+            # means transaction has to be started.
+            outval = cursor.var(str)
+            cursor.execute(
+                """
+                begin
+                   :trans_id := dbms_transaction.local_transaction_id( TRUE );
+                end;
+                """,
+                {"trans_id": outval},
+            )
+            trans_id = outval.getvalue()
+            xidusn, xidslot, xidsqn = trans_id.split(".", 2)
+
+            cursor.execute(
+                "SELECT CASE BITAND(t.flag, POWER(2, 28)) "
+                "WHEN 0 THEN 'READ COMMITTED' "
+                "ELSE 'SERIALIZABLE' END AS isolation_level "
+                "FROM v$transaction t WHERE "
+                "(t.xidusn, t.xidslot, t.xidsqn) = "
+                "((:xidusn, :xidslot, :xidsqn))",
+                {"xidusn": xidusn, "xidslot": xidslot, "xidsqn": xidsqn},
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise exc.InvalidRequestError(
+                    "could not retrieve isolation level"
+                )
+            result = row[0]
+
+        return result
+
+    def set_isolation_level(self, connection, level):
+        if hasattr(connection, "connection"):
+            dbapi_connection = connection.connection
+        else:
+            dbapi_connection = connection
+        if level == "AUTOCOMMIT":
+            dbapi_connection.autocommit = True
+        else:
+            dbapi_connection.autocommit = False
+            connection.rollback()
+            with connection.cursor() as cursor:
+                cursor.execute("ALTER SESSION SET ISOLATION_LEVEL=%s" % level)
+
     def _detect_decimal_char(self, connection):
         # we have the option to change this setting upon connect,
         # or just look at what it is upon connect and convert.
@@ -1205,19 +1265,6 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def do_recover_twophase(self, connection):
         connection.info.pop("cx_oracle_prepared", None)
-
-    def set_isolation_level(self, connection, level):
-        if hasattr(connection, "connection"):
-            dbapi_connection = connection.connection
-        else:
-            dbapi_connection = connection
-        if level == "AUTOCOMMIT":
-            dbapi_connection.autocommit = True
-        else:
-            dbapi_connection.autocommit = False
-            super(OracleDialect_cx_oracle, self).set_isolation_level(
-                dbapi_connection, level
-            )
 
 
 dialect = OracleDialect_cx_oracle
