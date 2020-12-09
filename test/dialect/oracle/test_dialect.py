@@ -473,9 +473,15 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
             return server_version
 
         dialect = oracle.dialect(
-            dbapi=Mock(version="0.0.0", paramstyle="named"), **kw
+            dbapi=Mock(
+                version="0.0.0",
+                paramstyle="named",
+            ),
+            **kw
         )
+
         dialect._get_server_version_info = server_version_info
+        dialect.get_isolation_level = Mock()
         dialect._check_unicode_returns = Mock()
         dialect._check_unicode_description = Mock()
         dialect._get_default_schema_name = Mock()
