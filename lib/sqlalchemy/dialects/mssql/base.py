@@ -2286,18 +2286,6 @@ class MSDDLCompiler(compiler.DDLCompiler):
             ),
         )
 
-        whereclause = index.dialect_options["mssql"]["where"]
-
-        if whereclause is not None:
-            whereclause = coercions.expect(
-                roles.DDLExpressionRole, whereclause
-            )
-
-            where_compiled = self.sql_compiler.process(
-                whereclause, include_table=False, literal_binds=True
-            )
-            text += " WHERE " + where_compiled
-
         # handle other included columns
         if index.dialect_options["mssql"]["include"]:
             inclusions = [
@@ -2310,6 +2298,18 @@ class MSDDLCompiler(compiler.DDLCompiler):
             text += " INCLUDE (%s)" % ", ".join(
                 [preparer.quote(c.name) for c in inclusions]
             )
+
+        whereclause = index.dialect_options["mssql"]["where"]
+
+        if whereclause is not None:
+            whereclause = coercions.expect(
+                roles.DDLExpressionRole, whereclause
+            )
+
+            where_compiled = self.sql_compiler.process(
+                whereclause, include_table=False, literal_binds=True
+            )
+            text += " WHERE " + where_compiled
 
         return text
 

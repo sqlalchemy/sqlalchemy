@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 5751
+
+    Fixed bug where a CREATE INDEX statement was rendered incorrectly when
+    both ``mssql-include`` and ``mssql_where`` were specified. Pull request
+    courtesy @Adiorz.
