@@ -3311,3 +3311,92 @@ class TestModuleRegistry(fixtures.TestBase):
             for name, mod in to_restore:
                 if mod is not None:
                     sys.modules[name] = mod
+
+
+class MethodOveriddenTest(fixtures.TestBase):
+    def test_subclass_overrides_cls_given(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            def bar(self):
+                pass
+
+        is_true(util.method_is_overridden(Bar, Foo.bar))
+
+    def test_subclass_overrides(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            def bar(self):
+                pass
+
+        is_true(util.method_is_overridden(Bar(), Foo.bar))
+
+    def test_subclass_overrides_skiplevel(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            pass
+
+        class Bat(Bar):
+            def bar(self):
+                pass
+
+        is_true(util.method_is_overridden(Bat(), Foo.bar))
+
+    def test_subclass_overrides_twolevels(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            def bar(self):
+                pass
+
+        class Bat(Bar):
+            pass
+
+        is_true(util.method_is_overridden(Bat(), Foo.bar))
+
+    def test_subclass_doesnt_override_cls_given(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            pass
+
+        is_false(util.method_is_overridden(Bar, Foo.bar))
+
+    def test_subclass_doesnt_override(self):
+        class Foo(object):
+            def bar(self):
+                pass
+
+        class Bar(Foo):
+            pass
+
+        is_false(util.method_is_overridden(Bar(), Foo.bar))
+
+    def test_subclass_overrides_multi_mro(self):
+        class Base(object):
+            pass
+
+        class Foo(object):
+            pass
+
+        class Bat(Base):
+            def bar(self):
+                pass
+
+        class HoHo(Foo, Bat):
+            def bar(self):
+                pass
+
+        is_true(util.method_is_overridden(HoHo(), Bat.bar))

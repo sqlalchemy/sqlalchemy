@@ -58,6 +58,9 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+import sqlalchemy.dialects.mysql as mysql
+import sqlalchemy.dialects.oracle as oracle
+import sqlalchemy.dialects.postgresql as pg
 from sqlalchemy.engine import default
 from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CheckConstraint
@@ -69,6 +72,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.sqltypes import TypeEngine
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -381,6 +385,69 @@ class TypeAffinityTest(fixtures.TestBase):
         d = postgresql.dialect()
         assert t1._type_affinity is String
         assert t1.dialect_impl(d)._type_affinity is postgresql.UUID
+
+
+class AsGenericTest(fixtures.TestBase):
+    @testing.combinations(
+        (String(), String()),
+        (VARCHAR(length=100), String(length=100)),
+        (NVARCHAR(length=100), Unicode(length=100)),
+        (DATE(), Date()),
+        (pg.JSON(), sa.JSON()),
+        (pg.ARRAY(sa.String), sa.ARRAY(sa.String)),
+        (Enum("a", "b", "c"), Enum("a", "b", "c")),
+        (pg.ENUM("a", "b", "c"), Enum("a", "b", "c")),
+        (mysql.ENUM("a", "b", "c"), Enum("a", "b", "c")),
+        (pg.INTERVAL(precision=5), Interval(native=True, second_precision=5)),
+        (
+            oracle.INTERVAL(second_precision=5, day_precision=5),
+            Interval(native=True, day_precision=5, second_precision=5),
+        ),
+    )
+    def test_as_generic(self, t1, t2):
+        assert repr(t1.as_generic(allow_nulltype=False)) == repr(t2)
+
+    @testing.combinations(
+        *[
+            (t,)
+            for t in _all_types(omit_special_types=True)
+            if not util.method_is_overridden(t, TypeEngine.as_generic)
+        ]
+    )
+    def test_as_generic_all_types_heuristic(self, type_):
+        if issubclass(type_, ARRAY):
+            t1 = type_(String)
+        else:
+            t1 = type_()
+
+        try:
+            gentype = t1.as_generic()
+        except NotImplementedError:
+            pass
+        else:
+            assert isinstance(t1, gentype.__class__)
+            assert isinstance(gentype, TypeEngine)
+
+        gentype = t1.as_generic(allow_nulltype=True)
+        if not isinstance(gentype, types.NULLTYPE.__class__):
+            assert isinstance(t1, gentype.__class__)
+            assert isinstance(gentype, TypeEngine)
+
+    @testing.combinations(
+        *[
+            (t,)
+            for t in _all_types(omit_special_types=True)
+            if util.method_is_overridden(t, TypeEngine.as_generic)
+        ]
+    )
+    def test_as_generic_all_types_custom(self, type_):
+        if issubclass(type_, ARRAY):
+            t1 = type_(String)
+        else:
+            t1 = type_()
+
+        gentype = t1.as_generic(allow_nulltype=False)
+        assert isinstance(gentype, TypeEngine)
 
 
 class PickleTypesTest(fixtures.TestBase):

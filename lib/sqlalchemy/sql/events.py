@@ -314,4 +314,7 @@ class DDLEvents(event.Events):
             :ref:`automap_intercepting_columns` -
             in the :ref:`automap_toplevel` documentation
 
+            :ref:`metadata_reflection_dbagnostic_types` - in
+            the :ref:`metadata_reflection_toplevel` documentation
+
         """

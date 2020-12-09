@@ -147,6 +147,7 @@ from .langhelpers import md5_hex  # noqa
 from .langhelpers import memoized_instancemethod  # noqa
 from .langhelpers import memoized_property  # noqa
 from .langhelpers import MemoizedSlots  # noqa
+from .langhelpers import method_is_overridden  # noqa
 from .langhelpers import methods_equivalent  # noqa
 from .langhelpers import monkeypatch_proxied_specials  # noqa
 from .langhelpers import NoneType  # noqa

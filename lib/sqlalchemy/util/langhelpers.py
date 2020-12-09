@@ -114,6 +114,21 @@ def clsname_as_plain_name(cls):
     )
 
 
+def method_is_overridden(instance_or_cls, against_method):
+    """Return True if the two class methods don't match."""
+
+    if not isinstance(instance_or_cls, type):
+        current_cls = instance_or_cls.__class__
+    else:
+        current_cls = instance_or_cls
+
+    method_name = against_method.__name__
+
+    current_method = getattr(current_cls, method_name)
+
+    return current_method != against_method
+
+
 def decode_slice(slc):
     """decode a slice object as sent to __getitem__.
 

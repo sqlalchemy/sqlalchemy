@@ -1607,6 +1607,18 @@ class Enum(Emulated, String, SchemaType):
             to_inspect=[Enum, SchemaType],
         )
 
+    def as_generic(self, allow_nulltype=False):
+        if hasattr(self, "enums"):
+            args = self.enums
+        else:
+            raise NotImplementedError(
+                "TypeEngine.as_generic() heuristic "
+                "is undefined for types that inherit Enum but do not have "
+                "an `enums` attribute."
+            )
+
+        return util.constructor_copy(self, self._generic_type_affinity, *args)
+
     def adapt_to_emulated(self, impltype, **kw):
         kw.setdefault("_expect_unicode", self._expect_unicode)
         kw.setdefault("validate_strings", self.validate_strings)

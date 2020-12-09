@@ -1474,6 +1474,9 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     def _type_affinity(self):
         return sqltypes.Interval
 
+    def as_generic(self, allow_nulltype=False):
+        return sqltypes.Interval(native=True, second_precision=self.precision)
+
     @property
     def python_type(self):
         return dt.timedelta

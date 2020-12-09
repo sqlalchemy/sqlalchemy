@@ -140,6 +140,121 @@ database is also available. This is known as the "Inspector"::
     :members:
     :undoc-members:
 
+.. _metadata_reflection_dbagnostic_types:
+
+Reflecting with Database-Agnostic Types
+---------------------------------------
+
+When the columns of a table are reflected, using either the
+:paramref:`_schema.Table.autoload_with` parameter of :class:`_schema.Table` or
+the :meth:`_reflection.Inspector.get_columns` method of
+:class:`_reflection.Inspector`, the datatypes will be as specific as possible
+to the target database.   This means that if an "integer" datatype is reflected
+from a MySQL database, the type will be represented by the
+:class:`sqlalchemy.dialects.mysql.INTEGER` class, which includes MySQL-specific
+attributes such as "display_width".   Or on PostgreSQL, a PostgreSQL-specific
+datatype such as :class:`sqlalchemy.dialects.postgresql.INTERVAL` or
+:class:`sqlalchemy.dialects.postgresql.ENUM` may be returned.
+
+There is a use case for reflection which is that a given :class:`_schema.Table`
+is to be transferred to a different vendor database.   To suit this use case,
+there is a technique by which these vendor-specific datatypes can be converted
+on the fly to be instance of SQLAlchemy backend-agnostic datatypes, for
+the examples above types such as :class:`_types.Integer`, :class:`_types.Interval`
+and :class:`_types.Enum`.   This may be achieved by intercepting the
+column reflection using the :meth:`_events.DDLEvents.column_reflect` event
+in conjunction with the :meth:`_types.TypeEngine.as_generic` method.
+
+Given a table in MySQL (chosen because MySQL has a lot of vendor-specific
+datatypes and options)::
+
+    CREATE TABLE IF NOT EXISTS my_table (
+        id INTEGER PRIMARY KEY AUTO_INCREMENT,
+        data1 VARCHAR(50) CHARACTER SET latin1,
+        data2 MEDIUMINT(4),
+        data3 TINYINT(2)
+    )
+
+The above table includes MySQL-only integer types ``MEDIUMINT`` and
+``TINYINT`` as well as a ``VARCHAR`` that includes the MySQL-only ``CHARACTER
+SET`` option.   If we reflect this table normally, it produces a
+:class:`_schema.Table` object that will contain those MySQL-specific datatypes
+and options:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import MetaData, Table, create_engine
+    >>> mysql_engine = create_engine("mysql://scott:tiger@localhost/test")
+    >>> metadata = MetaData()
+    >>> my_mysql_table = Table("my_table", metadata, autoload_with=mysql_engine)
+
+The above example reflects the above table schema into a new :class:`_schema.Table`
+object.  We can then, for demonstration purposes, print out the MySQL-specific
+"CREATE TABLE" statement using the :class:`_schema.CreateTable` construct:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.schema import CreateTable
+    >>> print(CreateTable(my_mysql_table).compile(mysql_engine))
+    {opensql}CREATE TABLE my_table (
+    id INTEGER(11) NOT NULL AUTO_INCREMENT,
+    data1 VARCHAR(50) CHARACTER SET latin1,
+    data2 MEDIUMINT(4),
+    data3 TINYINT(2),
+    PRIMARY KEY (id)
+    )ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+
+
+Above, the MySQL-specific datatypes and options were maintained.   If we wanted
+a :class:`_schema.Table` that we could instead transfer cleanly to another
+database vendor, replacing the special datatypes
+:class:`sqlalchemy.dialects.mysql.MEDIUMINT` and
+:class:`sqlalchemy.dialects.mysql.TINYINT` with :class:`_types.Integer`, we can
+choose instead to "genericize" the datatypes on this table, or otherwise change
+them in any way we'd like, by establishing a handler using the
+:meth:`_events.DDLEvents.column_reflect` event.  The custom handler will make use
+of the :meth:`_types.TypeEngine.as_generic` method to convert the above
+MySQL-specific type objects into generic ones, by replacing the ``"type"``
+entry within the column dictionary entry that is passed to the event handler.
+The format of this dictionary is described at :meth:`_reflection.Inspector.get_columns`:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import event
+    >>> metadata = MetaData()
+
+    >>> @event.listens_for(metadata, "column_reflect")
+    >>> def genericize_datatypes(inspector, tablename, column_dict):
+    ...     column_dict["type"] = column_dict["type"].as_generic()
+
+    >>> my_generic_table = Table("my_table", metadata, autoload_with=mysql_engine)
+
+We now get a new :class:`_schema.Table` that is generic and uses
+:class:`_types.Integer` for those datatypes.  We can now emit a
+"CREATE TABLE" statement for example on a PostgreSQL database:
+
+.. sourcecode:: pycon+sql
+
+    >>> pg_engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    >>> my_generic_table.create(pg_engine)
+    {opensql}CREATE TABLE my_table (
+        id SERIAL NOT NULL,
+        data1 VARCHAR(50),
+        data2 INTEGER,
+        data3 INTEGER,
+        PRIMARY KEY (id)
+    )
+
+Noting above also that SQLAlchemy will usually make a decent guess for other
+behaviors, such as that the MySQL ``AUTO_INCREMENT`` directive is represented
+in PostgreSQL most closely using the ``SERIAL`` auto-incrementing datatype.
+
+.. versionadded:: 1.4 Added the :meth:`_types.TypeEngine.as_generic` method
+   and additionally improved the use of the :meth:`_events.DDLEvents.column_reflect`
+   event such that it may be applied to a :class:`_schema.MetaData` object
+   for convenience.
+
+
 Limitations of Reflection
 -------------------------
 
