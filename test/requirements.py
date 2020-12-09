@@ -1306,9 +1306,7 @@ class DefaultRequirements(SuiteRequirements):
     def async_dialect(self):
         """dialect makes use of await_() to invoke operations on the DBAPI."""
 
-        return only_on(
-            ["postgresql+asyncpg", "mysql+aiomysql", "mariadb+aiomysql"]
-        )
+        return only_on(["postgresql+asyncpg"])
 
     @property
     def oracle_test_dblink(self):
@@ -1355,10 +1353,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def percent_schema_names(self):
-        return skip_if(
-            ["mysql+aiomysql", "mariadb+aiomysql"],
-            "see pr https://github.com/aio-libs/aiomysql/pull/545",
-        )
+        return exclusions.open()
 
     @property
     def order_by_label_with_expression(self):

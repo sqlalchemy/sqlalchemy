@@ -1369,7 +1369,6 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             "+pymysql",
             "+pg8000",
             "+asyncpg",
-            "+aiomysql",
         ],
         "Buffers the result set and doesn't check for connection close",
     )

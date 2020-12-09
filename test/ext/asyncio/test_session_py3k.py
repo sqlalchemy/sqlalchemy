@@ -55,7 +55,6 @@ class AsyncSessionQueryTest(AsyncFixture):
         eq_(result.scalars().all(), self.static.user_address_result)
 
     @async_test
-    @testing.requires.independent_cursors
     async def test_stream_partitions(self, async_session):
         User = self.classes.User
 
@@ -100,7 +99,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
                 result = await async_session.execute(select(User))
                 eq_(result.scalar(), u1)
 
-            await outer_conn.rollback()
             eq_(await outer_conn.scalar(select(func.count(User.id))), 1)
 
     @async_test
@@ -120,7 +118,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             await async_session.commit()
 
-            await outer_conn.rollback()
             eq_(await outer_conn.scalar(select(func.count(User.id))), 1)
 
     @async_test
@@ -142,7 +139,6 @@ class AsyncSessionTransactionTest(AsyncFixture):
             finally:
                 await trans.commit()
 
-            await outer_conn.rollback()
             eq_(await outer_conn.scalar(select(func.count(User.id))), 1)
 
     @async_test

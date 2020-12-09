@@ -114,8 +114,9 @@ class RowFetchTest(fixtures.TablesTest):
 class PercentSchemaNamesTest(fixtures.TablesTest):
     """tests using percent signs, spaces in table and column names.
 
-    This didn't work for PostgreSQL / MySQL drivers for a long time
-    but is now supported.
+    This is a very fringe use case, doesn't work for MySQL
+    or PostgreSQL.  the requirement, "percent_schema_names",
+    is marked "skip" by default.
 
     """
 
@@ -232,8 +233,6 @@ class ServerSideCursorsTest(
         elif self.engine.dialect.driver == "pymysql":
             sscursor = __import__("pymysql.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)
-        elif self.engine.dialect.driver == "aiomysql":
-            return cursor.server_side
         elif self.engine.dialect.driver == "mysqldb":
             sscursor = __import__("MySQLdb.cursors").cursors.SSCursor
             return isinstance(cursor, sscursor)

@@ -49,10 +49,6 @@ from .base import VARCHAR
 from .base import YEAR
 from .dml import Insert
 from .dml import insert
-from ...util import compat
-
-if compat.py3k:
-    from . import aiomysql  # noqa
 
 
 # default dialect

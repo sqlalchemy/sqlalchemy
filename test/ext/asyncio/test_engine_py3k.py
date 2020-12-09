@@ -111,9 +111,7 @@ class AsyncEngineTest(EngineFixture):
         dbapi_connection = connection_fairy.connection
 
         await conn.invalidate()
-
-        if testing.against("postgresql+asyncpg"):
-            assert dbapi_connection._connection.is_closed()
+        assert dbapi_connection._connection.is_closed()
 
         new_fairy = await conn.get_raw_connection()
         is_not(new_fairy.connection, dbapi_connection)
@@ -430,8 +428,6 @@ class AsyncResultTest(EngineFixture):
                 result = result.mappings()
 
             eq_(result.keys(), ["user_id", "user_name"])
-
-            await result.close()
 
     @async_test
     async def test_unique_all(self, async_engine):
