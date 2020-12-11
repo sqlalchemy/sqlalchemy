@@ -489,6 +489,7 @@ class Connection(Connectable):
                 code="8s2b",
             )
         else:
+            assert not self._is_future
             raise exc.PendingRollbackError(
                 "This connection is on an inactive %stransaction.  "
                 "Please rollback() fully before proceeding."
@@ -2189,6 +2190,15 @@ class MarkerTransaction(Transaction):
                 "the current transaction on this connection is inactive.  "
                 "Please issue a rollback first."
             )
+
+        assert not connection._is_future
+        util.warn_deprecated_20(
+            "Calling .begin() when a transaction is already begun, creating "
+            "a 'sub' transaction, is deprecated "
+            "and will be removed in 2.0.  See the documentation section "
+            "'Migrating from the nesting pattern' for background on how "
+            "to migrate from this pattern."
+        )
 
         self.connection = connection
         if connection._nested_transaction is not None:

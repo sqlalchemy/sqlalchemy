@@ -2459,28 +2459,6 @@ class SavepointTest(fixtures.TablesTest):
         )
         connection.close()
 
-    def test_rollback_to_subtransaction(self):
-        users = self.tables.users
-        connection = self.bind.connect()
-        transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        trans3 = connection.begin()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
-        trans3.rollback()
-
-        trans2.rollback()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
-        transaction.commit()
-        eq_(
-            connection.execute(
-                select(users.c.user_id).order_by(users.c.user_id)
-            ).fetchall(),
-            [(1,), (4,)],
-        )
-        connection.close()
-
 
 class TypeReflectionTest(fixtures.TestBase):
 
