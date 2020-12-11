@@ -12,6 +12,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
@@ -596,6 +597,53 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt = go(name)
 
             eq_(s.execute(stmt).scalars().all(), [UserWFoob(name=name)])
+
+    def test_never_for_refresh(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db)
+        u1 = s.get(User, 8)
+
+        @event.listens_for(s, "do_orm_execute")
+        def add_criteria(orm_context):
+            orm_context.statement = orm_context.statement.options(
+                with_loader_criteria(User, User.id != 8)
+            )
+
+        s.refresh(u1)
+        eq_(u1.name, "ed")
+
+    def test_never_for_unexpire(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db)
+        u1 = s.get(User, 8)
+
+        s.expire(u1)
+
+        @event.listens_for(s, "do_orm_execute")
+        def add_criteria(orm_context):
+            orm_context.statement = orm_context.statement.options(
+                with_loader_criteria(User, User.id != 8)
+            )
+
+        eq_(u1.name, "ed")
+
+    def test_never_for_undefer(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db)
+        u1 = s.execute(
+            select(User).options(defer(User.name)).filter(User.id == 8)
+        ).scalar_one()
+
+        @event.listens_for(s, "do_orm_execute")
+        def add_criteria(orm_context):
+            orm_context.statement = orm_context.statement.options(
+                with_loader_criteria(User, User.id != 8)
+            )
+
+        eq_(u1.name, "ed")
 
 
 class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):

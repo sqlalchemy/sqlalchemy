@@ -935,17 +935,38 @@ class LoaderCriteriaOption(CriteriaOption):
 
             @event.listens_for("do_orm_execute", session)
             def _add_filtering_criteria(execute_state):
-                execute_state.statement = execute_state.statement.options(
-                    with_loader_criteria(
-                        SecurityRole,
-                        lambda cls: cls.role.in_(['some_role']),
-                        include_aliases=True
+
+                if (
+                    execute_state.is_select
+                    and not execute_state.is_column_load
+                    and not execute_state.is_relationship_load
+                ):
+                    execute_state.statement = execute_state.statement.options(
+                        with_loader_criteria(
+                            SecurityRole,
+                            lambda cls: cls.role.in_(['some_role']),
+                            include_aliases=True
+                        )
                     )
-                )
 
-        The given class will expand to include all mapped subclass and
-        need not itself be a mapped class.
+        In the above example, the :meth:`_orm.SessionEvents.do_orm_execute`
+        event will intercept all queries emitted using the
+        :class:`_orm.Session`. For those queries which are SELECT statements
+        and are not attribute or relationship loads a custom
+        :func:`_orm.with_loader_criteria` option is added to the query.    The
+        :func:`_orm.with_loader_criteria` option will be used in the given
+        statement and will also be automatically propagated to all relationship
+        loads that descend from this query.
 
+        The criteria argument given is a ``lambda`` that accepts a ``cls``
+        argument.  The given class will expand to include all mapped subclass
+        and need not itself be a mapped class.
+
+        .. warning:: The use of a lambda inside of the call to
+          :func:`_orm.with_loader_criteria` is only invoked **once per unique
+          class**. Custom functions should not be invoked within this lambda.
+          See :ref:`engine_lambda_caching` for an overview of the "lambda SQL"
+          feature, which is for advanced use only.
 
         :param entity_or_base: a mapped class, or a class that is a super
          class of a particular set of mapped classes, to which the rule
@@ -1028,7 +1049,8 @@ class LoaderCriteriaOption(CriteriaOption):
         # if options to limit the criteria to immediate query only,
         # use compile_state.attributes instead
 
-        self.get_global_criteria(compile_state.global_attributes)
+        if not compile_state.compile_options._for_refresh_state:
+            self.get_global_criteria(compile_state.global_attributes)
 
     def get_global_criteria(self, attributes):
         for mp in self._all_mappers():

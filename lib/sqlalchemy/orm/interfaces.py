@@ -724,8 +724,8 @@ class ORMOption(ExecutableOption):
 
     propagate_to_loaders = False
     """if True, indicate this option should be carried along
-    to "secondary" Query objects produced during lazy loads
-    or refresh operations.
+    to "secondary" SELECT statements that occur for relationship
+    lazy loaders as well as attribute load / refresh operations.
 
     """
 

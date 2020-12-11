@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -6,6 +7,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import update
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
@@ -164,6 +166,97 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 "three": True,
                 "two": True,
             },
+        )
+
+    def test_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = Mock()
+
+        @event.listens_for(sess, "do_orm_execute")
+        def do_orm_execute(ctx):
+
+            if not ctx.is_select:
+                assert_raises_message(
+                    sa.exc.InvalidRequestError,
+                    "This ORM execution is not against a SELECT statement",
+                    lambda: ctx.lazy_loaded_from,
+                )
+
+            canary.options(
+                is_select=ctx.is_select,
+                is_update=ctx.is_update,
+                is_delete=ctx.is_delete,
+                is_orm_statement=ctx.is_orm_statement,
+                is_relationship_load=ctx.is_relationship_load,
+                is_column_load=ctx.is_column_load,
+                lazy_loaded_from=ctx.lazy_loaded_from
+                if ctx.is_select
+                else None,
+            )
+
+        u1 = sess.execute(select(User).filter_by(id=7)).scalar_one()
+
+        u1.addresses
+
+        sess.expire(u1)
+
+        eq_(u1.name, "jack")
+
+        sess.execute(delete(User).filter_by(id=18))
+        sess.execute(update(User).filter_by(id=18).values(name="eighteen"))
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=u1._sa_instance_state,
+                ),
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=True,
+                    lazy_loaded_from=None,
+                ),
+                call.options(
+                    is_select=False,
+                    is_update=False,
+                    is_delete=True,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+                call.options(
+                    is_select=False,
+                    is_update=True,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+            ],
         )
 
     def test_chained_events_two(self):

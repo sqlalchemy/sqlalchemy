@@ -37,7 +37,8 @@ def _add_filtering_criteria(execute_state):
     # query.
 
     if (
-        not execute_state.is_relationship_load
+        not execute_state.is_column_load
+        and not execute_state.is_relationship_load
         and not execute_state.execution_options.get("include_private", False)
     ):
         execute_state.statement = execute_state.statement.options(
