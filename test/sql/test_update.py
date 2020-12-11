@@ -1263,10 +1263,10 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
     __backend__ = True
 
     @testing.requires.update_from
-    def test_exec_two_table(self):
+    def test_exec_two_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
-        testing.db.execute(
+        connection.execute(
             addresses.update()
             .values(email_address=users.c.name)
             .where(users.c.id == addresses.c.user_id)
@@ -1280,14 +1280,14 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "x", "ed"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
     @testing.requires.update_from
-    def test_exec_two_table_plus_alias(self):
+    def test_exec_two_table_plus_alias(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
         a1 = addresses.alias()
-        testing.db.execute(
+        connection.execute(
             addresses.update()
             .values(email_address=users.c.name)
             .where(users.c.id == a1.c.user_id)
@@ -1302,15 +1302,15 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "x", "ed"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
     @testing.requires.update_from
-    def test_exec_three_table(self):
+    def test_exec_three_table(self, connection):
         users = self.tables.users
         addresses = self.tables.addresses
         dingalings = self.tables.dingalings
 
-        testing.db.execute(
+        connection.execute(
             addresses.update()
             .values(email_address=users.c.name)
             .where(users.c.id == addresses.c.user_id)
@@ -1326,15 +1326,15 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "x", "ed@lala.com"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
     @testing.only_on("mysql", "Multi table update")
-    def test_exec_multitable(self):
+    def test_exec_multitable(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {addresses.c.email_address: "updated", users.c.name: "ed2"}
 
-        testing.db.execute(
+        connection.execute(
             addresses.update()
             .values(values)
             .where(users.c.id == addresses.c.user_id)
@@ -1348,18 +1348,18 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "x", "updated"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
         expected = [(7, "jack"), (8, "ed2"), (9, "fred"), (10, "chuck")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
     @testing.only_on("mysql", "Multi table update")
-    def test_exec_join_multitable(self):
+    def test_exec_join_multitable(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {addresses.c.email_address: "updated", users.c.name: "ed2"}
 
-        testing.db.execute(
+        connection.execute(
             update(users.join(addresses))
             .values(values)
             .where(users.c.name == "ed")
@@ -1372,18 +1372,18 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "x", "updated"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
         expected = [(7, "jack"), (8, "ed2"), (9, "fred"), (10, "chuck")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
     @testing.only_on("mysql", "Multi table update")
-    def test_exec_multitable_same_name(self):
+    def test_exec_multitable_same_name(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {addresses.c.name: "ad_ed2", users.c.name: "ed2"}
 
-        testing.db.execute(
+        connection.execute(
             addresses.update()
             .values(values)
             .where(users.c.id == addresses.c.user_id)
@@ -1397,18 +1397,18 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
             (4, 8, "ad_ed2", "ed@lala.com"),
             (5, 9, "x", "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
         expected = [(7, "jack"), (8, "ed2"), (9, "fred"), (10, "chuck")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
-    def _assert_addresses(self, addresses, expected):
+    def _assert_addresses(self, connection, addresses, expected):
         stmt = addresses.select().order_by(addresses.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)
 
-    def _assert_users(self, users, expected):
+    def _assert_users(self, connection, users, expected):
         stmt = users.select().order_by(users.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)
 
 
 class UpdateFromMultiTableUpdateDefaultsTest(
@@ -1472,12 +1472,12 @@ class UpdateFromMultiTableUpdateDefaultsTest(
         )
 
     @testing.only_on("mysql", "Multi table update")
-    def test_defaults_second_table(self):
+    def test_defaults_second_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
         values = {addresses.c.email_address: "updated", users.c.name: "ed2"}
 
-        ret = testing.db.execute(
+        ret = connection.execute(
             addresses.update()
             .values(values)
             .where(users.c.id == addresses.c.user_id)
@@ -1491,18 +1491,18 @@ class UpdateFromMultiTableUpdateDefaultsTest(
             (3, 8, "updated"),
             (4, 9, "fred@fred.com"),
         ]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
         expected = [(8, "ed2", "im the update"), (9, "fred", "value")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
     @testing.only_on("mysql", "Multi table update")
-    def test_defaults_second_table_same_name(self):
+    def test_defaults_second_table_same_name(self, connection):
         users, foobar = self.tables.users, self.tables.foobar
 
         values = {foobar.c.data: foobar.c.data + "a", users.c.name: "ed2"}
 
-        ret = testing.db.execute(
+        ret = connection.execute(
             users.update()
             .values(values)
             .where(users.c.id == foobar.c.user_id)
@@ -1519,16 +1519,16 @@ class UpdateFromMultiTableUpdateDefaultsTest(
             (3, 8, "d2a", "im the other update"),
             (4, 9, "d3", None),
         ]
-        self._assert_foobar(foobar, expected)
+        self._assert_foobar(connection, foobar, expected)
 
         expected = [(8, "ed2", "im the update"), (9, "fred", "value")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
     @testing.only_on("mysql", "Multi table update")
-    def test_no_defaults_second_table(self):
+    def test_no_defaults_second_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
-        ret = testing.db.execute(
+        ret = connection.execute(
             addresses.update()
             .values({"email_address": users.c.name})
             .where(users.c.id == addresses.c.user_id)
@@ -1538,20 +1538,20 @@ class UpdateFromMultiTableUpdateDefaultsTest(
         eq_(ret.prefetch_cols(), [])
 
         expected = [(2, 8, "ed"), (3, 8, "ed"), (4, 9, "fred@fred.com")]
-        self._assert_addresses(addresses, expected)
+        self._assert_addresses(connection, addresses, expected)
 
         # users table not actually updated, so no onupdate
         expected = [(8, "ed", "value"), (9, "fred", "value")]
-        self._assert_users(users, expected)
+        self._assert_users(connection, users, expected)
 
-    def _assert_foobar(self, foobar, expected):
+    def _assert_foobar(self, connection, foobar, expected):
         stmt = foobar.select().order_by(foobar.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)
 
-    def _assert_addresses(self, addresses, expected):
+    def _assert_addresses(self, connection, addresses, expected):
         stmt = addresses.select().order_by(addresses.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)
 
-    def _assert_users(self, users, expected):
+    def _assert_users(self, connection, users, expected):
         stmt = users.select().order_by(users.c.id)
-        eq_(testing.db.execute(stmt).fetchall(), expected)
+        eq_(connection.execute(stmt).fetchall(), expected)

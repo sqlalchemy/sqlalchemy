@@ -356,7 +356,7 @@ class ServerSideCursorsTest(
             Column("data", String(50)),
         )
 
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             test_table.create(connection, checkfirst=True)
             connection.execute(test_table.insert(), dict(data="data1"))
             connection.execute(test_table.insert(), dict(data="data2"))
@@ -397,7 +397,7 @@ class ServerSideCursorsTest(
             Column("data", String(50)),
         )
 
-        with engine.connect() as connection:
+        with engine.begin() as connection:
             test_table.create(connection, checkfirst=True)
             connection.execute(
                 test_table.insert(),

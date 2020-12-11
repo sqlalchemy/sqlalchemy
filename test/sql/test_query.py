@@ -84,7 +84,7 @@ class QueryTest(fixtures.TestBase):
 
     @engines.close_first
     def teardown(self):
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(addresses.delete())
             conn.execute(users.delete())
             conn.execute(users2.delete())
@@ -878,21 +878,22 @@ class RequiredBindTest(fixtures.TablesTest):
         )
 
     def _assert_raises(self, stmt, params):
-        assert_raises_message(
-            exc.StatementError,
-            "A value is required for bind parameter 'x'",
-            testing.db.execute,
-            stmt,
-            **params
-        )
+        with testing.db.connect() as conn:
+            assert_raises_message(
+                exc.StatementError,
+                "A value is required for bind parameter 'x'",
+                conn.execute,
+                stmt,
+                **params
+            )
 
-        assert_raises_message(
-            exc.StatementError,
-            "A value is required for bind parameter 'x'",
-            testing.db.execute,
-            stmt,
-            params,
-        )
+            assert_raises_message(
+                exc.StatementError,
+                "A value is required for bind parameter 'x'",
+                conn.execute,
+                stmt,
+                params,
+            )
 
     def test_insert(self):
         stmt = self.tables.foo.insert().values(
@@ -953,7 +954,7 @@ class LimitTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(users.insert(), user_id=1, user_name="john")
             conn.execute(
                 addresses.insert(), address_id=1, user_id=1, address="addr1"
@@ -1105,7 +1106,7 @@ class CompoundTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(
                 t1.insert(),
                 [
@@ -1470,7 +1471,7 @@ class JoinTest(fixtures.TestBase):
         metadata.drop_all()
         metadata.create_all()
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             # t1.10 -> t2.20 -> t3.30
             # t1.11 -> t2.21
             # t1.12
@@ -1823,7 +1824,7 @@ class OperatorTest(fixtures.TestBase):
         )
         metadata.create_all()
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(
                 flds.insert(),
                 [dict(intcol=5, strcol="foo"), dict(intcol=13, strcol="bar")],

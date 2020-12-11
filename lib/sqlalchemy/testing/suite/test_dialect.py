@@ -145,7 +145,7 @@ class IsolationLevelTest(fixtures.TestBase):
                 )
 
 
-class AutocommitTest(fixtures.TablesTest):
+class AutocommitIsolationTest(fixtures.TablesTest):
 
     run_deletes = "each"
 
@@ -175,7 +175,8 @@ class AutocommitTest(fixtures.TablesTest):
             1 if autocommit else None,
         )
 
-        conn.execute(self.tables.some_table.delete())
+        with conn.begin():
+            conn.execute(self.tables.some_table.delete())
 
     def test_autocommit_on(self):
         conn = config.db.connect()
@@ -192,7 +193,7 @@ class AutocommitTest(fixtures.TablesTest):
 
     def test_turn_autocommit_off_via_default_iso_level(self):
         conn = config.db.connect()
-        conn.execution_options(isolation_level="AUTOCOMMIT")
+        conn = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(conn, True)
 
         conn.execution_options(

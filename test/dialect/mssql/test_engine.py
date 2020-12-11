@@ -382,7 +382,7 @@ class FastExecutemanyTest(fixtures.TestBase):
             if executemany:
                 assert cursor.fast_executemany
 
-        with eng.connect() as conn:
+        with eng.begin() as conn:
             conn.execute(
                 t.insert(),
                 [{"id": i, "data": "data_%d" % i} for i in range(100)],

@@ -30,34 +30,37 @@ class MxODBCTest(fixtures.TestBase):
         )
         conn = engine.connect()
 
-        # crud: uses execute
-        conn.execute(t1.insert().values(c1="foo"))
-        conn.execute(t1.delete().where(t1.c.c1 == "foo"))
-        conn.execute(t1.update().where(t1.c.c1 == "foo").values(c1="bar"))
+        with conn.begin():
+            # crud: uses execute
+            conn.execute(t1.insert().values(c1="foo"))
+            conn.execute(t1.delete().where(t1.c.c1 == "foo"))
+            conn.execute(t1.update().where(t1.c.c1 == "foo").values(c1="bar"))
 
-        # select: uses executedirect
-        conn.execute(t1.select())
+            # select: uses executedirect
+            conn.execute(t1.select())
 
-        # manual flagging
-        conn.execution_options(native_odbc_execute=True).execute(t1.select())
-        conn.execution_options(native_odbc_execute=False).execute(
-            t1.insert().values(c1="foo")
-        )
+            # manual flagging
+            conn.execution_options(native_odbc_execute=True).execute(
+                t1.select()
+            )
+            conn.execution_options(native_odbc_execute=False).execute(
+                t1.insert().values(c1="foo")
+            )
 
-        eq_(
-            # fmt: off
-            [
-                c[2]
-                for c in dbapi.connect.return_value.cursor.
-                return_value.execute.mock_calls
-            ],
-            # fmt: on
-            [
-                {"direct": True},
-                {"direct": True},
-                {"direct": True},
-                {"direct": True},
-                {"direct": False},
-                {"direct": True},
-            ]
-        )
+            eq_(
+                # fmt: off
+                [
+                    c[2]
+                    for c in dbapi.connect.return_value.cursor.
+                    return_value.execute.mock_calls
+                ],
+                # fmt: on
+                [
+                    {"direct": True},
+                    {"direct": True},
+                    {"direct": True},
+                    {"direct": True},
+                    {"direct": False},
+                    {"direct": True},
+                ]
+            )

@@ -370,7 +370,7 @@ def drop_all_tables(engine, inspector, schema=None, include_names=None):
     if include_names is not None:
         include_names = set(include_names)
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         for tname, fkcs in reversed(
             inspector.get_sorted_table_and_fkc_names(schema=schema)
         ):

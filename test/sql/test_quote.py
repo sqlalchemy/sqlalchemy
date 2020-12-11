@@ -25,19 +25,12 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing.util import picklers
 
 
-class QuoteExecTest(fixtures.TestBase):
+class QuoteExecTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        # TODO: figure out which databases/which identifiers allow special
-        # characters to be used, such as: spaces, quote characters,
-        # punctuation characters, set up tests for those as well.
-
-        global table1, table2
-        metadata = MetaData(testing.db)
-
-        table1 = Table(
+    def define_tables(cls, metadata):
+        Table(
             "WorstCase1",
             metadata,
             Column("lowercase", Integer, primary_key=True),
@@ -45,25 +38,13 @@ class QuoteExecTest(fixtures.TestBase):
             Column("MixedCase", Integer),
             Column("ASC", Integer, key="a123"),
         )
-        table2 = Table(
+        Table(
             "WorstCase2",
             metadata,
             Column("desc", Integer, primary_key=True, key="d123"),
             Column("Union", Integer, key="u123"),
             Column("MixedCase", Integer),
         )
-
-        table1.create()
-        table2.create()
-
-    def teardown(self):
-        table1.delete().execute()
-        table2.delete().execute()
-
-    @classmethod
-    def teardown_class(cls):
-        table1.drop()
-        table2.drop()
 
     def test_reflect(self):
         meta2 = MetaData()
@@ -88,25 +69,22 @@ class QuoteExecTest(fixtures.TestBase):
         assert "MixedCase" in t2.c
 
     @testing.provide_metadata
-    def test_has_table_case_sensitive(self):
+    def test_has_table_case_sensitive(self, connection):
         preparer = testing.db.dialect.identifier_preparer
-        with testing.db.connect() as conn:
-            if conn.dialect.requires_name_normalize:
-                conn.exec_driver_sql("CREATE TABLE TAB1 (id INTEGER)")
-            else:
-                conn.exec_driver_sql("CREATE TABLE tab1 (id INTEGER)")
-            conn.exec_driver_sql(
-                "CREATE TABLE %s (id INTEGER)"
-                % preparer.quote_identifier("tab2")
-            )
-            conn.exec_driver_sql(
-                "CREATE TABLE %s (id INTEGER)"
-                % preparer.quote_identifier("TAB3")
-            )
-            conn.exec_driver_sql(
-                "CREATE TABLE %s (id INTEGER)"
-                % preparer.quote_identifier("TAB4")
-            )
+        conn = connection
+        if conn.dialect.requires_name_normalize:
+            conn.exec_driver_sql("CREATE TABLE TAB1 (id INTEGER)")
+        else:
+            conn.exec_driver_sql("CREATE TABLE tab1 (id INTEGER)")
+        conn.exec_driver_sql(
+            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("tab2")
+        )
+        conn.exec_driver_sql(
+            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("TAB3")
+        )
+        conn.exec_driver_sql(
+            "CREATE TABLE %s (id INTEGER)" % preparer.quote_identifier("TAB4")
+        )
 
         t1 = Table(
             "tab1", self.metadata, Column("id", Integer, primary_key=True)
@@ -127,7 +105,7 @@ class QuoteExecTest(fixtures.TestBase):
             quote=True,
         )
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         assert insp.has_table(t1.name)
         eq_([c["name"] for c in insp.get_columns(t1.name)], ["id"])
 
@@ -140,16 +118,24 @@ class QuoteExecTest(fixtures.TestBase):
         assert insp.has_table(t4.name)
         eq_([c["name"] for c in insp.get_columns(t4.name)], ["id"])
 
-    def test_basic(self):
-        table1.insert().execute(
-            {"lowercase": 1, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
-            {"lowercase": 2, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
-            {"lowercase": 4, "UPPERCASE": 3, "MixedCase": 2, "a123": 1},
+    def test_basic(self, connection):
+        table1, table2 = self.tables("WorstCase1", "WorstCase2")
+
+        connection.execute(
+            table1.insert(),
+            [
+                {"lowercase": 1, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
+                {"lowercase": 2, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
+                {"lowercase": 4, "UPPERCASE": 3, "MixedCase": 2, "a123": 1},
+            ],
         )
-        table2.insert().execute(
-            {"d123": 1, "u123": 2, "MixedCase": 3},
-            {"d123": 2, "u123": 2, "MixedCase": 3},
-            {"d123": 4, "u123": 3, "MixedCase": 2},
+        connection.execute(
+            table2.insert(),
+            [
+                {"d123": 1, "u123": 2, "MixedCase": 3},
+                {"d123": 2, "u123": 2, "MixedCase": 3},
+                {"d123": 4, "u123": 3, "MixedCase": 2},
+            ],
         )
 
         columns = [
@@ -158,23 +144,30 @@ class QuoteExecTest(fixtures.TestBase):
             table1.c.MixedCase,
             table1.c.a123,
         ]
-        result = select(columns).execute().fetchall()
+        result = connection.execute(select(columns)).all()
         assert result == [(1, 2, 3, 4), (2, 2, 3, 4), (4, 3, 2, 1)]
 
         columns = [table2.c.d123, table2.c.u123, table2.c.MixedCase]
-        result = select(columns).execute().fetchall()
+        result = connection.execute(select(columns)).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
 
-    def test_use_labels(self):
-        table1.insert().execute(
-            {"lowercase": 1, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
-            {"lowercase": 2, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
-            {"lowercase": 4, "UPPERCASE": 3, "MixedCase": 2, "a123": 1},
+    def test_use_labels(self, connection):
+        table1, table2 = self.tables("WorstCase1", "WorstCase2")
+        connection.execute(
+            table1.insert(),
+            [
+                {"lowercase": 1, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
+                {"lowercase": 2, "UPPERCASE": 2, "MixedCase": 3, "a123": 4},
+                {"lowercase": 4, "UPPERCASE": 3, "MixedCase": 2, "a123": 1},
+            ],
         )
-        table2.insert().execute(
-            {"d123": 1, "u123": 2, "MixedCase": 3},
-            {"d123": 2, "u123": 2, "MixedCase": 3},
-            {"d123": 4, "u123": 3, "MixedCase": 2},
+        connection.execute(
+            table2.insert(),
+            [
+                {"d123": 1, "u123": 2, "MixedCase": 3},
+                {"d123": 2, "u123": 2, "MixedCase": 3},
+                {"d123": 4, "u123": 3, "MixedCase": 2},
+            ],
         )
 
         columns = [
@@ -183,11 +176,11 @@ class QuoteExecTest(fixtures.TestBase):
             table1.c.MixedCase,
             table1.c.a123,
         ]
-        result = select(columns, use_labels=True).execute().fetchall()
+        result = connection.execute(select(columns).apply_labels()).fetchall()
         assert result == [(1, 2, 3, 4), (2, 2, 3, 4), (4, 3, 2, 1)]
 
         columns = [table2.c.d123, table2.c.u123, table2.c.MixedCase]
-        result = select(columns, use_labels=True).execute().fetchall()
+        result = connection.execute(select(columns).apply_labels()).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
 
 

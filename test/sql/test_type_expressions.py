@@ -359,34 +359,34 @@ class RoundTripTestBase(object):
             [("X1", "Y1"), ("X2", "Y2"), ("X3", "Y3")],
         )
 
-    def test_targeting_no_labels(self):
-        testing.db.execute(
+    def test_targeting_no_labels(self, connection):
+        connection.execute(
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
-        row = testing.db.execute(select(self.tables.test_table)).first()
+        row = connection.execute(select(self.tables.test_table)).first()
         eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 
-    def test_targeting_by_string(self):
-        testing.db.execute(
+    def test_targeting_by_string(self, connection):
+        connection.execute(
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
-        row = testing.db.execute(select(self.tables.test_table)).first()
+        row = connection.execute(select(self.tables.test_table)).first()
         eq_(row._mapping["y"], "Y1")
 
-    def test_targeting_apply_labels(self):
-        testing.db.execute(
+    def test_targeting_apply_labels(self, connection):
+        connection.execute(
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
-        row = testing.db.execute(
+        row = connection.execute(
             select(self.tables.test_table).apply_labels()
         ).first()
         eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 
-    def test_targeting_individual_labels(self):
-        testing.db.execute(
+    def test_targeting_individual_labels(self, connection):
+        connection.execute(
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
-        row = testing.db.execute(
+        row = connection.execute(
             select(
                 self.tables.test_table.c.x.label("xbar"),
                 self.tables.test_table.c.y.label("ybar"),
@@ -450,9 +450,9 @@ class ReturningTest(fixtures.TablesTest):
         )
 
     @testing.provide_metadata
-    def test_insert_returning(self):
+    def test_insert_returning(self, connection):
         table = self.tables.test_table
-        result = testing.db.execute(
+        result = connection.execute(
             table.insert().returning(table.c.y), {"x": "xvalue"}
         )
         eq_(result.first(), ("yvalue",))

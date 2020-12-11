@@ -1012,9 +1012,7 @@ class PKIncrementTest(fixtures.TablesTest):
             Column("str1", String(20)),
         )
 
-    # TODO: add coverage for increment on a secondary column in a key
-    @testing.fails_on("firebird", "Data type unknown")
-    def _test_autoincrement(self, connection):
+    def test_autoincrement(self, connection):
         aitable = self.tables.aitable
 
         ids = set()
@@ -1063,14 +1061,6 @@ class PKIncrementTest(fixtures.TablesTest):
                 (testing.db.dialect.default_sequence_base + 3, 4, None),
             ],
         )
-
-    def test_autoincrement_autocommit(self):
-        with testing.db.connect() as conn:
-            self._test_autoincrement(conn)
-
-    def test_autoincrement_transaction(self):
-        with testing.db.begin() as conn:
-            self._test_autoincrement(conn)
 
 
 class EmptyInsertTest(fixtures.TestBase):
@@ -1267,7 +1257,7 @@ class SpecialTypePKTest(fixtures.TestBase):
             implicit_returning=implicit_returning,
         )
 
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             t.create(conn)
             r = conn.execute(t.insert().values(data=5))
 

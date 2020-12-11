@@ -20,7 +20,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from ...engine import test_execute
+from ...engine import test_deprecations
 
 
 class BackendDialectTest(fixtures.TestBase):
@@ -382,56 +382,56 @@ class RemoveUTCTimestampTest(fixtures.TablesTest):
             Column("udata", DateTime, onupdate=func.utc_timestamp()),
         )
 
-    def test_insert_executemany(self):
-        with testing.db.connect() as conn:
-            conn.execute(
-                self.tables.t.insert().values(data=func.utc_timestamp()),
-                [{"x": 5}, {"x": 6}, {"x": 7}],
-            )
+    def test_insert_executemany(self, connection):
+        conn = connection
+        conn.execute(
+            self.tables.t.insert().values(data=func.utc_timestamp()),
+            [{"x": 5}, {"x": 6}, {"x": 7}],
+        )
 
-    def test_update_executemany(self):
-        with testing.db.connect() as conn:
-            timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
-            conn.execute(
-                self.tables.t.insert(),
-                [
-                    {"x": 5, "data": timestamp},
-                    {"x": 6, "data": timestamp},
-                    {"x": 7, "data": timestamp},
-                ],
-            )
+    def test_update_executemany(self, connection):
+        conn = connection
+        timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
+        conn.execute(
+            self.tables.t.insert(),
+            [
+                {"x": 5, "data": timestamp},
+                {"x": 6, "data": timestamp},
+                {"x": 7, "data": timestamp},
+            ],
+        )
 
-            conn.execute(
-                self.tables.t.update()
-                .values(data=func.utc_timestamp())
-                .where(self.tables.t.c.x == bindparam("xval")),
-                [{"xval": 5}, {"xval": 6}, {"xval": 7}],
-            )
+        conn.execute(
+            self.tables.t.update()
+            .values(data=func.utc_timestamp())
+            .where(self.tables.t.c.x == bindparam("xval")),
+            [{"xval": 5}, {"xval": 6}, {"xval": 7}],
+        )
 
-    def test_insert_executemany_w_default(self):
-        with testing.db.connect() as conn:
-            conn.execute(
-                self.tables.t_default.insert(), [{"x": 5}, {"x": 6}, {"x": 7}]
-            )
+    def test_insert_executemany_w_default(self, connection):
+        conn = connection
+        conn.execute(
+            self.tables.t_default.insert(), [{"x": 5}, {"x": 6}, {"x": 7}]
+        )
 
-    def test_update_executemany_w_default(self):
-        with testing.db.connect() as conn:
-            timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
-            conn.execute(
-                self.tables.t_default.insert(),
-                [
-                    {"x": 5, "idata": timestamp},
-                    {"x": 6, "idata": timestamp},
-                    {"x": 7, "idata": timestamp},
-                ],
-            )
+    def test_update_executemany_w_default(self, connection):
+        conn = connection
+        timestamp = datetime.datetime(2015, 4, 17, 18, 5, 2)
+        conn.execute(
+            self.tables.t_default.insert(),
+            [
+                {"x": 5, "idata": timestamp},
+                {"x": 6, "idata": timestamp},
+                {"x": 7, "idata": timestamp},
+            ],
+        )
 
-            conn.execute(
-                self.tables.t_default.update()
-                .values(idata=func.utc_timestamp())
-                .where(self.tables.t_default.c.x == bindparam("xval")),
-                [{"xval": 5}, {"xval": 6}, {"xval": 7}],
-            )
+        conn.execute(
+            self.tables.t_default.update()
+            .values(idata=func.utc_timestamp())
+            .where(self.tables.t_default.c.x == bindparam("xval")),
+            [{"xval": 5}, {"xval": 6}, {"xval": 7}],
+        )
 
 
 class SQLModeDetectionTest(fixtures.TestBase):
@@ -505,7 +505,7 @@ class ExecutionTest(fixtures.TestBase):
 
 
 class AutocommitTextTest(
-    test_execute.AutocommitKeywordFixture, fixtures.TestBase
+    test_deprecations.AutocommitKeywordFixture, fixtures.TestBase
 ):
     __only_on__ = "mysql", "mariadb"
 

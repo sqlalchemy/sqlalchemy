@@ -35,30 +35,32 @@ from sqlalchemy.testing.assertsql import CursorSQL
 from sqlalchemy.testing.assertsql import DialectSQL
 
 
-matchtable = cattable = None
-
-
 class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "postgresql"
     __backend__ = True
 
-    @classmethod
-    def setup_class(cls):
-        cls.metadata = MetaData(testing.db)
+    def setup(self):
+        self.metadata = MetaData()
 
     def teardown(self):
-        self.metadata.drop_all()
-        self.metadata.clear()
+        with testing.db.begin() as conn:
+            self.metadata.drop_all(conn)
 
-    def test_foreignkey_missing_insert(self):
+    @testing.combinations((False,), (True,))
+    def test_foreignkey_missing_insert(self, implicit_returning):
+        engine = engines.testing_engine(
+            options={"implicit_returning": implicit_returning}
+        )
+
         Table("t1", self.metadata, Column("id", Integer, primary_key=True))
         t2 = Table(
             "t2",
             self.metadata,
             Column("id", Integer, ForeignKey("t1.id"), primary_key=True),
         )
-        self.metadata.create_all()
+
+        self.metadata.create_all(engine)
 
         # want to ensure that "null value in column "id" violates not-
         # null constraint" is raised (IntegrityError on psycoopg2, but
@@ -67,19 +69,13 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         # the latter corresponds to autoincrement behavior, which is not
         # the case here due to the foreign key.
 
-        for eng in [
-            engines.testing_engine(options={"implicit_returning": False}),
-            engines.testing_engine(options={"implicit_returning": True}),
-        ]:
-            with expect_warnings(
-                ".*has no Python-side or server-side default.*"
-            ):
-                with eng.connect() as conn:
-                    assert_raises(
-                        (exc.IntegrityError, exc.ProgrammingError),
-                        conn.execute,
-                        t2.insert(),
-                    )
+        with expect_warnings(".*has no Python-side or server-side default.*"):
+            with engine.begin() as conn:
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute,
+                    t2.insert(),
+                )
 
     def test_sequence_insert(self):
         table = Table(
@@ -88,7 +84,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column("id", Integer, Sequence("my_seq"), primary_key=True),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_with_sequence(table, "my_seq")
 
     @testing.requires.returning
@@ -99,7 +95,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column("id", Integer, Sequence("my_seq"), primary_key=True),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_with_sequence_returning(table, "my_seq")
 
     def test_opt_sequence_insert(self):
@@ -114,7 +110,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_autoincrement(table)
 
     @testing.requires.returning
@@ -130,7 +126,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_autoincrement_returning(table)
 
     def test_autoincrement_insert(self):
@@ -140,7 +136,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column("id", Integer, primary_key=True),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_autoincrement(table)
 
     @testing.requires.returning
@@ -151,7 +147,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column("id", Integer, primary_key=True),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_autoincrement_returning(table)
 
     def test_noautoincrement_insert(self):
@@ -161,7 +157,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             Column("id", Integer, primary_key=True, autoincrement=False),
             Column("data", String(30)),
         )
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
         self._assert_data_noautoincrement(table)
 
     def _assert_data_autoincrement(self, table):
@@ -169,7 +165,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         with self.sql_execution_asserter(engine) as asserter:
 
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 # execute with explicit id
 
                 r = conn.execute(table.insert(), {"id": 30, "data": "d1"})
@@ -226,7 +222,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -250,7 +246,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         table = Table(table.name, m2, autoload_with=engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 r = conn.execute(table.insert(), {"data": "d2"})
                 eq_(r.inserted_primary_key, (5,))
@@ -288,7 +284,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 "INSERT INTO testtable (data) VALUES (:data)", [{"data": "d8"}]
             ),
         )
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -308,7 +304,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         engine = engines.testing_engine(options={"implicit_returning": True})
 
         with self.sql_execution_asserter(engine) as asserter:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
 
                 # execute with explicit id
 
@@ -367,7 +363,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -390,7 +386,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         table = Table(table.name, m2, autoload_with=engine)
 
         with self.sql_execution_asserter(engine) as asserter:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 r = conn.execute(table.insert(), {"data": "d2"})
                 eq_(r.inserted_primary_key, (5,))
@@ -430,7 +426,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -450,7 +446,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         engine = engines.testing_engine(options={"implicit_returning": False})
 
         with self.sql_execution_asserter(engine) as asserter:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 conn.execute(table.insert(), {"data": "d2"})
                 conn.execute(
@@ -491,7 +487,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 [{"data": "d8"}],
             ),
         )
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -513,7 +509,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         engine = engines.testing_engine(options={"implicit_returning": True})
 
         with self.sql_execution_asserter(engine) as asserter:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 conn.execute(table.insert(), {"id": 30, "data": "d1"})
                 conn.execute(table.insert(), {"data": "d2"})
                 conn.execute(
@@ -555,7 +551,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             eq_(
                 conn.execute(table.select()).fetchall(),
                 [
@@ -578,9 +574,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         # turning off the cache because we are checking for compile-time
         # warnings
-        with engine.connect().execution_options(compiled_cache=None) as conn:
+        engine = engine.execution_options(compiled_cache=None)
+
+        with engine.begin() as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 
+        with engine.begin() as conn:
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -590,24 +589,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     {"data": "d2"},
                 )
-            with expect_warnings(
-                ".*has no Python-side or server-side default.*"
-            ):
-                assert_raises(
-                    (exc.IntegrityError, exc.ProgrammingError),
-                    conn.execute,
-                    table.insert(),
-                    [{"data": "d2"}, {"data": "d3"}],
-                )
-            with expect_warnings(
-                ".*has no Python-side or server-side default.*"
-            ):
-                assert_raises(
-                    (exc.IntegrityError, exc.ProgrammingError),
-                    conn.execute,
-                    table.insert(),
-                    {"data": "d2"},
-                )
+
+        with engine.begin() as conn:
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -618,6 +601,29 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     [{"data": "d2"}, {"data": "d3"}],
                 )
 
+        with engine.begin() as conn:
+            with expect_warnings(
+                ".*has no Python-side or server-side default.*"
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute,
+                    table.insert(),
+                    {"data": "d2"},
+                )
+
+        with engine.begin() as conn:
+            with expect_warnings(
+                ".*has no Python-side or server-side default.*"
+            ):
+                assert_raises(
+                    (exc.IntegrityError, exc.ProgrammingError),
+                    conn.execute,
+                    table.insert(),
+                    [{"data": "d2"}, {"data": "d3"}],
+                )
+
+        with engine.begin() as conn:
             conn.execute(
                 table.insert(),
                 [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
@@ -634,9 +640,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
         m2 = MetaData()
         table = Table(table.name, m2, autoload_with=engine)
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(table.insert(), {"id": 30, "data": "d1"})
 
+        with engine.begin() as conn:
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -646,6 +653,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     {"data": "d2"},
                 )
+
+        with engine.begin() as conn:
             with expect_warnings(
                 ".*has no Python-side or server-side default.*"
             ):
@@ -655,6 +664,8 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                     table.insert(),
                     [{"data": "d2"}, {"data": "d3"}],
                 )
+
+        with engine.begin() as conn:
             conn.execute(
                 table.insert(),
                 [{"id": 31, "data": "d2"}, {"id": 32, "data": "d3"}],
@@ -666,36 +677,40 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             )
 
 
-class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
+class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     __only_on__ = "postgresql >= 8.3"
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global metadata, cattable, matchtable
-        metadata = MetaData(testing.db)
-        cattable = Table(
+    def define_tables(cls, metadata):
+        Table(
             "cattable",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("description", String(50)),
         )
-        matchtable = Table(
+        Table(
             "matchtable",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("title", String(200)),
             Column("category_id", Integer, ForeignKey("cattable.id")),
         )
-        metadata.create_all()
-        cattable.insert().execute(
+
+    @classmethod
+    def insert_data(cls, connection):
+        cattable, matchtable = cls.tables("cattable", "matchtable")
+
+        connection.execute(
+            cattable.insert(),
             [
                 {"id": 1, "description": "Python"},
                 {"id": 2, "description": "Ruby"},
-            ]
+            ],
         )
-        matchtable.insert().execute(
+        connection.execute(
+            matchtable.insert(),
             [
                 {
                     "id": 1,
@@ -714,15 +729,12 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                     "category_id": 1,
                 },
                 {"id": 5, "title": "Python in a Nutshell", "category_id": 1},
-            ]
+            ],
         )
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
     @testing.requires.pyformat_paramstyle
     def test_expression_pyformat(self):
+        matchtable = self.tables.matchtable
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "matchtable.title @@ to_tsquery(%(title_1)s" ")",
@@ -730,51 +742,47 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     @testing.requires.format_paramstyle
     def test_expression_positional(self):
+        matchtable = self.tables.matchtable
         self.assert_compile(
             matchtable.c.title.match("somstr"),
             "matchtable.title @@ to_tsquery(%s)",
         )
 
-    def test_simple_match(self):
-        results = (
+    def test_simple_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("python"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([2, 5], [r.id for r in results])
 
-    def test_not_match(self):
-        results = (
+    def test_not_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
             matchtable.select()
             .where(~matchtable.c.title.match("python"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([1, 3, 4], [r.id for r in results])
 
-    def test_simple_match_with_apostrophe(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match("Matz's"))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_match_with_apostrophe(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
+            matchtable.select().where(matchtable.c.title.match("Matz's"))
+        ).fetchall()
         eq_([3], [r.id for r in results])
 
-    def test_simple_derivative_match(self):
-        results = (
-            matchtable.select()
-            .where(matchtable.c.title.match("nutshells"))
-            .execute()
-            .fetchall()
-        )
+    def test_simple_derivative_match(self, connection):
+        matchtable = self.tables.matchtable
+        results = connection.execute(
+            matchtable.select().where(matchtable.c.title.match("nutshells"))
+        ).fetchall()
         eq_([5], [r.id for r in results])
 
-    def test_or_match(self):
-        results1 = (
+    def test_or_match(self, connection):
+        matchtable = self.tables.matchtable
+        results1 = connection.execute(
             matchtable.select()
             .where(
                 or_(
@@ -783,42 +791,36 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             )
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([3, 5], [r.id for r in results1])
-        results2 = (
+        results2 = connection.execute(
             matchtable.select()
             .where(matchtable.c.title.match("nutshells | rubies"))
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([3, 5], [r.id for r in results2])
 
-    def test_and_match(self):
-        results1 = (
-            matchtable.select()
-            .where(
+    def test_and_match(self, connection):
+        matchtable = self.tables.matchtable
+        results1 = connection.execute(
+            matchtable.select().where(
                 and_(
                     matchtable.c.title.match("python"),
                     matchtable.c.title.match("nutshells"),
                 )
             )
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([5], [r.id for r in results1])
-        results2 = (
-            matchtable.select()
-            .where(matchtable.c.title.match("python & nutshells"))
-            .execute()
-            .fetchall()
-        )
+        results2 = connection.execute(
+            matchtable.select().where(
+                matchtable.c.title.match("python & nutshells")
+            )
+        ).fetchall()
         eq_([5], [r.id for r in results2])
 
-    def test_match_across_joins(self):
-        results = (
+    def test_match_across_joins(self, connection):
+        cattable, matchtable = self.tables("cattable", "matchtable")
+        results = connection.execute(
             matchtable.select()
             .where(
                 and_(
@@ -830,9 +832,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             )
             .order_by(matchtable.c.id)
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_([1, 3, 5], [r.id for r in results])
 
 

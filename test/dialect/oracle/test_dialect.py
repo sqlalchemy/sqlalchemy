@@ -89,6 +89,8 @@ class DefaultSchemaNameTest(fixtures.TestBase):
         eng = engines.testing_engine()
 
         with eng.connect() as conn:
+
+            trans = conn.begin()
             eq_(
                 testing.db.dialect._get_default_schema_name(conn),
                 default_schema_name,
@@ -104,6 +106,7 @@ class DefaultSchemaNameTest(fixtures.TestBase):
             )
 
             conn.invalidate()
+            trans.rollback()
 
             eq_(
                 testing.db.dialect._get_default_schema_name(conn),
@@ -317,53 +320,51 @@ class ComputedReturningTest(fixtures.TablesTest):
             implicit_returning=False,
         )
 
-    def test_computed_insert(self):
+    def test_computed_insert(self, connection):
         test = self.tables.test
-        with testing.db.connect() as conn:
-            result = conn.execute(
-                test.insert().return_defaults(), {"id": 1, "foo": 5}
-            )
+        conn = connection
+        result = conn.execute(
+            test.insert().return_defaults(), {"id": 1, "foo": 5}
+        )
 
-            eq_(result.returned_defaults, (47,))
+        eq_(result.returned_defaults, (47,))
 
-            eq_(conn.scalar(select(test.c.bar)), 47)
+        eq_(conn.scalar(select(test.c.bar)), 47)
 
-    def test_computed_update_warning(self):
+    def test_computed_update_warning(self, connection):
         test = self.tables.test
-        with testing.db.connect() as conn:
-            conn.execute(test.insert(), {"id": 1, "foo": 5})
+        conn = connection
+        conn.execute(test.insert(), {"id": 1, "foo": 5})
 
-            if testing.db.dialect._supports_update_returning_computed_cols:
-                result = conn.execute(
-                    test.update().values(foo=10).return_defaults()
-                )
-                eq_(result.returned_defaults, (52,))
-            else:
-                with testing.expect_warnings(
-                    "Computed columns don't work with Oracle UPDATE"
-                ):
-                    result = conn.execute(
-                        test.update().values(foo=10).return_defaults()
-                    )
-
-                    # returns the *old* value
-                    eq_(result.returned_defaults, (47,))
-
-            eq_(conn.scalar(select(test.c.bar)), 52)
-
-    def test_computed_update_no_warning(self):
-        test = self.tables.test_no_returning
-        with testing.db.connect() as conn:
-            conn.execute(test.insert(), {"id": 1, "foo": 5})
-
+        if testing.db.dialect._supports_update_returning_computed_cols:
             result = conn.execute(
                 test.update().values(foo=10).return_defaults()
             )
+            eq_(result.returned_defaults, (52,))
+        else:
+            with testing.expect_warnings(
+                "Computed columns don't work with Oracle UPDATE"
+            ):
+                result = conn.execute(
+                    test.update().values(foo=10).return_defaults()
+                )
 
-            # no returning
-            eq_(result.returned_defaults, None)
+                # returns the *old* value
+                eq_(result.returned_defaults, (47,))
 
-            eq_(conn.scalar(select(test.c.bar)), 52)
+        eq_(conn.scalar(select(test.c.bar)), 52)
+
+    def test_computed_update_no_warning(self, connection):
+        test = self.tables.test_no_returning
+        conn = connection
+        conn.execute(test.insert(), {"id": 1, "foo": 5})
+
+        result = conn.execute(test.update().values(foo=10).return_defaults())
+
+        # no returning
+        eq_(result.returned_defaults, None)
+
+        eq_(conn.scalar(select(test.c.bar)), 52)
 
 
 class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
@@ -372,7 +373,7 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
 
     @classmethod
     def setup_class(cls):
-        with testing.db.connect() as c:
+        with testing.db.begin() as c:
             c.exec_driver_sql(
                 """
 create or replace procedure foo(x_in IN number, x_out OUT number,
@@ -404,7 +405,7 @@ end;
 
     @classmethod
     def teardown_class(cls):
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.execute(text("DROP PROCEDURE foo"))
 
 
@@ -680,7 +681,7 @@ class ExecuteTest(fixtures.TestBase):
             seq.drop(connection)
 
     @testing.provide_metadata
-    def test_limit_offset_for_update(self):
+    def test_limit_offset_for_update(self, connection):
         metadata = self.metadata
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
@@ -691,19 +692,24 @@ class ExecuteTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("data", Integer),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        t.insert().execute(
-            {"id": 1, "data": 1},
-            {"id": 2, "data": 7},
-            {"id": 3, "data": 12},
-            {"id": 4, "data": 15},
-            {"id": 5, "data": 32},
+        connection.execute(
+            t.insert(),
+            [
+                {"id": 1, "data": 1},
+                {"id": 2, "data": 7},
+                {"id": 3, "data": 12},
+                {"id": 4, "data": 15},
+                {"id": 5, "data": 32},
+            ],
         )
 
         # here, we can't use ORDER BY.
         eq_(
-            t.select().with_for_update().limit(2).execute().fetchall(),
+            connection.execute(
+                t.select().with_for_update().limit(2)
+            ).fetchall(),
             [(1, 1), (2, 7)],
         )
 
@@ -712,7 +718,8 @@ class ExecuteTest(fixtures.TestBase):
         assert_raises_message(
             exc.DatabaseError,
             "ORA-02014",
-            t.select().with_for_update().limit(2).offset(3).execute,
+            connection.execute,
+            t.select().with_for_update().limit(2).offset(3),
         )
 
 

@@ -1338,20 +1338,24 @@ class InvalidateDuringResultTest(fixtures.TestBase):
 
     def setup(self):
         self.engine = engines.reconnecting_engine()
-        self.meta = MetaData(self.engine)
+        self.meta = MetaData()
         table = Table(
             "sometable",
             self.meta,
             Column("id", Integer, primary_key=True),
             Column("name", String(50)),
         )
-        self.meta.create_all()
-        table.insert().execute(
-            [{"id": i, "name": "row %d" % i} for i in range(1, 100)]
-        )
+
+        with self.engine.begin() as conn:
+            self.meta.create_all(conn)
+            conn.execute(
+                table.insert(),
+                [{"id": i, "name": "row %d" % i} for i in range(1, 100)],
+            )
 
     def teardown(self):
-        self.meta.drop_all()
+        with self.engine.begin() as conn:
+            self.meta.drop_all(conn)
         self.engine.dispose()
 
     @testing.crashes(

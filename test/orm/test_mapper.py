@@ -129,7 +129,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
         assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
-    def test_update_attr_keys(self):
+    def test_update_attr_keys(self, connection):
         """test that update()/insert() use the correct key when given
         InstrumentedAttributes."""
 
@@ -137,21 +137,21 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         self.mapper(User, users, properties={"foobar": users.c.name})
 
-        users.insert().values({User.foobar: "name1"}).execute()
+        connection.execute(users.insert().values({User.foobar: "name1"}))
         eq_(
-            sa.select(User.foobar)
-            .where(User.foobar == "name1")
-            .execute()
-            .fetchall(),
+            connection.execute(
+                sa.select(User.foobar).where(User.foobar == "name1")
+            ).fetchall(),
             [("name1",)],
         )
 
-        users.update().values({User.foobar: User.foobar + "foo"}).execute()
+        connection.execute(
+            users.update().values({User.foobar: User.foobar + "foo"})
+        )
         eq_(
-            sa.select(User.foobar)
-            .where(User.foobar == "name1foo")
-            .execute()
-            .fetchall(),
+            connection.execute(
+                sa.select(User.foobar).where(User.foobar == "name1foo")
+            ).fetchall(),
             [("name1foo",)],
         )
 

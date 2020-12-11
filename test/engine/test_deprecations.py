@@ -93,6 +93,9 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
         for meta in (MetaData, ThreadLocalMetaData):
             for bind in (testing.db, testing.db.connect()):
+                if isinstance(bind, engine.Connection):
+                    bind.begin()
+
                 if meta is ThreadLocalMetaData:
                     with testing.expect_deprecated(
                         "ThreadLocalMetaData is deprecated"
@@ -151,6 +154,8 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
     def test_bind_create_drop_constructor_bound(self):
         for bind in (testing.db, testing.db.connect()):
+            if isinstance(bind, engine.Connection):
+                bind.begin()
             try:
                 for args in (([bind], {}), ([], {"bind": bind})):
                     metadata = MetaData(*args[0], **args[1])
@@ -177,15 +182,25 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
             test_needs_acid=True,
         )
         conn = testing.db.connect()
-        metadata.create_all(bind=conn)
+        with conn.begin():
+            metadata.create_all(bind=conn)
         try:
             trans = conn.begin()
             metadata.bind = conn
             t = table.insert()
             assert t.bind is conn
-            table.insert().execute(foo=5)
-            table.insert().execute(foo=6)
-            table.insert().execute(foo=7)
+            with testing.expect_deprecated_20(
+                r"The Executable.execute\(\) method is considered legacy"
+            ):
+                table.insert().execute(foo=5)
+            with testing.expect_deprecated_20(
+                r"The Executable.execute\(\) method is considered legacy"
+            ):
+                table.insert().execute(foo=6)
+            with testing.expect_deprecated_20(
+                r"The Executable.execute\(\) method is considered legacy"
+            ):
+                table.insert().execute(foo=7)
             trans.rollback()
             metadata.bind = None
             assert (
@@ -195,7 +210,8 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                 == 0
             )
         finally:
-            metadata.drop_all(bind=conn)
+            with conn.begin():
+                metadata.drop_all(bind=conn)
 
     def test_bind_clauseelement(self):
         metadata = MetaData()
@@ -215,14 +231,21 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                         ):
                             e = elem(bind=bind)
                         assert e.bind is bind
-                        e.execute().close()
+                        with testing.expect_deprecated_20(
+                            r"The Executable.execute\(\) method is "
+                            "considered legacy"
+                        ):
+                            e.execute().close()
                     finally:
                         if isinstance(bind, engine.Connection):
                             bind.close()
 
                 e = elem()
                 assert e.bind is None
-                assert_raises(exc.UnboundExecutionError, e.execute)
+                with testing.expect_deprecated_20(
+                    r"The Executable.execute\(\) method is considered legacy"
+                ):
+                    assert_raises(exc.UnboundExecutionError, e.execute)
         finally:
             if isinstance(bind, engine.Connection):
                 bind.close()
@@ -365,6 +388,11 @@ class TransactionTest(fixtures.TablesTest):
         )
         Table("inserttable", metadata, Column("data", String(20)))
 
+    @testing.fixture
+    def local_connection(self):
+        with testing.db.connect() as conn:
+            yield conn
+
     def test_transaction_container(self):
         users = self.tables.users
 
@@ -428,6 +456,110 @@ class TransactionTest(fixtures.TablesTest):
                 conn.exec_driver_sql(
                     "insert into inserttable (data) values ('thedata')"
                 )
+
+    def test_branch_autorollback(self, local_connection):
+        connection = local_connection
+        users = self.tables.users
+        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            branched.execute(
+                users.insert(), dict(user_id=1, user_name="user1")
+            )
+        assert_raises(
+            exc.DBAPIError,
+            branched.execute,
+            users.insert(),
+            dict(user_id=1, user_name="user1"),
+        )
+        # can continue w/o issue
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            branched.execute(
+                users.insert(), dict(user_id=2, user_name="user2")
+            )
+
+    def test_branch_orig_rollback(self, local_connection):
+        connection = local_connection
+        users = self.tables.users
+        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            branched.execute(
+                users.insert(), dict(user_id=1, user_name="user1")
+            )
+        nested = branched.begin()
+        assert branched.in_transaction()
+        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        nested.rollback()
+        eq_(
+            connection.exec_driver_sql("select count(*) from users").scalar(),
+            1,
+        )
+
+    @testing.requires.independent_connections
+    def test_branch_autocommit(self, local_connection):
+        users = self.tables.users
+        with testing.db.connect() as connection:
+            branched = connection.connect()
+            with testing.expect_deprecated_20(
+                "The current statement is being autocommitted using "
+                "implicit autocommit"
+            ):
+                branched.execute(
+                    users.insert(), dict(user_id=1, user_name="user1")
+                )
+
+        eq_(
+            local_connection.execute(
+                text("select count(*) from users")
+            ).scalar(),
+            1,
+        )
+
+    @testing.requires.savepoints
+    def test_branch_savepoint_rollback(self, local_connection):
+        connection = local_connection
+        users = self.tables.users
+        trans = connection.begin()
+        branched = connection.connect()
+        assert branched.in_transaction()
+        branched.execute(users.insert(), user_id=1, user_name="user1")
+        nested = branched.begin_nested()
+        branched.execute(users.insert(), user_id=2, user_name="user2")
+        nested.rollback()
+        assert connection.in_transaction()
+        trans.commit()
+        eq_(
+            connection.exec_driver_sql("select count(*) from users").scalar(),
+            1,
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_branch_twophase_rollback(self, local_connection):
+        connection = local_connection
+        users = self.tables.users
+        branched = connection.connect()
+        assert not branched.in_transaction()
+        with testing.expect_deprecated_20(
+            r"The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            branched.execute(users.insert(), user_id=1, user_name="user1")
+        nested = branched.begin_twophase()
+        branched.execute(users.insert(), user_id=2, user_name="user2")
+        nested.rollback()
+        assert not connection.in_transaction()
+        eq_(
+            connection.exec_driver_sql("select count(*) from users").scalar(),
+            1,
+        )
 
 
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):
@@ -699,20 +831,20 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
     def test_create_drop_explicit(self):
         metadata = MetaData()
         table = Table("test_table", metadata, Column("foo", Integer))
-        for bind in (testing.db, testing.db.connect()):
-            for args in [([], {"bind": bind}), ([bind], {})]:
-                metadata.create_all(*args[0], **args[1])
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated"
-                ):
-                    assert table.exists(*args[0], **args[1])
-                metadata.drop_all(*args[0], **args[1])
-                table.create(*args[0], **args[1])
-                table.drop(*args[0], **args[1])
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated"
-                ):
-                    assert not table.exists(*args[0], **args[1])
+        bind = testing.db
+        for args in [([], {"bind": bind}), ([bind], {})]:
+            metadata.create_all(*args[0], **args[1])
+            with testing.expect_deprecated(
+                r"The Table.exists\(\) method is deprecated"
+            ):
+                assert table.exists(*args[0], **args[1])
+            metadata.drop_all(*args[0], **args[1])
+            table.create(*args[0], **args[1])
+            table.drop(*args[0], **args[1])
+            with testing.expect_deprecated(
+                r"The Table.exists\(\) method is deprecated"
+            ):
+                assert not table.exists(*args[0], **args[1])
 
     def test_create_drop_err_table(self):
         metadata = MetaData()
@@ -1195,3 +1327,208 @@ class DDLExecutionTest(fixtures.TestBase):
                 with testing.expect_deprecated_20(ddl_msg):
                     r = fn(**kw)
                 eq_(list(r), [(1,)])
+
+
+class AutocommitKeywordFixture(object):
+    def _test_keyword(self, keyword, expected=True):
+        dbapi = Mock(
+            connect=Mock(
+                return_value=Mock(
+                    cursor=Mock(return_value=Mock(description=()))
+                )
+            )
+        )
+        engine = engines.testing_engine(
+            options={"_initialize": False, "pool_reset_on_return": None}
+        )
+        engine.dialect.dbapi = dbapi
+
+        with engine.connect() as conn:
+            if expected:
+                with testing.expect_deprecated_20(
+                    "The current statement is being autocommitted "
+                    "using implicit autocommit"
+                ):
+                    conn.exec_driver_sql(
+                        "%s something table something" % keyword
+                    )
+            else:
+                conn.exec_driver_sql("%s something table something" % keyword)
+
+            if expected:
+                eq_(
+                    [n for (n, k, s) in dbapi.connect().mock_calls],
+                    ["cursor", "commit"],
+                )
+            else:
+                eq_(
+                    [n for (n, k, s) in dbapi.connect().mock_calls], ["cursor"]
+                )
+
+
+class AutocommitTextTest(AutocommitKeywordFixture, fixtures.TestBase):
+    __backend__ = True
+
+    def test_update(self):
+        self._test_keyword("UPDATE")
+
+    def test_insert(self):
+        self._test_keyword("INSERT")
+
+    def test_delete(self):
+        self._test_keyword("DELETE")
+
+    def test_alter(self):
+        self._test_keyword("ALTER TABLE")
+
+    def test_create(self):
+        self._test_keyword("CREATE TABLE foobar")
+
+    def test_drop(self):
+        self._test_keyword("DROP TABLE foobar")
+
+    def test_select(self):
+        self._test_keyword("SELECT foo FROM table", False)
+
+
+class ExplicitAutoCommitTest(fixtures.TestBase):
+
+    """test the 'autocommit' flag on select() and text() objects.
+
+    Requires PostgreSQL so that we may define a custom function which
+    modifies the database."""
+
+    __only_on__ = "postgresql"
+
+    @classmethod
+    def setup_class(cls):
+        global metadata, foo
+        metadata = MetaData(testing.db)
+        foo = Table(
+            "foo",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", String(100)),
+        )
+        with testing.db.begin() as conn:
+            metadata.create_all(conn)
+            conn.exec_driver_sql(
+                "create function insert_foo(varchar) "
+                "returns integer as 'insert into foo(data) "
+                "values ($1);select 1;' language sql"
+            )
+
+    def teardown(self):
+        with testing.db.begin() as conn:
+            conn.execute(foo.delete())
+
+    @classmethod
+    def teardown_class(cls):
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("drop function insert_foo(varchar)")
+            metadata.drop_all(conn)
+
+    def test_control(self):
+
+        # test that not using autocommit does not commit
+
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        conn1.execute(select(func.insert_foo("data1")))
+        assert conn2.execute(select(foo.c.data)).fetchall() == []
+        conn1.execute(text("select insert_foo('moredata')"))
+        assert conn2.execute(select(foo.c.data)).fetchall() == []
+        trans = conn1.begin()
+        trans.commit()
+        assert conn2.execute(select(foo.c.data)).fetchall() == [
+            ("data1",),
+            ("moredata",),
+        ]
+        conn1.close()
+        conn2.close()
+
+    def test_explicit_compiled(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            conn1.execute(
+                select(func.insert_foo("data1")).execution_options(
+                    autocommit=True
+                )
+            )
+        assert conn2.execute(select(foo.c.data)).fetchall() == [("data1",)]
+        conn1.close()
+        conn2.close()
+
+    def test_explicit_connection(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            conn1.execution_options(autocommit=True).execute(
+                select(func.insert_foo("data1"))
+            )
+        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
+
+        # connection supersedes statement
+
+        conn1.execution_options(autocommit=False).execute(
+            select(func.insert_foo("data2")).execution_options(autocommit=True)
+        )
+        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
+
+        # ditto
+
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            conn1.execution_options(autocommit=True).execute(
+                select(func.insert_foo("data3")).execution_options(
+                    autocommit=False
+                )
+            )
+        eq_(
+            conn2.execute(select(foo.c.data)).fetchall(),
+            [("data1",), ("data2",), ("data3",)],
+        )
+        conn1.close()
+        conn2.close()
+
+    def test_explicit_text(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            conn1.execute(
+                text("select insert_foo('moredata')").execution_options(
+                    autocommit=True
+                )
+            )
+        assert conn2.execute(select(foo.c.data)).fetchall() == [("moredata",)]
+        conn1.close()
+        conn2.close()
+
+    def test_implicit_text(self):
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        with testing.expect_deprecated_20(
+            "The current statement is being autocommitted using "
+            "implicit autocommit"
+        ):
+            conn1.execute(
+                text("insert into foo (data) values ('implicitdata')")
+            )
+        assert conn2.execute(select(foo.c.data)).fetchall() == [
+            ("implicitdata",)
+        ]
+        conn1.close()
+        conn2.close()

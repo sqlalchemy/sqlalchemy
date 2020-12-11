@@ -34,11 +34,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-def exec_sql(engine, sql, *args, **kwargs):
-    with engine.connect() as conn:
-        return conn.exec_driver_sql(sql, *args, **kwargs)
-
-
 class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = "oracle"
     __backend__ = True
@@ -49,62 +44,64 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         # don't really know how else to go here unless
         # we connect as the other user.
 
-        for stmt in (
-            """
-create table %(test_schema)s.parent(
-    id integer primary key,
-    data varchar2(50)
-);
+        with testing.db.begin() as conn:
+            for stmt in (
+                """
+    create table %(test_schema)s.parent(
+        id integer primary key,
+        data varchar2(50)
+    );
 
-COMMENT ON TABLE %(test_schema)s.parent IS 'my table comment';
+    COMMENT ON TABLE %(test_schema)s.parent IS 'my table comment';
 
-create table %(test_schema)s.child(
-    id integer primary key,
-    data varchar2(50),
-    parent_id integer references %(test_schema)s.parent(id)
-);
+    create table %(test_schema)s.child(
+        id integer primary key,
+        data varchar2(50),
+        parent_id integer references %(test_schema)s.parent(id)
+    );
 
-create table local_table(
-    id integer primary key,
-    data varchar2(50)
-);
+    create table local_table(
+        id integer primary key,
+        data varchar2(50)
+    );
 
-create synonym %(test_schema)s.ptable for %(test_schema)s.parent;
-create synonym %(test_schema)s.ctable for %(test_schema)s.child;
+    create synonym %(test_schema)s.ptable for %(test_schema)s.parent;
+    create synonym %(test_schema)s.ctable for %(test_schema)s.child;
 
-create synonym %(test_schema)s_pt for %(test_schema)s.parent;
+    create synonym %(test_schema)s_pt for %(test_schema)s.parent;
 
-create synonym %(test_schema)s.local_table for local_table;
+    create synonym %(test_schema)s.local_table for local_table;
 
--- can't make a ref from local schema to the
--- remote schema's table without this,
--- *and* cant give yourself a grant !
--- so we give it to public.  ideas welcome.
-grant references on %(test_schema)s.parent to public;
-grant references on %(test_schema)s.child to public;
-"""
-            % {"test_schema": testing.config.test_schema}
-        ).split(";"):
-            if stmt.strip():
-                exec_sql(testing.db, stmt)
+    -- can't make a ref from local schema to the
+    -- remote schema's table without this,
+    -- *and* cant give yourself a grant !
+    -- so we give it to public.  ideas welcome.
+    grant references on %(test_schema)s.parent to public;
+    grant references on %(test_schema)s.child to public;
+    """
+                % {"test_schema": testing.config.test_schema}
+            ).split(";"):
+                if stmt.strip():
+                    conn.exec_driver_sql(stmt)
 
     @classmethod
     def teardown_class(cls):
-        for stmt in (
-            """
-drop table %(test_schema)s.child;
-drop table %(test_schema)s.parent;
-drop table local_table;
-drop synonym %(test_schema)s.ctable;
-drop synonym %(test_schema)s.ptable;
-drop synonym %(test_schema)s_pt;
-drop synonym %(test_schema)s.local_table;
+        with testing.db.begin() as conn:
+            for stmt in (
+                """
+    drop table %(test_schema)s.child;
+    drop table %(test_schema)s.parent;
+    drop table local_table;
+    drop synonym %(test_schema)s.ctable;
+    drop synonym %(test_schema)s.ptable;
+    drop synonym %(test_schema)s_pt;
+    drop synonym %(test_schema)s.local_table;
 
-"""
-            % {"test_schema": testing.config.test_schema}
-        ).split(";"):
-            if stmt.strip():
-                exec_sql(testing.db, stmt)
+    """
+                % {"test_schema": testing.config.test_schema}
+            ).split(";"):
+                if stmt.strip():
+                    conn.exec_driver_sql(stmt)
 
     @testing.provide_metadata
     def test_create_same_names_explicit_schema(self):
@@ -162,7 +159,7 @@ drop synonym %(test_schema)s.local_table;
         )
 
     @testing.provide_metadata
-    def test_create_same_names_implicit_schema(self):
+    def test_create_same_names_implicit_schema(self, connection):
         meta = self.metadata
         parent = Table(
             "parent", meta, Column("pid", Integer, primary_key=True)
@@ -173,10 +170,11 @@ drop synonym %(test_schema)s.local_table;
             Column("cid", Integer, primary_key=True),
             Column("pid", Integer, ForeignKey("parent.pid")),
         )
-        meta.create_all()
-        parent.insert().execute({"pid": 1})
-        child.insert().execute({"cid": 1, "pid": 1})
-        eq_(child.select().execute().fetchall(), [(1, 1)])
+        meta.create_all(connection)
+
+        connection.execute(parent.insert(), {"pid": 1})
+        connection.execute(child.insert(), {"cid": 1, "pid": 1})
+        eq_(connection.execute(child.select()).fetchall(), [(1, 1)])
 
     def test_reflect_alt_owner_explicit(self):
         meta = MetaData()
@@ -238,9 +236,8 @@ drop synonym %(test_schema)s.local_table;
             {"text": "my local comment"},
         )
 
-    def test_reflect_local_to_remote(self):
-        exec_sql(
-            testing.db,
+    def test_reflect_local_to_remote(self, connection):
+        connection.exec_driver_sql(
             "CREATE TABLE localtable (id INTEGER "
             "PRIMARY KEY, parent_id INTEGER REFERENCES "
             "%(test_schema)s.parent(id))"
@@ -258,7 +255,7 @@ drop synonym %(test_schema)s.local_table;
                 % {"test_schema": testing.config.test_schema},
             )
         finally:
-            exec_sql(testing.db, "DROP TABLE localtable")
+            connection.exec_driver_sql("DROP TABLE localtable")
 
     def test_reflect_alt_owner_implicit(self):
         meta = MetaData()
@@ -286,9 +283,8 @@ drop synonym %(test_schema)s.local_table;
                 select(parent, child).select_from(parent.join(child))
             ).fetchall()
 
-    def test_reflect_alt_owner_synonyms(self):
-        exec_sql(
-            testing.db,
+    def test_reflect_alt_owner_synonyms(self, connection):
+        connection.exec_driver_sql(
             "CREATE TABLE localtable (id INTEGER "
             "PRIMARY KEY, parent_id INTEGER REFERENCES "
             "%s.ptable(id))" % testing.config.test_schema,
@@ -298,7 +294,7 @@ drop synonym %(test_schema)s.local_table;
             lcl = Table(
                 "localtable",
                 meta,
-                autoload_with=testing.db,
+                autoload_with=connection,
                 oracle_resolve_synonyms=True,
             )
             parent = meta.tables["%s.ptable" % testing.config.test_schema]
@@ -309,12 +305,11 @@ drop synonym %(test_schema)s.local_table;
                 "localtable.parent_id"
                 % {"test_schema": testing.config.test_schema},
             )
-            with testing.db.connect() as conn:
-                conn.execute(
-                    select(parent, lcl).select_from(parent.join(lcl))
-                ).fetchall()
+            connection.execute(
+                select(parent, lcl).select_from(parent.join(lcl))
+            ).fetchall()
         finally:
-            exec_sql(testing.db, "DROP TABLE localtable")
+            connection.exec_driver_sql("DROP TABLE localtable")
 
     def test_reflect_remote_synonyms(self):
         meta = MetaData()
@@ -389,19 +384,20 @@ class SystemTableTablenamesTest(fixtures.TestBase):
     __backend__ = True
 
     def setup(self):
-        exec_sql(testing.db, "create table my_table (id integer)")
-        exec_sql(
-            testing.db,
-            "create global temporary table my_temp_table (id integer)",
-        )
-        exec_sql(
-            testing.db, "create table foo_table (id integer) tablespace SYSTEM"
-        )
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("create table my_table (id integer)")
+            conn.exec_driver_sql(
+                "create global temporary table my_temp_table (id integer)",
+            )
+            conn.exec_driver_sql(
+                "create table foo_table (id integer) tablespace SYSTEM"
+            )
 
     def teardown(self):
-        exec_sql(testing.db, "drop table my_temp_table")
-        exec_sql(testing.db, "drop table my_table")
-        exec_sql(testing.db, "drop table foo_table")
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("drop table my_temp_table")
+            conn.exec_driver_sql("drop table my_table")
+            conn.exec_driver_sql("drop table foo_table")
 
     def test_table_names_no_system(self):
         insp = inspect(testing.db)
@@ -430,24 +426,25 @@ class DontReflectIOTTest(fixtures.TestBase):
     __backend__ = True
 
     def setup(self):
-        exec_sql(
-            testing.db,
-            """
-        CREATE TABLE admin_docindex(
-                token char(20),
-                doc_id NUMBER,
-                token_frequency NUMBER,
-                token_offsets VARCHAR2(2000),
-                CONSTRAINT pk_admin_docindex PRIMARY KEY (token, doc_id))
-            ORGANIZATION INDEX
-            TABLESPACE users
-            PCTTHRESHOLD 20
-            OVERFLOW TABLESPACE users
-        """,
-        )
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql(
+                """
+            CREATE TABLE admin_docindex(
+                    token char(20),
+                    doc_id NUMBER,
+                    token_frequency NUMBER,
+                    token_offsets VARCHAR2(2000),
+                    CONSTRAINT pk_admin_docindex PRIMARY KEY (token, doc_id))
+                ORGANIZATION INDEX
+                TABLESPACE users
+                PCTTHRESHOLD 20
+                OVERFLOW TABLESPACE users
+            """,
+            )
 
     def teardown(self):
-        exec_sql(testing.db, "drop table admin_docindex")
+        with testing.db.begin() as conn:
+            conn.exec_driver_sql("drop table admin_docindex")
 
     def test_reflect_all(self):
         m = MetaData(testing.db)
@@ -456,30 +453,24 @@ class DontReflectIOTTest(fixtures.TestBase):
 
 
 def all_tables_compression_missing():
-    try:
-        exec_sql(testing.db, "SELECT compression FROM all_tables")
+    with testing.db.connect() as conn:
         if (
             "Enterprise Edition"
-            not in exec_sql(testing.db, "select * from v$version").scalar()
+            not in conn.exec_driver_sql("select * from v$version").scalar()
             # this works in Oracle Database 18c Express Edition Release
         ) and testing.db.dialect.server_version_info < (18,):
             return True
         return False
-    except Exception:
-        return True
 
 
 def all_tables_compress_for_missing():
-    try:
-        exec_sql(testing.db, "SELECT compress_for FROM all_tables")
+    with testing.db.connect() as conn:
         if (
             "Enterprise Edition"
-            not in exec_sql(testing.db, "select * from v$version").scalar()
+            not in conn.exec_driver_sql("select * from v$version").scalar()
         ):
             return True
         return False
-    except Exception:
-        return True
 
 
 class TableReflectionTest(fixtures.TestBase):
@@ -748,7 +739,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
         # note that the synonym here is still not totally functional
         # when accessing via a different username as we do with the
         # multiprocess test suite, so testing here is minimal
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql(
                 "create table test_table "
                 "(id integer primary key, data varchar2(50))"
@@ -760,7 +751,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
 
     @classmethod
     def teardown_class(cls):
-        with testing.db.connect() as conn:
+        with testing.db.begin() as conn:
             conn.exec_driver_sql("drop synonym test_table_syn")
             conn.exec_driver_sql("drop table test_table")
 

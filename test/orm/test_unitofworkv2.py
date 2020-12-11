@@ -778,7 +778,8 @@ class SingleCycleTest(UOWTest):
         # mysql can't handle delete from nodes
         # since it doesn't deal with the FKs correctly,
         # so wipe out the parent_id first
-        testing.db.execute(self.tables.nodes.update().values(parent_id=None))
+        with testing.db.begin() as conn:
+            conn.execute(self.tables.nodes.update().values(parent_id=None))
         super(SingleCycleTest, self).teardown()
 
     def test_one_to_many_save(self):

@@ -5,20 +5,16 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import INT
-from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import pool as _pool
 from sqlalchemy import select
-from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import base
 from sqlalchemy.engine import characteristics
 from sqlalchemy.engine import default
 from sqlalchemy.engine import url
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -29,31 +25,19 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
-users, metadata = None, None
 
-
-class TransactionTest(fixtures.TestBase):
+class TransactionTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global users, metadata
-        metadata = MetaData()
-        users = Table(
-            "query_users",
+    def define_tables(cls, metadata):
+        Table(
+            "users",
             metadata,
             Column("user_id", INT, primary_key=True),
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
-        users.create(testing.db)
-
-    def teardown(self):
-        testing.db.execute(users.delete()).close()
-
-    @classmethod
-    def teardown_class(cls):
-        users.drop(testing.db)
 
     @testing.fixture
     def local_connection(self):
@@ -61,6 +45,7 @@ class TransactionTest(fixtures.TestBase):
             yield conn
 
     def test_commits(self, local_connection):
+        users = self.tables.users
         connection = local_connection
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
@@ -72,7 +57,7 @@ class TransactionTest(fixtures.TestBase):
         transaction.commit()
 
         transaction = connection.begin()
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 3
         transaction.commit()
         connection.close()
@@ -80,17 +65,19 @@ class TransactionTest(fixtures.TestBase):
     def test_rollback(self, local_connection):
         """test a basic rollback"""
 
+        users = self.tables.users
         connection = local_connection
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         connection.execute(users.insert(), user_id=2, user_name="user2")
         connection.execute(users.insert(), user_id=3, user_name="user3")
         transaction.rollback()
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
     def test_raise(self, local_connection):
         connection = local_connection
+        users = self.tables.users
 
         transaction = connection.begin()
         try:
@@ -103,11 +90,12 @@ class TransactionTest(fixtures.TestBase):
             print("Exception: ", e)
             transaction.rollback()
 
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
     def test_nested_rollback(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         try:
             transaction = connection.begin()
             try:
@@ -146,6 +134,7 @@ class TransactionTest(fixtures.TestBase):
 
     def test_branch_nested_rollback(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         connection.begin()
         branched = connection.connect()
         assert branched.in_transaction()
@@ -179,6 +168,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.savepoints
     def test_savepoint_cancelled_by_toplevel_marker(self, local_connection):
         conn = local_connection
+        users = self.tables.users
         trans = conn.begin()
         conn.execute(users.insert(), {"user_id": 1, "user_name": "name"})
 
@@ -243,85 +233,6 @@ class TransactionTest(fixtures.TestBase):
             exc.InvalidRequestError,
             "This nested transaction is inactive",
             nested.commit,
-        )
-
-    def test_branch_autorollback(self, local_connection):
-        connection = local_connection
-        branched = connection.connect()
-        branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
-        assert_raises(
-            exc.DBAPIError,
-            branched.execute,
-            users.insert(),
-            dict(user_id=1, user_name="user1"),
-        )
-        # can continue w/o issue
-        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
-
-    def test_branch_orig_rollback(self, local_connection):
-        connection = local_connection
-        branched = connection.connect()
-        branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
-        nested = branched.begin()
-        assert branched.in_transaction()
-        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
-        nested.rollback()
-        eq_(
-            connection.exec_driver_sql(
-                "select count(*) from query_users"
-            ).scalar(),
-            1,
-        )
-
-    @testing.requires.independent_connections
-    def test_branch_autocommit(self, local_connection):
-        with testing.db.connect() as connection:
-            branched = connection.connect()
-            branched.execute(
-                users.insert(), dict(user_id=1, user_name="user1")
-            )
-
-        eq_(
-            local_connection.execute(
-                text("select count(*) from query_users")
-            ).scalar(),
-            1,
-        )
-
-    @testing.requires.savepoints
-    def test_branch_savepoint_rollback(self, local_connection):
-        connection = local_connection
-        trans = connection.begin()
-        branched = connection.connect()
-        assert branched.in_transaction()
-        branched.execute(users.insert(), user_id=1, user_name="user1")
-        nested = branched.begin_nested()
-        branched.execute(users.insert(), user_id=2, user_name="user2")
-        nested.rollback()
-        assert connection.in_transaction()
-        trans.commit()
-        eq_(
-            connection.exec_driver_sql(
-                "select count(*) from query_users"
-            ).scalar(),
-            1,
-        )
-
-    @testing.requires.two_phase_transactions
-    def test_branch_twophase_rollback(self, local_connection):
-        connection = local_connection
-        branched = connection.connect()
-        assert not branched.in_transaction()
-        branched.execute(users.insert(), user_id=1, user_name="user1")
-        nested = branched.begin_twophase()
-        branched.execute(users.insert(), user_id=2, user_name="user2")
-        nested.rollback()
-        assert not connection.in_transaction()
-        eq_(
-            connection.exec_driver_sql(
-                "select count(*) from query_users"
-            ).scalar(),
-            1,
         )
 
     def test_deactivated_warning_ctxmanager(self, local_connection):
@@ -472,20 +383,20 @@ class TransactionTest(fixtures.TestBase):
 
     def test_retains_through_options(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         conn2 = connection.execution_options(dummy=True)
         conn2.execute(users.insert(), user_id=2, user_name="user2")
         transaction.rollback()
         eq_(
-            connection.exec_driver_sql(
-                "select count(*) from query_users"
-            ).scalar(),
+            connection.exec_driver_sql("select count(*) from users").scalar(),
             0,
         )
 
     def test_nesting(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         connection.execute(users.insert(), user_id=2, user_name="user2")
@@ -497,15 +408,16 @@ class TransactionTest(fixtures.TestBase):
         transaction.rollback()
         self.assert_(
             connection.exec_driver_sql(
-                "select count(*) from " "query_users"
+                "select count(*) from " "users"
             ).scalar()
             == 0
         )
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
     def test_with_interface(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         trans = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         connection.execute(users.insert(), user_id=2, user_name="user2")
@@ -517,7 +429,7 @@ class TransactionTest(fixtures.TestBase):
         assert not trans.is_active
         self.assert_(
             connection.exec_driver_sql(
-                "select count(*) from " "query_users"
+                "select count(*) from " "users"
             ).scalar()
             == 0
         )
@@ -528,13 +440,14 @@ class TransactionTest(fixtures.TestBase):
         assert not trans.is_active
         self.assert_(
             connection.exec_driver_sql(
-                "select count(*) from " "query_users"
+                "select count(*) from " "users"
             ).scalar()
             == 1
         )
 
     def test_close(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         connection.execute(users.insert(), user_id=2, user_name="user2")
@@ -549,15 +462,16 @@ class TransactionTest(fixtures.TestBase):
         assert not connection.in_transaction()
         self.assert_(
             connection.exec_driver_sql(
-                "select count(*) from " "query_users"
+                "select count(*) from " "users"
             ).scalar()
             == 5
         )
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 5
 
     def test_close2(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         connection.execute(users.insert(), user_id=2, user_name="user2")
@@ -572,16 +486,17 @@ class TransactionTest(fixtures.TestBase):
         assert not connection.in_transaction()
         self.assert_(
             connection.exec_driver_sql(
-                "select count(*) from " "query_users"
+                "select count(*) from " "users"
             ).scalar()
             == 0
         )
-        result = connection.exec_driver_sql("select * from query_users")
+        result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
     @testing.requires.savepoints
     def test_nested_subtransaction_rollback(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         trans2 = connection.begin_nested()
@@ -599,6 +514,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.savepoints
     def test_nested_subtransaction_commit(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         trans2 = connection.begin_nested()
@@ -616,6 +532,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.savepoints
     def test_rollback_to_subtransaction(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         trans2 = connection.begin_nested()
@@ -646,6 +563,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.two_phase_transactions
     def test_two_phase_transaction(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         transaction.prepare()
@@ -680,6 +598,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.savepoints
     def test_mixed_two_phase_transaction(self, local_connection):
         connection = local_connection
+        users = self.tables.users
         transaction = connection.begin_twophase()
         connection.execute(users.insert(), user_id=1, user_name="user1")
         transaction2 = connection.begin()
@@ -704,6 +623,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.two_phase_transactions
     @testing.requires.two_phase_recovery
     def test_two_phase_recover(self):
+        users = self.tables.users
 
         # 2020, still can't get this to work w/ modern MySQL or MariaDB.
         # the XA RECOVER comes back as bytes, OK, convert to string,
@@ -722,11 +642,14 @@ class TransactionTest(fixtures.TestBase):
 
         with testing.db.connect() as connection2:
             eq_(
-                connection2.execution_options(autocommit=True)
-                .execute(select(users.c.user_id).order_by(users.c.user_id))
-                .fetchall(),
+                connection2.execute(
+                    select(users.c.user_id).order_by(users.c.user_id)
+                ).fetchall(),
                 [],
             )
+
+        # recover_twophase needs to be run in a new transaction
+        with testing.db.connect() as connection2:
             recoverables = connection2.recover_twophase()
             assert transaction.xid in recoverables
             connection2.commit_prepared(transaction.xid, recover=True)
@@ -740,6 +663,7 @@ class TransactionTest(fixtures.TestBase):
     @testing.requires.two_phase_transactions
     def test_multiple_two_phase(self, local_connection):
         conn = local_connection
+        users = self.tables.users
         xa = conn.begin_twophase()
         conn.execute(users.insert(), user_id=1, user_name="user1")
         xa.prepare()
@@ -767,6 +691,7 @@ class TransactionTest(fixtures.TestBase):
         # so that picky backends like MySQL correctly clear out
         # their state when a connection is closed without handling
         # the transaction explicitly.
+        users = self.tables.users
 
         eng = testing_engine()
 
@@ -1005,7 +930,8 @@ class AutoRollbackTest(fixtures.TestBase):
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
-        users.create(conn1)
+        with conn1.begin():
+            users.create(conn1)
         conn1.exec_driver_sql("select * from deadlock_users")
         conn1.close()
 
@@ -1014,125 +940,8 @@ class AutoRollbackTest(fixtures.TestBase):
         # pool but still has a lock on "deadlock_users". comment out the
         # rollback in pool/ConnectionFairy._close() to see !
 
-        users.drop(conn2)
-        conn2.close()
-
-
-class ExplicitAutoCommitTest(fixtures.TestBase):
-
-    """test the 'autocommit' flag on select() and text() objects.
-
-    Requires PostgreSQL so that we may define a custom function which
-    modifies the database."""
-
-    __only_on__ = "postgresql"
-
-    @classmethod
-    def setup_class(cls):
-        global metadata, foo
-        metadata = MetaData(testing.db)
-        foo = Table(
-            "foo",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("data", String(100)),
-        )
-        with testing.db.connect() as conn:
-            metadata.create_all(conn)
-            conn.exec_driver_sql(
-                "create function insert_foo(varchar) "
-                "returns integer as 'insert into foo(data) "
-                "values ($1);select 1;' language sql"
-            )
-
-    def teardown(self):
-        with testing.db.connect() as conn:
-            conn.execute(foo.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        with testing.db.connect() as conn:
-            conn.exec_driver_sql("drop function insert_foo(varchar)")
-            metadata.drop_all(conn)
-
-    def test_control(self):
-
-        # test that not using autocommit does not commit
-
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        conn1.execute(select(func.insert_foo("data1")))
-        assert conn2.execute(select(foo.c.data)).fetchall() == []
-        conn1.execute(text("select insert_foo('moredata')"))
-        assert conn2.execute(select(foo.c.data)).fetchall() == []
-        trans = conn1.begin()
-        trans.commit()
-        assert conn2.execute(select(foo.c.data)).fetchall() == [
-            ("data1",),
-            ("moredata",),
-        ]
-        conn1.close()
-        conn2.close()
-
-    def test_explicit_compiled(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        conn1.execute(
-            select(func.insert_foo("data1")).execution_options(autocommit=True)
-        )
-        assert conn2.execute(select(foo.c.data)).fetchall() == [("data1",)]
-        conn1.close()
-        conn2.close()
-
-    def test_explicit_connection(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        conn1.execution_options(autocommit=True).execute(
-            select(func.insert_foo("data1"))
-        )
-        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
-
-        # connection supersedes statement
-
-        conn1.execution_options(autocommit=False).execute(
-            select(func.insert_foo("data2")).execution_options(autocommit=True)
-        )
-        eq_(conn2.execute(select(foo.c.data)).fetchall(), [("data1",)])
-
-        # ditto
-
-        conn1.execution_options(autocommit=True).execute(
-            select(func.insert_foo("data3")).execution_options(
-                autocommit=False
-            )
-        )
-        eq_(
-            conn2.execute(select(foo.c.data)).fetchall(),
-            [("data1",), ("data2",), ("data3",)],
-        )
-        conn1.close()
-        conn2.close()
-
-    def test_explicit_text(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        conn1.execute(
-            text("select insert_foo('moredata')").execution_options(
-                autocommit=True
-            )
-        )
-        assert conn2.execute(select(foo.c.data)).fetchall() == [("moredata",)]
-        conn1.close()
-        conn2.close()
-
-    def test_implicit_text(self):
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        conn1.execute(text("insert into foo (data) values ('implicitdata')"))
-        assert conn2.execute(select(foo.c.data)).fetchall() == [
-            ("implicitdata",)
-        ]
-        conn1.close()
+        with conn2.begin():
+            users.drop(conn2)
         conn2.close()
 
 

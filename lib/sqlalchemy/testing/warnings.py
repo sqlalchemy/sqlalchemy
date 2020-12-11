@@ -56,13 +56,11 @@ def setup_filters():
         # Core execution
         #
         r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method",
-        r"The current statement is being autocommitted using implicit "
-        "autocommit,",
         r"The connection.execute\(\) method in SQLAlchemy 2.0 will accept "
         "parameters as a single dictionary or a single sequence of "
         "dictionaries only.",
         r"The Connection.connect\(\) method is considered legacy",
-        r".*DefaultGenerator.execute\(\)",
+        #        r".*DefaultGenerator.execute\(\)",
         #
         # bound metadaa
         #

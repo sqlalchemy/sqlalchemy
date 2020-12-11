@@ -48,25 +48,28 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
     def setup(self):
-        metadata.create_all()
-        t.insert().execute(
-            [
-                dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
-                    for fnum in range(NUM_FIELDS)
-                )
-                for r_num in range(NUM_RECORDS)
-            ]
-        )
-        t2.insert().execute(
-            [
-                dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
-                    for fnum in range(NUM_FIELDS)
-                )
-                for r_num in range(NUM_RECORDS)
-            ]
-        )
+        with testing.db.begin() as conn:
+            metadata.create_all(conn)
+            conn.execute(
+                t.insert(),
+                [
+                    dict(
+                        ("field%d" % fnum, u("value%d" % fnum))
+                        for fnum in range(NUM_FIELDS)
+                    )
+                    for r_num in range(NUM_RECORDS)
+                ],
+            )
+            conn.execute(
+                t2.insert(),
+                [
+                    dict(
+                        ("field%d" % fnum, u("value%d" % fnum))
+                        for fnum in range(NUM_FIELDS)
+                    )
+                    for r_num in range(NUM_RECORDS)
+                ],
+            )
 
         # warm up type caches
         with testing.db.connect() as conn:

@@ -23,9 +23,6 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
 
 
-table = GoofyType = seq = None
-
-
 class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "postgresql"
 
@@ -92,14 +89,14 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
+class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     __requires__ = ("returning",)
     __backend__ = True
 
-    def setup(self):
-        meta = MetaData(testing.db)
-        global table, GoofyType
+    run_create_tables = "each"
 
+    @classmethod
+    def define_tables(cls, metadata):
         class GoofyType(TypeDecorator):
             impl = String
 
@@ -113,9 +110,11 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
                     return None
                 return value + "BAR"
 
-        table = Table(
+        cls.GoofyType = GoofyType
+
+        Table(
             "tables",
-            meta,
+            metadata,
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
@@ -123,14 +122,9 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
             Column("full", Boolean),
             Column("goofy", GoofyType(50)),
         )
-        with testing.db.connect() as conn:
-            table.create(conn, checkfirst=True)
-
-    def teardown(self):
-        with testing.db.connect() as conn:
-            table.drop(conn)
 
     def test_column_targeting(self, connection):
+        table = self.tables.tables
         result = connection.execute(
             table.insert().returning(table.c.id, table.c.full),
             {"persons": 1, "full": False},
@@ -155,6 +149,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.fails_on("firebird", "fb can't handle returning x AS y")
     def test_labeling(self, connection):
+        table = self.tables.tables
         result = connection.execute(
             table.insert()
             .values(persons=6)
@@ -167,6 +162,8 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         "firebird", "fb/kintersbasdb can't handle the bind params"
     )
     def test_anon_expressions(self, connection):
+        table = self.tables.tables
+        GoofyType = self.GoofyType
         result = connection.execute(
             table.insert()
             .values(goofy="someOTHERgoofy")
@@ -182,6 +179,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(row[0], 30)
 
     def test_update_returning(self, connection):
+        table = self.tables.tables
         connection.execute(
             table.insert(),
             [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
@@ -201,6 +199,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.requires.full_returning
     def test_update_full_returning(self, connection):
+        table = self.tables.tables
         connection.execute(
             table.insert(),
             [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
@@ -215,6 +214,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.requires.full_returning
     def test_delete_full_returning(self, connection):
+        table = self.tables.tables
         connection.execute(
             table.insert(),
             [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
@@ -226,6 +226,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1, False), (2, False)])
 
     def test_insert_returning(self, connection):
+        table = self.tables.tables
         result = connection.execute(
             table.insert().returning(table.c.id), {"persons": 1, "full": False}
         )
@@ -234,6 +235,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.requires.multivalues_inserts
     def test_multirow_returning(self, connection):
+        table = self.tables.tables
         ins = (
             table.insert()
             .returning(table.c.id, table.c.persons)
@@ -249,6 +251,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result.fetchall(), [(1, 1), (2, 2), (3, 3)])
 
     def test_no_ipk_on_returning(self, connection):
+        table = self.tables.tables
         result = connection.execute(
             table.insert().returning(table.c.id), {"persons": 1, "full": False}
         )
@@ -274,6 +277,7 @@ class ReturningTest(fixtures.TestBase, AssertsExecutionResults):
         eq_([dict(row._mapping) for row in result4], [{"persons": 10}])
 
     def test_delete_returning(self, connection):
+        table = self.tables.tables
         connection.execute(
             table.insert(),
             [{"persons": 5, "full": False}, {"persons": 3, "full": False}],
@@ -319,17 +323,16 @@ class CompositeStatementTest(fixtures.TestBase):
         eq_(result.scalar(), 5)
 
 
-class SequenceReturningTest(fixtures.TestBase):
+class SequenceReturningTest(fixtures.TablesTest):
     __requires__ = "returning", "sequences"
     __backend__ = True
 
-    def setup(self):
-        meta = MetaData(testing.db)
-        global table, seq
+    @classmethod
+    def define_tables(cls, metadata):
         seq = Sequence("tid_seq")
-        table = Table(
+        Table(
             "tables",
-            meta,
+            metadata,
             Column(
                 "id",
                 Integer,
@@ -338,38 +341,32 @@ class SequenceReturningTest(fixtures.TestBase):
             ),
             Column("data", String(50)),
         )
-        with testing.db.connect() as conn:
-            table.create(conn, checkfirst=True)
-
-    def teardown(self):
-        with testing.db.connect() as conn:
-            table.drop(conn)
+        cls.sequences.tid_seq = seq
 
     def test_insert(self, connection):
+        table = self.tables.tables
         r = connection.execute(
             table.insert().values(data="hi").returning(table.c.id)
         )
         eq_(r.first(), tuple([testing.db.dialect.default_sequence_base]))
         eq_(
-            connection.execute(seq),
+            connection.execute(self.sequences.tid_seq),
             testing.db.dialect.default_sequence_base + 1,
         )
 
 
-class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
+class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
 
     """test returning() works with columns that define 'key'."""
 
     __requires__ = ("returning",)
     __backend__ = True
 
-    def setup(self):
-        meta = MetaData(testing.db)
-        global table
-
-        table = Table(
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
             "tables",
-            meta,
+            metadata,
             Column(
                 "id",
                 Integer,
@@ -379,16 +376,11 @@ class KeyReturningTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("data", String(20)),
         )
-        with testing.db.connect() as conn:
-            table.create(conn, checkfirst=True)
-
-    def teardown(self):
-        with testing.db.connect() as conn:
-            table.drop(conn)
 
     @testing.exclude("firebird", "<", (2, 0), "2.0+ feature")
     @testing.exclude("postgresql", "<", (8, 2), "8.2+ feature")
     def test_insert(self, connection):
+        table = self.tables.tables
         result = connection.execute(
             table.insert().returning(table.c.foo_id), data="somedata"
         )

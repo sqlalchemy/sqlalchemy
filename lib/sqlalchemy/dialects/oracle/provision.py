@@ -17,7 +17,7 @@ def _oracle_create_db(cfg, eng, ident):
     # NOTE: make sure you've run "ALTER DATABASE default tablespace users" or
     # similar, so that the default tablespace is not "system"; reflection will
     # fail otherwise
-    with eng.connect() as conn:
+    with eng.begin() as conn:
         conn.exec_driver_sql("create user %s identified by xe" % ident)
         conn.exec_driver_sql("create user %s_ts1 identified by xe" % ident)
         conn.exec_driver_sql("create user %s_ts2 identified by xe" % ident)
@@ -45,7 +45,7 @@ def _ora_drop_ignore(conn, dbname):
 
 @drop_db.for_db("oracle")
 def _oracle_drop_db(cfg, eng, ident):
-    with eng.connect() as conn:
+    with eng.begin() as conn:
         # cx_Oracle seems to occasionally leak open connections when a large
         # suite it run, even if we confirm we have zero references to
         # connection objects.
@@ -65,7 +65,7 @@ def _oracle_update_db_opts(db_url, db_opts):
 def _reap_oracle_dbs(url, idents):
     log.info("db reaper connecting to %r", url)
     eng = create_engine(url)
-    with eng.connect() as conn:
+    with eng.begin() as conn:
 
         log.info("identifiers in file: %s", ", ".join(idents))
 

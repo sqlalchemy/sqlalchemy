@@ -489,6 +489,7 @@ class DDLExecutionTest(fixtures.TestBase):
     def test_ddl_execute(self):
         engine = create_engine("sqlite:///")
         cx = engine.connect()
+        cx.begin()
         table = self.users
         ddl = DDL("SELECT 1")
 

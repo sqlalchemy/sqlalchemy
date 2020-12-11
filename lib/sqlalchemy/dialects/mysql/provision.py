@@ -41,12 +41,13 @@ def generate_driver_url(url, driver, query_str):
 
 @create_db.for_db("mysql", "mariadb")
 def _mysql_create_db(cfg, eng, ident):
-    with eng.connect() as conn:
+    with eng.begin() as conn:
         try:
             _mysql_drop_db(cfg, conn, ident)
         except Exception:
             pass
 
+    with eng.begin() as conn:
         conn.exec_driver_sql(
             "CREATE DATABASE %s CHARACTER SET utf8mb4" % ident
         )
@@ -66,7 +67,7 @@ def _mysql_configure_follower(config, ident):
 
 @drop_db.for_db("mysql", "mariadb")
 def _mysql_drop_db(cfg, eng, ident):
-    with eng.connect() as conn:
+    with eng.begin() as conn:
         conn.exec_driver_sql("DROP DATABASE %s_test_schema" % ident)
         conn.exec_driver_sql("DROP DATABASE %s_test_schema_2" % ident)
         conn.exec_driver_sql("DROP DATABASE %s" % ident)

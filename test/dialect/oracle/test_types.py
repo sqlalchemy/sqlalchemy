@@ -228,16 +228,16 @@ class TypesTest(fixtures.TestBase):
 
     @testing.requires.returning
     @testing.provide_metadata
-    def test_int_not_float(self):
+    def test_int_not_float(self, connection):
         m = self.metadata
         t1 = Table("t1", m, Column("foo", Integer))
-        t1.create()
-        r = t1.insert().values(foo=5).returning(t1.c.foo).execute()
+        t1.create(connection)
+        r = connection.execute(t1.insert().values(foo=5).returning(t1.c.foo))
         x = r.scalar()
         assert x == 5
         assert isinstance(x, int)
 
-        x = t1.select().scalar()
+        x = connection.scalar(t1.select())
         assert x == 5
         assert isinstance(x, int)
 
@@ -281,7 +281,7 @@ class TypesTest(fixtures.TestBase):
             eq_(conn.execute(s3).fetchall(), [(5, rowid)])
 
     @testing.provide_metadata
-    def test_interval(self):
+    def test_interval(self, connection):
         metadata = self.metadata
         interval_table = Table(
             "intervaltable",
@@ -291,11 +291,12 @@ class TypesTest(fixtures.TestBase):
             ),
             Column("day_interval", oracle.INTERVAL(day_precision=3)),
         )
-        metadata.create_all()
-        interval_table.insert().execute(
-            day_interval=datetime.timedelta(days=35, seconds=5743)
+        metadata.create_all(connection)
+        connection.execute(
+            interval_table.insert(),
+            dict(day_interval=datetime.timedelta(days=35, seconds=5743)),
         )
-        row = interval_table.select().execute().first()
+        row = connection.execute(interval_table.select()).first()
         eq_(row["day_interval"], datetime.timedelta(days=35, seconds=5743))
 
     @testing.provide_metadata
@@ -364,16 +365,19 @@ class TypesTest(fixtures.TestBase):
             Column("intcol", Integer),
             Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=False)),
         )
-        t1.create()
-        t1.insert().execute(
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
             [
                 dict(intcol=1, numericcol=float("inf")),
                 dict(intcol=2, numericcol=float("-inf")),
-            ]
+            ],
         )
 
         eq_(
-            select(t1.c.numericcol).order_by(t1.c.intcol).execute().fetchall(),
+            connection.execute(
+                select(t1.c.numericcol).order_by(t1.c.intcol)
+            ).fetchall(),
             [(float("inf"),), (float("-inf"),)],
         )
 
@@ -393,16 +397,19 @@ class TypesTest(fixtures.TestBase):
             Column("intcol", Integer),
             Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=True)),
         )
-        t1.create()
-        t1.insert().execute(
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
             [
                 dict(intcol=1, numericcol=decimal.Decimal("Infinity")),
                 dict(intcol=2, numericcol=decimal.Decimal("-Infinity")),
-            ]
+            ],
         )
 
         eq_(
-            select(t1.c.numericcol).order_by(t1.c.intcol).execute().fetchall(),
+            connection.execute(
+                select(t1.c.numericcol).order_by(t1.c.intcol)
+            ).fetchall(),
             [(decimal.Decimal("Infinity"),), (decimal.Decimal("-Infinity"),)],
         )
 
@@ -422,20 +429,21 @@ class TypesTest(fixtures.TestBase):
             Column("intcol", Integer),
             Column("numericcol", oracle.BINARY_DOUBLE(asdecimal=False)),
         )
-        t1.create()
-        t1.insert().execute(
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
             [
                 dict(intcol=1, numericcol=float("nan")),
                 dict(intcol=2, numericcol=float("-nan")),
-            ]
+            ],
         )
 
         eq_(
             [
                 tuple(str(col) for col in row)
-                for row in select(t1.c.numericcol)
-                .order_by(t1.c.intcol)
-                .execute()
+                for row in connection.execute(
+                    select(t1.c.numericcol).order_by(t1.c.intcol)
+                )
             ],
             [("nan",), ("nan",)],
         )
@@ -786,7 +794,7 @@ class TypesTest(fixtures.TestBase):
         eq_(connection.execute(raw_table.select()).first(), (1, b("ABCDEF")))
 
     @testing.provide_metadata
-    def test_reflect_nvarchar(self):
+    def test_reflect_nvarchar(self, connection):
         metadata = self.metadata
         Table(
             "tnv",
@@ -794,31 +802,30 @@ class TypesTest(fixtures.TestBase):
             Column("nv_data", sqltypes.NVARCHAR(255)),
             Column("c_data", sqltypes.NCHAR(20)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         m2 = MetaData()
-        t2 = Table("tnv", m2, autoload_with=testing.db)
+        t2 = Table("tnv", m2, autoload_with=connection)
         assert isinstance(t2.c.nv_data.type, sqltypes.NVARCHAR)
         assert isinstance(t2.c.c_data.type, sqltypes.NCHAR)
 
         if testing.against("oracle+cx_oracle"):
             assert isinstance(
-                t2.c.nv_data.type.dialect_impl(testing.db.dialect),
+                t2.c.nv_data.type.dialect_impl(connection.dialect),
                 cx_oracle._OracleUnicodeStringNCHAR,
             )
 
             assert isinstance(
-                t2.c.c_data.type.dialect_impl(testing.db.dialect),
+                t2.c.c_data.type.dialect_impl(connection.dialect),
                 cx_oracle._OracleNChar,
             )
 
         data = u("m’a réveillé.")
-        with testing.db.connect() as conn:
-            conn.execute(t2.insert(), dict(nv_data=data, c_data=data))
-            nv_data, c_data = conn.execute(t2.select()).first()
-            eq_(nv_data, data)
-            eq_(c_data, data + (" " * 7))  # char is space padded
-            assert isinstance(nv_data, util.text_type)
-            assert isinstance(c_data, util.text_type)
+        connection.execute(t2.insert(), dict(nv_data=data, c_data=data))
+        nv_data, c_data = connection.execute(t2.select()).first()
+        eq_(nv_data, data)
+        eq_(c_data, data + (" " * 7))  # char is space padded
+        assert isinstance(nv_data, util.text_type)
+        assert isinstance(c_data, util.text_type)
 
     @testing.provide_metadata
     def test_reflect_unicode_no_nvarchar(self):
@@ -1183,7 +1190,7 @@ class SetInputSizesTest(fixtures.TestBase):
         else:
             engine = testing.db
 
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             connection_fairy = conn.connection
             for tab in [t1, t2, t3]:
                 with mock.patch.object(

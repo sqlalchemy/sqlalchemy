@@ -324,7 +324,8 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             str(reflected.c.c6.server_default.arg).upper(),
         )
 
-    def test_reflection_with_table_options(self):
+    @testing.provide_metadata
+    def test_reflection_with_table_options(self, connection):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
         if testing.against("mariadb"):
             kwargs = dict(
@@ -347,18 +348,15 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         def_table = Table(
             "mysql_def",
-            MetaData(),
+            self.metadata,
             Column("c1", Integer()),
             comment=comment,
             **kwargs
         )
 
-        with testing.db.connect() as conn:
-            def_table.create(conn)
-            try:
-                reflected = Table("mysql_def", MetaData(), autoload_with=conn)
-            finally:
-                def_table.drop(conn)
+        conn = connection
+        def_table.create(conn)
+        reflected = Table("mysql_def", MetaData(), autoload_with=conn)
 
         if testing.against("mariadb"):
             assert def_table.kwargs["mariadb_engine"] == "MEMORY"
@@ -554,31 +552,31 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                     assert 1 not in list(conn.execute(tbl.select()).first())
 
     @testing.provide_metadata
-    def test_view_reflection(self):
+    def test_view_reflection(self, connection):
         Table(
             "x", self.metadata, Column("a", Integer), Column("b", String(50))
         )
-        self.metadata.create_all()
+        self.metadata.create_all(connection)
 
-        with testing.db.connect() as conn:
-            conn.exec_driver_sql("CREATE VIEW v1 AS SELECT * FROM x")
-            conn.exec_driver_sql(
-                "CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x"
-            )
-            conn.exec_driver_sql(
-                "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x"
-            )
-            conn.exec_driver_sql(
-                "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x"
-            )
+        conn = connection
+        conn.exec_driver_sql("CREATE VIEW v1 AS SELECT * FROM x")
+        conn.exec_driver_sql(
+            "CREATE ALGORITHM=MERGE VIEW v2 AS SELECT * FROM x"
+        )
+        conn.exec_driver_sql(
+            "CREATE ALGORITHM=UNDEFINED VIEW v3 AS SELECT * FROM x"
+        )
+        conn.exec_driver_sql(
+            "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x"
+        )
 
         @event.listens_for(self.metadata, "before_drop")
         def cleanup(*arg, **kw):
-            with testing.db.connect() as conn:
+            with testing.db.begin() as conn:
                 for v in ["v1", "v2", "v3", "v4"]:
                     conn.exec_driver_sql("DROP VIEW %s" % v)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         for v in ["v1", "v2", "v3", "v4"]:
             eq_(
                 [
@@ -589,38 +587,36 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     @testing.provide_metadata
-    def test_skip_not_describable(self):
+    def test_skip_not_describable(self, connection):
         @event.listens_for(self.metadata, "before_drop")
         def cleanup(*arg, **kw):
-            with testing.db.connect() as conn:
+            with testing.db.begin() as conn:
                 conn.exec_driver_sql("DROP TABLE IF EXISTS test_t1")
                 conn.exec_driver_sql("DROP TABLE IF EXISTS test_t2")
                 conn.exec_driver_sql("DROP VIEW IF EXISTS test_v")
 
-        with testing.db.connect() as conn:
-            conn.exec_driver_sql("CREATE TABLE test_t1 (id INTEGER)")
-            conn.exec_driver_sql("CREATE TABLE test_t2 (id INTEGER)")
-            conn.exec_driver_sql(
-                "CREATE VIEW test_v AS SELECT id FROM test_t1"
-            )
-            conn.exec_driver_sql("DROP TABLE test_t1")
+        conn = connection
+        conn.exec_driver_sql("CREATE TABLE test_t1 (id INTEGER)")
+        conn.exec_driver_sql("CREATE TABLE test_t2 (id INTEGER)")
+        conn.exec_driver_sql("CREATE VIEW test_v AS SELECT id FROM test_t1")
+        conn.exec_driver_sql("DROP TABLE test_t1")
 
-            m = MetaData()
-            with expect_warnings(
-                "Skipping .* Table or view named .?test_v.? could not be "
-                "reflected: .* references invalid table"
-            ):
-                m.reflect(views=True, bind=conn)
-            eq_(m.tables["test_t2"].name, "test_t2")
+        m = MetaData()
+        with expect_warnings(
+            "Skipping .* Table or view named .?test_v.? could not be "
+            "reflected: .* references invalid table"
+        ):
+            m.reflect(views=True, bind=conn)
+        eq_(m.tables["test_t2"].name, "test_t2")
 
-            assert_raises_message(
-                exc.UnreflectableTableError,
-                "references invalid table",
-                Table,
-                "test_v",
-                MetaData(),
-                autoload_with=conn,
-            )
+        assert_raises_message(
+            exc.UnreflectableTableError,
+            "references invalid table",
+            Table,
+            "test_v",
+            MetaData(),
+            autoload_with=conn,
+        )
 
     @testing.exclude("mysql", "<", (5, 0, 0), "no information_schema support")
     def test_system_views(self):
@@ -663,7 +659,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             Table("nn_t%d" % idx, meta)  # to allow DROP
 
-            with testing.db.connect() as c:
+            with testing.db.begin() as c:
                 c.exec_driver_sql(
                     """
                         CREATE TABLE nn_t%d (
