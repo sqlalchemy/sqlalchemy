@@ -87,7 +87,12 @@ may be used on its own, or is ideally suited to be used within the
 
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
-        if orm_execute_state.is_select:
+
+        if (
+            orm_execute_state.is_select and
+            not orm_execute_state.is_column_load and
+            not orm_execute_state.is_relationship_load
+        ):
             orm_execute_state.statement = orm_execute_state.statement.options(
                 with_loader_criteria(MyEntity.public == True)
             )
@@ -95,7 +100,9 @@ may be used on its own, or is ideally suited to be used within the
 Above, an option is added to all SELECT statements that will limit all queries
 against ``MyEntity`` to filter on ``public == True``.   The criteria
 will be applied to **all** loads of that class within the scope of the
-immediate query as well as subsequent relationship loads, which includes
+immediate query.    The :func:`_orm.with_loader_criteria` option by default
+will automatically propagate to relationship loaders as well, which will
+apply to subsequent relationship loads, which includes
 lazy loads, selectinloads, etc.
 
 For a series of classes that all feature some common column structure,
@@ -127,7 +134,11 @@ to intercept all objects that extend from ``HasTimestamp`` and filter their
 
     @event.listens_for(Session, "do_orm_execute")
     def _do_orm_execute(orm_execute_state):
-        if orm_execute_state.is_select:
+        if (
+                orm_execute_state.is_select
+                and not orm_execute_state.is_column_load
+                and not orm_execute_state.is_relationship_load
+        ):
             one_month_ago = datetime.datetime.today() - datetime.timedelta(months=1)
 
             orm_execute_state.statement = orm_execute_state.statement.options(
@@ -137,6 +148,12 @@ to intercept all objects that extend from ``HasTimestamp`` and filter their
                     include_aliases=True
                 )
             )
+
+.. warning:: The use of a lambda inside of the call to
+   :func:`_orm.with_loader_criteria` is only invoked **once per unique class**.
+   Custom functions should not be invoked within this lambda.   See
+   :ref:`engine_lambda_caching` for an overview of the "lambda SQL" feature,
+   which is for advanced use only.
 
 .. seealso::
 

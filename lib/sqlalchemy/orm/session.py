@@ -272,6 +272,8 @@ class ORMExecuteState(util.MemoizedSlots):
         self.local_execution_options = self.local_execution_options.union(opts)
 
     def _orm_compile_options(self):
+        if not self.is_select:
+            return None
         opts = self.statement._compile_options
         if isinstance(opts, context.ORMCompileState.default_compile_options):
             return opts
@@ -308,6 +310,33 @@ class ORMExecuteState(util.MemoizedSlots):
             return None
 
     @property
+    def is_column_load(self):
+        """Return True if the operation is refreshing column-oriented
+        attributes on an existing ORM object.
+
+        This occurs during operations such as :meth:`_orm.Session.refresh`,
+        as well as when an attribute deferred by :func:`_orm.defer` is
+        being loaded, or an attribute that was expired either directly
+        by :meth:`_orm.Session.expire` or via a commit operation is being
+        loaded.
+
+        Handlers will very likely not want to add any options to queries
+        when such an operation is occurring as the query should be a straight
+        primary key fetch which should not have any additional WHERE criteria,
+        and loader options travelling with the instance
+        will have already been added to the query.
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.is_relationship_load`
+
+        """
+        opts = self._orm_compile_options()
+        return opts is not None and opts._for_refresh_state
+
+    @property
     def is_relationship_load(self):
         """Return True if this load is loading objects on behalf of a
         relationship.
@@ -317,7 +346,19 @@ class ORMExecuteState(util.MemoizedSlots):
         SELECT statement being emitted is on behalf of a relationship
         load.
 
+        Handlers will very likely not want to add any options to queries
+        when such an operation is occurring, as loader options are already
+        capable of being propigated to relationship loaders and should
+        be already present.
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.is_column_load`
+
         """
+        opts = self._orm_compile_options()
+        if opts is None:
+            return False
         path = self.loader_strategy_path
         return path is not None and not path.is_root
 

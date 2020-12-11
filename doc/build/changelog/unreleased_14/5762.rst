@@ -1,0 +1,10 @@
+.. change::
+	:tags: bug, orm
+	:tickets: 5762
+
+	The :func:`_orm.with_loader_criteria` option has been modified so that it
+	will never apply its criteria to the SELECT statement for an ORM refresh
+	operation, such as that invoked by :meth:`_orm.Session.refresh` or whenever
+	an expired attribute is loaded.   These queries are only against the
+	primary key row of the object that is already present in memory so there
+	should not be additional criteria added.

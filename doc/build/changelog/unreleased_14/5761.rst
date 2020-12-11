@@ -1,0 +1,10 @@
+.. change::
+	:tags: bug, orm
+	:tickets: 5761
+
+	Added new attribute :attr:`_orm.ORMExecuteState.is_column_load` to indicate
+	that a :meth:`_orm.SessionEvents.do_orm_execute` handler that a particular
+	operation is a primary-key-directed column attribute load, such as from an
+	expiration or a deferred attribute, and that WHERE criteria or additional
+	loader options should not be added to the query.   This has been added to
+	the examples which illustrate the :func:`_orm.with_loader_criteria` option.
