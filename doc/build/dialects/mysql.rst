@@ -181,6 +181,13 @@ MySQL-Connector
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
+.. _aiomysql:
+
+aiomysql
+--------
+
+.. automodule:: sqlalchemy.dialects.mysql.aiomysql
+
 cymysql
 -------
 
