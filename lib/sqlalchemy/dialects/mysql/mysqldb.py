@@ -199,11 +199,13 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # query string.
 
         ssl = {}
-        keys = ["ssl_ca", "ssl_key", "ssl_cert", "ssl_capath", "ssl_cipher"]
-        for key in keys:
+        keys = [("ssl_ca", str), ("ssl_key", str), ("ssl_cert", str),
+                ("ssl_capath", str), ("ssl_cipher", str),
+                ("ssl_check_hostname", bool)]
+        for key, kw_type in keys:
             if key in opts:
                 ssl[key[4:]] = opts[key]
-                util.coerce_kw_type(ssl, key[4:], str)
+                util.coerce_kw_type(ssl, key[4:], kw_type)
                 del opts[key]
         if ssl:
             opts["ssl"] = ssl
