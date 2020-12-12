@@ -16,9 +16,7 @@ class DependencySortTest(fixtures.TestBase):
         assert conforms_partial_ordering(tuples, result)
 
     def assert_sort_deterministic(self, tuples, allitems, expected):
-        result = list(
-            topological.sort(tuples, allitems, deterministic_order=True)
-        )
+        result = list(topological.sort(tuples, allitems))
         assert conforms_partial_ordering(tuples, result)
         assert result == expected
 

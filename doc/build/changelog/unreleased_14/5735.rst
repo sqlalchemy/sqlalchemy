@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, unitofwork
+    :tickets: 5735
+
+    Improved the unit of work topological sorting system such that the
+    toplogical sort is now deterministic based on the sorting of the input set,
+    which itself is now sorted at the level of mappers, so that the same inputs
+    of affected mappers should produce the same output every time, among
+    mappers / tables that don't have any dependency on each other. This further
+    reduces the chance of deadlocks as can be observed in a flush that UPDATEs
+    among multiple, unrelated tables such that row locks are generated.
+

@@ -574,6 +574,10 @@ class Mapper(
         """
 
         self.class_ = util.assert_arg_type(class_, type, "class_")
+        self._sort_key = "%s.%s" % (
+            self.class_.__module__,
+            self.class_.__name__,
+        )
 
         self.class_manager = None
 

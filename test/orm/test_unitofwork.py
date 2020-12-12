@@ -2531,16 +2531,14 @@ class ManyToManyTest(_fixtures.FixtureTest):
         self.assert_sql_execution(
             testing.db,
             session.flush,
-            AllOf(
-                CompiledSQL(
-                    "UPDATE items SET description=:description "
-                    "WHERE items.id = :items_id",
-                    {"description": "item4updated", "items_id": objects[4].id},
-                ),
-                CompiledSQL(
-                    "INSERT INTO keywords (name) " "VALUES (:name)",
-                    {"name": "yellow"},
-                ),
+            CompiledSQL(
+                "UPDATE items SET description=:description "
+                "WHERE items.id = :items_id",
+                {"description": "item4updated", "items_id": objects[4].id},
+            ),
+            CompiledSQL(
+                "INSERT INTO keywords (name) " "VALUES (:name)",
+                {"name": "yellow"},
             ),
             CompiledSQL(
                 "INSERT INTO item_keywords (item_id, keyword_id) "

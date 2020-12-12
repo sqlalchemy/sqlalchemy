@@ -681,15 +681,13 @@ class RudimentaryFlushTest(UOWTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            AllOf(
-                CompiledSQL(
-                    "INSERT INTO keywords (name) VALUES (:name)",
-                    {"name": "k1"},
-                ),
-                CompiledSQL(
-                    "INSERT INTO items (description) VALUES (:description)",
-                    {"description": "i1"},
-                ),
+            CompiledSQL(
+                "INSERT INTO items (description) VALUES (:description)",
+                {"description": "i1"},
+            ),
+            CompiledSQL(
+                "INSERT INTO keywords (name) VALUES (:name)",
+                {"name": "k1"},
             ),
             CompiledSQL(
                 "INSERT INTO item_keywords (item_id, keyword_id) "
@@ -874,15 +872,13 @@ class SingleCycleTest(UOWTest):
         self.assert_sql_execution(
             testing.db,
             sess.flush,
-            AllOf(
-                CompiledSQL(
-                    "UPDATE nodes SET parent_id=:parent_id "
-                    "WHERE nodes.id = :nodes_id",
-                    lambda ctx: [
-                        {"nodes_id": n3.id, "parent_id": None},
-                        {"nodes_id": n2.id, "parent_id": None},
-                    ],
-                )
+            CompiledSQL(
+                "UPDATE nodes SET parent_id=:parent_id "
+                "WHERE nodes.id = :nodes_id",
+                lambda ctx: [
+                    {"nodes_id": n3.id, "parent_id": None},
+                    {"nodes_id": n2.id, "parent_id": None},
+                ],
             ),
             CompiledSQL(
                 "DELETE FROM nodes WHERE nodes.id = :id",
