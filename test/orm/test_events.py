@@ -21,8 +21,10 @@ from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -168,14 +170,10 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             },
         )
 
-    def test_flags(self):
-        User, Address = self.classes("User", "Address")
-
-        sess = Session(testing.db, future=True)
-
+    def _flag_fixture(self, session):
         canary = Mock()
 
-        @event.listens_for(sess, "do_orm_execute")
+        @event.listens_for(session, "do_orm_execute")
         def do_orm_execute(ctx):
 
             if not ctx.is_select:
@@ -197,16 +195,20 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 else None,
             )
 
-        u1 = sess.execute(select(User).filter_by(id=7)).scalar_one()
+        return canary
 
-        u1.addresses
+    def test_select_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        u1 = sess.execute(select(User).filter_by(id=7)).scalar_one()
 
         sess.expire(u1)
 
         eq_(u1.name, "jack")
-
-        sess.execute(delete(User).filter_by(id=18))
-        sess.execute(update(User).filter_by(id=18).values(name="eighteen"))
 
         eq_(
             canary.mock_calls,
@@ -226,18 +228,134 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     is_delete=False,
                     is_orm_statement=True,
                     is_relationship_load=False,
-                    is_column_load=False,
-                    lazy_loaded_from=u1._sa_instance_state,
+                    is_column_load=True,
+                    lazy_loaded_from=None,
                 ),
+            ],
+        )
+
+    def test_lazyload_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        u1 = sess.execute(select(User).filter_by(id=7)).scalar_one()
+
+        u1.addresses
+
+        eq_(
+            canary.mock_calls,
+            [
                 call.options(
                     is_select=True,
                     is_update=False,
                     is_delete=False,
                     is_orm_statement=True,
                     is_relationship_load=False,
-                    is_column_load=True,
+                    is_column_load=False,
                     lazy_loaded_from=None,
                 ),
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=True,
+                    is_column_load=False,
+                    lazy_loaded_from=u1._sa_instance_state,
+                ),
+            ],
+        )
+
+    def test_selectinload_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        u1 = sess.execute(
+            select(User).filter_by(id=7).options(selectinload(User.addresses))
+        ).scalar_one()
+
+        assert "addresses" in u1.__dict__
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=True,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+            ],
+        )
+
+    def test_subqueryload_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        u1 = sess.execute(
+            select(User).filter_by(id=7).options(subqueryload(User.addresses))
+        ).scalar_one()
+
+        assert "addresses" in u1.__dict__
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+                call.options(
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=True,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                ),
+            ],
+        )
+
+    def test_update_delete_flags(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        sess.execute(delete(User).filter_by(id=18))
+        sess.execute(update(User).filter_by(id=18).values(name="eighteen"))
+
+        eq_(
+            canary.mock_calls,
+            [
                 call.options(
                     is_select=False,
                     is_update=False,

@@ -22,6 +22,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.types import Boolean
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
 
@@ -76,6 +77,41 @@ class DeferredLambdaTest(
             "AND t1.p = :global_y_1",
             checkparams={"global_x_1": 10, "global_y_1": 9},
         )
+
+    def test_boolean_constants(self):
+        t1 = table("t1", column("q"), column("p"))
+
+        def go():
+            xy = True
+            stmt = select(t1).where(lambda: t1.c.q == xy)
+            return stmt
+
+        self.assert_compile(
+            go(), "SELECT t1.q, t1.p FROM t1 WHERE t1.q = :xy_1"
+        )
+
+    def test_execute_boolean(self, boolean_table_fixture, connection):
+        boolean_data = boolean_table_fixture
+
+        connection.execute(
+            boolean_data.insert(),
+            [{"id": 1, "data": True}, {"id": 2, "data": False}],
+        )
+
+        xy = True
+
+        def go():
+            stmt = select(lambda: boolean_data.c.id).where(
+                lambda: boolean_data.c.data == xy
+            )
+            return connection.execute(stmt)
+
+        result = go()
+        eq_(result.all(), [(1,)])
+
+        xy = False
+        result = go()
+        eq_(result.all(), [(2,)])
 
     def test_stale_checker_embedded(self):
         def go(x):
@@ -760,6 +796,15 @@ class DeferredLambdaTest(
             Column("email", String(50)),
         )
         return users, addresses
+
+    @testing.metadata_fixture()
+    def boolean_table_fixture(self, metadata):
+        return Table(
+            "boolean_data",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("data", Boolean),
+        )
 
     def test_adapt_select(self, user_address_fixture):
         users, addresses = user_address_fixture

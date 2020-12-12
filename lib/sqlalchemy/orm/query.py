@@ -1296,7 +1296,6 @@ class Query(
         self._set_select_from([fromclause], set_entity_from)
         self._compile_options += {
             "_enable_single_crit": False,
-            "_statement": None,
         }
 
         # this enables clause adaptation for non-ORM
@@ -2620,7 +2619,6 @@ class Query(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
         )
         self._statement = statement
-        self._compile_options += {"_statement": statement}
 
     def first(self):
         """Return the first result of this ``Query`` or

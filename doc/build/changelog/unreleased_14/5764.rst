@@ -1,0 +1,9 @@
+.. change::
+	:tags: orm, bug
+	:tickets: 5764
+
+	Fixed issue where the :attr:`_orm.ORMExecuteState.is_relationship_load`
+	attribute would not be set correctly for many lazy loads, all
+	selectinloads, etc.  The flag is essential in order to test if options
+	should be added to statements or if they would already have been propagated
+	via relationship loads.

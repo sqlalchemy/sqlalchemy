@@ -553,6 +553,14 @@ class _MetaOptions(type):
 
     def __add__(self, other):
         o1 = self()
+
+        if set(other).difference(self._cache_attrs):
+            raise TypeError(
+                "dictionary contains attributes not covered by "
+                "Options class %s: %r"
+                % (self, set(other).difference(self._cache_attrs))
+            )
+
         o1.__dict__.update(other)
         return o1
 
@@ -566,6 +574,14 @@ class Options(util.with_metaclass(_MetaOptions)):
     def __add__(self, other):
         o1 = self.__class__.__new__(self.__class__)
         o1.__dict__.update(self.__dict__)
+
+        if set(other).difference(self._cache_attrs):
+            raise TypeError(
+                "dictionary contains attributes not covered by "
+                "Options class %s: %r"
+                % (self, set(other).difference(self._cache_attrs))
+            )
+
         o1.__dict__.update(other)
         return o1
 
@@ -588,6 +604,10 @@ class Options(util.with_metaclass(_MetaOptions)):
                 if k in self.__dict__
             ),
         )
+
+    @classmethod
+    def isinstance(cls, klass):
+        return issubclass(cls, klass)
 
     @hybridmethod
     def add_to_element(self, name, value):
