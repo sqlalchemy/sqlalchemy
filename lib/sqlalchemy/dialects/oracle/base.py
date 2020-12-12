@@ -68,11 +68,11 @@ to a Column construct::
         Column(...), ...
   )
 
-This step is also required when using table reflection, i.e. autoload=True::
+This step is also required when using table reflection, i.e. autoload_with=engine::
 
   t = Table('mytable', metadata,
         Column('id', Integer, Sequence('id_seq'), primary_key=True),
-        autoload=True
+        autoload_with=engine
   )
 
 .. versionchanged::  1.4   Added :class:`_schema.Identity` construct
@@ -345,8 +345,7 @@ for tables indicated by synonyms, either in local or remote schemas or
 accessed over DBLINK, by passing the flag ``oracle_resolve_synonyms=True`` as
 a keyword argument to the :class:`_schema.Table` construct::
 
-    some_table = Table('some_table', autoload=True,
-                                autoload_with=some_engine,
+    some_table = Table('some_table', autoload_with=some_engine,
                                 oracle_resolve_synonyms=True)
 
 When this flag is set, the given name (such as ``some_table`` above) will

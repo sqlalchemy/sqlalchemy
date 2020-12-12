@@ -557,7 +557,7 @@ execution patterns, is removed::
 
     metadata.reflect()  # requires Engine or Connection
 
-    t = Table('t', metadata, autoload=True)  # requires autoload_with
+    t = Table('t', metadata, autoload=True)  # use autoload_with=engine
 
     result = engine.execute(t.select())  # no longer supported
 

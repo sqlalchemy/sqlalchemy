@@ -11,11 +11,9 @@ A :class:`~sqlalchemy.schema.Table` object can be instructed to load
 information about itself from the corresponding database schema object already
 existing within the database. This process is called *reflection*. In the
 most simple case you need only specify the table name, a :class:`~sqlalchemy.schema.MetaData`
-object, and the ``autoload=True`` flag. If the
-:class:`~sqlalchemy.schema.MetaData` is not persistently bound, also add the
-``autoload_with`` argument::
+object, and the ``autoload_with`` argument::
 
-    >>> messages = Table('messages', meta, autoload=True, autoload_with=engine)
+    >>> messages = Table('messages', meta, autoload_with=engine)
     >>> [c.name for c in messages.columns]
     ['message_id', 'message_name', 'date']
 
@@ -32,7 +30,7 @@ Below, assume the table ``shopping_cart_items`` references a table named
 ``shopping_carts``. Reflecting the ``shopping_cart_items`` table has the
 effect such that the ``shopping_carts`` table will also be loaded::
 
-    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload=True, autoload_with=engine)
+    >>> shopping_cart_items = Table('shopping_cart_items', meta, autoload_with=engine)
     >>> 'shopping_carts' in meta.tables:
     True
 
@@ -47,7 +45,7 @@ generated ``shopping_carts`` table just by naming it::
 
     shopping_carts = Table('shopping_carts', meta)
 
-Of course, it's a good idea to use ``autoload=True`` with the above table
+Of course, it's a good idea to use ``autoload_with=engine`` with the above table
 regardless. This is so that the table's attributes will be loaded if they have
 not been already. The autoload operation only occurs for the table if it
 hasn't already been loaded; once loaded, new calls to
@@ -81,7 +79,7 @@ Reflecting Views
 The reflection system can also reflect views. Basic usage is the same as that
 of a table::
 
-    my_view = Table("some_view", metadata, autoload=True)
+    my_view = Table("some_view", metadata, autoload_with=engine)
 
 Above, ``my_view`` is a :class:`~sqlalchemy.schema.Table` object with
 :class:`~sqlalchemy.schema.Column` objects representing the names and types of
@@ -97,7 +95,7 @@ which are part of the primary key or have foreign key constraints::
     my_view = Table("some_view", metadata,
                     Column("view_id", Integer, primary_key=True),
                     Column("related_thing", Integer, ForeignKey("othertable.thing_id")),
-                    autoload=True
+                    autoload_with=engine
     )
 
 Reflecting All Tables at Once

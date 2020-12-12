@@ -723,7 +723,7 @@ reflection will not include foreign keys.  For these tables, you may supply a
 
   Table('mytable', metadata,
         ForeignKeyConstraint(['other_id'], ['othertable.other_id']),
-        autoload=True
+        autoload_with=engine
        )
 
 .. seealso::
@@ -748,7 +748,7 @@ When reflecting these constructs, the
 and the :meth:`_reflection.Inspector.get_unique_constraints`
 methods will **both**
 return an entry for a UNIQUE index in MySQL / MariaDB.  However, when performing
-full table reflection using ``Table(..., autoload=True)``,
+full table reflection using ``Table(..., autoload_with=engine)``,
 the :class:`.UniqueConstraint` construct is
 **not** part of the fully reflected :class:`_schema.Table` construct under any
 circumstances; this construct is always represented by a :class:`.Index`

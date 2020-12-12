@@ -349,7 +349,7 @@ reflection process as follows::
     ...     conn.execute(text("SET search_path TO test_schema, public"))
     ...     meta = MetaData()
     ...     referring = Table('referring', meta,
-    ...                       autoload=True, autoload_with=conn)
+    ...                       autoload_with=conn)
     ...
     <sqlalchemy.engine.result.CursorResult object at 0x101612ed0>
 
@@ -369,7 +369,7 @@ dialect-specific argument to both :class:`_schema.Table` as well as
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
     ...     meta = MetaData()
-    ...     referring = Table('referring', meta, autoload=True,
+    ...     referring = Table('referring', meta,
     ...                       autoload_with=conn,
     ...                       postgresql_ignore_search_path=True)
     ...
@@ -963,7 +963,7 @@ will report on these
 two constructs distinctly; in the case of the index, the key
 ``duplicates_constraint`` will be present in the index entry if it is
 detected as mirroring a constraint.   When performing reflection using
-``Table(..., autoload=True)``, the UNIQUE INDEX is **not** returned
+``Table(..., autoload_with=engine)``, the UNIQUE INDEX is **not** returned
 in :attr:`_schema.Table.indexes` when it is detected as mirroring a
 :class:`.UniqueConstraint` in the :attr:`_schema.Table.constraints` collection
 .

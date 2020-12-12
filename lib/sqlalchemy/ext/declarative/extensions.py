@@ -316,7 +316,7 @@ class DeferredReflection(object):
     a deferred reflection step.
 
     Normally, declarative can be used with reflection by
-    setting a :class:`_schema.Table` object using autoload=True
+    setting a :class:`_schema.Table` object using autoload_with=engine
     as the ``__table__`` attribute on a declarative class.
     The caveat is that the :class:`_schema.Table` must be fully
     reflected, or at the very least have a primary key column,
