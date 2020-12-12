@@ -540,6 +540,9 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
 
+    def _size_alert(self, lru_cache):
+        util.warn("LRU cache size alert for loader strategy: %s" % self)
+
 
 @log.class_logger
 @relationships.RelationshipProperty.strategy_for(do_nothing=True)
@@ -884,7 +887,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         ]
 
     def _memoized_attr__query_cache(self):
-        return util.LRUCache(30)
+        # cache is per lazy loader; stores not only cached SQL but also
+        # sqlalchemy.sql.lambdas.AnalyzedCode and
+        # sqlalchemy.sql.lambdas.AnalyzedFunction objects which are generated
+        # from the StatementLambda used.
+        return util.LRUCache(30, size_alert=self._size_alert)
 
     @util.preload_module("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
@@ -912,8 +919,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         }
 
         if self.parent_property.secondary is not None:
-            stmt += lambda stmt: stmt.select_from(
-                self.mapper, self.parent_property.secondary
+            stmt = stmt.add_criteria(
+                lambda stmt: stmt.select_from(
+                    self.mapper, self.parent_property.secondary
+                ),
+                track_on=[self.parent_property],
             )
 
         pending = not state.key
@@ -961,7 +971,9 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             )
 
         if self._order_by:
-            stmt += lambda stmt: stmt.order_by(*self._order_by)
+            stmt = stmt.add_criteria(
+                lambda stmt: stmt.order_by(*self._order_by), track_on=[self]
+            )
 
         def _lazyload_reverse(compile_context):
             for rev in self.parent_property._reverse_property:
@@ -978,8 +990,11 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         ]
                     ).lazyload(rev.key).process_compile_state(compile_context)
 
-        stmt += lambda stmt: stmt._add_context_option(
-            _lazyload_reverse, self.parent_property
+        stmt = stmt.add_criteria(
+            lambda stmt: stmt._add_context_option(
+                _lazyload_reverse, self.parent_property
+            ),
+            track_on=[self],
         )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
@@ -2587,7 +2602,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         ).init_class_attribute(mapper)
 
     def _memoized_attr__query_cache(self):
-        return util.LRUCache(30)
+        return util.LRUCache(30, size_alert=self._size_alert)
 
     def create_row_processor(
         self,
@@ -2763,13 +2778,13 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # in the non-omit_join case, the Bundle is against the annotated/
             # mapped column of the parent entity, but the #4347 issue does not
             # occur in this case.
-            pa = self._parent_alias
             q = q.add_criteria(
-                lambda q: q.select_from(pa).join(
-                    getattr(pa, self.parent_property.key).of_type(
-                        effective_entity
-                    )
-                )
+                lambda q: q.select_from(self._parent_alias).join(
+                    getattr(
+                        self._parent_alias, self.parent_property.key
+                    ).of_type(effective_entity)
+                ),
+                track_on=[self],
             )
 
         q = q.add_criteria(
@@ -2849,7 +2864,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 q = q.add_criteria(
                     lambda q: q._add_context_option(
                         _setup_outermost_orderby, self.parent_property
-                    )
+                    ),
+                    track_on=[self],
                 )
 
         if query_info.load_only_child:

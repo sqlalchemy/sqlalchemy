@@ -885,6 +885,7 @@ class LoaderCriteriaOption(CriteriaOption):
         loader_only=False,
         include_aliases=False,
         propagate_to_loaders=True,
+        track_closure_variables=True,
     ):
         """Add additional WHERE criteria to the load for all occurrences of
         a particular entity.
@@ -993,6 +994,14 @@ class LoaderCriteriaOption(CriteriaOption):
             combine :func:`_orm.with_loader_criteria` with the
             :meth:`_orm.SessionEvents.do_orm_execute` event.
 
+        :param track_closure_variables: when False, closure variables inside
+         of a lambda expression will not be validated used as part of
+         any cache key.    This allows more complex expressions to be used
+         inside of a lambda expression but requires that the lambda ensures
+         it returns the identical SQL every time given a particular class.
+
+         .. versionadded:: 1.4.0b2
+
         """
         entity = inspection.inspect(entity_or_base, False)
         if entity is None:
@@ -1012,6 +1021,9 @@ class LoaderCriteriaOption(CriteriaOption):
                     if self.root_entity is not None
                     else self.entity.entity,
                 ),
+                opts=lambdas.LambdaOptions(
+                    track_closure_variables=track_closure_variables
+                ),
             )
         else:
             self.deferred_where_criteria = False
@@ -1030,7 +1042,7 @@ class LoaderCriteriaOption(CriteriaOption):
             stack = list(self.root_entity.__subclasses__())
             while stack:
                 subclass = stack.pop(0)
-                ent = inspection.inspect(subclass)
+                ent = inspection.inspect(subclass, raiseerr=False)
                 if ent:
                     for mp in ent.mapper.self_and_descendants:
                         yield mp

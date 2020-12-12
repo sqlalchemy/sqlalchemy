@@ -619,6 +619,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "subqueryload": subqueryload,
         }
 
+        # NOTE: make sure this test continues to run many different
+        # combinations for the *same* mappers above; that is, don't tear the
+        # mappers down and build them up for every "config".  This allows
+        # testing of the LRUCache that's associated with LazyLoader
+        # and SelectInLoader and how they interact with the lambda query
+        # API, which stores AnalyzedFunction objects in this cache.
+
         for o, i, k, count in configs:
             options = []
             if o in callables:
@@ -629,7 +636,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 options.append(
                     callables[k](User.orders, Order.items, Item.keywords)
                 )
-
             self._do_query_tests(options, count)
 
     def _do_mapper_test(self, configs):
@@ -716,6 +722,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
 
         self.assert_sql_count(testing.db, go, count)
+        return
 
         eq_(
             sess.query(User)

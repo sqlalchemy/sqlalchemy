@@ -1,9 +1,0 @@
-.. change::
-	:tags: bug, orm
-	:tickets: 5763
-
-	Fixed bug in lambda SQL feature, used by ORM
-	:meth:`_orm.with_loader_criteria` as well as available generally in the SQL
-	expression language, where assigning a boolean value True/False to a
-	variable would cause the query-time expression calculation to fail, as it
-	would produce a SQL expression not compatible with a bound value.

@@ -1383,7 +1383,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
         """Return a copy of this :class:`.BindParameter` with the given value
         set.
         """
-
         cloned = self._clone(maintain_key=maintain_key)
         cloned.value = value
         cloned.callable = None

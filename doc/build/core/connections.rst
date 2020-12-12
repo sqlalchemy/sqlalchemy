@@ -1114,124 +1114,414 @@ Using Lambdas to add significant speed gains to statement production
    not appropriate for novice Python developers.  The lambda approach can be
    applied to at a later time to existing code with a minimal amount of effort.
 
-The caching system has in its roots the SQLAlchemy :ref:`"baked query"
-<baked_toplevel>` extension, which made novel use of Python lambdas in order to
-produce SQL statements that were intrinsically cacheable, while at the same
-time decreasing not just the overhead involved to compile the statement into
-SQL, but also the overhead in constructing the statement object from a Python
-perspective. The new caching in SQLAlchemy by default does not substantially
-optimize the construction of SQL constructs.  This refers to the Python
-overhead taken up to construct the statement object itself before it is
-compiled or executed, such as the :class:`_sql.Select` object used in the
-example below::
+Python functions, typically expressed as lambdas, may be used to generate
+SQL expressions which are cacheable based on the Python code location of
+the lambda function itself as well as the closure variables within the
+lambda.   The rationale is to allow caching of not only the SQL string-compiled
+form of a SQL expression construct as is SQLAlchemy's normal behavior when
+the lambda system isn't used, but also the in-Python composition
+of the SQL expression construct itself, which also has some degree of
+Python overhead.
+
+The lambda SQL expression feature is available as a performance enhancing
+feature, and is also optionally used in the :func:`_orm.with_loader_criteria`
+ORM option in order to provide a generic SQL fragment.
+
+Synopsis
+^^^^^^^^
+
+Lambda statements are constructed using the :func:`_sql.lambda_stmt` function,
+which returns an instance of :class:`_sql.StatementLambdaElement`, which is
+itself an executable statement construct.    Additional modifiers and criteria
+are added to the object using the Python addition operator ``+``, or
+alternatively the :meth:`_sql.StatementLambdaElement.add_criteria` method which
+allows for more options.
+
+It is assumed that the :func:`_sql.lambda_stmt` construct is being invoked
+within an enclosing function or method that expects to be used many times
+within an application, so that subsequent executions beyond the first one
+can take advantage of the compiled SQL being cached.  When the lambda is
+constructed inside of an enclosing function in Python it is then subject
+to also having closure variables, which are significant to the whole
+approach::
+
+    from sqlalchemy import lambda_stmt
 
     def run_my_statement(connection, parameter):
-        stmt = select(table)
-        stmt = stmt.where(table.c.col == parameter)
-        stmt = stmt.order_by(table.c.id)
+        stmt = lambda_stmt(lambda: select(table))
+        stmt += lambda s: s.where(table.c.col == parameter)
+        stmt += lambda s: s.order_by(table.c.id)
 
         return connection.execute(stmt)
 
-Above, in order to construct ``stmt``, we see three Python functions or methods
-``select()``, ``.where()`` and ``.order_by()`` being invoked directly, and
-additionally there is a Python method invoked when we construct ``table.c.col
-== 'foo'``, as the expression language overrides the ``__eq__()`` method to
-produce a SQL construct.   Within each of these calls is a series of argument
-checking and internal construction logic that makes use of many more Python
-function calls.   With intense production of thousands of statement objects,
-these function calls can add up.   Using the recipe for profiling at
-:ref:`faq_code_profiling`, the above Python code within the scope of the
-``select()`` call down to the ``.order_by()`` call uses 73 Python function
-calls to produce.
+    with engine.connect() as conn:
+        result = run_my_statement(some_connection, "some parameter")
 
-Additionally, statement caching requires that a cache key be generated against
-the above statement, which must be composed of all elements within the
-statement that uniquely identify the SQL that it would produce.  Measuring
-this process for the above statement takes another 40 Python function calls.
+Above, the three ``lambda`` callables that are used to define the structure
+of a SELECT statement are invoked exactly once, and the resulting SQL
+string cached in the compilation cache of the engine.   From that point
+forward, the ``run_my_statement()`` function may be invoked any number
+of times and the ``lambda`` callables within it will not be called, only
+used as cache keys to retrieve the already-compiled SQL.
 
-In order to ensure the full performance gains of the prior "baked query"
-extension are still available, the "lambda:" system used by baked queries has
-been adapted into a more capable and easier to use system as an intrinsic part
-of the SQLAlchemy Core expression language (which by extension then includes
-ORM queries, which as of SQLAlchemy 1.4 using 2.0-style APIs may also be
-invoked directly from SQLAlchemy Core expression objects).   We can
-adapt our statement above to be built using "lambdas" by making use of the
-:func:`_sql.lambda_stmt` element.  Using this approach, we indicate that the
-:func:`_sql.select` should be returned by a lambda.  We can then add new
-criteria to the statement by composing further lambdas onto the object in a
-similar manner as how "baked queries" worked::
+.. note::  It is important to note that there is already SQL caching in place
+   when the lambda system is not used.   The lambda system only adds an
+   additional layer of work reduction per SQL statement invoked by caching
+   the building up of the SQL construct itself and also using a simpler
+   cache key.
 
-  from sqlalchemy import lambda_stmt
 
-  def run_my_statement(connection, parameter):
-      stmt = lambda_stmt(lambda: select(table))
-      stmt += lambda s: s.where(table.c.col == parameter)
-      stmt += lambda s: s.order_by(table.c.id)
+Quick Guidelines for Lambdas
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-      return connection.execute(stmt)
+Above all, the emphasis within the lambda SQL system is ensuring that there
+is never a mismatch between the cache key generated for a lambda and the
+SQL string it will produce.   The :class:`_sql.LamdaElement` and related
+objects will run and analyze the given lambda in order to calculate how
+it should be cached on each run, trying to detect any potential problems.
+Basic guidelines include:
 
-  result = run_my_statement(some_connection, "some parameter")
+* **Any kind of statement is supported** - while it's expected that
+  :func:`_sql.select` constructs are the prime use case for :func:`_sql.lambda_stmt`,
+  DML statements such as :func:`_sql.insert` and :func:`_sql.update` are
+  equally usable::
 
-The above code produces a :class:`.StatementLambdaElement`, which behaves like a
-Core SQL construct but defers the construction of the statement in most
-cases until it is needed by the compiler.  If the statement is already cached,
-the lambdas will not be called.
+    def upd(id_, newname):
+        stmt = lambda_stmt(lambda: users.update())
+        stmt += lambda s: s.values(name=newname)
+        stmt += lambda s: s.where(users.c.id==id_)
+        return stmt
 
-The cache key is based on the **Python source code location of each lambda
-itself**, which in the Python interpreter is essentially the ``__code__``
-element of the Python function. This means that the lambda approach should only
-be used inside of a function where the lambdas themselves will be the **same
-lambdas each time, from a Python source code perspective**.
+    with engine.begin() as conn:
+        conn.execute(upd(7, "foo"))
 
-The execution process for the above lambda will **extract literal parameters**
-from the statement each time, without needing to actually run the lambdas. In
-the above example, each time the variable ``parameter`` is used within the
-lambda to generate the WHERE clause of the statement, while the actual lambda
-present will not actually be run, the value of ``parameter`` will be tracked
-and the current value of the variable will be used within the statement
-parameters at execution time.  This is a feature that was not possible with the
-"baked query" extension and involves the use of up-front analysis of the
-incoming ``__code__`` object to determine how parameters can be extracted from
-future lambdas against that same code object.
+  ..
 
-More simply, this means it's safe for the lambda statement
-to use arbitrary literal parameters, which don't modify the structure
-of the statement, on each invocation::
+* **ORM use cases directly supported as well** - the :func:`_sql.lambda_stmt`
+  can accommodate ORM functionality completely and used directly with
+  :meth:`_orm.Session.execute`::
 
-  def run_my_statement(connection, parameter):
-      stmt = lambda_stmt(lambda: select(table))
-      stmt += lambda s: s.where(table.c.col == parameter)
-      stmt += lambda s: s.order_by(table.c.id)
+    def select_user(session, name):
+        stmt = lambda_stmt(lambda: select(User))
+        stmt += lambda s: s.where(User.name == name)
 
-      return connection.execute(stmt)
+        row = session.execute(stmt).first()
+        return row
 
-However, it's not safe for an individual lambda so modify the SQL structure
-of the statement across calls::
+  ..
 
-  # incorrect example
-  def run_my_statement(connection, parameter, add_criteria=False):
-      stmt = lambda_stmt(lambda: select(table))
+* **Bound parameters are automatically accommodated** - in contrast to SQLAlchemy's
+  previous "baked query" system, the lambda SQL system accommodates for
+  Python literal values which become SQL bound parameters automatically.
+  This means that even though a given lambda runs only once, the values that
+  become bound parameters are extracted from the **closure** of the lambda
+  on every run:
 
-      # will not be cached correctly as add_criteria changes
-      stmt += lambda s: s.where(
-          and_(add_criteria, table.c.col == parameter)
-          if add_criteria
-          else s.where(table.c.col == parameter)
-      )
+  .. sourcecode:: pycon+sql
 
-      stmt += lambda s: s.order_by(table.c.id)
+        >>> def my_stmt(x, y):
+        ...     stmt = lambda_stmt(lambda: select(func.max(x, y)))
+        ...     return stmt
+        ...
+        >>> engine = create_engine("sqlite://", echo=True)
+        >>> with engine.connect() as conn:
+        ...     print(conn.scalar(my_stmt(5, 10)))
+        ...     print(conn.scalar(my_stmt(12, 8)))
+        ...
+        {opensql}SELECT max(?, ?) AS max_1
+        [generated in 0.00057s] (5, 10){stop}
+        10
+        {opensql}SELECT max(?, ?) AS max_1
+        [cached since 0.002059s ago] (12, 8){stop}
+        12
 
-      return connection.execute(stmt)
+  Above, :class:`_sql.StatementLambdaElement` extracted the values of ``x``
+  and ``y`` from the **closure** of the lambda that is generated each time
+  ``my_stmt()`` is invoked; these were substituted into the cached SQL
+  construct as the values of the parameters.
 
-The lambda statements indicated above will invoke all of the lambdas the first
-time they are constructed; subsequent to that, the lambdas will not be invoked.
-On these subsequent runs, a lambda construct will use far fewer Python function
-calls in order to construct the un-cached object as well as to generate the
-cache key after the first call.  The above statement using lambdas takes only
-41 Python function calls to generate the whole structure as well as to produce
-the cache key, including the extraction of the bound parameters. This is
-compared to a total of about 115 Python function calls for the non-lambda
-version.
+* **The lambda should ideally produce an identical SQL structure in all cases** -
+  Avoid using conditionals or custom callables inside of lambdas that might make
+  it produce different SQL based on inputs; if a function might conditionally
+  use two different SQL fragments, use two separate lambdas::
+
+        # **Don't** do this:
+
+        def my_stmt(parameter, thing=False):
+            stmt = lambda_stmt(lambda: select(table))
+            stmt += (
+                lambda s: s.where(table.c.x > parameter) if thing
+                else s.where(table.c.y == parameter)
+            return stmt
+
+        # **Do** do this:
+
+        def my_stmt(parameter, thing=False):
+            stmt = lambda_stmt(lambda: select(table))
+            if thing:
+                stmt += s.where(table.c.x > parameter)
+            else:
+                stmt += s.where(table.c.y == parameter)
+            return stmt
+
+  There are a variety of failures which can occur if the lambda does not
+  produce a consistent SQL construct and some are not trivially detectable
+  right now.
+
+* **Don't use functions inside the lambda to produce bound values** - the
+  bound value tracking approach requires that the actual value to be used in
+  the SQL statement be locally present in the closure of the lambda.  This is
+  not possible if values are generated from other functions, and the
+  :class:`_sql.LambdaElement` should normally raise an error if this is
+  attempted::
+
+    >>> def my_stmt(x, y):
+    ...     def get_x():
+    ...         return x
+    ...     def get_y():
+    ...         return y
+    ...
+    ...     stmt = lambda_stmt(lambda: select(func.max(get_x(), get_y())))
+    ...     return stmt
+    ...
+    >>> with engine.connect() as conn:
+    ...     print(conn.scalar(my_stmt(5, 10)))
+    ...
+    Traceback (most recent call last):
+      # ...
+    sqlalchemy.exc.InvalidRequestError: Can't invoke Python callable get_x()
+    inside of lambda expression argument at
+    <code object <lambda> at 0x7fed15f350e0, file "<stdin>", line 6>;
+    lambda SQL constructs should not invoke functions from closure variables
+    to produce literal values since the lambda SQL system normally extracts
+    bound values without actually invoking the lambda or any functions within it.
+
+  Above, the use of ``get_x()`` and ``get_y()``, if they are necessary, should
+  occur **outside** of the lambda and assigned to a local closure variable::
+
+    >>> def my_stmt(x, y):
+    ...     def get_x():
+    ...         return x
+    ...     def get_y():
+    ...         return y
+    ...
+    ...     x_param, y_param = get_x(), get_y()
+    ...     stmt = lambda_stmt(lambda: select(func.max(x_param, y_param)))
+    ...     return stmt
+
+  ..
+
+* **Avoid referring to non-SQL constructs inside of lambdas as they are not
+  cacheable by default** - this issue refers to how the :class:`_sql.LambdaElement`
+  creates a cache key from other closure variables within the statement.  In order
+  to provide the best guarantee of an accurate cache key, all objects located
+  in the closure of the lambda are considered to be significant, and none
+  will none will be assumed to be appropriate for a cache key by default.
+  So the following example will also raise a rather detailed error message::
+
+    >>> class Foo:
+    ...     def __init__(self, x, y):
+    ...         self.x = x
+    ...         self.y = y
+    ...
+    >>> def my_stmt(foo):
+    ...     stmt = lambda_stmt(lambda: select(func.max(foo.x, foo.y)))
+    ...     return stmt
+    ...
+    >>> with engine.connect() as conn:
+    ...    print(conn.scalar(my_stmt(Foo(5, 10))))
+    ...
+    Traceback (most recent call last):
+      # ...
+    sqlalchemy.exc.InvalidRequestError: Closure variable named 'foo' inside of
+    lambda callable <code object <lambda> at 0x7fed15f35450, file
+    "<stdin>", line 2> does not refer to a cachable SQL element, and also
+    does not appear to be serving as a SQL literal bound value based on the
+    default SQL expression returned by the function.  This variable needs to
+    remain outside the scope of a SQL-generating lambda so that a proper cache
+    key may be generated from the lambda's state.  Evaluate this variable
+    outside of the lambda, set track_on=[<elements>] to explicitly select
+    closure elements to track, or set track_closure_variables=False to exclude
+    closure variables from being part of the cache key.
+
+  The above error indicates that :class:`_sql.LambdaElement` will not assume
+  that the ``Foo`` object passed in will contine to behave the same in all
+  cases.    It also won't assume it can use ``Foo`` as part of the cache key
+  by default; if it were to use the ``Foo`` object as part of the cache key,
+  if there were many different ``Foo`` objects this would fill up the cache
+  with duplicate information, and would also hold long-lasting references to
+  all of these objects.
+
+  The best way to resolve the above situation is to not refer to ``foo``
+  inside of the lambda, and refer to it **outside** instead::
+
+    >>> def my_stmt(foo):
+    ...     x_param, y_param = foo.x, foo.y
+    ...     stmt = lambda_stmt(lambda: select(func.max(x_param, y_param)))
+    ...     return stmt
+
+  In some situations, if the SQL structure of the lambda is guaranteed to
+  never change based on input, to pass ``track_closure_variables=False``
+  which will disable any tracking of closure variables other than those
+  used for bound parameters::
+
+    >>> def my_stmt(foo):
+    ...     stmt = lambda_stmt(
+    ...         lambda: select(func.max(foo.x, foo.y)),
+    ...         track_closure_variables=False
+    ...     )
+    ...     return stmt
+
+  There is also the option to add objects to the element to explicitly form
+  part of the cache key, using the ``track_on`` parameter; using this parameter
+  allows specific values to serve as the cache key and will also prevent other
+  closure variables from being considered.  This is useful for cases where part
+  of the SQL being constructed originates from a contextual object of some sort
+  that may have many different values.  In the example below, the first
+  segment of the SELECT statement will disable tracking of the ``foo`` variable,
+  whereas the second segment will explicitly track ``self`` as part of the
+  cache key::
+
+    >>> def my_stmt(self, foo):
+    ...     stmt = lambda_stmt(
+    ...         lambda: select(*self.column_expressions),
+    ...         track_closure_variables=False
+    ...     )
+    ...     stmt = stmt.add_criteria(
+    ...         lambda: self.where_criteria,
+    ...         track_on=[self]
+    ...     )
+    ...     return stmt
+
+  Using ``track_on`` means the given objects will be stored long term in the
+  lambda's internal cache and will have strong references for as long as the
+  cache doesn't clear out those objects (an LRU scheme of 1000 entries is used
+  by default).
+
+  ..
+
+
+Cache Key Generation
+^^^^^^^^^^^^^^^^^^^^
+
+In order to understand some of the options and behaviors which occur
+with lambda SQL constructs, an understanding of the caching system
+is helpful.
+
+SQLAlchemy's caching system normally generates a cache key from a given
+SQL expression construct by producing a structure that represents all the
+state within the construct::
+
+    >>> from sqlalchemy import select, column
+    >>> stmt = select(column('q'))
+    >>> cache_key = stmt._generate_cache_key()
+    >>> print(cache_key)  # somewhat paraphrased
+    CacheKey(key=(
+      '0',
+      <class 'sqlalchemy.sql.selectable.Select'>,
+      '_raw_columns',
+      (
+        (
+          '1',
+          <class 'sqlalchemy.sql.elements.ColumnClause'>,
+          'name',
+          'q',
+          'type',
+          (
+            <class 'sqlalchemy.sql.sqltypes.NullType'>,
+          ),
+        ),
+      ),
+      # a few more elements are here, and many more for a more
+      # complicated SELECT statement
+    ),)
+
+
+The above key is stored in the cache which is essentially a dictionary, and the
+value is a construct that among other things stores the string form of the SQL
+statement, in this case the phrase "SELECT q".  We can observe that even for an
+extremely short query the cache key is pretty verbose as it has to represent
+everything that may vary about what's being rendered and potentially executed.
+
+The lambda construction system by contrast creates a different kind of cache
+key::
+
+    >>> from sqlalchemy import lambda_stmt
+    >>> stmt = lambda_stmt(lambda: select(column("q")))
+    >>> cache_key = stmt._generate_cache_key()
+    >>> print(cache_key)
+    CacheKey(key=(
+      <code object <lambda> at 0x7fed1617c710, file "<stdin>", line 1>,
+      <class 'sqlalchemy.sql.lambdas.StatementLambdaElement'>,
+    ),)
+
+Above, we see a cache key that is vastly shorter than that of the non-lambda
+statement, and additionally that production of the ``select(column("q"))``
+construct itself was not even necessary; the Python lambda itself contains
+an attribute called ``__code__`` which refers to a Python code object that
+within the runtime of the application is immutable and permanent.
+
+When the lambda also includes closure variables, in the normal case that these
+variables refer to SQL constructs such as column objects, they become
+part of the cache key, or if they refer to literal values that will be bound
+parameters, they are placed in a separate element of the cache key::
+
+    >>> def my_stmt(parameter):
+    ...     col = column("q")
+    ...     stmt = lambda_stmt(lambda: select(col))
+    ...     stmt += lambda s: s.where(col == parameter)
+    ...     return stmt
+
+The above :class:`_sql.StatementLambdaElement` includes two lambdas, both
+of which refer to the ``col`` closure variable, so the cache key will
+represent both of these segments as well as the ``column()`` object::
+
+    >>> stmt = my_stmt(5)
+    >>> key = stmt._generate_cache_key()
+    >>> print(key)
+    CacheKey(key=(
+      <code object <lambda> at 0x7f07323c50e0, file "<stdin>", line 3>,
+      (
+        '0',
+        <class 'sqlalchemy.sql.elements.ColumnClause'>,
+        'name',
+        'q',
+        'type',
+        (
+          <class 'sqlalchemy.sql.sqltypes.NullType'>,
+        ),
+      ),
+      <code object <lambda> at 0x7f07323c5190, file "<stdin>", line 4>,
+      <class 'sqlalchemy.sql.lambdas.LinkedLambdaElement'>,
+      (
+        '0',
+        <class 'sqlalchemy.sql.elements.ColumnClause'>,
+        'name',
+        'q',
+        'type',
+        (
+          <class 'sqlalchemy.sql.sqltypes.NullType'>,
+        ),
+      ),
+      (
+        '0',
+        <class 'sqlalchemy.sql.elements.ColumnClause'>,
+        'name',
+        'q',
+        'type',
+        (
+          <class 'sqlalchemy.sql.sqltypes.NullType'>,
+        ),
+      ),
+    ),)
+
+
+The second part of the cache key has retrieved the bound parameters that will
+be used when the statement is invoked::
+
+    >>> key.bindparams
+    [BindParameter('%(139668884281280 parameter)s', 5, type_=Integer())]
+
 
 For a series of examples of "lambda" caching with performance comparisons,
 see the "short_selects" test suite within the :ref:`examples_performance`

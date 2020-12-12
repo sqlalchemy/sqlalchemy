@@ -703,7 +703,7 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
         # this is because the test was previously making use of the same
         # loader option state repeatedly without rebuilding it.
 
-        @profiling.function_call_count()
+        @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
                 obj = q.all()

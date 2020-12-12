@@ -802,6 +802,7 @@ therefore requires that :meth:`_expression.SelectBase.subquery` is used::
 
   :ref:`change_4617`
 
+
 Object Relational Mapping
 =========================
 

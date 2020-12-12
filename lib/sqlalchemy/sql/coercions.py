@@ -7,7 +7,6 @@
 
 import numbers
 import re
-import types
 
 from . import operators
 from . import roles
@@ -56,6 +55,15 @@ def _deep_is_literal(element):
 
     """
 
+    if isinstance(element, collections_abc.Sequence) and not isinstance(
+        element, str
+    ):
+        for elem in element:
+            if not _deep_is_literal(elem):
+                return False
+        else:
+            return True
+
     return (
         not isinstance(
             element,
@@ -66,7 +74,6 @@ def _deep_is_literal(element):
             not isinstance(element, type)
             or not issubclass(element, HasCacheKey)
         )
-        and not isinstance(element, types.FunctionType)
     )
 
 
@@ -109,9 +116,8 @@ def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
         return lambdas.LambdaElement(
             element,
             role,
+            lambdas.LambdaOptions(**kw),
             apply_propagate_attrs=apply_propagate_attrs,
-            argname=argname,
-            **kw
         )
 
     # major case is that we are given a ClauseElement already, skip more

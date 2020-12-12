@@ -8,6 +8,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.future import select
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -132,19 +133,62 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             fn = random.choice([go1, go2])
             fn()
 
-    def test_entity_round_trip(self, plain_fixture):
+    @testing.combinations(
+        (True, True),
+        (True, False),
+        (False, False),
+        argnames="use_aliased,use_indirect_access",
+    )
+    def test_entity_round_trip(
+        self, plain_fixture, use_aliased, use_indirect_access
+    ):
         User, Address = plain_fixture
 
         s = Session(testing.db, future=True)
 
-        def query(names):
-            stmt = lambda_stmt(
-                lambda: select(User)
-                .where(User.name.in_(names))
-                .options(selectinload(User.addresses))
-            ) + (lambda s: s.order_by(User.id))
+        if use_aliased:
+            if use_indirect_access:
 
-            return s.execute(stmt)
+                def query(names):
+                    class Foo(object):
+                        def __init__(self):
+                            self.u1 = aliased(User)
+
+                    f1 = Foo()
+
+                    stmt = lambda_stmt(
+                        lambda: select(f1.u1)
+                        .where(f1.u1.name.in_(names))
+                        .options(selectinload(f1.u1.addresses)),
+                        track_on=[f1.u1],
+                    ).add_criteria(
+                        lambda s: s.order_by(f1.u1.id), track_on=[f1.u1]
+                    )
+
+                    return s.execute(stmt)
+
+            else:
+
+                def query(names):
+                    u1 = aliased(User)
+                    stmt = lambda_stmt(
+                        lambda: select(u1)
+                        .where(u1.name.in_(names))
+                        .options(selectinload(u1.addresses))
+                    ) + (lambda s: s.order_by(u1.id))
+
+                    return s.execute(stmt)
+
+        else:
+
+            def query(names):
+                stmt = lambda_stmt(
+                    lambda: select(User)
+                    .where(User.name.in_(names))
+                    .options(selectinload(User.addresses))
+                ) + (lambda s: s.order_by(User.id))
+
+                return s.execute(stmt)
 
         def go1():
             r1 = query(["ed"])

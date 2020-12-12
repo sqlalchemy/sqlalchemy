@@ -57,6 +57,7 @@ from sqlalchemy.sql.functions import GenericFunction
 from sqlalchemy.sql.functions import ReturnTypeFromArgs
 from sqlalchemy.sql.lambdas import lambda_stmt
 from sqlalchemy.sql.lambdas import LambdaElement
+from sqlalchemy.sql.lambdas import LambdaOptions
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
@@ -859,7 +860,9 @@ class CoreFixtures(object):
             d = {"g": random.randint(40, 45)}
 
             return LambdaElement(
-                lambda: and_(table_a.c.b == d["g"]), roles.WhereHavingRole
+                lambda: and_(table_a.c.b == d["g"]),
+                roles.WhereHavingRole,
+                opts=LambdaOptions(track_closure_variables=False),
             )
 
         def seven():

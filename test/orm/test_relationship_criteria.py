@@ -16,6 +16,7 @@ from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -83,6 +84,32 @@ class _Fixtures(_fixtures.FixtureTest):
             users,
         )
         return HasFoob, UserWFoob
+
+    @testing.fixture
+    def multi_mixin_fixture(self):
+        orders, items = self.tables.orders, self.tables.items
+        order_items = self.tables.order_items
+
+        class HasFoob(object):
+            description = Column(String)
+
+        class HasBat(HasFoob):
+            some_nothing = Column(Integer)
+
+        class Order(HasFoob, self.Comparable):
+            pass
+
+        class Item(HasBat, self.Comparable):
+            pass
+
+        base = registry()
+        base.map_imperatively(
+            Order,
+            orders,
+            properties={"items": relationship("Item", secondary=order_items)},
+        )
+        base.map_imperatively(Item, items)
+        return HasFoob, Order, Item
 
 
 class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
@@ -597,6 +624,66 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt = go(name)
 
             eq_(s.execute(stmt).scalars().all(), [UserWFoob(name=name)])
+
+    def test_unnamed_param_dont_fail(self, multi_mixin_fixture):
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        def go(stmt, value):
+            return stmt.options(
+                with_loader_criteria(
+                    HasFoob,
+                    lambda cls: cls.description == "order 3",
+                    include_aliases=True,
+                )
+            )
+
+        with Session(testing.db) as sess:
+            for i in range(10):
+                name = random.choice(["order 1", "order 3", "order 5"])
+
+                statement = select(Order)
+                stmt = go(statement, name)
+
+                eq_(
+                    sess.execute(stmt).scalars().all(),
+                    [Order(description="order 3")],
+                )
+
+    def test_caching_and_binds_lambda_more_mixins(self, multi_mixin_fixture):
+        # By including non-mapped mixin HasBat in the middle of the
+        # hierarchy, we test issue #5766
+        HasFoob, Order, Item = multi_mixin_fixture
+
+        def go(stmt, value):
+            return stmt.options(
+                with_loader_criteria(
+                    HasFoob,
+                    lambda cls: cls.description == value,
+                    include_aliases=True,
+                )
+            )
+
+        with Session(testing.db) as sess:
+            for i in range(10):
+                name = random.choice(["order 1", "order 3", "order 5"])
+
+                statement = select(Order)
+                stmt = go(statement, name)
+
+                eq_(
+                    sess.execute(stmt).scalars().all(),
+                    [Order(description=name)],
+                )
+
+                name = random.choice(["item 1", "item 3", "item 5"])
+
+                statement = select(Item)
+                stmt = go(statement, name)
+
+                eq_(
+                    sess.execute(stmt).scalars().all(),
+                    [Item(description=name)],
+                )
 
     def test_never_for_refresh(self, user_address_fixture):
         User, Address = user_address_fixture
