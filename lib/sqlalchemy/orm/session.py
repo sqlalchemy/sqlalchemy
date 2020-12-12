@@ -275,7 +275,7 @@ class ORMExecuteState(util.MemoizedSlots):
         if not self.is_select:
             return None
         opts = self.statement._compile_options
-        if isinstance(opts, context.ORMCompileState.default_compile_options):
+        if opts.isinstance(context.ORMCompileState.default_compile_options):
             return opts
         else:
             return None

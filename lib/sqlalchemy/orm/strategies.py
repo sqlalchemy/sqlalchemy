@@ -939,9 +939,14 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 )
 
             stmt += lambda stmt: stmt.options(*opts)
-            stmt += lambda stmt: stmt._update_compile_options(
-                {"_current_path": effective_path}
-            )
+        else:
+            # this path is used if there are not already any options
+            # in the query, but an event may want to add them
+            effective_path = state.mapper._path_registry[self.parent_property]
+
+        stmt += lambda stmt: stmt._update_compile_options(
+            {"_current_path": effective_path}
+        )
 
         if use_get:
             if self._raise_on_sql:
@@ -2732,6 +2737,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 orm_util.Bundle("pk", *pk_cols), effective_entity
             )
             .apply_labels()
+            ._set_compile_options(ORMCompileState.default_compile_options)
             ._set_propagate_attrs(
                 {
                     "compile_state_plugin": "orm",
@@ -2769,7 +2775,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         q = q.add_criteria(
             lambda q: q.filter(in_expr.in_(sql.bindparam("primary_keys")))
         )
-
         # a test which exercises what these comments talk about is
         # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
         #

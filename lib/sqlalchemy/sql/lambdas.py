@@ -1021,7 +1021,12 @@ class PyWrapper(ColumnOperators):
     def __getattribute__(self, key):
         if key.startswith("_sa_"):
             return object.__getattribute__(self, key[4:])
-        elif key in ("__clause_element__", "operate", "reverse_operate"):
+        elif key in (
+            "__clause_element__",
+            "operate",
+            "reverse_operate",
+            "__class__",
+        ):
             return object.__getattribute__(self, key)
 
         if key.startswith("__"):

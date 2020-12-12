@@ -15,6 +15,7 @@ from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 
 
@@ -56,6 +57,34 @@ class MiscTest(fixtures.TestBase):
             set(sql_util.find_tables(subset_select, include_aliases=True)),
             {common, calias, subset_select},
         )
+
+    def test_incompatible_options_add_clslevel(self):
+        class opt1(sql_base.CacheableOptions):
+            _cache_key_traversal = []
+            foo = "bar"
+
+        with expect_raises_message(
+            TypeError,
+            "dictionary contains attributes not covered by "
+            "Options class .*opt1.* .*'bar'.*",
+        ):
+            o1 = opt1
+
+            o1 += {"foo": "f", "bar": "b"}
+
+    def test_incompatible_options_add_instancelevel(self):
+        class opt1(sql_base.CacheableOptions):
+            _cache_key_traversal = []
+            foo = "bar"
+
+        o1 = opt1(foo="bat")
+
+        with expect_raises_message(
+            TypeError,
+            "dictionary contains attributes not covered by "
+            "Options class .*opt1.* .*'bar'.*",
+        ):
+            o1 += {"foo": "f", "bar": "b"}
 
     def test_options_merge(self):
         class opt1(sql_base.CacheableOptions):
