@@ -2,8 +2,11 @@ from .. import config
 from .. import fixtures
 from .. import util
 from ..assertions import eq_
+from ..assertions import is_false
+from ..assertions import is_true
 from ..config import requirements
 from ... import Column
+from ... import Index
 from ... import inspect
 from ... import Integer
 from ... import schema
@@ -30,6 +33,11 @@ class TableDDLTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True, autoincrement=False),
             Column("_data", String(50)),
         )
+
+    def _table_index_fixture(self, schema=None):
+        table = self._simple_fixture(schema=schema)
+        idx = Index("test_index", table.c.data)
+        return table, idx
 
     def _simple_roundtrip(self, table):
         with config.db.begin() as conn:
@@ -89,6 +97,85 @@ class TableDDLTest(fixtures.TestBase):
         eq_(
             inspect(connection).get_table_comment("test_table"), {"text": None}
         )
+
+    @requirements.table_ddl_if_exists
+    @util.provide_metadata
+    def test_create_table_if_not_exists(self, connection):
+        table = self._simple_fixture()
+
+        connection.execute(schema.CreateTable(table, if_not_exists=True))
+
+        is_true(inspect(connection).has_table("test_table"))
+        connection.execute(schema.CreateTable(table, if_not_exists=True))
+
+    @requirements.index_ddl_if_exists
+    @util.provide_metadata
+    def test_create_index_if_not_exists(self, connection):
+        table, idx = self._table_index_fixture()
+
+        connection.execute(schema.CreateTable(table, if_not_exists=True))
+        is_true(inspect(connection).has_table("test_table"))
+        is_false(
+            "test_index"
+            in [
+                ix["name"]
+                for ix in inspect(connection).get_indexes("test_table")
+            ]
+        )
+
+        connection.execute(schema.CreateIndex(idx, if_not_exists=True))
+
+        is_true(
+            "test_index"
+            in [
+                ix["name"]
+                for ix in inspect(connection).get_indexes("test_table")
+            ]
+        )
+
+        connection.execute(schema.CreateIndex(idx, if_not_exists=True))
+
+    @requirements.table_ddl_if_exists
+    @util.provide_metadata
+    def test_drop_table_if_exists(self, connection):
+        table = self._simple_fixture()
+
+        table.create(connection)
+
+        is_true(inspect(connection).has_table("test_table"))
+
+        connection.execute(schema.DropTable(table, if_exists=True))
+
+        is_false(inspect(connection).has_table("test_table"))
+
+        connection.execute(schema.DropTable(table, if_exists=True))
+
+    @requirements.index_ddl_if_exists
+    @util.provide_metadata
+    def test_drop_index_if_exists(self, connection):
+        table, idx = self._table_index_fixture()
+
+        table.create(connection)
+
+        is_true(
+            "test_index"
+            in [
+                ix["name"]
+                for ix in inspect(connection).get_indexes("test_table")
+            ]
+        )
+
+        connection.execute(schema.DropIndex(idx, if_exists=True))
+
+        is_false(
+            "test_index"
+            in [
+                ix["name"]
+                for ix in inspect(connection).get_indexes("test_table")
+            ]
+        )
+
+        connection.execute(schema.DropIndex(idx, if_exists=True))
 
 
 class FutureTableDDLTest(fixtures.FutureEngineMixin, TableDDLTest):

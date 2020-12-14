@@ -369,9 +369,13 @@ class _CreateDropBase(DDLElement):
 
     """
 
-    def __init__(self, element, bind=None):
+    def __init__(
+        self, element, bind=None, if_exists=False, if_not_exists=False
+    ):
         self.element = element
         self.bind = bind
+        self.if_exists = if_exists
+        self.if_not_exists = if_not_exists
 
     @property
     def stringify_dialect(self):
@@ -427,7 +431,11 @@ class CreateTable(_CreateDropBase):
     __visit_name__ = "create_table"
 
     def __init__(
-        self, element, bind=None, include_foreign_key_constraints=None
+        self,
+        element,
+        bind=None,
+        include_foreign_key_constraints=None,
+        if_not_exists=False,
     ):
         """Create a :class:`.CreateTable` construct.
 
@@ -442,8 +450,15 @@ class CreateTable(_CreateDropBase):
 
          .. versionadded:: 1.0.0
 
+        :param if_not_exists: if True, an IF NOT EXISTS operator will be
+         applied to the construct.
+
+         .. versionadded:: 1.4.0b2
+
         """
-        super(CreateTable, self).__init__(element, bind=bind)
+        super(CreateTable, self).__init__(
+            element, bind=bind, if_not_exists=if_not_exists
+        )
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
 
@@ -573,6 +588,23 @@ class DropTable(_CreateDropBase):
 
     __visit_name__ = "drop_table"
 
+    def __init__(self, element, bind=None, if_exists=False):
+        """Create a :class:`.DropTable` construct.
+
+        :param element: a :class:`_schema.Table` that's the subject
+         of the DROP.
+        :param on: See the description for 'on' in :class:`.DDL`.
+        :param bind: See the description for 'bind' in :class:`.DDL`.
+        :param if_exists: if True, an IF EXISTS operator will be applied to the
+         construct.
+
+         .. versionadded:: 1.4.0b2
+
+        """
+        super(DropTable, self).__init__(
+            element, bind=bind, if_exists=if_exists
+        )
+
 
 class CreateSequence(_CreateDropBase):
     """Represent a CREATE SEQUENCE statement."""
@@ -591,11 +623,45 @@ class CreateIndex(_CreateDropBase):
 
     __visit_name__ = "create_index"
 
+    def __init__(self, element, bind=None, if_not_exists=False):
+        """Create a :class:`.Createindex` construct.
+
+        :param element: a :class:`_schema.Index` that's the subject
+         of the CREATE.
+        :param on: See the description for 'on' in :class:`.DDL`.
+        :param bind: See the description for 'bind' in :class:`.DDL`.
+        :param if_not_exists: if True, an IF NOT EXISTS operator will be
+         applied to the construct.
+
+         .. versionadded:: 1.4.0b2
+
+        """
+        super(CreateIndex, self).__init__(
+            element, bind=bind, if_not_exists=if_not_exists
+        )
+
 
 class DropIndex(_CreateDropBase):
     """Represent a DROP INDEX statement."""
 
     __visit_name__ = "drop_index"
+
+    def __init__(self, element, bind=None, if_exists=False):
+        """Create a :class:`.DropIndex` construct.
+
+        :param element: a :class:`_schema.Index` that's the subject
+         of the DROP.
+        :param on: See the description for 'on' in :class:`.DDL`.
+        :param bind: See the description for 'bind' in :class:`.DDL`.
+        :param if_exists: if True, an IF EXISTS operator will be applied to the
+         construct.
+
+         .. versionadded:: 1.4.0b2
+
+        """
+        super(DropIndex, self).__init__(
+            element, bind=bind, if_exists=if_exists
+        )
 
 
 class AddConstraint(_CreateDropBase):

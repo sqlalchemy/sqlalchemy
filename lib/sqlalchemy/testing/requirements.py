@@ -40,6 +40,18 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def table_ddl_if_exists(self):
+        """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
+
+        return exclusions.closed()
+
+    @property
+    def index_ddl_if_exists(self):
+        """target platform supports IF NOT EXISTS / IF EXISTS for indexes."""
+
+        return exclusions.closed()
+
+    @property
     def foreign_keys(self):
         """Target database must support foreign keys."""
 

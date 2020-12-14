@@ -3835,7 +3835,12 @@ class DDLCompiler(Compiled):
         text = "\nCREATE "
         if table._prefixes:
             text += " ".join(table._prefixes) + " "
-        text += "TABLE " + preparer.format_table(table) + " "
+
+        text += "TABLE "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+
+        text += preparer.format_table(table) + " "
 
         create_table_suffix = self.create_table_suffix(table)
         if create_table_suffix:
@@ -3935,7 +3940,10 @@ class DDLCompiler(Compiled):
         )
 
     def visit_drop_table(self, drop, **kw):
-        return "\nDROP TABLE " + self.preparer.format_table(drop.element)
+        text = "\nDROP TABLE "
+        if drop.if_exists:
+            text += "IF EXISTS "
+        return text + self.preparer.format_table(drop.element)
 
     def visit_drop_view(self, drop, **kw):
         return "\nDROP VIEW " + self.preparer.format_table(drop.element)
@@ -3959,7 +3967,12 @@ class DDLCompiler(Compiled):
             raise exc.CompileError(
                 "CREATE INDEX requires that the index have a name"
             )
-        text += "INDEX %s ON %s (%s)" % (
+
+        text += "INDEX "
+        if create.if_not_exists:
+            text += "IF NOT EXISTS "
+
+        text += "%s ON %s (%s)" % (
             self._prepared_index_name(index, include_schema=include_schema),
             preparer.format_table(
                 index.table, use_schema=include_table_schema
@@ -3980,9 +3993,11 @@ class DDLCompiler(Compiled):
             raise exc.CompileError(
                 "DROP INDEX requires that the index have a name"
             )
-        return "\nDROP INDEX " + self._prepared_index_name(
-            index, include_schema=True
-        )
+        text = "\nDROP INDEX "
+        if drop.if_exists:
+            text += "IF EXISTS "
+
+        return text + self._prepared_index_name(index, include_schema=True)
 
     def _prepared_index_name(self, index, include_schema=False):
         if index.table is not None:
