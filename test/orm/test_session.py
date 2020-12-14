@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import close_all_sessions
@@ -57,24 +58,6 @@ class ExecutionTest(_fixtures.FixtureTest):
         finally:
             seq.drop(connection)
 
-    def test_textual_execute(self, connection):
-        """test that Session.execute() converts to text()"""
-
-        users = self.tables.users
-
-        with Session(bind=connection) as sess:
-            sess.execute(users.insert(), dict(id=7, name="jack"))
-
-            # use :bindparam style
-            eq_(
-                sess.execute(
-                    "select * from users where id=:id", {"id": 7}
-                ).fetchall(),
-                [(7, "jack")],
-            )
-
-            # use :bindparam style
-            eq_(sess.scalar("select id from users where id=:id", {"id": 7}), 7)
 
     def test_parameter_execute(self):
         users = self.tables.users
@@ -555,44 +538,39 @@ class SessionStateTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        try:
-            sess = create_session(autocommit=False, autoflush=True)
+        with create_session(autocommit=False, autoflush=True) as sess:
             u = User()
             u.name = "ed"
             sess.add(u)
             u2 = sess.query(User).filter_by(name="ed").one()
-            assert u2 is u
-            assert (
+            is_(u2, u)
+            eq_(
                 sess.execute(
-                    "select count(1) from users",
+                    text("select count(1) from users"),
                     bind_arguments=dict(mapper=User),
-                ).scalar()
-                == 1
+                ).scalar(),
+                1,
             )
-            assert (
+            eq_(
                 testing.db.connect()
                 .exec_driver_sql("select count(1) from users")
-                .scalar()
-                == 0
+                .scalar(),
+                0,
             )
             sess.commit()
-            assert (
+            eq_(
                 sess.execute(
-                    "select count(1) from users",
+                    text("select count(1) from users"),
                     bind_arguments=dict(mapper=User),
-                ).scalar()
-                == 1
+                ).scalar(),
+                1,
             )
-            assert (
+            eq_(
                 testing.db.connect()
                 .exec_driver_sql("select count(1) from users")
-                .scalar()
-                == 1
+                .scalar(),
+                1,
             )
-            sess.close()
-        except Exception:
-            sess.rollback()
-            raise
 
     @engines.close_open_connections
     def test_autoflush_2(self):
@@ -1938,11 +1916,15 @@ class SessionInterface(fixtures.TestBase):
 
         raises_("connection", bind_arguments=dict(mapper=user_arg))
 
-        raises_("execute", "SELECT 1", bind_arguments=dict(mapper=user_arg))
+        raises_(
+            "execute", text("SELECT 1"), bind_arguments=dict(mapper=user_arg)
+        )
 
         raises_("get_bind", mapper=user_arg)
 
-        raises_("scalar", "SELECT 1", bind_arguments=dict(mapper=user_arg))
+        raises_(
+            "scalar", text("SELECT 1"), bind_arguments=dict(mapper=user_arg)
+        )
 
         eq_(
             watchdog,

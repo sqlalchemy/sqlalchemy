@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy.future import Engine
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import create_session
@@ -602,7 +603,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         s1 = Session(eng)
 
-        assert_raises_message(Exception, "failure", s1.execute, "select 1")
+        assert_raises_message(
+            Exception, "failure", s1.execute, text("select 1")
+        )
 
         conn, fairy = state[0]
         assert not fairy.is_valid
@@ -630,7 +633,9 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         s1 = Session(eng)
 
         s1.begin_nested()
-        assert_raises_message(Exception, "failure", s1.execute, "select 1")
+        assert_raises_message(
+            Exception, "failure", s1.execute, text("select 1")
+        )
 
         conn, fairy = state[0]
         assert fairy.is_valid
@@ -710,7 +715,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         @event.listens_for(sess, "after_commit")
         def go(session):
-            session.execute("select 1")
+            session.execute(text("select 1"))
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -729,7 +734,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             "This session is in 'prepared' state; no further "
             "SQL can be emitted within this transaction.",
             sess.execute,
-            "select 1",
+            text("select 1"),
         )
 
     def test_no_sql_during_rollback(self):
@@ -739,7 +744,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         @event.listens_for(sess, "after_rollback")
         def go(session):
-            session.execute("select 1")
+            session.execute(text("select 1"))
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -911,7 +916,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         conn = mock.Mock(engine=bind)
         bind.connect = mock.Mock(return_value=conn)
         sess = Session(bind=bind)
-        sess.execute("select 1")
+        sess.execute(text("select 1"))
         with expect_warnings(
             "Connection is already established for the "
             "given bind; execution_options ignored"

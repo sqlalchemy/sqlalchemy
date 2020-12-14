@@ -10,6 +10,7 @@ UPDATE in the database.
 """
 
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import mapper
@@ -727,7 +728,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
         eq_(i1.keywords, [k1, k2])
 
         # prove it didn't flush
-        eq_(session.scalar("select count(*) from item_keywords"), 1)
+        eq_(session.scalar(text("select count(*) from item_keywords")), 1)
 
         # the pending collection was removed
         assert (

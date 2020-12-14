@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5754
+
+    Deprecation warnings are emitted under "SQLALCHEMY_WARN_20" mode when
+    passing a plain string to :meth:`_orm.Session.execute`.
+
