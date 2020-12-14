@@ -46,14 +46,10 @@ class EngineFixture(fixtures.TablesTest):
     @classmethod
     def insert_data(cls, connection):
         users = cls.tables.users
-        with connection.begin():
-            connection.execute(
-                users.insert(),
-                [
-                    {"user_id": i, "user_name": "name%d" % i}
-                    for i in range(1, 20)
-                ],
-            )
+        connection.execute(
+            users.insert(),
+            [{"user_id": i, "user_name": "name%d" % i} for i in range(1, 20)],
+        )
 
 
 class AsyncEngineTest(EngineFixture):
