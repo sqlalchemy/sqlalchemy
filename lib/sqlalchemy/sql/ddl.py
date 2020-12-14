@@ -79,7 +79,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         )
 
     @util.deprecated_20(
-        ":meth:`.DDL.execute`",
+        ":meth:`.DDLElement.execute`",
         alternative="All statement execution in SQLAlchemy 2.0 is performed "
         "by the :meth:`_engine.Connection.execute` method of "
         ":class:`_engine.Connection`, "
@@ -369,11 +369,27 @@ class _CreateDropBase(DDLElement):
 
     """
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.DDLElement.bind` argument is "
+            "deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(
-        self, element, bind=None, if_exists=False, if_not_exists=False
+        self,
+        element,
+        bind=None,
+        if_exists=False,
+        if_not_exists=False,
+        _legacy_bind=None,
     ):
         self.element = element
-        self.bind = bind
+        if bind:
+            self.bind = bind
+        elif _legacy_bind:
+            self.bind = _legacy_bind
         self.if_exists = if_exists
         self.if_not_exists = if_not_exists
 
@@ -430,6 +446,13 @@ class CreateTable(_CreateDropBase):
 
     __visit_name__ = "create_table"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.CreateTable.bind` argument is deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(
         self,
         element,
@@ -457,7 +480,7 @@ class CreateTable(_CreateDropBase):
 
         """
         super(CreateTable, self).__init__(
-            element, bind=bind, if_not_exists=if_not_exists
+            element, _legacy_bind=bind, if_not_exists=if_not_exists
         )
         self.columns = [CreateColumn(column) for column in element.columns]
         self.include_foreign_key_constraints = include_foreign_key_constraints
@@ -588,6 +611,14 @@ class DropTable(_CreateDropBase):
 
     __visit_name__ = "drop_table"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.DropTable.bind` argument is "
+            "deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(self, element, bind=None, if_exists=False):
         """Create a :class:`.DropTable` construct.
 
@@ -602,7 +633,7 @@ class DropTable(_CreateDropBase):
 
         """
         super(DropTable, self).__init__(
-            element, bind=bind, if_exists=if_exists
+            element, _legacy_bind=bind, if_exists=if_exists
         )
 
 
@@ -623,6 +654,14 @@ class CreateIndex(_CreateDropBase):
 
     __visit_name__ = "create_index"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.CreateIndex.bind` argument is "
+            "deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(self, element, bind=None, if_not_exists=False):
         """Create a :class:`.Createindex` construct.
 
@@ -637,7 +676,7 @@ class CreateIndex(_CreateDropBase):
 
         """
         super(CreateIndex, self).__init__(
-            element, bind=bind, if_not_exists=if_not_exists
+            element, _legacy_bind=bind, if_not_exists=if_not_exists
         )
 
 
@@ -646,6 +685,14 @@ class DropIndex(_CreateDropBase):
 
     __visit_name__ = "drop_index"
 
+    @util.deprecated_params(
+        bind=(
+            "2.0",
+            "The :paramref:`_ddl.DropIndex.bind` argument is "
+            "deprecated and "
+            "will be removed in SQLAlchemy 2.0.",
+        ),
+    )
     def __init__(self, element, bind=None, if_exists=False):
         """Create a :class:`.DropIndex` construct.
 
@@ -660,7 +707,7 @@ class DropIndex(_CreateDropBase):
 
         """
         super(DropIndex, self).__init__(
-            element, bind=bind, if_exists=if_exists
+            element, _legacy_bind=bind, if_exists=if_exists
         )
 
 

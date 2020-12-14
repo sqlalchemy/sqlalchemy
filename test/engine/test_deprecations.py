@@ -1648,7 +1648,7 @@ class DDLExecutionTest(fixtures.TestBase):
         ddl = DDL("SELECT 1")
 
         eng_msg = r"The Engine.execute\(\) method is considered legacy"
-        ddl_msg = r"The DDL.execute\(\) method is considered legacy"
+        ddl_msg = r"The DDLElement.execute\(\) method is considered legacy"
         for spec in (
             (engine.execute, ddl, eng_msg),
             (engine.execute, ddl, table, eng_msg),

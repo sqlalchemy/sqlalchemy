@@ -22,6 +22,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import or_
+from sqlalchemy import schema
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import sql
@@ -49,6 +50,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
@@ -2569,3 +2571,121 @@ class LegacySequenceExecTest(fixtures.TestBase):
             r"The Engine.scalar\(\) method is considered legacy"
         ):
             self._assert_seq_result(testing.db.scalar(select(s.next_value())))
+
+
+class DDLDeprecatedBindTest(fixtures.TestBase):
+    def teardown(self):
+        with testing.db.begin() as conn:
+            if inspect(conn).has_table("foo"):
+                conn.execute(schema.DropTable(table("foo")))
+
+    def test_bind_ddl_deprecated(self, connection):
+        with testing.expect_deprecated_20(
+            "The DDL.bind argument is deprecated"
+        ):
+            ddl = schema.DDL("create table foo(id integer)", bind=connection)
+
+        with testing.expect_deprecated_20(
+            r"The DDLElement.execute\(\) method is considered legacy"
+        ):
+            ddl.execute()
+
+    def test_bind_create_table_deprecated(self, connection):
+        t1 = Table("foo", MetaData(), Column("id", Integer))
+
+        with testing.expect_deprecated_20(
+            "The CreateTable.bind argument is deprecated"
+        ):
+            ddl = schema.CreateTable(t1, bind=connection)
+
+        with testing.expect_deprecated_20(
+            r"The DDLElement.execute\(\) method is considered legacy"
+        ):
+            ddl.execute()
+
+        is_true(inspect(connection).has_table("foo"))
+
+    def test_bind_create_index_deprecated(self, connection):
+        t1 = Table("foo", MetaData(), Column("id", Integer))
+        t1.create(connection)
+
+        idx = schema.Index("foo_idx", t1.c.id)
+
+        with testing.expect_deprecated_20(
+            "The CreateIndex.bind argument is deprecated"
+        ):
+            ddl = schema.CreateIndex(idx, bind=connection)
+
+        with testing.expect_deprecated_20(
+            r"The DDLElement.execute\(\) method is considered legacy"
+        ):
+            ddl.execute()
+
+        is_true(
+            "foo_idx"
+            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
+        )
+
+    def test_bind_drop_table_deprecated(self, connection):
+        t1 = Table("foo", MetaData(), Column("id", Integer))
+
+        t1.create(connection)
+
+        with testing.expect_deprecated_20(
+            "The DropTable.bind argument is deprecated"
+        ):
+            ddl = schema.DropTable(t1, bind=connection)
+
+        with testing.expect_deprecated_20(
+            r"The DDLElement.execute\(\) method is considered legacy"
+        ):
+            ddl.execute()
+
+        is_false(inspect(connection).has_table("foo"))
+
+    def test_bind_drop_index_deprecated(self, connection):
+        t1 = Table("foo", MetaData(), Column("id", Integer))
+        idx = schema.Index("foo_idx", t1.c.id)
+        t1.create(connection)
+
+        is_true(
+            "foo_idx"
+            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
+        )
+
+        with testing.expect_deprecated_20(
+            "The DropIndex.bind argument is deprecated"
+        ):
+            ddl = schema.DropIndex(idx, bind=connection)
+
+        with testing.expect_deprecated_20(
+            r"The DDLElement.execute\(\) method is considered legacy"
+        ):
+            ddl.execute()
+
+        is_false(
+            "foo_idx"
+            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
+        )
+
+    @testing.combinations(
+        (schema.AddConstraint,),
+        (schema.DropConstraint,),
+        (schema.CreateSequence,),
+        (schema.DropSequence,),
+        (schema.CreateSchema,),
+        (schema.DropSchema,),
+        (schema.SetTableComment,),
+        (schema.DropTableComment,),
+        (schema.SetColumnComment,),
+        (schema.DropColumnComment,),
+    )
+    def test_bind_other_constructs(self, const):
+        m1 = mock.Mock()
+
+        with testing.expect_deprecated_20(
+            "The DDLElement.bind argument is deprecated"
+        ):
+            c1 = const(m1, bind=testing.db)
+
+            is_(c1.bind, testing.db)
