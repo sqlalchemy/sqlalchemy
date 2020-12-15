@@ -20,6 +20,7 @@ import re
 import weakref
 
 from . import attributes
+from .base import _is_mapped_class
 from .base import state_str
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -2163,9 +2164,13 @@ class RelationshipProperty(StrategizedProperty):
 
             if isinstance(attr_value, util.string_types):
                 setattr(
-                    self, attr, self._clsregistry_resolve_arg(attr_value)()
+                    self,
+                    attr,
+                    self._clsregistry_resolve_arg(
+                        attr_value, favor_tables=attr == "secondary"
+                    )(),
                 )
-            elif callable(attr_value):
+            elif callable(attr_value) and not _is_mapped_class(attr_value):
                 setattr(self, attr, attr_value())
 
         # remove "annotations" which are present if mapped class
@@ -2182,6 +2187,15 @@ class RelationshipProperty(StrategizedProperty):
                         )
                     ),
                 )
+
+        if self.secondary is not None and _is_mapped_class(self.secondary):
+            raise sa_exc.ArgumentError(
+                "secondary argument %s passed to to relationship() %s must "
+                "be a Table object or other FROM clause; can't send a mapped "
+                "class directly as rows in 'secondary' are persisted "
+                "independently of a class that is mapped "
+                "to that same table." % (self.secondary, self)
+            )
 
         # ensure expressions in self.order_by, foreign_keys,
         # remote_side are all columns, not strings.

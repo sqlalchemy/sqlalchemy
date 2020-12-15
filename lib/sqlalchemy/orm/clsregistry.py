@@ -315,15 +315,24 @@ def _determine_container(key, value):
 
 
 class _class_resolver(object):
-    __slots__ = "cls", "prop", "arg", "fallback", "_dict", "_resolvers"
+    __slots__ = (
+        "cls",
+        "prop",
+        "arg",
+        "fallback",
+        "_dict",
+        "_resolvers",
+        "favor_tables",
+    )
 
-    def __init__(self, cls, prop, fallback, arg):
+    def __init__(self, cls, prop, fallback, arg, favor_tables=False):
         self.cls = cls
         self.prop = prop
         self.arg = arg
         self.fallback = fallback
         self._dict = util.PopulateDict(self._access_cls)
         self._resolvers = ()
+        self.favor_tables = favor_tables
 
     def _access_cls(self, key):
         cls = self.cls
@@ -333,13 +342,22 @@ class _class_resolver(object):
         decl_class_registry = decl_base._class_registry
         metadata = decl_base.metadata
 
+        if self.favor_tables:
+            if key in metadata.tables:
+                return metadata.tables[key]
+            elif key in metadata._schemas:
+                return _GetTable(key, cls.metadata)
+
         if key in decl_class_registry:
             return _determine_container(key, decl_class_registry[key])
-        elif key in metadata.tables:
-            return metadata.tables[key]
-        elif key in metadata._schemas:
-            return _GetTable(key, cls.metadata)
-        elif (
+
+        if not self.favor_tables:
+            if key in metadata.tables:
+                return metadata.tables[key]
+            elif key in metadata._schemas:
+                return _GetTable(key, cls.metadata)
+
+        if (
             "_sa_module_registry" in decl_class_registry
             and key in decl_class_registry["_sa_module_registry"]
         ):
@@ -412,8 +430,10 @@ def _resolver(cls, prop):
             {"foreign": foreign, "remote": remote}
         )
 
-    def resolve_arg(arg):
-        return _class_resolver(cls, prop, _fallback_dict, arg)
+    def resolve_arg(arg, favor_tables=False):
+        return _class_resolver(
+            cls, prop, _fallback_dict, arg, favor_tables=favor_tables
+        )
 
     def resolve_name(arg):
         return _class_resolver(cls, prop, _fallback_dict, arg)._resolve_name

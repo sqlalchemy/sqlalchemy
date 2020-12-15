@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5774
+    :versions: 1.4.0b2
+
+    Added a comprehensive check and an informative error message for the case
+    where a mapped class, or a string mapped class name, is passed to
+    :paramref:`_orm.relationship.secondary`.  This is an extremely common error
+    which warrants a clear message.
+
+    Additionally, added a new rule to the class registry resolution such that
+    with regards to the :paramref:`_orm.relationship.secondary` parameter, if a
+    mapped class and its table are of the identical string name, the
+    :class:`.Table` will be favored when resolving this parameter.   In all
+    other cases, the class continues to be favored if a class and table
+    share the identical name.
