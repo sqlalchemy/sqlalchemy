@@ -64,9 +64,10 @@ mechanics::
 When dealing with the ``Interval`` class itself, the :class:`.hybrid_property`
 descriptor evaluates the function body given the ``Interval`` class as
 the argument, which when evaluated with SQLAlchemy expression mechanics
+(here using the :attr:`.QueryableAttribute.expression` accessor)
 returns a new SQL expression::
 
-    >>> print(Interval.length)
+    >>> print(Interval.length.expression)
     interval."end" - interval.start
 
     >>> print(Session().query(Interval).filter(Interval.length > 10))

@@ -176,6 +176,13 @@ class QueryableAttribute(
 
     @property
     def expression(self):
+        """The SQL expression object represented by this
+        :class:`.QueryableAttribute`.
+
+        This will typically be an instance of a :class:`.ColumnElement`
+        subclass representing a column expression.
+
+        """
         return self.comparator.__clause_element__()
 
     def __clause_element__(self):
