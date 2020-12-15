@@ -21,6 +21,7 @@ import weakref
 from . import attributes
 from . import dependency
 from . import mapper as mapperlib
+from .base import _is_mapped_class
 from .base import state_str
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -2101,7 +2102,7 @@ class RelationshipProperty(StrategizedProperty):
             "remote_side",
         ):
             attr_value = getattr(self, attr)
-            if util.callable(attr_value):
+            if util.callable(attr_value) and not _is_mapped_class(attr_value):
                 setattr(self, attr, attr_value())
 
         # remove "annotations" which are present if mapped class
@@ -2116,6 +2117,15 @@ class RelationshipProperty(StrategizedProperty):
                         expression._only_column_elements(val, attr)
                     ),
                 )
+
+        if self.secondary is not None and _is_mapped_class(self.secondary):
+            raise sa_exc.ArgumentError(
+                "secondary argument %s passed to to relationship() %s must "
+                "be a Table object or other FROM clause; can't send a mapped "
+                "class directly as rows in 'secondary' are persisted "
+                "independently of a class that is mapped "
+                "to that same table." % (self.secondary, self)
+            )
 
         # ensure expressions in self.order_by, foreign_keys,
         # remote_side are all columns, not strings.

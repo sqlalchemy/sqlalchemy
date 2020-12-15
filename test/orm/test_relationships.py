@@ -4254,6 +4254,47 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
         sa.orm.configure_mappers()
 
 
+class SecondaryArgTest(fixtures.TestBase):
+    def teardown(self):
+        clear_mappers()
+
+    @testing.combinations((True,), (False,))
+    def test_informative_message_on_cls_as_secondary(self, string):
+        Base = declarative_base()
+
+        class C(Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            b_id = Column(ForeignKey("b.id"))
+
+        if string:
+            c_arg = "C"
+        else:
+            c_arg = C
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+            bs = relationship("B", secondary=c_arg)
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"secondary argument <class .*C.*> passed to to "
+            r"relationship\(\) A.bs "
+            "must be a Table object or other FROM clause; can't send a "
+            "mapped class directly as rows in 'secondary' are persisted "
+            "independently of a class that is mapped to that same table.",
+            configure_mappers,
+        )
+
+
 class SecondaryNestedJoinTest(
     fixtures.MappedTest, AssertsCompiledSQL, testing.AssertsExecutionResults
 ):

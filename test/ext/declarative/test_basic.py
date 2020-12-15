@@ -840,6 +840,59 @@ class DeclarativeTest(DeclarativeTestBase):
             class_mapper(User).get_property("props").secondary is user_to_prop
         )
 
+    def test_string_dependency_resolution_table_over_class(self):
+        # test for second half of #5774
+        class User(Base, fixtures.ComparableEntity):
+
+            __tablename__ = "users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            props = relationship(
+                "Prop",
+                secondary="Secondary",
+                backref="users",
+            )
+
+        class Prop(Base, fixtures.ComparableEntity):
+
+            __tablename__ = "props"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        # class name and table name match
+        class Secondary(Base):
+            __tablename__ = "Secondary"
+            user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+            prop_id = Column(Integer, ForeignKey("props.id"), primary_key=True)
+
+        configure_mappers()
+        assert (
+            class_mapper(User).get_property("props").secondary
+            is Secondary.__table__
+        )
+
+    def test_string_dependency_resolution_class_over_table(self):
+        # test for second half of #5774
+        class User(Base, fixtures.ComparableEntity):
+
+            __tablename__ = "users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            secondary = relationship(
+                "Secondary",
+            )
+
+        # class name and table name match
+        class Secondary(Base):
+            __tablename__ = "Secondary"
+            user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+
+        configure_mappers()
+        assert (
+            class_mapper(User).get_property("secondary").mapper
+            is Secondary.__mapper__
+        )
+
     def test_string_dependency_resolution_schemas(self):
         Base = decl.declarative_base()
 
