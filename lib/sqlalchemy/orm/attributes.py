@@ -203,6 +203,14 @@ class QueryableAttribute(
 
     @util.memoized_property
     def expression(self):
+        """The SQL expression object represented by this
+        :class:`.QueryableAttribute`.
+
+        This will typically be an instance of a :class:`_sql.ColumnElement`
+        subclass representing a column expression.
+
+        """
+
         return self.comparator.__clause_element__()._annotate(
             {"orm_key": self.key, "entity_namespace": self._entity_namespace}
         )
