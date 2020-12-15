@@ -2028,7 +2028,12 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
                 "without using the text"
             ):
                 # use :bindparam style
-                eq_(sess.scalar("select id from users where id=:id", {"id": 7}), 7)
+                eq_(
+                    sess.scalar(
+                        "select id from users where id=:id", {"id": 7}
+                    ),
+                    7,
+                )
 
     def test_session_str(self):
         s1 = Session(testing.db)

@@ -58,7 +58,6 @@ class ExecutionTest(_fixtures.FixtureTest):
         finally:
             seq.drop(connection)
 
-
     def test_parameter_execute(self):
         users = self.tables.users
         sess = Session(bind=testing.db)
