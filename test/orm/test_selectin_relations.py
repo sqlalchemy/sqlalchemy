@@ -722,7 +722,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
 
         self.assert_sql_count(testing.db, go, count)
-        return
 
         eq_(
             sess.query(User)

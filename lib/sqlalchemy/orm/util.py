@@ -995,7 +995,7 @@ class LoaderCriteriaOption(CriteriaOption):
             :meth:`_orm.SessionEvents.do_orm_execute` event.
 
         :param track_closure_variables: when False, closure variables inside
-         of a lambda expression will not be validated used as part of
+         of a lambda expression will not be used as part of
          any cache key.    This allows more complex expressions to be used
          inside of a lambda expression but requires that the lambda ensures
          it returns the identical SQL every time given a particular class.

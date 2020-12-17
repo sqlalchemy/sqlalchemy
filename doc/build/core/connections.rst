@@ -1316,7 +1316,7 @@ Basic guidelines include:
   creates a cache key from other closure variables within the statement.  In order
   to provide the best guarantee of an accurate cache key, all objects located
   in the closure of the lambda are considered to be significant, and none
-  will none will be assumed to be appropriate for a cache key by default.
+  will be assumed to be appropriate for a cache key by default.
   So the following example will also raise a rather detailed error message::
 
     >>> class Foo:
