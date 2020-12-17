@@ -12,7 +12,151 @@
 
 .. changelog::
     :version: 1.3.21
-    :include_notes_from: unreleased_13
+    :released: December 17, 2020
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5774
+        :versions: 1.4.0b2
+
+        Added a comprehensive check and an informative error message for the case
+        where a mapped class, or a string mapped class name, is passed to
+        :paramref:`_orm.relationship.secondary`.  This is an extremely common error
+        which warrants a clear message.
+
+        Additionally, added a new rule to the class registry resolution such that
+        with regards to the :paramref:`_orm.relationship.secondary` parameter, if a
+        mapped class and its table are of the identical string name, the
+        :class:`.Table` will be favored when resolving this parameter.   In all
+        other cases, the class continues to be favored if a class and table
+        share the identical name.
+
+    .. change::
+        :tags: sqlite, usecase
+        :tickets: 5685
+
+        Added ``sqlite_with_rowid=False`` dialect keyword to enable creating
+        tables as ``CREATE TABLE … WITHOUT ROWID``. Patch courtesy Sean Anderson.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5691
+
+        A warning is emmitted if a returning() method such as
+        :meth:`_sql.Insert.returning` is called multiple times, as this does not
+        yet support additive operation.  Version 1.4 will support additive
+        operation for this.  Additionally, any combination of the
+        :meth:`_sql.Insert.returning` and :meth:`_sql.ValuesBase.return_defaults`
+        methods now raises an error as these methods are mutually exclusive;
+        previously the operation would fail silently.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5751
+
+        Fixed bug where a CREATE INDEX statement was rendered incorrectly when
+        both ``mssql-include`` and ``mssql_where`` were specified. Pull request
+        courtesy @Adiorz.
+
+    .. change::
+        :tags: bug, postgresql, mysql
+        :tickets: 5729
+        :versions: 1.4.0b2
+
+        Fixed regression introduced in 1.3.2 for the PostgreSQL dialect, also
+        copied out to the MySQL dialect's feature in 1.3.18, where usage of a non
+        :class:`_schema.Table` construct such as :func:`_sql.text` as the argument
+        to :paramref:`_sql.Select.with_for_update.of` would fail to be accommodated
+        correctly within the PostgreSQL or MySQL compilers.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5646
+
+        Added SQL Server code "01000" to the list of disconnect codes.
+
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 5604
+        :versions: 1.4.0b2
+
+        Added new parameter :paramref:`_postgresql.ExcludeConstraint.ops` to the
+        :class:`_postgresql.ExcludeConstraint` object, to support operator class
+        specification with this constraint.  Pull request courtesy Alon Menczer.
+
+    .. change::
+        :tags: bug, mysql, reflection
+        :tickets: 5744
+        :versions: 1.4.0b2
+
+        Fixed issue where reflecting a server default on MariaDB only that
+        contained a decimal point in the value would fail to be reflected
+        correctly, leading towards a reflected table that lacked any server
+        default.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5664
+
+        Fixed bug in :meth:`_query.Query.update` where objects in the
+        :class:`_ormsession.Session` that were already expired would be
+        unnecessarily SELECTed individually when they were refreshed by the
+        "evaluate"synchronize strategy.
+
+    .. change::
+        :tags: usecase, oracle
+        :tickets: 5755
+
+        Implemented support for the SERIALIZABLE isolation level for Oracle
+        databases, as well as a real implementation for
+        :meth:`_engine.Connection.get_isolation_level`.
+
+        .. seealso::
+
+            :ref:`oracle_isolation_level`
+
+    .. change::
+        :tags: mysql, sql
+        :tickets: 5696
+
+        Added missing keywords to the ``RESERVED_WORDS`` list for the MySQL
+        dialect: ``action``, ``level``, ``mode``, ``status``, ``text``, ``time``.
+        Pull request courtesy Oscar Batori.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5737
+        :versions: 1.4.0b2
+
+        Fixed bug involving the ``restore_load_context`` option of ORM events such
+        as :meth:`_ormevent.InstanceEvents.load` such that the flag would not be
+        carried along to subclasses which were mapped after the event handler were
+        first established.
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5656
+
+        Fixed structural compiler issue where some constructs such as MySQL /
+        PostgreSQL "on conflict / on duplicate key" would rely upon the state of
+        the :class:`_sql.Compiler` object being fixed against their statement as
+        the top level statement, which would fail in cases where those statements
+        are branched from a different context, such as a DDL construct linked to a
+        SQL statement.
+
+
+    .. change::
+        :tags: mssql, sqlite, reflection
+        :tickets: 5661
+
+        Fixed issue with composite primary key columns not being reported
+        in the correct order. Patch courtesy @fulpm.
 
 .. changelog::
     :version: 1.3.20
