@@ -1,7 +1,7 @@
-from typing import Any
 from typing import Callable
 from typing import Mapping
 from typing import Optional
+from typing import TypeVar
 
 from . import engine
 from . import result as _result
@@ -12,6 +12,9 @@ from ...engine import Result
 from ...orm import Session
 from ...sql import Executable
 from ...util.concurrency import greenlet_spawn
+
+
+T = TypeVar("T")
 
 
 @util.create_proxy_methods(
@@ -102,7 +105,7 @@ class AsyncSession:
             with_for_update=with_for_update,
         )
 
-    async def run_sync(self, fn: Callable, *arg, **kw) -> Any:
+    async def run_sync(self, fn: Callable[..., T], *arg, **kw) -> T:
         """Invoke the given sync callable passing sync self as the first
         argument.
 
