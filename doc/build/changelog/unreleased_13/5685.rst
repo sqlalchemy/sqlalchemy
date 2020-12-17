@@ -1,7 +1,0 @@
-.. change::
-    :tags: sqlite, usecase
-    :tickets: 5685
-    :versions: 1.4.0b2
-
-    Added ``sqlite_with_rowid=False`` dialect keyword to enable creating
-    tables as ``CREATE TABLE … WITHOUT ROWID``. Patch courtesy Sean Anderson.

@@ -1,8 +1,0 @@
-.. change::
-    :tags: usecase, postgresql
-    :tickets: 5604
-    :versions: 1.4.0b2
-
-    Added new parameter :paramref:`_postgresql.ExcludeConstraint.ops` to the
-    :class:`_postgresql.ExcludeConstraint` object, to support operator class
-    specification with this constraint.  Pull request courtesy Alon Menczer.
