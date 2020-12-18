@@ -8,6 +8,7 @@ from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import set_default_schema_on_connection
+from ...testing.provision import stop_test_class
 from ...testing.provision import temp_table_keyword_args
 from ...testing.provision import update_db_opts
 
@@ -59,6 +60,18 @@ def _oracle_drop_db(cfg, eng, ident):
 @update_db_opts.for_db("oracle")
 def _oracle_update_db_opts(db_url, db_opts):
     pass
+
+
+@stop_test_class.for_db("oracle")
+def stop_test_class(config, db, cls):
+    """run magic command to get rid of identity sequences
+
+    # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/
+
+    """
+
+    with db.begin() as conn:
+        conn.exec_driver_sql("purge recyclebin")
 
 
 @run_reap_dbs.for_db("oracle")

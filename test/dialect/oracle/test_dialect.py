@@ -416,7 +416,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_table_round_trip(self, connection):
-        oracle.RESERVED_WORDS.remove("UNION")
+        oracle.RESERVED_WORDS.discard("UNION")
 
         metadata = self.metadata
         table = Table(
