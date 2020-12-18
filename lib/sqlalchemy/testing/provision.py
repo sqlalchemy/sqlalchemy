@@ -301,6 +301,11 @@ def temp_table_keyword_args(cfg, eng):
 
 
 @register.init
+def stop_test_class(config, db, testcls):
+    pass
+
+
+@register.init
 def get_temp_table_name(cfg, eng, base_name):
     """Specify table name for creating a temporary Table.
 

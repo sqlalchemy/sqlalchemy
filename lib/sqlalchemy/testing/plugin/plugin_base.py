@@ -45,6 +45,7 @@ engines = None
 exclusions = None
 warnings = None
 profiling = None
+provision = None
 assertions = None
 requirements = None
 config = None
@@ -283,12 +284,12 @@ def post_begin():
         fn(options, file_config)
 
     # late imports, has to happen after config.
-    global util, fixtures, engines, exclusions, assertions
+    global util, fixtures, engines, exclusions, assertions, provision
     global warnings, profiling, config, testing
     from sqlalchemy import testing  # noqa
     from sqlalchemy.testing import fixtures, engines, exclusions  # noqa
     from sqlalchemy.testing import assertions, warnings, profiling  # noqa
-    from sqlalchemy.testing import config  # noqa
+    from sqlalchemy.testing import config, provision  # noqa
     from sqlalchemy import util  # noqa
 
     warnings.setup_filters()
@@ -619,6 +620,8 @@ def start_test_class(cls):
 def stop_test_class(cls):
     # from sqlalchemy import inspect
     # assert not inspect(testing.db).get_table_names()
+
+    provision.stop_test_class(config, config.db, cls)
     engines.testing_reaper._stop_test_ctx()
     try:
         if not options.low_connections:

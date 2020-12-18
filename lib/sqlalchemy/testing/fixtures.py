@@ -206,7 +206,11 @@ class TablesTest(TestBase):
             drop_all_tables(self.metadata, self.bind)
 
         # no need to run deletes if tables are recreated on setup
-        if self.run_define_tables != "each" and self.run_deletes == "each":
+        if (
+            self.run_define_tables != "each"
+            and self.run_create_tables != "each"
+            and self.run_deletes == "each"
+        ):
             with self.bind.begin() as conn:
                 for table in reversed(
                     [
