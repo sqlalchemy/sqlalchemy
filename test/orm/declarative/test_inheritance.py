@@ -654,6 +654,36 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Engineer(name="vlad", primary_language="cobol"),
         )
 
+    def test_single_having(self):
+        """test single table inheritance in combination with having"""
+
+        class Person(Base, fixtures.ComparableEntity):
+            __tablename__ = "people"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(50))
+            discriminator = Column("type", String(50))
+            __mapper_args__ = {"polymorphic_on": discriminator}
+
+        class Engineer(Person):
+            __mapper_args__ = {"polymorphic_identity": "engineer"}
+            primary_language = Column(String(50))
+
+        Base.metadata.create_all()
+        sess = create_session()
+        e1 = Engineer(name="Sean", primary_language="js")
+        sess.add(e1)
+        sess.flush()
+        sess.expunge_all()
+        eq_(
+            sess.query(Engineer)
+            .group_by(Engineer.id)
+            .having(Engineer.primary_language=="js")
+            .first(),
+            Engineer(name="Sean"),
+        )
+
     def test_single_cols_on_sub_base_of_joined(self):
         """test [ticket:3895]"""
 
