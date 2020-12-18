@@ -350,11 +350,17 @@ class ComputedReturningTest(fixtures.TablesTest):
 
             eq_(conn.scalar(select([test.c.bar])), 47)
 
-    def test_computed_update_warning(self):
+    def test_computed_update_warning(self, connection):
         test = self.tables.test
-        with testing.db.connect() as conn:
-            conn.execute(test.insert(), {"id": 1, "foo": 5})
+        conn = connection
+        conn.execute(test.insert(), {"id": 1, "foo": 5})
 
+        if testing.db.dialect._supports_update_returning_computed_cols:
+            result = conn.execute(
+                test.update().values(foo=10).return_defaults()
+            )
+            eq_(result.returned_defaults, (52,))
+        else:
             with testing.expect_warnings(
                 "Computed columns don't work with Oracle UPDATE"
             ):
@@ -365,7 +371,7 @@ class ComputedReturningTest(fixtures.TablesTest):
                 # returns the *old* value
                 eq_(result.returned_defaults, (47,))
 
-            eq_(conn.scalar(select([test.c.bar])), 52)
+        eq_(conn.scalar(select([test.c.bar])), 52)
 
     def test_computed_update_no_warning(self):
         test = self.tables.test_no_returning
@@ -429,7 +435,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 
     @testing.provide_metadata
     def test_table_round_trip(self):
-        oracle.RESERVED_WORDS.remove("UNION")
+        oracle.RESERVED_WORDS.discard("UNION")
 
         metadata = self.metadata
         table = Table(

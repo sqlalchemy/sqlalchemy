@@ -25,8 +25,7 @@ def setup_filters():
     warnings.filterwarnings(
         "ignore",
         category=sa_exc.SAWarning,
-        message=r"Oracle compatibility version .* is known to have a "
-        "maximum identifier",
+        message=r"Oracle version .* is known to have a " "maximum identifier",
     )
 
     # some selected deprecations...

@@ -974,7 +974,11 @@ class OracleCompiler(compiler.SQLCompiler):
         for i, column in enumerate(
             expression._select_iterables(returning_cols)
         ):
-            if self.isupdate and isinstance(column.server_default, Computed):
+            if (
+                self.isupdate
+                and isinstance(column.server_default, Computed)
+                and not self.dialect._supports_update_returning_computed_cols
+            ):
                 util.warn(
                     "Computed columns don't work with Oracle UPDATE "
                     "statements that use RETURNING; the value of the column "
@@ -1387,6 +1391,12 @@ class OracleDialect(default.DefaultDialect):
     @property
     def _supports_char_length(self):
         return not self._is_oracle_8
+
+    @property
+    def _supports_update_returning_computed_cols(self):
+        # on version 18 this error is no longet present while it happens on 11
+        # it may work also on versions before the 18
+        return self.server_version_info and self.server_version_info >= (18,)
 
     def do_release_savepoint(self, connection, name):
         # Oracle does not support RELEASE SAVEPOINT

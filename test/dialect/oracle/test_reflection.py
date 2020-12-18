@@ -456,27 +456,24 @@ class UnsupportedIndexReflectTest(fixtures.TestBase):
 
 
 def all_tables_compression_missing():
-    try:
-        testing.db.execute("SELECT compression FROM all_tables")
-        if "Enterprise Edition" not in testing.db.scalar(
-            "select * from v$version"
-        ):
+    with testing.db.connect() as conn:
+        if (
+            "Enterprise Edition"
+            not in conn.execute("select * from v$version").scalar()
+            # this works in Oracle Database 18c Express Edition Release
+        ) and testing.db.dialect.server_version_info < (18,):
             return True
         return False
-    except Exception:
-        return True
 
 
 def all_tables_compress_for_missing():
-    try:
-        testing.db.execute("SELECT compress_for FROM all_tables")
-        if "Enterprise Edition" not in testing.db.scalar(
-            "select * from v$version"
+    with testing.db.connect() as conn:
+        if (
+            "Enterprise Edition"
+            not in conn.execute("select * from v$version").scalar()
         ):
             return True
         return False
-    except Exception:
-        return True
 
 
 class TableReflectionTest(fixtures.TestBase):

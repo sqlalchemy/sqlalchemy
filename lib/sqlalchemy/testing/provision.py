@@ -192,3 +192,8 @@ def temp_table_keyword_args(cfg, eng):
     raise NotImplementedError(
         "no temp table keyword args routine for cfg: %s" % eng.url
     )
+
+
+@register.init
+def stop_test_class(config, db, testcls):
+    pass
