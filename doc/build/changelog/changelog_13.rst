@@ -11,6 +11,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.3.23
+    :include_notes_from: unreleased_13
+
+.. changelog::
     :version: 1.3.22
     :released: December 18, 2020
 
