@@ -2497,11 +2497,28 @@ class Tuple(ClauseList, ColumnElement):
         """
         sqltypes = util.preloaded.sql_sqltypes
 
-        clauses = [
-            coercions.expect(roles.ExpressionElementRole, c) for c in clauses
-        ]
-        self.type = sqltypes.TupleType(*[arg.type for arg in clauses])
+        types = kw.pop("types", None)
+        if types is None:
+            clauses = [
+                coercions.expect(roles.ExpressionElementRole, c)
+                for c in clauses
+            ]
+        else:
+            if len(types) != len(clauses):
+                raise exc.ArgumentError(
+                    "Wrong number of elements for %d-tuple: %r "
+                    % (len(types), clauses)
+                )
+            clauses = [
+                coercions.expect(
+                    roles.ExpressionElementRole,
+                    c,
+                    type_=typ if not typ._isnull else None,
+                )
+                for typ, c in zip(types, clauses)
+            ]
 
+        self.type = sqltypes.TupleType(*[arg.type for arg in clauses])
         super(Tuple, self).__init__(*clauses, **kw)
 
     @property

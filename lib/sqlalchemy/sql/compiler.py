@@ -2610,7 +2610,9 @@ class SQLCompiler(Compiled):
 
         v = "VALUES %s" % ", ".join(
             self.process(
-                elements.Tuple(*elem).self_group(),
+                elements.Tuple(
+                    types=element._column_types, *elem
+                ).self_group(),
                 literal_binds=element.literal_binds,
             )
             for chunk in element._data

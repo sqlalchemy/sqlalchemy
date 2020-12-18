@@ -2397,6 +2397,10 @@ class Values(Generative, FromClause):
         self.literal_binds = kw.pop("literal_binds", False)
         self.named_with_column = self.name is not None
 
+    @property
+    def _column_types(self):
+        return [col.type for col in self._column_args]
+
     @_generative
     def alias(self, name, **kw):
         """Return a new :class:`_expression.Values`

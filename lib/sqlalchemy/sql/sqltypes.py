@@ -3074,7 +3074,9 @@ class NullType(TypeEngine):
 
     def literal_processor(self, dialect):
         def process(value):
-            return "NULL"
+            raise exc.CompileError(
+                "Don't know how to render literal SQL value: %r" % value
+            )
 
         return process
 
@@ -3130,6 +3132,7 @@ if util.py3k:
 else:
     _type_map[unicode] = Unicode()  # noqa
     _type_map[str] = String()
+
 
 _type_map_get = _type_map.get
 

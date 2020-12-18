@@ -1,6 +1,8 @@
 from sqlalchemy import alias
 from sqlalchemy import Column
 from sqlalchemy import column
+from sqlalchemy import Enum
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
@@ -12,7 +14,9 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import Values
 from sqlalchemy.sql.compiler import FROM_LINTING
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.util import OrderedDict
 
 
 class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
@@ -52,31 +56,101 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             Column("book_weight", Integer),
         )
 
-    def test_column_quoting(self):
+    def test_wrong_number_of_elements(self):
         v1 = Values(
             column("CaseSensitive", Integer),
             column("has spaces", String),
             name="Spaces and Cases",
         ).data([(1, "textA", 99), (2, "textB", 88)])
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Wrong number of elements for 2-tuple: \(1, 'textA', 99\)",
+        ):
+            str(v1)
+
+    def test_column_quoting(self):
+        v1 = Values(
+            column("CaseSensitive", Integer),
+            column("has spaces", String),
+            column("number", Integer),
+            name="Spaces and Cases",
+        ).data([(1, "textA", 99), (2, "textB", 88)])
         self.assert_compile(
             select(v1),
             'SELECT "Spaces and Cases"."CaseSensitive", '
-            '"Spaces and Cases"."has spaces" FROM '
+            '"Spaces and Cases"."has spaces", "Spaces and Cases".number FROM '
             "(VALUES (:param_1, :param_2, :param_3), "
             "(:param_4, :param_5, :param_6)) "
-            'AS "Spaces and Cases" ("CaseSensitive", "has spaces")',
+            'AS "Spaces and Cases" ("CaseSensitive", "has spaces", number)',
         )
 
     @testing.fixture
     def literal_parameter_fixture(self):
-        def go(literal_binds):
-            return Values(
+        def go(literal_binds, omit=None):
+            cols = [
                 column("mykey", Integer),
                 column("mytext", String),
                 column("myint", Integer),
-                name="myvalues",
-                literal_binds=literal_binds,
+            ]
+            if omit:
+                for idx in omit:
+                    cols[idx] = column(cols[idx].name)
+
+            return Values(
+                *cols, name="myvalues", literal_binds=literal_binds
             ).data([(1, "textA", 99), (2, "textB", 88)])
+
+        return go
+
+    @testing.fixture
+    def tricky_types_parameter_fixture(self):
+        class SomeEnum(object):
+            # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
+            __members__ = OrderedDict()
+
+            def __init__(self, name, value, alias=None):
+                self.name = name
+                self.value = value
+                self.__members__[name] = self
+                setattr(self.__class__, name, self)
+                if alias:
+                    self.__members__[alias] = self
+                    setattr(self.__class__, alias, self)
+
+        one = SomeEnum("one", 1)
+        two = SomeEnum("two", 2)
+
+        class MumPyString(str):
+            """some kind of string, can't imagine where such a thing might
+            be found
+
+            """
+
+        class MumPyNumber(int):
+            """some kind of int, can't imagine where such a thing might
+            be found
+
+            """
+
+        def go(literal_binds, omit=None):
+            cols = [
+                column("mykey", Integer),
+                column("mytext", String),
+                column("myenum", Enum(SomeEnum)),
+            ]
+            if omit:
+                for idx in omit:
+                    cols[idx] = column(cols[idx].name)
+
+            return Values(
+                *cols, name="myvalues", literal_binds=literal_binds
+            ).data(
+                [
+                    (MumPyNumber(1), MumPyString("textA"), one),
+                    (MumPyNumber(2), MumPyString("textB"), two),
+                ]
+            )
 
         return go
 
@@ -111,6 +185,49 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             "SELECT myvalues.mykey, myvalues.mytext, myvalues.myint FROM "
             "(VALUES (1, 'textA', 99), (2, 'textB', 88)"
             ") AS myvalues (mykey, mytext, myint)",
+            checkparams={},
+        )
+
+    def test_literal_parameters_not_every_type_given(
+        self, literal_parameter_fixture
+    ):
+        literal_parameter_fixture = literal_parameter_fixture(True, omit=(1,))
+
+        stmt = select(literal_parameter_fixture)
+
+        self.assert_compile(
+            stmt,
+            "SELECT myvalues.mykey, myvalues.mytext, myvalues.myint FROM "
+            "(VALUES (1, 'textA', 99), (2, 'textB', 88)"
+            ") AS myvalues (mykey, mytext, myint)",
+            checkparams={},
+        )
+
+    def test_use_cols_tricky_not_every_type_given(
+        self, tricky_types_parameter_fixture
+    ):
+        literal_parameter_fixture = tricky_types_parameter_fixture(
+            True, omit=(1,)
+        )
+
+        stmt = select(literal_parameter_fixture)
+
+        with expect_raises_message(
+            exc.CompileError,
+            "Don't know how to render literal SQL value: 'textA'",
+        ):
+            str(stmt)
+
+    def test_use_cols_for_types(self, tricky_types_parameter_fixture):
+        literal_parameter_fixture = tricky_types_parameter_fixture(True)
+
+        stmt = select(literal_parameter_fixture)
+
+        self.assert_compile(
+            stmt,
+            "SELECT myvalues.mykey, myvalues.mytext, myvalues.myenum FROM "
+            "(VALUES (1, 'textA', 'one'), (2, 'textB', 'two')"
+            ") AS myvalues (mykey, mytext, myenum)",
             checkparams={},
         )
 
