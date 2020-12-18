@@ -24,6 +24,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -63,6 +64,73 @@ class DialectTest(fixtures.TestBase):
             lambda self, vers: (5, 3, 1),
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=Mock())
+
+
+class DialectWBackendTest(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "oracle"
+
+    def test_hypothetical_not_implemented_isolation_level(self):
+        engine = engines.testing_engine()
+
+        def get_isolation_level(connection):
+            raise NotImplementedError
+
+        with mock.patch.object(
+            engine.dialect, "get_isolation_level", get_isolation_level
+        ):
+            conn = engine.connect()
+
+            # for NotImplementedError we get back None.  But the
+            # cx_Oracle dialect does not raise this.
+            eq_(conn.dialect.default_isolation_level, None)
+
+            dbapi_conn = conn.connection.connection
+
+            eq_(
+                testing.db.dialect.get_isolation_level(dbapi_conn),
+                "READ COMMITTED",
+            )
+
+    def test_graceful_failure_isolation_level_not_available(self):
+        engine = engines.testing_engine()
+
+        def get_isolation_level(connection):
+            raise exc.DBAPIError(
+                "get isolation level",
+                {},
+                engine.dialect.dbapi.Error("isolation level failed"),
+            )
+
+        with mock.patch.object(
+            engine.dialect, "get_isolation_level", get_isolation_level
+        ):
+            conn = engine.connect()
+            eq_(conn.dialect.default_isolation_level, "READ COMMITTED")
+
+            # test that we can use isolation level setting and that it
+            # reverts for "real" back to READ COMMITTED even though we
+            # can't read it
+            dbapi_conn = conn.connection.connection
+
+            conn = conn.execution_options(isolation_level="SERIALIZABLE")
+            eq_(
+                testing.db.dialect.get_isolation_level(dbapi_conn),
+                "SERIALIZABLE",
+            )
+
+            conn.close()
+            eq_(
+                testing.db.dialect.get_isolation_level(dbapi_conn),
+                "READ COMMITTED",
+            )
+
+            with engine.connect() as conn:
+                assert_raises_message(
+                    exc.DBAPIError,
+                    r".*isolation level failed.*",
+                    conn.get_isolation_level,
+                )
 
 
 class EncodingErrorsTest(fixtures.TestBase):

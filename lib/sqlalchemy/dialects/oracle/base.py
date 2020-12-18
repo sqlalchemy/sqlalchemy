@@ -66,16 +66,39 @@ Valid values for ``isolation_level`` include:
 * ``AUTOCOMMIT``
 * ``SERIALIZABLE``
 
-.. note:: The implementation :meth:`_engine.Connection.get_isolation_level`
-   implemented by the Oracle dialect necessarily forces the start of
-   a transaction using the Oracle LOCAL_TRANSACTION_ID function; otherwise
-   no level is normally readable.
+.. note:: The implementation for the
+   :meth:`_engine.Connection.get_isolation_level` method as implemented by the
+   Oracle dialect necessarily forces the start of a transaction using the
+   Oracle LOCAL_TRANSACTION_ID function; otherwise no level is normally
+   readable.
+
+   Additionally, the :meth:`_engine.Connection.get_isolation_level` method will
+   raise an exception if the ``v$transaction`` view is not available due to
+   permissions or other reasons, which is a common occurrence in Oracle
+   installations.
+
+   The cx_Oracle dialect attempts to call the
+   :meth:`_engine.Connection.get_isolation_level` method when the dialect makes
+   its first connection to the database in order to acquire the
+   "default"isolation level.  This default level is necessary so that the level
+   can be reset on a connection after it has been temporarily modified using
+   :meth:`_engine.Connection.execution_options` method.   In the common event
+   that the :meth:`_engine.Connection.get_isolation_level` method raises an
+   exception due to ``v$transaction`` not being readable as well as any other
+   database-related failure, the level is assumed to be "READ COMMITTED".  No
+   warning is emitted for this initial first-connect condition as it is
+   expected to be a common restriction on Oracle databases.
 
 .. versionadded:: 1.3.16 added support for AUTOCOMMIT to the cx_oracle dialect
    as well as the notion of a default isolation level
 
 .. versionadded:: 1.3.21 Added support for SERIALIZABLE as well as live
    reading of the isolation level.
+
+.. versionchanged:: 1.3.22 In the event that the default isolation
+   level cannot be read due to permissions on the v$transaction view as
+   is common in Oracle installations, the default isolation level is hardcoded
+   to "READ COMMITTED" which was the behavior prior to 1.3.21.
 
 .. seealso::
 
@@ -1407,6 +1430,14 @@ class OracleDialect(default.DefaultDialect):
 
     def get_isolation_level(self, connection):
         raise NotImplementedError("implemented by cx_Oracle dialect")
+
+    def get_default_isolation_level(self, dbapi_conn):
+        try:
+            return self.get_isolation_level(dbapi_conn)
+        except NotImplementedError:
+            raise
+        except:
+            return "READ COMMITTED"
 
     def set_isolation_level(self, connection, level):
         raise NotImplementedError("implemented by cx_Oracle dialect")
