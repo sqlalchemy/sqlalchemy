@@ -876,6 +876,26 @@ class Dialect(object):
 
         raise NotImplementedError()
 
+    def get_default_isolation_level(self, dbapi_conn):
+        """Given a DBAPI connection, return its isolation level, or
+        a default isolation level if one cannot be retrieved.
+
+        This method may only raise NotImplementedError and
+        **must not raise any other exception**, as it is used implicitly upon
+        first connect.
+
+        The method **must return a value** for a dialect that supports
+        isolation level settings, as this level is what will be reverted
+        towards when a per-connection isolation level change is made.
+
+        The method defaults to using the :meth:`.Dialect.get_isolation_level`
+        method unless overridden by a dialect.
+
+        .. versionadded:: 1.3.22
+
+        """
+        raise NotImplementedError()
+
     @classmethod
     def get_dialect_cls(cls, url):
         """Given a URL, return the :class:`.Dialect` that will be used.

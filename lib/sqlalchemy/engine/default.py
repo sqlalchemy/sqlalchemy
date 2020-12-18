@@ -367,7 +367,7 @@ class DefaultDialect(interfaces.Dialect):
             self.default_schema_name = None
 
         try:
-            self.default_isolation_level = self.get_isolation_level(
+            self.default_isolation_level = self.get_default_isolation_level(
                 connection.connection
             )
         except NotImplementedError:
@@ -418,6 +418,22 @@ class DefaultDialect(interfaces.Dialect):
 
         """
         return None
+
+    def get_default_isolation_level(self, dbapi_conn):
+        """Given a DBAPI connection, return its isolation level, or
+        a default isolation level if one cannot be retrieved.
+
+        May be overridden by subclasses in order to provide a
+        "fallback" isolation level for databases that cannot reliably
+        retrieve the actual isolation level.
+
+        By default, calls the :meth:`_engine.Interfaces.get_isolation_level`
+        method, propagating any exceptions raised.
+
+        .. versionadded:: 1.3.22
+
+        """
+        return self.get_isolation_level(dbapi_conn)
 
     def _check_unicode_returns(self, connection, additional_tests=None):
         # this now runs in py2k only and will be removed in 2.0; disabled for

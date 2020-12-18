@@ -1,6 +1,5 @@
 #! coding: utf-8
 
-from sqlalchemy import event
 from .. import assert_raises
 from .. import config
 from .. import engines
@@ -12,6 +11,7 @@ from ..config import requirements
 from ..provision import set_default_schema_on_connection
 from ..schema import Column
 from ..schema import Table
+from ... import event
 from ... import exc
 from ... import Integer
 from ... import literal_column
