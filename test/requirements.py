@@ -1424,10 +1424,13 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def ad_hoc_engines(self):
-        return exclusions.skip_if(
-            ["oracle"],
-            "works, but Oracle just gets tired with "
-            "this much connection activity",
+        return (
+            exclusions.skip_if(
+                ["oracle"],
+                "works, but Oracle just gets tired with "
+                "this much connection activity",
+            )
+            + skip_if(self._sqlite_file_db)
         )
 
     @property

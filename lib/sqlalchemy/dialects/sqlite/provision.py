@@ -7,6 +7,7 @@ from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
+from ...testing.provision import stop_test_class
 from ...testing.provision import temp_table_keyword_args
 
 
@@ -54,6 +55,25 @@ def _sqlite_drop_db(cfg, eng, ident):
         if os.path.exists(path):
             log.info("deleting SQLite database file: %s" % path)
             os.remove(path)
+
+
+@stop_test_class.for_db("sqlite")
+def stop_test_class(config, db, cls):
+    with db.connect() as conn:
+        files = [
+            row.file
+            for row in conn.exec_driver_sql("PRAGMA database_list")
+            if row.file
+        ]
+
+    if files:
+        db.dispose()
+
+        # some sqlite file tests are not cleaning up well yet, so do this
+        # just to make things simple for now
+        for file in files:
+            if file:
+                os.remove(file)
 
 
 @temp_table_keyword_args.for_db("sqlite")
