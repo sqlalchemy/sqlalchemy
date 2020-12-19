@@ -72,48 +72,46 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
 
+    @testing.provide_metadata
     def test_boolean(self):
         """Test that the boolean only treats 1 as True"""
 
-        meta = MetaData(testing.db)
+        meta = self.metadata
         t = Table(
             "bool_table",
             meta,
             Column("id", Integer, primary_key=True),
             Column("boo", Boolean(create_constraint=False)),
         )
-        try:
-            meta.create_all()
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
-            )
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
-            )
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
-            )
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
-            )
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
-            )
-            exec_sql(
-                testing.db,
-                "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
-            )
-            eq_(
-                t.select(t.c.boo).order_by(t.c.id).execute().fetchall(),
-                [(3, True), (5, True)],
-            )
-        finally:
-            meta.drop_all()
+        meta.create_all(testing.db)
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
+        )
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
+        )
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
+        )
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
+        )
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
+        )
+        exec_sql(
+            testing.db,
+            "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
+        )
+        eq_(
+            t.select(t.c.boo).order_by(t.c.id).execute().fetchall(),
+            [(3, True), (5, True)],
+        )
 
     def test_string_dates_passed_raise(self, connection):
         assert_raises(
@@ -137,6 +135,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ).scalar(),
             )
 
+    @testing.provide_metadata
     def test_native_datetime(self):
         dbapi = testing.db.dialect.dbapi
         connect_args = {
@@ -147,35 +146,31 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         )
         t = Table(
             "datetest",
-            MetaData(),
+            self.metadata,
             Column("id", Integer, primary_key=True),
             Column("d1", Date),
             Column("d2", sqltypes.TIMESTAMP),
         )
         t.create(engine)
-        try:
-            with engine.begin() as conn:
-                conn.execute(
-                    t.insert(),
-                    {
-                        "d1": datetime.date(2010, 5, 10),
-                        "d2": datetime.datetime(2010, 5, 10, 12, 15, 25),
-                    },
-                )
-                row = conn.execute(t.select()).first()
-                eq_(
-                    row,
-                    (
-                        1,
-                        datetime.date(2010, 5, 10),
-                        datetime.datetime(2010, 5, 10, 12, 15, 25),
-                    ),
-                )
-                r = conn.execute(func.current_date()).scalar()
-                assert isinstance(r, util.string_types)
-        finally:
-            t.drop(engine)
-            engine.dispose()
+        with engine.begin() as conn:
+            conn.execute(
+                t.insert(),
+                {
+                    "d1": datetime.date(2010, 5, 10),
+                    "d2": datetime.datetime(2010, 5, 10, 12, 15, 25),
+                },
+            )
+            row = conn.execute(t.select()).first()
+            eq_(
+                row,
+                (
+                    1,
+                    datetime.date(2010, 5, 10),
+                    datetime.datetime(2010, 5, 10, 12, 15, 25),
+                ),
+            )
+            r = conn.execute(func.current_date()).scalar()
+            assert isinstance(r, util.string_types)
 
     @testing.provide_metadata
     def test_custom_datetime(self, connection):
@@ -1748,30 +1743,24 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
 class KeywordInDatabaseNameTest(fixtures.TestBase):
     __only_on__ = "sqlite"
 
-    @classmethod
-    def setup_class(cls):
-        with testing.db.begin() as conn:
-            conn.exec_driver_sql(
-                'ATTACH %r AS "default"' % conn.engine.url.database
-            )
-            conn.exec_driver_sql(
-                'CREATE TABLE "default".a (id INTEGER PRIMARY KEY)'
-            )
+    @testing.fixture
+    def db_fixture(self, connection):
+        connection.exec_driver_sql(
+            'ATTACH %r AS "default"' % connection.engine.url.database
+        )
+        connection.exec_driver_sql(
+            'CREATE TABLE "default".a (id INTEGER PRIMARY KEY)'
+        )
+        try:
+            yield
+        finally:
+            connection.exec_driver_sql('drop table "default".a')
+            connection.exec_driver_sql('DETACH DATABASE "default"')
 
-    @classmethod
-    def teardown_class(cls):
-        with testing.db.begin() as conn:
-            try:
-                conn.exec_driver_sql('drop table "default".a')
-            except Exception:
-                pass
-            conn.exec_driver_sql('DETACH DATABASE "default"')
-
-    def test_reflect(self):
-        with testing.db.begin() as conn:
-            meta = MetaData(bind=conn, schema="default")
-            meta.reflect()
-            assert "default.a" in meta.tables
+    def test_reflect(self, connection, db_fixture):
+        meta = MetaData(bind=connection, schema="default")
+        meta.reflect()
+        assert "default.a" in meta.tables
 
 
 class ConstraintReflectionTest(fixtures.TestBase):
@@ -1832,10 +1821,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "CREATE TABLE f (x INTEGER, CONSTRAINT foo_fx UNIQUE(x))"
             )
             conn.exec_driver_sql(
-                "CREATE TEMPORARY TABLE g "
-                "(x INTEGER, CONSTRAINT foo_gx UNIQUE(x))"
-            )
-            conn.exec_driver_sql(
                 # intentional broken casing
                 "CREATE TABLE h (x INTEGER, COnstraINT foo_hx unIQUE(x))"
             )
@@ -1862,15 +1847,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 Column("id", Integer, primary_key=True),
                 Column("x", String(30)),
                 UniqueConstraint("x"),
-            )
-
-            Table(
-                "n",
-                meta,
-                Column("id", Integer, primary_key=True),
-                Column("x", String(30)),
-                UniqueConstraint("x"),
-                prefixes=["TEMPORARY"],
             )
 
             Table(
@@ -1953,7 +1929,6 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "j",
                 "i",
                 "h",
-                "g",
                 "f",
                 "e",
                 "e1",
@@ -1965,10 +1940,31 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "a1",
                 "a2",
             ]:
-                try:
-                    conn.exec_driver_sql("drop table %s" % name)
-                except Exception:
-                    pass
+                conn.exec_driver_sql("drop table %s" % name)
+
+    @testing.fixture
+    def temp_table_fixture(self, connection):
+
+        connection.exec_driver_sql(
+            "CREATE TEMPORARY TABLE g "
+            "(x INTEGER, CONSTRAINT foo_gx UNIQUE(x))"
+        )
+
+        n = Table(
+            "n",
+            MetaData(),
+            Column("id", Integer, primary_key=True),
+            Column("x", String(30)),
+            UniqueConstraint("x"),
+            prefixes=["TEMPORARY"],
+        )
+
+        n.create(connection)
+        try:
+            yield
+        finally:
+            connection.exec_driver_sql("DROP TABLE g")
+            n.drop(connection)
 
     def test_legacy_quoted_identifiers_unit(self):
         dialect = sqlite.dialect()
@@ -2316,8 +2312,11 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["x"], "name": "foo_hx"}],
         )
 
-    def test_unique_constraint_named_broken_temp(self):
-        inspector = inspect(testing.db)
+    def test_unique_constraint_named_broken_temp(
+        self, connection, temp_table_fixture
+    ):
+
+        inspector = inspect(connection)
         eq_(
             inspector.get_unique_constraints("g"),
             [{"column_names": ["x"], "name": "foo_gx"}],
@@ -2352,8 +2351,10 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [{"column_names": ["x"], "name": None}],
         )
 
-    def test_unique_constraint_unnamed_normal_temporary(self):
-        inspector = inspect(testing.db)
+    def test_unique_constraint_unnamed_normal_temporary(
+        self, connection, temp_table_fixture
+    ):
+        inspector = inspect(connection)
         eq_(
             inspector.get_unique_constraints("n"),
             [{"column_names": ["x"], "name": None}],

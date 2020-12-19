@@ -158,6 +158,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 class LegacySchemaAliasingBackendTest(
     testing.AssertsExecutionResults, fixtures.TestBase
 ):
+    __backend__ = True
     __only_on__ = "mssql"
 
     @testing.provide_metadata
@@ -176,7 +177,7 @@ class LegacySchemaAliasingBackendTest(
             schema=testing.config.test_schema,
         )
 
-        with eng.connect() as conn:
+        with eng.begin() as conn:
             tbl.create(conn)
             conn.execute(tbl.insert(), {"id": 1})
             eq_(conn.scalar(tbl.select()), 1)
@@ -197,7 +198,7 @@ class LegacySchemaAliasingBackendTest(
                 options=dict(legacy_schema_aliasing=True)
             )
 
-        with eng.connect() as conn:
+        with eng.begin() as conn:
 
             tbl.create(conn)
             conn.execute(tbl.insert(), {"id": 1})
@@ -236,7 +237,7 @@ class LegacySchemaAliasingBackendTest(
             schema=testing.config.test_schema,
         )
 
-        with eng.connect() as conn:
+        with eng.begin() as conn:
             tbl.create(conn)
             conn.execute(tbl.insert(), {"id": 1})
             eq_(conn.scalar(tbl.select()), 1)

@@ -553,6 +553,7 @@ def want_class(name, cls):
         config.options.backend_only
         and not getattr(cls, "__backend__", False)
         and not getattr(cls, "__sparse_backend__", False)
+        and not getattr(cls, "__only_on__", False)
     ):
         return False
     else:
