@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5781
+
+    Fixed 1.4 regression where the use of :meth:`_orm.Query.having` in
+    conjunction with queries with internally adapted SQL elements (common in
+    inheritance scenarios) would fail due to an incorrect function call. Pull
+    request courtesy esoh.
+

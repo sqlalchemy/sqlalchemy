@@ -2360,4 +2360,12 @@ class PolymorphicAliasedJoinsTest(
 
 
 class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
-    pass
+    def test_having_group_by(self):
+        sess = create_session()
+        eq_(
+            sess.query(Person.name)
+            .group_by(Person.name)
+            .having(Person.name == "dilbert")
+            .all(),
+            [("dilbert",)],
+        )

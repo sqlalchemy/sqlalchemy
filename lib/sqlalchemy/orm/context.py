@@ -585,7 +585,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         if query._having_criteria:
             self._having_criteria = tuple(
-                current_adapter(crit, True, True) if current_adapter else crit
+                current_adapter(crit, True) if current_adapter else crit
                 for crit in query._having_criteria
             )
 
