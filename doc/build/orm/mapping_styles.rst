@@ -31,9 +31,13 @@ The full suite of styles can be hierarchically organized as follows:
         * :ref:`orm_declarative_table`
         * :ref:`Imperative Table (a.k.a. "hybrid table") <orm_imperative_table_configuration>`
     * Using :meth:`_orm.registry.mapped` Declarative Decorator
-        * Declarative Table
-        * Imperative Table (Hybrid)
-            * :ref:`orm_declarative_dataclasses`
+        * :ref:`Declarative Table <orm_declarative_decorator>` - combine :meth:`_orm.registry.mapped`
+          with ``__tablename__``
+        * Imperative Table (Hybrid) - combine :meth:`_orm.registry.mapped` with ``__table__``
+        * :ref:`orm_declarative_dataclasses`
+            * :ref:`orm_declarative_dataclasses_imperative_table`
+            * :ref:`orm_declarative_dataclasses_declarative_table`
+            * :ref:`orm_declarative_attrs_imperative_table`
 * :ref:`Imperative (a.k.a. "classical" mapping) <orm_imperative_mapping>`
     * Using :meth:`_orm.registry.map_imperatively`
         * :ref:`orm_imperative_dataclasses`
@@ -198,13 +202,14 @@ ORM mapping process proceeds via the :meth:`_orm.registry.mapped` decorator
 or via the :meth:`_orm.registry.map_imperatively` method discussed in a
 later section.
 
-As the attributes set up for ``@dataclass`` or ``@attr.s`` are typically those
-which will be matched up to the :class:`_schema.Column` objects that are
-mapped, it is usually required that the
-:ref:`orm_imperative_table_configuration` style is used in order to configure
+Mapping with ``@dataclass`` or ``@attr.s`` may be used in a straightforward
+way with :ref:`orm_imperative_table_configuration` style, where the
 the :class:`_schema.Table`, which means that it is defined separately and
-associated with the class via the ``__table__``.
+associated with the class via the ``__table__``.   For dataclasses specifically,
+:ref:`orm_declarative_table` is also supported.
 
+.. versionadded:: 1.4.0b2 Added support for full declarative mapping when using
+   dataclasses.
 
 When attributes are defined using ``dataclasses``, the ``@dataclass``
 decorator consumes them but leaves them in place on the class.
@@ -223,7 +228,13 @@ mapping process takes over these attributes without any issue.
    than skipping them as is the default behavior for any class attribute
    that's not part of the mapping.
 
-An example of a mapping using ``@dataclass`` is as follows::
+.. _orm_declarative_dataclasses_imperative_table:
+
+Example One - Dataclasses with Imperative Table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+An example of a mapping using ``@dataclass`` using
+:ref:`orm_imperative_table_configuration` is as follows::
 
     from __future__ import annotations
 
@@ -288,7 +299,82 @@ during flush from autoincrement or other default value generator.   To
 allow them to be specified in the constructor explicitly, they would instead
 be given a default value of ``None``.
 
-Similarly, a mapping using ``@attr.s``::
+For a :func:`_orm.relationship` to be declared separately, it needs to
+be specified directly within the :paramref:`_orm.mapper.properties`
+dictionary passed to the :func:`_orm.mapper`.   An alternative to this
+approach is in the next example.
+
+.. _orm_declarative_dataclasses_declarative_table:
+
+Example Two - Dataclasses with Declarative Table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The fully declarative approach requires that :class:`_schema.Column` objects
+are declared as class attributes, which when using dataclasses would conflict
+with the dataclass-level attributes.  An approach to combine these together
+is to make use of the ``metadata`` attribute on the ``dataclass.field``
+object, where SQLAlchemy-specific mapping information may be supplied.
+Declarative supports extraction of these parameters when the class
+specifies the attribute ``__sa_dataclass_metadata_key__``.  This also
+provides a more succinct method of indicating the :func:`_orm.relationship`
+association::
+
+
+    from __future__ import annotations
+
+    from dataclasses import dataclass
+    from dataclasses import field
+    from typing import List
+
+    from sqlalchemy import Column
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import Integer
+    from sqlalchemy import String
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm import relationship
+
+    mapper_registry = registry()
+
+
+    @mapper_registry.mapped
+    @dataclass
+    class User:
+        __tablename__ = "user"
+
+        __sa_dataclass_metadata_key__ = "sa"
+        id: int = field(
+            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+        )
+        name: str = field(default=None, metadata={"sa": Column(String(50))})
+        fullname: str = field(default=None, metadata={"sa": Column(String(50))})
+        nickname: str = field(default=None, metadata={"sa": Column(String(12))})
+        addresses: List[Address] = field(
+            default_factory=list, metadata={"sa": relationship("Address")}
+        )
+
+
+    @mapper_registry.mapped
+    @dataclass
+    class Address:
+        __tablename__ = "address"
+        __sa_dataclass_metadata_key__ = "sa"
+        id: int = field(
+            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+        )
+        user_id: int = field(
+            init=False, metadata={"sa": Column(ForeignKey("user.id"))}
+        )
+        email_address: str = field(
+            default=None, metadata={"sa": Column(String(50))}
+        )
+
+
+.. _orm_declarative_attrs_imperative_table:
+
+Example Three - attrs with Imperative Table
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A mapping using ``@attr.s``, in conjunction with imperative table::
 
     import attr
 

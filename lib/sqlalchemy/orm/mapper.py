@@ -56,12 +56,6 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..util import HasMemoized
 
-try:
-    import dataclasses
-except ImportError:
-    # The dataclasses module was added in Python 3.7
-    dataclasses = None
-
 
 _mapper_registry = weakref.WeakKeyDictionary()
 _already_compiling = False
@@ -2645,10 +2639,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _dataclass_fields(self):
-        if dataclasses is None or not dataclasses.is_dataclass(self.class_):
-            return frozenset()
-
-        return {field.name for field in dataclasses.fields(self.class_)}
+        return [f.name for f in util.dataclass_fields(self.class_)]
 
     def _should_exclude(self, name, assigned_name, local, column):
         """determine whether a particular property should be implicitly

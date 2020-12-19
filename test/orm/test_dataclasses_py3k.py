@@ -288,3 +288,99 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
     @classmethod
     def setup_mappers(cls):
         pass
+
+
+class FieldEmbeddedDeclarativeDataclassesTest(
+    fixtures.DeclarativeMappedTest, DataclassesTest
+):
+    __requires__ = ("dataclasses",)
+
+    @classmethod
+    def setup_classes(cls):
+        declarative = cls.DeclarativeBasic.registry.mapped
+
+        @declarative
+        @dataclasses.dataclass
+        class Widget:
+            __tablename__ = "widgets"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            widget_id = Column(Integer, primary_key=True)
+            account_id = Column(
+                Integer,
+                ForeignKey("accounts.account_id"),
+                nullable=False,
+            )
+            type = Column(String(30), nullable=False)
+
+            name: Optional[str] = dataclasses.field(
+                default=None,
+                metadata={"sa": Column(String(30), nullable=False)},
+            )
+            __mapper_args__ = dict(
+                polymorphic_on="type",
+                polymorphic_identity="normal",
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class SpecialWidget(Widget):
+            __sa_dataclass_metadata_key__ = "sa"
+
+            magic: bool = dataclasses.field(
+                default=False, metadata={"sa": Column(Boolean)}
+            )
+
+            __mapper_args__ = dict(
+                polymorphic_identity="special",
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class Account:
+            __tablename__ = "accounts"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            account_id: int = dataclasses.field(
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+            widgets: List[Widget] = dataclasses.field(
+                default_factory=list, metadata={"sa": relationship("Widget")}
+            )
+            widget_count: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": Column("widget_count", Integer, nullable=False)
+                },
+            )
+
+            def __post_init__(self):
+                self.widget_count = len(self.widgets)
+
+            def add_widget(self, widget: Widget):
+                self.widgets.append(widget)
+                self.widget_count += 1
+
+        cls.classes.Account = Account
+        cls.classes.Widget = Widget
+        cls.classes.SpecialWidget = SpecialWidget
+
+    @classmethod
+    def setup_mappers(cls):
+        pass
+
+    @classmethod
+    def define_tables(cls, metadata):
+        pass
+
+    def test_asdict_and_astuple(self):
+        Widget = self.classes.Widget
+        SpecialWidget = self.classes.SpecialWidget
+
+        widget = Widget("Foo")
+        eq_(dataclasses.asdict(widget), {"name": "Foo"})
+        eq_(dataclasses.astuple(widget), ("Foo",))
+
+        widget = SpecialWidget("Bar", magic=True)
+        eq_(dataclasses.asdict(widget), {"name": "Bar", "magic": True})
+        eq_(dataclasses.astuple(widget), ("Bar", True))

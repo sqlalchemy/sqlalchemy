@@ -334,6 +334,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         tablename = None
 
         for base in cls.__mro__:
+
+            sa_dataclass_metadata_key = None
+
             class_mapped = (
                 base is not cls
                 and _declared_mapping_info(base) is not None
@@ -342,10 +345,25 @@ class _ClassScanMapperConfig(_MapperConfig):
                 )
             )
 
-            if not class_mapped and base is not cls:
-                self._produce_column_copies(base)
+            if sa_dataclass_metadata_key is None:
+                sa_dataclass_metadata_key = _get_immediate_cls_attr(
+                    base, "__sa_dataclass_metadata_key__", None
+                )
 
-            for name, obj in vars(base).items():
+            def attributes_for_class(cls):
+                for name, obj in vars(cls).items():
+                    yield name, obj
+                if sa_dataclass_metadata_key:
+                    for field in util.dataclass_fields(cls):
+                        if sa_dataclass_metadata_key in field.metadata:
+                            yield field.name, field.metadata[
+                                sa_dataclass_metadata_key
+                            ]
+
+            if not class_mapped and base is not cls:
+                self._produce_column_copies(attributes_for_class, base)
+
+            for name, obj in attributes_for_class(base):
                 if name == "__mapper_args__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -452,6 +470,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # however, check for some more common mistakes
                     else:
                         self._warn_for_decl_attributes(base, name, obj)
+                elif name not in dict_ or dict_[name] is not obj:
+                    dict_[name] = obj
 
         if inherited_table_args and not tablename:
             table_args = None
@@ -469,12 +489,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                 % (key, cls)
             )
 
-    def _produce_column_copies(self, base):
+    def _produce_column_copies(self, attributes_for_class, base):
         cls = self.cls
         dict_ = self.dict_
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
-        for name, obj in vars(base).items():
+        for name, obj in attributes_for_class(base):
             if isinstance(obj, Column):
                 if getattr(cls, name) is not obj:
                     # if column has been overridden

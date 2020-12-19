@@ -421,6 +421,22 @@ else:
     import collections as collections_abc  # noqa
 
 
+if py37:
+    import dataclasses
+
+    def dataclass_fields(cls):
+        if dataclasses.is_dataclass(cls):
+            return dataclasses.fields(cls)
+        else:
+            return []
+
+
+else:
+
+    def dataclass_fields(cls):
+        return []
+
+
 def raise_from_cause(exception, exc_info=None):
     r"""legacy.  use raise\_()"""
 
