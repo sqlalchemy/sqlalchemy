@@ -416,6 +416,24 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
                 },
             )
 
+    def test_having(self):
+
+        Engineer, Manager = self.classes("Engineer", "Manager")
+
+        sess = create_session()
+
+        self.assert_compile(
+            sess.query(Engineer)
+            .group_by(Engineer.employee_id)
+            .having(Engineer.name == "js"),
+            "SELECT employees.employee_id AS employees_employee_id, "
+            "employees.name AS employees_name, employees.manager_data "
+            "AS employees_manager_data, employees.engineer_info "
+            "AS employees_engineer_info, employees.type AS employees_type "
+            "FROM employees WHERE employees.type IN ([POSTCOMPILE_type_1]) "
+            "GROUP BY employees.employee_id HAVING employees.name = :name_1",
+        )
+
     def test_from_self_count(self):
         Engineer = self.classes.Engineer
 
