@@ -1184,6 +1184,16 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def cast_precision_numerics_many_significant_digits(self):
+        """same as precision_numerics_many_significant_digits but within the
+        context of a CAST statement (hello MySQL)
+
+        """
+        return self.precision_numerics_many_significant_digits + fails_if(
+            "mysql"
+        )
+
+    @property
     def precision_numerics_retains_significant_digits(self):
         """A precision numeric type will return empty significant digits,
         i.e. a value such as 10.000 will come back in Decimal form with

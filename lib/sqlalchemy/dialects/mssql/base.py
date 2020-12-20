@@ -2108,12 +2108,13 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 self.process(binary.right, **kw),
             )
         elif binary.type._type_affinity is sqltypes.Numeric:
-            type_expression = (
-                "ELSE CAST(JSON_VALUE(%s, %s) AS DECIMAL(10, 6))"
-                % (
-                    self.process(binary.left, **kw),
-                    self.process(binary.right, **kw),
-                )
+            type_expression = "ELSE CAST(JSON_VALUE(%s, %s) AS %s)" % (
+                self.process(binary.left, **kw),
+                self.process(binary.right, **kw),
+                "FLOAT"
+                if isinstance(binary.type, sqltypes.Float)
+                else "NUMERIC(%s, %s)"
+                % (binary.type.precision, binary.type.scale),
             )
         elif binary.type._type_affinity is sqltypes.Boolean:
             # the NULL handling is particularly weird with boolean, so

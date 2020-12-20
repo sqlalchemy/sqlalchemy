@@ -1455,14 +1455,29 @@ class MySQLCompiler(compiler.SQLCompiler):
                 )
             )
         elif binary.type._type_affinity is sqltypes.Numeric:
-            # FLOAT / REAL not added in MySQL til 8.0.17
-            type_expression = (
-                "ELSE CAST(JSON_EXTRACT(%s, %s) AS DECIMAL(10, 6))"
-                % (
-                    self.process(binary.left, **kw),
-                    self.process(binary.right, **kw),
+            if (
+                binary.type.scale is not None
+                and binary.type.precision is not None
+            ):
+                # using DECIMAL here because MySQL does not recognize NUMERIC
+                type_expression = (
+                    "ELSE CAST(JSON_EXTRACT(%s, %s) AS DECIMAL(%s, %s))"
+                    % (
+                        self.process(binary.left, **kw),
+                        self.process(binary.right, **kw),
+                        binary.type.precision,
+                        binary.type.scale,
+                    )
                 )
-            )
+            else:
+                # FLOAT / REAL not added in MySQL til 8.0.17
+                type_expression = (
+                    "ELSE JSON_EXTRACT(%s, %s)+0.0000000000000000000000"
+                    % (
+                        self.process(binary.left, **kw),
+                        self.process(binary.right, **kw),
+                    )
+                )
         elif binary.type._type_affinity is sqltypes.Boolean:
             # the NULL handling is particularly weird with boolean, so
             # explicitly return true/false constants

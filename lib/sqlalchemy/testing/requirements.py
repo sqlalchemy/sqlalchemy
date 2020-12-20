@@ -871,6 +871,14 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def cast_precision_numerics_many_significant_digits(self):
+        """same as precision_numerics_many_significant_digits but within the
+        context of a CAST statement (hello MySQL)
+
+        """
+        return self.precision_numerics_many_significant_digits
+
+    @property
     def implicit_decimal_binds(self):
         """target backend will return a selected Decimal as a Decimal, not
         a string.

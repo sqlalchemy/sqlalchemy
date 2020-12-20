@@ -2467,8 +2467,26 @@ class JSON(Indexable, TypeEngine):
             .. versionadded:: 1.3.11
 
             """
-            # note there's no Numeric or Decimal support here yet
             return self._binary_w_type(Float(), "as_float")
+
+        def as_numeric(self, precision, scale, asdecimal=True):
+            """Cast an indexed value as numeric/decimal.
+
+            e.g.::
+
+                stmt = select(
+                    mytable.c.json_column['some_data'].as_numeric(10, 6)
+                ).where(
+                    mytable.c.
+                    json_column['some_data'].as_numeric(10, 6) == 29.75
+                )
+
+            .. versionadded:: 1.4.0b2
+
+            """
+            return self._binary_w_type(
+                Numeric(precision, scale, asdecimal=asdecimal), "as_numeric"
+            )
 
         def as_json(self):
             """Cast an indexed value as JSON.
