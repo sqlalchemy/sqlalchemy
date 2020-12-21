@@ -938,8 +938,8 @@ class GetterStateTest(_fixtures.FixtureTest):
             },
         )
 
-        metadata.create_all()
-        sess = Session(autoflush=False)
+        metadata.create_all(testing.db)
+        sess = Session(testing.db, autoflush=False)
         data = {"im": "unhashable"}
         a1 = Article(id=1, data=data)
         c1 = Category(id=1, data=data)

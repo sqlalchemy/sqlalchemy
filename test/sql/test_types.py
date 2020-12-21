@@ -3505,34 +3505,26 @@ class PickleTest(fixtures.TestBase):
             assert p1.compare_values(p1.copy_value(obj), obj)
 
 
-meta = None
-
-
 class CallableTest(fixtures.TestBase):
-    @classmethod
-    def setup_class(cls):
-        global meta
-        meta = MetaData(testing.db)
-
-    @classmethod
-    def teardown_class(cls):
-        meta.drop_all()
-
-    def test_callable_as_arg(self):
+    @testing.provide_metadata
+    def test_callable_as_arg(self, connection):
         ucode = util.partial(Unicode)
 
-        thing_table = Table("thing", meta, Column("name", ucode(20)))
+        thing_table = Table("thing", self.metadata, Column("name", ucode(20)))
         assert isinstance(thing_table.c.name.type, Unicode)
-        thing_table.create()
+        thing_table.create(connection)
 
-    def test_callable_as_kwarg(self):
+    @testing.provide_metadata
+    def test_callable_as_kwarg(self, connection):
         ucode = util.partial(Unicode)
 
         thang_table = Table(
-            "thang", meta, Column("name", type_=ucode(20), primary_key=True)
+            "thang",
+            self.metadata,
+            Column("name", type_=ucode(20), primary_key=True),
         )
         assert isinstance(thang_table.c.name.type, Unicode)
-        thang_table.create()
+        thang_table.create(connection)
 
 
 class LiteralTest(fixtures.TestBase):

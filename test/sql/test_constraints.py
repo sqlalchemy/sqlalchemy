@@ -59,7 +59,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         )
         self.assert_sql_execution(
             testing.db,
-            lambda: metadata.create_all(checkfirst=False),
+            lambda: metadata.create_all(testing.db, checkfirst=False),
             CompiledSQL(
                 "CREATE TABLE employees ("
                 "id INTEGER NOT NULL, "
@@ -292,7 +292,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         assertions.append(AllOf(*fk_assertions))
 
         with self.sql_execution_asserter() as asserter:
-            metadata.create_all(checkfirst=False)
+            metadata.create_all(testing.db, checkfirst=False)
         asserter.assert_(*assertions)
 
         assertions = [
@@ -302,7 +302,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         ]
 
         with self.sql_execution_asserter() as asserter:
-            metadata.drop_all(checkfirst=False),
+            metadata.drop_all(testing.db, checkfirst=False),
         asserter.assert_(*assertions)
 
     def _assert_cyclic_constraint_no_alter(
@@ -356,7 +356,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         assertions = [AllOf(*table_assertions)]
 
         with self.sql_execution_asserter() as asserter:
-            metadata.create_all(checkfirst=False)
+            metadata.create_all(testing.db, checkfirst=False)
         asserter.assert_(*assertions)
 
         assertions = [
@@ -366,15 +366,15 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
         if sqlite_warning:
             with expect_warnings("Can't sort tables for DROP; "):
                 with self.sql_execution_asserter() as asserter:
-                    metadata.drop_all(checkfirst=False),
+                    metadata.drop_all(testing.db, checkfirst=False),
         else:
             with self.sql_execution_asserter() as asserter:
-                metadata.drop_all(checkfirst=False),
+                metadata.drop_all(testing.db, checkfirst=False),
         asserter.assert_(*assertions)
 
     @testing.force_drop_names("a", "b")
     def test_cycle_unnamed_fks(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         Table(
             "a",
@@ -417,7 +417,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         ]
         with self.sql_execution_asserter() as asserter:
-            metadata.create_all(checkfirst=False)
+            metadata.create_all(testing.db, checkfirst=False)
 
         if testing.db.dialect.supports_alter:
             asserter.assert_(*assertions)
@@ -431,6 +431,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
                 "cycle have names so that they can be dropped using "
                 "DROP CONSTRAINT.",
                 metadata.drop_all,
+                testing.db,
                 checkfirst=False,
             )
         else:
@@ -439,7 +440,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
                 "foreign key dependency exists between tables"
             ):
                 with self.sql_execution_asserter() as asserter:
-                    metadata.drop_all(checkfirst=False)
+                    metadata.drop_all(testing.db, checkfirst=False)
 
             asserter.assert_(
                 AllOf(CompiledSQL("DROP TABLE b"), CompiledSQL("DROP TABLE a"))
@@ -447,7 +448,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 
     @testing.force_drop_names("a", "b")
     def test_cycle_named_fks(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         Table(
             "a",
@@ -491,13 +492,13 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         ]
         with self.sql_execution_asserter() as asserter:
-            metadata.create_all(checkfirst=False)
+            metadata.create_all(testing.db, checkfirst=False)
 
         if testing.db.dialect.supports_alter:
             asserter.assert_(*assertions)
 
             with self.sql_execution_asserter() as asserter:
-                metadata.drop_all(checkfirst=False)
+                metadata.drop_all(testing.db, checkfirst=False)
 
             asserter.assert_(
                 CompiledSQL("ALTER TABLE b DROP CONSTRAINT aidfk"),
@@ -507,7 +508,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
             )
         else:
             with self.sql_execution_asserter() as asserter:
-                metadata.drop_all(checkfirst=False)
+                metadata.drop_all(testing.db, checkfirst=False)
 
             asserter.assert_(
                 AllOf(CompiledSQL("DROP TABLE b"), CompiledSQL("DROP TABLE a"))
@@ -536,7 +537,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 
         self.assert_sql_execution(
             testing.db,
-            lambda: metadata.create_all(checkfirst=False),
+            lambda: metadata.create_all(testing.db, checkfirst=False),
             AllOf(
                 CompiledSQL(
                     "CREATE TABLE foo ("
@@ -579,7 +580,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 
         self.assert_sql_execution(
             testing.db,
-            lambda: metadata.create_all(checkfirst=False),
+            lambda: metadata.create_all(testing.db, checkfirst=False),
             AllOf(
                 CompiledSQL(
                     "CREATE TABLE foo ("
@@ -628,7 +629,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 
         self.assert_sql_execution(
             testing.db,
-            lambda: metadata.create_all(checkfirst=False),
+            lambda: metadata.create_all(testing.db, checkfirst=False),
             RegexSQL("^CREATE TABLE"),
             AllOf(
                 CompiledSQL(
@@ -665,7 +666,7 @@ class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
 
         self.assert_sql_execution(
             testing.db,
-            lambda: metadata.create_all(checkfirst=False),
+            lambda: metadata.create_all(testing.db, checkfirst=False),
             RegexSQL("^CREATE TABLE"),
             AllOf(
                 CompiledSQL(

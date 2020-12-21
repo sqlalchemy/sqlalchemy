@@ -12,7 +12,6 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
@@ -29,6 +28,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -42,13 +42,14 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup(self):
         global Base, mapper_registry
 
-        mapper_registry = registry(metadata=MetaData(bind=testing.db))
+        mapper_registry = registry(metadata=MetaData())
         Base = mapper_registry.generate_base()
 
     def teardown(self):
         close_all_sessions()
         clear_mappers()
-        Base.metadata.drop_all()
+        with testing.db.begin() as conn:
+            Base.metadata.drop_all(conn)
 
 
 class DeclarativeMixinTest(DeclarativeTestBase):
@@ -459,7 +460,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         )
         # do a brief round trip on this
         Base.metadata.create_all(testing.db)
-        session = Session()
+        session = create_session()
         o1, o2 = Other(), Other()
         session.add_all(
             [Engineer(target=o1), Manager(target=o2), Manager(target=o1)]

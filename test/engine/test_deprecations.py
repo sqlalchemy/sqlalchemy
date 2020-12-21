@@ -158,7 +158,10 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                 bind.begin()
             try:
                 for args in (([bind], {}), ([], {"bind": bind})):
-                    metadata = MetaData(*args[0], **args[1])
+                    with testing.expect_deprecated_20(
+                        "The MetaData.bind argument is deprecated "
+                    ):
+                        metadata = MetaData(*args[0], **args[1])
                     table = Table(
                         "test_table", metadata, Column("foo", Integer)
                     )
@@ -315,11 +318,11 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
         ):
             eq_(testing.db.execute(stmt).fetchall(), [(1,)])
 
-    @testing.provide_metadata
-    def test_implicit_execute(self):
-        table = Table("t", self.metadata, Column("a", Integer))
+    def test_implicit_execute(self, metadata):
+        table = Table("t", metadata, Column("a", Integer))
         table.create(testing.db)
 
+        metadata.bind = testing.db
         stmt = table.insert().values(a=1)
         with testing.expect_deprecated_20(
             r"The Executable.execute\(\) method is considered legacy",
@@ -1225,7 +1228,7 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
             is_true(testing.db.has_table("user"))
 
     def test_engine_table_names(self):
-        metadata = self.metadata
+        metadata = self.tables_test_metadata
 
         with testing.expect_deprecated(
             r"The Engine.table_names\(\) method is deprecated"
@@ -1235,7 +1238,8 @@ class DeprecatedReflectionTest(fixtures.TablesTest):
 
     def test_reflecttable(self):
         inspector = inspect(testing.db)
-        metadata = self.metadata
+        metadata = MetaData()
+
         table = Table("user", metadata)
         with testing.expect_deprecated_20(
             r"The Inspector.reflecttable\(\) method is considered "
@@ -1632,7 +1636,7 @@ class EngineEventsTest(fixtures.TestBase):
 class DDLExecutionTest(fixtures.TestBase):
     def setup(self):
         self.engine = engines.mock_engine()
-        self.metadata = MetaData(self.engine)
+        self.metadata = MetaData()
         self.users = Table(
             "users",
             self.metadata,
@@ -1742,7 +1746,7 @@ class AutocommitTextTest(AutocommitKeywordFixture, fixtures.TestBase):
         self._test_keyword("SELECT foo FROM table", False)
 
 
-class ExplicitAutoCommitTest(fixtures.TestBase):
+class ExplicitAutoCommitTest(fixtures.TablesTest):
 
     """test the 'autocommit' flag on select() and text() objects.
 
@@ -1752,36 +1756,31 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
     __only_on__ = "postgresql"
 
     @classmethod
-    def setup_class(cls):
-        global metadata, foo
-        metadata = MetaData(testing.db)
-        foo = Table(
+    def define_tables(cls, metadata):
+        Table(
             "foo",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("data", String(100)),
         )
-        with testing.db.begin() as conn:
-            metadata.create_all(conn)
-            conn.exec_driver_sql(
+
+        event.listen(
+            metadata,
+            "after_create",
+            DDL(
                 "create function insert_foo(varchar) "
                 "returns integer as 'insert into foo(data) "
                 "values ($1);select 1;' language sql"
-            )
-
-    def teardown(self):
-        with testing.db.begin() as conn:
-            conn.execute(foo.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        with testing.db.begin() as conn:
-            conn.exec_driver_sql("drop function insert_foo(varchar)")
-            metadata.drop_all(conn)
+            ),
+        )
+        event.listen(
+            metadata, "before_drop", DDL("drop function insert_foo(varchar)")
+        )
 
     def test_control(self):
 
         # test that not using autocommit does not commit
+        foo = self.tables.foo
 
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
@@ -1799,6 +1798,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn2.close()
 
     def test_explicit_compiled(self):
+        foo = self.tables.foo
+
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
 
@@ -1816,6 +1817,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn2.close()
 
     def test_explicit_connection(self):
+        foo = self.tables.foo
+
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         with testing.expect_deprecated_20(
@@ -1853,6 +1856,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn2.close()
 
     def test_explicit_text(self):
+        foo = self.tables.foo
+
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         with testing.expect_deprecated_20(
@@ -1869,6 +1874,8 @@ class ExplicitAutoCommitTest(fixtures.TestBase):
         conn2.close()
 
     def test_implicit_text(self):
+        foo = self.tables.foo
+
         conn1 = testing.db.connect()
         conn2 = testing.db.connect()
         with testing.expect_deprecated_20(

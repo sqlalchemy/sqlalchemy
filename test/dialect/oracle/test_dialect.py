@@ -481,11 +481,9 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_table_round_trip(self, connection):
+    def test_table_round_trip(self, metadata, connection):
         oracle.RESERVED_WORDS.discard("UNION")
 
-        metadata = self.metadata
         table = Table(
             "t1",
             metadata,
@@ -496,7 +494,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             # is set
             Column("union", Integer, quote=True),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         connection.execute(
             table.insert(), {"option": 1, "plain": 1, "union": 1}
@@ -516,17 +514,15 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             4,
         )
 
-    @testing.provide_metadata
-    def test_numeric_bind_in_crud(self, connection):
-        t = Table("asfd", self.metadata, Column("100K", Integer))
+    def test_numeric_bind_in_crud(self, metadata, connection):
+        t = Table("asfd", metadata, Column("100K", Integer))
         t.create(connection)
 
         connection.execute(t.insert(), {"100K": 10})
         eq_(connection.scalar(t.select()), 10)
 
-    @testing.provide_metadata
-    def test_expanding_quote_roundtrip(self, connection):
-        t = Table("asfd", self.metadata, Column("foo", Integer))
+    def test_expanding_quote_roundtrip(self, metadata, connection):
+        t = Table("asfd", metadata, Column("foo", Integer))
         t.create(connection)
 
         connection.execute(
@@ -747,9 +743,7 @@ class ExecuteTest(fixtures.TestBase):
         finally:
             seq.drop(connection)
 
-    @testing.provide_metadata
-    def test_limit_offset_for_update(self, connection):
-        metadata = self.metadata
+    def test_limit_offset_for_update(self, metadata, connection):
         # oracle can't actually do the ROWNUM thing with FOR UPDATE
         # very well.
 
@@ -794,15 +788,13 @@ class UnicodeSchemaTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_quoted_column_non_unicode(self, connection):
-        metadata = self.metadata
+    def test_quoted_column_non_unicode(self, metadata, connection):
         table = Table(
             "atable",
             metadata,
             Column("_underscorecolumn", Unicode(255), primary_key=True),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         connection.execute(table.insert(), {"_underscorecolumn": u("’é")})
         result = connection.execute(
@@ -810,15 +802,13 @@ class UnicodeSchemaTest(fixtures.TestBase):
         ).scalar()
         eq_(result, u("’é"))
 
-    @testing.provide_metadata
-    def test_quoted_column_unicode(self, connection):
-        metadata = self.metadata
+    def test_quoted_column_unicode(self, metadata, connection):
         table = Table(
             "atable",
             metadata,
             Column(u("méil"), Unicode(255), primary_key=True),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         connection.execute(table.insert(), {u("méil"): u("’é")})
         result = connection.execute(

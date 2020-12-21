@@ -19,7 +19,6 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import decl_base
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
@@ -44,6 +43,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import with_metaclass
@@ -2100,7 +2100,7 @@ class DeclarativeTest(DeclarativeTestBase):
         m = MyObj(id="someid", data="somedata")
         sess.add(m)
         sess.flush()
-        eq_(t1.select().execute().fetchall(), [("someid", "somedata")])
+        eq_(sess.execute(t1.select()).fetchall(), [("someid", "somedata")])
 
     def test_synonym_for(self):
         class User(Base, fixtures.ComparableEntity):

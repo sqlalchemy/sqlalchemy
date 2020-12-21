@@ -47,7 +47,7 @@ class ShardTest(object):
 
         db1, db2, db3, db4 = self._dbs = self._init_dbs()
 
-        meta = self.metadata = MetaData()
+        meta = self.tables_test_metadata = MetaData()
         ids = Table("ids", meta, Column("nextid", Integer, nullable=False))
 
         def id_generator(ctx):
@@ -786,7 +786,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
         with self.postgresql_engine.begin() as conn:
-            self.metadata.drop_all(conn)
+            self.tables_test_metadata.drop_all(conn)
             for i in [2, 4]:
                 conn.exec_driver_sql("DROP SCHEMA shard%s CASCADE" % (i,))
 
@@ -898,7 +898,7 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
         )
 
         for db in (db1, db2):
-            self.metadata.create_all(db)
+            self.tables_test_metadata.create_all(db)
 
         self.dbs = [db1, db2]
 

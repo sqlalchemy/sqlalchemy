@@ -103,10 +103,9 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                 if stmt.strip():
                     conn.exec_driver_sql(stmt)
 
-    @testing.provide_metadata
-    def test_create_same_names_explicit_schema(self):
+    def test_create_same_names_explicit_schema(self, metadata, connection):
         schema = testing.db.dialect.default_schema_name
-        meta = self.metadata
+        meta = metadata
         parent = Table(
             "parent",
             meta,
@@ -120,11 +119,10 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("pid", Integer, ForeignKey("%s.parent.pid" % schema)),
             schema=schema,
         )
-        with testing.db.begin() as conn:
-            meta.create_all(conn)
-            conn.execute(parent.insert(), {"pid": 1})
-            conn.execute(child.insert(), {"cid": 1, "pid": 1})
-            eq_(conn.execute(child.select()).fetchall(), [(1, 1)])
+        meta.create_all(connection)
+        connection.execute(parent.insert(), {"pid": 1})
+        connection.execute(child.insert(), {"cid": 1, "pid": 1})
+        eq_(connection.execute(child.select()).fetchall(), [(1, 1)])
 
     def test_reflect_alt_table_owner_local_synonym(self):
         meta = MetaData()
@@ -158,9 +156,8 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
             % {"test_schema": testing.config.test_schema},
         )
 
-    @testing.provide_metadata
-    def test_create_same_names_implicit_schema(self, connection):
-        meta = self.metadata
+    def test_create_same_names_implicit_schema(self, metadata, connection):
+        meta = metadata
         parent = Table(
             "parent", meta, Column("pid", Integer, primary_key=True)
         )
@@ -205,18 +202,17 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         # check table comment (#5146)
         eq_(parent.comment, "my table comment")
 
-    @testing.provide_metadata
-    def test_reflect_table_comment(self):
+    def test_reflect_table_comment(self, metadata, connection):
         local_parent = Table(
             "parent",
-            self.metadata,
+            metadata,
             Column("q", Integer),
             comment="my local comment",
         )
 
-        local_parent.create(testing.db)
+        local_parent.create(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         eq_(
             insp.get_table_comment(
                 "parent", schema=testing.config.test_schema
@@ -231,7 +227,7 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         eq_(
             insp.get_table_comment(
-                "parent", schema=testing.db.dialect.default_schema_name
+                "parent", schema=connection.dialect.default_schema_name
             ),
             {"text": "my local comment"},
         )
@@ -347,28 +343,28 @@ class ConstraintTest(fixtures.TablesTest):
     def define_tables(cls, metadata):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
 
-    def test_oracle_has_no_on_update_cascade(self):
+    def test_oracle_has_no_on_update_cascade(self, connection):
         bar = Table(
             "bar",
-            self.metadata,
+            self.tables_test_metadata,
             Column("id", Integer, primary_key=True),
             Column(
                 "foo_id", Integer, ForeignKey("foo.id", onupdate="CASCADE")
             ),
         )
-        assert_raises(exc.SAWarning, bar.create)
+        assert_raises(exc.SAWarning, bar.create, connection)
 
         bat = Table(
             "bat",
-            self.metadata,
+            self.tables_test_metadata,
             Column("id", Integer, primary_key=True),
             Column("foo_id", Integer),
             ForeignKeyConstraint(["foo_id"], ["foo.id"], onupdate="CASCADE"),
         )
-        assert_raises(exc.SAWarning, bat.create)
+        assert_raises(exc.SAWarning, bat.create, connection)
 
-    def test_reflect_check_include_all(self):
-        insp = inspect(testing.db)
+    def test_reflect_check_include_all(self, connection):
+        insp = inspect(connection)
         eq_(insp.get_check_constraints("foo"), [])
         eq_(
             [
@@ -446,9 +442,9 @@ class DontReflectIOTTest(fixtures.TestBase):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("drop table admin_docindex")
 
-    def test_reflect_all(self):
-        m = MetaData(testing.db)
-        m.reflect()
+    def test_reflect_all(self, connection):
+        m = MetaData()
+        m.reflect(connection)
         eq_(set(t.name for t in m.tables.values()), set(["admin_docindex"]))
 
 
@@ -477,10 +473,8 @@ class TableReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.provide_metadata
     @testing.fails_if(all_tables_compression_missing)
-    def test_reflect_basic_compression(self):
-        metadata = self.metadata
+    def test_reflect_basic_compression(self, metadata, connection):
 
         tbl = Table(
             "test_compress",
@@ -488,30 +482,27 @@ class TableReflectionTest(fixtures.TestBase):
             Column("data", Integer, primary_key=True),
             oracle_compress=True,
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         m2 = MetaData()
 
-        tbl = Table("test_compress", m2, autoload_with=testing.db)
+        tbl = Table("test_compress", m2, autoload_with=connection)
         # Don't hardcode the exact value, but it must be non-empty
         assert tbl.dialect_options["oracle"]["compress"]
 
-    @testing.provide_metadata
     @testing.fails_if(all_tables_compress_for_missing)
-    def test_reflect_oltp_compression(self):
-        metadata = self.metadata
-
+    def test_reflect_oltp_compression(self, metadata, connection):
         tbl = Table(
             "test_compress",
             metadata,
             Column("data", Integer, primary_key=True),
             oracle_compress="OLTP",
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         m2 = MetaData()
 
-        tbl = Table("test_compress", m2, autoload_with=testing.db)
+        tbl = Table("test_compress", m2, autoload_with=connection)
         assert tbl.dialect_options["oracle"]["compress"] == "OLTP"
 
 
@@ -519,10 +510,7 @@ class RoundTripIndexTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_no_pk(self):
-        metadata = self.metadata
-
+    def test_no_pk(self, metadata, connection):
         Table(
             "sometable",
             metadata,
@@ -531,9 +519,9 @@ class RoundTripIndexTest(fixtures.TestBase):
             Index("pk_idx_1", "id_a", "id_b", unique=True),
             Index("pk_idx_2", "id_b", "id_a", unique=True),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         eq_(
             insp.get_indexes("sometable"),
             [
@@ -552,10 +540,10 @@ class RoundTripIndexTest(fixtures.TestBase):
             ],
         )
 
-    @testing.combinations((True,), (False,))
-    @testing.provide_metadata
-    def test_include_indexes_resembling_pk(self, explicit_pk):
-        metadata = self.metadata
+    @testing.combinations((True,), (False,), argnames="explicit_pk")
+    def test_include_indexes_resembling_pk(
+        self, metadata, connection, explicit_pk
+    ):
 
         t = Table(
             "sometable",
@@ -575,9 +563,9 @@ class RoundTripIndexTest(fixtures.TestBase):
                     "id_a", "id_b", "group", name="some_primary_key"
                 )
             )
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         eq_(
             insp.get_indexes("sometable"),
             [
@@ -596,8 +584,7 @@ class RoundTripIndexTest(fixtures.TestBase):
             ],
         )
 
-    @testing.provide_metadata
-    def test_reflect_fn_index(self, connection):
+    def test_reflect_fn_index(self, metadata, connection):
         """test reflection of a functional index.
 
         it appears this emitted a warning at some point but does not right now.
@@ -606,7 +593,6 @@ class RoundTripIndexTest(fixtures.TestBase):
 
         """
 
-        metadata = self.metadata
         s_table = Table(
             "sometable",
             metadata,
@@ -630,9 +616,7 @@ class RoundTripIndexTest(fixtures.TestBase):
             ],
         )
 
-    @testing.provide_metadata
-    def test_basic(self):
-        metadata = self.metadata
+    def test_basic(self, metadata, connection):
 
         s_table = Table(
             "sometable",
@@ -657,16 +641,16 @@ class RoundTripIndexTest(fixtures.TestBase):
             oracle_compress=1,
         )
 
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        mirror = MetaData(testing.db)
-        mirror.reflect()
+        mirror = MetaData()
+        mirror.reflect(connection)
 
-        metadata.drop_all()
-        mirror.create_all()
+        metadata.drop_all(connection)
+        mirror.create_all(connection)
 
-        inspect = MetaData(testing.db)
-        inspect.reflect()
+        inspect = MetaData()
+        inspect.reflect(connection)
 
         def obj_definition(obj):
             return (
@@ -676,7 +660,7 @@ class RoundTripIndexTest(fixtures.TestBase):
             )
 
         # find what the primary k constraint name should be
-        primaryconsname = testing.db.scalar(
+        primaryconsname = connection.scalar(
             text(
                 """SELECT constraint_name
                FROM all_constraints
@@ -773,14 +757,13 @@ class TypeReflectionTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    @testing.provide_metadata
-    def _run_test(self, specs, attributes):
+    def _run_test(self, metadata, connection, specs, attributes):
         columns = [Column("c%i" % (i + 1), t[0]) for i, t in enumerate(specs)]
-        m = self.metadata
+        m = metadata
         Table("oracle_types", m, *columns)
-        m.create_all()
+        m.create_all(connection)
         m2 = MetaData()
-        table = Table("oracle_types", m2, autoload_with=testing.db)
+        table = Table("oracle_types", m2, autoload_with=connection)
         for i, (reflected_col, spec) in enumerate(zip(table.c, specs)):
             expected_spec = spec[1]
             reflected_type = reflected_col.type
@@ -800,15 +783,23 @@ class TypeReflectionTest(fixtures.TestBase):
                     ),
                 )
 
-    def test_integer_types(self):
+    def test_integer_types(self, metadata, connection):
         specs = [(Integer, INTEGER()), (Numeric, INTEGER())]
-        self._run_test(specs, [])
+        self._run_test(metadata, connection, specs, [])
 
-    def test_number_types(self):
+    def test_number_types(
+        self,
+        metadata,
+        connection,
+    ):
         specs = [(Numeric(5, 2), NUMBER(5, 2)), (NUMBER, NUMBER())]
-        self._run_test(specs, ["precision", "scale"])
+        self._run_test(metadata, connection, specs, ["precision", "scale"])
 
-    def test_float_types(self):
+    def test_float_types(
+        self,
+        metadata,
+        connection,
+    ):
         specs = [
             (DOUBLE_PRECISION(), FLOAT()),
             # when binary_precision is supported
@@ -822,7 +813,7 @@ class TypeReflectionTest(fixtures.TestBase):
             # when binary_precision is supported
             # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
         ]
-        self._run_test(specs, ["precision"])
+        self._run_test(metadata, connection, specs, ["precision"])
 
 
 class IdentityReflectionTest(fixtures.TablesTest):

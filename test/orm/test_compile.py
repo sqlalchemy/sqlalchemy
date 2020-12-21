@@ -5,7 +5,6 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -24,7 +23,7 @@ class CompileTest(fixtures.ORMTest):
         clear_mappers()
 
     def test_with_polymorphic(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         order = Table(
             "orders",
@@ -122,7 +121,7 @@ class CompileTest(fixtures.ORMTest):
     def test_conflicting_backref_one(self):
         """test that conflicting backrefs raises an exception"""
 
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         order = Table(
             "orders",
@@ -190,9 +189,7 @@ class CompileTest(fixtures.ORMTest):
             sa_exc.ArgumentError, "Error creating backref", configure_mappers
         )
 
-    @testing.provide_metadata
-    def test_misc_one(self, connection):
-        metadata = self.metadata
+    def test_misc_one(self, connection, metadata):
         node_table = Table(
             "node",
             metadata,

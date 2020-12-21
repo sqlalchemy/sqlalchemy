@@ -3,9 +3,14 @@ import logging
 
 from . import config
 from . import engines
+from . import util
 from .. import exc
+from .. import inspect
 from ..engine import url as sa_url
+from ..sql import ddl
+from ..sql import schema
 from ..util import compat
+
 
 log = logging.getLogger(__name__)
 
@@ -209,6 +214,63 @@ def _configs_for_db_operation():
 
     for cfg in config.Config.all_configs():
         cfg.db.dispose()
+
+
+@register.init
+def drop_all_schema_objects_pre_tables(cfg, eng):
+    pass
+
+
+@register.init
+def drop_all_schema_objects_post_tables(cfg, eng):
+    pass
+
+
+def drop_all_schema_objects(cfg, eng):
+
+    drop_all_schema_objects_pre_tables(cfg, eng)
+
+    inspector = inspect(eng)
+    try:
+        view_names = inspector.get_view_names()
+    except NotImplementedError:
+        pass
+    else:
+        with eng.begin() as conn:
+            for vname in view_names:
+                conn.execute(
+                    ddl._DropView(schema.Table(vname, schema.MetaData()))
+                )
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        try:
+            view_names = inspector.get_view_names(schema="test_schema")
+        except NotImplementedError:
+            pass
+        else:
+            with eng.begin() as conn:
+                for vname in view_names:
+                    conn.execute(
+                        ddl._DropView(
+                            schema.Table(
+                                vname,
+                                schema.MetaData(),
+                                schema="test_schema",
+                            )
+                        )
+                    )
+
+    util.drop_all_tables(eng, inspector)
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        util.drop_all_tables(eng, inspector, schema=cfg.test_schema)
+
+    drop_all_schema_objects_post_tables(cfg, eng)
+
+    if config.requirements.sequences.enabled_for_config(cfg):
+        with eng.begin() as conn:
+            for seq in inspector.get_sequence_names():
+                conn.execute(ddl.DropSequence(schema.Sequence(seq)))
 
 
 @register.init

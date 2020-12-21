@@ -3,7 +3,6 @@ import sys
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -20,17 +19,13 @@ from sqlalchemy.util import u
 NUM_FIELDS = 10
 NUM_RECORDS = 1000
 
-t = t2 = metadata = None
 
-
-class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
+class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global t, t2, metadata
-        metadata = MetaData(testing.db)
-        t = Table(
+    def define_tables(cls, metadata):
+        Table(
             "table1",
             metadata,
             *[
@@ -38,7 +33,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
                 for fnum in range(NUM_FIELDS)
             ]
         )
-        t2 = Table(
+        Table(
             "table2",
             metadata,
             *[
@@ -47,48 +42,46 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
             ]
         )
 
-    def setup(self):
-        with testing.db.begin() as conn:
-            metadata.create_all(conn)
-            conn.execute(
-                t.insert(),
-                [
-                    dict(
-                        ("field%d" % fnum, u("value%d" % fnum))
-                        for fnum in range(NUM_FIELDS)
-                    )
-                    for r_num in range(NUM_RECORDS)
-                ],
-            )
-            conn.execute(
-                t2.insert(),
-                [
-                    dict(
-                        ("field%d" % fnum, u("value%d" % fnum))
-                        for fnum in range(NUM_FIELDS)
-                    )
-                    for r_num in range(NUM_RECORDS)
-                ],
-            )
+    @classmethod
+    def insert_data(cls, connection):
+        conn = connection
+        t, t2 = cls.tables("table1", "table2")
+        conn.execute(
+            t.insert(),
+            [
+                dict(
+                    ("field%d" % fnum, u("value%d" % fnum))
+                    for fnum in range(NUM_FIELDS)
+                )
+                for r_num in range(NUM_RECORDS)
+            ],
+        )
+        conn.execute(
+            t2.insert(),
+            [
+                dict(
+                    ("field%d" % fnum, u("value%d" % fnum))
+                    for fnum in range(NUM_FIELDS)
+                )
+                for r_num in range(NUM_RECORDS)
+            ],
+        )
 
         # warm up type caches
-        with testing.db.connect() as conn:
-            conn.execute(t.select()).fetchall()
-            conn.execute(t2.select()).fetchall()
-            conn.exec_driver_sql(
-                "SELECT %s FROM table1"
-                % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
-            ).fetchall()
-            conn.exec_driver_sql(
-                "SELECT %s FROM table2"
-                % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
-            ).fetchall()
-
-    def teardown(self):
-        metadata.drop_all()
+        conn.execute(t.select()).fetchall()
+        conn.execute(t2.select()).fetchall()
+        conn.exec_driver_sql(
+            "SELECT %s FROM table1"
+            % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
+        ).fetchall()
+        conn.exec_driver_sql(
+            "SELECT %s FROM table2"
+            % (", ".join("field%d" % fnum for fnum in range(NUM_FIELDS)))
+        ).fetchall()
 
     @profiling.function_call_count(variance=0.15)
     def test_string(self):
+        t, t2 = self.tables("table1", "table2")
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
@@ -96,6 +89,8 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count(variance=0.15)
     def test_unicode(self):
+        t, t2 = self.tables("table1", "table2")
+
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
@@ -119,6 +114,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count()
     def test_fetch_by_key_legacy(self):
+        t, t2 = self.tables("table1", "table2")
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
@@ -127,6 +123,7 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
 
     @profiling.function_call_count()
     def test_fetch_by_key_mappings(self):
+        t, t2 = self.tables("table1", "table2")
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
@@ -142,6 +139,8 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
     def test_one_or_none(self, one_or_first, rows_present):
         # TODO: this is not testing the ORM level "scalar_mapping"
         # mode which has a different performance profile
+        t, t2 = self.tables("table1", "table2")
+
         with testing.db.connect().execution_options(
             compiled_cache=None
         ) as conn:
@@ -168,6 +167,8 @@ class ResultSetTest(fixtures.TestBase, AssertsExecutionResults):
                 result.close()
 
     def test_contains_doesnt_compile(self):
+        t, t2 = self.tables("table1", "table2")
+
         row = t.select().execute().first()
         c1 = Column("some column", Integer) + Column(
             "some other column", Integer

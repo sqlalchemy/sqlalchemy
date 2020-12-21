@@ -55,9 +55,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             },
         )
 
-        sess = Session(
-            binds={User: self.metadata.bind, Address: self.metadata.bind}
-        )
+        sess = Session(binds={User: testing.db, Address: testing.db})
 
         u1 = User(id=1, name="ed")
         sess.add(u1)
@@ -114,8 +112,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         Session = sessionmaker(
             binds={
-                users_unbound: self.metadata.bind,
-                addresses_unbound: self.metadata.bind,
+                users_unbound: testing.db,
+                addresses_unbound: testing.db,
             }
         )
         sess = Session()
@@ -495,7 +493,7 @@ class SessionBindTest(fixtures.MappedTest):
     def test_session_bind(self):
         Foo = self.classes.Foo
 
-        engine = self.metadata.bind
+        engine = testing.db
 
         for bind in (engine, engine.connect()):
             try:

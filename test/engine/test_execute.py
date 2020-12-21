@@ -830,12 +830,11 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
             self._assert_no_data()
 
 
-class CompiledCacheTest(fixtures.TablesTest):
+class CompiledCacheTest(fixtures.TestBase):
     __backend__ = True
 
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
+    def test_cache(self, connection, metadata):
+        users = Table(
             "users",
             metadata,
             Column(
@@ -844,9 +843,7 @@ class CompiledCacheTest(fixtures.TablesTest):
             Column("user_name", VARCHAR(20)),
             Column("extra_data", VARCHAR(20)),
         )
-
-    def test_cache(self, connection):
-        users = self.tables.users
+        users.create(connection)
 
         conn = connection
         cache = {}
@@ -912,8 +909,17 @@ class CompiledCacheTest(fixtures.TablesTest):
         # the statement values (only the keys).
         eq_(ref_blob(), None)
 
-    def test_keys_independent_of_ordering(self, connection):
-        users = self.tables.users
+    def test_keys_independent_of_ordering(self, connection, metadata):
+        users = Table(
+            "users",
+            metadata,
+            Column(
+                "user_id", INT, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_name", VARCHAR(20)),
+            Column("extra_data", VARCHAR(20)),
+        )
+        users.create(connection)
 
         connection.execute(
             users.insert(),
@@ -961,13 +967,10 @@ class CompiledCacheTest(fixtures.TablesTest):
         eq_(len(cache), 1)
 
     @testing.requires.schemas
-    @testing.provide_metadata
-    def test_schema_translate_in_key(self):
-        Table("x", self.metadata, Column("q", Integer))
-        Table(
-            "x", self.metadata, Column("q", Integer), schema=config.test_schema
-        )
-        self.metadata.create_all()
+    def test_schema_translate_in_key(self, metadata, connection):
+        Table("x", metadata, Column("q", Integer))
+        Table("x", metadata, Column("q", Integer), schema=config.test_schema)
+        metadata.create_all(connection)
 
         m = MetaData()
         t1 = Table("x", m, Column("q", Integer))
@@ -975,33 +978,30 @@ class CompiledCacheTest(fixtures.TablesTest):
         stmt = select(t1.c.q)
 
         cache = {}
-        with config.db.begin() as conn:
-            conn = conn.execution_options(compiled_cache=cache)
-            conn.execute(ins, {"q": 1})
-            eq_(conn.scalar(stmt), 1)
 
-        with config.db.begin() as conn:
-            conn = conn.execution_options(
-                compiled_cache=cache,
-                schema_translate_map={None: config.test_schema},
-            )
-            conn.execute(ins, {"q": 2})
-            eq_(conn.scalar(stmt), 2)
+        conn = connection.execution_options(compiled_cache=cache)
+        conn.execute(ins, {"q": 1})
+        eq_(conn.scalar(stmt), 1)
 
-        with config.db.begin() as conn:
-            conn = conn.execution_options(
-                compiled_cache=cache,
-                schema_translate_map={None: None},
-            )
-            # should use default schema again even though statement
-            # was compiled with test_schema in the map
-            eq_(conn.scalar(stmt), 1)
+        conn = connection.execution_options(
+            compiled_cache=cache,
+            schema_translate_map={None: config.test_schema},
+        )
+        conn.execute(ins, {"q": 2})
+        eq_(conn.scalar(stmt), 2)
 
-        with config.db.begin() as conn:
-            conn = conn.execution_options(
-                compiled_cache=cache,
-            )
-            eq_(conn.scalar(stmt), 1)
+        conn = connection.execution_options(
+            compiled_cache=cache,
+            schema_translate_map={None: None},
+        )
+        # should use default schema again even though statement
+        # was compiled with test_schema in the map
+        eq_(conn.scalar(stmt), 1)
+
+        conn = connection.execution_options(
+            compiled_cache=cache,
+        )
+        eq_(conn.scalar(stmt), 1)
 
 
 class MockStrategyTest(fixtures.TestBase):
@@ -1079,7 +1079,7 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         Table("t1", metadata, Column("x", Integer), schema=config.test_schema)
         Table("t2", metadata, Column("x", Integer), schema=config.test_schema)
         Table("t3", metadata, Column("x", Integer), schema=None)
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
     def test_ddl_hastable(self):
 
@@ -1772,7 +1772,7 @@ class EngineEventsTest(fixtures.TestBase):
         ]:
             event.listen(engine, "before_execute", execute)
             event.listen(engine, "before_cursor_execute", cursor_execute)
-            m = MetaData(engine)
+            m = MetaData()
             t1 = Table(
                 "t1",
                 m,

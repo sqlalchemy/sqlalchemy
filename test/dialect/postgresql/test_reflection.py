@@ -457,12 +457,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
-    @testing.fails_if(
-        "postgresql < 8.4", "Better int2vector functions not available"
-    )
-    @testing.provide_metadata
-    def test_reflected_primary_key_order(self):
-        meta1 = self.metadata
+    def test_reflected_primary_key_order(self, metadata, connection):
+        meta1 = metadata
         subject = Table(
             "subject",
             meta1,
@@ -470,9 +466,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("p2", Integer, primary_key=True),
             PrimaryKeyConstraint("p2", "p1"),
         )
-        meta1.create_all()
+        meta1.create_all(connection)
         meta2 = MetaData()
-        subject = Table("subject", meta2, autoload_with=testing.db)
+        subject = Table("subject", meta2, autoload_with=connection)
         eq_(subject.primary_key.columns.keys(), ["p2", "p1"])
 
     @testing.provide_metadata
@@ -583,10 +579,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         user_tmp.create(testing.db)
         assert inspect(testing.db).has_table("some_temp_table")
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_one(self):
+    def test_cross_schema_reflection_one(self, metadata, connection):
 
-        meta1 = self.metadata
+        meta1 = metadata
 
         users = Table(
             "users",
@@ -603,12 +598,12 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("email_address", String(20)),
             schema="test_schema",
         )
-        meta1.create_all()
+        meta1.create_all(connection)
         meta2 = MetaData()
         addresses = Table(
             "email_addresses",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
             schema="test_schema",
         )
         users = Table("users", meta2, must_exist=True, schema="test_schema")
@@ -617,9 +612,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             (users.c.user_id == addresses.c.remote_user_id).compare(j.onclause)
         )
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_two(self):
-        meta1 = self.metadata
+    def test_cross_schema_reflection_two(self, metadata, connection):
+        meta1 = metadata
         subject = Table(
             "subject", meta1, Column("id", Integer, primary_key=True)
         )
@@ -630,11 +624,11 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("ref", Integer, ForeignKey("subject.id")),
             schema="test_schema",
         )
-        meta1.create_all()
+        meta1.create_all(connection)
         meta2 = MetaData()
-        subject = Table("subject", meta2, autoload_with=testing.db)
+        subject = Table("subject", meta2, autoload_with=connection)
         referer = Table(
-            "referer", meta2, schema="test_schema", autoload_with=testing.db
+            "referer", meta2, schema="test_schema", autoload_with=connection
         )
         self.assert_(
             (subject.c.id == referer.c.ref).compare(
@@ -642,9 +636,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             )
         )
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_three(self):
-        meta1 = self.metadata
+    def test_cross_schema_reflection_three(self, metadata, connection):
+        meta1 = metadata
         subject = Table(
             "subject",
             meta1,
@@ -658,13 +651,13 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("ref", Integer, ForeignKey("test_schema_2.subject.id")),
             schema="test_schema",
         )
-        meta1.create_all()
+        meta1.create_all(connection)
         meta2 = MetaData()
         subject = Table(
-            "subject", meta2, autoload_with=testing.db, schema="test_schema_2"
+            "subject", meta2, autoload_with=connection, schema="test_schema_2"
         )
         referer = Table(
-            "referer", meta2, autoload_with=testing.db, schema="test_schema"
+            "referer", meta2, autoload_with=connection, schema="test_schema"
         )
         self.assert_(
             (subject.c.id == referer.c.ref).compare(
@@ -672,9 +665,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             )
         )
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_four(self):
-        meta1 = self.metadata
+    def test_cross_schema_reflection_four(self, metadata, connection):
+        meta1 = metadata
         subject = Table(
             "subject",
             meta1,
@@ -688,23 +680,24 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("ref", Integer, ForeignKey("test_schema_2.subject.id")),
             schema="test_schema",
         )
-        meta1.create_all()
+        meta1.create_all(connection)
 
-        conn = testing.db.connect()
-        conn.detach()
-        conn.exec_driver_sql("SET search_path TO test_schema, test_schema_2")
-        meta2 = MetaData(bind=conn)
+        connection.detach()
+        connection.exec_driver_sql(
+            "SET search_path TO test_schema, test_schema_2"
+        )
+        meta2 = MetaData()
         subject = Table(
             "subject",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
             schema="test_schema_2",
             postgresql_ignore_search_path=True,
         )
         referer = Table(
             "referer",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
             schema="test_schema",
             postgresql_ignore_search_path=True,
         )
@@ -713,14 +706,12 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
                 subject.join(referer).onclause
             )
         )
-        conn.close()
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_five(self):
-        meta1 = self.metadata
+    def test_cross_schema_reflection_five(self, metadata, connection):
+        meta1 = metadata
 
         # we assume 'public'
-        default_schema = testing.db.dialect.default_schema_name
+        default_schema = connection.dialect.default_schema_name
         subject = Table(
             "subject", meta1, Column("id", Integer, primary_key=True)
         )
@@ -730,20 +721,20 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("ref", Integer, ForeignKey("subject.id")),
         )
-        meta1.create_all()
+        meta1.create_all(connection)
 
         meta2 = MetaData()
         subject = Table(
             "subject",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
             schema=default_schema,
             postgresql_ignore_search_path=True,
         )
         referer = Table(
             "referer",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
             schema=default_schema,
             postgresql_ignore_search_path=True,
         )
@@ -754,11 +745,10 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             )
         )
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_six(self):
+    def test_cross_schema_reflection_six(self, metadata, connection):
         # test that the search path *is* taken into account
         # by default
-        meta1 = self.metadata
+        meta1 = metadata
 
         Table(
             "some_table",
@@ -773,60 +763,58 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("sid", Integer, ForeignKey("test_schema.some_table.id")),
             schema="test_schema_2",
         )
-        meta1.create_all()
-        with testing.db.connect() as conn:
-            conn.detach()
+        meta1.create_all(connection)
+        connection.detach()
 
-            conn.exec_driver_sql(
-                "set search_path to test_schema_2, test_schema, public"
-            )
+        connection.exec_driver_sql(
+            "set search_path to test_schema_2, test_schema, public"
+        )
 
-            m1 = MetaData()
+        m1 = MetaData()
 
-            Table("some_table", m1, schema="test_schema", autoload_with=conn)
-            t2_schema = Table(
-                "some_other_table",
-                m1,
-                schema="test_schema_2",
-                autoload_with=conn,
-            )
+        Table("some_table", m1, schema="test_schema", autoload_with=connection)
+        t2_schema = Table(
+            "some_other_table",
+            m1,
+            schema="test_schema_2",
+            autoload_with=connection,
+        )
 
-            t2_no_schema = Table("some_other_table", m1, autoload_with=conn)
+        t2_no_schema = Table("some_other_table", m1, autoload_with=connection)
 
-            t1_no_schema = Table("some_table", m1, autoload_with=conn)
+        t1_no_schema = Table("some_table", m1, autoload_with=connection)
 
-            m2 = MetaData()
-            t1_schema_isp = Table(
-                "some_table",
-                m2,
-                schema="test_schema",
-                autoload_with=conn,
-                postgresql_ignore_search_path=True,
-            )
-            t2_schema_isp = Table(
-                "some_other_table",
-                m2,
-                schema="test_schema_2",
-                autoload_with=conn,
-                postgresql_ignore_search_path=True,
-            )
+        m2 = MetaData()
+        t1_schema_isp = Table(
+            "some_table",
+            m2,
+            schema="test_schema",
+            autoload_with=connection,
+            postgresql_ignore_search_path=True,
+        )
+        t2_schema_isp = Table(
+            "some_other_table",
+            m2,
+            schema="test_schema_2",
+            autoload_with=connection,
+            postgresql_ignore_search_path=True,
+        )
 
-            # t2_schema refers to t1_schema, but since "test_schema"
-            # is in the search path, we instead link to t2_no_schema
-            assert t2_schema.c.sid.references(t1_no_schema.c.id)
+        # t2_schema refers to t1_schema, but since "test_schema"
+        # is in the search path, we instead link to t2_no_schema
+        assert t2_schema.c.sid.references(t1_no_schema.c.id)
 
-            # the two no_schema tables refer to each other also.
-            assert t2_no_schema.c.sid.references(t1_no_schema.c.id)
+        # the two no_schema tables refer to each other also.
+        assert t2_no_schema.c.sid.references(t1_no_schema.c.id)
 
-            # but if we're ignoring search path, then we maintain
-            # those explicit schemas vs. what the "default" schema is
-            assert t2_schema_isp.c.sid.references(t1_schema_isp.c.id)
+        # but if we're ignoring search path, then we maintain
+        # those explicit schemas vs. what the "default" schema is
+        assert t2_schema_isp.c.sid.references(t1_schema_isp.c.id)
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_seven(self):
+    def test_cross_schema_reflection_seven(self, metadata, connection):
         # test that the search path *is* taken into account
         # by default
-        meta1 = self.metadata
+        meta1 = metadata
 
         Table(
             "some_table",
@@ -841,41 +829,41 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("sid", Integer, ForeignKey("test_schema.some_table.id")),
             schema="test_schema_2",
         )
-        meta1.create_all()
-        with testing.db.connect() as conn:
-            conn.detach()
+        meta1.create_all(connection)
+        connection.detach()
 
-            conn.exec_driver_sql(
-                "set search_path to test_schema_2, test_schema, public"
-            )
-            meta2 = MetaData(conn)
-            meta2.reflect(schema="test_schema_2")
+        connection.exec_driver_sql(
+            "set search_path to test_schema_2, test_schema, public"
+        )
+        meta2 = MetaData()
+        meta2.reflect(connection, schema="test_schema_2")
 
-            eq_(
-                set(meta2.tables),
-                set(["test_schema_2.some_other_table", "some_table"]),
-            )
+        eq_(
+            set(meta2.tables),
+            set(["test_schema_2.some_other_table", "some_table"]),
+        )
 
-            meta3 = MetaData(conn)
-            meta3.reflect(
-                schema="test_schema_2", postgresql_ignore_search_path=True
-            )
+        meta3 = MetaData()
+        meta3.reflect(
+            connection,
+            schema="test_schema_2",
+            postgresql_ignore_search_path=True,
+        )
 
-            eq_(
-                set(meta3.tables),
-                set(
-                    [
-                        "test_schema_2.some_other_table",
-                        "test_schema.some_table",
-                    ]
-                ),
-            )
+        eq_(
+            set(meta3.tables),
+            set(
+                [
+                    "test_schema_2.some_other_table",
+                    "test_schema.some_table",
+                ]
+            ),
+        )
 
-    @testing.provide_metadata
-    def test_cross_schema_reflection_metadata_uses_schema(self):
+    def test_cross_schema_reflection_metadata_uses_schema(
+        self, metadata, connection
+    ):
         # test [ticket:3716]
-
-        metadata = self.metadata
 
         Table(
             "some_table",
@@ -890,28 +878,25 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             schema=None,
         )
-        metadata.create_all()
-        with testing.db.connect() as conn:
-            meta2 = MetaData(conn, schema="test_schema")
-            meta2.reflect()
+        metadata.create_all(connection)
+        meta2 = MetaData(schema="test_schema")
+        meta2.reflect(connection)
 
-            eq_(
-                set(meta2.tables),
-                set(["some_other_table", "test_schema.some_table"]),
-            )
+        eq_(
+            set(meta2.tables),
+            set(["some_other_table", "test_schema.some_table"]),
+        )
 
-    @testing.provide_metadata
-    def test_uppercase_lowercase_table(self):
-        metadata = self.metadata
+    def test_uppercase_lowercase_table(self, metadata, connection):
 
         a_table = Table("a", metadata, Column("x", Integer))
         A_table = Table("A", metadata, Column("x", Integer))
 
-        a_table.create()
-        assert inspect(testing.db).has_table("a")
-        assert not inspect(testing.db).has_table("A")
-        A_table.create(checkfirst=True)
-        assert inspect(testing.db).has_table("A")
+        a_table.create(connection)
+        assert inspect(connection).has_table("a")
+        assert not inspect(connection).has_table("A")
+        A_table.create(connection, checkfirst=True)
+        assert inspect(connection).has_table("A")
 
     def test_uppercase_lowercase_sequence(self):
 
@@ -927,11 +912,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         a_seq.drop(testing.db)
         A_seq.drop(testing.db)
 
-    @testing.provide_metadata
-    def test_index_reflection(self):
+    def test_index_reflection(self, metadata, connection):
         """Reflecting expression-based indexes should warn"""
-
-        metadata = self.metadata
 
         Table(
             "party",
@@ -940,22 +922,21 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("name", String(20), index=True),
             Column("aname", String(20)),
         )
-        metadata.create_all(testing.db)
-        with testing.db.begin() as conn:
-            conn.exec_driver_sql("create index idx1 on party ((id || name))")
-            conn.exec_driver_sql(
-                "create unique index idx2 on party (id) where name = 'test'"
-            )
-            conn.exec_driver_sql(
-                """
-                create index idx3 on party using btree
-                    (lower(name::text), lower(aname::text))
-                """
-            )
+        metadata.create_all(connection)
+        connection.exec_driver_sql("create index idx1 on party ((id || name))")
+        connection.exec_driver_sql(
+            "create unique index idx2 on party (id) where name = 'test'"
+        )
+        connection.exec_driver_sql(
+            """
+            create index idx3 on party using btree
+                (lower(name::text), lower(aname::text))
+            """
+        )
 
         def go():
             m2 = MetaData()
-            t2 = Table("party", m2, autoload_with=testing.db)
+            t2 = Table("party", m2, autoload_with=connection)
             assert len(t2.indexes) == 2
 
             # Make sure indexes are in the order we expect them in
@@ -1020,51 +1001,46 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             "WHERE ((name)::text = 'test'::text)",
         )
 
-    @testing.fails_if("postgresql < 8.3", "index ordering not supported")
-    @testing.provide_metadata
-    def test_index_reflection_with_sorting(self):
+    def test_index_reflection_with_sorting(self, metadata, connection):
         """reflect indexes with sorting options set"""
 
         t1 = Table(
             "party",
-            self.metadata,
+            metadata,
             Column("id", String(10), nullable=False),
             Column("name", String(20)),
             Column("aname", String(20)),
         )
 
-        with testing.db.begin() as conn:
+        t1.create(connection)
 
-            t1.create(conn)
-
-            # check ASC, DESC options alone
-            conn.exec_driver_sql(
-                """
-                create index idx1 on party
-                    (id, name ASC, aname DESC)
+        # check ASC, DESC options alone
+        connection.exec_driver_sql(
             """
-            )
+            create index idx1 on party
+                (id, name ASC, aname DESC)
+        """
+        )
 
-            # check DESC w/ NULLS options
-            conn.exec_driver_sql(
-                """
-              create index idx2 on party
-                    (name DESC NULLS FIRST, aname DESC NULLS LAST)
+        # check DESC w/ NULLS options
+        connection.exec_driver_sql(
             """
-            )
+          create index idx2 on party
+                (name DESC NULLS FIRST, aname DESC NULLS LAST)
+        """
+        )
 
-            # check ASC w/ NULLS options
-            conn.exec_driver_sql(
-                """
-              create index idx3 on party
-                    (name ASC NULLS FIRST, aname ASC NULLS LAST)
+        # check ASC w/ NULLS options
+        connection.exec_driver_sql(
             """
-            )
+          create index idx3 on party
+                (name ASC NULLS FIRST, aname ASC NULLS LAST)
+        """
+        )
 
         # reflect data
-        with testing.db.connect() as conn:
-            m2 = MetaData(conn)
-            t2 = Table("party", m2, autoload_with=testing.db)
+        m2 = MetaData()
+        t2 = Table("party", m2, autoload_with=connection)
 
         eq_(len(t2.indexes), 3)
 
@@ -1206,11 +1182,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             )
 
     @testing.skip_if("postgresql < 11.0", "indnkeyatts not supported")
-    @testing.provide_metadata
-    def test_index_reflection_with_include(self):
+    def test_index_reflection_with_include(self, metadata, connection):
         """reflect indexes with include set"""
-
-        metadata = self.metadata
 
         Table(
             "t",
@@ -1219,30 +1192,27 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Column("x", ARRAY(Integer)),
             Column("name", String(20)),
         )
-        metadata.create_all()
-        with testing.db.begin() as conn:
-            conn.exec_driver_sql("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
+        metadata.create_all(connection)
+        connection.exec_driver_sql("CREATE INDEX idx1 ON t (x) INCLUDE (name)")
 
-            # prior to #5205, this would return:
-            # [{'column_names': ['x', 'name'],
-            #  'name': 'idx1', 'unique': False}]
+        # prior to #5205, this would return:
+        # [{'column_names': ['x', 'name'],
+        #  'name': 'idx1', 'unique': False}]
 
-            ind = testing.db.dialect.get_indexes(conn, "t", None)
-            eq_(
-                ind,
-                [
-                    {
-                        "unique": False,
-                        "column_names": ["x"],
-                        "include_columns": ["name"],
-                        "name": "idx1",
-                    }
-                ],
-            )
+        ind = testing.db.dialect.get_indexes(connection, "t", None)
+        eq_(
+            ind,
+            [
+                {
+                    "unique": False,
+                    "column_names": ["x"],
+                    "include_columns": ["name"],
+                    "name": "idx1",
+                }
+            ],
+        )
 
-    @testing.provide_metadata
-    def test_foreign_key_option_inspection(self):
-        metadata = self.metadata
+    def test_foreign_key_option_inspection(self, metadata, connection):
         Table(
             "person",
             metadata,
@@ -1308,8 +1278,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
                 "options": {"onupdate": "CASCADE", "ondelete": "CASCADE"},
             },
         }
-        metadata.create_all()
-        inspector = inspect(testing.db)
+        metadata.create_all(connection)
+        inspector = inspect(connection)
         fks = inspector.get_foreign_keys(
             "person"
         ) + inspector.get_foreign_keys("company")
@@ -1543,12 +1513,10 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         t = Table("t", MetaData(), autoload_with=testing.db)
         eq_(t.c.x.type.enums, [])
 
-    @testing.provide_metadata
-    @testing.only_on("postgresql >= 8.5")
-    def test_reflection_with_unique_constraint(self):
-        insp = inspect(testing.db)
+    def test_reflection_with_unique_constraint(self, metadata, connection):
+        insp = inspect(connection)
 
-        meta = self.metadata
+        meta = metadata
         uc_table = Table(
             "pgsql_uc",
             meta,
@@ -1556,7 +1524,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             UniqueConstraint("a", name="uc_a"),
         )
 
-        uc_table.create()
+        uc_table.create(connection)
 
         # PostgreSQL will create an implicit index for a unique
         # constraint.   Separately we get both
@@ -1569,7 +1537,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_("uc_a" in constraints)
 
         # reflection corrects for the dupe
-        reflected = Table("pgsql_uc", MetaData(), autoload_with=testing.db)
+        reflected = Table("pgsql_uc", MetaData(), autoload_with=connection)
 
         indexes = set(i.name for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)
@@ -1578,9 +1546,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_("uc_a" in constraints)
 
     @testing.requires.btree_gist
-    @testing.provide_metadata
-    def test_reflection_with_exclude_constraint(self):
-        m = self.metadata
+    def test_reflection_with_exclude_constraint(self, metadata, connection):
+        m = metadata
         Table(
             "t",
             m,
@@ -1589,9 +1556,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             ExcludeConstraint(("period", "&&"), name="quarters_period_excl"),
         )
 
-        m.create_all()
+        m.create_all(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
 
         # PostgreSQL will create an implicit index for an exclude constraint.
         # we don't reflect the EXCLUDE yet.
@@ -1610,15 +1577,14 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         eq_(insp.get_indexes("t"), expected)
 
         # reflection corrects for the dupe
-        reflected = Table("t", MetaData(), autoload_with=testing.db)
+        reflected = Table("t", MetaData(), autoload_with=connection)
 
         eq_(set(reflected.indexes), set())
 
-    @testing.provide_metadata
-    def test_reflect_unique_index(self):
-        insp = inspect(testing.db)
+    def test_reflect_unique_index(self, metadata, connection):
+        insp = inspect(connection)
 
-        meta = self.metadata
+        meta = metadata
 
         # a unique index OTOH we are able to detect is an index
         # and not a unique constraint
@@ -1629,7 +1595,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             Index("ix_a", "a", unique=True),
         )
 
-        uc_table.create()
+        uc_table.create(connection)
 
         indexes = dict((i["name"], i) for i in insp.get_indexes("pgsql_uc"))
         constraints = set(
@@ -1640,7 +1606,7 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert indexes["ix_a"]["unique"]
         self.assert_("ix_a" not in constraints)
 
-        reflected = Table("pgsql_uc", MetaData(), autoload_with=testing.db)
+        reflected = Table("pgsql_uc", MetaData(), autoload_with=connection)
 
         indexes = dict((i.name, i) for i in reflected.indexes)
         constraints = set(uc.name for uc in reflected.constraints)
@@ -1649,9 +1615,8 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         assert indexes["ix_a"].unique
         self.assert_("ix_a" not in constraints)
 
-    @testing.provide_metadata
-    def test_reflect_check_constraint(self):
-        meta = self.metadata
+    def test_reflect_check_constraint(self, metadata, connection):
+        meta = metadata
 
         udf_create = """\
             CREATE OR REPLACE FUNCTION is_positive(
@@ -1666,7 +1631,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
         """
         sa.event.listen(meta, "before_create", sa.DDL(udf_create))
         sa.event.listen(
-            meta, "after_drop", sa.DDL("DROP FUNCTION is_positive(integer)")
+            meta,
+            "after_drop",
+            sa.DDL("DROP FUNCTION IF EXISTS is_positive(integer)"),
         )
 
         Table(
@@ -1680,9 +1647,9 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             CheckConstraint("b != 'hi\nim a name   \nyup\n'", name="cc4"),
         )
 
-        meta.create_all()
+        meta.create_all(connection)
 
-        reflected = Table("pgsql_cc", MetaData(), autoload_with=testing.db)
+        reflected = Table("pgsql_cc", MetaData(), autoload_with=connection)
 
         check_constraints = dict(
             (uc.name, uc.sqltext.text)

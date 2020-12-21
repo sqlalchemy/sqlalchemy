@@ -213,7 +213,7 @@ def provide_metadata(fn, *args, **kw):
     # in py3k this can be moved top level.
     from . import engines
 
-    metadata = schema.MetaData(config.db)
+    metadata = schema.MetaData()
     self = args[0]
     prev_meta = getattr(self, "metadata", None)
     self.metadata = metadata

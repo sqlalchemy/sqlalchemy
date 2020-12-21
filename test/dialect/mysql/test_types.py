@@ -474,11 +474,10 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     # fixed in mysql-connector as of 2.0.1,
     # see http://bugs.mysql.com/bug.php?id=73266
-    @testing.provide_metadata
-    def test_precision_float_roundtrip(self, connection):
+    def test_precision_float_roundtrip(self, metadata, connection):
         t = Table(
             "t",
-            self.metadata,
+            metadata,
             Column(
                 "scale_value",
                 mysql.DOUBLE(precision=15, scale=12, asdecimal=True),
@@ -503,11 +502,10 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(result, decimal.Decimal("45.768392065789"))
 
     @testing.only_if("mysql")
-    @testing.provide_metadata
-    def test_charset_collate_table(self, connection):
+    def test_charset_collate_table(self, metadata, connection):
         t = Table(
             "foo",
-            self.metadata,
+            metadata,
             Column("id", Integer),
             Column("data", UnicodeText),
             mysql_default_charset="utf8",
@@ -657,19 +655,21 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         impl = TIMESTAMP
 
     @testing.combinations(
-        (TIMESTAMP,), (MyTime(),), (String().with_variant(TIMESTAMP, "mysql"),)
+        (TIMESTAMP,),
+        (MyTime(),),
+        (String().with_variant(TIMESTAMP, "mysql"),),
+        argnames="type_",
     )
     @testing.requires.mysql_zero_date
-    @testing.provide_metadata
-    def test_timestamp_nullable(self, type_):
+    def test_timestamp_nullable(self, metadata, connection, type_):
         ts_table = Table(
             "mysql_timestamp",
-            self.metadata,
+            metadata,
             Column("t1", type_),
             Column("t2", type_, nullable=False),
             mysql_engine="InnoDB",
         )
-        self.metadata.create_all()
+        metadata.create_all(connection)
 
         # TIMESTAMP without NULL inserts current time when passed
         # NULL.  when not passed, generates 0000-00-00 quite
@@ -687,25 +687,23 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
             else:
                 return dt
 
-        with testing.db.begin() as conn:
-            now = conn.exec_driver_sql("select now()").scalar()
-            conn.execute(ts_table.insert(), {"t1": now, "t2": None})
-            conn.execute(ts_table.insert(), {"t1": None, "t2": None})
-            conn.execute(ts_table.insert(), {"t2": None})
+        now = connection.exec_driver_sql("select now()").scalar()
+        connection.execute(ts_table.insert(), {"t1": now, "t2": None})
+        connection.execute(ts_table.insert(), {"t1": None, "t2": None})
+        connection.execute(ts_table.insert(), {"t2": None})
 
-            new_now = conn.exec_driver_sql("select now()").scalar()
+        new_now = connection.exec_driver_sql("select now()").scalar()
 
-            eq_(
-                [
-                    tuple([normalize(dt) for dt in row])
-                    for row in conn.execute(ts_table.select())
-                ],
-                [(now, now), (None, now), (None, now)],
-            )
+        eq_(
+            [
+                tuple([normalize(dt) for dt in row])
+                for row in connection.execute(ts_table.select())
+            ],
+            [(now, now), (None, now), (None, now)],
+        )
 
-    @testing.provide_metadata
-    def test_time_roundtrip(self, connection):
-        t = Table("mysql_time", self.metadata, Column("t1", mysql.TIME()))
+    def test_time_roundtrip(self, metadata, connection):
+        t = Table("mysql_time", metadata, Column("t1", mysql.TIME()))
 
         t.create(connection)
 
@@ -715,13 +713,12 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
             datetime.time(8, 37, 35),
         )
 
-    @testing.provide_metadata
-    def test_year(self, connection):
+    def test_year(self, metadata, connection):
         """Exercise YEAR."""
 
         year_table = Table(
             "mysql_year",
-            self.metadata,
+            metadata,
             Column("y1", mysql.MSYear),
             Column("y2", mysql.MSYear),
             Column("y3", mysql.MSYear),
@@ -748,26 +745,22 @@ class JSONTest(fixtures.TestBase):
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
-    @testing.provide_metadata
     @testing.requires.reflects_json_type
-    def test_reflection(self, connection):
+    def test_reflection(self, metadata, connection):
 
-        Table("mysql_json", self.metadata, Column("foo", mysql.JSON))
-        self.metadata.create_all(connection)
+        Table("mysql_json", metadata, Column("foo", mysql.JSON))
+        metadata.create_all(connection)
 
         reflected = Table("mysql_json", MetaData(), autoload_with=connection)
         is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
         assert isinstance(reflected.c.foo.type, mysql.JSON)
 
-    @testing.provide_metadata
-    def test_rudimental_round_trip(self, connection):
+    def test_rudimental_round_trip(self, metadata, connection):
         # note that test_suite has many more JSON round trip tests
         # using the backend-agnostic JSON type
 
-        mysql_json = Table(
-            "mysql_json", self.metadata, Column("foo", mysql.JSON)
-        )
-        self.metadata.create_all(connection)
+        mysql_json = Table("mysql_json", metadata, Column("foo", mysql.JSON))
+        metadata.create_all(connection)
 
         value = {"json": {"foo": "bar"}, "recs": ["one", "two"]}
 
@@ -804,8 +797,7 @@ class EnumSetTest(
     def get_enum_string_values(some_enum):
         return [str(v.value) for v in some_enum.__members__.values()]
 
-    @testing.provide_metadata
-    def test_enum(self, connection):
+    def test_enum(self, metadata, connection):
         """Exercise the ENUM type."""
 
         e1 = mysql.ENUM("a", "b")
@@ -815,7 +807,7 @@ class EnumSetTest(
 
         enum_table = Table(
             "mysql_enum",
-            self.metadata,
+            metadata,
             Column("e1", e1),
             Column("e2", e2, nullable=False),
             Column(
@@ -857,11 +849,14 @@ class EnumSetTest(
 
         assert_raises(
             exc.DBAPIError,
-            enum_table.insert().execute,
-            e1=None,
-            e2=None,
-            e3=None,
-            e4=None,
+            connection.execute,
+            enum_table.insert(),
+            dict(
+                e1=None,
+                e2=None,
+                e3=None,
+                e4=None,
+            ),
         )
 
         assert enum_table.c.e2generic.type.validate_strings
@@ -948,7 +943,7 @@ class EnumSetTest(
 
         eq_(res, expected)
 
-    def _set_fixture_one(self):
+    def _set_fixture_one(self, metadata):
         e1 = mysql.SET("a", "b")
         e2 = mysql.SET("a", "b")
         e4 = mysql.SET("'a'", "b")
@@ -956,7 +951,7 @@ class EnumSetTest(
 
         set_table = Table(
             "mysql_set",
-            self.metadata,
+            metadata,
             Column("e1", e1),
             Column("e2", e2, nullable=False),
             Column("e3", mysql.SET("a", "b")),
@@ -965,18 +960,16 @@ class EnumSetTest(
         )
         return set_table
 
-    def test_set_colspec(self):
-        self.metadata = MetaData()
-        set_table = self._set_fixture_one()
+    def test_set_colspec(self, metadata):
+        set_table = self._set_fixture_one(metadata)
         eq_(colspec(set_table.c.e1), "e1 SET('a','b')")
         eq_(colspec(set_table.c.e2), "e2 SET('a','b') NOT NULL")
         eq_(colspec(set_table.c.e3), "e3 SET('a','b')")
         eq_(colspec(set_table.c.e4), "e4 SET('''a''','b')")
         eq_(colspec(set_table.c.e5), "e5 SET('a','b')")
 
-    @testing.provide_metadata
-    def test_no_null(self, connection):
-        set_table = self._set_fixture_one()
+    def test_no_null(self, metadata, connection):
+        set_table = self._set_fixture_one(metadata)
         set_table.create(connection)
         assert_raises(
             exc.DBAPIError,
@@ -986,11 +979,10 @@ class EnumSetTest(
         )
 
     @testing.requires.mysql_non_strict
-    @testing.provide_metadata
-    def test_empty_set_no_empty_string(self, connection):
+    def test_empty_set_no_empty_string(self, metadata, connection):
         t = Table(
             "t",
-            self.metadata,
+            metadata,
             Column("id", Integer),
             Column("data", mysql.SET("a", "b")),
         )
@@ -1020,11 +1012,10 @@ class EnumSetTest(
             "",
         )
 
-    @testing.provide_metadata
-    def test_empty_set_empty_string(self, connection):
+    def test_empty_set_empty_string(self, metadata, connection):
         t = Table(
             "t",
-            self.metadata,
+            metadata,
             Column("id", Integer),
             Column("data", mysql.SET("a", "b", "", retrieve_as_bitwise=True)),
         )
@@ -1048,9 +1039,8 @@ class EnumSetTest(
             ],
         )
 
-    @testing.provide_metadata
-    def test_string_roundtrip(self, connection):
-        set_table = self._set_fixture_one()
+    def test_string_roundtrip(self, metadata, connection):
+        set_table = self._set_fixture_one(metadata)
         set_table.create(connection)
         connection.execute(
             set_table.insert(),
@@ -1081,11 +1071,10 @@ class EnumSetTest(
 
         eq_(res, expected)
 
-    @testing.provide_metadata
-    def test_unicode_roundtrip(self, connection):
+    def test_unicode_roundtrip(self, metadata, connection):
         set_table = Table(
             "t",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("data", mysql.SET(u("réveillé"), u("drôle"), u("S’il"))),
         )
@@ -1099,9 +1088,8 @@ class EnumSetTest(
 
         eq_(row, (1, set([u("réveillé"), u("drôle")])))
 
-    @testing.provide_metadata
-    def test_int_roundtrip(self, connection):
-        set_table = self._set_fixture_one()
+    def test_int_roundtrip(self, metadata, connection):
+        set_table = self._set_fixture_one(metadata)
         set_table.create(connection)
         connection.execute(
             set_table.insert(), dict(e1=1, e2=2, e3=3, e4=3, e5=0)
@@ -1118,11 +1106,10 @@ class EnumSetTest(
             ),
         )
 
-    @testing.provide_metadata
-    def test_set_roundtrip_plus_reflection(self, connection):
+    def test_set_roundtrip_plus_reflection(self, metadata, connection):
         set_table = Table(
             "mysql_set",
-            self.metadata,
+            metadata,
             Column("s1", mysql.SET("dq", "sq")),
             Column("s2", mysql.SET("a")),
             Column("s3", mysql.SET("5", "7", "9")),
@@ -1166,9 +1153,7 @@ class EnumSetTest(
 
         eq_(list(rows), [({"5"},), ({"7", "5"},)])
 
-    @testing.provide_metadata
-    def test_unicode_enum(self, connection):
-        metadata = self.metadata
+    def test_unicode_enum(self, metadata, connection):
         t1 = Table(
             "table",
             metadata,
@@ -1232,12 +1217,11 @@ class EnumSetTest(
             "'y', 'z')))",
         )
 
-    @testing.provide_metadata
-    def test_enum_parse(self, connection):
+    def test_enum_parse(self, metadata, connection):
 
         enum_table = Table(
             "mysql_enum",
-            self.metadata,
+            metadata,
             Column("e1", mysql.ENUM("a")),
             Column("e2", mysql.ENUM("")),
             Column("e3", mysql.ENUM("a")),
@@ -1261,11 +1245,10 @@ class EnumSetTest(
             eq_(t.c.e6.type.enums, ["", "a"])
             eq_(t.c.e7.type.enums, ["", "'a'", "b'b", "'"])
 
-    @testing.provide_metadata
-    def test_set_parse(self, connection):
+    def test_set_parse(self, metadata, connection):
         set_table = Table(
             "mysql_set",
-            self.metadata,
+            metadata,
             Column("e1", mysql.SET("a")),
             Column("e2", mysql.SET("", retrieve_as_bitwise=True)),
             Column("e3", mysql.SET("a")),
@@ -1301,11 +1284,10 @@ class EnumSetTest(
             eq_(t.c.e7.type.values, ("", "'a'", "b'b", "'"))
 
     @testing.requires.mysql_non_strict
-    @testing.provide_metadata
-    def test_broken_enum_returns_blanks(self, connection):
+    def test_broken_enum_returns_blanks(self, metadata, connection):
         t = Table(
             "enum_missing",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("e1", sqltypes.Enum("one", "two", "three")),
             Column("e2", mysql.ENUM("one", "two", "three")),

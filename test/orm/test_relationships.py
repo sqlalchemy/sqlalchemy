@@ -718,7 +718,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             __mapper_args__ = {"polymorphic_identity": "bsub2"}
 
         configure_mappers()
-        self.metadata.create_all()
+        self.metadata.create_all(testing.db)
 
         return A, AMember, B, BSub1, BSub2
 

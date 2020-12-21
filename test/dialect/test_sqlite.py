@@ -72,44 +72,30 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
 
-    @testing.provide_metadata
-    def test_boolean(self):
+    def test_boolean(self, connection, metadata):
         """Test that the boolean only treats 1 as True"""
 
-        meta = self.metadata
         t = Table(
             "bool_table",
-            meta,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("boo", Boolean(create_constraint=False)),
         )
-        meta.create_all(testing.db)
-        exec_sql(
-            testing.db,
+        metadata.create_all(connection)
+        for stmt in [
             "INSERT INTO bool_table (id, boo) " "VALUES (1, 'false');",
-        )
-        exec_sql(
-            testing.db,
             "INSERT INTO bool_table (id, boo) " "VALUES (2, 'true');",
-        )
-        exec_sql(
-            testing.db,
             "INSERT INTO bool_table (id, boo) " "VALUES (3, '1');",
-        )
-        exec_sql(
-            testing.db,
             "INSERT INTO bool_table (id, boo) " "VALUES (4, '0');",
-        )
-        exec_sql(
-            testing.db,
             "INSERT INTO bool_table (id, boo) " "VALUES (5, 1);",
-        )
-        exec_sql(
-            testing.db,
             "INSERT INTO bool_table (id, boo) " "VALUES (6, 0);",
-        )
+        ]:
+            connection.exec_driver_sql(stmt)
+
         eq_(
-            t.select(t.c.boo).order_by(t.c.id).execute().fetchall(),
+            connection.execute(
+                t.select().where(t.c.boo).order_by(t.c.id)
+            ).fetchall(),
             [(3, True), (5, True)],
         )
 
@@ -301,51 +287,41 @@ class JSONTest(fixtures.TestBase):
     __requires__ = ("json_type",)
     __only_on__ = "sqlite"
 
-    @testing.provide_metadata
     @testing.requires.reflects_json_type
-    def test_reflection(self):
-        Table("json_test", self.metadata, Column("foo", sqlite.JSON))
-        self.metadata.create_all()
+    def test_reflection(self, connection, metadata):
+        Table("json_test", metadata, Column("foo", sqlite.JSON))
+        metadata.create_all(connection)
 
-        reflected = Table("json_test", MetaData(), autoload_with=testing.db)
+        reflected = Table("json_test", MetaData(), autoload_with=connection)
         is_(reflected.c.foo.type._type_affinity, sqltypes.JSON)
         assert isinstance(reflected.c.foo.type, sqlite.JSON)
 
-    @testing.provide_metadata
-    def test_rudimentary_roundtrip(self):
-        sqlite_json = Table(
-            "json_test", self.metadata, Column("foo", sqlite.JSON)
-        )
+    def test_rudimentary_roundtrip(self, metadata, connection):
+        sqlite_json = Table("json_test", metadata, Column("foo", sqlite.JSON))
 
-        self.metadata.create_all()
+        metadata.create_all(connection)
 
         value = {"json": {"foo": "bar"}, "recs": ["one", "two"]}
 
-        with testing.db.begin() as conn:
-            conn.execute(sqlite_json.insert(), foo=value)
+        connection.execute(sqlite_json.insert(), foo=value)
 
-            eq_(conn.scalar(select(sqlite_json.c.foo)), value)
+        eq_(connection.scalar(select(sqlite_json.c.foo)), value)
 
-    @testing.provide_metadata
-    def test_extract_subobject(self):
-        sqlite_json = Table(
-            "json_test", self.metadata, Column("foo", sqlite.JSON)
-        )
+    def test_extract_subobject(self, connection, metadata):
+        sqlite_json = Table("json_test", metadata, Column("foo", sqlite.JSON))
 
-        self.metadata.create_all()
+        metadata.create_all(connection)
 
         value = {"json": {"foo": "bar"}}
 
-        with testing.db.begin() as conn:
-            conn.execute(sqlite_json.insert(), foo=value)
+        connection.execute(sqlite_json.insert(), foo=value)
 
-            eq_(conn.scalar(select(sqlite_json.c.foo["json"])), value["json"])
-
-    @testing.provide_metadata
-    def test_deprecated_serializer_args(self):
-        sqlite_json = Table(
-            "json_test", self.metadata, Column("foo", sqlite.JSON)
+        eq_(
+            connection.scalar(select(sqlite_json.c.foo["json"])), value["json"]
         )
+
+    def test_deprecated_serializer_args(self, metadata):
+        sqlite_json = Table("json_test", metadata, Column("foo", sqlite.JSON))
         data_element = {"foo": "bar"}
 
         js = mock.Mock(side_effect=json.dumps)
@@ -360,7 +336,7 @@ class JSONTest(fixtures.TestBase):
             engine = engines.testing_engine(
                 options=dict(_json_serializer=js, _json_deserializer=jd)
             )
-        self.metadata.create_all(engine)
+            metadata.create_all(engine)
 
         with engine.begin() as conn:
             conn.execute(sqlite_json.insert(), {"foo": data_element})
@@ -468,17 +444,7 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = "sqlite"
 
-    @testing.exclude(
-        "sqlite",
-        "<",
-        (3, 3, 8),
-        "sqlite3 changesets 3353 and 3440 modified "
-        "behavior of default displayed in pragma "
-        "table_info()",
-    )
-    def test_default_reflection(self):
-
-        # (ask_for, roundtripped_as_if_different)
+    def test_default_reflection(self, connection, metadata):
 
         specs = [
             (String(3), '"foo"'),
@@ -490,18 +456,13 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("c%i" % (i + 1), t[0], server_default=text(t[1]))
             for (i, t) in enumerate(specs)
         ]
-        db = testing.db
-        m = MetaData(db)
-        Table("t_defaults", m, *columns)
-        try:
-            m.create_all()
-            m2 = MetaData()
-            rt = Table("t_defaults", m2, autoload_with=db)
-            expected = [c[1] for c in specs]
-            for i, reflected in enumerate(rt.c):
-                eq_(str(reflected.server_default.arg), expected[i])
-        finally:
-            m.drop_all()
+        Table("t_defaults", metadata, *columns)
+        metadata.create_all(connection)
+        m2 = MetaData()
+        rt = Table("t_defaults", m2, autoload_with=connection)
+        expected = [c[1] for c in specs]
+        for i, reflected in enumerate(rt.c):
+            eq_(str(reflected.server_default.arg), expected[i])
 
     @testing.exclude(
         "sqlite",
@@ -917,7 +878,7 @@ class AttachedDBTest(fixtures.TestBase):
         eq_(insp.get_schema_names(), ["main", "test_schema"])
 
     def test_reflect_system_table(self):
-        meta = MetaData(self.conn)
+        meta = MetaData()
         alt_master = Table(
             "sqlite_master",
             meta,
@@ -1758,8 +1719,8 @@ class KeywordInDatabaseNameTest(fixtures.TestBase):
             connection.exec_driver_sql('DETACH DATABASE "default"')
 
     def test_reflect(self, connection, db_fixture):
-        meta = MetaData(bind=connection, schema="default")
-        meta.reflect()
+        meta = MetaData(schema="default")
+        meta.reflect(connection)
         assert "default.a" in meta.tables
 
 

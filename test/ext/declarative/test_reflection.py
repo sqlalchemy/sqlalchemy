@@ -1,6 +1,5 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.declarative import DeferredReflection
@@ -26,7 +25,7 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
     def setup(self):
         global Base, registry
 
-        registry = decl.registry(metadata=MetaData(bind=testing.db))
+        registry = decl.registry()
         Base = registry.generate_base()
 
     def teardown(self):
@@ -102,7 +101,7 @@ class DeferredReflectionTest(DeferredReflectBase):
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = create_session(testing.db)
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -192,7 +191,7 @@ class DeferredReflectionTest(DeferredReflectBase):
                 return {"primary_key": cls.__table__.c.id}
 
         DeferredReflection.prepare(testing.db)
-        sess = Session()
+        sess = Session(testing.db)
         sess.add_all(
             [User(name="G"), User(name="Q"), User(name="A"), User(name="C")]
         )
@@ -256,7 +255,7 @@ class DeferredSecondaryReflectionTest(DeferredReflectBase):
 
         u1 = User(name="u1", items=[Item(name="i1"), Item(name="i2")])
 
-        sess = Session()
+        sess = Session(testing.db)
         sess.add(u1)
         sess.commit()
 

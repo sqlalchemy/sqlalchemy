@@ -363,15 +363,14 @@ class FastExecutemanyTest(fixtures.TestBase):
     __backend__ = True
     __requires__ = ("pyodbc_fast_executemany",)
 
-    @testing.provide_metadata
-    def test_flag_on(self):
+    def test_flag_on(self, metadata):
         t = Table(
             "t",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("data", String(50)),
         )
-        t.create()
+        t.create(testing.db)
 
         eng = engines.testing_engine(options={"fast_executemany": True})
 
@@ -446,10 +445,9 @@ class RealIsolationLevelTest(fixtures.TestBase):
     __only_on__ = "mssql"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_isolation_level(self):
-        Table("test", self.metadata, Column("id", Integer)).create(
-            checkfirst=True
+    def test_isolation_level(self, metadata):
+        Table("test", metadata, Column("id", Integer)).create(
+            testing.db, checkfirst=True
         )
 
         with testing.db.connect() as c:

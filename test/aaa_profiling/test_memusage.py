@@ -360,7 +360,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         go()
 
     def test_session(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -387,7 +387,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             Column("col3", Integer, ForeignKey("mytable.col1")),
         )
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
 
         m1 = mapper(
             A,
@@ -402,7 +402,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         @profile_memory()
         def go():
-            with Session() as sess:
+            with Session(self.engine) as sess:
                 a1 = A(col2="a1")
                 a2 = A(col2="a2")
                 a3 = A(col2="a3")
@@ -429,7 +429,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         go()
 
-        metadata.drop_all()
+        metadata.drop_all(self.engine)
         del m1, m2
         assert_no_mappers()
 
@@ -625,7 +625,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
     @testing.crashes("mysql+cymysql", "blocking")
     def test_unicode_warnings(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
         table1 = Table(
             "mytable",
             metadata,
@@ -637,7 +637,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             ),
             Column("col2", Unicode(30)),
         )
-        metadata.create_all()
+        metadata.create_all(self.engine)
         i = [1]
 
         # the times here is cranked way up so that we can see
@@ -659,7 +659,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
 
     def test_warnings_util(self):
         counter = itertools.count()
@@ -677,7 +677,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         go()
 
     def test_mapper_reset(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -713,7 +713,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             )
             mapper(B, table2)
 
-            sess = create_session()
+            sess = create_session(self.engine)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             a3 = A(col2="a3")
@@ -741,15 +741,15 @@ class MemUsageWBackendTest(EnsureZeroed):
             sess.close()
             clear_mappers()
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
         assert_no_mappers()
 
     def test_alias_pathing(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         a = Table(
             "a",
@@ -779,8 +779,8 @@ class MemUsageWBackendTest(EnsureZeroed):
         mapper(ASub, asub, inherits=A, polymorphic_identity="asub")
         mapper(B, b, properties={"as_": relationship(A)})
 
-        metadata.create_all()
-        sess = Session()
+        metadata.create_all(self.engine)
+        sess = Session(self.engine)
         a1 = ASub(data="a1")
         a2 = ASub(data="a2")
         a3 = ASub(data="a3")
@@ -794,7 +794,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         # "dip" again
         @profile_memory(maxtimes=120)
         def go():
-            sess = Session()
+            sess = Session(self.engine)
             sess.query(B).options(subqueryload(B.as_.of_type(ASub))).all()
             sess.close()
             del sess
@@ -802,7 +802,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
         clear_mappers()
 
     def test_path_registry(self):
@@ -832,7 +832,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         clear_mappers()
 
     def test_with_inheritance(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -875,7 +875,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             )
             mapper(B, table2, inherits=A, polymorphic_identity="b")
 
-            sess = create_session()
+            sess = create_session(self.engine)
             a1 = A()
             a2 = A()
             b1 = B(col3="b1")
@@ -896,15 +896,15 @@ class MemUsageWBackendTest(EnsureZeroed):
             del B
             del A
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
         assert_no_mappers()
 
     def test_with_manytomany(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -956,7 +956,7 @@ class MemUsageWBackendTest(EnsureZeroed):
             )
             mapper(B, table2)
 
-            sess = create_session()
+            sess = create_session(self.engine)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             b1 = B(col2="b1")
@@ -981,11 +981,11 @@ class MemUsageWBackendTest(EnsureZeroed):
             del B
             del A
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
         assert_no_mappers()
 
     @testing.uses_deprecated()
@@ -1043,7 +1043,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
     @testing.crashes("mysql+cymysql", "blocking")
     def test_join_cache_deprecated_coercion(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
         table1 = Table(
             "table1",
             metadata,
@@ -1071,8 +1071,8 @@ class MemUsageWBackendTest(EnsureZeroed):
         mapper(
             Foo, table1, properties={"bars": relationship(mapper(Bar, table2))}
         )
-        metadata.create_all()
-        session = sessionmaker()
+        metadata.create_all(self.engine)
+        session = sessionmaker(self.engine)
 
         @profile_memory()
         def go():
@@ -1087,11 +1087,11 @@ class MemUsageWBackendTest(EnsureZeroed):
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
 
     @testing.crashes("mysql+cymysql", "blocking")
     def test_join_cache(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
         table1 = Table(
             "table1",
             metadata,
@@ -1119,8 +1119,8 @@ class MemUsageWBackendTest(EnsureZeroed):
         mapper(
             Foo, table1, properties={"bars": relationship(mapper(Bar, table2))}
         )
-        metadata.create_all()
-        session = sessionmaker()
+        metadata.create_all(self.engine)
+        session = sessionmaker(self.engine)
 
         @profile_memory()
         def go():
@@ -1132,7 +1132,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
 
 
 class CycleTest(_fixtures.FixtureTest):

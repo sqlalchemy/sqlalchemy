@@ -39,9 +39,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
     __only_on__ = "mssql"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_basic_reflection(self):
-        meta = self.metadata
+    def test_basic_reflection(self, metadata, connection):
+        meta = metadata
 
         users = Table(
             "engine_users",
@@ -77,59 +76,44 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ),
             Column("email_address", types.String(20)),
         )
-        meta.create_all()
+        meta.create_all(connection)
 
         meta2 = MetaData()
         reflected_users = Table(
-            "engine_users", meta2, autoload_with=testing.db
+            "engine_users", meta2, autoload_with=connection
         )
         reflected_addresses = Table(
             "engine_email_addresses",
             meta2,
-            autoload_with=testing.db,
+            autoload_with=connection,
         )
         self.assert_tables_equal(users, reflected_users)
         self.assert_tables_equal(addresses, reflected_addresses)
 
-    @testing.provide_metadata
-    def _test_specific_type(self, type_obj, ddl):
-        metadata = self.metadata
+    @testing.combinations(
+        (mssql.XML, "XML"),
+        (mssql.IMAGE, "IMAGE"),
+        (mssql.MONEY, "MONEY"),
+        (mssql.NUMERIC(10, 2), "NUMERIC(10, 2)"),
+        (mssql.FLOAT, "FLOAT(53)"),
+        (mssql.REAL, "REAL"),
+        # FLOAT(5) comes back as REAL
+        (mssql.FLOAT(5), "REAL"),
+        argnames="type_obj,ddl",
+    )
+    def test_assorted_types(self, metadata, connection, type_obj, ddl):
 
         table = Table("type_test", metadata, Column("col1", type_obj))
-        table.create()
+        table.create(connection)
 
         m2 = MetaData()
-        table2 = Table("type_test", m2, autoload_with=testing.db)
+        table2 = Table("type_test", m2, autoload_with=connection)
         self.assert_compile(
             schema.CreateTable(table2),
             "CREATE TABLE type_test (col1 %s NULL)" % ddl,
         )
 
-    def test_xml_type(self):
-        self._test_specific_type(mssql.XML, "XML")
-
-    def test_image_type(self):
-        self._test_specific_type(mssql.IMAGE, "IMAGE")
-
-    def test_money_type(self):
-        self._test_specific_type(mssql.MONEY, "MONEY")
-
-    def test_numeric_prec_scale(self):
-        self._test_specific_type(mssql.NUMERIC(10, 2), "NUMERIC(10, 2)")
-
-    def test_float(self):
-        self._test_specific_type(mssql.FLOAT, "FLOAT(53)")
-
-    def test_real(self):
-        self._test_specific_type(mssql.REAL, "REAL")
-
-    def test_float_as_real(self):
-        # FLOAT(5) comes back as REAL
-        self._test_specific_type(mssql.FLOAT(5), "REAL")
-
-    @testing.provide_metadata
-    def test_identity(self):
-        metadata = self.metadata
+    def test_identity(self, metadata, connection):
         table = Table(
             "identity_test",
             metadata,
@@ -144,10 +128,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The dialect options 'mssql_identity_start' and"
         ):
-            table.create()
+            table.create(connection)
 
         meta2 = MetaData()
-        table2 = Table("identity_test", meta2, autoload_with=testing.db)
+        table2 = Table("identity_test", meta2, autoload_with=connection)
         eq_(table2.c["col1"].dialect_options["mssql"]["identity_start"], None)
         eq_(
             table2.c["col1"].dialect_options["mssql"]["identity_increment"],
@@ -156,7 +140,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         eq_(table2.c["col1"].identity.start, 2)
         eq_(table2.c["col1"].identity.increment, 3)
 
-    @testing.provide_metadata
     def test_skip_types(self, connection):
         connection.exec_driver_sql(
             "create table foo (id integer primary key, data xml)"
@@ -189,10 +172,8 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     ],
                 )
 
-    @testing.provide_metadata
-    def test_cross_schema_fk_pk_name_overlaps(self):
+    def test_cross_schema_fk_pk_name_overlaps(self, metadata, connection):
         # test for issue #4228
-        metadata = self.metadata
 
         Table(
             "subject",
@@ -224,9 +205,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             schema=testing.config.test_schema_2,
         )
 
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         eq_(
             insp.get_foreign_keys("referrer", testing.config.test_schema),
             [
@@ -240,9 +221,9 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ],
         )
 
-    @testing.provide_metadata
-    def test_table_name_that_is_greater_than_16_chars(self):
-        metadata = self.metadata
+    def test_table_name_that_is_greater_than_16_chars(
+        self, metadata, connection
+    ):
         Table(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
             metadata,
@@ -250,14 +231,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("foo", Integer),
             Index("foo_idx", "foo"),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         t = Table(
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ", MetaData(), autoload_with=testing.db
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ", MetaData(), autoload_with=connection
         )
         eq_(t.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-    @testing.provide_metadata
     @testing.combinations(
         ("local_temp", "#tmp", True),
         ("global_temp", "##tmp", True),
@@ -265,12 +245,11 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         id_="iaa",
         argnames="table_name, exists",
     )
-    def test_temporary_table(self, connection, table_name, exists):
-        metadata = self.metadata
+    def test_temporary_table(self, metadata, connection, table_name, exists):
         if exists:
             tt = Table(
                 table_name,
-                self.metadata,
+                metadata,
                 Column("id", Integer, primary_key=True),
                 Column("txt", mssql.NVARCHAR(50)),
                 Column("dt2", mssql.DATETIME2),
@@ -309,7 +288,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 [(2, "bar", datetime.datetime(2020, 2, 2, 2, 2, 2))],
             )
 
-    @testing.provide_metadata
     @testing.combinations(
         ("local_temp", "#tmp", True),
         ("global_temp", "##tmp", True),
@@ -317,11 +295,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         id_="iaa",
         argnames="table_name, exists",
     )
-    def test_has_table_temporary(self, connection, table_name, exists):
+    def test_has_table_temporary(
+        self, metadata, connection, table_name, exists
+    ):
         if exists:
             tt = Table(
                 table_name,
-                self.metadata,
+                metadata,
                 Column("id", Integer),
             )
             tt.create(connection)
@@ -329,9 +309,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         found_it = testing.db.dialect.has_table(connection, table_name)
         eq_(found_it, exists)
 
-    @testing.provide_metadata
-    def test_db_qualified_items(self):
-        metadata = self.metadata
+    def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(
             "bar",
@@ -339,17 +317,16 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("id", Integer, primary_key=True),
             Column("foo_id", Integer, ForeignKey("foo.id", name="fkfoo")),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
-        with testing.db.connect() as c:
-            dbname = c.exec_driver_sql("select db_name()").scalar()
-            owner = c.exec_driver_sql("SELECT user_name()").scalar()
+        dbname = connection.exec_driver_sql("select db_name()").scalar()
+        owner = connection.exec_driver_sql("SELECT user_name()").scalar()
         referred_schema = "%(dbname)s.%(owner)s" % {
             "dbname": dbname,
             "owner": owner,
         }
 
-        inspector = inspect(testing.db)
+        inspector = inspect(connection)
         bar_via_db = inspector.get_foreign_keys("bar", schema=referred_schema)
         eq_(
             bar_via_db,
@@ -364,33 +341,29 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             ],
         )
 
-        assert inspect(testing.db).has_table("bar", schema=referred_schema)
+        assert inspect(connection).has_table("bar", schema=referred_schema)
 
         m2 = MetaData()
         Table(
             "bar",
             m2,
             schema=referred_schema,
-            autoload_with=testing.db,
+            autoload_with=connection,
         )
         eq_(m2.tables["%s.foo" % referred_schema].schema, referred_schema)
 
-    @testing.provide_metadata
-    def test_indexes_cols(self):
-        metadata = self.metadata
+    def test_indexes_cols(self, metadata, connection):
 
         t1 = Table("t", metadata, Column("x", Integer), Column("y", Integer))
         Index("foo", t1.c.x, t1.c.y)
-        metadata.create_all()
+        metadata.create_all(connection)
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=connection)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x"], t2.c.y]))
 
-    @testing.provide_metadata
-    def test_indexes_cols_with_commas(self):
-        metadata = self.metadata
+    def test_indexes_cols_with_commas(self, metadata, connection):
 
         t1 = Table(
             "t",
@@ -399,16 +372,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("y", Integer),
         )
         Index("foo", t1.c.x, t1.c.y)
-        metadata.create_all()
+        metadata.create_all(connection)
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=connection)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x, col"], t2.c.y]))
 
-    @testing.provide_metadata
-    def test_indexes_cols_with_spaces(self):
-        metadata = self.metadata
+    def test_indexes_cols_with_spaces(self, metadata, connection):
 
         t1 = Table(
             "t",
@@ -417,16 +388,14 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("y", Integer),
         )
         Index("foo", t1.c.x, t1.c.y)
-        metadata.create_all()
+        metadata.create_all(connection)
 
         m2 = MetaData()
-        t2 = Table("t", m2, autoload_with=testing.db)
+        t2 = Table("t", m2, autoload_with=connection)
 
         eq_(set(list(t2.indexes)[0].columns), set([t2.c["x col"], t2.c.y]))
 
-    @testing.provide_metadata
-    def test_indexes_with_filtered(self, connection):
-        metadata = self.metadata
+    def test_indexes_with_filtered(self, metadata, connection):
 
         t1 = Table(
             "t",
@@ -454,8 +423,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             CreateIndex(idx), "CREATE INDEX idx_x ON t (x) WHERE ([x]='test')"
         )
 
-    @testing.provide_metadata
-    def test_max_ident_in_varchar_not_present(self):
+    def test_max_ident_in_varchar_not_present(self, metadata, connection):
         """test [ticket:3504].
 
         Here we are testing not just that the "max" token comes back
@@ -464,7 +432,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         pattern however is likely in common use.
 
         """
-        metadata = self.metadata
 
         Table(
             "t",
@@ -475,10 +442,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             Column("t4", types.LargeBinary("max")),
             Column("t5", types.VARBINARY("max")),
         )
-        metadata.create_all()
-        for col in inspect(testing.db).get_columns("t"):
+        metadata.create_all(connection)
+        for col in inspect(connection).get_columns("t"):
             is_(col["type"].length, None)
-            in_("max", str(col["type"].compile(dialect=testing.db.dialect)))
+            in_("max", str(col["type"].compile(dialect=connection.dialect)))
 
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -510,41 +477,34 @@ class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class ReflectHugeViewTest(fixtures.TestBase):
+class ReflectHugeViewTest(fixtures.TablesTest):
     __only_on__ = "mssql"
     __backend__ = True
 
     # crashes on freetds 0.91, not worth it
     __skip_if__ = (lambda: testing.requires.mssql_freetds.enabled,)
 
-    def setup(self):
-        self.col_num = 150
+    @classmethod
+    def define_tables(cls, metadata):
+        col_num = 150
 
-        self.metadata = MetaData(testing.db)
         t = Table(
             "base_table",
-            self.metadata,
+            metadata,
             *[
                 Column("long_named_column_number_%d" % i, Integer)
-                for i in range(self.col_num)
+                for i in range(col_num)
             ]
         )
-        self.view_str = (
+        cls.view_str = (
             view_str
         ) = "CREATE VIEW huge_named_view AS SELECT %s FROM base_table" % (
-            ",".join(
-                "long_named_column_number_%d" % i for i in range(self.col_num)
-            )
+            ",".join("long_named_column_number_%d" % i for i in range(col_num))
         )
         assert len(view_str) > 4000
 
         event.listen(t, "after_create", DDL(view_str))
         event.listen(t, "before_drop", DDL("DROP VIEW huge_named_view"))
-
-        self.metadata.create_all()
-
-    def teardown(self):
-        self.metadata.drop_all()
 
     def test_inspect_view_definition(self):
         inspector = inspect(testing.db)
@@ -712,10 +672,10 @@ class IdentityReflectionTest(fixtures.TablesTest):
         ):
             Table("t%s" % i, metadata, col)
 
-    def test_reflect_identity(self):
-        insp = inspect(testing.db)
+    def test_reflect_identity(self, connection):
+        insp = inspect(connection)
         cols = []
-        for t in self.metadata.tables.keys():
+        for t in self.tables_test_metadata.tables.keys():
             cols.extend(insp.get_columns(t))
         for col in cols:
             is_true("dialect_options" not in col)

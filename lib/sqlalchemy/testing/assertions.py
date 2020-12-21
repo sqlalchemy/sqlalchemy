@@ -225,11 +225,11 @@ def is_instance_of(a, b, msg=None):
 
 
 def is_true(a, msg=None):
-    is_(a, True, msg=msg)
+    is_(bool(a), True, msg=msg)
 
 
 def is_false(a, msg=None):
-    is_(a, False, msg=msg)
+    is_(bool(a), False, msg=msg)
 
 
 def is_(a, b, msg=None):

@@ -275,7 +275,7 @@ def testing_engine(url=None, options=None, future=False, asyncio=False):
 
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0
-        engine.pool._max_overflow = 0
+        engine.pool._max_overflow = 5
     if use_reaper:
         testing_reaper.add_engine(engine)
 

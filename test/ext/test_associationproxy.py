@@ -201,7 +201,7 @@ class _CollectionOperations(fixtures.TestBase):
     def setup(self):
         collection_class = self.collection_class
 
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         parents_table = Table(
             "Parent",
@@ -254,14 +254,14 @@ class _CollectionOperations(fixtures.TestBase):
         )
         mapper(Child, children_table)
 
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session()
+        self.session = create_session(testing.db)
         self.Parent, self.Child = Parent, Child
 
     def teardown(self):
-        self.metadata.drop_all()
+        self.metadata.drop_all(testing.db)
 
     def roundtrip(self, obj):
         if obj not in self.session:
@@ -886,7 +886,7 @@ class CustomObjectTest(_CollectionOperations):
 
 class ProxyFactoryTest(ListTest):
     def setup(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         parents_table = Table(
             "Parent",
@@ -940,10 +940,10 @@ class ProxyFactoryTest(ListTest):
         )
         mapper(Child, children_table)
 
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session()
+        self.session = create_session(testing.db)
         self.Parent, self.Child = Parent, Child
 
     def test_sequence_ops(self):
@@ -1003,8 +1003,8 @@ class ScalarTest(fixtures.TestBase):
         )
         mapper(Child, children_table)
 
-        metadata.create_all()
-        session = create_session()
+        metadata.create_all(testing.db)
+        session = create_session(testing.db)
 
         def roundtrip(obj):
             if obj not in session:
@@ -1158,7 +1158,7 @@ class ScalarTest(fixtures.TestBase):
 
 class LazyLoadTest(fixtures.TestBase):
     def setup(self):
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
         parents_table = Table(
             "Parent",
@@ -1190,15 +1190,15 @@ class LazyLoadTest(fixtures.TestBase):
                 self.name = name
 
         mapper(Child, children_table)
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session()
+        self.session = create_session(testing.db)
         self.Parent, self.Child = Parent, Child
         self.table = parents_table
 
     def teardown(self):
-        self.metadata.drop_all()
+        self.metadata.drop_all(testing.db)
 
     def roundtrip(self, obj):
         self.session.add(obj)

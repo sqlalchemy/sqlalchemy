@@ -1,8 +1,11 @@
 import time
 
 from ... import exc
+from ... import inspect
 from ... import text
 from ...testing.provision import create_db
+from ...testing.provision import drop_all_schema_objects_post_tables
+from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import log
 from ...testing.provision import set_default_schema_on_connection
@@ -78,3 +81,24 @@ def _postgresql_set_default_schema_on_connection(
     cursor.execute("SET SESSION search_path='%s'" % schema_name)
     cursor.close()
     dbapi_connection.autocommit = existing_autocommit
+
+
+@drop_all_schema_objects_pre_tables.for_db("postgresql")
+def drop_all_schema_objects_pre_tables(cfg, eng):
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        for xid in conn.execute("select gid from pg_prepared_xacts").scalars():
+            conn.execute("ROLLBACK PREPARED '%s'" % xid)
+
+
+@drop_all_schema_objects_post_tables.for_db("postgresql")
+def drop_all_schema_objects_post_tables(cfg, eng):
+    from sqlalchemy.dialects import postgresql
+
+    inspector = inspect(eng)
+    with eng.begin() as conn:
+        for enum in inspector.get_enums("*"):
+            conn.execute(
+                postgresql.DropEnumType(
+                    postgresql.ENUM(name=enum["name"], schema=enum["schema"])
+                )
+            )

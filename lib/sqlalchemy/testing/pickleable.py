@@ -52,9 +52,9 @@ class Screen(object):
 
 
 class Foo(object):
-    def __init__(self, moredata):
+    def __init__(self, moredata, stuff="im stuff"):
         self.data = "im data"
-        self.stuff = "im stuff"
+        self.stuff = stuff
         self.moredata = moredata
 
     __hash__ = object.__hash__

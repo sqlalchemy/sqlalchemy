@@ -461,73 +461,13 @@ def _setup_requirements(argument):
 
 @post
 def _prep_testing_database(options, file_config):
-    from sqlalchemy.testing import config, util
-    from sqlalchemy.testing.exclusions import against
-    from sqlalchemy import schema, inspect
+    from sqlalchemy.testing import config
 
     if options.dropfirst:
+        from sqlalchemy.testing import provision
+
         for cfg in config.Config.all_configs():
-            e = cfg.db
-
-            # TODO: this has to be part of provision.py in postgresql
-            if against(cfg, "postgresql"):
-                with e.connect().execution_options(
-                    isolation_level="AUTOCOMMIT"
-                ) as conn:
-                    for xid in conn.execute(
-                        "select gid from pg_prepared_xacts"
-                    ).scalars():
-                        conn.execute("ROLLBACK PREPARED '%s'" % xid)
-
-            inspector = inspect(e)
-            try:
-                view_names = inspector.get_view_names()
-            except NotImplementedError:
-                pass
-            else:
-                for vname in view_names:
-                    e.execute(
-                        schema._DropView(
-                            schema.Table(vname, schema.MetaData())
-                        )
-                    )
-
-            if config.requirements.schemas.enabled_for_config(cfg):
-                try:
-                    view_names = inspector.get_view_names(schema="test_schema")
-                except NotImplementedError:
-                    pass
-                else:
-                    for vname in view_names:
-                        e.execute(
-                            schema._DropView(
-                                schema.Table(
-                                    vname,
-                                    schema.MetaData(),
-                                    schema="test_schema",
-                                )
-                            )
-                        )
-
-            util.drop_all_tables(e, inspector)
-
-            if config.requirements.schemas.enabled_for_config(cfg):
-                util.drop_all_tables(e, inspector, schema=cfg.test_schema)
-
-            # TODO: this has to be part of provision.py in postgresql
-            if against(cfg, "postgresql"):
-                from sqlalchemy.dialects import postgresql
-
-                for enum in inspector.get_enums("*"):
-                    e.execute(
-                        postgresql.DropEnumType(
-                            postgresql.ENUM(
-                                name=enum["name"], schema=enum["schema"]
-                            )
-                        )
-                    )
-
-            # TODO: need to do a get_sequences and drop them also after tables
+            provision.drop_all_schema_objects(cfg, cfg.db)
 
 
 @post

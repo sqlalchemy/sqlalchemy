@@ -27,7 +27,6 @@ from sqlalchemy import union_all
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -35,22 +34,13 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-# ongoing - these are old tests.  those which are of general use
-# to test a dialect are being slowly migrated to
-# sqlalhcemy.testing.suite
-
-users = users2 = addresses = metadata = None
-
-
-class QueryTest(fixtures.TestBase):
+class QueryTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global users, users2, addresses, metadata
-        metadata = MetaData(testing.db)
-        users = Table(
-            "query_users",
+    def define_tables(cls, metadata):
+        Table(
+            "users",
             metadata,
             Column(
                 "user_id", INT, primary_key=True, test_needs_autoincrement=True
@@ -58,8 +48,8 @@ class QueryTest(fixtures.TestBase):
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
-        addresses = Table(
-            "query_addresses",
+        Table(
+            "addresses",
             metadata,
             Column(
                 "address_id",
@@ -67,31 +57,18 @@ class QueryTest(fixtures.TestBase):
                 primary_key=True,
                 test_needs_autoincrement=True,
             ),
-            Column("user_id", Integer, ForeignKey("query_users.user_id")),
+            Column("user_id", Integer, ForeignKey("users.user_id")),
             Column("address", String(30)),
             test_needs_acid=True,
         )
 
-        users2 = Table(
+        Table(
             "u2",
             metadata,
             Column("user_id", INT, primary_key=True),
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
-
-        metadata.create_all()
-
-    @engines.close_first
-    def teardown(self):
-        with testing.db.begin() as conn:
-            conn.execute(addresses.delete())
-            conn.execute(users.delete())
-            conn.execute(users2.delete())
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
     @testing.fails_on(
         "firebird", "kinterbasdb doesn't send full type information"
@@ -104,6 +81,8 @@ class QueryTest(fixtures.TestBase):
         ORDER BY.
 
         """
+
+        users = self.tables.users
 
         connection.execute(
             users.insert(),
@@ -133,6 +112,7 @@ class QueryTest(fixtures.TestBase):
 
     @testing.requires.order_by_label_with_expression
     def test_order_by_label_compound(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             {"user_id": 7, "user_name": "jack"},
@@ -174,6 +154,7 @@ class QueryTest(fixtures.TestBase):
         assert row.y == False  # noqa
 
     def test_select_tuple(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             {"user_id": 1, "user_name": "apples"},
@@ -187,6 +168,7 @@ class QueryTest(fixtures.TestBase):
         )
 
     def test_like_ops(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             {"user_id": 1, "user_name": "apples"},
@@ -238,6 +220,7 @@ class QueryTest(fixtures.TestBase):
             eq_(connection.scalar(expr), result)
 
     def test_ilike(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             {"user_id": 1, "user_name": "one"},
@@ -279,11 +262,13 @@ class QueryTest(fixtures.TestBase):
             )
 
     def test_compiled_execute(self, connection):
+        users = self.tables.users
         connection.execute(users.insert(), user_id=7, user_name="jack")
         s = select(users).where(users.c.user_id == bindparam("id")).compile()
         eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_compiled_insert_execute(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert().compile(), user_id=7, user_name="jack"
         )
@@ -296,6 +281,7 @@ class QueryTest(fixtures.TestBase):
         This should be run for DB-APIs with both positional and named
         paramstyles.
         """
+        users = self.tables.users
 
         connection.execute(users.insert(), user_id=7, user_name="jack")
         connection.execute(users.insert(), user_id=8, user_name="fred")
@@ -368,6 +354,8 @@ class QueryTest(fixtures.TestBase):
 
         Tests simple, compound, aliased and DESC clauses.
         """
+
+        users = self.tables.users
 
         connection.execute(users.insert(), user_id=1, user_name="c")
         connection.execute(users.insert(), user_id=2, user_name="b")
@@ -469,6 +457,8 @@ class QueryTest(fixtures.TestBase):
         Tests simple, compound, aliased and DESC clauses.
         """
 
+        users = self.tables.users
+
         connection.execute(users.insert(), user_id=1)
         connection.execute(users.insert(), user_id=2, user_name="b")
         connection.execute(users.insert(), user_id=3, user_name="a")
@@ -563,6 +553,7 @@ class QueryTest(fixtures.TestBase):
 
     def test_in_filtering(self, connection):
         """test the behavior of the in_() function."""
+        users = self.tables.users
 
         connection.execute(users.insert(), user_id=7, user_name="jack")
         connection.execute(users.insert(), user_id=8, user_name="fred")
@@ -587,6 +578,7 @@ class QueryTest(fixtures.TestBase):
         assert len(r) == 0
 
     def test_expanding_in(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             [
@@ -626,6 +618,7 @@ class QueryTest(fixtures.TestBase):
 
     @testing.requires.no_quoting_special_bind_names
     def test_expanding_in_special_chars(self, connection):
+        users = self.tables.users
         connection.execute(
             users.insert(),
             [
@@ -663,6 +656,8 @@ class QueryTest(fixtures.TestBase):
         )
 
     def test_expanding_in_multiple(self, connection):
+        users = self.tables.users
+
         connection.execute(
             users.insert(),
             [
@@ -687,6 +682,8 @@ class QueryTest(fixtures.TestBase):
         )
 
     def test_expanding_in_repeated(self, connection):
+        users = self.tables.users
+
         connection.execute(
             users.insert(),
             [
@@ -727,6 +724,8 @@ class QueryTest(fixtures.TestBase):
 
     @testing.requires.tuple_in
     def test_expanding_in_composite(self, connection):
+        users = self.tables.users
+
         connection.execute(
             users.insert(),
             [
@@ -768,7 +767,7 @@ class QueryTest(fixtures.TestBase):
                 return value[3:]
 
         users = Table(
-            "query_users",
+            "users",
             MetaData(),
             Column("user_id", Integer, primary_key=True),
             Column("user_name", NameWithProcess()),
@@ -812,6 +811,8 @@ class QueryTest(fixtures.TestBase):
 
         """
 
+        users = self.tables.users
+
         connection.execute(users.insert(), user_id=7, user_name="jack")
         connection.execute(users.insert(), user_id=8, user_name="fred")
         connection.execute(users.insert(), user_id=9, user_name=None)
@@ -826,6 +827,8 @@ class QueryTest(fixtures.TestBase):
 
     def test_literal_in(self, connection):
         """similar to test_bind_in but use a bind with a value."""
+
+        users = self.tables.users
 
         connection.execute(users.insert(), user_id=7, user_name="jack")
         connection.execute(users.insert(), user_id=8, user_name="fred")
@@ -842,6 +845,7 @@ class QueryTest(fixtures.TestBase):
         that a proper boolean value is generated.
 
         """
+        users = self.tables.users
 
         connection.execute(
             users.insert(),
@@ -932,63 +936,60 @@ class RequiredBindTest(fixtures.TablesTest):
         is_(bindparam("foo", callable_=c, required=False).required, False)
 
 
-class LimitTest(fixtures.TestBase):
+class LimitTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global users, addresses, metadata
-        metadata = MetaData(testing.db)
-        users = Table(
-            "query_users",
+    def define_tables(cls, metadata):
+        Table(
+            "users",
             metadata,
             Column("user_id", INT, primary_key=True),
             Column("user_name", VARCHAR(20)),
         )
-        addresses = Table(
-            "query_addresses",
+        Table(
+            "addresses",
             metadata,
             Column("address_id", Integer, primary_key=True),
-            Column("user_id", Integer, ForeignKey("query_users.user_id")),
+            Column("user_id", Integer, ForeignKey("users.user_id")),
             Column("address", String(30)),
         )
-        metadata.create_all()
-
-        with testing.db.begin() as conn:
-            conn.execute(users.insert(), user_id=1, user_name="john")
-            conn.execute(
-                addresses.insert(), address_id=1, user_id=1, address="addr1"
-            )
-            conn.execute(users.insert(), user_id=2, user_name="jack")
-            conn.execute(
-                addresses.insert(), address_id=2, user_id=2, address="addr1"
-            )
-            conn.execute(users.insert(), user_id=3, user_name="ed")
-            conn.execute(
-                addresses.insert(), address_id=3, user_id=3, address="addr2"
-            )
-            conn.execute(users.insert(), user_id=4, user_name="wendy")
-            conn.execute(
-                addresses.insert(), address_id=4, user_id=4, address="addr3"
-            )
-            conn.execute(users.insert(), user_id=5, user_name="laura")
-            conn.execute(
-                addresses.insert(), address_id=5, user_id=5, address="addr4"
-            )
-            conn.execute(users.insert(), user_id=6, user_name="ralph")
-            conn.execute(
-                addresses.insert(), address_id=6, user_id=6, address="addr5"
-            )
-            conn.execute(users.insert(), user_id=7, user_name="fido")
-            conn.execute(
-                addresses.insert(), address_id=7, user_id=7, address="addr5"
-            )
 
     @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def insert_data(cls, connection):
+        users, addresses = cls.tables("users", "addresses")
+        conn = connection
+        conn.execute(users.insert(), user_id=1, user_name="john")
+        conn.execute(
+            addresses.insert(), address_id=1, user_id=1, address="addr1"
+        )
+        conn.execute(users.insert(), user_id=2, user_name="jack")
+        conn.execute(
+            addresses.insert(), address_id=2, user_id=2, address="addr1"
+        )
+        conn.execute(users.insert(), user_id=3, user_name="ed")
+        conn.execute(
+            addresses.insert(), address_id=3, user_id=3, address="addr2"
+        )
+        conn.execute(users.insert(), user_id=4, user_name="wendy")
+        conn.execute(
+            addresses.insert(), address_id=4, user_id=4, address="addr3"
+        )
+        conn.execute(users.insert(), user_id=5, user_name="laura")
+        conn.execute(
+            addresses.insert(), address_id=5, user_id=5, address="addr4"
+        )
+        conn.execute(users.insert(), user_id=6, user_name="ralph")
+        conn.execute(
+            addresses.insert(), address_id=6, user_id=6, address="addr5"
+        )
+        conn.execute(users.insert(), user_id=7, user_name="fido")
+        conn.execute(
+            addresses.insert(), address_id=7, user_id=7, address="addr5"
+        )
 
     def test_select_limit(self, connection):
+        users, addresses = self.tables("users", "addresses")
         r = connection.execute(
             users.select(limit=3, order_by=[users.c.user_id])
         ).fetchall()
@@ -997,6 +998,8 @@ class LimitTest(fixtures.TestBase):
     @testing.requires.offset
     def test_select_limit_offset(self, connection):
         """Test the interaction between limit and offset"""
+
+        users, addresses = self.tables("users", "addresses")
 
         r = connection.execute(
             users.select(limit=3, offset=2, order_by=[users.c.user_id])
@@ -1009,6 +1012,8 @@ class LimitTest(fixtures.TestBase):
 
     def test_select_distinct_limit(self, connection):
         """Test the interaction between limit and distinct"""
+
+        users, addresses = self.tables("users", "addresses")
 
         r = sorted(
             [
@@ -1024,6 +1029,8 @@ class LimitTest(fixtures.TestBase):
     @testing.requires.offset
     def test_select_distinct_offset(self, connection):
         """Test the interaction between distinct and offset"""
+
+        users, addresses = self.tables("users", "addresses")
 
         r = sorted(
             [
@@ -1043,6 +1050,8 @@ class LimitTest(fixtures.TestBase):
     def test_select_distinct_limit_offset(self, connection):
         """Test the interaction between limit and limit/offset"""
 
+        users, addresses = self.tables("users", "addresses")
+
         r = connection.execute(
             select(addresses.c.address)
             .order_by(addresses.c.address)
@@ -1054,18 +1063,18 @@ class LimitTest(fixtures.TestBase):
         self.assert_(r[0] != r[1] and r[1] != r[2], repr(r))
 
 
-class CompoundTest(fixtures.TestBase):
+class CompoundTest(fixtures.TablesTest):
 
     """test compound statements like UNION, INTERSECT, particularly their
     ability to nest on different databases."""
 
     __backend__ = True
 
+    run_inserts = "each"
+
     @classmethod
-    def setup_class(cls):
-        global metadata, t1, t2, t3
-        metadata = MetaData(testing.db)
-        t1 = Table(
+    def define_tables(cls, metadata):
+        Table(
             "t1",
             metadata,
             Column(
@@ -1078,7 +1087,7 @@ class CompoundTest(fixtures.TestBase):
             Column("col3", String(40)),
             Column("col4", String(30)),
         )
-        t2 = Table(
+        Table(
             "t2",
             metadata,
             Column(
@@ -1091,7 +1100,7 @@ class CompoundTest(fixtures.TestBase):
             Column("col3", String(40)),
             Column("col4", String(30)),
         )
-        t3 = Table(
+        Table(
             "t3",
             metadata,
             Column(
@@ -1104,47 +1113,42 @@ class CompoundTest(fixtures.TestBase):
             Column("col3", String(40)),
             Column("col4", String(30)),
         )
-        metadata.create_all()
-
-        with testing.db.begin() as conn:
-            conn.execute(
-                t1.insert(),
-                [
-                    dict(col2="t1col2r1", col3="aaa", col4="aaa"),
-                    dict(col2="t1col2r2", col3="bbb", col4="bbb"),
-                    dict(col2="t1col2r3", col3="ccc", col4="ccc"),
-                ],
-            )
-            conn.execute(
-                t2.insert(),
-                [
-                    dict(col2="t2col2r1", col3="aaa", col4="bbb"),
-                    dict(col2="t2col2r2", col3="bbb", col4="ccc"),
-                    dict(col2="t2col2r3", col3="ccc", col4="aaa"),
-                ],
-            )
-            conn.execute(
-                t3.insert(),
-                [
-                    dict(col2="t3col2r1", col3="aaa", col4="ccc"),
-                    dict(col2="t3col2r2", col3="bbb", col4="aaa"),
-                    dict(col2="t3col2r3", col3="ccc", col4="bbb"),
-                ],
-            )
-
-    @engines.close_first
-    def teardown(self):
-        pass
 
     @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def insert_data(cls, connection):
+        t1, t2, t3 = cls.tables("t1", "t2", "t3")
+        conn = connection
+        conn.execute(
+            t1.insert(),
+            [
+                dict(col2="t1col2r1", col3="aaa", col4="aaa"),
+                dict(col2="t1col2r2", col3="bbb", col4="bbb"),
+                dict(col2="t1col2r3", col3="ccc", col4="ccc"),
+            ],
+        )
+        conn.execute(
+            t2.insert(),
+            [
+                dict(col2="t2col2r1", col3="aaa", col4="bbb"),
+                dict(col2="t2col2r2", col3="bbb", col4="ccc"),
+                dict(col2="t2col2r3", col3="ccc", col4="aaa"),
+            ],
+        )
+        conn.execute(
+            t3.insert(),
+            [
+                dict(col2="t3col2r1", col3="aaa", col4="ccc"),
+                dict(col2="t3col2r2", col3="bbb", col4="aaa"),
+                dict(col2="t3col2r3", col3="ccc", col4="bbb"),
+            ],
+        )
 
     def _fetchall_sorted(self, executed):
         return sorted([tuple(row) for row in executed.fetchall()])
 
     @testing.requires.subqueries
     def test_union(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
         (s1, s2) = (
             select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
@@ -1171,6 +1175,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.fails_on("firebird", "doesn't like ORDER BY with UNIONs")
     def test_union_ordered(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         (s1, s2) = (
             select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
@@ -1192,6 +1198,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.fails_on("firebird", "doesn't like ORDER BY with UNIONs")
     @testing.requires.subqueries
     def test_union_ordered_alias(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         (s1, s2) = (
             select(t1.c.col3.label("col3"), t1.c.col4.label("col4")).where(
                 t1.c.col2.in_(["t1col2r1", "t1col2r2"]),
@@ -1220,6 +1228,8 @@ class CompoundTest(fixtures.TestBase):
     )
     @testing.fails_on("sqlite", "FIXME: unknown")
     def test_union_all(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         e = union_all(
             select(t1.c.col3),
             union(select(t1.c.col3), select(t1.c.col3)),
@@ -1241,6 +1251,8 @@ class CompoundTest(fixtures.TestBase):
 
         """
 
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         u = union(select(t1.c.col3), select(t1.c.col3)).alias()
 
         e = union_all(select(t1.c.col3), select(u.c.col3))
@@ -1256,6 +1268,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.requires.intersect
     def test_intersect(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         i = intersect(
             select(t2.c.col3, t2.c.col4),
             select(t2.c.col3, t2.c.col4).where(t2.c.col4 == t3.c.col3),
@@ -1274,6 +1288,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.except_
     @testing.fails_on("sqlite", "Can't handle this style of nesting")
     def test_except_style1(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         e = except_(
             union(
                 select(t1.c.col3, t1.c.col4),
@@ -1299,6 +1315,8 @@ class CompoundTest(fixtures.TestBase):
     def test_except_style2(self, connection):
         # same as style1, but add alias().select() to the except_().
         # sqlite can handle it now.
+
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         e = except_(
             union(
@@ -1333,6 +1351,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.except_
     def test_except_style3(self, connection):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         e = except_(
             select(t1.c.col3),  # aaa, bbb, ccc
             except_(
@@ -1346,6 +1366,8 @@ class CompoundTest(fixtures.TestBase):
     @testing.requires.except_
     def test_except_style4(self, connection):
         # aaa, bbb, ccc - (aaa, bbb, ccc - (ccc)) = ccc
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         e = except_(
             select(t1.c.col3),  # aaa, bbb, ccc
             except_(
@@ -1365,6 +1387,8 @@ class CompoundTest(fixtures.TestBase):
         "sqlite can't handle leading parenthesis",
     )
     def test_intersect_unions(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         u = intersect(
             union(select(t1.c.col3, t1.c.col4), select(t3.c.col3, t3.c.col4)),
             union(select(t2.c.col3, t2.c.col4), select(t3.c.col3, t3.c.col4))
@@ -1378,6 +1402,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.requires.intersect
     def test_intersect_unions_2(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         u = intersect(
             union(select(t1.c.col3, t1.c.col4), select(t3.c.col3, t3.c.col4))
             .alias()
@@ -1393,6 +1419,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.requires.intersect
     def test_intersect_unions_3(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         u = intersect(
             select(t2.c.col3, t2.c.col4),
             union(
@@ -1410,6 +1438,8 @@ class CompoundTest(fixtures.TestBase):
 
     @testing.requires.intersect
     def test_composite_alias(self, connection):
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         ua = intersect(
             select(t2.c.col3, t2.c.col4),
             union(
@@ -1426,10 +1456,7 @@ class CompoundTest(fixtures.TestBase):
         eq_(found, wanted)
 
 
-t1 = t2 = t3 = None
-
-
-class JoinTest(fixtures.TestBase):
+class JoinTest(fixtures.TablesTest):
 
     """Tests join execution.
 
@@ -1443,56 +1470,48 @@ class JoinTest(fixtures.TestBase):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global metadata
-        global t1, t2, t3
-
-        metadata = MetaData(testing.db)
-        t1 = Table(
+    def define_tables(cls, metadata):
+        Table(
             "t1",
             metadata,
             Column("t1_id", Integer, primary_key=True),
             Column("name", String(32)),
         )
-        t2 = Table(
+        Table(
             "t2",
             metadata,
             Column("t2_id", Integer, primary_key=True),
             Column("t1_id", Integer, ForeignKey("t1.t1_id")),
             Column("name", String(32)),
         )
-        t3 = Table(
+        Table(
             "t3",
             metadata,
             Column("t3_id", Integer, primary_key=True),
             Column("t2_id", Integer, ForeignKey("t2.t2_id")),
             Column("name", String(32)),
         )
-        metadata.drop_all()
-        metadata.create_all()
-
-        with testing.db.begin() as conn:
-            # t1.10 -> t2.20 -> t3.30
-            # t1.11 -> t2.21
-            # t1.12
-            conn.execute(
-                t1.insert(),
-                {"t1_id": 10, "name": "t1 #10"},
-                {"t1_id": 11, "name": "t1 #11"},
-                {"t1_id": 12, "name": "t1 #12"},
-            )
-            conn.execute(
-                t2.insert(),
-                {"t2_id": 20, "t1_id": 10, "name": "t2 #20"},
-                {"t2_id": 21, "t1_id": 11, "name": "t2 #21"},
-            )
-            conn.execute(
-                t3.insert(), {"t3_id": 30, "t2_id": 20, "name": "t3 #30"}
-            )
 
     @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def insert_data(cls, connection):
+        conn = connection
+        # t1.10 -> t2.20 -> t3.30
+        # t1.11 -> t2.21
+        # t1.12
+        t1, t2, t3 = cls.tables("t1", "t2", "t3")
+
+        conn.execute(
+            t1.insert(),
+            {"t1_id": 10, "name": "t1 #10"},
+            {"t1_id": 11, "name": "t1 #11"},
+            {"t1_id": 12, "name": "t1 #12"},
+        )
+        conn.execute(
+            t2.insert(),
+            {"t2_id": 20, "t1_id": 10, "name": "t2 #20"},
+            {"t2_id": 21, "t1_id": 11, "name": "t2 #21"},
+        )
+        conn.execute(t3.insert(), {"t3_id": 30, "t2_id": 20, "name": "t3 #30"})
 
     def assertRows(self, statement, expected):
         """Execute a statement and assert that rows returned equal expected."""
@@ -1504,6 +1523,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_join_x1(self):
         """Joins t1->t2."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t1.c.t1_id == t2.c.t1_id, t2.c.t1_id == t1.c.t1_id):
             expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
@@ -1513,6 +1533,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_join_x2(self):
         """Joins t1->t2->t3."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t1.c.t1_id == t2.c.t1_id, t2.c.t1_id == t1.c.t1_id):
             expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
@@ -1522,6 +1543,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_x1(self):
         """Outer joins t1->t2."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = select(t1.c.t1_id, t2.c.t2_id).select_from(
@@ -1531,6 +1553,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_x2(self):
         """Outer joins t1->t2,t3."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id).select_from(
@@ -1544,6 +1567,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_where_x2_t1(self):
         """Outer joins t1->t2,t3, where on t1."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1574,6 +1598,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_where_x2_t2(self):
         """Outer joins t1->t2,t3, where on t2."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1604,6 +1629,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_where_x2_t3(self):
         """Outer joins t1->t2,t3, where on t3."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1635,6 +1661,8 @@ class JoinTest(fixtures.TestBase):
     def test_outerjoin_where_x2_t1t3(self):
         """Outer joins t1->t2,t3, where on t1 and t3."""
 
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
+
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
                 select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id)
@@ -1663,6 +1691,8 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_where_x2_t1t2(self):
         """Outer joins t1->t2,t3, where on t1 and t2."""
+
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1693,6 +1723,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_outerjoin_where_x2_t1t2t3(self):
         """Outer joins t1->t2,t3, where on t1, t2 and t3."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1729,6 +1760,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_mixed(self):
         """Joins t1->t2, outer t2->t3."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = select(t1.c.t1_id, t2.c.t2_id, t3.c.t3_id).select_from(
@@ -1739,6 +1771,7 @@ class JoinTest(fixtures.TestBase):
 
     def test_mixed_where(self):
         """Joins t1->t2, outer t2->t3, plus a where on each table in turn."""
+        t1, t2, t3 = self.tables("t1", "t2", "t3")
 
         for criteria in (t2.c.t2_id == t3.c.t2_id, t3.c.t2_id == t2.c.t2_id):
             expr = (
@@ -1800,17 +1833,12 @@ class JoinTest(fixtures.TestBase):
             self.assertRows(expr, [(10, 20, 30)])
 
 
-metadata = flds = None
-
-
-class OperatorTest(fixtures.TestBase):
+class OperatorTest(fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
-        global metadata, flds
-        metadata = MetaData(testing.db)
-        flds = Table(
+    def define_tables(cls, metadata):
+        Table(
             "flds",
             metadata,
             Column(
@@ -1822,20 +1850,19 @@ class OperatorTest(fixtures.TestBase):
             Column("intcol", Integer),
             Column("strcol", String(50)),
         )
-        metadata.create_all()
-
-        with testing.db.begin() as conn:
-            conn.execute(
-                flds.insert(),
-                [dict(intcol=5, strcol="foo"), dict(intcol=13, strcol="bar")],
-            )
 
     @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
+    def insert_data(cls, connection):
+        flds = cls.tables.flds
+        connection.execute(
+            flds.insert(),
+            [dict(intcol=5, strcol="foo"), dict(intcol=13, strcol="bar")],
+        )
 
     # TODO: seems like more tests warranted for this setup.
     def test_modulo(self, connection):
+        flds = self.tables.flds
+
         eq_(
             connection.execute(
                 select(flds.c.intcol % 3).order_by(flds.c.idcol)
@@ -1845,6 +1872,8 @@ class OperatorTest(fixtures.TestBase):
 
     @testing.requires.window_functions
     def test_over(self, connection):
+        flds = self.tables.flds
+
         eq_(
             connection.execute(
                 select(

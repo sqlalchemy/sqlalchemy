@@ -63,9 +63,6 @@ from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
 
 
-tztable = notztable = metadata = table = None
-
-
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = "postgresql"
     __dialect__ = postgresql.dialect()
@@ -121,9 +118,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             ).scalar()
             eq_(round_decimal(ret, 9), result)
 
-    @testing.provide_metadata
-    def test_arrays_pg(self, connection):
-        metadata = self.metadata
+    def test_arrays_pg(self, connection, metadata):
         t1 = Table(
             "t",
             metadata,
@@ -132,16 +127,14 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("z", postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
             Column("q", postgresql.ARRAY(Numeric)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(
             t1.insert(), x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")]
         )
         row = connection.execute(t1.select()).first()
         eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
 
-    @testing.provide_metadata
-    def test_arrays_base(self, connection):
-        metadata = self.metadata
+    def test_arrays_base(self, connection, metadata):
         t1 = Table(
             "t",
             metadata,
@@ -150,7 +143,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("z", sqltypes.ARRAY(postgresql.DOUBLE_PRECISION)),
             Column("q", sqltypes.ARRAY(Numeric)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(
             t1.insert(), x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")]
         )
@@ -236,17 +229,14 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ]
             t1.drop(conn, checkfirst=True)
 
-    def test_name_required(self):
-        metadata = MetaData(testing.db)
+    def test_name_required(self, metadata, connection):
         etype = Enum("four", "five", "six", metadata=metadata)
-        assert_raises(exc.CompileError, etype.create)
+        assert_raises(exc.CompileError, etype.create, connection)
         assert_raises(
-            exc.CompileError, etype.compile, dialect=postgresql.dialect()
+            exc.CompileError, etype.compile, dialect=connection.dialect
         )
 
-    @testing.provide_metadata
-    def test_unicode_labels(self, connection):
-        metadata = self.metadata
+    def test_unicode_labels(self, connection, metadata):
         t1 = Table(
             "table",
             metadata,
@@ -261,7 +251,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 ),
             ),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(t1.insert(), value=util.u("drôle"))
         connection.execute(t1.insert(), value=util.u("réveillé"))
         connection.execute(t1.insert(), value=util.u("S’il"))
@@ -274,7 +264,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ],
         )
         m2 = MetaData()
-        t2 = Table("table", m2, autoload_with=testing.db)
+        t2 = Table("table", m2, autoload_with=connection)
         eq_(
             t2.c.value.type.enums,
             [util.u("réveillé"), util.u("drôle"), util.u("S’il")],
@@ -408,8 +398,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             RegexSQL("DROP TYPE myenum", dialect="postgresql"),
         )
 
-    @testing.provide_metadata
-    def test_generate_multiple(self):
+    def test_generate_multiple(self, metadata, connection):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.
 
@@ -417,21 +406,18 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         now handles this.
 
         """
-        metadata = self.metadata
-
         e1 = Enum("one", "two", "three", name="myenum")
         Table("e1", metadata, Column("c1", e1))
 
         Table("e2", metadata, Column("c1", e1))
 
-        metadata.create_all(checkfirst=False)
-        metadata.drop_all(checkfirst=False)
+        metadata.create_all(connection, checkfirst=False)
+        metadata.drop_all(connection, checkfirst=False)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
 
-    @testing.provide_metadata
-    def test_generate_alone_on_metadata(self):
+    def test_generate_alone_on_metadata(self, connection, metadata):
         """Test that the same enum twice only generates once
         for the create_all() call, without using checkfirst.
 
@@ -439,20 +425,17 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         now handles this.
 
         """
-        metadata = self.metadata
 
-        Enum("one", "two", "three", name="myenum", metadata=self.metadata)
+        Enum("one", "two", "three", name="myenum", metadata=metadata)
 
-        metadata.create_all(checkfirst=False)
-        assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
-        metadata.drop_all(checkfirst=False)
+        metadata.create_all(connection, checkfirst=False)
+        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
+        metadata.drop_all(connection, checkfirst=False)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
 
-    @testing.provide_metadata
-    def test_generate_multiple_on_metadata(self):
-        metadata = self.metadata
+    def test_generate_multiple_on_metadata(self, connection, metadata):
 
         e1 = Enum("one", "two", "three", name="myenum", metadata=metadata)
 
@@ -460,20 +443,20 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         t2 = Table("e2", metadata, Column("c1", e1))
 
-        metadata.create_all(checkfirst=False)
-        assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
-        metadata.drop_all(checkfirst=False)
+        metadata.create_all(connection, checkfirst=False)
+        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
+        metadata.drop_all(connection, checkfirst=False)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
 
-        e1.create()  # creates ENUM
-        t1.create()  # does not create ENUM
-        t2.create()  # does not create ENUM
+        e1.create(connection)  # creates ENUM
+        t1.create(connection)  # does not create ENUM
+        t2.create(connection)  # does not create ENUM
 
-    @testing.provide_metadata
-    def test_generate_multiple_schemaname_on_metadata(self):
-        metadata = self.metadata
+    def test_generate_multiple_schemaname_on_metadata(
+        self, metadata, connection
+    ):
 
         Enum("one", "two", "three", name="myenum", metadata=metadata)
         Enum(
@@ -485,38 +468,36 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             schema="test_schema",
         )
 
-        metadata.create_all(checkfirst=False)
-        assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
+        metadata.create_all(connection, checkfirst=False)
+        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
         assert "myenum" in [
             e["name"]
-            for e in inspect(testing.db).get_enums(schema="test_schema")
+            for e in inspect(connection).get_enums(schema="test_schema")
         ]
-        metadata.drop_all(checkfirst=False)
+        metadata.drop_all(connection, checkfirst=False)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
         assert "myenum" not in [
             e["name"]
-            for e in inspect(testing.db).get_enums(schema="test_schema")
+            for e in inspect(connection).get_enums(schema="test_schema")
         ]
 
-    @testing.provide_metadata
-    def test_drops_on_table(self):
-        metadata = self.metadata
+    def test_drops_on_table(self, connection, metadata):
 
         e1 = Enum("one", "two", "three", name="myenum")
         table = Table("e1", metadata, Column("c1", e1))
 
-        table.create()
-        table.drop()
+        table.create(connection)
+        table.drop(connection)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
-        table.create()
-        assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
-        table.drop()
+        table.create(connection)
+        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
+        table.drop(connection)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
 
     def test_create_drop_schema_translate_map(self, connection):
@@ -554,9 +535,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
         assert_raises(exc.ProgrammingError, e1.drop, conn, checkfirst=False)
 
-    @testing.provide_metadata
-    def test_remain_on_table_metadata_wide(self):
-        metadata = self.metadata
+    def test_remain_on_table_metadata_wide(self, metadata, future_connection):
+        connection = future_connection
 
         e1 = Enum("one", "two", "three", name="myenum", metadata=metadata)
         table = Table("e1", metadata, Column("c1", e1))
@@ -566,15 +546,18 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             sa.exc.ProgrammingError,
             '.*type "myenum" does not exist',
             table.create,
+            connection,
         )
-        table.create(checkfirst=True)
-        table.drop()
-        table.create(checkfirst=True)
-        table.drop()
-        assert "myenum" in [e["name"] for e in inspect(testing.db).get_enums()]
-        metadata.drop_all()
+        connection.rollback()
+
+        table.create(connection, checkfirst=True)
+        table.drop(connection)
+        table.create(connection, checkfirst=True)
+        table.drop(connection)
+        assert "myenum" in [e["name"] for e in inspect(connection).get_enums()]
+        metadata.drop_all(connection)
         assert "myenum" not in [
-            e["name"] for e in inspect(testing.db).get_enums()
+            e["name"] for e in inspect(connection).get_enums()
         ]
 
     def test_non_native_dialect(self):
@@ -616,26 +599,25 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         finally:
             metadata.drop_all(engine)
 
-    def test_standalone_enum(self):
-        metadata = MetaData(testing.db)
+    def test_standalone_enum(self, connection, metadata):
         etype = Enum(
             "four", "five", "six", name="fourfivesixtype", metadata=metadata
         )
-        etype.create()
+        etype.create(connection)
         try:
-            assert testing.db.dialect.has_type(testing.db, "fourfivesixtype")
+            assert testing.db.dialect.has_type(connection, "fourfivesixtype")
         finally:
-            etype.drop()
+            etype.drop(connection)
             assert not testing.db.dialect.has_type(
-                testing.db, "fourfivesixtype"
+                connection, "fourfivesixtype"
             )
-        metadata.create_all()
+        metadata.create_all(connection)
         try:
-            assert testing.db.dialect.has_type(testing.db, "fourfivesixtype")
+            assert testing.db.dialect.has_type(connection, "fourfivesixtype")
         finally:
-            metadata.drop_all()
+            metadata.drop_all(connection)
             assert not testing.db.dialect.has_type(
-                testing.db, "fourfivesixtype"
+                connection, "fourfivesixtype"
             )
 
     def test_no_support(self):
@@ -655,9 +637,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         e.connect()
         assert not dialect.supports_native_enum
 
-    @testing.provide_metadata
-    def test_reflection(self):
-        metadata = self.metadata
+    def test_reflection(self, metadata, connection):
         etype = Enum(
             "four", "five", "six", name="fourfivesixtype", metadata=metadata
         )
@@ -670,17 +650,15 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("value2", etype),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         m2 = MetaData()
-        t2 = Table("table", m2, autoload_with=testing.db)
+        t2 = Table("table", m2, autoload_with=connection)
         eq_(t2.c.value.type.enums, ["one", "two", "three"])
         eq_(t2.c.value.type.name, "onetwothreetype")
         eq_(t2.c.value2.type.enums, ["four", "five", "six"])
         eq_(t2.c.value2.type.name, "fourfivesixtype")
 
-    @testing.provide_metadata
-    def test_schema_reflection(self):
-        metadata = self.metadata
+    def test_schema_reflection(self, metadata, connection):
         etype = Enum(
             "four",
             "five",
@@ -705,9 +683,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             Column("value2", etype),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         m2 = MetaData()
-        t2 = Table("table", m2, autoload_with=testing.db)
+        t2 = Table("table", m2, autoload_with=connection)
         eq_(t2.c.value.type.enums, ["one", "two", "three"])
         eq_(t2.c.value.type.name, "onetwothreetype")
         eq_(t2.c.value2.type.enums, ["four", "five", "six"])
@@ -810,21 +788,19 @@ class OIDTest(fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_reflection(self):
-        metadata = self.metadata
+    def test_reflection(self, connection, metadata):
         Table(
             "table",
             metadata,
             Column("x", Integer),
             Column("y", postgresql.OID),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         m2 = MetaData()
         t2 = Table(
             "table",
             m2,
-            autoload_with=testing.db,
+            autoload_with=connection,
         )
         assert isinstance(t2.c.y.type, postgresql.OID)
 
@@ -858,19 +834,18 @@ class RegClassTest(fixtures.TestBase):
             "pg_class",
         )
 
-    def test_cast_whereclause(self):
+    def test_cast_whereclause(self, connection):
         pga = Table(
             "pg_attribute",
-            MetaData(testing.db),
+            MetaData(),
             Column("attrelid", postgresql.OID),
             Column("attname", String(64)),
         )
-        with testing.db.connect() as conn:
-            oid = conn.scalar(
-                select(pga.c.attrelid).where(
-                    pga.c.attrelid == cast("pg_class", postgresql.REGCLASS)
-                )
+        oid = connection.scalar(
+            select(pga.c.attrelid).where(
+                pga.c.attrelid == cast("pg_class", postgresql.REGCLASS)
             )
+        )
         assert isinstance(oid, int)
 
 
@@ -904,9 +879,7 @@ class NumericInterpretationTest(fixtures.TestBase):
                     val = proc(val)
                 assert val in (23.7, decimal.Decimal("23.7"))
 
-    @testing.provide_metadata
-    def test_numeric_default(self, connection):
-        metadata = self.metadata
+    def test_numeric_default(self, connection, metadata):
         # pg8000 appears to fail when the value is 0,
         # returns an int instead of decimal.
         t = Table(
@@ -918,7 +891,7 @@ class NumericInterpretationTest(fixtures.TestBase):
             Column("fd", Float(asdecimal=True), default=1),
             Column("ff", Float(asdecimal=False), default=1),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(t.insert())
 
         row = connection.execute(t.select()).first()
@@ -934,7 +907,7 @@ class PythonTypeTest(fixtures.TestBase):
         is_(postgresql.INTERVAL().python_type, datetime.timedelta)
 
 
-class TimezoneTest(fixtures.TestBase):
+class TimezoneTest(fixtures.TablesTest):
     __backend__ = True
 
     """Test timezone-aware datetimes.
@@ -948,14 +921,11 @@ class TimezoneTest(fixtures.TestBase):
     __only_on__ = "postgresql"
 
     @classmethod
-    def setup_class(cls):
-        global tztable, notztable, metadata
-        metadata = MetaData(testing.db)
-
+    def define_tables(cls, metadata):
         # current_timestamp() in postgresql is assumed to return
         # TIMESTAMP WITH TIMEZONE
 
-        tztable = Table(
+        Table(
             "tztable",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -966,7 +936,7 @@ class TimezoneTest(fixtures.TestBase):
             ),
             Column("name", String(20)),
         )
-        notztable = Table(
+        Table(
             "notztable",
             metadata,
             Column("id", Integer, primary_key=True),
@@ -979,19 +949,12 @@ class TimezoneTest(fixtures.TestBase):
             ),
             Column("name", String(20)),
         )
-        metadata.create_all()
-
-    @classmethod
-    def teardown_class(cls):
-        metadata.drop_all()
 
     def test_with_timezone(self, connection):
-
+        tztable, notztable = self.tables("tztable", "notztable")
         # get a date with a tzinfo
 
-        somedate = testing.db.connect().scalar(
-            func.current_timestamp().select()
-        )
+        somedate = connection.scalar(func.current_timestamp().select())
         assert somedate.tzinfo
         connection.execute(tztable.insert(), id=1, name="row1", date=somedate)
         row = connection.execute(
@@ -1012,6 +975,7 @@ class TimezoneTest(fixtures.TestBase):
     def test_without_timezone(self, connection):
 
         # get a date without a tzinfo
+        tztable, notztable = self.tables("tztable", "notztable")
 
         somedate = datetime.datetime(2005, 10, 20, 11, 52, 0)
         assert not somedate.tzinfo
@@ -1056,14 +1020,10 @@ class TimePrecisionCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class TimePrecisionTest(fixtures.TestBase):
 
-    __dialect__ = postgresql.dialect()
-    __prefer__ = "postgresql"
+    __only_on__ = "postgresql"
     __backend__ = True
 
-    @testing.only_on("postgresql", "DB specific feature")
-    @testing.provide_metadata
-    def test_reflection(self):
-        metadata = self.metadata
+    def test_reflection(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
@@ -1074,9 +1034,9 @@ class TimePrecisionTest(fixtures.TestBase):
             Column("c5", postgresql.TIMESTAMP(precision=5)),
             Column("c6", postgresql.TIMESTAMP(timezone=True, precision=5)),
         )
-        t1.create()
+        t1.create(connection)
         m2 = MetaData()
-        t2 = Table("t1", m2, autoload_with=testing.db)
+        t2 = Table("t1", m2, autoload_with=connection)
         eq_(t2.c.c1.type.precision, None)
         eq_(t2.c.c2.type.precision, 5)
         eq_(t2.c.c3.type.precision, 5)
@@ -1391,22 +1351,18 @@ class ArrayRoundTripTest(object):
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
         assert isinstance(tbl.c.strarr.type.item_type, String)
 
-    @testing.provide_metadata
-    def test_array_str_collation(self):
-        m = self.metadata
-
+    def test_array_str_collation(self, metadata, connection):
         t = Table(
             "t",
-            m,
+            metadata,
             Column("data", sqltypes.ARRAY(String(50, collation="en_US"))),
         )
 
-        t.create()
+        t.create(connection)
 
-    @testing.provide_metadata
-    def test_array_agg(self, connection):
-        values_table = Table("values", self.metadata, Column("value", Integer))
-        self.metadata.create_all(testing.db)
+    def test_array_agg(self, metadata, connection):
+        values_table = Table("values", metadata, Column("value", Integer))
+        metadata.create_all(connection)
         connection.execute(
             values_table.insert(), [{"value": i} for i in range(1, 10)]
         )
@@ -1658,9 +1614,7 @@ class ArrayRoundTripTest(object):
             [4, 5, 6],
         )
 
-    @testing.provide_metadata
-    def test_tuple_flag(self, connection):
-        metadata = self.metadata
+    def test_tuple_flag(self, connection, metadata):
 
         t1 = Table(
             "t1",
@@ -1671,7 +1625,7 @@ class ArrayRoundTripTest(object):
                 "data2", self.ARRAY(Numeric(asdecimal=False), as_tuple=True)
             ),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(
             t1.insert(), id=1, data=["1", "2", "3"], data2=[5.4, 5.6]
         )
@@ -2168,10 +2122,9 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
         assert t.c.precision_interval.type.precision == 3
         assert t.c.bitstring.type.length == 4
 
-    @testing.provide_metadata
-    def test_tsvector_round_trip(self, connection):
-        t = Table("t1", self.metadata, Column("data", postgresql.TSVECTOR))
-        t.create()
+    def test_tsvector_round_trip(self, connection, metadata):
+        t = Table("t1", metadata, Column("data", postgresql.TSVECTOR))
+        t.create(connection)
         connection.execute(t.insert(), data="a fat cat sat")
         eq_(connection.scalar(select(t.c.data)), "'a' 'cat' 'fat' 'sat'")
 
@@ -2182,9 +2135,7 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             "'a' 'cat' 'fat' 'mat' 'sat'",
         )
 
-    @testing.provide_metadata
-    def test_bit_reflection(self):
-        metadata = self.metadata
+    def test_bit_reflection(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
@@ -2193,9 +2144,9 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
             Column("bitvarying", postgresql.BIT(varying=True)),
             Column("bitvarying5", postgresql.BIT(5, varying=True)),
         )
-        t1.create()
+        t1.create(connection)
         m2 = MetaData()
-        t2 = Table("t1", m2, autoload_with=testing.db)
+        t2 = Table("t1", m2, autoload_with=connection)
         eq_(t2.c.bit1.type.length, 1)
         eq_(t2.c.bit1.type.varying, False)
         eq_(t2.c.bit5.type.length, 5)

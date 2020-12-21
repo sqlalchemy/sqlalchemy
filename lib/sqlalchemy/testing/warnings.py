@@ -64,7 +64,6 @@ def setup_filters():
         #
         # bound metadaa
         #
-        r"The MetaData.bind argument is deprecated",
         r"The ``bind`` argument for schema methods that invoke SQL ",
         r"The Function.bind argument",
         r"The select.bind argument",

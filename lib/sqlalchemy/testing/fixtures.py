@@ -13,6 +13,7 @@ from . import assertions
 from . import config
 from . import schema
 from .engines import drop_all_tables
+from .engines import testing_engine
 from .entities import BasicEntity
 from .entities import ComparableEntity
 from .entities import ComparableMixin  # noqa
@@ -23,7 +24,6 @@ from ..orm import declarative_base
 from ..orm import registry
 from ..orm.decl_api import DeclarativeMeta
 from ..schema import sort_tables_and_constraints
-
 
 # whether or not we use unittest changes things dramatically,
 # as far as how pytest collection works.
@@ -73,21 +73,31 @@ class TestBase(object):
                 trans.rollback()
             conn.close()
 
-    # propose a replacement for @testing.provide_metadata.
-    # the problem with this is that TablesTest below has a ".metadata"
-    # attribute already which is accessed directly as part of the
-    # @testing.provide_metadata pattern.  Might need to call this _metadata
-    # for it to be useful.
-    # @config.fixture()
-    # def metadata(self):
-    #    """Provide bound MetaData for a single test, dropping afterwards."""
-    #
-    #    from . import engines
-    #    metadata = schema.MetaData(config.db)
-    #    try:
-    #        yield metadata
-    #    finally:
-    #       engines.drop_all_tables(metadata, config.db)
+    @config.fixture()
+    def future_connection(self):
+
+        eng = testing_engine(future=True)
+        conn = eng.connect()
+        trans = conn.begin()
+        try:
+            yield conn
+        finally:
+            if trans.is_active:
+                trans.rollback()
+            conn.close()
+
+    @config.fixture()
+    def metadata(self):
+        """Provide bound MetaData for a single test, dropping afterwards."""
+
+        from . import engines
+        from ..sql import schema
+
+        metadata = schema.MetaData()
+        try:
+            yield metadata
+        finally:
+            engines.drop_all_tables(metadata, config.db)
 
 
 class FutureEngineMixin(object):
@@ -136,10 +146,14 @@ class TablesTest(TestBase):
     run_dispose_bind = None
 
     bind = None
-    metadata = None
+    _tables_metadata = None
     tables = None
     other = None
     sequences = None
+
+    @property
+    def tables_test_metadata(self):
+        return self._tables_metadata
 
     @classmethod
     def setup_class(cls):
@@ -161,8 +175,8 @@ class TablesTest(TestBase):
         cls.sequences = adict()
 
         cls.bind = cls.setup_bind()
-        cls.metadata = sa.MetaData()
-        cls.metadata.bind = cls.bind
+        cls._tables_metadata = sa.MetaData()
+        cls._tables_metadata.bind = cls.bind
 
     @classmethod
     def _setup_once_inserts(cls):
@@ -174,21 +188,21 @@ class TablesTest(TestBase):
     @classmethod
     def _setup_once_tables(cls):
         if cls.run_define_tables == "once":
-            cls.define_tables(cls.metadata)
+            cls.define_tables(cls._tables_metadata)
             if cls.run_create_tables == "once":
-                cls.metadata.create_all(cls.bind)
-            cls.tables.update(cls.metadata.tables)
-            cls.sequences.update(cls.metadata._sequences)
+                cls._tables_metadata.create_all(cls.bind)
+            cls.tables.update(cls._tables_metadata.tables)
+            cls.sequences.update(cls._tables_metadata._sequences)
 
     def _setup_each_tables(self):
         if self.run_define_tables == "each":
-            self.define_tables(self.metadata)
+            self.define_tables(self._tables_metadata)
             if self.run_create_tables == "each":
-                self.metadata.create_all(self.bind)
-            self.tables.update(self.metadata.tables)
-            self.sequences.update(self.metadata._sequences)
+                self._tables_metadata.create_all(self.bind)
+            self.tables.update(self._tables_metadata.tables)
+            self.sequences.update(self._tables_metadata._sequences)
         elif self.run_create_tables == "each":
-            self.metadata.create_all(self.bind)
+            self._tables_metadata.create_all(self.bind)
 
     def _setup_each_inserts(self):
         if self.run_inserts == "each":
@@ -200,10 +214,10 @@ class TablesTest(TestBase):
         if self.run_define_tables == "each":
             self.tables.clear()
             if self.run_create_tables == "each":
-                drop_all_tables(self.metadata, self.bind)
-            self.metadata.clear()
+                drop_all_tables(self._tables_metadata, self.bind)
+            self._tables_metadata.clear()
         elif self.run_create_tables == "each":
-            drop_all_tables(self.metadata, self.bind)
+            drop_all_tables(self._tables_metadata, self.bind)
 
         # no need to run deletes if tables are recreated on setup
         if (
@@ -216,7 +230,7 @@ class TablesTest(TestBase):
                     [
                         t
                         for (t, fks) in sort_tables_and_constraints(
-                            self.metadata.tables.values()
+                            self._tables_metadata.tables.values()
                         )
                         if t is not None
                     ]
@@ -239,12 +253,12 @@ class TablesTest(TestBase):
     @classmethod
     def _teardown_once_metadata_bind(cls):
         if cls.run_create_tables:
-            drop_all_tables(cls.metadata, cls.bind)
+            drop_all_tables(cls._tables_metadata, cls.bind)
 
         if cls.run_dispose_bind == "once":
             cls.dispose_bind(cls.bind)
 
-        cls.metadata.bind = None
+        cls._tables_metadata.bind = None
 
         if cls.run_setup_bind is not None:
             cls.bind = None
@@ -294,7 +308,7 @@ class TablesTest(TestBase):
             headers[table] = data[0]
             rows[table] = data[1:]
         for table, fks in sort_tables_and_constraints(
-            cls.metadata.tables.values()
+            cls._tables_metadata.tables.values()
         ):
             if table is None:
                 continue
@@ -480,7 +494,7 @@ class DeclarativeMappedTest(MappedTest):
             __table_cls__ = schema.Table
 
         _DeclBase = declarative_base(
-            metadata=cls.metadata,
+            metadata=cls._tables_metadata,
             metaclass=FindFixtureDeclarative,
             cls=DeclarativeBasic,
         )
@@ -490,8 +504,8 @@ class DeclarativeMappedTest(MappedTest):
         # classes
         super(DeclarativeMappedTest, cls)._with_register_classes(fn)
 
-        if cls.metadata.tables and cls.run_create_tables:
-            cls.metadata.create_all(config.db)
+        if cls._tables_metadata.tables and cls.run_create_tables:
+            cls._tables_metadata.create_all(config.db)
 
 
 class ComputedReflectionFixtureTest(TablesTest):

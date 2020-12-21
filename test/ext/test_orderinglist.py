@@ -4,11 +4,11 @@ from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import create_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
@@ -64,7 +64,7 @@ class OrderingListTest(fixtures.TestBase):
         global metadata, slides_table, bullets_table, Slide, Bullet
         slides_table, bullets_table = None, None
         Slide, Bullet = None, None
-        metadata = MetaData(testing.db)
+        metadata = MetaData()
 
     def _setup(self, test_collection_class):
         """Build a relationship situation using the given
@@ -120,10 +120,10 @@ class OrderingListTest(fixtures.TestBase):
         )
         mapper(Bullet, bullets_table)
 
-        metadata.create_all()
+        metadata.create_all(testing.db)
 
     def teardown(self):
-        metadata.drop_all()
+        metadata.drop_all(testing.db)
 
     def test_append_no_reorder(self):
         self._setup(

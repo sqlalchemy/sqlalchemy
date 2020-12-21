@@ -392,7 +392,7 @@ class SessionStateTest(_fixtures.FixtureTest):
     def test_autoflush(self):
         User, users = self.classes.User, self.tables.users
 
-        bind = self.metadata.bind
+        bind = testing.db
         mapper(User, users)
         conn1 = bind.connect()
         conn2 = bind.connect()

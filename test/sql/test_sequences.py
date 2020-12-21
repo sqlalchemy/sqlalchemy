@@ -520,7 +520,7 @@ class SequenceAsServerDefaultTest(
 
     def test_drop_ordering(self):
         with self.sql_execution_asserter(testing.db) as asserter:
-            self.metadata.drop_all(checkfirst=False)
+            self.tables_test_metadata.drop_all(checkfirst=False)
 
         asserter.assert_(
             AllOf(

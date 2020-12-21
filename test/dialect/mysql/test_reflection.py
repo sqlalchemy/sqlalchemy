@@ -44,15 +44,14 @@ class TypeReflectionTest(fixtures.TestBase):
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
-    @testing.provide_metadata
-    def _run_test(self, specs, attributes):
+    def _run_test(self, metadata, connection, specs, attributes):
         columns = [Column("c%i" % (i + 1), t[0]) for i, t in enumerate(specs)]
 
         # Early 5.0 releases seem to report more "general" for columns
         # in a view, e.g. char -> varchar, tinyblob -> mediumblob
         use_views = testing.db.dialect.server_version_info > (5, 0, 10)
 
-        m = self.metadata
+        m = metadata
         Table("mysql_types", m, *columns)
 
         if use_views:
@@ -67,12 +66,12 @@ class TypeReflectionTest(fixtures.TestBase):
             event.listen(
                 m, "before_drop", DDL("DROP VIEW IF EXISTS mysql_types_v")
             )
-        m.create_all()
+        m.create_all(connection)
 
         m2 = MetaData()
-        tables = [Table("mysql_types", m2, autoload_with=testing.db)]
+        tables = [Table("mysql_types", m2, autoload_with=connection)]
         if use_views:
-            tables.append(Table("mysql_types_v", m2, autoload_with=testing.db))
+            tables.append(Table("mysql_types_v", m2, autoload_with=connection))
 
         for table in tables:
             for i, (reflected_col, spec) in enumerate(zip(table.c, specs)):
@@ -95,7 +94,7 @@ class TypeReflectionTest(fixtures.TestBase):
                         ),
                     )
 
-    def test_time_types(self):
+    def test_time_types(self, metadata, connection):
         specs = []
 
         if testing.requires.mysql_fsp.enabled:
@@ -118,20 +117,24 @@ class TypeReflectionTest(fixtures.TestBase):
         )
 
         # note 'timezone' should always be None on both
-        self._run_test(specs, ["fsp", "timezone"])
+        self._run_test(metadata, connection, specs, ["fsp", "timezone"])
 
-    def test_year_types(self):
+    def test_year_types(self, metadata, connection):
         specs = [
             (mysql.YEAR(), mysql.YEAR(display_width=4)),
             (mysql.YEAR(display_width=4), mysql.YEAR(display_width=4)),
         ]
 
         if testing.against("mysql>=8.0.19"):
-            self._run_test(specs, [])
+            self._run_test(metadata, connection, specs, [])
         else:
-            self._run_test(specs, ["display_width"])
+            self._run_test(metadata, connection, specs, ["display_width"])
 
-    def test_string_types(self):
+    def test_string_types(
+        self,
+        metadata,
+        connection,
+    ):
         specs = [
             (String(1), mysql.MSString(1)),
             (String(3), mysql.MSString(3)),
@@ -145,9 +148,9 @@ class TypeReflectionTest(fixtures.TestBase):
             (mysql.MSNChar(2), mysql.MSChar(2)),
             (mysql.MSNVarChar(22), mysql.MSString(22)),
         ]
-        self._run_test(specs, ["length"])
+        self._run_test(metadata, connection, specs, ["length"])
 
-    def test_integer_types(self):
+    def test_integer_types(self, metadata, connection):
         specs = []
         for type_ in [
             mysql.TINYINT,
@@ -201,11 +204,22 @@ class TypeReflectionTest(fixtures.TestBase):
         # on display_width.   need to test this more accurately though
         # for the cases where it does
         if testing.against("mysql >= 8.0.19"):
-            self._run_test(specs, ["unsigned", "zerofill"])
+            self._run_test(
+                metadata, connection, specs, ["unsigned", "zerofill"]
+            )
         else:
-            self._run_test(specs, ["display_width", "unsigned", "zerofill"])
+            self._run_test(
+                metadata,
+                connection,
+                specs,
+                ["display_width", "unsigned", "zerofill"],
+            )
 
-    def test_binary_types(self):
+    def test_binary_types(
+        self,
+        metadata,
+        connection,
+    ):
         specs = [
             (LargeBinary(3), mysql.TINYBLOB()),
             (LargeBinary(), mysql.BLOB()),
@@ -217,13 +231,17 @@ class TypeReflectionTest(fixtures.TestBase):
             (mysql.MSMediumBlob(), mysql.MSMediumBlob()),
             (mysql.MSLongBlob(), mysql.MSLongBlob()),
         ]
-        self._run_test(specs, [])
+        self._run_test(metadata, connection, specs, [])
 
-    def test_legacy_enum_types(self):
+    def test_legacy_enum_types(
+        self,
+        metadata,
+        connection,
+    ):
 
         specs = [(mysql.ENUM("", "fleem"), mysql.ENUM("", "fleem"))]
 
-        self._run_test(specs, ["enums"])
+        self._run_test(metadata, connection, specs, ["enums"])
 
 
 class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -324,8 +342,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             str(reflected.c.c6.server_default.arg).upper(),
         )
 
-    @testing.provide_metadata
-    def test_reflection_with_table_options(self, connection):
+    def test_reflection_with_table_options(self, metadata, connection):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
         if testing.against("mariadb"):
             kwargs = dict(
@@ -348,7 +365,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         def_table = Table(
             "mysql_def",
-            self.metadata,
+            metadata,
             Column("c1", Integer()),
             comment=comment,
             **kwargs
@@ -403,11 +420,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             # This is explicitly ignored when reflecting schema.
             # assert reflected.kwargs['mysql_auto_increment'] == '5'
 
-    @testing.provide_metadata
-    def test_reflection_on_include_columns(self):
+    def test_reflection_on_include_columns(self, metadata, connection):
         """Test reflection of include_columns to be sure they respect case."""
 
-        meta = self.metadata
+        meta = metadata
         case_table = Table(
             "mysql_case",
             meta,
@@ -416,11 +432,11 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("C3", String(10)),
         )
 
-        case_table.create(testing.db)
+        case_table.create(connection)
         reflected = Table(
             "mysql_case",
             MetaData(),
-            autoload_with=testing.db,
+            autoload_with=connection,
             include_columns=["c1", "C2"],
         )
         for t in case_table, reflected:
@@ -429,16 +445,15 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         reflected2 = Table(
             "mysql_case",
             MetaData(),
-            autoload_with=testing.db,
+            autoload_with=connection,
             include_columns=["c1", "c2"],
         )
         assert "c1" in reflected2.c.keys()
         for c in ["c2", "C2", "C3"]:
             assert c not in reflected2.c.keys()
 
-    @testing.provide_metadata
-    def test_autoincrement(self):
-        meta = self.metadata
+    def test_autoincrement(self, metadata, connection):
+        meta = metadata
         Table(
             "ai_1",
             meta,
@@ -520,7 +535,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("o2", String(1), DefaultClause("x"), primary_key=True),
             mysql_engine="MyISAM",
         )
-        meta.create_all(testing.db)
+        meta.create_all(connection)
 
         table_names = [
             "ai_1",
@@ -533,30 +548,27 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "ai_8",
         ]
         mr = MetaData()
-        mr.reflect(testing.db, only=table_names)
+        mr.reflect(connection, only=table_names)
 
-        with testing.db.begin() as conn:
-            for tbl in [mr.tables[name] for name in table_names]:
-                for c in tbl.c:
-                    if c.name.startswith("int_y"):
-                        assert c.autoincrement
-                    elif c.name.startswith("int_n"):
-                        assert not c.autoincrement
-                conn.execute(tbl.insert())
-                if "int_y" in tbl.c:
-                    assert conn.scalar(select(tbl.c.int_y)) == 1
-                    assert (
-                        list(conn.execute(tbl.select()).first()).count(1) == 1
-                    )
-                else:
-                    assert 1 not in list(conn.execute(tbl.select()).first())
+        for tbl in [mr.tables[name] for name in table_names]:
+            for c in tbl.c:
+                if c.name.startswith("int_y"):
+                    assert c.autoincrement
+                elif c.name.startswith("int_n"):
+                    assert not c.autoincrement
+            connection.execute(tbl.insert())
+            if "int_y" in tbl.c:
+                assert connection.scalar(select(tbl.c.int_y)) == 1
+                assert (
+                    list(connection.execute(tbl.select()).first()).count(1)
+                    == 1
+                )
+            else:
+                assert 1 not in list(connection.execute(tbl.select()).first())
 
-    @testing.provide_metadata
-    def test_view_reflection(self, connection):
-        Table(
-            "x", self.metadata, Column("a", Integer), Column("b", String(50))
-        )
-        self.metadata.create_all(connection)
+    def test_view_reflection(self, metadata, connection):
+        Table("x", metadata, Column("a", Integer), Column("b", String(50)))
+        metadata.create_all(connection)
 
         conn = connection
         conn.exec_driver_sql("CREATE VIEW v1 AS SELECT * FROM x")
@@ -570,7 +582,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE DEFINER=CURRENT_USER VIEW v4 AS SELECT * FROM x"
         )
 
-        @event.listens_for(self.metadata, "before_drop")
+        @event.listens_for(metadata, "before_drop")
         def cleanup(*arg, **kw):
             with testing.db.begin() as conn:
                 for v in ["v1", "v2", "v3", "v4"]:
@@ -586,9 +598,8 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 [("a", mysql.INTEGER), ("b", mysql.VARCHAR)],
             )
 
-    @testing.provide_metadata
-    def test_skip_not_describable(self, connection):
-        @event.listens_for(self.metadata, "before_drop")
+    def test_skip_not_describable(self, metadata, connection):
+        @event.listens_for(metadata, "before_drop")
         def cleanup(*arg, **kw):
             with testing.db.begin() as conn:
                 conn.exec_driver_sql("DROP TABLE IF EXISTS test_t1")
@@ -625,20 +636,18 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         view_names = dialect.get_view_names(connection, "information_schema")
         self.assert_("TABLES" in view_names)
 
-    @testing.provide_metadata
-    def test_nullable_reflection(self):
+    def test_nullable_reflection(self, metadata, connection):
         """test reflection of NULL/NOT NULL, in particular with TIMESTAMP
         defaults where MySQL is inconsistent in how it reports CREATE TABLE.
 
         """
-        meta = self.metadata
+        meta = metadata
 
         # this is ideally one table, but older MySQL versions choke
         # on the multiple TIMESTAMP columns
-        with testing.db.connect() as c:
-            row = c.exec_driver_sql(
-                "show variables like '%%explicit_defaults_for_timestamp%%'"
-            ).first()
+        row = connection.exec_driver_sql(
+            "show variables like '%%explicit_defaults_for_timestamp%%'"
+        ).first()
         explicit_defaults_for_timestamp = row[1].lower() in ("on", "1", "true")
 
         reflected = []
@@ -659,15 +668,14 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             Table("nn_t%d" % idx, meta)  # to allow DROP
 
-            with testing.db.begin() as c:
-                c.exec_driver_sql(
-                    """
-                        CREATE TABLE nn_t%d (
-                            %s
-                        )
-                    """
-                    % (idx, ", \n".join(cols))
-                )
+            connection.exec_driver_sql(
+                """
+                    CREATE TABLE nn_t%d (
+                        %s
+                    )
+                """
+                % (idx, ", \n".join(cols))
+            )
 
             reflected.extend(
                 {
@@ -675,10 +683,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                     "nullable": d["nullable"],
                     "default": d["default"],
                 }
-                for d in inspect(testing.db).get_columns("nn_t%d" % idx)
+                for d in inspect(connection).get_columns("nn_t%d" % idx)
             )
 
-        if testing.db.dialect._is_mariadb_102:
+        if connection.dialect._is_mariadb_102:
             current_timestamp = "current_timestamp()"
         else:
             current_timestamp = "CURRENT_TIMESTAMP"
@@ -726,11 +734,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             ],
         )
 
-    @testing.provide_metadata
-    def test_reflection_with_unique_constraint(self):
-        insp = inspect(testing.db)
+    def test_reflection_with_unique_constraint(self, metadata, connection):
+        insp = inspect(connection)
 
-        meta = self.metadata
+        meta = metadata
         uc_table = Table(
             "mysql_uc",
             meta,
@@ -738,7 +745,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             UniqueConstraint("a", name="uc_a"),
         )
 
-        uc_table.create()
+        uc_table.create(connection)
 
         # MySQL converts unique constraints into unique indexes.
         # separately we get both
@@ -762,11 +769,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_(indexes["uc_a"].unique)
         self.assert_("uc_a" not in constraints)
 
-    @testing.provide_metadata
-    def test_reflect_fulltext(self):
+    def test_reflect_fulltext(self, metadata, connection):
         mt = Table(
             "mytable",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("textdata", String(50)),
             mariadb_engine="InnoDB",
@@ -779,7 +785,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             mysql_prefix="FULLTEXT",
             mariadb_prefix="FULLTEXT",
         )
-        self.metadata.create_all(testing.db)
+        metadata.create_all(connection)
 
         mt = Table("mytable", MetaData(), autoload_with=testing.db)
         idx = list(mt.indexes)[0]
@@ -791,11 +797,14 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     @testing.requires.mysql_ngram_fulltext
-    @testing.provide_metadata
-    def test_reflect_fulltext_comment(self):
+    def test_reflect_fulltext_comment(
+        self,
+        metadata,
+        connection,
+    ):
         mt = Table(
             "mytable",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("textdata", String(50)),
             mysql_engine="InnoDB",
@@ -807,9 +816,9 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             mysql_with_parser="ngram",
         )
 
-        self.metadata.create_all(testing.db)
+        metadata.create_all(connection)
 
-        mt = Table("mytable", MetaData(), autoload_with=testing.db)
+        mt = Table("mytable", MetaData(), autoload_with=connection)
         idx = list(mt.indexes)[0]
         eq_(idx.name, "textdata_ix")
         eq_(idx.dialect_options["mysql"]["prefix"], "FULLTEXT")
@@ -820,16 +829,15 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             "(textdata) WITH PARSER ngram",
         )
 
-    @testing.provide_metadata
-    def test_non_column_index(self):
-        m1 = self.metadata
+    def test_non_column_index(self, metadata, connection):
+        m1 = metadata
         t1 = Table(
             "add_ix", m1, Column("x", String(50)), mysql_engine="InnoDB"
         )
         Index("foo_idx", t1.c.x.desc())
-        m1.create_all()
+        m1.create_all(connection)
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         eq_(
             insp.get_indexes("add_ix"),
             [{"name": "foo_idx", "column_names": ["x"], "unique": False}],
@@ -950,12 +958,13 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 ],
             )
 
-    @testing.provide_metadata
-    def test_case_sensitive_column_constraint_reflection(self):
+    def test_case_sensitive_column_constraint_reflection(
+        self, metadata, connection
+    ):
         # test for issue #4344 which works around
         # MySQL 8.0 bug https://bugs.mysql.com/bug.php?id=88718
 
-        m1 = self.metadata
+        m1 = metadata
 
         Table(
             "Track",
@@ -987,9 +996,9 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             mysql_engine="InnoDB",
         )
-        m1.create_all()
+        m1.create_all(connection)
 
-        if testing.db.dialect._casing in (1, 2):
+        if connection.dialect._casing in (1, 2):
             # the original test for the 88718 fix here in [ticket:4344]
             # actually set  referred_table='track', with the wrong casing!
             # this test was never run. with [ticket:4751], I've gone through
@@ -999,7 +1008,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             # lower case is also an 8.0 regression.
 
             eq_(
-                inspect(testing.db).get_foreign_keys("PlaylistTrack"),
+                inspect(connection).get_foreign_keys("PlaylistTrack"),
                 [
                     {
                         "name": "FK_PlaylistTTrackId",
@@ -1022,7 +1031,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         else:
             eq_(
                 sorted(
-                    inspect(testing.db).get_foreign_keys("PlaylistTrack"),
+                    inspect(connection).get_foreign_keys("PlaylistTrack"),
                     key=lambda elem: elem["name"],
                 ),
                 [
@@ -1046,12 +1055,13 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     @testing.requires.mysql_fully_case_sensitive
-    @testing.provide_metadata
-    def test_case_sensitive_reflection_dual_case_references(self):
+    def test_case_sensitive_reflection_dual_case_references(
+        self, metadata, connection
+    ):
         # this tests that within the fix we do for MySQL bug
         # 88718, we don't do case-insensitive logic if the backend
         # is case sensitive
-        m = self.metadata
+        m = metadata
         Table(
             "t1",
             m,
@@ -1074,12 +1084,12 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("cap_t1id", ForeignKey("T1.Some_Id", name="cap_t1id_fk")),
             mysql_engine="InnoDB",
         )
-        m.create_all(testing.db)
+        m.create_all(connection)
 
         eq_(
             dict(
                 (rec["name"], rec)
-                for rec in inspect(testing.db).get_foreign_keys("t2")
+                for rec in inspect(connection).get_foreign_keys("t2")
             ),
             {
                 "cap_t1id_fk": {

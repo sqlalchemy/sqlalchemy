@@ -1118,9 +1118,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(Foo, "type")
         assert Foo.type.property.columns[0] is t.c.type
 
-    @testing.provide_metadata
-    def test_prop_filters_defaults(self):
-        metadata = self.metadata
+    def test_prop_filters_defaults(self, metadata, connection):
         t = Table(
             "t",
             metadata,
@@ -1132,13 +1130,14 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             ),
             Column("x", Integer(), nullable=False, server_default="0"),
         )
-        t.create()
+
+        t.create(connection)
 
         class A(object):
             pass
 
         self.mapper(A, t, include_properties=["id"])
-        s = Session()
+        s = Session(connection)
         s.add(A())
         s.commit()
 

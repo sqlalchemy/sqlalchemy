@@ -490,14 +490,14 @@ class RowTupleTest(QueryTest):
 
 
 class BindSensitiveStringifyTest(fixtures.TestBase):
-    def _fixture(self, bind_to=None):
+    def _fixture(self):
         # building a totally separate metadata /mapping here
         # because we need to control if the MetaData is bound or not
 
         class User(object):
             pass
 
-        m = MetaData(bind=bind_to)
+        m = MetaData()
         user_table = Table(
             "users",
             m,
@@ -516,15 +516,13 @@ class BindSensitiveStringifyTest(fixtures.TestBase):
 
         return base.Engine(mock.Mock(), MyDialect(), mock.Mock())
 
-    def _test(
-        self, bound_metadata, bound_session, session_present, expect_bound
-    ):
-        if bound_metadata or bound_session:
+    def _test(self, bound_session, session_present, expect_bound):
+        if bound_session:
             eng = self._dialect_fixture()
         else:
             eng = None
 
-        User = self._fixture(bind_to=eng if bound_metadata else None)
+        User = self._fixture()
 
         s = Session(eng if bound_session else None)
         q = s.query(User).filter(User.id == 7)
@@ -540,20 +538,14 @@ class BindSensitiveStringifyTest(fixtures.TestBase):
             "FROM users WHERE users.id = :id_1",
         )
 
-    def test_query_unbound_metadata_bound_session(self):
-        self._test(False, True, True, True)
+    def test_query_bound_session(self):
+        self._test(True, True, True)
 
-    def test_query_bound_metadata_unbound_session(self):
-        self._test(True, False, True, True)
+    def test_query_no_session(self):
+        self._test(False, False, False)
 
-    def test_query_unbound_metadata_no_session(self):
-        self._test(False, False, False, False)
-
-    def test_query_unbound_metadata_unbound_session(self):
-        self._test(False, False, True, False)
-
-    def test_query_bound_metadata_bound_session(self):
-        self._test(True, True, True, True)
+    def test_query_unbound_session(self):
+        self._test(False, True, False)
 
 
 class GetTest(QueryTest):

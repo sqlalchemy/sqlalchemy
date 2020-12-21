@@ -575,6 +575,10 @@ class GeometryFixtureBase(fixtures.DeclarativeMappedTest):
             if "subclasses" in value:
                 self._fixture_from_geometry(value["subclasses"], klass)
 
-        if is_base and self.metadata.tables and self.run_create_tables:
-            self.tables.update(self.metadata.tables)
-            self.metadata.create_all(config.db)
+        if (
+            is_base
+            and self.tables_test_metadata.tables
+            and self.run_create_tables
+        ):
+            self.tables.update(self.tables_test_metadata.tables)
+            self.tables_test_metadata.create_all(config.db)

@@ -544,9 +544,7 @@ class TypeRoundTripTest(
 
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_decimal_notation(self, connection):
-        metadata = self.metadata
+    def test_decimal_notation(self, metadata, connection):
         numeric_table = Table(
             "numeric_table",
             metadata,
@@ -635,9 +633,7 @@ class TypeRoundTripTest(
             )
             eq_(value, returned)
 
-    @testing.provide_metadata
-    def test_float(self, connection):
-        metadata = self.metadata
+    def test_float(self, metadata, connection):
 
         float_table = Table(
             "float_table",
@@ -693,10 +689,8 @@ class TypeRoundTripTest(
             )
             eq_(value, returned)
 
-    # todo this should suppress warnings, but it does not
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
-    @testing.provide_metadata
-    def test_dates(self):
+    def test_dates(self, metadata, connection):
         "Exercise type specification for date types."
 
         columns = [
@@ -727,8 +721,6 @@ class TypeRoundTripTest(
             (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", [">=", (10,)]),
         ]
 
-        metadata = self.metadata
-
         table_args = ["test_mssql_dates", metadata]
         for index, spec in enumerate(columns):
             type_, args, kw, res, requires = spec[0:5]
@@ -738,11 +730,11 @@ class TypeRoundTripTest(
                 or not requires
             ):
                 c = Column("c%s" % index, type_(*args, **kw), nullable=None)
-                testing.db.dialect.type_descriptor(c.type)
+                connection.dialect.type_descriptor(c.type)
                 table_args.append(c)
         dates_table = Table(*table_args)
-        gen = testing.db.dialect.ddl_compiler(
-            testing.db.dialect, schema.CreateTable(dates_table)
+        gen = connection.dialect.ddl_compiler(
+            connection.dialect, schema.CreateTable(dates_table)
         )
         for col in dates_table.c:
             index = int(col.name[1:])
@@ -751,9 +743,9 @@ class TypeRoundTripTest(
                 "%s %s" % (col.name, columns[index][3]),
             )
             self.assert_(repr(col))
-        dates_table.create(checkfirst=True)
+        dates_table.create(connection)
         reflected_dates = Table(
-            "test_mssql_dates", MetaData(), autoload_with=testing.db
+            "test_mssql_dates", MetaData(), autoload_with=connection
         )
         for col in reflected_dates.c:
             self.assert_types_base(col, dates_table.c[col.key])
@@ -915,13 +907,13 @@ class TypeRoundTripTest(
             )
 
     @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
-    @testing.provide_metadata
     @testing.combinations(
         ("legacy_large_types", False),
         ("sql2012_large_types", True, lambda: testing.only_on("mssql >= 11")),
         id_="ia",
+        argnames="deprecate_large_types",
     )
-    def test_binary_reflection(self, deprecate_large_types):
+    def test_binary_reflection(self, metadata, deprecate_large_types):
         "Exercise type specification for binary types."
 
         columns = [
@@ -944,47 +936,45 @@ class TypeRoundTripTest(
             ),
         ]
 
-        metadata = self.metadata
-        metadata.bind = engines.testing_engine(
+        engine = engines.testing_engine(
             options={"deprecate_large_types": deprecate_large_types}
         )
-        table_args = ["test_mssql_binary", metadata]
-        for index, spec in enumerate(columns):
-            type_, args, kw, res = spec
-            table_args.append(
-                Column("c%s" % index, type_(*args, **kw), nullable=None)
+        with engine.begin() as conn:
+            table_args = ["test_mssql_binary", metadata]
+            for index, spec in enumerate(columns):
+                type_, args, kw, res = spec
+                table_args.append(
+                    Column("c%s" % index, type_(*args, **kw), nullable=None)
+                )
+            binary_table = Table(*table_args)
+            metadata.create_all(conn)
+            reflected_binary = Table(
+                "test_mssql_binary", MetaData(), autoload_with=conn
             )
-        binary_table = Table(*table_args)
-        metadata.create_all()
-        reflected_binary = Table(
-            "test_mssql_binary", MetaData(), autoload_with=testing.db
-        )
-        for col, spec in zip(reflected_binary.c, columns):
-            eq_(
-                col.type.compile(dialect=mssql.dialect()),
-                spec[3],
-                "column %s %s != %s"
-                % (
-                    col.key,
+            for col, spec in zip(reflected_binary.c, columns):
+                eq_(
                     col.type.compile(dialect=mssql.dialect()),
                     spec[3],
-                ),
-            )
-            c1 = testing.db.dialect.type_descriptor(col.type).__class__
-            c2 = testing.db.dialect.type_descriptor(
-                binary_table.c[col.name].type
-            ).__class__
-            assert issubclass(
-                c1, c2
-            ), "column %s: %r is not a subclass of %r" % (col.key, c1, c2)
-            if binary_table.c[col.name].type.length:
-                testing.eq_(
-                    col.type.length, binary_table.c[col.name].type.length
+                    "column %s %s != %s"
+                    % (
+                        col.key,
+                        col.type.compile(dialect=conn.dialect),
+                        spec[3],
+                    ),
                 )
+                c1 = conn.dialect.type_descriptor(col.type).__class__
+                c2 = conn.dialect.type_descriptor(
+                    binary_table.c[col.name].type
+                ).__class__
+                assert issubclass(
+                    c1, c2
+                ), "column %s: %r is not a subclass of %r" % (col.key, c1, c2)
+                if binary_table.c[col.name].type.length:
+                    testing.eq_(
+                        col.type.length, binary_table.c[col.name].type.length
+                    )
 
-    @testing.provide_metadata
-    def test_autoincrement(self):
-        metadata = self.metadata
+    def test_autoincrement(self, metadata, connection):
         Table(
             "ai_1",
             metadata,
@@ -1035,7 +1025,7 @@ class TypeRoundTripTest(
             Column("o1", String(1), DefaultClause("x"), primary_key=True),
             Column("o2", String(1), DefaultClause("x"), primary_key=True),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
 
         table_names = [
             "ai_1",
@@ -1050,7 +1040,7 @@ class TypeRoundTripTest(
         mr = MetaData()
 
         for name in table_names:
-            tbl = Table(name, mr, autoload_with=testing.db)
+            tbl = Table(name, mr, autoload_with=connection)
             tbl = metadata.tables[name]
 
             # test that the flag itself reflects appropriately
@@ -1081,24 +1071,23 @@ class TypeRoundTripTest(
                 ]
 
             for counter, engine in enumerate(eng):
-                with engine.begin() as conn:
-                    conn.execute(tbl.insert())
-                    if "int_y" in tbl.c:
-                        eq_(
-                            conn.execute(select(tbl.c.int_y)).scalar(),
-                            counter + 1,
+                connection.execute(tbl.insert())
+                if "int_y" in tbl.c:
+                    eq_(
+                        connection.execute(select(tbl.c.int_y)).scalar(),
+                        counter + 1,
+                    )
+                    assert (
+                        list(connection.execute(tbl.select()).first()).count(
+                            counter + 1
                         )
-                        assert (
-                            list(conn.execute(tbl.select()).first()).count(
-                                counter + 1
-                            )
-                            == 1
-                        )
-                    else:
-                        assert 1 not in list(
-                            conn.execute(tbl.select()).first()
-                        )
-                    conn.execute(tbl.delete())
+                        == 1
+                    )
+                else:
+                    assert 1 not in list(
+                        connection.execute(tbl.select()).first()
+                    )
+                connection.execute(tbl.delete())
 
 
 class StringTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1144,17 +1133,87 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
+class MyPickleType(types.TypeDecorator):
+    impl = PickleType
+
+    def process_bind_param(self, value, dialect):
+        if value:
+            value.stuff = "BIND" + value.stuff
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value:
+            value.stuff = value.stuff + "RESULT"
+        return value
+
+
 class BinaryTest(fixtures.TestBase):
     __only_on__ = "mssql"
     __requires__ = ("non_broken_binary",)
     __backend__ = True
 
-    def test_character_binary(self):
-        self._test_round_trip(mssql.MSVarBinary(800), b("some normal data"))
-
-    @testing.provide_metadata
-    def _test_round_trip(
-        self, type_, data, deprecate_large_types=True, expected=None
+    @testing.combinations(
+        (
+            mssql.MSVarBinary(800),
+            b("some normal data"),
+            None,
+            True,
+            None,
+            False,
+        ),
+        (
+            mssql.VARBINARY("max"),
+            "binary_data_one.dat",
+            None,
+            False,
+            None,
+            False,
+        ),
+        (
+            mssql.VARBINARY("max"),
+            "binary_data_one.dat",
+            None,
+            True,
+            None,
+            False,
+        ),
+        (
+            sqltypes.LargeBinary,
+            "binary_data_one.dat",
+            None,
+            False,
+            None,
+            False,
+        ),
+        (sqltypes.LargeBinary, "binary_data_one.dat", None, True, None, False),
+        (mssql.MSImage, "binary_data_one.dat", None, True, None, False),
+        (PickleType, pickleable.Foo("im foo 1"), None, True, None, False),
+        (
+            MyPickleType,
+            pickleable.Foo("im foo 1"),
+            pickleable.Foo("im foo 1", stuff="BINDim stuffRESULT"),
+            True,
+            None,
+            False,
+        ),
+        (types.BINARY(100), "binary_data_one.dat", None, True, 100, False),
+        (types.VARBINARY(100), "binary_data_one.dat", None, True, 100, False),
+        (mssql.VARBINARY(100), "binary_data_one.dat", None, True, 100, False),
+        (types.BINARY(100), "binary_data_two.dat", None, True, 99, True),
+        (types.VARBINARY(100), "binary_data_two.dat", None, True, 99, False),
+        (mssql.VARBINARY(100), "binary_data_two.dat", None, True, 99, False),
+        argnames="type_, data, expected, deprecate_large_types, "
+        "slice_, zeropad",
+    )
+    def test_round_trip(
+        self,
+        metadata,
+        type_,
+        data,
+        expected,
+        deprecate_large_types,
+        slice_,
+        zeropad,
     ):
         if (
             testing.db.dialect.deprecate_large_types
@@ -1168,14 +1227,25 @@ class BinaryTest(fixtures.TestBase):
 
         binary_table = Table(
             "binary_table",
-            self.metadata,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("data", type_),
         )
         binary_table.create(engine)
 
+        if isinstance(data, str) and (
+            data == "binary_data_one.dat" or data == "binary_data_two.dat"
+        ):
+            data = self._load_stream(data)
+
+        if slice_ is not None:
+            data = data[0:slice_]
+
         if expected is None:
-            expected = data
+            if zeropad:
+                expected = data[0:slice_] + b"\x00"
+            else:
+                expected = data
 
         with engine.begin() as conn:
             conn.execute(binary_table.insert(), data=data)
@@ -1204,95 +1274,6 @@ class BinaryTest(fixtures.TestBase):
                 ),
                 None,
             )
-
-    def test_plain_pickle(self):
-        self._test_round_trip(PickleType, pickleable.Foo("im foo 1"))
-
-    def test_custom_pickle(self):
-        class MyPickleType(types.TypeDecorator):
-            impl = PickleType
-
-            def process_bind_param(self, value, dialect):
-                if value:
-                    value.stuff = "BIND" + value.stuff
-                return value
-
-            def process_result_value(self, value, dialect):
-                if value:
-                    value.stuff = value.stuff + "RESULT"
-                return value
-
-        data = pickleable.Foo("im foo 1")
-        expected = pickleable.Foo("im foo 1")
-        expected.stuff = "BINDim stuffRESULT"
-
-        self._test_round_trip(MyPickleType, data, expected=expected)
-
-    def test_image(self):
-        stream1 = self._load_stream("binary_data_one.dat")
-        self._test_round_trip(mssql.MSImage, stream1)
-
-    def test_large_binary(self):
-        stream1 = self._load_stream("binary_data_one.dat")
-        self._test_round_trip(sqltypes.LargeBinary, stream1)
-
-    def test_large_legacy_types(self):
-        stream1 = self._load_stream("binary_data_one.dat")
-        self._test_round_trip(
-            sqltypes.LargeBinary, stream1, deprecate_large_types=False
-        )
-
-    def test_mssql_varbinary_max(self):
-        stream1 = self._load_stream("binary_data_one.dat")
-        self._test_round_trip(mssql.VARBINARY("max"), stream1)
-
-    def test_mssql_legacy_varbinary_max(self):
-        stream1 = self._load_stream("binary_data_one.dat")
-        self._test_round_trip(
-            mssql.VARBINARY("max"), stream1, deprecate_large_types=False
-        )
-
-    def test_binary_slice(self):
-        self._test_var_slice(types.BINARY)
-
-    def test_binary_slice_zeropadding(self):
-        self._test_var_slice_zeropadding(types.BINARY, True)
-
-    def test_varbinary_slice(self):
-        self._test_var_slice(types.VARBINARY)
-
-    def test_varbinary_slice_zeropadding(self):
-        self._test_var_slice_zeropadding(types.VARBINARY, False)
-
-    def test_mssql_varbinary_slice(self):
-        self._test_var_slice(mssql.VARBINARY)
-
-    def test_mssql_varbinary_slice_zeropadding(self):
-        self._test_var_slice_zeropadding(mssql.VARBINARY, False)
-
-    def _test_var_slice(self, type_):
-        stream1 = self._load_stream("binary_data_one.dat")
-
-        data = stream1[0:100]
-
-        self._test_round_trip(type_(100), data)
-
-    def _test_var_slice_zeropadding(
-        self, type_, pad, deprecate_large_types=True
-    ):
-        stream2 = self._load_stream("binary_data_two.dat")
-
-        data = stream2[0:99]
-
-        # the type we used here is 100 bytes
-        # so we will get 100 bytes zero-padded
-
-        if pad:
-            paddedstream = stream2[0:99] + b"\x00"
-        else:
-            paddedstream = stream2[0:99]
-
-        self._test_round_trip(type_(100), data, expected=paddedstream)
 
     def _load_stream(self, name, len_=3000):
         fp = open(

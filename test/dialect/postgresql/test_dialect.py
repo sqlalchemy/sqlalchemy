@@ -757,7 +757,7 @@ class MiscBackendTest(
             Column("date1", DateTime(timezone=True)),
             Column("date2", DateTime(timezone=False)),
         )
-        metadata.create_all()
+        metadata.create_all(testing.db)
         m2 = MetaData()
         t2 = Table("pgdate", m2, autoload_with=testing.db)
         assert t2.c.date1.type.timezone is True

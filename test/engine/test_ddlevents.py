@@ -376,7 +376,7 @@ class DDLEventTest(fixtures.TestBase):
 class DDLExecutionTest(fixtures.TestBase):
     def setup(self):
         self.engine = engines.mock_engine()
-        self.metadata = MetaData(self.engine)
+        self.metadata = MetaData()
         self.users = Table(
             "users",
             self.metadata,
@@ -391,14 +391,14 @@ class DDLExecutionTest(fixtures.TestBase):
         event.listen(users, "before_drop", DDL("xyzzy"))
         event.listen(users, "after_drop", DDL("fnord"))
 
-        users.create()
+        users.create(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" in strings
         assert "klptzyxm" in strings
         assert "xyzzy" not in strings
         assert "fnord" not in strings
         del engine.mock[:]
-        users.drop()
+        users.drop(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" not in strings
         assert "klptzyxm" not in strings
@@ -413,14 +413,14 @@ class DDLExecutionTest(fixtures.TestBase):
         event.listen(users, "before_drop", DDL("xyzzy"))
         event.listen(users, "after_drop", DDL("fnord"))
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" in strings
         assert "klptzyxm" in strings
         assert "xyzzy" not in strings
         assert "fnord" not in strings
         del engine.mock[:]
-        metadata.drop_all()
+        metadata.drop_all(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" not in strings
         assert "klptzyxm" not in strings
@@ -435,14 +435,14 @@ class DDLExecutionTest(fixtures.TestBase):
         event.listen(metadata, "before_drop", DDL("xyzzy"))
         event.listen(metadata, "after_drop", DDL("fnord"))
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" in strings
         assert "klptzyxm" in strings
         assert "xyzzy" not in strings
         assert "fnord" not in strings
         del engine.mock[:]
-        metadata.drop_all()
+        metadata.drop_all(self.engine)
         strings = [str(x) for x in engine.mock]
         assert "mxyzptlk" not in strings
         assert "klptzyxm" not in strings

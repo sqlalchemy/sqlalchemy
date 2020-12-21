@@ -188,10 +188,9 @@ class TypesTest(fixtures.TestBase):
     __dialect__ = oracle.OracleDialect()
     __backend__ = True
 
-    @testing.combinations((CHAR,), (NCHAR,))
-    @testing.provide_metadata
-    def test_fixed_char(self, char_type):
-        m = self.metadata
+    @testing.combinations((CHAR,), (NCHAR,), argnames="char_type")
+    def test_fixed_char(self, metadata, connection, char_type):
+        m = metadata
         t = Table(
             "t1",
             m,
@@ -204,32 +203,30 @@ class TypesTest(fixtures.TestBase):
         else:
             v1, v2, v3 = "value 1", "value 2", "value 3"
 
-        with testing.db.begin() as conn:
-            t.create(conn)
-            conn.execute(
-                t.insert(),
-                dict(id=1, data=v1),
-                dict(id=2, data=v2),
-                dict(id=3, data=v3),
-            )
+        t.create(connection)
+        connection.execute(
+            t.insert(),
+            dict(id=1, data=v1),
+            dict(id=2, data=v2),
+            dict(id=3, data=v3),
+        )
 
-            eq_(
-                conn.execute(t.select().where(t.c.data == v2)).fetchall(),
-                [(2, "value 2                       ")],
-            )
+        eq_(
+            connection.execute(t.select().where(t.c.data == v2)).fetchall(),
+            [(2, "value 2                       ")],
+        )
 
-            m2 = MetaData()
-            t2 = Table("t1", m2, autoload_with=conn)
-            is_(type(t2.c.data.type), char_type)
-            eq_(
-                conn.execute(t2.select().where(t2.c.data == v2)).fetchall(),
-                [(2, "value 2                       ")],
-            )
+        m2 = MetaData()
+        t2 = Table("t1", m2, autoload_with=connection)
+        is_(type(t2.c.data.type), char_type)
+        eq_(
+            connection.execute(t2.select().where(t2.c.data == v2)).fetchall(),
+            [(2, "value 2                       ")],
+        )
 
     @testing.requires.returning
-    @testing.provide_metadata
-    def test_int_not_float(self, connection):
-        m = self.metadata
+    def test_int_not_float(self, metadata, connection):
+        m = metadata
         t1 = Table("t1", m, Column("foo", Integer))
         t1.create(connection)
         r = connection.execute(t1.insert().values(foo=5).returning(t1.c.foo))
@@ -242,14 +239,13 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(x, int)
 
     @testing.requires.returning
-    @testing.provide_metadata
-    def test_int_not_float_no_coerce_decimal(self):
+    def test_int_not_float_no_coerce_decimal(self, metadata):
         engine = testing_engine(options=dict(coerce_to_decimal=False))
 
-        m = self.metadata
+        m = metadata
         t1 = Table("t1", m, Column("foo", Integer))
         with engine.begin() as conn:
-            t1.create()
+            t1.create(conn)
             r = conn.execute(t1.insert().values(foo=5).returning(t1.c.foo))
             x = r.scalar()
             assert x == 5
@@ -259,30 +255,25 @@ class TypesTest(fixtures.TestBase):
             assert x == 5
             assert isinstance(x, int)
 
-    @testing.provide_metadata
-    def test_rowid(self):
-        metadata = self.metadata
+    def test_rowid(self, metadata, connection):
         t = Table("t1", metadata, Column("x", Integer))
 
-        with testing.db.begin() as conn:
-            t.create(conn)
-            conn.execute(t.insert(), {"x": 5})
-            s1 = select(t).subquery()
-            s2 = select(column("rowid")).select_from(s1)
-            rowid = conn.scalar(s2)
+        t.create(connection)
+        connection.execute(t.insert(), {"x": 5})
+        s1 = select(t).subquery()
+        s2 = select(column("rowid")).select_from(s1)
+        rowid = connection.scalar(s2)
 
-            # the ROWID type is not really needed here,
-            # as cx_oracle just treats it as a string,
-            # but we want to make sure the ROWID works...
-            rowid_col = column("rowid", oracle.ROWID)
-            s3 = select(t.c.x, rowid_col).where(
-                rowid_col == cast(rowid, oracle.ROWID)
-            )
-            eq_(conn.execute(s3).fetchall(), [(5, rowid)])
+        # the ROWID type is not really needed here,
+        # as cx_oracle just treats it as a string,
+        # but we want to make sure the ROWID works...
+        rowid_col = column("rowid", oracle.ROWID)
+        s3 = select(t.c.x, rowid_col).where(
+            rowid_col == cast(rowid, oracle.ROWID)
+        )
+        eq_(connection.execute(s3).fetchall(), [(5, rowid)])
 
-    @testing.provide_metadata
-    def test_interval(self, connection):
-        metadata = self.metadata
+    def test_interval(self, metadata, connection):
         interval_table = Table(
             "intervaltable",
             metadata,
@@ -299,9 +290,8 @@ class TypesTest(fixtures.TestBase):
         row = connection.execute(interval_table.select()).first()
         eq_(row["day_interval"], datetime.timedelta(days=35, seconds=5743))
 
-    @testing.provide_metadata
-    def test_numerics(self):
-        m = self.metadata
+    def test_numerics(self, metadata, connection):
+        m = metadata
         t1 = Table(
             "t1",
             m,
@@ -314,51 +304,48 @@ class TypesTest(fixtures.TestBase):
             Column("numbercol2", oracle.NUMBER(9, 3)),
             Column("numbercol3", oracle.NUMBER),
         )
-        with testing.db.begin() as conn:
-            t1.create(conn)
-            conn.execute(
-                t1.insert(),
-                dict(
-                    intcol=1,
-                    numericcol=5.2,
-                    floatcol1=6.5,
-                    floatcol2=8.5,
-                    doubleprec=9.5,
-                    numbercol1=12,
-                    numbercol2=14.85,
-                    numbercol3=15.76,
-                ),
-            )
+        t1.create(connection)
+        connection.execute(
+            t1.insert(),
+            dict(
+                intcol=1,
+                numericcol=5.2,
+                floatcol1=6.5,
+                floatcol2=8.5,
+                doubleprec=9.5,
+                numbercol1=12,
+                numbercol2=14.85,
+                numbercol3=15.76,
+            ),
+        )
 
         m2 = MetaData()
-        t2 = Table("t1", m2, autoload_with=testing.db)
+        t2 = Table("t1", m2, autoload_with=connection)
 
-        with testing.db.connect() as conn:
-            for row in (
-                conn.execute(t1.select()).first(),
-                conn.execute(t2.select()).first(),
+        for row in (
+            connection.execute(t1.select()).first(),
+            connection.execute(t2.select()).first(),
+        ):
+            for i, (val, type_) in enumerate(
+                (
+                    (1, int),
+                    (decimal.Decimal("5.2"), decimal.Decimal),
+                    (6.5, float),
+                    (8.5, float),
+                    (9.5, float),
+                    (12, int),
+                    (decimal.Decimal("14.85"), decimal.Decimal),
+                    (15.76, float),
+                )
             ):
-                for i, (val, type_) in enumerate(
-                    (
-                        (1, int),
-                        (decimal.Decimal("5.2"), decimal.Decimal),
-                        (6.5, float),
-                        (8.5, float),
-                        (9.5, float),
-                        (12, int),
-                        (decimal.Decimal("14.85"), decimal.Decimal),
-                        (15.76, float),
-                    )
-                ):
-                    eq_(row[i], val)
-                    assert isinstance(row[i], type_), "%r is not %r" % (
-                        row[i],
-                        type_,
-                    )
+                eq_(row[i], val)
+                assert isinstance(row[i], type_), "%r is not %r" % (
+                    row[i],
+                    type_,
+                )
 
-    @testing.provide_metadata
-    def test_numeric_infinity_float(self, connection):
-        m = self.metadata
+    def test_numeric_infinity_float(self, metadata, connection):
+        m = metadata
         t1 = Table(
             "t1",
             m,
@@ -388,9 +375,8 @@ class TypesTest(fixtures.TestBase):
             [(float("inf"),), (float("-inf"),)],
         )
 
-    @testing.provide_metadata
-    def test_numeric_infinity_decimal(self, connection):
-        m = self.metadata
+    def test_numeric_infinity_decimal(self, metadata, connection):
+        m = metadata
         t1 = Table(
             "t1",
             m,
@@ -420,9 +406,8 @@ class TypesTest(fixtures.TestBase):
             [(decimal.Decimal("Infinity"),), (decimal.Decimal("-Infinity"),)],
         )
 
-    @testing.provide_metadata
-    def test_numeric_nan_float(self, connection):
-        m = self.metadata
+    def test_numeric_nan_float(self, metadata, connection):
+        m = metadata
         t1 = Table(
             "t1",
             m,
@@ -460,9 +445,8 @@ class TypesTest(fixtures.TestBase):
 
     # needs https://github.com/oracle/python-cx_Oracle/
     # issues/184#issuecomment-391399292
-    @testing.provide_metadata
-    def _dont_test_numeric_nan_decimal(self, connection):
-        m = self.metadata
+    def _dont_test_numeric_nan_decimal(self, metadata, connection):
+        m = metadata
         t1 = Table(
             "t1",
             m,
@@ -489,15 +473,12 @@ class TypesTest(fixtures.TestBase):
             [(decimal.Decimal("NaN"),), (decimal.Decimal("NaN"),)],
         )
 
-    @testing.provide_metadata
-    def test_numerics_broken_inspection(self, connection):
+    def test_numerics_broken_inspection(self, metadata, connection):
         """Numeric scenarios where Oracle type info is 'broken',
         returning us precision, scale of the form (0, 0) or (0, -127).
         We convert to Decimal and let int()/float() processors take over.
 
         """
-
-        metadata = self.metadata
 
         # this test requires cx_oracle 5
 
@@ -743,9 +724,7 @@ class TypesTest(fixtures.TestBase):
         value = exec_sql(connection, "SELECT 'hello' FROM DUAL").scalar()
         assert isinstance(value, util.text_type)
 
-    @testing.provide_metadata
-    def test_reflect_dates(self):
-        metadata = self.metadata
+    def test_reflect_dates(self, metadata, connection):
         Table(
             "date_types",
             metadata,
@@ -755,9 +734,9 @@ class TypesTest(fixtures.TestBase):
             Column("d4", TIMESTAMP(timezone=True)),
             Column("d5", oracle.INTERVAL(second_precision=5)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         m = MetaData()
-        t1 = Table("date_types", m, autoload_with=testing.db)
+        t1 = Table("date_types", m, autoload_with=connection)
         assert isinstance(t1.c.d1.type, oracle.DATE)
         assert isinstance(t1.c.d1.type, DateTime)
         assert isinstance(t1.c.d2.type, oracle.DATE)
@@ -780,22 +759,18 @@ class TypesTest(fixtures.TestBase):
         for row in types_table.select().execute().fetchall():
             [row[k] for k in row.keys()]
 
-    @testing.provide_metadata
-    def test_raw_roundtrip(self, connection):
-        metadata = self.metadata
+    def test_raw_roundtrip(self, metadata, connection):
         raw_table = Table(
             "raw",
             metadata,
             Column("id", Integer, primary_key=True),
             Column("data", oracle.RAW(35)),
         )
-        metadata.create_all()
+        metadata.create_all(connection)
         connection.execute(raw_table.insert(), id=1, data=b("ABCDEF"))
         eq_(connection.execute(raw_table.select()).first(), (1, b("ABCDEF")))
 
-    @testing.provide_metadata
-    def test_reflect_nvarchar(self, connection):
-        metadata = self.metadata
+    def test_reflect_nvarchar(self, metadata, connection):
         Table(
             "tnv",
             metadata,
@@ -827,31 +802,26 @@ class TypesTest(fixtures.TestBase):
         assert isinstance(nv_data, util.text_type)
         assert isinstance(c_data, util.text_type)
 
-    @testing.provide_metadata
-    def test_reflect_unicode_no_nvarchar(self):
-        metadata = self.metadata
+    def test_reflect_unicode_no_nvarchar(self, metadata, connection):
         Table("tnv", metadata, Column("data", sqltypes.Unicode(255)))
-        metadata.create_all()
+        metadata.create_all(connection)
         m2 = MetaData()
-        t2 = Table("tnv", m2, autoload_with=testing.db)
+        t2 = Table("tnv", m2, autoload_with=connection)
         assert isinstance(t2.c.data.type, sqltypes.VARCHAR)
 
         if testing.against("oracle+cx_oracle"):
             assert isinstance(
-                t2.c.data.type.dialect_impl(testing.db.dialect),
+                t2.c.data.type.dialect_impl(connection.dialect),
                 cx_oracle._OracleString,
             )
 
         data = u("m’a réveillé.")
-        with testing.db.begin() as conn:
-            conn.execute(t2.insert(), {"data": data})
-            res = conn.execute(t2.select()).first().data
-            eq_(res, data)
-            assert isinstance(res, util.text_type)
+        connection.execute(t2.insert(), {"data": data})
+        res = connection.execute(t2.select()).first().data
+        eq_(res, data)
+        assert isinstance(res, util.text_type)
 
-    @testing.provide_metadata
-    def test_char_length(self):
-        metadata = self.metadata
+    def test_char_length(self, metadata, connection):
         t1 = Table(
             "t1",
             metadata,
@@ -860,26 +830,22 @@ class TypesTest(fixtures.TestBase):
             Column("c3", CHAR(200)),
             Column("c4", NCHAR(180)),
         )
-        t1.create()
+        t1.create(connection)
         m2 = MetaData()
-        t2 = Table("t1", m2, autoload_with=testing.db)
+        t2 = Table("t1", m2, autoload_with=connection)
         eq_(t2.c.c1.type.length, 50)
         eq_(t2.c.c2.type.length, 250)
         eq_(t2.c.c3.type.length, 200)
         eq_(t2.c.c4.type.length, 180)
 
-    @testing.provide_metadata
-    def test_long_type(self, connection):
-        metadata = self.metadata
+    def test_long_type(self, metadata, connection):
 
         t = Table("t", metadata, Column("data", oracle.LONG))
-        metadata.create_all(testing.db)
+        metadata.create_all(connection)
         connection.execute(t.insert(), data="xyz")
         eq_(connection.scalar(select(t.c.data)), "xyz")
 
-    @testing.provide_metadata
-    def test_longstring(self, connection):
-        metadata = self.metadata
+    def test_longstring(self, metadata, connection):
         exec_sql(
             connection,
             """
@@ -1140,10 +1106,10 @@ class SetInputSizesTest(fixtures.TestBase):
         (CHAR(30), "test", "FIXED_CHAR", False),
         (NCHAR(30), u("test"), "FIXED_NCHAR", False),
         (oracle.LONG(), "test", None, False),
+        argnames="datatype, value, sis_value_text, set_nchar_flag",
     )
-    @testing.provide_metadata
     def test_setinputsizes(
-        self, datatype, value, sis_value_text, set_nchar_flag
+        self, metadata, datatype, value, sis_value_text, set_nchar_flag
     ):
         if isinstance(sis_value_text, str):
             sis_value = getattr(testing.db.dialect.dbapi, sis_value_text)
@@ -1159,7 +1125,7 @@ class SetInputSizesTest(fixtures.TestBase):
                 else:
                     return self.impl
 
-        m = self.metadata
+        m = metadata
         # Oracle can have only one column of type LONG so we make three
         # tables rather than one table w/ three columns
         t1 = Table("t1", m, Column("foo", datatype))
@@ -1167,7 +1133,7 @@ class SetInputSizesTest(fixtures.TestBase):
             "t2", m, Column("foo", NullType().with_variant(datatype, "oracle"))
         )
         t3 = Table("t3", m, Column("foo", TestTypeDec()))
-        m.create_all()
+        m.create_all(testing.db)
 
         class CursorWrapper(object):
             # cx_oracle cursor can't be modified so we have to
@@ -1211,7 +1177,7 @@ class SetInputSizesTest(fixtures.TestBase):
                         [mock.call.setinputsizes()],
                     )
 
-    def test_event_no_native_float(self):
+    def test_event_no_native_float(self, metadata):
         def _remove_type(inputsizes, cursor, statement, parameters, context):
             for param, dbapitype in list(inputsizes.items()):
                 if dbapitype is testing.db.dialect.dbapi.NATIVE_FLOAT:
@@ -1219,6 +1185,8 @@ class SetInputSizesTest(fixtures.TestBase):
 
         event.listen(testing.db, "do_setinputsizes", _remove_type)
         try:
-            self.test_setinputsizes(oracle.BINARY_FLOAT, 25.34534, None, False)
+            self.test_setinputsizes(
+                metadata, oracle.BINARY_FLOAT, 25.34534, None, False
+            )
         finally:
             event.remove(testing.db, "do_setinputsizes", _remove_type)

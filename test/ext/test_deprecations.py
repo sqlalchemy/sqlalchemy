@@ -16,7 +16,7 @@ class AutomapTest(fixtures.MappedTest):
         FixtureTest.define_tables(metadata)
 
     def test_reflect_true(self):
-        Base = automap_base(metadata=self.metadata)
+        Base = automap_base(metadata=self.tables_test_metadata)
         engine_mock = mock.Mock()
         with mock.patch.object(Base.metadata, "reflect") as reflect_mock:
             with testing.expect_deprecated(
