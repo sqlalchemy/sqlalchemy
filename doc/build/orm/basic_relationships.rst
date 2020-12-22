@@ -345,6 +345,7 @@ is stored along with each association between ``Parent`` and
 
     class Association(Base):
         __tablename__ = 'association'
+        id = Column(Integer, primary_key=True)
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
         extra_data = Column(String(50))
@@ -364,6 +365,7 @@ or :paramref:`_orm.relationship.backref`::
 
     class Association(Base):
         __tablename__ = 'association'
+        id = Column(Integer, primary_key=True)
         left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
         right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
         extra_data = Column(String(50))
@@ -419,6 +421,7 @@ associated object, and a second to a target attribute.
         class Association(Base):
             __tablename__ = 'association'
 
+            id = Column(Integer, primary_key=True)
             left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
             right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
             extra_data = Column(String(50))
