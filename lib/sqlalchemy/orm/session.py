@@ -231,6 +231,71 @@ class ORMExecuteState(util.MemoizedSlots):
         )
 
     @property
+    def bind_mapper(self):
+        """Return the :class:`_orm.Mapper` that is the primary "bind" mapper.
+
+        For an :class:`_orm.ORMExecuteState` object invoking an ORM
+        statement, that is, the :attr:`_orm.ORMExecuteState.is_orm_statement`
+        attribute is ``True``, this attribute will return the
+        :class:`_orm.Mapper` that is considered to be the "primary" mapper
+        of the statement.   The term "bind mapper" refers to the fact that
+        a :class:`_orm.Session` object may be "bound" to multiple
+        :class:`_engine.Engine` objects keyed to mapped classes, and the
+        "bind mapper" determines which of those :class:`_engine.Engine` objects
+        would be selected.
+
+        For a statement that is invoked against a single mapped class,
+        :attr:`_orm.ORMExecuteState.bind_mapper` is intended to be a reliable
+        way of getting this mapper.
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.all_mappers`
+
+
+        """
+        return self.bind_arguments.get("mapper", None)
+
+    @property
+    def all_mappers(self):
+        """Return a sequence of all :class:`_orm.Mapper` objects that are
+        involved at the top level of this statement.
+
+        By "top level" we mean those :class:`_orm.Mapper` objects that would
+        be represented in the result set rows for a :func:`_sql.select`
+        query, or for a :func:`_dml.update` or :func:`_dml.delete` query,
+        the mapper that is the main subject of the UPDATE or DELETE.
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :attr:`_orm.ORMExecuteState.bind_mapper`
+
+
+
+        """
+        if not self.is_orm_statement:
+            return []
+        elif self.is_select:
+            result = []
+            seen = set()
+            for d in self.statement.column_descriptions:
+                ent = d["entity"]
+                if ent:
+                    insp = inspect(ent, raiseerr=False)
+                    if insp and insp.mapper and insp.mapper not in seen:
+                        seen.add(insp.mapper)
+                        result.append(insp.mapper)
+            return result
+        elif self.is_update or self.is_delete:
+            return [self.bind_mapper]
+        else:
+            return []
+
+    @property
     def is_orm_statement(self):
         """return True if the operation is an ORM statement.
 

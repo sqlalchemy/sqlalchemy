@@ -2,6 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import select
@@ -184,6 +185,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 )
 
             canary.options(
+                bind_mapper=ctx.bind_mapper,
+                all_mappers=ctx.all_mappers,
                 is_select=ctx.is_select,
                 is_update=ctx.is_update,
                 is_delete=ctx.is_delete,
@@ -196,6 +199,87 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             )
 
         return canary
+
+    def test_all_mappers_accessor_one(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        sess.execute(
+            select(User.id, Address.email_address, User.name)
+            .join(Address)
+            .filter_by(id=7)
+        )
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User), inspect(Address)],
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                )
+            ],
+        )
+
+    def test_all_mappers_accessor_two(self):
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        sess.execute(select(self.tables.users).filter_by(id=7))
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    bind_mapper=None,
+                    all_mappers=[],
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=False,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                )
+            ],
+        )
+
+    def test_all_mappers_accessor_three(self):
+        User, Address = self.classes("User", "Address")
+
+        sess = Session(testing.db, future=True)
+
+        canary = self._flag_fixture(sess)
+
+        sess.execute(select(User).join(Address).filter_by(id=7))
+
+        eq_(
+            canary.mock_calls,
+            [
+                call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],  # Address not in results
+                    is_select=True,
+                    is_update=False,
+                    is_delete=False,
+                    is_orm_statement=True,
+                    is_relationship_load=False,
+                    is_column_load=False,
+                    lazy_loaded_from=None,
+                )
+            ],
+        )
 
     def test_select_flags(self):
         User, Address = self.classes("User", "Address")
@@ -214,6 +298,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
             [
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -223,6 +309,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     lazy_loaded_from=None,
                 ),
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -249,6 +337,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
             [
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -258,6 +348,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     lazy_loaded_from=None,
                 ),
                 call.options(
+                    bind_mapper=inspect(Address),
+                    all_mappers=[inspect(Address)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -286,6 +378,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
             [
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -295,6 +389,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     lazy_loaded_from=None,
                 ),
                 call.options(
+                    bind_mapper=inspect(Address),
+                    all_mappers=[inspect(Address)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -323,6 +419,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
             [
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -332,6 +430,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     lazy_loaded_from=None,
                 ),
                 call.options(
+                    bind_mapper=inspect(Address),
+                    all_mappers=[inspect(Address), inspect(User)],
                     is_select=True,
                     is_update=False,
                     is_delete=False,
@@ -357,6 +457,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
             [
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=False,
                     is_update=False,
                     is_delete=True,
@@ -366,6 +468,8 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                     lazy_loaded_from=None,
                 ),
                 call.options(
+                    bind_mapper=inspect(User),
+                    all_mappers=[inspect(User)],
                     is_select=False,
                     is_update=True,
                     is_delete=False,
