@@ -143,6 +143,12 @@ avoided in favor of :meth:`_asyncio.AsyncSession.refresh`, and that
 appropriate loader options should be employed for :func:`_orm.deferred`
 columns as well as for :func:`_orm.relationship` constructs.
 
+In the example above the :class:`_asyncio.AsyncSession` is instantiated with an
+:class:`_asyncio.AsyncEngine` associated with a particular database URL.
+It is then used in a Python asynchronous context manager (i.e. ``async with:`` statement)
+so that it is automatically closed at the end of the block; this is equivalent
+to calling the :meth:`_asyncio.AsyncSession.close` method.
+
 Adapting ORM Lazy loads to asyncio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
