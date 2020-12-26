@@ -893,6 +893,7 @@ from ...engine import default
 from ...engine import reflection
 from ...sql import compiler
 from ...sql import elements
+from ...sql import functions
 from ...sql import operators
 from ...sql import util as sql_util
 from ...types import BINARY
@@ -1853,12 +1854,13 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             self.sql_compiler.process(
                 elements.Grouping(expr)
                 if (
-                    not isinstance(expr, elements.ColumnClause)
-                    and (
-                        not isinstance(expr, elements.UnaryExpression)
-                        or expr.modifier
+                    isinstance(expr, elements.BinaryExpression)
+                    or (
+                        isinstance(expr, elements.UnaryExpression)
+                        and expr.modifier
                         not in (operators.desc_op, operators.asc_op)
                     )
+                    or isinstance(expr, functions.FunctionElement)
                 )
                 else expr,
                 include_table=False,
