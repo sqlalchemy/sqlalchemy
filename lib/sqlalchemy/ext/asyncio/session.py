@@ -1,3 +1,4 @@
+from typing import Any
 from typing import Callable
 from typing import Mapping
 from typing import Optional
@@ -34,6 +35,7 @@ T = TypeVar("T")
         "expunge_all",
         "get_bind",
         "is_modified",
+        "in_transaction",
     ],
     attributes=[
         "dirty",
@@ -143,6 +145,25 @@ class AsyncSession:
             bind_arguments=bind_arguments,
             **kw
         )
+
+    async def scalar(
+        self,
+        statement: Executable,
+        params: Optional[Mapping] = None,
+        execution_options: Mapping = util.EMPTY_DICT,
+        bind_arguments: Optional[Mapping] = None,
+        **kw
+    ) -> Any:
+        """Execute a statement and return a scalar result."""
+
+        result = await self.execute(
+            statement,
+            params=params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            **kw
+        )
+        return result.scalar()
 
     async def stream(
         self,
@@ -261,6 +282,24 @@ class AsyncSession:
 
     async def __aexit__(self, type_, value, traceback):
         await self.close()
+
+    def _maker_context_manager(self):
+        # no @contextlib.asynccontextmanager until python3.7, gr
+        return _AsyncSessionContextManager(self)
+
+
+class _AsyncSessionContextManager:
+    def __init__(self, async_session):
+        self.async_session = async_session
+
+    async def __aenter__(self):
+        self.trans = self.async_session.begin()
+        await self.trans.__aenter__()
+        return self.async_session
+
+    async def __aexit__(self, type_, value, traceback):
+        await self.trans.__aexit__(type_, value, traceback)
+        await self.async_session.__aexit__(type_, value, traceback)
 
 
 class AsyncSessionTransaction(StartableContext):

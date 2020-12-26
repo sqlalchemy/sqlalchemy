@@ -7,6 +7,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
@@ -55,6 +56,15 @@ class AsyncSessionQueryTest(AsyncFixture):
         eq_(result.scalars().all(), self.static.user_address_result)
 
     @async_test
+    async def test_scalar(self, async_session):
+        User = self.classes.User
+
+        stmt = select(User.id).order_by(User.id).limit(1)
+
+        result = await async_session.scalar(stmt)
+        eq_(result, 7)
+
+    @async_test
     @testing.requires.independent_cursors
     async def test_stream_partitions(self, async_session):
         User = self.classes.User
@@ -82,6 +92,52 @@ class AsyncSessionQueryTest(AsyncFixture):
 
 class AsyncSessionTransactionTest(AsyncFixture):
     run_inserts = None
+
+    @async_test
+    async def test_sessionmaker_block_one(self, async_engine):
+
+        User = self.classes.User
+        maker = sessionmaker(async_engine, class_=AsyncSession)
+
+        session = maker()
+
+        async with session.begin():
+            u1 = User(name="u1")
+            assert session.in_transaction()
+            session.add(u1)
+
+        assert not session.in_transaction()
+
+        async with maker() as session:
+            result = await session.execute(
+                select(User).where(User.name == "u1")
+            )
+
+            u1 = result.scalar_one()
+
+            eq_(u1.name, "u1")
+
+    @async_test
+    async def test_sessionmaker_block_two(self, async_engine):
+
+        User = self.classes.User
+        maker = sessionmaker(async_engine, class_=AsyncSession)
+
+        async with maker.begin() as session:
+            u1 = User(name="u1")
+            assert session.in_transaction()
+            session.add(u1)
+
+        assert not session.in_transaction()
+
+        async with maker() as session:
+            result = await session.execute(
+                select(User).where(User.name == "u1")
+            )
+
+            u1 = result.scalar_one()
+
+            eq_(u1.name, "u1")
 
     @async_test
     async def test_trans(self, async_session, async_engine):

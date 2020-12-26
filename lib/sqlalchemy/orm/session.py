@@ -1152,6 +1152,12 @@ class Session(_SessionClassMethods):
     def __exit__(self, type_, value, traceback):
         self.close()
 
+    @util.contextmanager
+    def _maker_context_manager(self):
+        with self:
+            with self.begin():
+                yield self
+
     @property
     @util.deprecated_20(
         ":attr:`_orm.Session.transaction`",
@@ -3969,7 +3975,6 @@ class sessionmaker(_SessionClassMethods):
         # events can be associated with it specifically.
         self.class_ = type(class_.__name__, (class_,), {})
 
-    @util.contextmanager
     def begin(self):
         """Produce a context manager that both provides a new
         :class:`_orm.Session` as well as a transaction that commits.
@@ -3988,9 +3993,9 @@ class sessionmaker(_SessionClassMethods):
 
 
         """
-        with self() as session:
-            with session.begin():
-                yield session
+
+        session = self()
+        return session._maker_context_manager()
 
     def __call__(self, **local_kw):
         """Produce a new :class:`.Session` object using the configuration
