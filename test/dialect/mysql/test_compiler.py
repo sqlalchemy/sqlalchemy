@@ -40,6 +40,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import TEXT
+from sqlalchemy import text
 from sqlalchemy import TIME
 from sqlalchemy import Time
 from sqlalchemy import TIMESTAMP
@@ -97,6 +98,45 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx),
             "CREATE FULLTEXT INDEX test_idx1 " "ON testtbl (data(10))",
+        )
+
+    def test_create_index_with_text(self):
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String(255)))
+        idx = Index("test_idx1", text("created_at desc"), _table=tbl)
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (created_at desc)",
+        )
+
+    def test_create_index_with_arbitrary_column_element(self):
+        from sqlalchemy.ext.compiler import compiles
+
+        class _textual_index_element(sql.ColumnElement):
+            """alembic's wrapper"""
+
+            __visit_name__ = "_textual_idx_element"
+
+            def __init__(self, table, text):
+                self.table = table
+                self.text = text
+
+        @compiles(_textual_index_element)
+        def _render_textual_index_column(element, compiler, **kw):
+            return compiler.process(element.text, **kw)
+
+        m = MetaData()
+        tbl = Table("testtbl", m, Column("data", String(255)))
+        idx = Index(
+            "test_idx1",
+            _textual_index_element(tbl, text("created_at desc")),
+            _table=tbl,
+        )
+
+        self.assert_compile(
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (created_at desc)",
         )
 
     def test_create_index_with_parser(self):

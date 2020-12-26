@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 5800
+
+    Fixed regression from SQLAlchemy 1.3.20 caused by the fix for
+    :ticket:`5462` which adds double-parenthesis for MySQL functional
+    expressions in indexes, as is required by the backend, this inadvertently
+    extended to include arbitrary :func:`_sql.text` expressions as well as
+    Alembic's internal textual component,  which are required by Alembic for
+    arbitrary index expressions which don't imply double parenthesis.  The
+    check has been narrowed to include only binary/ unary/functional
+    expressions directly.
