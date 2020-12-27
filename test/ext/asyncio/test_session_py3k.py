@@ -65,6 +65,21 @@ class AsyncSessionQueryTest(AsyncFixture):
         eq_(result, 7)
 
     @async_test
+    async def test_get(self, async_session):
+        User = self.classes.User
+
+        u1 = await async_session.get(User, 7)
+
+        eq_(u1.name, "jack")
+
+        u2 = await async_session.get(User, 7)
+
+        is_(u1, u2)
+
+        u3 = await async_session.get(User, 12)
+        is_(u3, None)
+
+    @async_test
     @testing.requires.independent_cursors
     async def test_stream_partitions(self, async_session):
         User = self.classes.User

@@ -1,8 +1,9 @@
 .. change::
     :tags: usecase, orm, asyncio
-    :tickets: 5796, 5797
+    :tickets: 5796, 5797, 5802
 
-    Added :meth:`_asyncio.AsyncSession.scalar` as well as support for
+    Added :meth:`_asyncio.AsyncSession.scalar`,
+    :meth:`_asyncio.AsyncSession.get` as well as support for
     :meth:`_orm.sessionmaker.begin` to work as an async context manager with
     :class:`_asyncio.AsyncSession`.  Also added
     :meth:`_asyncio.AsyncSession.in_transaction` accessor.

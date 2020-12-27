@@ -165,6 +165,30 @@ class AsyncSession:
         )
         return result.scalar()
 
+    async def get(
+        self,
+        entity,
+        ident,
+        options=None,
+        populate_existing=False,
+        with_for_update=None,
+        identity_token=None,
+    ):
+        """Return an instance based on the given primary key identifier,
+        or ``None`` if not found.
+
+
+        """
+        return await greenlet_spawn(
+            self.sync_session.get,
+            entity,
+            ident,
+            options=options,
+            populate_existing=populate_existing,
+            with_for_update=with_for_update,
+            identity_token=identity_token,
+        )
+
     async def stream(
         self,
         statement,
