@@ -69,7 +69,7 @@ may look like::
         session.add(some_other_object)
         session.commit()
 
-Above, the :class:`_orm.Session` is instantiated given an :class:`_engine.Engine`
+Above, the :class:`_orm.Session` is instantiated with an :class:`_engine.Engine`
 associated with a particular database URL.   It is then used in a Python
 context manager (i.e. ``with:`` statement) so that it is automatically
 closed at the end of the block; this is equivalent
