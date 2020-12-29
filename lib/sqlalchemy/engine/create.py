@@ -351,8 +351,8 @@ def create_engine(url, **kwargs):
 
     :param max_overflow=10: the number of connections to allow in
         connection pool "overflow", that is connections that can be
-        opened above and beyond the pool_size setting, which defaults
-        to five. this is only used with :class:`~sqlalchemy.pool.QueuePool`.
+        opened above and beyond the pool_size setting.
+        this is only used with :class:`~sqlalchemy.pool.QueuePool`.
 
     :param module=None: reference to a Python module object (the module
         itself, not its string name).  Specifies an alternate DBAPI module to
