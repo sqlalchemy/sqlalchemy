@@ -67,6 +67,11 @@ def setup_config(db_url, options, file_config, follower_ident):
     eng.connect().close()
 
     cfg = config.Config.register(eng, db_opts, options, file_config)
+
+    # a symbolic name that tests can use if they need to disambiguate
+    # names across databases
+    config.ident = follower_ident
+
     if follower_ident:
         configure_follower(cfg, follower_ident)
     return cfg
