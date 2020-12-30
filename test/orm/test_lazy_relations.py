@@ -1453,17 +1453,19 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
 class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     """ORM-level test for [ticket:3531]"""
 
-    # mysql is having a recursion issue in the bind_expression
-    __only_on__ = ("sqlite", "postgresql")
+    __backend__ = True
 
     class StringAsInt(TypeDecorator):
         impl = String(50)
+
+        def get_dbapi_type(self, dbapi):
+            return dbapi.NUMBER
 
         def column_expression(self, col):
             return sa.cast(col, Integer)
 
         def bind_expression(self, col):
-            return sa.cast(col, String)
+            return sa.cast(col, String(50))
 
     @classmethod
     def define_tables(cls, metadata):

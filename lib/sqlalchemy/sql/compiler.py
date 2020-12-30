@@ -1047,14 +1047,19 @@ class SQLCompiler(Compiled):
         if include_types is None and exclude_types is None:
 
             def _lookup_type(typ):
-                dialect_impl = typ._unwrapped_dialect_impl(dialect)
-                return dialect_impl.get_dbapi_type(dbapi)
+                dbtype = typ.dialect_impl(dialect).get_dbapi_type(dbapi)
+                return dbtype
 
         else:
 
             def _lookup_type(typ):
+                # note we get dbtype from the possibly TypeDecorator-wrapped
+                # dialect_impl, but the dialect_impl itself that we use for
+                # include/exclude is the unwrapped version.
+
                 dialect_impl = typ._unwrapped_dialect_impl(dialect)
-                dbtype = dialect_impl.get_dbapi_type(dbapi)
+
+                dbtype = typ.dialect_impl(dialect).get_dbapi_type(dbapi)
 
                 if (
                     dbtype is not None

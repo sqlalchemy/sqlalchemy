@@ -462,6 +462,45 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
             assert isinstance(row[0], (long, int))  # noqa
 
 
+class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
+    __backend__ = True
+
+    @testing.fixture
+    def string_as_int(self):
+        class StringAsInt(TypeDecorator):
+            impl = String(50)
+
+            def get_dbapi_type(self, dbapi):
+                return dbapi.NUMBER
+
+            def column_expression(self, col):
+                return cast(col, Integer)
+
+            def bind_expression(self, col):
+                return cast(col, String(50))
+
+        return StringAsInt()
+
+    @testing.provide_metadata
+    def test_special_type(self, connection, string_as_int):
+
+        type_ = string_as_int
+
+        metadata = self.metadata
+        t = Table("t", metadata, Column("x", type_))
+        t.create(connection)
+
+        connection.execute(t.insert(), [{"x": x} for x in [1, 2, 3]])
+
+        result = {row[0] for row in connection.execute(t.select())}
+        eq_(result, {1, 2, 3})
+
+        result = {
+            row[0] for row in connection.execute(t.select().where(t.c.x == 2))
+        }
+        eq_(result, {2})
+
+
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
 
@@ -1302,6 +1341,7 @@ __all__ = (
     "TextTest",
     "NumericTest",
     "IntegerTest",
+    "CastTypeDecoratorTest",
     "DateTimeHistoricTest",
     "DateTimeCoercedToDateTimeTest",
     "TimeMicrosecondsTest",
