@@ -15,6 +15,7 @@ file_config = None
 test_schema = None
 test_schema_2 = None
 _current = None
+ident = "main"
 
 _fixture_functions = None  # installed by plugin_base
 

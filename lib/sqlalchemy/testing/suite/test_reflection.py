@@ -458,7 +458,13 @@ class ComponentReflectionTest(fixtures.TablesTest):
             Column("id", sa.INT, primary_key=True),
             Column("name", sa.VARCHAR(50)),
             Column("foo", sa.INT),
-            sa.UniqueConstraint("name", name="user_tmp_uq"),
+            # disambiguate temp table unique constraint names.  this is
+            # pretty arbitrary for a generic dialect however we are doing
+            # it to suit SQL Server which will produce name conflicts for
+            # unique constraints created against temp tables in different
+            # databases.
+            # https://www.arbinada.com/en/node/1645
+            sa.UniqueConstraint("name", name="user_tmp_uq_%s" % config.ident),
             sa.Index("user_tmp_ix", "foo"),
             **kw
         )
@@ -1091,7 +1097,15 @@ class ComponentReflectionTest(fixtures.TablesTest):
             # Different dialects handle duplicate index and constraints
             # differently, so ignore this flag
             refl.pop("duplicates_index", None)
-        eq_(reflected, [{"column_names": ["name"], "name": "user_tmp_uq"}])
+        eq_(
+            reflected,
+            [
+                {
+                    "column_names": ["name"],
+                    "name": "user_tmp_uq_%s" % config.ident,
+                }
+            ],
+        )
 
     @testing.requires.temp_table_reflect_indexes
     def test_get_temp_table_indexes(self):
