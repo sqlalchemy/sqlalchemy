@@ -718,7 +718,9 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_unsupported_cast_literal_bind(self):
         expr = cast(column("foo", Integer) + 5, Float)
 
-        with expect_warnings("Datatype FLOAT does not support CAST on MySQL;"):
+        with expect_warnings(
+            "Datatype FLOAT does not support CAST on MySQL/MariaDb;"
+        ):
             self.assert_compile(expr, "(foo + 5)", literal_binds=True)
 
         dialect = mysql.MySQLDialect()
@@ -754,8 +756,29 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_unsupported_casts(self, type_, expected):
 
         t = sql.table("t", sql.column("col"))
-        with expect_warnings("Datatype .* does not support CAST on MySQL;"):
+        with expect_warnings(
+            "Datatype .* does not support CAST on MySQL/MariaDb;"
+        ):
             self.assert_compile(cast(t.c.col, type_), expected)
+
+    @testing.combinations(
+        (m.FLOAT, "CAST(t.col AS FLOAT)"),
+        (Float, "CAST(t.col AS FLOAT)"),
+        (FLOAT, "CAST(t.col AS FLOAT)"),
+        (m.DOUBLE, "CAST(t.col AS DOUBLE)"),
+        (m.FLOAT, "CAST(t.col AS FLOAT)"),
+        argnames="type_,expected",
+    )
+    @testing.combinations(True, False, argnames="maria_db")
+    def test_float_cast(self, type_, expected, maria_db):
+
+        dialect = mysql.dialect()
+        if maria_db:
+            dialect.server_version_info = (10, 4, 5, "MariaDB")
+        else:
+            dialect.server_version_info = (8, 0, 17)
+        t = sql.table("t", sql.column("col"))
+        self.assert_compile(cast(t.c.col, type_), expected, dialect=dialect)
 
     def test_no_cast_pre_4(self):
         self.assert_compile(
@@ -769,7 +792,9 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     def test_cast_grouped_expression_non_castable(self):
-        with expect_warnings("Datatype FLOAT does not support CAST on MySQL;"):
+        with expect_warnings(
+            "Datatype FLOAT does not support CAST on MySQL/MariaDb;"
+        ):
             self.assert_compile(
                 cast(sql.column("x") + sql.column("y"), Float), "(x + y)"
             )

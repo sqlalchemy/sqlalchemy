@@ -1505,6 +1505,11 @@ class MySQLCompiler(compiler.SQLCompiler):
             return self.dialect.type_compiler.process(type_).replace(
                 "NUMERIC", "DECIMAL"
             )
+        elif (
+            isinstance(type_, sqltypes.Float)
+            and self.dialect._support_float_cast
+        ):
+            return self.dialect.type_compiler.process(type_)
         else:
             return None
 
@@ -1520,7 +1525,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         type_ = self.process(cast.typeclause)
         if type_ is None:
             util.warn(
-                "Datatype %s does not support CAST on MySQL; "
+                "Datatype %s does not support CAST on MySQL/MariaDb; "
                 "the CAST will be skipped."
                 % self.dialect.type_compiler.process(cast.typeclause.type)
             )
@@ -2658,6 +2663,17 @@ class MySQLDialect(default.DefaultDialect):
                     "MariaDB 10.2.9 or greater, or use the MariaDB 10.1 "
                     "series, to avoid these issues." % (mdb_version,)
                 )
+
+    @property
+    def _support_float_cast(self):
+        if not self.server_version_info:
+            return False
+        elif self._is_mariadb:
+            # ref https://mariadb.com/kb/en/mariadb-1045-release-notes/
+            return self.server_version_info >= (10, 4, 5)
+        else:
+            # ref https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-17.html#mysqld-8-0-17-feature  # noqa
+            return self.server_version_info >= (8, 0, 17)
 
     @property
     def _is_mariadb(self):
