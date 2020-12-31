@@ -556,7 +556,7 @@ Core :class:`_sql.Update` construct::
 
     from sqlalchemy import update
 
-    stmt = update(User).where(User.name == "squidward").values(name="spongebob")).\
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
         execution_options(synchronize_session="fetch")
 
     session.execute(stmt)
