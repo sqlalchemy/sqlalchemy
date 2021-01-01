@@ -304,6 +304,9 @@ class ExecuteTest(fixtures.TablesTest):
         class NonStandardException(OperationalError):
             pass
 
+        # TODO: this test is assuming too much of arbitrary dialects and would
+        # be better suited tested against a single mock dialect that does not
+        # have any special behaviors
         with patch.object(
             testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
         ), patch.object(
@@ -312,6 +315,10 @@ class ExecuteTest(fixtures.TablesTest):
             testing.db.dialect,
             "do_execute",
             Mock(side_effect=NonStandardException),
+        ), patch.object(
+            testing.db.dialect.execution_ctx_cls,
+            "handle_dbapi_exception",
+            Mock(),
         ):
             with testing.db.connect() as conn:
                 assert_raises(
