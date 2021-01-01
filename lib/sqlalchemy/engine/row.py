@@ -11,143 +11,17 @@
 import collections.abc as collections_abc
 import operator
 
-from .. import util
 from ..sql import util as sql_util
 
-MD_INDEX = 0  # integer index in cursor.description
-
-# This reconstructor is necessary so that pickles with the C extension or
-# without use the same Binary format.
-try:
-    # We need a different reconstructor on the C extension so that we can
-    # add extra checks that fields have correctly been initialized by
-    # __setstate__.
-    from sqlalchemy.cresultproxy import safe_rowproxy_reconstructor
-
-    # The extra function embedding is needed so that the
-    # reconstructor function has the same signature whether or not
-    # the extension is present.
-    def rowproxy_reconstructor(cls, state):
-        return safe_rowproxy_reconstructor(cls, state)
-
-
-except ImportError:
-
-    def rowproxy_reconstructor(cls, state):
-        obj = cls.__new__(cls)
-        obj.__setstate__(state)
-        return obj
-
-
-KEY_INTEGER_ONLY = 0
-"""__getitem__ only allows integer values and slices, raises TypeError
-   otherwise"""
-
-KEY_OBJECTS_ONLY = 1
-"""__getitem__ only allows string/object values, raises TypeError otherwise"""
 
 try:
-    from sqlalchemy.cresultproxy import BaseRow
-
-    _baserow_usecext = True
+    from sqlalchemy.cyextension.resultproxy import BaseRow
+    from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
+    from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
 except ImportError:
-    _baserow_usecext = False
-
-    class BaseRow:
-        __slots__ = ("_parent", "_data", "_keymap", "_key_style")
-
-        def __init__(self, parent, processors, keymap, key_style, data):
-            """Row objects are constructed by CursorResult objects."""
-
-            object.__setattr__(self, "_parent", parent)
-
-            if processors:
-                object.__setattr__(
-                    self,
-                    "_data",
-                    tuple(
-                        [
-                            proc(value) if proc else value
-                            for proc, value in zip(processors, data)
-                        ]
-                    ),
-                )
-            else:
-                object.__setattr__(self, "_data", tuple(data))
-
-            object.__setattr__(self, "_keymap", keymap)
-
-            object.__setattr__(self, "_key_style", key_style)
-
-        def __reduce__(self):
-            return (
-                rowproxy_reconstructor,
-                (self.__class__, self.__getstate__()),
-            )
-
-        def _filter_on_values(self, filters):
-            return Row(
-                self._parent,
-                filters,
-                self._keymap,
-                self._key_style,
-                self._data,
-            )
-
-        def _values_impl(self):
-            return list(self)
-
-        def __iter__(self):
-            return iter(self._data)
-
-        def __len__(self):
-            return len(self._data)
-
-        def __hash__(self):
-            return hash(self._data)
-
-        def _get_by_int_impl(self, key):
-            return self._data[key]
-
-        def _get_by_key_impl(self, key):
-            if int in key.__class__.__mro__:
-                return self._data[key]
-
-            assert self._key_style == KEY_INTEGER_ONLY
-
-            if isinstance(key, slice):
-                return tuple(self._data[key])
-
-            self._parent._raise_for_nonint(key)
-
-        # The original 1.4 plan was that Row would not allow row["str"]
-        # access, however as the C extensions were inadvertently allowing
-        # this coupled with the fact that orm Session sets future=True,
-        # this allows a softer upgrade path.  see #6218
-        __getitem__ = _get_by_key_impl
-
-        def _get_by_key_impl_mapping(self, key):
-            try:
-                rec = self._keymap[key]
-            except KeyError as ke:
-                rec = self._parent._key_fallback(key, ke)
-
-            mdindex = rec[MD_INDEX]
-            if mdindex is None:
-                self._parent._raise_for_ambiguous_column_name(rec)
-            elif (
-                self._key_style == KEY_OBJECTS_ONLY
-                and int in key.__class__.__mro__
-            ):
-                raise KeyError(key)
-
-            return self._data[mdindex]
-
-        def __getattr__(self, name):
-            try:
-                return self._get_by_key_impl_mapping(name)
-            except KeyError as e:
-                util.raise_(AttributeError(e.args[0]), replace_context=e)
+    from ._py_row import BaseRow
+    from ._py_row import KEY_INTEGER_ONLY
+    from ._py_row import KEY_OBJECTS_ONLY
 
 
 class Row(BaseRow, collections_abc.Sequence):
@@ -234,20 +108,6 @@ class Row(BaseRow, collections_abc.Sequence):
 
     def __contains__(self, key):
         return key in self._data
-
-    def __getstate__(self):
-        return {
-            "_parent": self._parent,
-            "_data": self._data,
-            "_key_style": self._key_style,
-        }
-
-    def __setstate__(self, state):
-        parent = state["_parent"]
-        object.__setattr__(self, "_parent", parent)
-        object.__setattr__(self, "_data", state["_data"])
-        object.__setattr__(self, "_keymap", parent._keymap)
-        object.__setattr__(self, "_key_style", state["_key_style"])
 
     def _op(self, other, op):
         return (
@@ -392,12 +252,10 @@ class RowMapping(BaseRow, collections_abc.Mapping):
 
     _default_key_style = KEY_OBJECTS_ONLY
 
-    if not _baserow_usecext:
+    __getitem__ = BaseRow._get_by_key_impl_mapping
 
-        __getitem__ = BaseRow._get_by_key_impl_mapping
-
-        def _values_impl(self):
-            return list(self._data)
+    def _values_impl(self):
+        return list(self._data)
 
     def __iter__(self):
         return (k for k in self._parent.keys if k is not None)

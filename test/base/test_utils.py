@@ -13,7 +13,9 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql.base import DedupeColumnCollection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -162,6 +164,12 @@ class OrderedSetTest(fixtures.TestBase):
         eq_(o.intersection(iter([3, 4, 6])), util.OrderedSet([3, 4]))
         eq_(o.union(iter([3, 4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
 
+    def test_repr(self):
+        o = util.OrderedSet([])
+        eq_(str(o), "OrderedSet([])")
+        o = util.OrderedSet([3, 2, 4, 5])
+        eq_(str(o), "OrderedSet([3, 2, 4, 5])")
+
 
 class ImmutableDictTest(fixtures.TestBase):
     def test_union_no_change(self):
@@ -266,6 +274,42 @@ class ImmutableDictTest(fixtures.TestBase):
             eq_(d2, {1: 2, 3: 4})
 
             assert isinstance(d2, util.immutabledict)
+
+    def test_repr(self):
+        # this is used by the stub generator in alembic
+        i = util.immutabledict()
+        eq_(str(i), "immutabledict({})")
+        i2 = util.immutabledict({"a": 42, 42: "a"})
+        eq_(str(i2), "immutabledict({'a': 42, 42: 'a'})")
+
+
+class ImmutableTest(fixtures.TestBase):
+    @combinations(util.immutabledict({1: 2, 3: 4}), util.FacadeDict({2: 3}))
+    def test_immutable(self, d):
+        calls = (
+            lambda: d.__delitem__(1),
+            lambda: d.__setitem__(2, 3),
+            lambda: d.__setattr__(2, 3),
+            d.clear,
+            lambda: d.setdefault(1, 3),
+            lambda: d.update({2: 4}),
+        )
+        if hasattr(d, "pop"):
+            calls += (d.pop, d.popitem)
+        for m in calls:
+            with expect_raises_message(TypeError, "object is immutable"):
+                m()
+
+    def test_immutable_properties(self):
+        d = util.ImmutableProperties({3: 4})
+        calls = (
+            lambda: d.__delitem__(1),
+            lambda: d.__setitem__(2, 3),
+            lambda: d.__setattr__(2, 3),
+        )
+        for m in calls:
+            with expect_raises_message(TypeError, "object is immutable"):
+                m()
 
 
 class MemoizedAttrTest(fixtures.TestBase):
@@ -1810,6 +1854,12 @@ class IdentitySetTest(fixtures.TestBase):
 
         assert_raises(TypeError, util.cmp, ids)
         assert_raises(TypeError, hash, ids)
+
+    def test_repr(self):
+        i = util.IdentitySet([])
+        eq_(str(i), "IdentitySet([])")
+        i = util.IdentitySet([1, 2, 3])
+        eq_(str(i), "IdentitySet([1, 2, 3])")
 
 
 class NoHashIdentitySetTest(IdentitySetTest):

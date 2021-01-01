@@ -31,8 +31,18 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import has_compiled_ext
 from sqlalchemy.util import OrderedSet
 from test.orm import _fixtures
+
+
+if has_compiled_ext():
+    # cython ordered set is immutable, subclass it with a python
+    # class so that its method can be replaced
+    _OrderedSet = OrderedSet
+
+    class OrderedSet(_OrderedSet):
+        pass
 
 
 class MergeTest(_fixtures.FixtureTest):

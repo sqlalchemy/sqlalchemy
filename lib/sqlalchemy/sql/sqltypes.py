@@ -37,8 +37,8 @@ from .type_api import Variant
 from .. import event
 from .. import exc
 from .. import inspection
-from .. import processors
 from .. import util
+from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
 

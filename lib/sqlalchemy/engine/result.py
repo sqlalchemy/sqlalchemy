@@ -13,7 +13,6 @@ import functools
 import itertools
 import operator
 
-from .row import _baserow_usecext
 from .row import Row
 from .. import exc
 from .. import util
@@ -21,18 +20,10 @@ from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
 
-
-if _baserow_usecext:
-    from sqlalchemy.cresultproxy import tuplegetter
-else:
-
-    def tuplegetter(*indexes):
-        it = operator.itemgetter(*indexes)
-
-        if len(indexes) > 1:
-            return it
-        else:
-            return lambda row: (it(row),)
+try:
+    from sqlalchemy.cyextension.resultproxy import tuplegetter
+except ImportError:
+    from ._py_row import tuplegetter
 
 
 class ResultMetaData:
@@ -104,7 +95,7 @@ class RMKeyView(collections_abc.KeysView):
         return iter(self._keys)
 
     def __contains__(self, item):
-        if not _baserow_usecext and isinstance(item, int):
+        if isinstance(item, int):
             return False
 
         # note this also includes special key fallback behaviors

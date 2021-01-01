@@ -15,6 +15,7 @@ from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
 from sqlalchemy.engine import result
+from sqlalchemy.engine.processors import to_decimal_processor_factory
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
@@ -28,7 +29,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
-from sqlalchemy.processors import to_decimal_processor_factory
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.visitors import cloned_traverse

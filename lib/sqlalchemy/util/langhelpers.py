@@ -1899,9 +1899,11 @@ def repr_tuple_names(names):
 
 def has_compiled_ext():
     try:
-        from sqlalchemy import cimmutabledict  # noqa F401
-        from sqlalchemy import cprocessors  # noqa F401
-        from sqlalchemy import cresultproxy  # noqa F401
+        from sqlalchemy.cyextension import collections  # noqa F401
+        from sqlalchemy.cyextension import immutabledict  # noqa F401
+        from sqlalchemy.cyextension import processors  # noqa F401
+        from sqlalchemy.cyextension import resultproxy  # noqa F401
+        from sqlalchemy.cyextension import util  # noqa F401
 
         return True
     except ImportError:

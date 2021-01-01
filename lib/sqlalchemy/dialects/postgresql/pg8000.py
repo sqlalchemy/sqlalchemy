@@ -108,9 +108,9 @@ from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
 from ... import exc
-from ... import processors
 from ... import types as sqltypes
 from ... import util
+from ...engine import processors
 from ...sql.elements import quoted_name
 
 

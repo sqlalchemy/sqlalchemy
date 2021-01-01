@@ -195,6 +195,37 @@ class ResultTupleTest(fixtures.TestBase):
             eq_(kt._fields, ("a", "b"))
             eq_(kt._asdict(), {"a": 1, "b": 3})
 
+    @testing.requires.cextensions
+    def test_serialize_cy_py_cy(self):
+        from sqlalchemy.engine._py_row import BaseRow as _PyRow
+        from sqlalchemy.cyextension.resultproxy import BaseRow as _CyRow
+
+        global Row
+
+        p = result.SimpleResultMetaData(["a", None, "b"])
+
+        for loads, dumps in picklers():
+
+            class Row(_CyRow):
+                pass
+
+            row = Row(p, p._processors, p._keymap, 0, (1, 2, 3))
+
+            state = dumps(row)
+
+            class Row(_PyRow):
+                pass
+
+            row2 = loads(state)
+            is_true(isinstance(row2, _PyRow))
+            state2 = dumps(row2)
+
+            class Row(_CyRow):
+                pass
+
+            row3 = loads(state2)
+            is_true(isinstance(row3, _CyRow))
+
 
 class ResultTest(fixtures.TestBase):
     def _fixture(

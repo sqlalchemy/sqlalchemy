@@ -818,12 +818,12 @@ from .json import JSON
 from .json import JSONIndexType
 from .json import JSONPathType
 from ... import exc
-from ... import processors
 from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
 from ... import util
 from ...engine import default
+from ...engine import processors
 from ...engine import reflection
 from ...sql import coercions
 from ...sql import ColumnElement

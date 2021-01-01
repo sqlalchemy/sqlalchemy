@@ -1,6 +1,11 @@
+from types import MappingProxyType
+
+from sqlalchemy import exc
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.util import immutabledict
 
 
 class _BooleanProcessorTest(fixtures.TestBase):
@@ -20,14 +25,14 @@ class _BooleanProcessorTest(fixtures.TestBase):
         eq_(self.module.int_to_boolean(-4), True)
 
 
-class CBooleanProcessorTest(_BooleanProcessorTest):
+class CyBooleanProcessorTest(_BooleanProcessorTest):
     __requires__ = ("cextensions",)
 
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy import cprocessors
+        from sqlalchemy.cyextension import processors
 
-        cls.module = cprocessors
+        cls.module = processors
 
 
 class _DateProcessorTest(fixtures.TestBase):
@@ -83,23 +88,168 @@ class _DateProcessorTest(fixtures.TestBase):
 class PyDateProcessorTest(_DateProcessorTest):
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy import processors
+        from sqlalchemy.engine import _py_processors
 
-        cls.module = type(
-            "util",
-            (object,),
-            dict(
-                (k, staticmethod(v))
-                for k, v in list(processors.py_fallback().items())
-            ),
-        )
+        cls.module = _py_processors
 
 
-class CDateProcessorTest(_DateProcessorTest):
+class CyDateProcessorTest(_DateProcessorTest):
     __requires__ = ("cextensions",)
 
     @classmethod
     def setup_test_class(cls):
-        from sqlalchemy import cprocessors
+        from sqlalchemy.cyextension import processors
 
-        cls.module = cprocessors
+        cls.module = processors
+
+
+class _DistillArgsTest(fixtures.TestBase):
+    def test_distill_20_none(self):
+        eq_(self.module._distill_params_20(None), ())
+
+    def test_distill_20_empty_sequence(self):
+        eq_(self.module._distill_params_20(()), ())
+        eq_(self.module._distill_params_20([]), [])
+
+    def test_distill_20_sequence_sequence(self):
+        eq_(self.module._distill_params_20(((1, 2, 3),)), ((1, 2, 3),))
+        eq_(self.module._distill_params_20([(1, 2, 3)]), [(1, 2, 3)])
+
+        eq_(self.module._distill_params_20(((1, 2), (2, 3))), ((1, 2), (2, 3)))
+        eq_(self.module._distill_params_20([(1, 2), (2, 3)]), [(1, 2), (2, 3)])
+
+    def test_distill_20_sequence_dict(self):
+        eq_(self.module._distill_params_20(({"a": 1},)), ({"a": 1},))
+        eq_(
+            self.module._distill_params_20([{"a": 1}, {"a": 2}]),
+            [{"a": 1}, {"a": 2}],
+        )
+        eq_(
+            self.module._distill_params_20((MappingProxyType({"a": 1}),)),
+            (MappingProxyType({"a": 1}),),
+        )
+
+    def test_distill_20_sequence_error(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_params_20((1, 2, 3))
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_params_20(([1, 2, 3],))
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_params_20([1, 2, 3])
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_params_20(["a", "b"])
+
+    def test_distill_20_dict(self):
+        eq_(self.module._distill_params_20({"foo": "bar"}), [{"foo": "bar"}])
+        eq_(
+            self.module._distill_params_20(immutabledict({"foo": "bar"})),
+            [immutabledict({"foo": "bar"})],
+        )
+        eq_(
+            self.module._distill_params_20(MappingProxyType({"foo": "bar"})),
+            [MappingProxyType({"foo": "bar"})],
+        )
+
+    def test_distill_20_error(self):
+        with expect_raises_message(
+            exc.ArgumentError, "mapping or list expected for parameters"
+        ):
+            self.module._distill_params_20("foo")
+        with expect_raises_message(
+            exc.ArgumentError, "mapping or list expected for parameters"
+        ):
+            self.module._distill_params_20(1)
+
+    def test_distill_raw_none(self):
+        eq_(self.module._distill_raw_params(None), ())
+
+    def test_distill_raw_empty_list(self):
+        eq_(self.module._distill_raw_params([]), [])
+
+    def test_distill_raw_list_sequence(self):
+        eq_(self.module._distill_raw_params([(1, 2, 3)]), [(1, 2, 3)])
+        eq_(
+            self.module._distill_raw_params([(1, 2), (2, 3)]), [(1, 2), (2, 3)]
+        )
+
+    def test_distill_raw_list_dict(self):
+        eq_(
+            self.module._distill_raw_params([{"a": 1}, {"a": 2}]),
+            [{"a": 1}, {"a": 2}],
+        )
+        eq_(
+            self.module._distill_raw_params([MappingProxyType({"a": 1})]),
+            [MappingProxyType({"a": 1})],
+        )
+
+    def test_distill_raw_sequence_error(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_raw_params([1, 2, 3])
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_raw_params([[1, 2, 3]])
+        with expect_raises_message(
+            exc.ArgumentError,
+            "List argument must consist only of tuples or dictionaries",
+        ):
+            self.module._distill_raw_params(["a", "b"])
+
+    def test_distill_raw_tuple(self):
+        eq_(self.module._distill_raw_params(()), [()])
+        eq_(self.module._distill_raw_params((1, 2, 3)), [(1, 2, 3)])
+
+    def test_distill_raw_dict(self):
+        eq_(self.module._distill_raw_params({"foo": "bar"}), [{"foo": "bar"}])
+        eq_(
+            self.module._distill_raw_params(immutabledict({"foo": "bar"})),
+            [immutabledict({"foo": "bar"})],
+        )
+        eq_(
+            self.module._distill_raw_params(MappingProxyType({"foo": "bar"})),
+            [MappingProxyType({"foo": "bar"})],
+        )
+
+    def test_distill_raw_error(self):
+        with expect_raises_message(
+            exc.ArgumentError, "mapping or sequence expected for parameters"
+        ):
+            self.module._distill_raw_params("foo")
+        with expect_raises_message(
+            exc.ArgumentError, "mapping or sequence expected for parameters"
+        ):
+            self.module._distill_raw_params(1)
+
+
+class PyDistillArgsTest(_DistillArgsTest):
+    @classmethod
+    def setup_test_class(cls):
+        from sqlalchemy.engine import _py_util
+
+        cls.module = _py_util
+
+
+class CyDistillArgsTest(_DistillArgsTest):
+    __requires__ = ("cextensions",)
+
+    @classmethod
+    def setup_test_class(cls):
+        from sqlalchemy.cyextension import util
+
+        cls.module = util

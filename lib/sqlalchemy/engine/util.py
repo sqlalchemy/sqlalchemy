@@ -5,11 +5,15 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-import collections.abc as collections_abc
-
 from .. import exc
 from .. import util
-from ..util import immutabledict
+
+try:
+    from sqlalchemy.cyextension.util import _distill_params_20  # noqa
+    from sqlalchemy.cyextension.util import _distill_raw_params  # noqa
+except ImportError:
+    from ._py_util import _distill_params_20  # noqa
+    from ._py_util import _distill_raw_params  # noqa
 
 
 def connection_memoize(key):
@@ -29,57 +33,6 @@ def connection_memoize(key):
             return val
 
     return decorated
-
-
-_no_tuple = ()
-
-
-def _distill_params_20(params):
-    if params is None:
-        return _no_tuple
-    elif isinstance(params, (list, tuple)):
-        # collections_abc.MutableSequence): # avoid abc.__instancecheck__
-        if params and not isinstance(
-            params[0], (collections_abc.Mapping, tuple)
-        ):
-            raise exc.ArgumentError(
-                "List argument must consist only of tuples or dictionaries"
-            )
-
-        return params
-    elif isinstance(
-        params,
-        (dict, immutabledict),
-        # only do abc.__instancecheck__ for Mapping after we've checked
-        # for plain dictionaries and would otherwise raise
-    ) or isinstance(params, collections_abc.Mapping):
-        return [params]
-    else:
-        raise exc.ArgumentError("mapping or sequence expected for parameters")
-
-
-def _distill_raw_params(params):
-    if params is None:
-        return _no_tuple
-    elif isinstance(params, (list,)):
-        # collections_abc.MutableSequence): # avoid abc.__instancecheck__
-        if params and not isinstance(
-            params[0], (collections_abc.Mapping, tuple)
-        ):
-            raise exc.ArgumentError(
-                "List argument must consist only of tuples or dictionaries"
-            )
-
-        return params
-    elif isinstance(
-        params,
-        (tuple, dict, immutabledict),
-        # only do abc.__instancecheck__ for Mapping after we've checked
-        # for plain dictionaries and would otherwise raise
-    ) or isinstance(params, collections_abc.Mapping):
-        return [params]
-    else:
-        raise exc.ArgumentError("mapping or sequence expected for parameters")
 
 
 class TransactionalContext:

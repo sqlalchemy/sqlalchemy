@@ -1349,7 +1349,8 @@ class SuiteRequirements(Requirements):
     @property
     def cextensions(self):
         return exclusions.skip_if(
-            lambda: not util.has_compiled_ext(), "C extensions not installed"
+            lambda: not util.has_compiled_ext(),
+            "Cython extensions not installed",
         )
 
     def _has_sqlite(self):

@@ -43,9 +43,9 @@ import re
 
 from .base import MSDialect
 from .base import MSIdentifierPreparer
-from ... import processors
 from ... import types as sqltypes
 from ... import util
+from ...engine import processors
 
 
 class _MSNumeric_pymssql(sqltypes.Numeric):

@@ -120,9 +120,9 @@ from .base import REGCLASS
 from .base import UUID
 from ... import exc
 from ... import pool
-from ... import processors
 from ... import util
 from ...engine import AdaptedConnection
+from ...engine import processors
 from ...sql import sqltypes
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback

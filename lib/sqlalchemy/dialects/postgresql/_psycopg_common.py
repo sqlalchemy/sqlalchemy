@@ -9,9 +9,9 @@ from .base import PGExecutionContext
 from .base import UUID
 from .hstore import HSTORE
 from ... import exc
-from ... import processors
 from ... import types as sqltypes
 from ... import util
+from ...engine import processors
 
 _server_side_id = util.counter()
 

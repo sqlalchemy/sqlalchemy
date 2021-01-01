@@ -119,7 +119,7 @@ class ExecuteTest(fixtures.TablesTest):
             tsa.exc.ArgumentError,
             "List argument must consist only of tuples or dictionaries",
             connection.exec_driver_sql,
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             [2, "fred"],
         )
 
@@ -127,7 +127,7 @@ class ExecuteTest(fixtures.TablesTest):
             tsa.exc.ArgumentError,
             "List argument must consist only of tuples or dictionaries",
             connection.exec_driver_sql,
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             [[3, "ed"], [4, "horse"]],
         )
 
@@ -159,23 +159,23 @@ class ExecuteTest(fixtures.TablesTest):
     def test_raw_qmark(self, connection):
         conn = connection
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             (1, "jack"),
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             (2, "fred"),
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             [(3, "ed"), (4, "horse")],
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             [(5, "barney"), (6, "donkey")],
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (?, ?)",
+            "insert into users (user_id, user_name) values (?, ?)",
             (7, "sally"),
         )
         res = conn.exec_driver_sql("select * from users order by user_id")
@@ -198,15 +198,15 @@ class ExecuteTest(fixtures.TablesTest):
     def test_raw_sprintf(self, connection):
         conn = connection
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (%s, %s)",
+            "insert into users (user_id, user_name) values (%s, %s)",
             (1, "jack"),
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (%s, %s)",
+            "insert into users (user_id, user_name) values (%s, %s)",
             [(2, "ed"), (3, "horse")],
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (%s, %s)",
+            "insert into users (user_id, user_name) values (%s, %s)",
             (4, "sally"),
         )
         conn.exec_driver_sql("insert into users (user_id) values (%s)", (5,))
@@ -254,15 +254,15 @@ class ExecuteTest(fixtures.TablesTest):
     def test_raw_named(self, connection):
         conn = connection
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (:id, :name)",
+            "insert into users (user_id, user_name) values (:id, :name)",
             {"id": 1, "name": "jack"},
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (:id, :name)",
+            "insert into users (user_id, user_name) values (:id, :name)",
             [{"id": 2, "name": "ed"}, {"id": 3, "name": "horse"}],
         )
         conn.exec_driver_sql(
-            "insert into users (user_id, user_name) " "values (:id, :name)",
+            "insert into users (user_id, user_name) values (:id, :name)",
             {"id": 4, "name": "sally"},
         )
         res = conn.exec_driver_sql("select * from users order by user_id")
@@ -518,7 +518,7 @@ class ExecuteTest(fixtures.TablesTest):
     )
     @testing.fails_on(
         "oracle+cx_oracle",
-        "cx_oracle exception seems to be having " "some issue with pickling",
+        "cx_oracle exception seems to be having some issue with pickling",
     )
     def test_stmt_exception_pickleable_plus_dbapi(self):
         raw = testing.db.raw_connection()

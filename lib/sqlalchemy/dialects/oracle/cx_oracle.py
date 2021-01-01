@@ -439,11 +439,11 @@ from .base import OracleCompiler
 from .base import OracleDialect
 from .base import OracleExecutionContext
 from ... import exc
-from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 from ...engine import interfaces
+from ...engine import processors
 
 
 class _OracleInteger(sqltypes.Integer):
