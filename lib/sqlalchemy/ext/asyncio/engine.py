@@ -41,7 +41,7 @@ def create_async_engine(*arg, **kw):
 
 
 class AsyncConnectable:
-    __slots__ = "_slots_dispatch"
+    __slots__ = "_slots_dispatch", "__weakref__"
 
 
 @util.create_proxy_methods(

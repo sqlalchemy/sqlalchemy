@@ -136,6 +136,18 @@ class AsyncAdaptedLock:
         self.mutex.release()
 
 
+def _util_async_run_coroutine_function(fn, *args, **kwargs):
+    """for test suite/ util only"""
+
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        raise Exception(
+            "for async run coroutine we expect that no greenlet or event "
+            "loop is running when we start out"
+        )
+    return loop.run_until_complete(fn(*args, **kwargs))
+
+
 def _util_async_run(fn, *args, **kwargs):
     """for test suite/ util only"""
 

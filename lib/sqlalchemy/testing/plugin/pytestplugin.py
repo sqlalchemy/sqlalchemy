@@ -255,7 +255,7 @@ def pytest_pycollect_makeitem(collector, name, obj):
     if inspect.isclass(obj) and plugin_base.want_class(name, obj):
         from sqlalchemy.testing import config
 
-        if config.any_async and getattr(obj, "__asyncio_wrap__", True):
+        if config.any_async:
             obj = _apply_maybe_async(obj)
 
         ctor = getattr(pytest.Class, "from_parent", pytest.Class)
@@ -277,6 +277,13 @@ def pytest_pycollect_makeitem(collector, name, obj):
         return []
 
 
+def _is_wrapped_coroutine_function(fn):
+    while hasattr(fn, "__wrapped__"):
+        fn = fn.__wrapped__
+
+    return inspect.iscoroutinefunction(fn)
+
+
 def _apply_maybe_async(obj, recurse=True):
     from sqlalchemy.testing import asyncio
 
@@ -286,6 +293,7 @@ def _apply_maybe_async(obj, recurse=True):
             (callable(value) or isinstance(value, classmethod))
             and not getattr(value, "_maybe_async_applied", False)
             and (name.startswith("test_") or name in setup_names)
+            and not _is_wrapped_coroutine_function(value)
         ):
             is_classmethod = False
             if isinstance(value, classmethod):
@@ -656,6 +664,6 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
 
         @_pytest_fn_decorator
         def decorate(fn, *args, **kwargs):
-            asyncio._assume_async(fn, *args, **kwargs)
+            asyncio._run_coroutine_function(fn, *args, **kwargs)
 
         return decorate(fn)

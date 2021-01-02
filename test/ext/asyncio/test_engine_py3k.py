@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import combinations
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
@@ -32,7 +33,7 @@ class EngineFixture(fixtures.TablesTest):
 
     @testing.fixture
     def async_engine(self):
-        return create_async_engine(testing.db.url)
+        return engines.testing_engine(asyncio=True)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -54,6 +55,12 @@ class EngineFixture(fixtures.TablesTest):
 
 class AsyncEngineTest(EngineFixture):
     __backend__ = True
+
+    @testing.fails("the failure is the test")
+    @async_test
+    async def test_we_are_definitely_running_async_tests(self, async_engine):
+        async with async_engine.connect() as conn:
+            eq_(await conn.scalar(text("select 1")), 2)
 
     def test_proxied_attrs_engine(self, async_engine):
         sync_engine = async_engine.sync_engine

@@ -97,7 +97,10 @@ class ConnectionKiller(object):
 
         self.conns = set()
         for rec in list(self.testing_engines):
-            rec.dispose()
+            if hasattr(rec, "sync_engine"):
+                rec.sync_engine.dispose()
+            else:
+                rec.dispose()
 
     def assert_all_closed(self):
         for rec in self.proxy_refs:
@@ -236,10 +239,12 @@ def reconnecting_engine(url=None, options=None):
     return engine
 
 
-def testing_engine(url=None, options=None, future=False):
+def testing_engine(url=None, options=None, future=False, asyncio=False):
     """Produce an engine configured by --options with optional overrides."""
 
-    if future or config.db and config.db._is_future:
+    if asyncio:
+        from sqlalchemy.ext.asyncio import create_async_engine as create_engine
+    elif future or config.db and config.db._is_future:
         from sqlalchemy.future import create_engine
     else:
         from sqlalchemy import create_engine
@@ -263,7 +268,10 @@ def testing_engine(url=None, options=None, future=False):
         default_opt.update(options)
 
     engine = create_engine(url, **options)
-    engine._has_events = True  # enable event blocks, helps with profiling
+    if asyncio:
+        engine.sync_engine._has_events = True
+    else:
+        engine._has_events = True  # enable event blocks, helps with profiling
 
     if isinstance(engine.pool, pool.QueuePool):
         engine.pool._timeout = 0
