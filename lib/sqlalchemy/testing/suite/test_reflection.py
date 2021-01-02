@@ -451,7 +451,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @classmethod
     def define_temp_tables(cls, metadata):
         kw = temp_table_keyword_args(config, config.db)
-        table_name = get_temp_table_name(config, config.db, "user_tmp")
+        table_name = get_temp_table_name(
+            config, config.db, "user_tmp_%s" % config.ident
+        )
         user_tmp = Table(
             table_name,
             metadata,
@@ -477,7 +479,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 "after_create",
                 DDL(
                     "create temporary view user_tmp_v as "
-                    "select * from user_tmp"
+                    "select * from user_tmp_%s" % config.ident
                 ),
             )
             event.listen(user_tmp, "before_drop", DDL("drop view user_tmp_v"))
@@ -564,7 +566,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def test_get_temp_table_names(self):
         insp = inspect(self.bind)
         temp_table_names = insp.get_temp_table_names()
-        eq_(sorted(temp_table_names), ["user_tmp"])
+        eq_(sorted(temp_table_names), ["user_tmp_%s" % config.ident])
 
     @testing.requires.view_reflection
     @testing.requires.temp_table_names
@@ -752,7 +754,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
 
     @testing.requires.temp_table_reflection
     def test_get_temp_table_columns(self):
-        table_name = get_temp_table_name(config, config.db, "user_tmp")
+        table_name = get_temp_table_name(
+            config, config.db, "user_tmp_%s" % config.ident
+        )
         meta = MetaData(self.bind)
         user_tmp = self.tables[table_name]
         insp = inspect(meta.bind)
@@ -1092,7 +1096,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.unique_constraint_reflection
     def test_get_temp_table_unique_constraints(self):
         insp = inspect(self.bind)
-        reflected = insp.get_unique_constraints("user_tmp")
+        reflected = insp.get_unique_constraints("user_tmp_%s" % config.ident)
         for refl in reflected:
             # Different dialects handle duplicate index and constraints
             # differently, so ignore this flag
@@ -1110,7 +1114,9 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.temp_table_reflect_indexes
     def test_get_temp_table_indexes(self):
         insp = inspect(self.bind)
-        table_name = get_temp_table_name(config, config.db, "user_tmp")
+        table_name = get_temp_table_name(
+            config, config.db, "user_tmp_%s" % config.ident
+        )
         indexes = insp.get_indexes(table_name)
         for ind in indexes:
             ind.pop("dialect_options", None)
