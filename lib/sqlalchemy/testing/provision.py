@@ -70,7 +70,8 @@ def setup_config(db_url, options, file_config, follower_ident):
 
     # a symbolic name that tests can use if they need to disambiguate
     # names across databases
-    config.ident = follower_ident
+    if follower_ident:
+        config.ident = follower_ident
 
     if follower_ident:
         configure_follower(cfg, follower_ident)
