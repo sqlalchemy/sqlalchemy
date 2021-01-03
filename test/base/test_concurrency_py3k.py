@@ -26,7 +26,7 @@ def go(*fns):
     return sum(await_only(fn()) for fn in fns)
 
 
-class TestAsyncioCompat(fixtures.AsyncTestBase):
+class TestAsyncioCompat(fixtures.TestBase):
     @async_test
     async def test_ok(self):
 
@@ -53,7 +53,8 @@ class TestAsyncioCompat(fixtures.AsyncTestBase):
         to_await = run1()
         await_fallback(to_await)
 
-    def test_await_only_no_greenlet(self):
+    @async_test
+    async def test_await_only_no_greenlet(self):
         to_await = run1()
         with expect_raises_message(
             exc.InvalidRequestError,
@@ -62,7 +63,7 @@ class TestAsyncioCompat(fixtures.AsyncTestBase):
             await_only(to_await)
 
         # ensure no warning
-        await_fallback(to_await)
+        await greenlet_spawn(await_fallback, to_await)
 
     @async_test
     async def test_await_fallback_error(self):

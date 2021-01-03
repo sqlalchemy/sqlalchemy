@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
+from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
@@ -24,7 +24,7 @@ class AsyncFixture(_fixtures.FixtureTest):
 
     @testing.fixture
     def async_engine(self):
-        return create_async_engine(testing.db.url)
+        return engines.testing_engine(asyncio=True)
 
     @testing.fixture
     def async_session(self, async_engine):

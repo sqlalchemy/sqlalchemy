@@ -22,10 +22,15 @@ import inspect
 
 from . import config
 from ..util.concurrency import _util_async_run
+from ..util.concurrency import _util_async_run_coroutine_function
 
 # may be set to False if the
 # --disable-asyncio flag is passed to the test runner.
 ENABLE_ASYNCIO = True
+
+
+def _run_coroutine_function(fn, *args, **kwargs):
+    return _util_async_run_coroutine_function(fn, *args, **kwargs)
 
 
 def _assume_async(fn, *args, **kwargs):
