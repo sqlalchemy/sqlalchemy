@@ -9,7 +9,7 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 
 
 class InheritTest(fixtures.MappedTest):
@@ -114,7 +114,7 @@ class InheritTest(fixtures.MappedTest):
                 login_id="lg1",
             )
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(g)
         sess.flush()
         # TODO: put an assertion
@@ -164,7 +164,7 @@ class InheritTest2(fixtures.MappedTest):
         print(foo.join(bar).primary_key)
         print(class_mapper(Bar).primary_key)
         b = Bar("somedata")
-        sess = create_session()
+        sess = fixture_session()
         sess.add(b)
         sess.flush()
         sess.expunge_all()
@@ -192,7 +192,7 @@ class InheritTest2(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         b = Bar("barfoo")
         sess.add(b)
         sess.flush()
@@ -304,7 +304,7 @@ class InheritTest3(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         b = Bar("bar #1")
         sess.add(b)
         b.foos.append(Foo("foo #1"))
@@ -352,7 +352,7 @@ class InheritTest3(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         f1 = Foo("foo #1")
         b1 = Bar("bar #1")
         b2 = Bar("bar #2")

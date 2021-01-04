@@ -4,12 +4,12 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -48,7 +48,7 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
     def test_bulk_insert_via_save(self):
         Foo = self.classes.Foo
 
-        s = Session()
+        s = fixture_session()
 
         s.bulk_save_objects([Foo(value="value")])
 
@@ -58,7 +58,7 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
     def test_bulk_update_via_save(self):
         Foo = self.classes.Foo
 
-        s = Session()
+        s = fixture_session()
 
         s.add(Foo(value="value"))
         s.commit()
@@ -84,7 +84,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_save_return_defaults(self):
         (User,) = self.classes("User")
 
-        s = Session()
+        s = fixture_session()
         objects = [User(name="u1"), User(name="u2"), User(name="u3")]
         assert "id" not in objects[0].__dict__
 
@@ -121,7 +121,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_save_mappings_preserve_order(self):
         (User,) = self.classes("User")
 
-        s = Session()
+        s = fixture_session()
 
         # commit some object into db
         user1 = User(name="i1")
@@ -177,7 +177,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_save_no_defaults(self):
         (User,) = self.classes("User")
 
-        s = Session()
+        s = fixture_session()
         objects = [User(name="u1"), User(name="u2"), User(name="u3")]
         assert "id" not in objects[0].__dict__
 
@@ -195,7 +195,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_save_updated_include_unchanged(self):
         (User,) = self.classes("User")
 
-        s = Session(expire_on_commit=False)
+        s = fixture_session(expire_on_commit=False)
         objects = [User(name="u1"), User(name="u2"), User(name="u3")]
         s.add_all(objects)
         s.commit()
@@ -203,7 +203,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
         objects[0].name = "u1new"
         objects[2].name = "u3new"
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_save_objects(objects, update_changed_only=False)
 
@@ -221,12 +221,12 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_update(self):
         (User,) = self.classes("User")
 
-        s = Session(expire_on_commit=False)
+        s = fixture_session(expire_on_commit=False)
         objects = [User(name="u1"), User(name="u2"), User(name="u3")]
         s.add_all(objects)
         s.commit()
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_update_mappings(
                 User,
@@ -251,7 +251,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_insert(self):
         (User,) = self.classes("User")
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_insert_mappings(
                 User,
@@ -276,7 +276,7 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
     def test_bulk_insert_render_nulls(self):
         (Order,) = self.classes("Order")
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_insert_mappings(
                 Order,
@@ -334,7 +334,7 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
     def test_insert_w_fetch(self):
         A = self.classes.A
 
-        s = Session()
+        s = fixture_session()
         a1 = A(x=1)
         s.bulk_save_objects([a1])
         s.commit()
@@ -342,7 +342,7 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
     def test_update_w_fetch(self):
         A = self.classes.A
 
-        s = Session()
+        s = fixture_session()
         a1 = A(x=1, y=2)
         s.add(a1)
         s.commit()
@@ -488,7 +488,7 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
     def _test_insert(self, person_cls):
         Person = person_cls
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter(testing.db) as asserter:
             s.bulk_insert_mappings(
                 Person, [{"id": 5, "personname": "thename"}]
@@ -501,7 +501,7 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
     def _test_update(self, person_cls):
         Person = person_cls
 
-        s = Session()
+        s = fixture_session()
         s.add(Person(id=5, personname="thename"))
         s.commit()
 
@@ -605,7 +605,7 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
             "Person", "Engineer", "Manager", "Boss"
         )
 
-        s = Session()
+        s = fixture_session()
         objects = [
             Manager(name="m1", status="s1", manager_name="mn1"),
             Engineer(name="e1", status="s2", primary_language="l1"),
@@ -684,7 +684,7 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
             "Person", "Engineer", "Manager", "Boss"
         )
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_save_objects(
                 [
@@ -766,7 +766,7 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
             "Person", "Engineer", "Manager", "Boss"
         )
 
-        s = Session()
+        s = fixture_session()
         with self.sql_execution_asserter() as asserter:
             s.bulk_insert_mappings(
                 Boss,

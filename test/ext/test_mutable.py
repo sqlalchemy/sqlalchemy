@@ -15,7 +15,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import Session
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.testing import assert_raises
@@ -23,6 +22,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
@@ -106,7 +106,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         mapper(Foo, foo)
 
     def test_coerce_none(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=None)
         sess.add(f1)
         sess.commit()
@@ -121,7 +121,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         )
 
     def test_in_place_mutation(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
@@ -149,7 +149,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         )
 
     def test_clear(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
@@ -161,7 +161,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {})
 
     def test_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
@@ -173,7 +173,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"a": "z"})
 
     def test_pop(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b", "c": "d"})
         sess.add(f1)
@@ -187,7 +187,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"c": "d"})
 
     def test_pop_default(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b", "c": "d"})
         sess.add(f1)
@@ -200,7 +200,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"c": "d"})
 
     def test_popitem(self):
-        sess = Session()
+        sess = fixture_session()
 
         orig = {"a": "b", "c": "d"}
 
@@ -220,7 +220,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, orig)
 
     def test_setdefault(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
@@ -237,7 +237,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"a": "b", "c": "d"})
 
     def test_replace(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
         sess.flush()
@@ -247,7 +247,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"b": "c"})
 
     def test_replace_itself_still_ok(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
         sess.flush()
@@ -258,7 +258,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"a": "b", "b": "c"})
 
     def test_pickle_parent(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
@@ -267,14 +267,14 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         sess.close()
 
         for loads, dumps in picklers():
-            sess = Session()
+            sess = fixture_session()
             f2 = loads(dumps(f1))
             sess.add(f2)
             f2.data["a"] = "c"
             assert f2 in sess.dirty
 
     def test_unrelated_flush(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data={"a": "b"}, unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
@@ -285,7 +285,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data["a"], "c")
 
     def _test_non_mutable(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(non_mutable_data={"a": "b"})
         sess.add(f1)
@@ -328,7 +328,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         mapper(Foo, foo)
 
     def test_coerce_none(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=None)
         sess.add(f1)
         sess.commit()
@@ -343,7 +343,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         )
 
     def test_in_place_mutation(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -355,7 +355,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [3, 2])
 
     def test_in_place_slice_mutation(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2, 3, 4])
         sess.add(f1)
@@ -367,7 +367,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 5, 6, 4])
 
     def test_del_slice(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2, 3, 4])
         sess.add(f1)
@@ -382,7 +382,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         if not hasattr(list, "clear"):
             # py2 list doesn't have 'clear'
             return
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -394,7 +394,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [])
 
     def test_pop(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2, 3])
         sess.add(f1)
@@ -409,7 +409,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [2])
 
     def test_append(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -421,7 +421,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 2, 5])
 
     def test_extend(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -433,7 +433,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 2, 5])
 
     def test_operator_extend(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -445,7 +445,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 2, 5])
 
     def test_insert(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -457,7 +457,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 5, 2])
 
     def test_remove(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2, 3])
         sess.add(f1)
@@ -469,7 +469,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 3])
 
     def test_sort(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 3, 2])
         sess.add(f1)
@@ -481,7 +481,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [1, 2, 3])
 
     def test_sort_w_key(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 3, 2])
         sess.add(f1)
@@ -493,7 +493,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [3, 2, 1])
 
     def test_sort_w_reverse_kwarg(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 3, 2])
         sess.add(f1)
@@ -505,7 +505,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [3, 2, 1])
 
     def test_reverse(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 3, 2])
         sess.add(f1)
@@ -517,7 +517,7 @@ class _MutableListTestBase(_MutableListTestFixture):
         eq_(f1.data, [2, 3, 1])
 
     def test_pickle_parent(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=[1, 2])
         sess.add(f1)
@@ -526,14 +526,14 @@ class _MutableListTestBase(_MutableListTestFixture):
         sess.close()
 
         for loads, dumps in picklers():
-            sess = Session()
+            sess = fixture_session()
             f2 = loads(dumps(f1))
             sess.add(f2)
             f2.data[0] = 3
             assert f2 in sess.dirty
 
     def test_unrelated_flush(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=[1, 2], unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
@@ -635,7 +635,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         mapper(Foo, foo)
 
     def test_coerce_none(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=None)
         sess.add(f1)
         sess.commit()
@@ -650,7 +650,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         )
 
     def test_clear(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -662,7 +662,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set())
 
     def test_pop(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1]))
         sess.add(f1)
@@ -676,7 +676,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set())
 
     def test_add(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -688,7 +688,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 2, 5]))
 
     def test_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -700,7 +700,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 2, 5]))
 
     def test_binary_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -712,7 +712,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 2, 5]))
 
     def test_intersection_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -724,7 +724,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([2]))
 
     def test_binary_intersection_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -736,7 +736,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([2]))
 
     def test_difference_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -748,7 +748,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1]))
 
     def test_operator_difference_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -760,7 +760,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1]))
 
     def test_symmetric_difference_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -772,7 +772,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 5]))
 
     def test_binary_symmetric_difference_update(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -784,7 +784,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 5]))
 
     def test_remove(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2, 3]))
         sess.add(f1)
@@ -796,7 +796,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 3]))
 
     def test_discard(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2, 3]))
         sess.add(f1)
@@ -813,7 +813,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 3]))
 
     def test_pickle_parent(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=set([1, 2]))
         sess.add(f1)
@@ -822,14 +822,14 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         sess.close()
 
         for loads, dumps in picklers():
-            sess = Session()
+            sess = fixture_session()
             f2 = loads(dumps(f1))
             sess.add(f2)
             f2.data.add(3)
             assert f2 in sess.dirty
 
     def test_unrelated_flush(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=set([1, 2]), unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
@@ -873,7 +873,7 @@ class MutableColumnDefaultTest(_MutableDictTestFixture, fixtures.MappedTest):
     def test_evt_on_flush_refresh(self):
         # test for #3427
 
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo()
         sess.add(f1)
@@ -1080,7 +1080,7 @@ class MutableAssocWithAttrInheritTest(
         MutableDict.associate_with_attribute(Foo.data)
 
     def test_in_place_mutation(self):
-        sess = Session()
+        sess = fixture_session()
 
         f1 = SubFoo(data={"a": "b"})
         sess.add(f1)
@@ -1092,7 +1092,7 @@ class MutableAssocWithAttrInheritTest(
         eq_(f1.data, {"a": "c"})
 
     def test_replace(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = SubFoo(data={"a": "b"})
         sess.add(f1)
         sess.flush()
@@ -1213,7 +1213,7 @@ class CustomMutableAssociationScalarJSONTest(
         pass
 
     def test_coerce(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data={"a": "b"})
         sess.add(f1)
         sess.flush()
@@ -1283,7 +1283,7 @@ class MutableCompositeColumnDefaultTest(
     def test_evt_on_flush_refresh(self):
         # this still worked prior to #3427 being fixed in any case
 
-        sess = Session()
+        sess = fixture_session()
 
         f1 = Foo(data=self.Point(None, None))
         sess.add(f1)
@@ -1325,7 +1325,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         )
 
     def test_in_place_mutation(self):
-        sess = Session()
+        sess = fixture_session()
         d = Point(3, 4)
         f1 = Foo(data=d)
         sess.add(f1)
@@ -1337,7 +1337,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         eq_(f1.data, Point(3, 5))
 
     def test_pickle_of_parent(self):
-        sess = Session()
+        sess = fixture_session()
         d = Point(3, 4)
         f1 = Foo(data=d)
         sess.add(f1)
@@ -1348,14 +1348,14 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         sess.close()
 
         for loads, dumps in picklers():
-            sess = Session()
+            sess = fixture_session()
             f2 = loads(dumps(f1))
             sess.add(f2)
             f2.data.y = 12
             assert f2 in sess.dirty
 
     def test_set_none(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=None)
         sess.add(f1)
         sess.commit()
@@ -1377,7 +1377,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         )
 
     def test_unrelated_flush(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=Point(3, 4), unrelated_data="unrelated")
         sess.add(f1)
         sess.flush()
@@ -1407,7 +1407,7 @@ class MutableCompositeCallableTest(_CompositeTestBase, fixtures.MappedTest):
         )
 
     def test_basic(self):
-        sess = Session()
+        sess = fixture_session()
         f1 = Foo(data=Point(3, 4))
         sess.add(f1)
         sess.flush()
@@ -1442,7 +1442,7 @@ class MutableCompositeCustomCoerceTest(
         eq_(f.data, Point(3, 4))
 
     def test_round_trip_ok(self):
-        sess = Session()
+        sess = fixture_session()
         f = Foo()
         f.data = (3, 4)
 
@@ -1483,7 +1483,7 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         mapper(SubFoo, subfoo, inherits=Foo)
 
     def test_in_place_mutation_subclass(self):
-        sess = Session()
+        sess = fixture_session()
         d = Point(3, 4)
         f1 = SubFoo(data=d)
         sess.add(f1)
@@ -1495,7 +1495,7 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         eq_(f1.data, Point(3, 5))
 
     def test_pickle_of_parent_subclass(self):
-        sess = Session()
+        sess = fixture_session()
         d = Point(3, 4)
         f1 = SubFoo(data=d)
         sess.add(f1)
@@ -1506,7 +1506,7 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         sess.close()
 
         for loads, dumps in picklers():
-            sess = Session()
+            sess = fixture_session()
             f2 = loads(dumps(f1))
             sess.add(f2)
             f2.data.y = 12

@@ -16,14 +16,13 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -126,7 +125,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             self.classes.Engineer,
         )
 
-        session = create_session()
+        session = fixture_session()
 
         m1 = Manager(name="Tom", manager_data="knows how to manage things")
         e1 = Engineer(name="Kurt", engineer_info="knows how to hack")
@@ -283,7 +282,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_from_self_legacy(self):
         Engineer = self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             self.assert_compile(
                 sess.query(Engineer).from_self(),
@@ -350,7 +349,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_select_from_aliased_w_subclass(self):
         Engineer = self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
 
         a1 = aliased(Engineer)
         self.assert_compile(
@@ -369,7 +368,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_union_modifiers(self):
         Engineer, Manager = self.classes("Engineer", "Manager")
 
-        sess = create_session()
+        sess = fixture_session()
         q1 = sess.query(Engineer).filter(Engineer.engineer_info == "foo")
         q2 = sess.query(Manager).filter(Manager.manager_data == "bar")
 
@@ -420,7 +419,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
 
         Engineer, Manager = self.classes("Engineer", "Manager")
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Engineer)
@@ -437,7 +436,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_from_self_count(self):
         Engineer = self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
         col = func.count(literal_column("*"))
         with testing.expect_deprecated(r"The Query.from_self\(\) method"):
             self.assert_compile(
@@ -452,7 +451,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_select_from_count(self):
         Manager, Engineer = (self.classes.Manager, self.classes.Engineer)
 
-        sess = create_session()
+        sess = fixture_session()
         m1 = Manager(name="Tom", manager_data="data1")
         e1 = Engineer(name="Kurt", engineer_info="knows how to hack")
         sess.add_all([m1, e1])
@@ -468,7 +467,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         m1 = Manager(name="Tom", manager_data="data1")
         m2 = Manager(name="Tom2", manager_data="data2")
         e1 = Engineer(name="Kurt", engineer_info="knows how to hack")
@@ -500,7 +499,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         r1, r2, r3, r4 = (
             Report(name="r1"),
             Report(name="r2"),
@@ -544,7 +543,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         Manager = self.classes.Manager
         Engineer = self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
         m1 = Manager(name="Tom", manager_data="data1")
         m2 = Manager(name="Tom2", manager_data="data2")
         e1 = Engineer(name="Kurt", engineer_info="data3")
@@ -562,7 +561,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
     def test_exists_standalone(self):
         Engineer = self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(
@@ -580,7 +579,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         m1 = Manager(name="Tom", manager_data="data1")
         r1 = Report(employee=m1)
@@ -602,7 +601,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         m1 = Manager(name="Tom", manager_data="data1")
         r1 = Report(employee=m1)
@@ -695,7 +694,7 @@ class RelationshipFromSingleTest(
     def test_subquery_load(self):
         Employee, Stuff, Manager = self.classes("Employee", "Stuff", "Manager")
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self.sql_execution_asserter(testing.db) as asserter:
             sess.query(Manager).options(subqueryload("stuff")).all()
@@ -809,7 +808,7 @@ class RelationshipToSingleTest(
             inherits=Engineer,
             polymorphic_identity="juniorengineer",
         )
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         c1 = Company(name="c1")
         c2 = Company(name="c2")
@@ -851,7 +850,7 @@ class RelationshipToSingleTest(
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company).outerjoin(
                 Company.employee.of_type(Engineer),
@@ -882,7 +881,7 @@ class RelationshipToSingleTest(
         mapper(Employee, employees)
         mapper(Engineer, inherits=Employee)
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, Engineer.name).join(
                 Engineer, Company.company_id == Engineer.company_id
@@ -910,7 +909,7 @@ class RelationshipToSingleTest(
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, Engineer.name).outerjoin("engineers"),
             "SELECT companies.company_id AS companies_company_id, "
@@ -938,7 +937,7 @@ class RelationshipToSingleTest(
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
         eng_alias = aliased(Engineer)
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, eng_alias.name).outerjoin(
                 eng_alias, Company.engineers
@@ -967,7 +966,7 @@ class RelationshipToSingleTest(
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, Engineer).outerjoin(
                 Engineer, Company.company_id == Engineer.company_id
@@ -1002,7 +1001,7 @@ class RelationshipToSingleTest(
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
         eng_alias = aliased(Engineer)
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, eng_alias).outerjoin(
                 eng_alias, Company.company_id == eng_alias.company_id
@@ -1036,7 +1035,7 @@ class RelationshipToSingleTest(
         mapper(Employee, employees, polymorphic_on=employees.c.type)
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, Engineer).outerjoin(Engineer),
             "SELECT companies.company_id AS companies_company_id, "
@@ -1069,7 +1068,7 @@ class RelationshipToSingleTest(
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
         eng_alias = aliased(Engineer)
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company, eng_alias).outerjoin(eng_alias),
             "SELECT companies.company_id AS companies_company_id, "
@@ -1102,7 +1101,7 @@ class RelationshipToSingleTest(
         )
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
 
-        sess = create_session()
+        sess = fixture_session()
         engineer_count = (
             sess.query(func.count(Engineer.employee_id))
             .select_from(Engineer)
@@ -1144,7 +1143,7 @@ class RelationshipToSingleTest(
         mapper(Engineer, inherits=Employee, polymorphic_identity="engineer")
         mapper(Manager, inherits=Employee, polymorphic_identity="manager")
 
-        s = create_session()
+        s = fixture_session()
 
         q1 = (
             s.query(Engineer)
@@ -1236,7 +1235,7 @@ class RelationshipToSingleTest(
             inherits=Engineer,
             polymorphic_identity="juniorengineer",
         )
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         c1 = Company(name="c1")
         c2 = Company(name="c2")
@@ -1433,7 +1432,7 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
         Parent = self.classes.Parent
         SubChild1 = self.classes.SubChild1
 
-        s = Session()
+        s = fixture_session()
 
         p1 = s.query(Parent).options(joinedload(Parent.s1)).all()[0]
         eq_(p1.__dict__["s1"], SubChild1(name="sc1_1"))
@@ -1443,7 +1442,7 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
         Child = self.classes.Child
         SubChild1 = self.classes.SubChild1
 
-        s = Session()
+        s = fixture_session()
 
         p1, c1 = s.query(Parent, Child).outerjoin(Parent.s1).all()[0]
         eq_(c1, SubChild1(name="sc1_1"))
@@ -1452,7 +1451,7 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
         Parent = self.classes.Parent
         Child = self.classes.Child
 
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(Parent, Child).outerjoin(Parent.s1),
@@ -1468,7 +1467,7 @@ class ManyToManyToSingleTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_assert_joinedload_sql(self):
         Parent = self.classes.Parent
 
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(Parent).options(joinedload(Parent.s1)),
@@ -1538,7 +1537,7 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         )
         mapper(Manager, inherits=Employee, polymorphic_identity="manager")
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(Person(name="p1"))
         sess.add(Employee(name="e1", employee_data="ed1"))
         sess.add(Manager(name="m1", employee_data="ed2", manager_data="md1"))
@@ -1663,7 +1662,7 @@ class SingleFromPolySelectableTest(
             [self.classes.Boss, self.classes.Manager, self.classes.Engineer],
             self._with_poly_fixture(),
         )
-        s = Session()
+        s = fixture_session()
         q = s.query(poly.Boss)
         self.assert_compile(
             q,
@@ -1695,7 +1694,7 @@ class SingleFromPolySelectableTest(
 
         poly = self._with_poly_fixture()
 
-        s = Session()
+        s = fixture_session()
         q = s.query(Boss).with_polymorphic(Boss, poly)
         self.assert_compile(
             q,
@@ -1719,7 +1718,7 @@ class SingleFromPolySelectableTest(
 
     def test_single_inh_subclass_join_joined_inh_subclass(self):
         Boss, Engineer = self.classes("Boss", "Engineer")
-        s = Session()
+        s = fixture_session()
 
         q = s.query(Boss).join(Engineer, Engineer.manager_id == Boss.id)
 
@@ -1744,7 +1743,7 @@ class SingleFromPolySelectableTest(
             self._with_poly_fixture(),
         )
 
-        s = Session()
+        s = fixture_session()
 
         q = s.query(Boss).join(
             poly.Engineer, poly.Engineer.manager_id == Boss.id
@@ -1776,7 +1775,7 @@ class SingleFromPolySelectableTest(
     def test_joined_inh_subclass_join_single_inh_subclass(self):
         Engineer = self.classes.Engineer
         Boss = self.classes.Boss
-        s = Session()
+        s = fixture_session()
 
         q = s.query(Engineer).join(Boss, Engineer.manager_id == Boss.id)
 
@@ -1826,7 +1825,7 @@ class EagerDefaultEvalTest(fixtures.DeclarativeMappedTest):
 
         foo = Foo()
 
-        session = Session()
+        session = fixture_session()
         session.add(foo)
         session.flush()
 
@@ -1839,7 +1838,7 @@ class EagerDefaultEvalTest(fixtures.DeclarativeMappedTest):
     def test_persist_bar(self):
         Bar = self.classes.Bar
         bar = Bar()
-        session = Session()
+        session = fixture_session()
         session.add(bar)
         session.flush()
 

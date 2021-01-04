@@ -14,7 +14,6 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql import sqltypes
@@ -24,6 +23,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing.fixtures import fixture_session
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
 
@@ -293,7 +293,7 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
     def test_no_joinedload_in_subquery_select_rows(self, joinedload_fixture):
         User, Address = joinedload_fixture
 
-        sess = Session()
+        sess = fixture_session()
         stmt1 = sess.query(User).subquery()
         stmt1 = sess.query(stmt1)
 
@@ -316,7 +316,7 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
     def test_no_joinedload_in_subquery_select_entity(self, joinedload_fixture):
         User, Address = joinedload_fixture
 
-        sess = Session()
+        sess = fixture_session()
         stmt1 = sess.query(User).subquery()
         ua = aliased(User, stmt1)
         stmt1 = sess.query(ua)
@@ -645,7 +645,7 @@ class RelationshipNaturalCompileTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(u1).where(u1.addresses.of_type(a1))
         stmt2 = (
-            Session()
+            fixture_session()
             .query(u1)
             .filter(u1.addresses.of_type(a1))
             ._final_statement(legacy_query_style=False)
@@ -844,7 +844,7 @@ class ImplicitWithPolymorphicTest(
             .order_by(Person.person_id)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Person.person_id, Person.name)
             .filter(Person.name == "some name")
@@ -884,7 +884,7 @@ class ImplicitWithPolymorphicTest(
             .order_by(Person.person_id)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Person)
             .filter(Person.name == "some name")
@@ -931,7 +931,7 @@ class ImplicitWithPolymorphicTest(
             .order_by(Engineer.person_id)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Engineer)
             .filter(Engineer.name == "some name")
@@ -990,7 +990,7 @@ class ImplicitWithPolymorphicTest(
             .order_by(Engineer.person_id)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Engineer.person_id, Engineer.name)
             .filter(Engineer.name == "some name")
@@ -1079,7 +1079,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
         )
         stmt2 = select(Company).join(Company.employees)
         stmt3 = (
-            Session()
+            fixture_session()
             .query(Company)
             .join(Company.employees)
             ._final_statement(legacy_query_style=False)
@@ -1113,7 +1113,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
             select(Company).join(Company.employees).where(Person.name == "ed")
         )
         stmt3 = (
-            Session()
+            fixture_session()
             .query(Company)
             .join(Company.employees)
             .filter(Person.name == "ed")
@@ -1137,7 +1137,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
 
         stmt2 = select(Company).join(Company.employees).join(Person.paperwork)
         stmt3 = (
-            Session()
+            fixture_session()
             .query(Company)
             .join(Company.employees)
             .join(Person.paperwork)
@@ -1161,7 +1161,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
 
         stmt2 = select(Company).join(Company.employees.of_type(p1))
         stmt3 = (
-            Session()
+            fixture_session()
             .query(Company)
             .join(Company.employees.of_type(p1))
             ._final_statement(legacy_query_style=False)
@@ -1179,7 +1179,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
         Company, Person, Manager, Engineer = self.classes(
             "Company", "Person", "Manager", "Engineer"
         )
-        s = Session()
+        s = fixture_session()
 
         p1 = with_polymorphic(Person, "*", aliased=True)
 
@@ -1218,7 +1218,7 @@ class RelationshipNaturalInheritedTest(InheritedTest, AssertsCompiledSQL):
         stmt2 = select(Company).join(p1, Company.employees.of_type(p1))
 
         stmt3 = (
-            Session()
+            fixture_session()
             .query(Company)
             .join(Company.employees.of_type(p1))
             ._final_statement(legacy_query_style=False)
@@ -1479,7 +1479,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(User).where(User.addresses)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(User)
             .filter(User.addresses)
             ._final_statement(legacy_query_style=False)
@@ -1505,7 +1505,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(Item).where(Item.keywords)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(Item)
             .filter(Item.keywords)
             ._final_statement(legacy_query_style=False)
@@ -1519,7 +1519,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         expected = "SELECT * FROM users"
         stmt1 = select(literal_column("*")).select_from(User)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(literal_column("*"))
             .select_from(User)
             ._final_statement(legacy_query_style=False)
@@ -1534,7 +1534,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(literal_column("*")).select_from(ua)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(literal_column("*"))
             .select_from(ua)
             ._final_statement(legacy_query_style=False)
@@ -1565,7 +1565,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
             .scalar_subquery(),
         )
         stmt2 = (
-            Session()
+            fixture_session()
             .query(
                 User.name,
                 Address.id,
@@ -1595,7 +1595,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
         stmt2 = (
-            Session()
+            fixture_session()
             .query(
                 uu.name,
                 Address.id,
@@ -1624,7 +1624,9 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(User)
         stmt2 = (
-            Session().query(User)._final_statement(legacy_query_style=False)
+            fixture_session()
+            .query(User)
+            ._final_statement(legacy_query_style=False)
         )
 
         self.assert_compile(stmt1, expected)
@@ -1637,7 +1639,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(User.id, User.name)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(User.id, User.name)
             ._final_statement(legacy_query_style=False)
         )
@@ -1651,7 +1653,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(ua.id, ua.name)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(ua.id, ua.name)
             ._final_statement(legacy_query_style=False)
         )
@@ -1665,7 +1667,11 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, name="ua")
 
         stmt1 = select(ua)
-        stmt2 = Session().query(ua)._final_statement(legacy_query_style=False)
+        stmt2 = (
+            fixture_session()
+            .query(ua)
+            ._final_statement(legacy_query_style=False)
+        )
         expected = "SELECT ua.id, ua.name FROM users AS ua"
 
         self.assert_compile(stmt1, expected)
@@ -1695,7 +1701,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User.id, User.name).filter_by(name="ed")
         self.assert_compile(
             insert(Address).from_select(("id", "email_address"), q),
@@ -1708,7 +1714,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User.id, User.name).filter_by(name="ed")
         self.assert_compile(
             insert(Address).from_select(
@@ -1781,7 +1787,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         stmt1 = select(Foo).where(Foo.foob == "somename").order_by(Foo.foob)
         stmt2 = (
-            Session()
+            fixture_session()
             .query(Foo)
             .filter(Foo.foob == "somename")
             .order_by(Foo.foob)

@@ -12,8 +12,8 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 
 
 class ConcurrentUseDeclMappingTest(fixtures.TestBase):
@@ -34,7 +34,7 @@ class ConcurrentUseDeclMappingTest(fixtures.TestBase):
 
     @classmethod
     def query_a(cls, Base, result):
-        s = Session()
+        s = fixture_session()
         time.sleep(random.random() / 100)
         A = cls.A
         try:

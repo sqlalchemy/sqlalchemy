@@ -9,7 +9,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
@@ -18,7 +17,6 @@ from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
@@ -27,6 +25,7 @@ from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
@@ -205,7 +204,7 @@ class LoadTest(PathTest, QueryTest):
     def test_gen_path_attr_str_not_mapped(self):
         OrderWProp = self.classes.OrderWProp
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(OrderWProp).options(defer("some_attr"))
 
         assert_raises_message(
@@ -280,7 +279,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             SubAddr.sub_attr
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1,
@@ -297,7 +296,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             .defer(SubAddr.sub_attr)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1,
@@ -310,7 +309,7 @@ class OfTypePathingTest(PathTest, QueryTest):
 
         l1 = defaultload(User.addresses.of_type(SubAddr)).defer("sub_attr")
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1,
@@ -327,7 +326,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             .defer("sub_attr")
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1,
@@ -342,7 +341,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             SubAddr.dings
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
@@ -357,7 +356,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             .joinedload(SubAddr.dings)
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
@@ -368,7 +367,7 @@ class OfTypePathingTest(PathTest, QueryTest):
 
         l1 = defaultload(User.addresses.of_type(SubAddr)).joinedload("dings")
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
@@ -383,7 +382,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             .defer("sub_attr")
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         self._assert_path_result(
             l1,
@@ -401,7 +400,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_get_path_one_level_string(self):
         User = self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
 
         opt = self._option_fixture("addresses")
@@ -410,7 +409,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_get_path_one_level_attribute(self):
         User = self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
 
         opt = self._option_fixture(User.addresses)
@@ -422,7 +421,7 @@ class OptionsTest(PathTest, QueryTest):
         # ensure "current path" is fully consumed before
         # matching against current entities.
         # see [ticket:2098]
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         opt = self._option_fixture("email_address", "id")
         q = sess.query(Address)._with_current_path(
@@ -435,7 +434,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_get_path_one_level_with_unrelated(self):
         Order = self.classes.Order
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Order)
         opt = self._option_fixture("addresses")
         self._assert_path_result(opt, q, [])
@@ -447,7 +446,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
 
         opt = self._option_fixture("orders.items.keywords")
@@ -468,7 +467,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
 
         opt = self._option_fixture(User.orders, Order.items, Item.keywords)
@@ -489,7 +488,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([User, "orders", Order, "items"])
         )
@@ -504,7 +503,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([User, "orders", Order, "items"])
         )
@@ -519,7 +518,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([User, "orders", Order, "items"])
         )
@@ -537,7 +536,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([User, "orders", Order, "items"])
         )
@@ -555,7 +554,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry(
                 [inspect(aliased(User)), "orders", Order, "items"]
@@ -588,7 +587,7 @@ class OptionsTest(PathTest, QueryTest):
         )
 
         ac = aliased(User)
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([inspect(ac), "orders", Order, "items"])
         )
@@ -602,7 +601,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_from_base_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -621,7 +620,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_from_subclass_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -640,7 +639,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_from_base_to_base_attr_via_subclass(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -661,7 +660,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_of_type(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -692,7 +691,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_of_type_string_attr(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -725,7 +724,7 @@ class OptionsTest(PathTest, QueryTest):
             self.classes.Address,
         )
 
-        sess = Session()
+        sess = fixture_session()
 
         class SubAddr(Address):
             pass
@@ -760,7 +759,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_aliased_single(self):
         User = self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(ualias)
         opt = self._option_fixture(ualias.addresses)
@@ -769,7 +768,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_with_current_aliased_single(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(ualias)._with_current_path(
             self._make_path_registry([Address, "user"])
@@ -780,7 +779,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_with_current_aliased_single_nonmatching_option(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(User)._with_current_path(
             self._make_path_registry([Address, "user"])
@@ -791,7 +790,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_with_current_aliased_single_nonmatching_entity(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(ualias)._with_current_path(
             self._make_path_registry([Address, "user"])
@@ -803,7 +802,7 @@ class OptionsTest(PathTest, QueryTest):
         Item = self.classes.Item
         Order = self.classes.Order
         opt = self._option_fixture(Order.items)
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item, Order)
         self._assert_path_result(opt, q, [(Order, "items")])
 
@@ -811,7 +810,7 @@ class OptionsTest(PathTest, QueryTest):
         Item = self.classes.Item
         Order = self.classes.Order
         opt = self._option_fixture("items")
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item, Order)
         self._assert_path_result(opt, q, [])
 
@@ -819,7 +818,7 @@ class OptionsTest(PathTest, QueryTest):
         Item = self.classes.Item
         Order = self.classes.Order
         opt = self._option_fixture("items")
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item.id, Order.id)
         self._assert_path_result(opt, q, [])
 
@@ -828,7 +827,7 @@ class OptionsTest(PathTest, QueryTest):
         Item = self.classes.Item
         Order = self.classes.Order
         opt = self._option_fixture(User.orders)
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Item)._with_current_path(
             self._make_path_registry([User, "orders", Order, "items"])
         )
@@ -837,7 +836,7 @@ class OptionsTest(PathTest, QueryTest):
     def test_chained(self):
         User = self.classes.User
         Order = self.classes.Order
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         opt = self._option_fixture(User.orders).joinedload("items")
         self._assert_path_result(
@@ -848,7 +847,7 @@ class OptionsTest(PathTest, QueryTest):
         User = self.classes.User
         Order = self.classes.Order
         Item = self.classes.Item
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         opt = self._option_fixture("orders.items").joinedload("keywords")
         self._assert_path_result(
@@ -865,7 +864,7 @@ class OptionsTest(PathTest, QueryTest):
         User = self.classes.User
         Order = self.classes.Order
         Item = self.classes.Item
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(User)
         opt = self._option_fixture(User.orders, Order.items).joinedload(
             "keywords"
@@ -918,7 +917,7 @@ class FromSubclassOptionsTest(PathTest, fixtures.DeclarativeMappedTest):
         BaseCls, SubClass, Related, SubRelated = self.classes(
             "BaseCls", "SubClass", "Related", "SubRelated"
         )
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(Related)._with_current_path(
             self._make_path_registry([inspect(SubClass), "related"])
@@ -1258,7 +1257,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
 
         context = (
-            create_session()
+            fixture_session()
             .query(*entity_list)
             .options(joinedload(option))
             ._compile_state()
@@ -1270,7 +1269,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(
             orm_exc.LoaderStrategyException,
             message,
-            create_session()
+            fixture_session()
             .query(*entity_list)
             .options(*options)
             ._compile_state,
@@ -1282,7 +1281,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session()
+            fixture_session()
             .query(*entity_list)
             .options(*options)
             ._compile_state,
@@ -1294,7 +1293,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session()
+            fixture_session()
             .query(column)
             .options(joinedload(eager_option))
             ._compile_state,
@@ -1303,7 +1302,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
 
 class OptionsNoPropTestInh(_Polymorphic):
     def test_missing_attr_wpoly_subclasss(self):
-        s = Session()
+        s = fixture_session()
 
         wp = with_polymorphic(Person, [Manager], flat=True)
 
@@ -1316,7 +1315,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         )
 
     def test_missing_attr_of_type_subclass(self):
-        s = Session()
+        s = fixture_session()
 
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -1332,7 +1331,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         )
 
     def test_missing_attr_of_type_subclass_name_matches(self):
-        s = Session()
+        s = fixture_session()
 
         # the name "status" is present on Engineer also, make sure
         # that doesn't get mixed up here
@@ -1350,7 +1349,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         )
 
     def test_missing_str_attr_of_type_subclass(self):
-        s = Session()
+        s = fixture_session()
 
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -1366,7 +1365,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         )
 
     def test_missing_attr_of_type_wpoly_subclass(self):
-        s = Session()
+        s = fixture_session()
 
         wp = with_polymorphic(Person, [Manager], flat=True)
 
@@ -1384,7 +1383,7 @@ class OptionsNoPropTestInh(_Polymorphic):
         )
 
     def test_missing_attr_is_missing_of_type_for_alias(self):
-        s = Session()
+        s = fixture_session()
 
         pa = aliased(Person)
 
@@ -1465,7 +1464,7 @@ class PickleTest(PathTest, QueryTest):
 
         opt.__setstate__(state)
 
-        query = create_session().query(User)
+        query = fixture_session().query(User)
         attr = {}
         load = opt._bind_loader(
             [
@@ -1502,7 +1501,7 @@ class PickleTest(PathTest, QueryTest):
 
         opt.__setstate__(state)
 
-        query = create_session().query(User)
+        query = fixture_session().query(User)
         attr = {}
         load = opt._bind_loader(
             [
@@ -1545,7 +1544,7 @@ class LocalOptsTest(PathTest, QueryTest):
     def _assert_attrs(self, opts, expected):
         User = self.classes.User
 
-        query = create_session().query(User)
+        query = fixture_session().query(User)
         attr = {}
 
         for opt in opts:
@@ -1702,7 +1701,7 @@ class SubOptionsTest(PathTest, QueryTest):
             defaultload(User.orders).defer(Order.description),
         ]
 
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_two(self):
@@ -1721,7 +1720,7 @@ class SubOptionsTest(PathTest, QueryTest):
             defaultload(User.orders).defer(Order.description),
         ]
 
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_three(self):
@@ -1730,7 +1729,7 @@ class SubOptionsTest(PathTest, QueryTest):
         )
         sub_opt = defaultload(User.orders).options(defer("*"))
         non_sub_opts = [defaultload(User.orders).defer("*")]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_four(self):
@@ -1759,7 +1758,7 @@ class SubOptionsTest(PathTest, QueryTest):
             .defaultload(Item.keywords)
             .defer(Keyword.name),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_four_strings(self):
@@ -1788,7 +1787,7 @@ class SubOptionsTest(PathTest, QueryTest):
             .defaultload(Item.keywords)
             .defer(Keyword.name),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_five(self):
@@ -1800,7 +1799,7 @@ class SubOptionsTest(PathTest, QueryTest):
             joinedload(User.orders),
             defaultload(User.orders).load_only(Order.description),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_five_strings(self):
@@ -1812,7 +1811,7 @@ class SubOptionsTest(PathTest, QueryTest):
             joinedload(User.orders),
             defaultload(User.orders).load_only(Order.description),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_invalid_one(self):
@@ -1832,7 +1831,7 @@ class SubOptionsTest(PathTest, QueryTest):
             joinedload(User.orders).joinedload(Item.keywords),
             defaultload(User.orders).joinedload(Order.items),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_invalid_two(self):
@@ -1852,7 +1851,7 @@ class SubOptionsTest(PathTest, QueryTest):
             joinedload(User.orders).joinedload(Item.keywords),
             defaultload(User.orders).joinedload(Order.items),
         ]
-        sess = Session()
+        sess = fixture_session()
         self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
 
     def test_not_implemented_fromload(self):
@@ -1905,7 +1904,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         )
 
         def go():
-            sess = create_session()
+            sess = fixture_session()
             u = (
                 sess.query(User)
                 .order_by(User.id)
@@ -1936,7 +1935,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
         result = (
             sess.query(User)
             .order_by(User.id)
@@ -1966,7 +1965,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
         u = (
             sess.query(User)
             .options(sa.orm.joinedload("addresses"))
@@ -2003,7 +2002,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
         u = (
             sess.query(User)
             .options(sa.orm.lazyload("addresses"))
@@ -2039,7 +2038,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
         # first test straight eager load, 1 statement
 
         def go():
@@ -2054,7 +2053,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         # then assert the data, which will launch 3 more lazy loads
         # (previous users in session fell out of scope and were removed from
         # session's identity map)
-        r = users.select().order_by(users.c.id).execute()
+        r = sess.connection().execute(users.select().order_by(users.c.id))
 
         ctx = sess.query(User)._compile_context()
 
@@ -2140,7 +2139,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # first test straight eager load, 1 statement
         def go():
@@ -2153,7 +2152,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
 
         # then select just from users.  run it into instances.
         # then assert the data, which will launch 6 more lazy loads
-        r = users.select().execute()
+        r = sess.connection().execute(users.select())
 
         ctx = sess.query(User)._compile_context()
 
@@ -2183,7 +2182,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = create_session()
+        sess = fixture_session()
         result = (
             sess.query(User)
             .order_by(User.id)
@@ -2214,7 +2213,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         )
         mapper(Item, items)
 
-        sess = create_session()
+        sess = fixture_session()
 
         oalias = aliased(Order)
         opt1 = sa.orm.joinedload(User.orders, Order.items)

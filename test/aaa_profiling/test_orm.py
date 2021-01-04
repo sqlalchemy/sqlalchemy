@@ -20,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -100,8 +101,8 @@ class MergeTest(NoCache, fixtures.MappedTest):
     def test_merge_no_load(self):
         Parent = self.classes.Parent
 
-        sess = sessionmaker()()
-        sess2 = sessionmaker()()
+        sess = fixture_session()
+        sess2 = fixture_session()
         p1 = sess.query(Parent).get(1)
         p1.children
 
@@ -129,8 +130,8 @@ class MergeTest(NoCache, fixtures.MappedTest):
     def test_merge_load(self):
         Parent = self.classes.Parent
 
-        sess = sessionmaker()()
-        sess2 = sessionmaker()()
+        sess = fixture_session()
+        sess2 = fixture_session()
         p1 = sess.query(Parent).get(1)
         p1.children
 
@@ -228,7 +229,7 @@ class LoadManyToOneFromIdentityTest(NoCache, fixtures.MappedTest):
     def test_many_to_one_load_no_identity(self):
         Parent = self.classes.Parent
 
-        sess = Session()
+        sess = fixture_session()
         parents = sess.query(Parent).all()
 
         @profiling.function_call_count(variance=0.2)
@@ -241,7 +242,7 @@ class LoadManyToOneFromIdentityTest(NoCache, fixtures.MappedTest):
     def test_many_to_one_load_identity(self):
         Parent, Child = self.classes.Parent, self.classes.Child
 
-        sess = Session()
+        sess = fixture_session()
         parents = sess.query(Parent).all()
         children = sess.query(Child).all()
         children  # strong reference
@@ -335,7 +336,7 @@ class MergeBackrefsTest(NoCache, fixtures.MappedTest):
             self.classes.C,
             self.classes.D,
         )
-        s = Session()
+        s = fixture_session()
         for a in [
             A(
                 id=i,
@@ -398,7 +399,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
     def test_baseline(self):
         # as of [ticket:2778], this is at 39025
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         s.query(A).all()
 
     @profiling.function_call_count(variance=0.10)
@@ -406,7 +407,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
         # with [ticket:2778], this goes from 50805 to 32817,
         # as it should be fewer function calls than the baseline
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         s.query(A).options(
             *[defer(letter) for letter in ["x", "y", "z", "p", "q", "r"]]
         ).all()
@@ -546,7 +547,7 @@ class SessionTest(NoCache, fixtures.MappedTest):
             Parent(children=[Child() for j in range(10)]) for i in range(10)
         ]
 
-        sess = Session()
+        sess = fixture_session()
         sess.add_all(obj)
         sess.flush()
 
@@ -588,7 +589,7 @@ class QueryTest(NoCache, fixtures.MappedTest):
 
     def _fixture(self):
         Parent = self.classes.Parent
-        sess = Session()
+        sess = fixture_session()
         sess.add_all(
             [
                 Parent(data1="d1", data2="d2", data3="d3", data4="d4")
@@ -601,7 +602,7 @@ class QueryTest(NoCache, fixtures.MappedTest):
     def test_query_cols(self):
         Parent = self.classes.Parent
         self._fixture()
-        sess = Session()
+        sess = fixture_session()
 
         # warm up cache
         for attr in [Parent.data1, Parent.data2, Parent.data3, Parent.data4]:
@@ -695,7 +696,7 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
     def test_round_trip_results(self):
         A, B, C = self.classes("A", "B", "C")
 
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(A).options(selectinload(A.bs).selectinload(B.cs))
 
@@ -835,7 +836,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
     def test_build_query(self):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
-        sess = Session()
+        sess = fixture_session()
 
         @profiling.function_call_count()
         def go():
@@ -1122,7 +1123,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
             base.joinedload(B.fs),
         ]
 
-        q = Session().query(A)
+        q = fixture_session().query(A)
 
         context = q._compile_state()
 
@@ -1149,7 +1150,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
             base.joinedload(B.fs),
         ]
 
-        q = Session().query(A)
+        q = fixture_session().query(A)
 
         context = q._compile_state()
 
@@ -1201,7 +1202,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 
     def test_no_bundle(self):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
 
         q = s.query(A).select_from(A)
 
@@ -1215,7 +1216,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     def test_no_entity_wo_annotations(self):
         A = self.classes.A
         a = self.tables.a
-        s = Session()
+        s = fixture_session()
 
         q = s.query(a.c.data).select_from(A)
 
@@ -1228,7 +1229,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 
     def test_no_entity_w_annotations(self):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         q = s.query(A.data).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1240,7 +1241,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 
     def test_entity_w_annotations(self):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         q = s.query(A, A.data).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1253,7 +1254,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     def test_entity_wo_annotations(self):
         A = self.classes.A
         a = self.tables.a
-        s = Session()
+        s = fixture_session()
         q = s.query(A, a.c.data).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1266,7 +1267,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     def test_no_bundle_wo_annotations(self):
         A = self.classes.A
         a = self.tables.a
-        s = Session()
+        s = fixture_session()
         q = s.query(a.c.data, A).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1278,7 +1279,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 
     def test_no_bundle_w_annotations(self):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         q = s.query(A.data, A).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1291,7 +1292,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
     def test_bundle_wo_annotation(self):
         A = self.classes.A
         a = self.tables.a
-        s = Session()
+        s = fixture_session()
         q = s.query(Bundle("ASdf", a.c.data), A).select_from(A)
 
         @profiling.function_call_count(warmup=1)
@@ -1303,7 +1304,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
 
     def test_bundle_w_annotation(self):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         q = s.query(Bundle("ASdf", A.data), A).select_from(A)
 
         @profiling.function_call_count(warmup=1)

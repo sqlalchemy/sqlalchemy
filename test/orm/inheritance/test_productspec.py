@@ -11,7 +11,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -174,7 +174,7 @@ class InheritTest(fixtures.MappedTest):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         a1 = Assembly(name="a1")
 
@@ -223,7 +223,7 @@ class InheritTest(fixtures.MappedTest):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         s = SpecLine(follower=Product(name="p1"))
         s2 = SpecLine(follower=Detail(name="d1"))
@@ -300,7 +300,7 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_identity="raster_document",
         )
 
-        session = create_session()
+        session = fixture_session()
 
         a1 = Assembly(name="a1")
         a1.specification.append(SpecLine(follower=Detail(name="d1")))
@@ -359,7 +359,7 @@ class InheritTest(fixtures.MappedTest):
             polymorphic_identity="raster_document",
         )
 
-        session = create_session()
+        session = fixture_session()
 
         a1 = Assembly(name="a1")
         a1.documents.append(RasterDocument("doc2"))
@@ -448,7 +448,7 @@ class InheritTest(fixtures.MappedTest):
 
         mapper(Assembly, inherits=Product, polymorphic_identity="assembly")
 
-        session = create_session()
+        session = fixture_session()
 
         a1 = Assembly(name="a1")
         a1.specification.append(SpecLine(follower=Detail(name="d1")))

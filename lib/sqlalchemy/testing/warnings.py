@@ -62,11 +62,6 @@ def setup_filters():
         r"The Connection.connect\(\) method is considered legacy",
         #        r".*DefaultGenerator.execute\(\)",
         #
-        # bound metadaa
-        #
-        r"The ``bind`` argument for schema methods that invoke SQL ",
-        r"The Function.bind argument",
-        r"The select.bind argument",
         #
         # result sets
         #

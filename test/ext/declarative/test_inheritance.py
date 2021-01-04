@@ -10,7 +10,6 @@ from sqlalchemy.ext.declarative import has_inherited_table
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
@@ -19,6 +18,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm.test_events import _RemoveListeners
@@ -34,7 +34,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def teardown(self):
         close_all_sessions()
         clear_mappers()
-        Base.metadata.drop_all()
+        Base.metadata.drop_all(testing.db)
 
 
 class ConcreteInhTest(
@@ -49,8 +49,8 @@ class ConcreteInhTest(
         polymorphic=True,
         explicit_type=False,
     ):
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Engineer(name="dilbert", primary_language="java")
         e2 = Engineer(name="wally", primary_language="c++")
         m1 = Manager(name="dogbert", golf_swing="fore!")
@@ -342,7 +342,7 @@ class ConcreteInhTest(
                 "concrete": True,
             }
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         sess = Session()
         sess.add(Engineer(name="d"))
         sess.commit()
@@ -552,7 +552,7 @@ class ConcreteExtensionConfigTest(
             c_data = Column(String(50))
             __mapper_args__ = {"polymorphic_identity": "c", "concrete": True}
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         sess = Session()
         sess.add_all(
             [

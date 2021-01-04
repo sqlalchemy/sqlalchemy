@@ -5,7 +5,7 @@ from sqlalchemy import testing
 from sqlalchemy.orm import mapper
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -77,7 +77,7 @@ class ABCTest(fixtures.MappedTest):
         c2 = C(cdata="c2", bdata="c2", adata="c2")
         c3 = C(cdata="c2", bdata="c2", adata="c2")
 
-        sess = create_session()
+        sess = fixture_session()
         for x in (a1, b1, b2, b3, c1, c2, c3):
             sess.add(x)
         sess.flush()

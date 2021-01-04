@@ -21,7 +21,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.entities import ComparableEntity
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -116,7 +116,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     def test_has(self):
         p1 = Person(name="dogbert")
         e1 = Engineer(name="dilbert", primary_language="java", reports_to=p1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(p1)
         sess.add(e1)
         sess.flush()
@@ -131,7 +131,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     def test_oftype_aliases_in_exists(self):
         e1 = Engineer(name="dilbert", primary_language="java")
         e2 = Engineer(name="wally", primary_language="c++", reports_to=e1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all([e1, e2])
         sess.flush()
         eq_(
@@ -148,7 +148,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     def test_join(self):
         p1 = Person(name="dogbert")
         e1 = Engineer(name="dilbert", primary_language="java", reports_to=p1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(p1)
         sess.add(e1)
         sess.flush()
@@ -242,7 +242,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
     def test_has(self):
         m1 = Manager(name="dogbert")
         e1 = Engineer(name="dilbert", primary_language="java", reports_to=m1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(m1)
         sess.add(e1)
         sess.flush()
@@ -258,7 +258,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
     def test_join(self):
         m1 = Manager(name="dogbert")
         e1 = Engineer(name="dilbert", primary_language="java", reports_to=m1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(m1)
         sess.add(e1)
         sess.flush()
@@ -281,7 +281,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         e2 = Engineer(name="dilbert", primary_language="c++", reports_to=m2)
         e3 = Engineer(name="etc", primary_language="c++")
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all([m1, m2, e1, e2, e3])
         sess.flush()
         sess.expunge_all()
@@ -318,7 +318,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         e2 = Engineer(name="wally", primary_language="c++", reports_to=m2)
         e3 = Engineer(name="etc", primary_language="c++")
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(m1)
         sess.add(m2)
         sess.add(e1)
@@ -409,13 +409,13 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
     def _two_obj_fixture(self):
         e1 = Engineer(name="wally")
         e2 = Engineer(name="dilbert", reports_to=e1)
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([e1, e2])
         sess.commit()
         return sess
 
     def _five_obj_fixture(self):
-        sess = Session()
+        sess = fixture_session()
         e1, e2, e3, e4, e5 = [Engineer(name="e%d" % (i + 1)) for i in range(5)]
         e3.reports_to = e1
         e4.reports_to = e2
@@ -596,7 +596,7 @@ class M2MFilterTest(fixtures.MappedTest):
 
     def test_not_contains(self):
         Organization = self.classes.Organization
-        sess = create_session()
+        sess = fixture_session()
         e1 = sess.query(Person).filter(Engineer.name == "e1").one()
 
         eq_(
@@ -615,7 +615,7 @@ class M2MFilterTest(fixtures.MappedTest):
         )
 
     def test_any(self):
-        sess = create_session()
+        sess = fixture_session()
         Organization = self.classes.Organization
 
         eq_(
@@ -718,7 +718,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_query_crit(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
-        sess = create_session()
+        sess = fixture_session()
         c11, c12, c13 = Child1(), Child1(), Child1()
         c21, c22, c23 = Child2(), Child2(), Child2()
         c11.left_child2 = c22
@@ -812,7 +812,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_eager_join(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
-        sess = create_session()
+        sess = fixture_session()
         c1 = Child1()
         c1.left_child2 = Child2()
         sess.add(c1)
@@ -849,7 +849,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_subquery_load(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
-        sess = create_session()
+        sess = fixture_session()
         c1 = Child1()
         c1.left_child2 = Child2()
         sess.add(c1)
@@ -974,7 +974,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
 
     def test_joinedload(self):
         Parent = self.classes.Parent
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -987,7 +987,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
     def test_contains_eager(self):
         Parent = self.classes.Parent
         Sub = self.classes.Sub
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1004,7 +1004,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
     def test_subq_through_related(self):
         Parent = self.classes.Parent
         Base = self.classes.Base
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1023,7 +1023,7 @@ class EagerToSubclassTest(fixtures.MappedTest):
         Parent = self.classes.Parent
         Base = self.classes.Base
         pa = aliased(Parent)
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1150,7 +1150,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
     def test_joinedload(self):
         Subparent = self.classes.Subparent
 
-        sess = create_session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1175,7 +1175,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
     def test_contains_eager(self):
         Subparent = self.classes.Subparent
 
-        sess = create_session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1204,7 +1204,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
     def test_subqueryload(self):
         Subparent = self.classes.Subparent
 
-        sess = create_session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -1336,7 +1336,7 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         C = self.classes.C
         D = self.classes.D
 
-        session = Session()
+        session = fixture_session()
         d = session.query(D).one()
         a_poly = with_polymorphic(A, [B, C])
 
@@ -1354,7 +1354,7 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         C = self.classes.C
         D = self.classes.D
 
-        session = Session()
+        session = fixture_session()
         d = session.query(D).one()
 
         def go():
@@ -1375,7 +1375,7 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         C = self.classes.C
         D = self.classes.D
 
-        session = Session()
+        session = fixture_session()
         d = session.query(D).one()
         a_poly = with_polymorphic(A, [B, C])
 
@@ -1393,7 +1393,7 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         C = self.classes.C
         D = self.classes.D
 
-        session = Session()
+        session = fixture_session()
         d = session.query(D).one()
 
         def go():
@@ -1499,7 +1499,7 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
 
     def test_2617(self):
         A = self.classes.A
-        session = Session()
+        session = fixture_session()
 
         def go():
             a1 = session.query(A).first()
@@ -1642,7 +1642,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_one(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Parent)
             .join(Parent.sub1, Sub1.sub2)
@@ -1663,7 +1663,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 
         s2a = aliased(Sub2, flat=True)
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Parent).join(Parent.sub1).join(s2a, Sub1.sub2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "
@@ -1677,7 +1677,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_three(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Base1).join(Base1.sub2).join(Sub2.ep1).join(Sub2.ep2),
             "SELECT base1.id AS base1_id, base1.data AS base1_data "
@@ -1691,7 +1691,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_four(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Sub2)
             .join(Base1, Base1.id == Sub2.base1_id)
@@ -1709,7 +1709,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_five(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Sub2)
             .join(Sub1, Sub1.id == Sub2.base1_id)
@@ -1729,7 +1729,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_six_legacy(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
 
         # as of from_self() changing in
         # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
@@ -1781,7 +1781,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def test_seven_legacy(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
 
-        s = Session()
+        s = fixture_session()
 
         # as of from_self() changing in
         # I3abfb45dd6e50f84f29d39434caa0b550ce27864,
@@ -1946,7 +1946,7 @@ class JoinedloadWPolyOfTypeContinued(
     def test_joined_load_lastlink_subclass(self):
         Foo, User, SubBar = self.classes("Foo", "User", "SubBar")
 
-        s = Session()
+        s = fixture_session()
 
         foo_polymorphic = with_polymorphic(Foo, "*", aliased=True)
 
@@ -1992,7 +1992,7 @@ class JoinedloadWPolyOfTypeContinued(
     def test_joined_load_lastlink_baseclass(self):
         Foo, User, Bar = self.classes("Foo", "User", "Bar")
 
-        s = Session()
+        s = fixture_session()
 
         foo_polymorphic = with_polymorphic(Foo, "*", aliased=True)
 
@@ -2072,7 +2072,7 @@ class ContainsEagerMultipleOfType(
 
     def test_contains_eager_multi_alias(self):
         X, B, A = self.classes("X", "B", "A")
-        s = Session()
+        s = fixture_session()
 
         a_b_alias = aliased(B, name="a_b")
         b_x_alias = aliased(X, name="b_x")
@@ -2141,7 +2141,7 @@ class JoinedloadSinglePolysubSingle(
 
     def test_query(self):
         Thing = self.classes.Thing
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Thing),
             "SELECT things.id AS things_id, "
@@ -2281,7 +2281,7 @@ class JoinedloadOverWPolyAliased(
         cls = fn()
         Link = self.classes.Link
 
-        session = Session()
+        session = fixture_session()
         q = session.query(cls).options(
             joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
         )
@@ -2310,7 +2310,7 @@ class JoinedloadOverWPolyAliased(
         parent_cls = fn()
         Link = self.classes.Link
 
-        session = Session()
+        session = fixture_session()
         q = session.query(Link).options(
             joinedload(Link.child).joinedload(parent_cls.owner)
         )
@@ -2341,7 +2341,7 @@ class JoinedloadOverWPolyAliased(
 
         poly = with_polymorphic(Parent, [Sub1])
 
-        session = Session()
+        session = fixture_session()
         q = session.query(poly).options(
             joinedload(poly.Sub1.links)
             .joinedload(Link.child.of_type(Sub1))
@@ -2369,7 +2369,7 @@ class JoinedloadOverWPolyAliased(
 
         poly = with_polymorphic(Parent, [Sub1])
 
-        session = Session()
+        session = fixture_session()
         q = session.query(poly).options(
             joinedload(poly.Sub1.links, innerjoin=True)
             .joinedload(Link.child.of_type(Sub1), innerjoin=True)
@@ -2395,7 +2395,7 @@ class JoinedloadOverWPolyAliased(
         Parent = self.classes.Parent
         Link = self.classes.Link
 
-        session = Session()
+        session = fixture_session()
         session.add_all([Parent(), Parent()])
 
         # represents "Parent" and "Sub1" rows
@@ -2472,7 +2472,7 @@ class JoinAcrossJoinedInhMultiPath(
         t1_alias = aliased(Target)
         t2_alias = aliased(Target)
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Root)
             .join(s1_alias, Root.sub1)
@@ -2508,7 +2508,7 @@ class JoinAcrossJoinedInhMultiPath(
         t1_alias = aliased(Target)
         t2_alias = aliased(Target)
 
-        sess = Session()
+        sess = fixture_session()
         q = (
             sess.query(Root)
             .join(s1_alias, Root.sub1)
@@ -2539,7 +2539,7 @@ class JoinAcrossJoinedInhMultiPath(
             self.classes.Sub1,
         )
 
-        sess = Session()
+        sess = fixture_session()
         q = sess.query(Root).options(
             joinedload(Root.sub1).joinedload(Sub1.target),
             joinedload(Root.intermediate)
@@ -2631,7 +2631,7 @@ class MultipleAdaptUsesEntityOverTableTest(
 
     def _two_join_fixture(self):
         B, C, D = (self.classes.B, self.classes.C, self.classes.D)
-        s = Session()
+        s = fixture_session()
         return (
             s.query(B.name, C.name, D.name)
             .select_from(B)
@@ -2805,7 +2805,7 @@ class BetweenSubclassJoinWExtraJoinedLoad(
     def test_query(self):
         Engineer, Manager = self.classes("Engineer", "Manager")
 
-        sess = Session()
+        sess = fixture_session()
 
         # eager join is both from Enginer->LastSeen as well as
         # Manager->LastSeen.  In the case of Manager->LastSeen,
@@ -2885,7 +2885,7 @@ class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):
 
     def test_load_m2o_emit_query(self):
         Other, Child1 = self.classes("Other", "Child1")
-        s = Session()
+        s = fixture_session()
 
         obj = s.query(Other).first()
 
@@ -2894,7 +2894,7 @@ class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):
 
     def test_load_m2o_use_get(self):
         Other, Child1 = self.classes("Other", "Child1")
-        s = Session()
+        s = fixture_session()
 
         obj = s.query(Other).first()
         c1 = s.query(Child1).first()

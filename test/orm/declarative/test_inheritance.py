@@ -9,11 +9,9 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -21,6 +19,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -35,7 +34,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def teardown(self):
         close_all_sessions()
         clear_mappers()
-        Base.metadata.drop_all()
+        Base.metadata.drop_all(testing.db)
 
 
 class DeclarativeInheritanceTest(DeclarativeTestBase):
@@ -137,8 +136,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
             golf_swing = Column("golf_swing", String(50))
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         c1 = Company(
             name="MegaCorp, Inc.",
             employees=[
@@ -218,8 +217,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
 
         Engineer.primary_language = Column("primary_language", String(50))
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Engineer(primary_language="java", name="dilbert")
         sess.add(e1)
         sess.flush()
@@ -249,8 +248,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
 
         Person.name = Column("name", String(50))
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Engineer(primary_language="java", name="dilbert")
         sess.add(e1)
         sess.flush()
@@ -289,8 +288,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
 
         Person.name = Column("name", String(50))
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Admin(primary_language="java", name="dilbert", workstation="foo")
         sess.add(e1)
         sess.flush()
@@ -531,8 +530,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
 
             __mapper_args__ = {"polymorphic_identity": "manager"}
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         c1 = Company(
             name="MegaCorp, Inc.",
             employees=[
@@ -621,8 +620,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert not hasattr(Person, "golf_swing")
         assert not hasattr(Engineer, "golf_swing")
         assert not hasattr(Manager, "primary_language")
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Engineer(name="dilbert", primary_language="java")
         e2 = Engineer(name="wally", primary_language="c++")
         m1 = Manager(name="dogbert", golf_swing="fore!")
@@ -837,8 +836,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Manager.target_id.property.columns[0], Person.__table__.c.target_id
         )
         # do a brief round trip on this
-        Base.metadata.create_all()
-        session = Session()
+        Base.metadata.create_all(testing.db)
+        session = fixture_session()
         o1, o2 = Other(), Other()
         session.add_all(
             [Engineer(target=o1), Manager(target=o2), Manager(target=o1)]
@@ -957,8 +956,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert not hasattr(Person, "golf_swing")
         assert not hasattr(Engineer, "golf_swing")
         assert not hasattr(Manager, "primary_language")
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         e1 = Engineer(name="dilbert", primary_language="java")
         e2 = Engineer(name="wally", primary_language="c++")
         m1 = Manager(name="dogbert", golf_swing="fore!")
@@ -1043,8 +1042,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             )
 
         Person.name = deferred(Column(String(10)))
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         p = Person(name="ratbert")
         sess.add(p)
         sess.flush()
@@ -1085,8 +1084,8 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             name = Column(String(50))
 
         assert not hasattr(Person, "primary_language_id")
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         java, cpp, cobol = (
             Language(name="java"),
             Language(name="cpp"),

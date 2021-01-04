@@ -67,7 +67,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         global Session
-        Session = scoped_session(sessionmaker())
+        Session = scoped_session(sessionmaker(testing.db))
         mapper(
             User,
             users,
@@ -141,9 +141,8 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             serializer.dumps(expr, -1), users.metadata, None
         )
         eq_(str(expr), str(re_expr))
-        assert re_expr.bind is testing.db
         eq_(
-            re_expr.execute().fetchall(),
+            Session.connection().execute(re_expr).fetchall(),
             [(7, "jack"), (8, "ed"), (8, "ed"), (8, "ed"), (9, "fred")],
         )
 

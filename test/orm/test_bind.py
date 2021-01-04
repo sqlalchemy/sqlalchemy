@@ -8,7 +8,6 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -20,6 +19,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -110,13 +110,13 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             },
         )
 
-        Session = sessionmaker(
+        maker = sessionmaker(
             binds={
                 users_unbound: testing.db,
                 addresses_unbound: testing.db,
             }
         )
-        sess = Session()
+        sess = maker()
 
         u1 = User(id=1, name="ed")
         sess.add(u1)
@@ -149,7 +149,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        session = Session()
+        session = fixture_session()
 
         session.execute(users.insert(), dict(name="Johnny"))
 
@@ -374,7 +374,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.close()
 
     def test_bind_arg(self):
-        sess = Session()
+        sess = fixture_session()
 
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -401,7 +401,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         c = testing.db.connect()
-        sess = create_session(bind=c)
+        sess = Session(bind=c)
         sess.begin()
         transaction = sess._legacy_transaction()
         u = User(name="u1")
@@ -430,7 +430,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         mapper(User, users)
         c = testing.db.connect()
 
-        sess = create_session(bind=c, autocommit=False)
+        sess = Session(bind=c, autocommit=False)
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -438,7 +438,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         assert not c.in_transaction()
         assert c.exec_driver_sql("select count(1) from users").scalar() == 0
 
-        sess = create_session(bind=c, autocommit=False)
+        sess = Session(bind=c, autocommit=False)
         u = User(name="u2")
         sess.add(u)
         sess.flush()
@@ -453,7 +453,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         c = testing.db.connect()
 
         trans = c.begin()
-        sess = create_session(bind=c, autocommit=True)
+        sess = Session(bind=c, autocommit=True)
         u = User(name="u3")
         sess.add(u)
         sess.flush()
@@ -497,7 +497,7 @@ class SessionBindTest(fixtures.MappedTest):
 
         for bind in (engine, engine.connect()):
             try:
-                sess = create_session(bind=bind)
+                sess = Session(bind=bind)
                 assert sess.bind is bind
                 f = Foo()
                 sess.add(f)
@@ -510,7 +510,7 @@ class SessionBindTest(fixtures.MappedTest):
     def test_session_unbound(self):
         Foo = self.classes.Foo
 
-        sess = create_session()
+        sess = Session()
         sess.add(Foo())
         assert_raises_message(
             sa.exc.UnboundExecutionError,
@@ -576,10 +576,6 @@ class GetBindTest(fixtures.MappedTest):
     def _fixture(self, binds):
         return Session(binds=binds)
 
-    def test_fallback_table_metadata(self):
-        session = self._fixture({})
-        is_(session.get_bind(self.classes.BaseClass), testing.db)
-
     def test_bind_base_table_base_class(self):
         base_class_bind = Mock()
         session = self._fixture({self.tables.base_table: base_class_bind})
@@ -608,11 +604,25 @@ class GetBindTest(fixtures.MappedTest):
         # table, so this is what we expect
         is_(session.get_bind(self.classes.JoinedSubClass), base_class_bind)
 
+    def test_fallback_table_metadata(self):
+        session = self._fixture({})
+        assert_raises_message(
+            sa.exc.UnboundExecutionError,
+            "Could not locate a bind configured on mapper mapped class",
+            session.get_bind,
+            self.classes.BaseClass,
+        )
+
     def test_bind_base_table_concrete_sub_class(self):
         base_class_bind = Mock()
         session = self._fixture({self.tables.base_table: base_class_bind})
 
-        is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
+        assert_raises_message(
+            sa.exc.UnboundExecutionError,
+            "Could not locate a bind configured on mapper mapped class",
+            session.get_bind,
+            self.classes.ConcreteSubClass,
+        )
 
     def test_bind_sub_table_concrete_sub_class(self):
         base_class_bind = Mock(name="base")

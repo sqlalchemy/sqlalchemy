@@ -10,7 +10,6 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -23,6 +22,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -1753,7 +1753,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         p = Parent()
         p.children["foo"] = Child("foo", "value")
         p.children["bar"] = Child("bar", "value")
-        session = create_session()
+        session = fixture_session()
         session.add(p)
         session.flush()
         pid = p.id
@@ -1839,7 +1839,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         p.children[("foo", "1")] = Child("foo", "1", "value 1")
         p.children[("foo", "2")] = Child("foo", "2", "value 2")
 
-        session = create_session()
+        session = fixture_session()
         session.add(p)
         session.flush()
         pid = p.id
@@ -2104,7 +2104,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f = Foo()
         f.bars.add(Bar())
         f.bars.add(Bar())
-        sess = create_session()
+        sess = fixture_session()
         sess.add(f)
         sess.flush()
         sess.expunge_all()
@@ -2147,7 +2147,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f = Foo()
         f.bars.set(Bar())
         f.bars.set(Bar())
-        sess = create_session()
+        sess = fixture_session()
         sess.add(f)
         sess.flush()
         sess.expunge_all()
@@ -2189,7 +2189,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         col = collections.collection_adapter(f.bars)
         col.append_with_event(Bar("a"))
         col.append_with_event(Bar("b"))
-        sess = create_session()
+        sess = fixture_session()
         sess.add(f)
         sess.flush()
         sess.expunge_all()
@@ -2444,7 +2444,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         p1.children.append(o)
         assert control == list(p1.children)
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(p1)
         sess.flush()
         sess.expunge_all()

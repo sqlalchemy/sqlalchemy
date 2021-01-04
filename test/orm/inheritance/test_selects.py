@@ -6,6 +6,7 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -117,7 +118,7 @@ class JoinFromSelectPersistenceTest(fixtures.MappedTest):
         )
         mapper(Child, child, inherits=Base, polymorphic_identity="child")
 
-        sess = Session()
+        sess = fixture_session()
 
         # 2. use an id other than "1" here so can't rely on
         # the two inserts having the same id

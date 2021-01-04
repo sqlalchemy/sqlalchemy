@@ -18,6 +18,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from .inheritance import _poly_fixtures
@@ -70,7 +71,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
     def test_user_cols_single_lambda_query(self, plain_fixture):
         User, Address = plain_fixture
 
-        s = Session()
+        s = fixture_session()
         q = s.query(lambda: (User.id, User.name)).select_from(lambda: User)
 
         self.assert_compile(

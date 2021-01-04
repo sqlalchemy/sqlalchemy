@@ -16,6 +16,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.fixtures import fixture_session
 
 
 class PartitionByFixture(fixtures.DeclarativeMappedTest):
@@ -213,7 +214,7 @@ class AltSelectableTest(
     def test_lazyload(self):
         A, B = self.classes("A", "B")
 
-        sess = Session()
+        sess = fixture_session()
         a1 = sess.query(A).first()
 
         with self.sql_execution_asserter() as asserter:
@@ -232,7 +233,7 @@ class AltSelectableTest(
     def test_joinedload(self):
         A, B = self.classes("A", "B")
 
-        sess = Session()
+        sess = fixture_session()
 
         with self.sql_execution_asserter() as asserter:
             # note this is many-to-one.  use_get is unconditionally turned
@@ -254,7 +255,7 @@ class AltSelectableTest(
     def test_selectinload(self):
         A, B = self.classes("A", "B")
 
-        sess = Session()
+        sess = fixture_session()
 
         with self.sql_execution_asserter() as asserter:
             # note this is many-to-one.  use_get is unconditionally turned
@@ -280,7 +281,7 @@ class AltSelectableTest(
     def test_join(self):
         A, B = self.classes("A", "B")
 
-        sess = Session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(A).join(A.b),

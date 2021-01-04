@@ -5,14 +5,13 @@ from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -166,7 +165,7 @@ class TriggerDefaultsTest(fixtures.MappedTest):
         eq_(d1.col3, None)
         eq_(d1.col4, None)
 
-        session = create_session()
+        session = fixture_session()
         session.add(d1)
         session.flush()
 
@@ -181,7 +180,7 @@ class TriggerDefaultsTest(fixtures.MappedTest):
 
         d1 = Default(id=1)
 
-        session = create_session()
+        session = fixture_session()
         session.add(d1)
         session.flush()
         d1.col1 = "set"
@@ -214,10 +213,10 @@ class ExcludedDefaultsTest(fixtures.MappedTest):
         mapper(Foo, dt, exclude_properties=("col1",))
 
         f1 = Foo()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(f1)
         sess.flush()
-        eq_(dt.select().execute().fetchall(), [(1, "hello")])
+        eq_(sess.connection().execute(dt.select()).fetchall(), [(1, "hello")])
 
 
 class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
@@ -261,7 +260,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
         else:
             Thing = self.classes.ThingNoEager
 
-        s = Session()
+        s = fixture_session()
 
         t1, t2 = (Thing(id=1, foo=5), Thing(id=2, foo=10))
 
@@ -342,7 +341,7 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
         else:
             Thing = self.classes.ThingNoEager
 
-        s = Session()
+        s = fixture_session()
 
         t1, t2 = (Thing(id=1, foo=1), Thing(id=2, foo=2))
 
@@ -445,7 +444,7 @@ class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
     def test_insert_identity(self):
         Thing = self.classes.Thing
 
-        s = Session()
+        s = fixture_session()
 
         t1, t2 = (Thing(foo=5), Thing(foo=10))
 

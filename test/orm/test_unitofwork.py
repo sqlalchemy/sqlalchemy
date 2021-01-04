@@ -17,7 +17,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import column_property
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -30,6 +29,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedDict
@@ -70,7 +70,7 @@ class HistoryTest(_fixtures.FixtureTest):
             ),
         )
 
-        session = create_session(autocommit=False)
+        session = fixture_session(autocommit=False)
 
         u = User(name="u1")
         a = Address(email_address="u1@e")
@@ -129,7 +129,7 @@ class UnicodeTest(fixtures.MappedTest):
         t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
-        session = create_session(autocommit=False)
+        session = fixture_session(autocommit=False)
         session.add(t1)
         session.commit()
 
@@ -150,12 +150,12 @@ class UnicodeTest(fixtures.MappedTest):
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
-        session = create_session(autocommit=False)
+        session = fixture_session(autocommit=False, expire_on_commit=False)
         session.add(t1)
         session.commit()
         session.close()
 
-        session = create_session()
+        session = fixture_session()
         t1 = session.query(Test).filter_by(id=t1.id).one()
         assert len(t1.t2s) == 2
 
@@ -227,7 +227,7 @@ class UnicodeSchemaTest(fixtures.MappedTest):
         b1 = B()
         a1.t2s.append(b1)
 
-        session = create_session()
+        session = fixture_session()
         session.add(a1)
         session.flush()
         session.expunge_all()
@@ -265,7 +265,7 @@ class UnicodeSchemaTest(fixtures.MappedTest):
         a1 = A(b=5)
         b1 = B(e=7)
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((a1, b1))
         session.flush()
         session.expunge_all()
@@ -302,7 +302,7 @@ class BinaryHistTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         mapper(Foo, t1)
 
-        s = create_session()
+        s = fixture_session()
 
         f1 = Foo(data=data)
         s.add(f1)
@@ -367,7 +367,7 @@ class PKTest(fixtures.MappedTest):
 
         e = Entry(name="entry1", value="this is entry 1", multi_rev=2)
 
-        session = create_session()
+        session = fixture_session()
         session.add(e)
         session.flush()
         session.expunge_all()
@@ -386,7 +386,7 @@ class PKTest(fixtures.MappedTest):
 
         e = Entry(pk_col_1="pk1", pk_col_2="pk1_related", data="im the data")
 
-        session = create_session()
+        session = fixture_session()
         session.add(e)
         session.flush()
 
@@ -402,7 +402,7 @@ class PKTest(fixtures.MappedTest):
             data="some more data",
         )
 
-        session = create_session()
+        session = fixture_session()
         session.add(e)
         session.flush()
 
@@ -463,20 +463,21 @@ class ForeignPKTest(fixtures.MappedTest):
         ps = PersonSite(site="asdf")
         p.sites.append(ps)
 
-        session = create_session()
+        session = fixture_session()
         session.add(p)
         session.flush()
 
-        p_count = (
-            select(func.count("*"))
-            .where(people.c.person == "im the key")
-            .scalar()
+        conn = session.connection()
+        p_count = conn.scalar(
+            select(func.count("*")).where(people.c.person == "im the key")
         )
         eq_(p_count, 1)
         eq_(
-            select(func.count("*"))
-            .where(peoplesites.c.person == "im the key")
-            .scalar(),
+            conn.scalar(
+                select(func.count("*")).where(
+                    peoplesites.c.person == "im the key"
+                )
+            ),
             1,
         )
 
@@ -539,7 +540,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
 
         u = User(name="test")
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -557,7 +558,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
 
         u = User(name="test")
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -582,7 +583,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
 
         u = User(name="test", counter=sa.select(5).scalar_subquery())
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -593,7 +594,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
         PkDefault = self.classes.PkDefault
 
         pk = PkDefault(id=literal(5) + 10, data="some data")
-        session = Session()
+        session = fixture_session()
         session.add(pk)
         session.flush()
 
@@ -613,7 +614,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
             bool,
             None == sa.false(),  # noqa
         )
-        s = create_session()
+        s = fixture_session()
         hb = HasBoolean(value=None)
         s.add(hb)
         s.flush()
@@ -638,7 +639,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
 
         u = User(id=5, name="test", counter=Thing(3))
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -706,24 +707,32 @@ class PassiveDeletesTest(fixtures.MappedTest):
                 )
             },
         )
-        session = create_session()
-        mc = MyClass()
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
+        with fixture_session() as session:
+            mc = MyClass()
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
 
-        session.add(mc)
-        session.flush()
-        session.expunge_all()
+            session.add(mc)
+            session.flush()
+            session.expunge_all()
 
-        eq_(select(func.count("*")).select_from(myothertable).scalar(), 4)
-        mc = session.query(MyClass).get(mc.id)
-        session.delete(mc)
-        session.flush()
+            conn = session.connection()
 
-        eq_(select(func.count("*")).select_from(mytable).scalar(), 0)
-        eq_(select(func.count("*")).select_from(myothertable).scalar(), 0)
+            eq_(
+                conn.scalar(select(func.count("*")).select_from(myothertable)),
+                4,
+            )
+            mc = session.query(MyClass).get(mc.id)
+            session.delete(mc)
+            session.flush()
+
+            eq_(conn.scalar(select(func.count("*")).select_from(mytable)), 0)
+            eq_(
+                conn.scalar(select(func.count("*")).select_from(myothertable)),
+                0,
+            )
 
     @testing.emits_warning(
         r".*'passive_deletes' is normally configured on one-to-many"
@@ -754,7 +763,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
         )
         mapper(MyClass, mytable)
 
-        session = Session()
+        session = fixture_session()
         mc = MyClass()
         mco = MyOtherClass()
         mco.myclass = mc
@@ -882,20 +891,24 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
-        mc = MyClass()
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
-        mc.children.append(MyOtherClass())
-        session.add(mc)
-        session.flush()
-        session.expunge_all()
+        with fixture_session(expire_on_commit=False) as session:
+            mc = MyClass()
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
+            mc.children.append(MyOtherClass())
+            session.add(mc)
+            session.commit()
 
-        eq_(select(func.count("*")).select_from(myothertable).scalar(), 4)
-        mc = session.query(MyClass).get(mc.id)
-        session.delete(mc)
-        assert_raises(sa.exc.DBAPIError, session.flush)
+        with fixture_session(expire_on_commit=False) as session:
+            conn = session.connection()
+            eq_(
+                conn.scalar(select(func.count("*")).select_from(myothertable)),
+                4,
+            )
+            mc = session.query(MyClass).get(mc.id)
+            session.delete(mc)
+            assert_raises(sa.exc.DBAPIError, session.flush)
 
     def test_extra_passive_2(self):
         myothertable, MyClass, MyOtherClass, mytable = (
@@ -916,19 +929,23 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
-        mc = MyClass()
-        mc.children.append(MyOtherClass())
-        session.add(mc)
-        session.flush()
-        session.expunge_all()
+        with fixture_session(expire_on_commit=False) as session:
+            mc = MyClass()
+            mc.children.append(MyOtherClass())
+            session.add(mc)
+            session.commit()
 
-        eq_(select(func.count("*")).select_from(myothertable).scalar(), 1)
+        with fixture_session(autoflush=False) as session:
+            conn = session.connection()
+            eq_(
+                conn.scalar(select(func.count("*")).select_from(myothertable)),
+                1,
+            )
 
-        mc = session.query(MyClass).get(mc.id)
-        session.delete(mc)
-        mc.children[0].data = "some new data"
-        assert_raises(sa.exc.DBAPIError, session.flush)
+            mc = session.query(MyClass).get(mc.id)
+            session.delete(mc)
+            mc.children[0].data = "some new data"
+            assert_raises(sa.exc.DBAPIError, session.flush)
 
     def test_extra_passive_obj_removed_o2m(self):
         myothertable, MyClass, MyOtherClass, mytable = (
@@ -947,7 +964,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session()
         mc = MyClass()
         moc1 = MyOtherClass()
         moc2 = MyOtherClass()
@@ -982,7 +999,7 @@ class ExtraPassiveDeletesTest(fixtures.MappedTest):
                 )
             },
         )
-        session = Session()
+        session = fixture_session()
         mc = MyClass()
         session.add(mc)
         session.commit()
@@ -1016,16 +1033,18 @@ class ColumnCollisionTest(fixtures.MappedTest):
             pass
 
         mapper(Book, book)
-        sess = create_session()
+        with fixture_session() as sess:
 
-        b1 = Book(book_id="abc", title="def")
-        sess.add(b1)
-        sess.flush()
+            b1 = Book(book_id="abc", title="def")
+            sess.add(b1)
+            sess.flush()
 
-        b1.title = "ghi"
-        sess.flush()
-        sess.close()
-        eq_(sess.query(Book).first(), Book(book_id="abc", title="ghi"))
+            b1.title = "ghi"
+            sess.flush()
+            sess.commit()
+
+        with fixture_session() as sess:
+            eq_(sess.query(Book).first(), Book(book_id="abc", title="ghi"))
 
 
 class DefaultTest(fixtures.MappedTest):
@@ -1133,7 +1152,7 @@ class DefaultTest(fixtures.MappedTest):
         h4 = Hoho()
         h5 = Hoho(foober="im the new foober")
 
-        session = create_session(autocommit=False)
+        session = fixture_session(autocommit=False, expire_on_commit=False)
         session.add_all((h1, h2, h3, h4, h5))
         session.commit()
 
@@ -1193,7 +1212,7 @@ class DefaultTest(fixtures.MappedTest):
         mapper(Secondary, self.tables.secondary_table)
         h1 = Hoho()
 
-        session = create_session()
+        session = fixture_session()
         session.add(h1)
 
         if testing.db.dialect.implicit_returning:
@@ -1218,7 +1237,7 @@ class DefaultTest(fixtures.MappedTest):
         mapper(Hoho, default_t)
 
         h1 = Hoho(hoho="15", counter=15)
-        session = create_session()
+        session = fixture_session()
         session.add(h1)
         session.flush()
 
@@ -1236,7 +1255,7 @@ class DefaultTest(fixtures.MappedTest):
         mapper(Hoho, default_t)
 
         h1 = Hoho()
-        session = create_session()
+        session = fixture_session()
         session.add(h1)
         session.flush()
 
@@ -1272,7 +1291,7 @@ class DefaultTest(fixtures.MappedTest):
         s1 = Secondary(data="s1")
         h1.secondaries.append(s1)
 
-        session = create_session()
+        session = fixture_session()
         session.add(h1)
         session.flush()
         session.expunge_all()
@@ -1428,7 +1447,7 @@ class ColumnPropertyTest(fixtures.MappedTest):
         )
         mapper(SubData, subdata, inherits=Data)
 
-        sess = create_session()
+        sess = fixture_session()
         sd1 = SubData(a="hello", b="there", c="hi")
         sess.add(sd1)
         sess.flush()
@@ -1437,25 +1456,27 @@ class ColumnPropertyTest(fixtures.MappedTest):
     def _test(self, expect_expiry, expect_deferred_load=False):
         Data = self.classes.Data
 
-        sess = create_session()
+        with fixture_session() as sess:
 
-        d1 = Data(a="hello", b="there")
-        sess.add(d1)
-        sess.flush()
+            d1 = Data(a="hello", b="there")
+            sess.add(d1)
+            sess.flush()
 
-        eq_(d1.aplusb, "hello there")
-
-        d1.b = "bye"
-        sess.flush()
-        if expect_expiry:
-            eq_(d1.aplusb, "hello bye")
-        else:
             eq_(d1.aplusb, "hello there")
 
-        d1.b = "foobar"
-        d1.aplusb = "im setting this explicitly"
-        sess.flush()
-        eq_(d1.aplusb, "im setting this explicitly")
+            d1.b = "bye"
+            sess.flush()
+            if expect_expiry:
+                eq_(d1.aplusb, "hello bye")
+            else:
+                eq_(d1.aplusb, "hello there")
+
+            d1.b = "foobar"
+            d1.aplusb = "im setting this explicitly"
+            sess.flush()
+            eq_(d1.aplusb, "im setting this explicitly")
+
+            sess.commit()
 
         # test issue #3984.
         # NOTE: if we only expire_all() here rather than start with brand new
@@ -1463,18 +1484,18 @@ class ColumnPropertyTest(fixtures.MappedTest):
         # "undeferred".  this is questionable but not as severe as the never-
         # loaded attribute being loaded during an unexpire.
 
-        sess.close()
-        d1 = sess.query(Data).first()
+        with fixture_session() as sess:
+            d1 = sess.query(Data).first()
 
-        d1.b = "so long"
-        sess.flush()
-        sess.expire_all()
-        eq_(d1.b, "so long")
-        if expect_deferred_load:
-            eq_("aplusb" in d1.__dict__, False)
-        else:
-            eq_("aplusb" in d1.__dict__, True)
-        eq_(d1.aplusb, "hello so long")
+            d1.b = "so long"
+            sess.flush()
+            sess.expire_all()
+            eq_(d1.b, "so long")
+            if expect_deferred_load:
+                eq_("aplusb" in d1.__dict__, False)
+            else:
+                eq_("aplusb" in d1.__dict__, True)
+            eq_(d1.aplusb, "hello so long")
 
 
 class OneToManyTest(_fixtures.FixtureTest):
@@ -1506,21 +1527,22 @@ class OneToManyTest(_fixtures.FixtureTest):
         a2 = Address(email_address="lala@test.org")
         u.addresses.append(a2)
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
-        user_rows = users.select(users.c.id.in_([u.id])).execute().fetchall()
+        conn = session.connection()
+        user_rows = conn.execute(
+            users.select(users.c.id.in_([u.id]))
+        ).fetchall()
         eq_(list(user_rows[0]), [u.id, "one2manytester"])
 
-        address_rows = (
+        address_rows = conn.execute(
             addresses.select(
                 addresses.c.id.in_([a.id, a2.id]),
                 order_by=[addresses.c.email_address],
             )
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_(list(address_rows[0]), [a2.id, u.id, "lala@test.org"])
         eq_(list(address_rows[1]), [a.id, u.id, "one2many@test.org"])
 
@@ -1531,9 +1553,9 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         session.flush()
 
-        address_rows = (
-            addresses.select(addresses.c.id == addressid).execute().fetchall()
-        )
+        address_rows = conn.execute(
+            addresses.select(addresses.c.id == addressid)
+        ).fetchall()
         eq_(list(address_rows[0]), [addressid, userid, "somethingnew@foo.com"])
         self.assert_(u.id == userid and a2.id == addressid)
 
@@ -1569,7 +1591,7 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         a3 = Address(email_address="emailaddress3")
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((u1, u2, a3))
         session.flush()
 
@@ -1631,7 +1653,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         a = Address(email_address="address1")
         u1.addresses.append(a)
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((u1, u2))
         session.flush()
 
@@ -1668,7 +1690,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         a = Address(email_address="address1")
         u1.addresses.append(a)
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((u1, u2))
         session.flush()
 
@@ -1703,7 +1725,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         a = Address(email_address="myonlyaddress@foo.com")
         u.address = a
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -1738,7 +1760,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         u = User(name="one2onetester")
         u.address = Address(email_address="myonlyaddress@foo.com")
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -1768,7 +1790,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         u = User(name="test")
         Address(email_address="testaddress", user=u)
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.delete(u)
@@ -1812,7 +1834,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         u.boston_addresses.append(a)
         u.newyork_addresses.append(b)
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
 
@@ -1829,40 +1851,42 @@ class SaveTest(_fixtures.FixtureTest):
         u = User(name="savetester")
         u2 = User(name="savetester2")
 
-        session = create_session()
-        session.add_all((u, u2))
-        session.flush()
+        with fixture_session() as session:
+            session.add_all((u, u2))
+            session.flush()
 
-        # assert the first one retrieves the same from the identity map
-        nu = session.query(m).get(u.id)
-        assert u is nu
+            # assert the first one retrieves the same from the identity map
+            nu = session.query(m).get(u.id)
+            assert u is nu
 
-        # clear out the identity map, so next get forces a SELECT
-        session.expunge_all()
+            # clear out the identity map, so next get forces a SELECT
+            session.expunge_all()
 
-        # check it again, identity should be different but ids the same
-        nu = session.query(m).get(u.id)
-        assert u is not nu and u.id == nu.id and nu.name == "savetester"
+            # check it again, identity should be different but ids the same
+            nu = session.query(m).get(u.id)
+            assert u is not nu and u.id == nu.id and nu.name == "savetester"
+
+            session.commit()
 
         # change first users name and save
-        session = create_session()
-        session.add(u)
-        u.name = "modifiedname"
-        assert u in session.dirty
-        session.flush()
+        with fixture_session() as session:
+            session.add(u)
+            u.name = "modifiedname"
+            assert u in session.dirty
+            session.flush()
 
-        # select both
-        userlist = (
-            session.query(User)
-            .filter(users.c.id.in_([u.id, u2.id]))
-            .order_by(users.c.name)
-            .all()
-        )
+            # select both
+            userlist = (
+                session.query(User)
+                .filter(users.c.id.in_([u.id, u2.id]))
+                .order_by(users.c.name)
+                .all()
+            )
 
-        eq_(u.id, userlist[0].id)
-        eq_(userlist[0].name, "modifiedname")
-        eq_(u2.id, userlist[1].id)
-        eq_(userlist[1].name, "savetester2")
+            eq_(u.id, userlist[0].id)
+            eq_(userlist[0].name, "modifiedname")
+            eq_(u2.id, userlist[1].id)
+            eq_(userlist[1].name, "savetester2")
 
     def test_synonym(self):
         users = self.tables.users
@@ -1881,7 +1905,7 @@ class SaveTest(_fixtures.FixtureTest):
         u = SUser(syn_name="some name")
         eq_(u.syn_name, "User:some name:User")
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.expunge_all()
@@ -1916,7 +1940,7 @@ class SaveTest(_fixtures.FixtureTest):
         u.addresses.append(Address(email_address="u1@e3"))
         u.addresses.append(Address(email_address="u1@e4"))
 
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.expunge_all()
@@ -1951,7 +1975,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         au = AddressUser(name="u", email_address="u@e")
 
-        session = create_session()
+        session = fixture_session()
         session.add(au)
         session.flush()
         session.expunge_all()
@@ -1973,7 +1997,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # don't set deferred attribute, commit session
         o = Order(id=42)
-        session = create_session(autocommit=False)
+        session = fixture_session(autocommit=False)
         session.add(o)
         session.commit()
 
@@ -2022,7 +2046,7 @@ class SaveTest(_fixtures.FixtureTest):
         mapper(User, users)
 
         u = User(name="")
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.expunge_all()
@@ -2058,7 +2082,7 @@ class SaveTest(_fixtures.FixtureTest):
         )
 
         u = User(name="multitester", email="multi@test.org")
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.expunge_all()
@@ -2068,26 +2092,27 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(id_)
         assert u.name == "multitester"
 
-        user_rows = (
-            users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
-        )
+        conn = session.connection()
+        user_rows = conn.execute(
+            users.select(users.c.id.in_([u.foo_id]))
+        ).fetchall()
         eq_(list(user_rows[0]), [u.foo_id, "multitester"])
-        address_rows = (
-            addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
-        )
+        address_rows = conn.execute(
+            addresses.select(addresses.c.id.in_([u.id]))
+        ).fetchall()
         eq_(list(address_rows[0]), [u.id, u.foo_id, "multi@test.org"])
 
         u.email = "lala@hey.com"
         u.name = "imnew"
         session.flush()
 
-        user_rows = (
-            users.select(users.c.id.in_([u.foo_id])).execute().fetchall()
-        )
+        user_rows = conn.execute(
+            users.select(users.c.id.in_([u.foo_id]))
+        ).fetchall()
         eq_(list(user_rows[0]), [u.foo_id, "imnew"])
-        address_rows = (
-            addresses.select(addresses.c.id.in_([u.id])).execute().fetchall()
-        )
+        address_rows = conn.execute(
+            addresses.select(addresses.c.id.in_([u.id]))
+        ).fetchall()
         eq_(list(address_rows[0]), [u.id, u.foo_id, "lala@hey.com"])
 
         session.expunge_all()
@@ -2118,7 +2143,7 @@ class SaveTest(_fixtures.FixtureTest):
         u = User(name="u1")
         u.addresses.append(Address(email_address="u1@e1"))
         u.addresses.append(Address(email_address="u1@e2"))
-        session = create_session()
+        session = fixture_session()
         session.add(u)
         session.flush()
         session.expunge_all()
@@ -2126,8 +2151,18 @@ class SaveTest(_fixtures.FixtureTest):
         u = session.query(User).get(u.id)
         session.delete(u)
         session.flush()
-        eq_(select(func.count("*")).select_from(users).scalar(), 0)
-        eq_(select(func.count("*")).select_from(addresses).scalar(), 0)
+        eq_(
+            session.connection().scalar(
+                select(func.count("*")).select_from(users)
+            ),
+            0,
+        )
+        eq_(
+            session.connection().scalar(
+                select(func.count("*")).select_from(addresses)
+            ),
+            0,
+        )
 
     def test_batch_mode(self):
         """The 'batch=False' flag on mapper()"""
@@ -2153,7 +2188,7 @@ class SaveTest(_fixtures.FixtureTest):
         u1 = User(name="user1")
         u2 = User(name="user2")
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((u1, u2))
         session.flush()
 
@@ -2202,7 +2237,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         data = [
             {"name": "thesub", "email_address": "bar@foo.com"},
@@ -2253,14 +2288,13 @@ class ManyToOneTest(_fixtures.FixtureTest):
             ),
         )
 
-        result = (
-            sa.select(users, addresses)
-            .where(
+        conn = session.connection()
+        result = conn.execute(
+            sa.select(users, addresses).where(
                 sa.and_(
                     users.c.id == addresses.c.user_id, addresses.c.id == a.id
                 ),
             )
-            .execute()
         )
         eq_(
             list(result.first()),
@@ -2287,7 +2321,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u1 = User(name="user1")
         a1.user = u1
 
-        session = create_session()
+        session = fixture_session()
         session.add(a1)
         session.flush()
         session.expunge_all()
@@ -2324,7 +2358,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u1 = User(name="user1")
         a1.user = u1
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((a1, a2))
         session.flush()
         session.expunge_all()
@@ -2366,7 +2400,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         u2 = User(name="user2")
         a1.user = u1
 
-        session = create_session()
+        session = fixture_session()
         session.add_all((a1, u1, u2))
         session.flush()
         session.expunge_all()
@@ -2408,7 +2442,7 @@ class ManyToOneTest(_fixtures.FixtureTest):
         a1 = Address(email_address="e1")
         a1.user = u1
 
-        session = create_session()
+        session = fixture_session()
         session.add(u1)
         session.flush()
         session.expunge_all()
@@ -2496,7 +2530,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
             },
         ]
 
-        session = create_session()
+        session = fixture_session()
 
         objects = []
         _keywords = dict([(k.name, k) for k in session.query(Keyword)])
@@ -2600,14 +2634,15 @@ class ManyToManyTest(_fixtures.FixtureTest):
         i.keywords.append(k1)
         i.keywords.append(k2)
 
-        session = create_session()
+        session = fixture_session()
         session.add(i)
         session.flush()
 
-        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 2)
+        conn = session.connection()
+        eq_(conn.scalar(select(func.count("*")).select_from(item_keywords)), 2)
         i.keywords = []
         session.flush()
-        eq_(select(func.count("*")).select_from(item_keywords).scalar(), 0)
+        eq_(conn.scalar(select(func.count("*")).select_from(item_keywords)), 0)
 
     def test_scalar(self):
         """sa.dependency won't delete an m2m relationship referencing None."""
@@ -2633,7 +2668,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         )
 
         i = Item(description="x")
-        session = create_session()
+        session = fixture_session()
         session.add(i)
         session.flush()
         session.delete(i)
@@ -2671,7 +2706,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
         item = Item(description="item 1")
         item.keywords.extend([k1, k2, k3])
 
-        session = create_session()
+        session = fixture_session()
         session.add(item)
         session.flush()
 
@@ -2727,7 +2762,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         def fixture():
             _kw = dict([(k.name, k) for k in session.query(Keyword)])
@@ -2786,7 +2821,7 @@ class SaveTest2(_fixtures.FixtureTest):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         def fixture():
             return [
@@ -2909,14 +2944,24 @@ class SaveTest3(fixtures.MappedTest):
         i.keywords.append(k1)
         i.keywords.append(k2)
 
-        session = create_session()
+        session = fixture_session()
         session.add(i)
         session.flush()
 
-        eq_(select(func.count("*")).select_from(assoc).scalar(), 2)
+        eq_(
+            session.connection().scalar(
+                select(func.count("*")).select_from(assoc)
+            ),
+            2,
+        )
         i.keywords = []
         session.flush()
-        eq_(select(func.count("*")).select_from(assoc).scalar(), 0)
+        eq_(
+            session.connection().scalar(
+                select(func.count("*")).select_from(assoc)
+            ),
+            0,
+        )
 
 
 class BooleanColTest(fixtures.MappedTest):
@@ -2941,7 +2986,7 @@ class BooleanColTest(fixtures.MappedTest):
 
         mapper(T, t1_t)
 
-        sess = create_session()
+        sess = fixture_session()
         t1 = T(value=True, name="t1")
         t2 = T(value=False, name="t2")
         t3 = T(value=True, name="t3")
@@ -3060,7 +3105,7 @@ class RowSwitchTest(fixtures.MappedTest):
         )
         mapper(T6, t6)
 
-        sess = create_session()
+        sess = fixture_session()
 
         o5 = T5(data="some t5", id=1)
         o5.t6s.append(T6(data="some t6", id=1))
@@ -3108,7 +3153,7 @@ class RowSwitchTest(fixtures.MappedTest):
         )
         mapper(T7, t7)
 
-        sess = create_session()
+        sess = fixture_session()
 
         o5 = T5(data="some t5", id=1)
         o5.t7s.append(T7(data="some t7", id=1))
@@ -3159,7 +3204,7 @@ class RowSwitchTest(fixtures.MappedTest):
         mapper(T6, t6, properties={"t5": relationship(T5)})
         mapper(T5, t5)
 
-        sess = create_session()
+        sess = fixture_session()
 
         o5 = T6(data="some t6", id=1)
         o5.t5 = T5(data="some t5", id=1)
@@ -3222,7 +3267,7 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
         mapper(P, parent)
         mapper(C, child, inherits=P)
 
-        sess = create_session()
+        sess = fixture_session()
         c1 = C(pid=1, cid=1, pdata="c1", cdata="c1")
         sess.add(c1)
         sess.flush()
@@ -3253,67 +3298,6 @@ class InheritingRowSwitchTest(fixtures.MappedTest):
         )
 
 
-class TransactionTest(fixtures.MappedTest):
-    __requires__ = ("deferrable_or_no_constraints",)
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table("t1", metadata, Column("id", Integer, primary_key=True))
-
-        Table(
-            "t2",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column(
-                "t1_id",
-                Integer,
-                ForeignKey("t1.id", deferrable=True, initially="deferred"),
-            ),
-        )
-
-    @classmethod
-    def setup_classes(cls):
-        class T1(cls.Comparable):
-            pass
-
-        class T2(cls.Comparable):
-            pass
-
-    @classmethod
-    def setup_mappers(cls):
-        T2, T1, t2, t1 = (
-            cls.classes.T2,
-            cls.classes.T1,
-            cls.tables.t2,
-            cls.tables.t1,
-        )
-
-        mapper(T1, t1)
-        mapper(T2, t2)
-
-    def test_close_transaction_on_commit_fail(self):
-        T2, t1 = self.classes.T2, self.tables.t1
-
-        session = create_session(autocommit=True)
-
-        # with a deferred constraint, this fails at COMMIT time instead
-        # of at INSERT time.
-        session.add(T2(t1_id=123))
-
-        try:
-            session.flush()
-            assert False
-        except Exception:
-            # Flush needs to rollback also when commit fails
-            assert session._legacy_transaction() is None
-
-        # todo: on 8.3 at least, the failed commit seems to close the cursor?
-        # needs investigation.  leaving in the DDL above now to help verify
-        # that the new deferrable support on FK isn't involved in this issue.
-        if testing.against("postgresql"):
-            t1.bind.engine.dispose()
-
-
 class PartialNullPKTest(fixtures.MappedTest):
     # sqlite totally fine with NULLs in pk columns.
     # no other DB is like this.
@@ -3340,7 +3324,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     def test_key_switch(self):
         T1 = self.classes.T1
-        s = Session()
+        s = fixture_session()
         s.add(T1(col1="1", col2=None))
 
         t1 = s.query(T1).first()
@@ -3354,7 +3338,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     def test_plain_update(self):
         T1 = self.classes.T1
-        s = Session()
+        s = fixture_session()
         s.add(T1(col1="1", col2=None))
 
         t1 = s.query(T1).first()
@@ -3368,7 +3352,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     def test_delete(self):
         T1 = self.classes.T1
-        s = Session()
+        s = fixture_session()
         s.add(T1(col1="1", col2=None))
 
         t1 = s.query(T1).first()
@@ -3382,7 +3366,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     def test_total_null(self):
         T1 = self.classes.T1
-        s = Session()
+        s = fixture_session()
         s.add(T1(col1=None, col2=None))
         assert_raises_message(
             orm_exc.FlushError,
@@ -3394,7 +3378,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
     def test_dont_complain_if_no_update(self):
         T1 = self.classes.T1
-        s = Session()
+        s = fixture_session()
         t = T1(col1="1", col2=None)
         s.add(t)
         s.commit()
@@ -3494,7 +3478,7 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         mapper(cls.classes.T3, cls.tables.t3)
 
     def test_exception_persistent_flush_py3k(self):
-        s = Session()
+        s = fixture_session()
 
         a, b = self.classes.T2(id=self.three), self.classes.T2(id=self.four)
         s.add_all([a, b])
@@ -3520,7 +3504,7 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         s.close()
 
     def test_persistent_flush_sortable(self):
-        s = Session()
+        s = fixture_session()
 
         a, b = self.classes.T1(id=self.one), self.classes.T1(id=self.two)
         s.add_all([a, b])
@@ -3531,7 +3515,7 @@ class EnsurePKSortableTest(fixtures.MappedTest):
         s.commit()
 
     def test_pep435_custom_sort_key(self):
-        s = Session()
+        s = fixture_session()
 
         a = self.classes.T3(id=self.three, value=1)
         b = self.classes.T3(id=self.four, value=2)

@@ -16,6 +16,7 @@ from sqlalchemy.orm.util import identity_key
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -370,7 +371,7 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_instance_state_scalar_attr_hist(self):
         User = self.classes.User
         u1 = User(name="ed")
-        sess = Session()
+        sess = fixture_session()
         sess.add(u1)
         sess.commit()
         assert "name" not in u1.__dict__
@@ -393,7 +394,7 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_instance_state_scalar_attr_hist_load(self):
         User = self.classes.User
         u1 = User(name="ed")
-        sess = Session()
+        sess = fixture_session()
         sess.add(u1)
         sess.commit()
         assert "name" not in u1.__dict__
@@ -640,7 +641,7 @@ class %s(SuperCls):
         insp = inspect(u1)
 
         is_(insp.session, None)
-        s = Session()
+        s = fixture_session()
         s.add(u1)
         is_(insp.session, s)
 

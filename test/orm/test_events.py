@@ -13,7 +13,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events
 from sqlalchemy.orm import EXT_SKIP
@@ -35,6 +34,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import ANY
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
@@ -676,7 +676,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         canary = self.listen_all(User)
         named_canary = self.listen_all(User, named=True)
 
-        sess = create_session()
+        sess = fixture_session()
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -769,13 +769,13 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         event.listen(mapper, "load", load)
 
-        s = Session()
+        s = fixture_session()
         u = User(name="u1")
         s.add(u)
         s.commit()
-        s = Session()
+        s = fixture_session()
         u2 = s.merge(u)
-        s = Session()
+        s = fixture_session()
         u2 = s.merge(User(name="u2"))  # noqa
         s.commit()
         s.query(User).order_by(User.id).first()
@@ -803,7 +803,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         canary2 = self.listen_all(User)
         canary3 = self.listen_all(AdminUser)
 
-        sess = create_session()
+        sess = fixture_session()
         am = AdminUser(name="au1", email_address="au1@e1")
         sess.add(am)
         sess.flush()
@@ -871,7 +871,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         )
         canary3 = self.listen_all(AdminUser)
 
-        sess = create_session()
+        sess = fixture_session()
         am = AdminUser(name="au1", email_address="au1@e1")
         sess.add(am)
         sess.flush()
@@ -942,7 +942,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         canary1 = self.listen_all(Item)
         canary2 = self.listen_all(Keyword)
 
-        sess = create_session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         sess.add(i1)
@@ -998,7 +998,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         event.listen(mapper, "before_configured", m1)
         event.listen(mapper, "after_configured", m2)
 
-        s = Session()
+        s = fixture_session()
         s.query(User)
 
         eq_(m1.mock_calls, [call()])
@@ -1117,7 +1117,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         # fails by default because Mammal needs to be configured, and cannot
         # be:
         def probe():
-            s = Session()
+            s = fixture_session()
             s.query(User)
 
         assert_raises(sa.exc.InvalidRequestError, probe)
@@ -1181,7 +1181,7 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
     @_combinations
     def test_warning(self, target, event_name, fn):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         target = testing.util.resolve_lambda(target, A=A, session=s)
         event.listen(target, event_name, fn)
 
@@ -1205,7 +1205,7 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
     @_combinations
     def test_flag_resolves_existing(self, target, event_name, fn):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         target = testing.util.resolve_lambda(target, A=A, session=s)
 
         a1 = s.query(A).all()[0]
@@ -1244,7 +1244,7 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
     @_combinations
     def test_flag_resolves(self, target, event_name, fn):
         A = self.classes.A
-        s = Session()
+        s = fixture_session()
         target = testing.util.resolve_lambda(target, A=A, session=s)
         event.listen(target, event_name, fn, restore_load_context=True)
 
@@ -1681,7 +1681,7 @@ class LoadTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1696,7 +1696,7 @@ class LoadTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1828,7 +1828,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1855,7 +1855,7 @@ class RefreshTest(_fixtures.FixtureTest):
         def canary2(obj, context, props):
             obj.name = "refreshed name!"
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         sess.add(u1)
         sess.commit()
@@ -1877,7 +1877,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1891,7 +1891,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1905,7 +1905,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1920,7 +1920,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1934,7 +1934,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1949,7 +1949,7 @@ class RefreshTest(_fixtures.FixtureTest):
 
         canary = self._fixture()
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1968,7 +1968,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         event.listen(Session, "before_flush", my_listener)
 
-        s = Session()
+        s = fixture_session()
         assert my_listener in s.dispatch.before_flush
 
     def test_sessionmaker_listen(self):
@@ -2001,7 +2001,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         def my_listener_one(*arg, **kw):
             pass
 
-        scope = scoped_session(lambda: Session())
+        scope = scoped_session(lambda: fixture_session())
 
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -2021,7 +2021,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         class NotASession(object):
             def __call__(self):
-                return Session()
+                return fixture_session()
 
         scope = scoped_session(NotASession)
 
@@ -2055,7 +2055,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
             return go
 
-        sess = Session(**kw)
+        sess = fixture_session(**kw)
 
         for evt in [
             "after_transaction_create",
@@ -2152,7 +2152,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         assertions = []
 
@@ -2227,7 +2227,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
     def test_state_before_attach(self):
         User, users = self.classes.User, self.tables.users
-        sess = Session()
+        sess = fixture_session()
 
         @event.listens_for(sess, "before_attach")
         def listener(session, inst):
@@ -2246,7 +2246,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
     def test_state_after_attach(self):
         User, users = self.classes.User, self.tables.users
-        sess = Session()
+        sess = fixture_session()
 
         @event.listens_for(sess, "after_attach")
         def listener(session, inst):
@@ -2279,7 +2279,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_on_bulk_update_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = fixture_session()
         canary = Mock()
 
         event.listen(sess, "after_begin", canary.after_begin)
@@ -2299,7 +2299,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_on_bulk_delete_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = fixture_session()
         canary = Mock()
 
         event.listen(sess, "after_begin", canary.after_begin)
@@ -2317,7 +2317,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         eq_(upd.result.rowcount, 0)
 
     def test_connection_emits_after_begin(self):
-        sess, canary = self._listener_fixture(bind=testing.db)
+        sess, canary = self._listener_fixture()
         sess.connection()
         # changed due to #5074
         eq_(canary, ["after_transaction_create", "after_begin"])
@@ -2331,7 +2331,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         def before_flush(session, flush_context, objects):
             session.flush()
 
-        sess = Session()
+        sess = fixture_session()
         event.listen(sess, "before_flush", before_flush)
         sess.add(User(name="foo"))
         assert_raises_message(
@@ -2356,7 +2356,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                     )
                     session.delete(x)
 
-        sess = Session()
+        sess = fixture_session()
         event.listen(sess, "before_flush", before_flush)
 
         u = User(name="u1")
@@ -2400,7 +2400,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             for obj in list(session.identity_map.values()):
                 obj.name += " modified"
 
-        sess = Session(autoflush=True)
+        sess = fixture_session(autoflush=True)
         event.listen(sess, "before_flush", before_flush)
 
         u = User(name="u1")
@@ -2421,7 +2421,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
 
@@ -2443,7 +2443,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
 
@@ -2484,7 +2484,7 @@ class SessionLifecycleEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         listener = Mock()
 
-        sess = Session()
+        sess = fixture_session()
 
         def start_events():
             event.listen(
@@ -3027,7 +3027,7 @@ class QueryEventsTest(
             return query
 
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User).filter_by(id=7)
         self.assert_compile(
@@ -3046,7 +3046,7 @@ class QueryEventsTest(
             counter[0] += 1
 
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User).filter_by(id=7)
         str(q)
@@ -3060,7 +3060,7 @@ class QueryEventsTest(
         def fn(query):
             return query.add_columns(User.name)
 
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User.id).filter_by(id=7)
         self.assert_compile(
@@ -3088,7 +3088,7 @@ class QueryEventsTest(
             return query
 
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         with self.sql_execution_asserter() as asserter:
             s.query(User).filter_by(id=7).update({"name": "ed"})
@@ -3112,7 +3112,7 @@ class QueryEventsTest(
             return query
 
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         # note this deletes no rows
         with self.sql_execution_asserter() as asserter:
@@ -3140,7 +3140,7 @@ class QueryEventsTest(
         ):
             opts.update(context.execution_options)
 
-        sess = create_session(bind=testing.db, autocommit=False)
+        sess = fixture_session(autocommit=False)
         sess.query(User).first()
         eq_(opts["my_option"], True)
 
@@ -3185,7 +3185,7 @@ class RefreshFlushInReturningTest(fixtures.MappedTest):
         mock = Mock()
         event.listen(Thing, "refresh_flush", mock)
         t1 = Thing()
-        s = Session()
+        s = fixture_session()
         s.add(t1)
         s.flush()
 

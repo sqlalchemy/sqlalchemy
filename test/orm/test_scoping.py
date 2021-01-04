@@ -39,7 +39,7 @@ class ScopedSessionTest(fixtures.MappedTest):
     def test_basic(self):
         table2, table1 = self.tables.table2, self.tables.table1
 
-        Session = scoped_session(sa.orm.sessionmaker())
+        Session = scoped_session(sa.orm.sessionmaker(testing.db))
 
         class CustomQuery(query.Query):
             pass

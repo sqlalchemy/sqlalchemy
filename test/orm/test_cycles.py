@@ -14,11 +14,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -27,6 +24,7 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -88,7 +86,7 @@ class SelfReferentialTest(fixtures.MappedTest):
         a = C1("head c1")
         a.c1s.append(C1("another c1"))
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(a)
         sess.flush()
         sess.delete(a)
@@ -119,7 +117,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         c1 = C1()
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(c1)
         sess.flush()
         sess.expunge_all()
@@ -156,7 +154,7 @@ class SelfReferentialTest(fixtures.MappedTest):
         a.c1s[0].c1s.append(C1("subchild2"))
         a.c1s[1].c2s.append(C2("child2 data1"))
         a.c1s[1].c2s.append(C2("child2 data2"))
-        sess = create_session()
+        sess = fixture_session()
         sess.add(a)
         sess.flush()
 
@@ -168,7 +166,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         mapper(C1, t1, properties={"children": relationship(C1)})
 
-        sess = create_session()
+        sess = fixture_session()
         c1 = C1()
         c2 = C1()
         c1.children.append(c2)
@@ -234,7 +232,7 @@ class SelfReferentialNoPKTest(fixtures.MappedTest):
         t1.children.append(TT())
         t1.children.append(TT())
 
-        s = create_session()
+        s = fixture_session()
         s.add(t1)
         s.flush()
         s.expunge_all()
@@ -244,7 +242,7 @@ class SelfReferentialNoPKTest(fixtures.MappedTest):
     def test_lazy_clause(self):
         TT = self.classes.TT
 
-        s = create_session()
+        s = fixture_session()
         t1 = TT()
         t2 = TT()
         t1.children.append(t2)
@@ -327,7 +325,7 @@ class InheritTestOne(fixtures.MappedTest):
 
         Child1, Child2 = self.classes.Child1, self.classes.Child2
 
-        session = create_session()
+        session = fixture_session()
 
         c1 = Child1()
         c1.child1_data = "qwerty"
@@ -419,7 +417,7 @@ class InheritTestTwo(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         bobj = B()
         sess.add(bobj)
         cobj = C()
@@ -506,7 +504,7 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
 
         o1 = T1()
         o1.t2 = T2()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(o1)
         sess.flush()
 
@@ -528,7 +526,7 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
 
         o1 = T1()
         o1.t2 = T2()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(o1)
         sess.flush()
 
@@ -621,7 +619,7 @@ class BiDirectionalOneToManyTest(fixtures.MappedTest):
         a.c2s.append(b)
         d.c1s.append(c)
         b.c1s.append(c)
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all((a, b, c, d, e, f))
         sess.flush()
 
@@ -726,7 +724,7 @@ class BiDirectionalOneToManyTest2(fixtures.MappedTest):
         a.data.append(C1Data(data="c1data1"))
         a.data.append(C1Data(data="c1data2"))
         c.data.append(C1Data(data="c1data3"))
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all((a, b, c, d, e, f))
         sess.flush()
 
@@ -818,7 +816,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         b = Ball()
         p = Person()
         p.balls.append(b)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(p)
         sess.flush()
 
@@ -845,7 +843,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         b = Ball(data="some data")
         p = Person(data="some data")
         p.favorite = b
-        sess = create_session()
+        sess = fixture_session()
         sess.add(b)
         sess.add(p)
         sess.flush()
@@ -903,7 +901,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         p.balls.append(Ball(data="some data"))
         p.balls.append(Ball(data="some data"))
         p.favorite = b
-        sess = create_session()
+        sess = fixture_session()
         sess.add(b)
         sess.add(p)
 
@@ -1001,7 +999,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             ),
         )
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         p1 = Person(data="p1")
         p2 = Person(data="p2")
         p3 = Person(data="p3")
@@ -1065,7 +1063,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         b4 = Ball(data="some data")
         p.balls.append(b4)
         p.favorite = b
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all((b, p, b2, b3, b4))
 
         self.assert_sql_execution(
@@ -1176,7 +1174,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         )
         mapper(Person, person)
 
-        sess = create_session(autocommit=False, expire_on_commit=True)
+        sess = fixture_session(autocommit=False, expire_on_commit=True)
         sess.add(Ball(person=Person()))
         sess.commit()
         b1 = sess.query(Ball).first()
@@ -1267,7 +1265,7 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session(autoflush=False)
 
         def append_child(parent, child):
             if parent.children:
@@ -1421,7 +1419,7 @@ class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session()
 
         f1 = A(fui="f1")
         session.add(f1)
@@ -1509,7 +1507,7 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
             properties={"parent": relationship(Child, remote_side=child.c.id)},
         )
 
-        session = create_session()
+        session = fixture_session()
         p1 = Parent("p1")
         c1 = Child("c1")
         c2 = Child("c2")
@@ -1668,7 +1666,7 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
         mapper(Child2, child2)
         mapper(Child3, child3)
 
-        sess = create_session()
+        sess = fixture_session()
 
         p1 = Parent("p1")
         c11, c12, c13 = Child1("c1"), Child1("c2"), Child1("c3")
@@ -1753,7 +1751,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
     def test_update_defaults(self):
         A, B = self.classes("A", "B")
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
         b1 = B()
 
@@ -1772,7 +1770,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         event.listen(A, "refresh_flush", canary.refresh_flush)
         event.listen(A, "expire", canary.expire)
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
         b1 = B()
 
@@ -1800,7 +1798,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         event.listen(A, "refresh_flush", canary.refresh_flush)
         event.listen(A, "expire", canary.expire)
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
 
         s.add(a1)
@@ -1831,7 +1829,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         event.listen(A, "refresh_flush", canary.refresh_flush)
         event.listen(A, "expire", canary.expire)
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
         b1 = B()
 
@@ -1885,7 +1883,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
         event.listen(A, "refresh_flush", canary.refresh_flush)
         event.listen(A, "expire", canary.expire)
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
 
         s.add(a1)
@@ -1936,7 +1934,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
     def test_update_defaults_can_set_value(self):
         A, B = self.classes("A", "B")
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
         b1 = B()
 

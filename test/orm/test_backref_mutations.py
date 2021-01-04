@@ -16,9 +16,9 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -44,7 +44,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_move_hitslazy(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
         a3 = Address(email_address="address3")
@@ -65,7 +65,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_move_preloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", addresses=[a1])
 
@@ -88,7 +88,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_move_notloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", addresses=[a1])
 
@@ -109,7 +109,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", addresses=[a1])
 
@@ -134,7 +134,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_scalar_move_preloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         u1 = User(name="jack")
         u2 = User(name="ed")
@@ -161,7 +161,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         u1 = User(name="jack")
         u2 = User(name="ed")
         a1 = Address(email_address="a1")
@@ -183,7 +183,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_set_none(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         u1 = User(name="jack")
         a1 = Address(email_address="a1")
         a1.user = u1
@@ -201,7 +201,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_scalar_move_notloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         u1 = User(name="jack")
         u2 = User(name="ed")
@@ -221,7 +221,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_scalar_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         u1 = User(name="jack")
         u2 = User(name="ed")
@@ -399,7 +399,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_collection_move_preloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -425,7 +425,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_scalar_move_preloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
@@ -449,7 +449,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_collection_move_notloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -471,7 +471,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_scalar_move_notloaded(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
@@ -492,7 +492,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_collection_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -519,7 +519,7 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     def test_scalar_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
         u1 = User(name="jack", address=a1)
@@ -568,7 +568,7 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
     def test_collection_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -622,7 +622,7 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
     def test_m2o_event(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -667,7 +667,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
 
-        session = Session(autoflush=False)
+        session = fixture_session(autoflush=False)
 
         i1 = Item(description="i1")
         session.add(i1)
@@ -685,7 +685,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
 
-        session = Session(autoflush=False)
+        session = fixture_session(autoflush=False)
 
         k1 = Keyword(name="k1")
         i1 = Item(description="i1", keywords=[k1])
@@ -805,7 +805,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     def test_collection_move_preloaded(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         k1 = Keyword(name="k1")
         i1 = Item(description="i1", keyword=k1)
@@ -828,7 +828,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     def test_collection_move_notloaded(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         k1 = Keyword(name="k1")
         i1 = Item(description="i1", keyword=k1)
@@ -847,7 +847,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
     def test_collection_move_commit(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         k1 = Keyword(name="k1")
         i1 = Item(description="i1", keyword=k1)

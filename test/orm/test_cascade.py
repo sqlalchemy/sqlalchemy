@@ -18,7 +18,6 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.testing import assert_raises
@@ -27,6 +26,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -270,7 +270,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     def test_list_assignment_new(self):
         User, Order = self.classes.User, self.classes.Order
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -295,7 +295,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     def test_list_assignment_replace(self):
         User, Order = self.classes.User, self.classes.Order
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -331,7 +331,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     def test_standalone_orphan(self):
         Order = self.classes.Order
 
-        with Session() as sess:
+        with fixture_session() as sess:
             o5 = Order(description="order 5")
             sess.add(o5)
             assert_raises(sa_exc.DBAPIError, sess.flush)
@@ -342,7 +342,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
 
         Order, User = self.classes.Order, self.classes.User
 
-        sess = sessionmaker(expire_on_commit=False)()
+        sess = fixture_session(expire_on_commit=False)
         o1, o2, o3 = (
             Order(description="o1"),
             Order(description="o2"),
@@ -363,7 +363,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
     def test_remove_pending_from_collection(self):
         User, Order = self.classes.User, self.classes.Order
 
-        with Session() as sess:
+        with fixture_session() as sess:
 
             u = User(name="jack")
             sess.add(u)
@@ -380,7 +380,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
 
         User, Order = self.classes.User, self.classes.Order
 
-        with Session() as sess:
+        with fixture_session() as sess:
 
             u = User(name="jack")
 
@@ -407,7 +407,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.classes.Order,
         )
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -444,7 +444,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.classes.Address,
         )
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 addresses=[
@@ -497,7 +497,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.tables.orders,
         )
 
-        with Session(autoflush=False) as sess:
+        with fixture_session(autoflush=False) as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -550,7 +550,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.classes.Address,
         )
 
-        sess = Session()
+        sess = fixture_session()
         u = User(name="jack")
         sess.add(u)
         assert "orders" not in u.__dict__
@@ -580,7 +580,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.classes.Order,
         )
 
-        sess = Session()
+        sess = fixture_session()
         u = User(
             name="jack",
             orders=[
@@ -619,7 +619,7 @@ class O2MCascadeDeleteOrphanTest(fixtures.MappedTest):
             self.classes.Order,
         )
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -710,7 +710,7 @@ class O2MCascadeTest(fixtures.MappedTest):
 
     def test_none_o2m_collection_assignment(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
         u1 = User(name="u", addresses=[None])
         s.add(u1)
         eq_(u1.addresses, [None])
@@ -723,7 +723,7 @@ class O2MCascadeTest(fixtures.MappedTest):
 
     def test_none_o2m_collection_append(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         u1 = User(name="u")
         s.add(u1)
@@ -793,7 +793,7 @@ class O2MCascadeDeleteNoOrphanTest(fixtures.MappedTest):
             self.tables.users,
         )
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u = User(
                 name="jack",
                 orders=[
@@ -936,7 +936,7 @@ class O2OSingleParentNoFlushTest(fixtures.MappedTest):
         User, Address = self.classes.User, self.classes.Address
         a1 = Address(email_address="some address")
         u1 = User(name="u1", address=a1)
-        sess = Session()
+        sess = fixture_session()
         sess.add(u1)
         sess.commit()
 
@@ -1083,7 +1083,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         u1.addresses.append(a1)
@@ -1096,7 +1096,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=False, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         u1.addresses.append(a1)
@@ -1109,7 +1109,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=False, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         sess.add(a1)
@@ -1127,7 +1127,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         u1.addresses.append(a1)
@@ -1140,7 +1140,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         u1.addresses.append(a1)
@@ -1153,7 +1153,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         u1.addresses.append(a1)
@@ -1172,7 +1172,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         sess.add(a1)
@@ -1189,7 +1189,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, o2m_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         sess.add(a1)
@@ -1212,7 +1212,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=False, m2o=True)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         a1.user = u1
@@ -1225,7 +1225,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=False, m2o=True, m2o_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         a1.user = u1
@@ -1238,7 +1238,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=False, m2o=True, m2o_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         sess.add(u1)
         sess.flush()
@@ -1255,7 +1255,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         a1.user = u1
@@ -1268,7 +1268,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
         a1.user = u1
@@ -1281,7 +1281,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
-        with Session() as sess:
+        with fixture_session() as sess:
             u1 = User(name="u1")
             sess.add(u1)
             sess.flush()
@@ -1324,7 +1324,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         User, Address = self.classes.User, self.classes.Address
 
         self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
 
         a1 = Address(email_address="a1")
@@ -1346,7 +1346,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
 
         self._one_to_many_fixture(o2m=True, m2o=True, m2o_cascade=False)
 
-        with Session() as sess:
+        with fixture_session() as sess:
             u1 = User(name="u1")
             sess.add(u1)
             sess.flush()
@@ -1400,7 +1400,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         i1.keywords.append(k1)
@@ -1413,7 +1413,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=False, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         i1.keywords.append(k1)
@@ -1426,7 +1426,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=False, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         sess.add(k1)
@@ -1444,7 +1444,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=True)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         i1.keywords.append(k1)
@@ -1457,7 +1457,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=True, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         i1.keywords.append(k1)
@@ -1470,7 +1470,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=True, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         i1.keywords.append(k1)
@@ -1489,7 +1489,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=True, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         sess.add(k1)
@@ -1506,7 +1506,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         self._many_to_many_fixture(fwd=True, bkd=True, fwd_cascade=False)
-        sess = Session()
+        sess = fixture_session()
         i1 = Item(description="i1")
         k1 = Keyword(name="k1")
         sess.add(k1)
@@ -1549,7 +1549,7 @@ class NoSaveCascadeBackrefTest(_fixtures.FixtureTest):
             ),
         )
 
-        sess = Session()
+        sess = fixture_session()
 
         o1 = Order()
         sess.add(o1)
@@ -1584,7 +1584,7 @@ class NoSaveCascadeBackrefTest(_fixtures.FixtureTest):
         )
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User()
         sess.add(u1)
@@ -1625,7 +1625,7 @@ class NoSaveCascadeBackrefTest(_fixtures.FixtureTest):
         )
         mapper(Keyword, keywords)
 
-        sess = Session()
+        sess = fixture_session()
 
         i1 = Item()
         k1 = Keyword()
@@ -1753,7 +1753,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
             self.tables.extra,
         )
 
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.execute(select(func.count("*")).select_from(prefs)).scalar(),
             3,
@@ -1779,7 +1779,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
 
         Foo, User = self.classes.Foo, self.classes.User
 
-        sess = sessionmaker(expire_on_commit=True)()
+        sess = fixture_session(expire_on_commit=True)
 
         u1 = User(name="jack", foo=Foo(data="f1"))
         sess.add(u1)
@@ -1802,7 +1802,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
 
         Pref, User = self.classes.Pref, self.classes.User
 
-        sess = sessionmaker(expire_on_commit=False)()
+        sess = fixture_session(expire_on_commit=False)
         p1, p2 = Pref(data="p1"), Pref(data="p2")
 
         u = User(name="jack", pref=p1)
@@ -1824,7 +1824,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
             self.tables.extra,
         )
 
-        sess = Session()
+        sess = fixture_session()
         jack = sess.query(User).filter_by(name="jack").one()
         p = jack.pref
         e = jack.pref.extra[0]
@@ -1849,7 +1849,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
     def test_pending_expunge(self):
         Pref, User = self.classes.Pref, self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
         someuser = User(name="someuser")
         sess.add(someuser)
         sess.flush()
@@ -1868,7 +1868,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
 
         Pref, User = self.classes.Pref, self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
         jack = sess.query(User).filter_by(name="jack").one()
 
         newpref = Pref(data="newpref")
@@ -1961,7 +1961,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
     def test_cascade_delete(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x = T1(data="t1a", t2=T2(data="t2a", t3=T3(data="t3a")))
         sess.add(x)
         sess.flush()
@@ -1975,7 +1975,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
     def test_deletes_orphans_onelevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x2 = T1(data="t1b", t2=T2(data="t2b", t3=T3(data="t3b")))
         sess.add(x2)
         sess.flush()
@@ -1990,7 +1990,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
     def test_deletes_orphans_twolevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x = T1(data="t1a", t2=T2(data="t2a", t3=T3(data="t3a")))
         sess.add(x)
         sess.flush()
@@ -2005,7 +2005,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
     def test_finds_orphans_twolevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x = T1(data="t1a", t2=T2(data="t2a", t3=T3(data="t3a")))
         sess.add(x)
         sess.flush()
@@ -2102,7 +2102,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_cascade_delete(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x = T1(data="t1a", t2=T2(data="t2a", t3=T3(data="t3a")))
         sess.add(x)
         sess.flush()
@@ -2116,7 +2116,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_cascade_delete_postappend_onelevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x1 = T1(data="t1")
         x2 = T2(data="t2")
         x3 = T3(data="t3")
@@ -2134,7 +2134,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_cascade_delete_postappend_twolevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x1 = T1(data="t1", t2=T2(data="t2"))
         x3 = T3(data="t3")
         sess.add_all((x1, x3))
@@ -2150,7 +2150,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_preserves_orphans_onelevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x2 = T1(data="t1b", t2=T2(data="t2b", t3=T3(data="t3b")))
         sess.add(x2)
         sess.flush()
@@ -2166,7 +2166,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_preserves_orphans_onelevel_postremove(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x2 = T1(data="t1b", t2=T2(data="t2b", t3=T3(data="t3b")))
         sess.add(x2)
         sess.flush()
@@ -2181,7 +2181,7 @@ class M2OCascadeDeleteNoOrphanTest(fixtures.MappedTest):
     def test_preserves_orphans_twolevel(self):
         T2, T3, T1 = (self.classes.T2, self.classes.T3, self.classes.T1)
 
-        sess = Session()
+        sess = fixture_session()
         x = T1(data="t1a", t2=T2(data="t2a", t3=T3(data="t3a")))
         sess.add(x)
         sess.flush()
@@ -2270,7 +2270,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        sess = Session()
+        sess = fixture_session()
         b1 = B(data="b1")
         a1 = A(data="a1", bs=[b1])
         sess.add(a1)
@@ -2310,7 +2310,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         # failed until [ticket:427] was fixed
         mapper(B, b)
 
-        sess = Session()
+        sess = fixture_session()
         b1 = B(data="b1")
         a1 = A(data="a1", bs=[b1])
         sess.add(a1)
@@ -2356,7 +2356,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(C, c)
 
-        sess = Session()
+        sess = fixture_session()
         b1 = B(data="b1", cs=[C(data="c1")])
         a1 = A(data="a1", bs=[b1])
         sess.add(a1)
@@ -2394,7 +2394,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        sess = Session()
+        sess = fixture_session()
         a1 = A(data="a1", bs=[B(data="b1")])
         sess.add(a1)
         sess.flush()
@@ -2513,7 +2513,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        s = Session()
+        s = fixture_session()
         a1 = A(bs=[None])
         s.add(a1)
         eq_(a1.bs, [None])
@@ -2540,7 +2540,7 @@ class M2MCascadeTest(fixtures.MappedTest):
         )
         mapper(B, b)
 
-        s = Session()
+        s = fixture_session()
         a1 = A()
         a1.bs.append(None)
         s.add(a1)
@@ -2588,7 +2588,7 @@ class O2MSelfReferentialDetelOrphanTest(fixtures.MappedTest):
 
     def test_self_referential_delete(self):
         Node = self.classes.Node
-        s = Session()
+        s = fixture_session()
 
         n1, n2, n3, n4 = Node(), Node(), Node(), Node()
         n1.children = [n2, n3]
@@ -2640,7 +2640,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_o2m_basic(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -2652,7 +2652,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_o2m_commit_warns(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -2667,7 +2667,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_o2m_flag_on_backref(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         a1 = Address(email_address="a1")
         sess.add(a1)
@@ -2686,7 +2686,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_m2o_basic(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         a1 = Address(email_address="a1")
         d1 = Dingaling()
@@ -2698,7 +2698,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_m2o_flag_on_backref(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         a1 = Address(email_address="a1")
         sess.add(a1)
@@ -2714,7 +2714,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
     def test_m2o_commit_warns(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         a1 = Address(email_address="a1")
         d1 = Dingaling()
@@ -2810,7 +2810,7 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
                 orders=relationship(Order, cascade="all, delete-orphan"),
             ),
         )
-        s = Session()
+        s = fixture_session()
 
         # the standalone Address goes in, its foreign key
         # allows NULL
@@ -2855,7 +2855,7 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
                 )
             ),
         )
-        s = Session()
+        s = fixture_session()
 
         u = User()
         s.add(u)
@@ -2891,7 +2891,7 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
                 )
             ),
         )
-        s = Session()
+        s = fixture_session()
         u = User(name="u1", addresses=[Address(email_address="ad1")])
         s.add(u)
         a1 = u.addresses[0]
@@ -2964,7 +2964,7 @@ class PendingOrphanTestTwoLevel(fixtures.MappedTest):
             },
         )
         mapper(Item, item)
-        s = Session()
+        s = fixture_session()
         o1 = Order()
         s.add(o1)
 
@@ -3001,7 +3001,7 @@ class PendingOrphanTestTwoLevel(fixtures.MappedTest):
             },
         )
         mapper(Attribute, attribute)
-        s = Session()
+        s = fixture_session()
         o1 = Order()
         s.add(o1)
 
@@ -3117,7 +3117,7 @@ class DoubleParentO2MOrphanTest(fixtures.MappedTest):
                 )
             ),
         )
-        s = Session(expire_on_commit=False, autoflush=False)
+        s = fixture_session(expire_on_commit=False, autoflush=False)
 
         a = Account(balance=0)
         sr = SalesRep(name="John")
@@ -3282,7 +3282,7 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
             },
         )
 
-        session = Session()
+        session = fixture_session()
         h1 = Home(description="home1", address=Address(street="address1"))
         b1 = Business(
             description="business1", address=Address(street="address2")
@@ -3341,7 +3341,7 @@ class DoubleParentM2OOrphanTest(fixtures.MappedTest):
                 )
             },
         )
-        session = Session()
+        session = fixture_session()
         a1 = Address()
         session.add(a1)
         session.flush()
@@ -3386,7 +3386,7 @@ class CollectionAssignmentOrphanTest(fixtures.MappedTest):
 
         a1 = A(name="a1", bs=[B(name="b1"), B(name="b2"), B(name="b3")])
 
-        sess = Session()
+        sess = fixture_session()
         sess.add(a1)
         sess.flush()
 
@@ -3490,7 +3490,7 @@ class OrphanCriterionTest(fixtures.MappedTest):
                 RelatedTwo(cores=[c1])
 
         if persistent:
-            s = Session()
+            s = fixture_session()
             s.add(c1)
             s.flush()
 
@@ -3629,7 +3629,7 @@ class O2MConflictTest(fixtures.MappedTest):
     def _do_move_test(self, delete_old):
         Parent, Child = self.classes.Parent, self.classes.Child
 
-        with Session(autoflush=False) as sess:
+        with fixture_session(autoflush=False) as sess:
             p1, p2, c1 = Parent(), Parent(), Child()
             if Parent.child.property.uselist:
                 p1.child.append(c1)
@@ -3880,7 +3880,7 @@ class PartialFlushTest(fixtures.MappedTest):
         )
         mapper(Child, noninh_child)
 
-        sess = Session()
+        sess = fixture_session()
 
         c1, c2 = Child(), Child()
         b1 = Base(descr="b1", children=[c1, c2])
@@ -3897,7 +3897,7 @@ class PartialFlushTest(fixtures.MappedTest):
         assert c2 in sess and c2 not in sess.new
         assert b1 in sess and b1 not in sess.new
 
-        sess = Session()
+        sess = fixture_session()
         c1, c2 = Child(), Child()
         b1 = Base(descr="b1", children=[c1, c2])
         sess.add(b1)
@@ -3907,7 +3907,7 @@ class PartialFlushTest(fixtures.MappedTest):
         assert c2 in sess and c2 in sess.new
         assert b1 in sess and b1 in sess.new
 
-        sess = Session()
+        sess = fixture_session()
         c1, c2 = Child(), Child()
         b1 = Base(descr="b1", children=[c1, c2])
         sess.add(b1)
@@ -3952,7 +3952,7 @@ class PartialFlushTest(fixtures.MappedTest):
 
         mapper(Parent, parent, inherits=Base)
 
-        sess = Session()
+        sess = fixture_session()
         p1 = Parent()
 
         c1, c2, c3 = Child(), Child(), Child()
@@ -4097,7 +4097,7 @@ class SubclassCascadeTest(fixtures.DeclarativeMappedTest):
                 )
             ]
         )
-        s = Session()
+        s = fixture_session()
         s.add(obj)
         s.commit()
 
@@ -4188,7 +4188,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         u = User(id=1, name="jack")
         sess.add(u)
         sess.add_all(
@@ -4235,7 +4235,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="jack")
         sess.add(u1)
 
@@ -4274,7 +4274,7 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="jack")
 
         o1, o2 = (

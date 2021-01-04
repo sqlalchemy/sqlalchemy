@@ -17,7 +17,6 @@ from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -30,6 +29,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
@@ -44,7 +44,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
     def test_single_prop(self):
         Company = self.classes.Company
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company).join(Company.employees),
@@ -63,7 +63,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company)
@@ -81,7 +81,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
     def test_force_via_select_from(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company)
@@ -114,7 +114,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
     def test_single_prop_of_type(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company).join(Company.employees.of_type(Engineer)),
@@ -130,7 +130,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
     def test_explicit_polymorphic_join_one(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company)
@@ -149,7 +149,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
     def test_explicit_polymorphic_join_two(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Company)
             .join(Engineer, Company.company_id == Engineer.company_id)
@@ -167,7 +167,7 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
 
     def test_auto_aliasing_multi_link(self):
         # test [ticket:2903]
-        sess = create_session()
+        sess = fixture_session()
 
         Company, Engineer, Manager, Boss = (
             self.classes.Company,
@@ -221,7 +221,7 @@ class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_join_on_synonym(self):
         User = self.classes.User
         self.assert_compile(
-            Session().query(User).join(User.ad_syn),
+            fixture_session().query(User).join(User.ad_syn),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN addresses ON users.id = addresses.user_id",
         )
@@ -233,7 +233,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_filter_by_from_full_join(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User)
@@ -249,7 +249,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
     def test_invalid_kwarg_join(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         assert_raises_message(
             TypeError,
             "unknown arguments: bar, foob",
@@ -271,7 +271,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(User, literal_column("x")).join(Address),
@@ -288,7 +288,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_left_is_none_and_query_has_no_entities(self):
         Address = self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -301,7 +301,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         self.assert_compile(
-            create_session().query(User).join(User.orders, isouter=True),
+            fixture_session().query(User).join(User.orders, isouter=True),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users LEFT OUTER JOIN orders ON users.id = orders.user_id",
         )
@@ -310,7 +310,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         self.assert_compile(
-            create_session().query(User).outerjoin(User.orders, full=True),
+            fixture_session().query(User).outerjoin(User.orders, full=True),
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users FULL OUTER JOIN orders ON users.id = orders.user_id",
         )
@@ -318,7 +318,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_1(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(User).join(User.orders),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -328,7 +328,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_2(self):
         Order, User = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(User).join(Order.user),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -338,7 +338,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_3(self):
         Order, User = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         oalias1 = aliased(Order)
 
         self.assert_compile(
@@ -354,7 +354,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             User,
         ) = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         oalias1 = aliased(Order)
         oalias2 = aliased(Order)
         # another nonsensical query.  (from [ticket:1537]).
@@ -370,7 +370,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_6(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         ualias = aliased(User)
         self.assert_compile(
             sess.query(ualias).join(ualias.orders),
@@ -381,7 +381,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_9(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         subq = (
             sess.query(User)
@@ -409,7 +409,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         oalias1 = aliased(Order)
         # test #1 for [ticket:1706]
         ualias = aliased(User)
@@ -430,7 +430,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         # test #2 for [ticket:1706]
         ualias = aliased(User)
         ualias2 = aliased(User)
@@ -451,7 +451,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Order = self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test overlapping paths.   User->orders is used by both joins, but
         # rendered once.
@@ -475,7 +475,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         Order = self.classes.Order
         Address = self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(User)
             .join(User.orders)
@@ -501,7 +501,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         Order, User = self.classes.Order, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         # intentionally join() with a non-existent "left" side
         self.assert_compile(
@@ -516,7 +516,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # a more controversial feature.  join from
         # User->Address, but the onclause is Address.user.
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(
             sess.query(User)
@@ -554,7 +554,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_multiple_with_aliases(self):
         Order, User = self.classes.Order, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         ualias = aliased(User)
         oalias1 = aliased(Order)
@@ -577,7 +577,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_orm_joins(self):
         User, Order = self.classes.User, self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
 
         ualias = aliased(User)
         oalias1 = aliased(Order)
@@ -715,7 +715,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_overlapping_backwards_joins(self):
         User, Order = self.classes.User, self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
 
         oalias1 = aliased(Order)
         oalias2 = aliased(Order)
@@ -740,7 +740,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Address, User)
@@ -762,7 +762,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
     def test_invalid_join_entity_from_single_from_clause(self):
         Address, Item = (self.classes.Address, self.classes.Item)
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(Address).select_from(Address)
 
@@ -776,7 +776,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
     def test_invalid_join_entity_from_no_from_clause(self):
         Address, Item = (self.classes.Address, self.classes.Item)
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(Address)
 
@@ -797,7 +797,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
             self.classes.Item,
         )
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(Address, User).join(Address.dingaling).join(User.orders)
 
@@ -816,7 +816,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         u1 = aliased(User)
 
@@ -852,7 +852,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         u1 = aliased(User)
         u2 = aliased(User)
@@ -892,7 +892,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Dingaling,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(Address, User).join(Address.dingaling).join(User.orders)
 
@@ -948,7 +948,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Dingaling,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(Order, Dingaling)
 
@@ -1000,7 +1000,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         a1 = aliased(Address)
 
@@ -1043,7 +1043,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         a1 = aliased(Address)
 
@@ -1068,7 +1068,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_pure_expression_error(self):
         addresses, users = self.tables.addresses, self.tables.users
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(users).join(addresses),
@@ -1083,7 +1083,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(
             sess.query(User)
@@ -1119,7 +1119,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(
             sess.query(User)
@@ -1176,7 +1176,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_aliased_classes(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         (user7, user8, user9, user10) = sess.query(User).all()
         (address1, address2, address3, address4, address5) = sess.query(
@@ -1248,7 +1248,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_expression_onclauses(self):
         Order, User = self.classes.Order, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         subq = sess.query(User).subquery()
 
@@ -1281,7 +1281,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_aliased_classes_m2m(self):
         Item, Order = self.classes.Item, self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
 
         (order1, order2, order3, order4, order5) = sess.query(Order).all()
         (item1, item2, item3, item4, item5) = sess.query(Item).all()
@@ -1323,7 +1323,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # test for #1853
 
-        session = create_session()
+        session = fixture_session()
         first = session.query(User)
         second = session.query(User)
         unioned = first.union(second)
@@ -1366,7 +1366,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         # test for #1853
 
-        session = create_session()
+        session = fixture_session()
         first = session.query(User)
         second = session.query(User)
         unioned = first.union(second)
@@ -1415,7 +1415,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         oalias = orders.alias("oalias")
 
         result = (
-            create_session()
+            fixture_session()
             .query(User)
             .select_from(users.join(oalias))
             .filter(
@@ -1429,7 +1429,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
 
         result = (
-            create_session()
+            fixture_session()
             .query(User)
             .select_from(users.join(oalias))
             .filter(
@@ -1445,7 +1445,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_aliased_order_by(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         ualias = aliased(User)
         eq_(
@@ -1466,7 +1466,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_plain_table(self):
         addresses, User = self.tables.addresses, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(
             sess.query(User.name)
@@ -1479,7 +1479,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_no_joinpoint_expr(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = create_session()
+        sess = fixture_session()
 
         # these are consistent regardless of
         # select_from() being present.
@@ -1506,7 +1506,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_on_clause_no_right_side_one(self):
         User = self.classes.User
         Address = self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
 
         # coercions does not catch this due to the
         # legacy=True flag for JoinTargetRole
@@ -1532,7 +1532,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_on_clause_no_right_side_two(self):
         User = self.classes.User
         Address = self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
 
         assert_raises_message(
             sa_exc.ArgumentError,
@@ -1562,7 +1562,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Item.id)
             .select_from(User)
@@ -1617,7 +1617,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_mapped_to_mapped_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1638,7 +1638,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_mapped_to_mapped_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1657,7 +1657,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_mapped_to_select_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1677,7 +1677,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_mapped_to_select_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1709,7 +1709,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_mapped_select_to_mapped_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1739,7 +1739,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_mapped_select_to_mapped_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1759,7 +1759,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_mapped_select_to_select_explicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1780,7 +1780,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_mapped_select_to_select_implicit_left(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -1866,7 +1866,7 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_o2m_aliased_plus_o2m(self):
         Node, Sub = self.classes.Node, self.classes.Sub
 
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
 
         self.assert_compile(
@@ -1886,7 +1886,7 @@ class SelfRefMixedTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_m2m_aliased_plus_o2m(self):
         Node, Sub = self.classes.Node, self.classes.Sub
 
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
 
         self.assert_compile(
@@ -1962,7 +1962,7 @@ class CreateJoinsTest(fixtures.ORMTest, AssertsCompiledSQL):
 
     def test_double_level_aliased_exists(self):
         A, B, C, Base = self._inherits_fixture()
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A).filter(A.b.has(B.c.has(C.id == 5))),
             "SELECT a.id AS a_id, base.id AS base_id, a.b_id AS a_b_id "
@@ -2029,7 +2029,7 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_parent_child(self):
         Parent = self.classes.Parent
 
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Parent)
             .join(Parent.npc)
@@ -2045,7 +2045,7 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_parent_child_select_from(self):
         Parent = self.classes.Parent
         npc = self.npc
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(npc)
             .select_from(Parent)
@@ -2061,7 +2061,7 @@ class JoinToNonPolyAliasesTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_select_parent_child(self):
         Parent = self.classes.Parent
         npc = self.npc
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Parent, npc)
             .join(Parent.npc)
@@ -2120,7 +2120,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def insert_data(cls, connection):
         Node = cls.classes.Node
 
-        sess = create_session(connection)
+        sess = Session(connection)
         n1 = Node(data="n1")
         n1.append(Node(data="n11"))
         n1.append(Node(data="n12"))
@@ -2134,7 +2134,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_4_explicit_join(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
 
         na = aliased(Node)
         na2 = aliased(Node)
@@ -2189,7 +2189,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n1 = aliased(Node)
 
@@ -2266,7 +2266,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_to_self_no_aliases_raises(self):
         Node = self.classes.Node
 
-        s = Session()
+        s = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Can't construct a join from mapped class Node->nodes to mapped "
@@ -2316,7 +2316,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_4(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2331,7 +2331,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_5(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2346,7 +2346,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_6(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
 
         node = (
@@ -2359,7 +2359,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_7(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2373,7 +2373,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_8(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2390,7 +2390,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_9(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2406,7 +2406,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_explicit_join_10(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         n1 = aliased(Node)
         n2 = aliased(Node)
 
@@ -2427,7 +2427,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_to_nonaliased(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n1 = aliased(Node)
 
@@ -2457,7 +2457,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_one(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -2475,7 +2475,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_two(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -2502,7 +2502,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_three(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -2529,7 +2529,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_four(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -2548,7 +2548,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_five(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -2575,7 +2575,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_any(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
         eq_(
             sess.query(Node)
             .filter(Node.children.any(Node.data == "n1"))
@@ -2605,7 +2605,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_has(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(
             sess.query(Node)
@@ -2628,7 +2628,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_contains(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n122 = sess.query(Node).filter(Node.data == "n122").one()
         eq_(
@@ -2645,7 +2645,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_eq_ne(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n12 = sess.query(Node).filter(Node.data == "n12").one()
         eq_(
@@ -2723,7 +2723,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
                 )
             },
         )
-        sess = create_session(connection)
+        sess = Session(connection)
         n1 = Node(data="n1")
         n2 = Node(data="n2")
         n3 = Node(data="n3")
@@ -2746,7 +2746,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
     def test_any(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
         eq_(
             sess.query(Node)
             .filter(Node.children.any(Node.data == "n3"))
@@ -2758,7 +2758,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
     def test_contains(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
         n4 = sess.query(Node).filter_by(data="n4").one()
 
         eq_(
@@ -2785,7 +2785,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest):
     def test_explicit_join(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n1 = aliased(Node)
         eq_(
@@ -2863,7 +2863,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_subquery(self):
         Person, Book = self.classes("Person", "Book")
 
-        s = Session()
+        s = fixture_session()
 
         subq = (
             s.query(Book.book_id)
@@ -2889,7 +2889,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_subquery_sef_implicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(Person).subquery()
 
@@ -2922,7 +2922,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_subquery_sef_implicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(Person).subquery()
 
@@ -2955,7 +2955,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_subquery_sef_explicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(Person).subquery()
 
@@ -2989,7 +2989,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_select_subquery_sef_explicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(Person).subquery()
 
@@ -3023,7 +3023,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_from_function(self):
         Bookcase = self.classes.Bookcase
 
-        s = Session()
+        s = fixture_session()
 
         srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
 
@@ -3041,7 +3041,7 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_from_function_select_entity_from(self):
         Bookcase = self.classes.Bookcase
 
-        s = Session()
+        s = fixture_session()
 
         subq = s.query(Bookcase).subquery()
 

@@ -7,11 +7,10 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -167,7 +166,7 @@ class M2MTest(fixtures.MappedTest):
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         p1 = Place("place1")
         p2 = Place("place2")
         p3 = Place("place3")
@@ -216,7 +215,7 @@ class M2MTest(fixtures.MappedTest):
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         p1 = Place("place1")
         p2 = Place("place2")
         p2.parent_places = [p1]
@@ -271,7 +270,7 @@ class M2MTest(fixtures.MappedTest):
         tran.inputs.append(Place("place1"))
         tran.outputs.append(Place("place2"))
         tran.outputs.append(Place("place3"))
-        sess = Session()
+        sess = fixture_session()
         sess.add(tran)
         sess.commit()
 
@@ -327,7 +326,7 @@ class M2MTest(fixtures.MappedTest):
         p2 = Place("place2")
         p3 = Place("place3")
 
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([p3, p1, t1, t2, p2, t3])
 
         t1.inputs.append(p1)
@@ -380,7 +379,7 @@ class M2MTest(fixtures.MappedTest):
         p1 = Place("place1")
         t1 = Transition("t1")
         p1.transitions.append(t1)
-        sess = sessionmaker()()
+        sess = fixture_session()
         sess.add_all([p1, t1])
         sess.commit()
 
@@ -494,7 +493,7 @@ class AssortedPersistenceTests(fixtures.MappedTest):
         A, B = self.classes.A, self.classes.B
         secondary = self.tables.secondary
 
-        sess = Session()
+        sess = fixture_session()
         sess.add_all(
             [A(data="a1", bs=[B(data="b1")]), A(data="a2", bs=[B(data="b2")])]
         )
@@ -516,7 +515,7 @@ class AssortedPersistenceTests(fixtures.MappedTest):
         A, B = self.classes.A, self.classes.B
         secondary = self.tables.secondary
 
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([A(data="a1", bs=[B(data="b1"), B(data="b2")])])
         sess.commit()
 

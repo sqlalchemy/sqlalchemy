@@ -16,6 +16,7 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
 from sqlalchemy.testing.assertsql import Or
+from sqlalchemy.testing.fixtures import fixture_session
 from ._poly_fixtures import _Polymorphic
 from ._poly_fixtures import Company
 from ._poly_fixtures import Engineer
@@ -145,7 +146,7 @@ class LoadBaseAndSubWEagerRelOpt(
 
     def test_load(self):
         A, B, ASub, C = self.classes("A", "B", "ASub", "C")
-        s = Session()
+        s = fixture_session()
 
         q = (
             s.query(A)
@@ -169,7 +170,7 @@ class LoadBaseAndSubWEagerRelMapped(
 
     def test_load(self):
         A, B, ASub, C = self.classes("A", "B", "ASub", "C")
-        s = Session()
+        s = fixture_session()
 
         q = (
             s.query(A)
@@ -182,7 +183,7 @@ class LoadBaseAndSubWEagerRelMapped(
 
 class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
     def test_person_selectin_subclasses(self):
-        s = Session()
+        s = fixture_session()
         q = s.query(Person).options(
             selectin_polymorphic(Person, [Engineer, Manager])
         )
@@ -228,7 +229,7 @@ class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
         eq_(result, self.all_employees)
 
     def test_load_company_plus_employees(self):
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(Company)
             .options(
@@ -316,7 +317,7 @@ class TestGeometries(GeometryFixtureBase):
         )
 
         a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([d(d_data="d1"), e(e_data="e1")])
         sess.commit()
 
@@ -370,7 +371,7 @@ class TestGeometries(GeometryFixtureBase):
         )
 
         a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([d(d_data="d1"), e(e_data="e1")])
         sess.commit()
 
@@ -420,7 +421,7 @@ class TestGeometries(GeometryFixtureBase):
         )
 
         a, b, c, d, e = self.classes("a", "b", "c", "d", "e")
-        sess = Session()
+        sess = fixture_session()
         sess.add_all([d(d_data="d1"), e(e_data="e1")])
         sess.commit()
 
@@ -507,7 +508,7 @@ class TestGeometries(GeometryFixtureBase):
         )
 
         a, a1, a2 = self.classes("a", "a1", "a2")
-        sess = Session()
+        sess = fixture_session()
 
         a1_obj = a1()
         a2_obj = a2()
@@ -586,7 +587,7 @@ class LoaderOptionsTest(
         Parent, ChildSubclass1, Other = self.classes(
             "Parent", "ChildSubclass1", "Other"
         )
-        session = Session(enable_baked_queries=enable_baked)
+        session = fixture_session(enable_baked_queries=enable_baked)
 
         def no_opt():
             q = session.query(Parent).options(

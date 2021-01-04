@@ -16,6 +16,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -124,7 +125,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_same_named_col_in_orderby(self):
         Data, Other = self.classes("Data", "Other")
         bundle = Bundle("pk", Data.id, Other.id)
-        sess = Session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Data, Other).order_by(bundle),
@@ -138,7 +139,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_same_named_col_in_fetch(self):
         Data, Other = self.classes("Data", "Other")
         bundle = Bundle("pk", Data.id, Other.id)
-        sess = Session()
+        sess = fixture_session()
 
         eq_(
             sess.query(bundle)
@@ -159,7 +160,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_result(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1, Data.d2)
 
@@ -170,7 +171,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_subclass(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         class MyBundle(Bundle):
             def create_row_processor(self, query, procs, labels):
@@ -199,7 +200,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         b1 = Bundle("b1", d1.d1, d1.d2)
         b2 = Bundle("b2", Data.d1, Other.o1)
 
-        sess = Session()
+        sess = fixture_session()
 
         q = (
             sess.query(b1, b2)
@@ -249,7 +250,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_single_entity_legacy_query(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1, Data.d2, single_entity=True)
 
@@ -260,7 +261,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_labeled_cols_non_single_entity_legacy_query(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
 
@@ -271,7 +272,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_labeled_cols_single_entity_legacy_query(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle(
             "b1", Data.d1.label("x"), Data.d2.label("y"), single_entity=True
@@ -284,7 +285,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_labeled_cols_as_rows_future(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
 
@@ -297,7 +298,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_labeled_cols_as_scalars_future(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1.label("x"), Data.d2.label("y"))
 
@@ -340,7 +341,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_single_entity_flag_but_multi_entities(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1, Data.d2, single_entity=True)
         b2 = Bundle("b1", Data.d3, single_entity=True)
@@ -356,7 +357,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_bundle_nesting(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1, Bundle("b2", Data.d2, Data.d3))
 
@@ -374,7 +375,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_bundle_nesting_unions(self):
         Data = self.classes.Data
-        sess = Session()
+        sess = fixture_session()
 
         b1 = Bundle("b1", Data.d1, Bundle("b2", Data.d2, Data.d3))
 
@@ -407,12 +408,12 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_query_count(self):
         Data = self.classes.Data
         b1 = Bundle("b1", Data.d1, Data.d2)
-        eq_(Session().query(b1).count(), 10)
+        eq_(fixture_session().query(b1).count(), 10)
 
     def test_join_relationship(self):
         Data = self.classes.Data
 
-        sess = Session()
+        sess = fixture_session()
         b1 = Bundle("b1", Data.d1, Data.d2)
         q = sess.query(b1).join(Data.others)
         self.assert_compile(
@@ -426,7 +427,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
         Data = self.classes.Data
         Other = self.classes.Other
 
-        sess = Session()
+        sess = fixture_session()
         b1 = Bundle("b1", Data.d1, Data.d2)
         q = sess.query(b1).join(Other)
         self.assert_compile(
@@ -444,7 +445,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         b1 = Bundle("b1", Data.id, Data.d1, Data.d2)
 
-        session = Session()
+        session = fixture_session()
         first = session.query(b1)
         second = session.query(b1)
         unioned = first.union(second)
@@ -488,7 +489,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         b1 = Bundle("b1", Data.id, Data.d1, Data.d2)
 
-        sess = Session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(b1).filter_by(d1="d1"),
@@ -501,7 +502,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         b1 = Bundle("b1", Data.id, Data.d1, Data.d2)
 
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(Data).order_by(b1),
             "SELECT data.id AS data_id, data.d1 AS data_d1, "
@@ -520,7 +521,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         b1 = Bundle("b1", data_table.c.d1, data_table.c.d2)
 
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
             [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],
@@ -531,7 +532,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         b1 = Bundle("b1", data_table.c.d1, data_table.c.d2, single_entity=True)
 
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(b1).filter(b1.c.d1.between("d3d1", "d5d1")).all(),
             [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],

@@ -69,25 +69,31 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
         metadata = MetaData()
         Table("test_table", metadata, Column("foo", Integer))
         for meth in [metadata.create_all, metadata.drop_all]:
-            assert_raises_message(
-                exc.UnboundExecutionError,
-                "MetaData object is not bound to an Engine or Connection.",
-                meth,
-            )
+            with testing.expect_deprecated_20(
+                "The ``bind`` argument for schema methods that invoke SQL"
+            ):
+                assert_raises_message(
+                    exc.UnboundExecutionError,
+                    "MetaData object is not bound to an Engine or Connection.",
+                    meth,
+                )
 
     def test_bind_create_drop_err_table(self):
         metadata = MetaData()
         table = Table("test_table", metadata, Column("foo", Integer))
 
         for meth in [table.create, table.drop]:
-            assert_raises_message(
-                exc.UnboundExecutionError,
-                (
-                    "Table object 'test_table' is not bound to an Engine or "
-                    "Connection."
-                ),
-                meth,
-            )
+            with testing.expect_deprecated_20(
+                "The ``bind`` argument for schema methods that invoke SQL"
+            ):
+                assert_raises_message(
+                    exc.UnboundExecutionError,
+                    (
+                        "Table object 'test_table' is not bound to an "
+                        "Engine or Connection."
+                    ),
+                    meth,
+                )
 
     def test_bind_create_drop_bound(self):
 
@@ -106,16 +112,28 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                 table = Table("test_table", metadata, Column("foo", Integer))
                 metadata.bind = bind
                 assert metadata.bind is table.bind is bind
-                metadata.create_all()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    metadata.create_all()
 
                 with testing.expect_deprecated(
                     r"The Table.exists\(\) method is deprecated and will "
                     "be removed in a future release."
                 ):
                     assert table.exists()
-                metadata.drop_all()
-                table.create()
-                table.drop()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    metadata.drop_all()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    table.create()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    table.drop()
                 with testing.expect_deprecated(
                     r"The Table.exists\(\) method is deprecated and will "
                     "be removed in a future release."
@@ -135,15 +153,27 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                 metadata.bind = bind
 
                 assert metadata.bind is table.bind is bind
-                metadata.create_all()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    metadata.create_all()
                 with testing.expect_deprecated(
                     r"The Table.exists\(\) method is deprecated and will "
                     "be removed in a future release."
                 ):
                     assert table.exists()
-                metadata.drop_all()
-                table.create()
-                table.drop()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    metadata.drop_all()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    table.create()
+                with testing.expect_deprecated_20(
+                    "The ``bind`` argument for schema methods that invoke SQL"
+                ):
+                    table.drop()
                 with testing.expect_deprecated(
                     r"The Table.exists\(\) method is deprecated and will "
                     "be removed in a future release."
@@ -166,11 +196,27 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
                         "test_table", metadata, Column("foo", Integer)
                     )
                     assert metadata.bind is table.bind is bind
-                    metadata.create_all()
+                    with testing.expect_deprecated_20(
+                        "The ``bind`` argument for schema methods "
+                        "that invoke SQL"
+                    ):
+                        metadata.create_all()
                     is_true(inspect(bind).has_table(table.name))
-                    metadata.drop_all()
-                    table.create()
-                    table.drop()
+                    with testing.expect_deprecated_20(
+                        "The ``bind`` argument for schema methods "
+                        "that invoke SQL"
+                    ):
+                        metadata.drop_all()
+                    with testing.expect_deprecated_20(
+                        "The ``bind`` argument for schema methods "
+                        "that invoke SQL"
+                    ):
+                        table.create()
+                    with testing.expect_deprecated_20(
+                        "The ``bind`` argument for schema methods "
+                        "that invoke SQL"
+                    ):
+                        table.drop()
                     is_false(inspect(bind).has_table(table.name))
             finally:
                 if isinstance(bind, engine.Connection):

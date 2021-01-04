@@ -18,6 +18,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -42,7 +43,7 @@ class StateChangeTest(BakedTest):
 
     def test_initial_key(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
 
         def l1():
             return session.query(User)
@@ -53,7 +54,7 @@ class StateChangeTest(BakedTest):
 
     def test_inplace_add(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
 
         def l1():
             return session.query(User)
@@ -73,7 +74,7 @@ class StateChangeTest(BakedTest):
 
     def test_inplace_add_operator(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
 
         def l1():
             return session.query(User)
@@ -90,7 +91,7 @@ class StateChangeTest(BakedTest):
 
     def test_chained_add(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
 
         def l1():
             return session.query(User)
@@ -108,7 +109,7 @@ class StateChangeTest(BakedTest):
 
     def test_chained_add_operator(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
 
         def l1():
             return session.query(User)
@@ -138,7 +139,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name == "asdf")
 
-        eq_(bq(Session()).first(), None)
+        eq_(bq(fixture_session()).first(), None)
 
     def test_first_multiple_result(self):
         User = self.classes.User
@@ -146,7 +147,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User.id))
         bq += lambda q: q.filter(User.name.like("%ed%")).order_by(User.id)
 
-        eq_(bq(Session()).first(), (8,))
+        eq_(bq(fixture_session()).first(), (8,))
 
     def test_one_or_none_no_result(self):
         User = self.classes.User
@@ -154,7 +155,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name == "asdf")
 
-        eq_(bq(Session()).one_or_none(), None)
+        eq_(bq(fixture_session()).one_or_none(), None)
 
     def test_one_or_none_result(self):
         User = self.classes.User
@@ -162,7 +163,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name == "ed")
 
-        u1 = bq(Session()).one_or_none()
+        u1 = bq(fixture_session()).one_or_none()
         eq_(u1.name, "ed")
 
     def test_one_or_none_multiple_result(self):
@@ -174,7 +175,7 @@ class LikeQueryTest(BakedTest):
         assert_raises_message(
             orm_exc.MultipleResultsFound,
             "Multiple rows were found when one or none was required",
-            bq(Session()).one_or_none,
+            bq(fixture_session()).one_or_none,
         )
 
     def test_one_no_result(self):
@@ -186,7 +187,7 @@ class LikeQueryTest(BakedTest):
         assert_raises_message(
             orm_exc.NoResultFound,
             "No row was found when one was required",
-            bq(Session()).one,
+            bq(fixture_session()).one,
         )
 
     def test_one_result(self):
@@ -195,7 +196,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
         bq += lambda q: q.filter(User.name == "ed")
 
-        u1 = bq(Session()).one()
+        u1 = bq(fixture_session()).one()
         eq_(u1.name, "ed")
 
     def test_one_multiple_result(self):
@@ -207,7 +208,7 @@ class LikeQueryTest(BakedTest):
         assert_raises_message(
             orm_exc.MultipleResultsFound,
             "Multiple rows were found when exactly one was required",
-            bq(Session()).one,
+            bq(fixture_session()).one,
         )
 
     def test_get(self):
@@ -215,7 +216,7 @@ class LikeQueryTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User))
 
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             u1 = bq(sess).get(7)
@@ -242,7 +243,7 @@ class LikeQueryTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User.id))
 
-        sess = Session()
+        sess = fixture_session()
 
         bq += lambda q: q.filter(User.id == 7)
 
@@ -253,7 +254,7 @@ class LikeQueryTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User))
 
-        sess = Session()
+        sess = fixture_session()
 
         eq_(bq(sess).count(), 4)
 
@@ -272,7 +273,7 @@ class LikeQueryTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User))
 
-        sess = Session()
+        sess = fixture_session()
 
         eq_(bq(sess).count(), 4)
 
@@ -306,7 +307,7 @@ class LikeQueryTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(AddressUser))
 
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             u1 = bq(sess).get((10, None))
@@ -329,7 +330,7 @@ class LikeQueryTest(BakedTest):
         bq = self.bakery(lambda s: s.query(User))
 
         for i in range(5):
-            sess = Session()
+            sess = fixture_session()
             u1 = bq(sess).get(7)
             eq_(u1.name, "jack")
             sess.close()
@@ -343,7 +344,7 @@ class LikeQueryTest(BakedTest):
         del inspect(User).__dict__["_get_clause"]
 
         for i in range(5):
-            sess = Session()
+            sess = fixture_session()
             u1 = bq(sess).get(7)
             eq_(u1.name, "jack")
             sess.close()
@@ -463,7 +464,7 @@ class ResultTest(BakedTest):
         bq2 = self.bakery(fn, 8)
 
         for i in range(3):
-            session = Session(autocommit=True)
+            session = fixture_session()
             eq_(bq1(session).all(), [(7,)])
 
             eq_(bq2(session).all(), [(8,)])
@@ -476,7 +477,7 @@ class ResultTest(BakedTest):
         )
 
         for i in range(3):
-            session = Session(autocommit=True)
+            session = fixture_session()
             eq_(
                 bq(session).all(),
                 [(7, "jack"), (8, "ed"), (9, "fred"), (10, "chuck")],
@@ -490,7 +491,7 @@ class ResultTest(BakedTest):
         )
 
         bq += lambda q: q.limit(bindparam("limit")).offset(bindparam("offset"))
-        session = Session(autocommit=True)
+        session = fixture_session()
 
         for i in range(4):
             for limit, offset, exp in [
@@ -522,7 +523,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = Session(autocommit=True, enable_baked_queries=False)
+            sess = fixture_session(autocommit=True, enable_baked_queries=False)
             eq_(bq.add_criteria(fn3)(sess).params(id=7).all(), [(7, "jack")])
 
         eq_(
@@ -562,7 +563,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = Session(autocommit=True)
+            sess = fixture_session()
             eq_(
                 bq.spoil(full=True).add_criteria(fn3)(sess).params(id=7).all(),
                 [(7, "jack")],
@@ -609,7 +610,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = Session(autocommit=True)
+            sess = fixture_session()
             eq_(
                 bq.spoil().add_criteria(fn3)(sess).params(id=7).all(),
                 [(7, "jack")],
@@ -639,7 +640,7 @@ class ResultTest(BakedTest):
         bq += lambda q: q._from_self().with_entities(func.count(User.id))
 
         for i in range(3):
-            session = Session(autocommit=True)
+            session = fixture_session()
             eq_(bq(session).all(), [(4,)])
 
     def test_conditional_step(self):
@@ -674,7 +675,7 @@ class ResultTest(BakedTest):
                     bq += lambda q: q._from_self().with_entities(
                         func.count(User.id)
                     )
-                sess = Session(autocommit=True)
+                sess = fixture_session()
                 result = bq(sess).all()
                 if cond4:
                     if cond1:
@@ -729,7 +730,7 @@ class ResultTest(BakedTest):
                     if cond1
                     else (lambda q: q.filter(User.name == "jack"))
                 )  # noqa
-                sess = Session(autocommit=True)
+                sess = fixture_session()
                 result = bq(sess).all()
 
                 if cond1:
@@ -754,7 +755,7 @@ class ResultTest(BakedTest):
         main_bq += lambda q: q.filter(sub_bq.to_query(q).exists())
         main_bq += lambda q: q.order_by(Address.id)
 
-        sess = Session()
+        sess = fixture_session()
         result = main_bq(sess).all()
         eq_(result, [(2,), (3,), (4,)])
 
@@ -775,7 +776,7 @@ class ResultTest(BakedTest):
         )
         main_bq += lambda q: q.order_by(Address.id)
 
-        sess = Session()
+        sess = fixture_session()
         result = main_bq(sess).all()
         eq_(result, [(2, "ed"), (3, "ed"), (4, "ed")])
 
@@ -840,7 +841,7 @@ class ResultTest(BakedTest):
                 print("HI----")
                 bq = base_bq._clone()
 
-                sess = Session()
+                sess = fixture_session()
 
                 if cond1:
                     bq += lambda q: q.filter(User.name == "jack")
@@ -908,7 +909,7 @@ class ResultTest(BakedTest):
         bq += lambda q: q.options(subqueryload(User.addresses))
         bq += lambda q: q.order_by(User.id)
         bq += lambda q: q.filter(User.name == bindparam("name"))
-        sess = Session()
+        sess = fixture_session()
 
         def set_params(q):
             return q.params(name="jack")
@@ -950,7 +951,7 @@ class ResultTest(BakedTest):
         bq += lambda q: q.options(subqueryload(User.addresses))
         bq += lambda q: q.order_by(User.id)
         bq += lambda q: q.filter(User.name == bindparam("name"))
-        sess = Session()
+        sess = fixture_session()
 
         def set_params(q):
             return q.params(name="jack")
@@ -1007,7 +1008,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                 cache[cache_key] = retval = createfunc().freeze()
                 return retval()
 
-        s1 = Session(query_cls=CachingQuery)
+        s1 = fixture_session(query_cls=CachingQuery)
 
         @event.listens_for(s1, "do_orm_execute", retval=True)
         def do_orm_execute(orm_context):

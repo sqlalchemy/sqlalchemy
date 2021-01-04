@@ -3,11 +3,11 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import testing
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -45,14 +45,14 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_selectby(self):
         Foo = self.classes.Foo
 
-        res = create_session().query(Foo).filter_by(range=5)
+        res = fixture_session().query(Foo).filter_by(range=5)
         assert res.order_by(Foo.bar)[0].bar == 5
         assert res.order_by(sa.desc(Foo.bar))[0].bar == 95
 
     def test_slice(self):
         Foo = self.classes.Foo
 
-        sess = create_session()
+        sess = fixture_session()
         query = sess.query(Foo).order_by(Foo.id)
         orig = query.all()
 
@@ -73,7 +73,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_aggregate(self):
         foo, Foo = self.tables.foo, self.classes.Foo
 
-        sess = create_session()
+        sess = fixture_session()
         query = sess.query(Foo)
         assert query.count() == 100
         assert sess.query(func.min(foo.c.bar)).filter(
@@ -99,7 +99,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_aggregate_1(self):
         foo = self.tables.foo
 
-        query = create_session().query(func.sum(foo.c.bar))
+        query = fixture_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar < 30).one() == (435,)
 
     @testing.fails_on("firebird", "FIXME: unknown")
@@ -110,7 +110,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_aggregate_2(self):
         foo = self.tables.foo
 
-        query = create_session().query(func.avg(foo.c.bar))
+        query = fixture_session().query(func.avg(foo.c.bar))
         avg = query.filter(foo.c.bar < 30).one()[0]
         eq_(float(round(avg, 1)), 14.5)
 
@@ -121,7 +121,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_aggregate_3(self):
         foo, Foo = self.tables.foo, self.classes.Foo
 
-        query = create_session().query(Foo)
+        query = fixture_session().query(Foo)
 
         avg_f = (
             query.filter(foo.c.bar < 30)
@@ -140,7 +140,7 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_filter(self):
         Foo = self.classes.Foo
 
-        query = create_session().query(Foo)
+        query = fixture_session().query(Foo)
         assert query.count() == 100
         assert query.filter(Foo.bar < 30).count() == 30
         res2 = query.filter(Foo.bar < 30).filter(Foo.bar > 10)
@@ -149,20 +149,20 @@ class GenerativeQueryTest(fixtures.MappedTest):
     def test_order_by(self):
         Foo = self.classes.Foo
 
-        query = create_session().query(Foo)
+        query = fixture_session().query(Foo)
         assert query.order_by(Foo.bar)[0].bar == 0
         assert query.order_by(sa.desc(Foo.bar))[0].bar == 99
 
     def test_offset_order_by(self):
         Foo = self.classes.Foo
 
-        query = create_session().query(Foo)
+        query = fixture_session().query(Foo)
         assert list(query.order_by(Foo.bar).offset(10))[0].bar == 10
 
     def test_offset(self):
         Foo = self.classes.Foo
 
-        query = create_session().query(Foo)
+        query = fixture_session().query(Foo)
         assert len(list(query.limit(10))) == 10
 
 
@@ -212,7 +212,7 @@ class GenerativeTest2(fixtures.MappedTest):
             self.tables.table1,
         )
 
-        query = create_session().query(Obj1)
+        query = fixture_session().query(Obj1)
         eq_(query.count(), 4)
 
         res = query.filter(
@@ -264,7 +264,7 @@ class RelationshipsTest(_fixtures.FixtureTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        session = create_session()
+        session = fixture_session()
         q = (
             session.query(User)
             .join("orders", "addresses")
@@ -281,7 +281,7 @@ class RelationshipsTest(_fixtures.FixtureTest):
             self.classes.Address,
         )
 
-        session = create_session()
+        session = fixture_session()
         q = (
             session.query(User)
             .outerjoin("orders", "addresses")
@@ -298,7 +298,7 @@ class RelationshipsTest(_fixtures.FixtureTest):
             self.classes.Address,
         )
 
-        session = create_session()
+        session = fixture_session()
 
         q = (
             session.query(User)
@@ -317,7 +317,7 @@ class RelationshipsTest(_fixtures.FixtureTest):
             self.tables.addresses,
         )
 
-        session = create_session()
+        session = fixture_session()
 
         sel = users.outerjoin(orders).outerjoin(
             addresses, orders.c.address_id == addresses.c.id
@@ -376,7 +376,7 @@ class CaseSensitiveTest(fixtures.MappedTest):
             self.tables.Table1,
         )
 
-        q = create_session(bind=testing.db).query(Obj1)
+        q = fixture_session().query(Obj1)
         assert q.count() == 4
         res = q.filter(
             sa.and_(Table1.c.ID == Table2.c.T1ID, Table2.c.T1ID == 1)
