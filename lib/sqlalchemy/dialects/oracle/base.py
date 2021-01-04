@@ -1017,6 +1017,7 @@ class OracleCompiler(compiler.SQLCompiler):
         ):
             if (
                 self.isupdate
+                and isinstance(column, sa_schema.Column)
                 and isinstance(column.server_default, Computed)
                 and not self.dialect._supports_update_returning_computed_cols
             ):

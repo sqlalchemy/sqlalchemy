@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import type_coerce
 from sqlalchemy import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -121,6 +122,7 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("persons", Integer),
             Column("full", Boolean),
             Column("goofy", GoofyType(50)),
+            Column("strval", String(50)),
         )
 
     def test_column_targeting(self, connection):
@@ -196,6 +198,88 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             select(table.c.id, table.c.full).order_by(table.c.id)
         )
         eq_(result2.fetchall(), [(1, True), (2, False)])
+
+    @testing.fails_on(
+        "mssql",
+        "driver has unknown issue with string concatenation "
+        "in INSERT RETURNING",
+    )
+    def test_insert_returning_w_expression_one(self, connection):
+        table = self.tables.tables
+        result = connection.execute(
+            table.insert().returning(table.c.strval + "hi"),
+            {"persons": 5, "full": False, "strval": "str1"},
+        )
+
+        eq_(result.fetchall(), [("str1hi",)])
+
+        result2 = connection.execute(
+            select(table.c.id, table.c.strval).order_by(table.c.id)
+        )
+        eq_(result2.fetchall(), [(1, "str1")])
+
+    def test_insert_returning_w_type_coerce_expression(self, connection):
+        table = self.tables.tables
+        result = connection.execute(
+            table.insert().returning(type_coerce(table.c.goofy, String)),
+            {"persons": 5, "goofy": "somegoofy"},
+        )
+
+        eq_(result.fetchall(), [("FOOsomegoofy",)])
+
+        result2 = connection.execute(
+            select(table.c.id, table.c.goofy).order_by(table.c.id)
+        )
+        eq_(result2.fetchall(), [(1, "FOOsomegoofyBAR")])
+
+    def test_update_returning_w_expression_one(self, connection):
+        table = self.tables.tables
+        connection.execute(
+            table.insert(),
+            [
+                {"persons": 5, "full": False, "strval": "str1"},
+                {"persons": 3, "full": False, "strval": "str2"},
+            ],
+        )
+
+        result = connection.execute(
+            table.update()
+            .where(table.c.persons > 4)
+            .values(full=True)
+            .returning(table.c.strval + "hi")
+        )
+        eq_(result.fetchall(), [("str1hi",)])
+
+        result2 = connection.execute(
+            select(table.c.id, table.c.strval).order_by(table.c.id)
+        )
+        eq_(result2.fetchall(), [(1, "str1"), (2, "str2")])
+
+    def test_update_returning_w_type_coerce_expression(self, connection):
+        table = self.tables.tables
+        connection.execute(
+            table.insert(),
+            [
+                {"persons": 5, "goofy": "somegoofy1"},
+                {"persons": 3, "goofy": "somegoofy2"},
+            ],
+        )
+
+        result = connection.execute(
+            table.update()
+            .where(table.c.persons > 4)
+            .values(goofy="newgoofy")
+            .returning(type_coerce(table.c.goofy, String))
+        )
+        eq_(result.fetchall(), [("FOOnewgoofy",)])
+
+        result2 = connection.execute(
+            select(table.c.id, table.c.goofy).order_by(table.c.id)
+        )
+        eq_(
+            result2.fetchall(),
+            [(1, "FOOnewgoofyBAR"), (2, "FOOsomegoofy2BAR")],
+        )
 
     @testing.requires.full_returning
     def test_update_full_returning(self, connection):
