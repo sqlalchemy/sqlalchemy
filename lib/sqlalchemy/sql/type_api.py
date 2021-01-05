@@ -1082,8 +1082,7 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
         In most cases this returns a dialect-adapted form of
         the :class:`.TypeEngine` type represented by ``self.impl``.
-        Makes usage of :meth:`dialect_impl` but also traverses
-        into wrapped :class:`.TypeDecorator` instances.
+        Makes usage of :meth:`dialect_impl`.
         Behavior can be customized here by overriding
         :meth:`load_dialect_impl`.
 
@@ -1091,8 +1090,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         adapted = dialect.type_descriptor(self)
         if not isinstance(adapted, type(self)):
             return adapted
-        elif isinstance(self.impl, TypeDecorator):
-            return self.impl.type_engine(dialect)
         else:
             return self.load_dialect_impl(dialect)
 
@@ -1117,7 +1114,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         method.
 
         """
-
         # some dialects have a lookup for a TypeDecorator subclass directly.
         # postgresql.INTERVAL being the main example
         typ = self.dialect_impl(dialect)
