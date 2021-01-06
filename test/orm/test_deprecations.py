@@ -2198,7 +2198,7 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
 
 
 class AutocommitClosesOnFailTest(fixtures.MappedTest):
-    __requires__ = ("deferrable_or_no_constraints",)
+    __requires__ = ("deferrable_fks",)
 
     @classmethod
     def define_tables(cls, metadata):

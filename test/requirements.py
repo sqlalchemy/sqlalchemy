@@ -120,7 +120,7 @@ class DefaultRequirements(SuiteRequirements):
     def deferrable_fks(self):
         """target database must support deferrable fks"""
 
-        return only_on(["oracle"])
+        return only_on(["oracle", "postgresql"])
 
     @property
     def foreign_key_constraint_option_reflection_ondelete(self):

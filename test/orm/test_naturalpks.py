@@ -28,7 +28,10 @@ from test.orm import _fixtures
 
 
 def _backend_specific_fk_args():
-    if testing.requires.deferrable_fks.enabled:
+    if (
+        testing.requires.deferrable_fks.enabled
+        and testing.requires.non_updating_cascade.enabled
+    ):
         fk_args = dict(deferrable=True, initially="deferred")
     elif not testing.requires.on_update_cascade.enabled:
         fk_args = dict()
