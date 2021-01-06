@@ -1,12 +1,11 @@
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -111,7 +110,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        return create_session()
+        return fixture_session()
 
     def _upgrade_fixture(self):
         (
@@ -183,7 +182,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        return create_session()
+        return fixture_session()
 
     def test_downgrade_baseline(self):
         """Mapper strategy defaults load as expected
@@ -630,7 +629,7 @@ class NoLoadTest(_fixtures.FixtureTest):
                 )
             ),
         )
-        q = create_session().query(m)
+        q = fixture_session().query(m)
         result = [None]
 
         def go():
@@ -661,7 +660,7 @@ class NoLoadTest(_fixtures.FixtureTest):
                 )
             ),
         )
-        q = create_session().query(m).options(sa.orm.lazyload("addresses"))
+        q = fixture_session().query(m).options(sa.orm.lazyload("addresses"))
         result = [None]
 
         def go():
@@ -684,7 +683,7 @@ class NoLoadTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses, properties={"user": relationship(User)})
         mapper(User, users)
-        s = Session()
+        s = fixture_session()
         a1 = (
             s.query(Address)
             .filter_by(id=1)

@@ -9,14 +9,11 @@ from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import state as sa_state
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
@@ -25,6 +22,7 @@ from sqlalchemy.orm.collections import column_mapped_collection
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.pickleable import Address
 from sqlalchemy.testing.pickleable import Child1
 from sqlalchemy.testing.pickleable import Child2
@@ -114,7 +112,7 @@ class PickleTest(fixtures.MappedTest):
             properties={"dingaling": relationship(Dingaling)},
         )
         mapper(Dingaling, dingalings)
-        sess = create_session()
+        sess = fixture_session()
         u1 = User(name="ed")
         u1.addresses.append(Address(email_address="ed@bar.com"))
         sess.add(u1)
@@ -132,7 +130,7 @@ class PickleTest(fixtures.MappedTest):
         )
         mapper(Address, addresses)
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = User(name="ed")
         u1.addresses.append(Address(email_address="ed@bar.com"))
 
@@ -195,33 +193,38 @@ class PickleTest(fixtures.MappedTest):
                 "email_address": sa.orm.deferred(addresses.c.email_address)
             },
         )
-        sess = create_session()
-        u1 = User(name="ed")
-        u1.addresses.append(Address(email_address="ed@bar.com"))
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        u1 = sess.query(User).get(u1.id)
-        assert "name" not in u1.__dict__
-        assert "addresses" not in u1.__dict__
+        with fixture_session(expire_on_commit=False) as sess:
+            u1 = User(name="ed")
+            u1.addresses.append(Address(email_address="ed@bar.com"))
+            sess.add(u1)
+            sess.commit()
+
+        with fixture_session() as sess:
+            u1 = sess.query(User).get(u1.id)
+            assert "name" not in u1.__dict__
+            assert "addresses" not in u1.__dict__
 
         u2 = pickle.loads(pickle.dumps(u1))
-        sess2 = create_session()
-        sess2.add(u2)
-        eq_(u2.name, "ed")
-        eq_(
-            u2,
-            User(name="ed", addresses=[Address(email_address="ed@bar.com")]),
-        )
+        with fixture_session() as sess2:
+            sess2.add(u2)
+            eq_(u2.name, "ed")
+            eq_(
+                u2,
+                User(
+                    name="ed", addresses=[Address(email_address="ed@bar.com")]
+                ),
+            )
 
         u2 = pickle.loads(pickle.dumps(u1))
-        sess2 = create_session()
-        u2 = sess2.merge(u2, load=False)
-        eq_(u2.name, "ed")
-        eq_(
-            u2,
-            User(name="ed", addresses=[Address(email_address="ed@bar.com")]),
-        )
+        with fixture_session() as sess2:
+            u2 = sess2.merge(u2, load=False)
+            eq_(u2.name, "ed")
+            eq_(
+                u2,
+                User(
+                    name="ed", addresses=[Address(email_address="ed@bar.com")]
+                ),
+            )
 
     def test_instance_lazy_relation_loaders(self):
         users, addresses = (self.tables.users, self.tables.addresses)
@@ -233,7 +236,7 @@ class PickleTest(fixtures.MappedTest):
         )
         mapper(Address, addresses)
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="ed", addresses=[Address(email_address="ed@bar.com")])
 
         sess.add(u1)
@@ -243,7 +246,7 @@ class PickleTest(fixtures.MappedTest):
         u1 = sess.query(User).options(lazyload(User.addresses)).first()
         u2 = pickle.loads(pickle.dumps(u1))
 
-        sess = Session()
+        sess = fixture_session()
         sess.add(u2)
         assert u2.addresses
 
@@ -290,52 +293,57 @@ class PickleTest(fixtures.MappedTest):
         )
         mapper(Address, addresses)
 
-        sess = create_session()
-        u1 = User(name="ed")
-        u1.addresses.append(Address(email_address="ed@bar.com"))
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
+        with fixture_session(expire_on_commit=False) as sess:
+            u1 = User(name="ed")
+            u1.addresses.append(Address(email_address="ed@bar.com"))
+            sess.add(u1)
+            sess.commit()
 
-        u1 = (
-            sess.query(User)
-            .options(
-                sa.orm.defer("name"), sa.orm.defer("addresses.email_address")
+        with fixture_session(expire_on_commit=False) as sess:
+            u1 = (
+                sess.query(User)
+                .options(
+                    sa.orm.defer("name"),
+                    sa.orm.defer("addresses.email_address"),
+                )
+                .get(u1.id)
             )
-            .get(u1.id)
-        )
-        assert "name" not in u1.__dict__
-        assert "addresses" not in u1.__dict__
+            assert "name" not in u1.__dict__
+            assert "addresses" not in u1.__dict__
 
         u2 = pickle.loads(pickle.dumps(u1))
-        sess2 = create_session()
-        sess2.add(u2)
-        eq_(u2.name, "ed")
-        assert "addresses" not in u2.__dict__
-        ad = u2.addresses[0]
-        assert "email_address" not in ad.__dict__
-        eq_(ad.email_address, "ed@bar.com")
-        eq_(
-            u2,
-            User(name="ed", addresses=[Address(email_address="ed@bar.com")]),
-        )
+        with fixture_session() as sess2:
+            sess2.add(u2)
+            eq_(u2.name, "ed")
+            assert "addresses" not in u2.__dict__
+            ad = u2.addresses[0]
+            assert "email_address" not in ad.__dict__
+            eq_(ad.email_address, "ed@bar.com")
+            eq_(
+                u2,
+                User(
+                    name="ed", addresses=[Address(email_address="ed@bar.com")]
+                ),
+            )
 
         u2 = pickle.loads(pickle.dumps(u1))
-        sess2 = create_session()
-        u2 = sess2.merge(u2, load=False)
-        eq_(u2.name, "ed")
-        assert "addresses" not in u2.__dict__
-        ad = u2.addresses[0]
+        with fixture_session() as sess2:
+            u2 = sess2.merge(u2, load=False)
+            eq_(u2.name, "ed")
+            assert "addresses" not in u2.__dict__
+            ad = u2.addresses[0]
 
-        # mapper options now transmit over merge(),
-        # new as of 0.6, so email_address is deferred.
-        assert "email_address" not in ad.__dict__
+            # mapper options now transmit over merge(),
+            # new as of 0.6, so email_address is deferred.
+            assert "email_address" not in ad.__dict__
 
-        eq_(ad.email_address, "ed@bar.com")
-        eq_(
-            u2,
-            User(name="ed", addresses=[Address(email_address="ed@bar.com")]),
-        )
+            eq_(ad.email_address, "ed@bar.com")
+            eq_(
+                u2,
+                User(
+                    name="ed", addresses=[Address(email_address="ed@bar.com")]
+                ),
+            )
 
     def test_pickle_protocols(self):
         users, addresses = (self.tables.users, self.tables.addresses)
@@ -347,7 +355,7 @@ class PickleTest(fixtures.MappedTest):
         )
         mapper(Address, addresses)
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         u1 = User(name="ed")
         u1.addresses.append(Address(email_address="ed@bar.com"))
         sess.add(u1)
@@ -363,7 +371,7 @@ class PickleTest(fixtures.MappedTest):
     def test_09_pickle(self):
         users = self.tables.users
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         sess.add(User(id=1, name="ed"))
         sess.commit()
         sess.close()
@@ -389,7 +397,7 @@ class PickleTest(fixtures.MappedTest):
         state.__setstate__(state_09)
         eq_(state.expired_attributes, {"name", "id"})
 
-        sess = Session()
+        sess = fixture_session()
         sess.add(inst)
         eq_(inst.name, "ed")
         # test identity_token expansion
@@ -398,7 +406,7 @@ class PickleTest(fixtures.MappedTest):
     def test_11_pickle(self):
         users = self.tables.users
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="ed")
         sess.add(u1)
         sess.commit()
@@ -658,7 +666,7 @@ class OptionsTest(_Polymorphic):
             eq_(opt2.__getstate__()["path"], serialized)
 
     def test_load(self):
-        s = Session()
+        s = fixture_session()
 
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)
         emp = (
@@ -706,17 +714,17 @@ class PolymorphicDeferredTest(fixtures.MappedTest):
         )
 
         eu = EmailUser(name="user1", email_address="foo@bar.com")
-        sess = create_session()
-        sess.add(eu)
-        sess.flush()
-        sess.expunge_all()
+        with fixture_session() as sess:
+            sess.add(eu)
+            sess.commit()
 
-        eu = sess.query(User).first()
-        eu2 = pickle.loads(pickle.dumps(eu))
-        sess2 = create_session()
-        sess2.add(eu2)
-        assert "email_address" not in eu2.__dict__
-        eq_(eu2.email_address, "foo@bar.com")
+        with fixture_session() as sess:
+            eu = sess.query(User).first()
+            eu2 = pickle.loads(pickle.dumps(eu))
+            sess2 = fixture_session()
+            sess2.add(eu2)
+            assert "email_address" not in eu2.__dict__
+            eq_(eu2.email_address, "foo@bar.com")
 
 
 class TupleLabelTest(_fixtures.FixtureTest):
@@ -750,7 +758,7 @@ class TupleLabelTest(_fixtures.FixtureTest):
         )  # m2o
 
     def test_tuple_labeling(self):
-        sess = create_session()
+        sess = fixture_session()
 
         # test pickle + all the protocols !
         for pickled in False, -1, 0, 1, 2:

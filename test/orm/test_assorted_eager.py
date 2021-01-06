@@ -15,11 +15,12 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -151,7 +152,7 @@ class EagerTest(fixtures.MappedTest):
             cls.classes.Thing,
         )
 
-        session = create_session(connection)
+        session = Session(connection)
 
         o = Owner()
         c = Category(name="Some Category")
@@ -167,7 +168,7 @@ class EagerTest(fixtures.MappedTest):
 
         session.flush()
 
-    def test_noorm(self):
+    def test_noorm(self, connection):
         """test the control case"""
 
         tests, options, categories = (
@@ -187,7 +188,7 @@ class EagerTest(fixtures.MappedTest):
 
         # not orm style correct query
         print("Obtaining correct results without orm")
-        result = (
+        result = connection.execute(
             sa.select(tests.c.id, categories.c.name)
             .where(
                 sa.and_(
@@ -208,9 +209,7 @@ class EagerTest(fixtures.MappedTest):
                     ),
                 )
             )
-            .execute()
-            .fetchall()
-        )
+        ).fetchall()
         eq_(result, [(1, "Some Category"), (3, "Some Category")])
 
     def test_withoutjoinedload(self):
@@ -220,7 +219,7 @@ class EagerTest(fixtures.MappedTest):
             self.tables.options,
         )
 
-        s = create_session()
+        s = fixture_session()
         result = (
             s.query(Thing)
             .select_from(
@@ -260,7 +259,7 @@ class EagerTest(fixtures.MappedTest):
             self.tables.options,
         )
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(Thing).options(sa.orm.joinedload("category"))
 
         result = q.select_from(
@@ -293,7 +292,7 @@ class EagerTest(fixtures.MappedTest):
             self.tables.options,
         )
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(Thing).options(sa.orm.joinedload("category"))
         result = q.filter(
             sa.and_(
@@ -312,7 +311,7 @@ class EagerTest(fixtures.MappedTest):
     def test_without_outerjoin_literal(self):
         Thing, tests = (self.classes.Thing, self.tables.tests)
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(Thing).options(sa.orm.joinedload("category"))
         result = q.filter(
             (tests.c.owner_id == 1)
@@ -331,7 +330,7 @@ class EagerTest(fixtures.MappedTest):
             self.tables.options,
         )
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(Thing).options(sa.orm.joinedload("category"))
         result = q.filter(
             (tests.c.owner_id == 1)
@@ -434,7 +433,7 @@ class EagerTest2(fixtures.MappedTest):
         p.left.append(Left("l1"))
         p.right.append(Right("r1"))
 
-        session = create_session()
+        session = fixture_session()
         session.add(p)
         session.flush()
         session.expunge_all()
@@ -509,7 +508,7 @@ class EagerTest3(fixtures.MappedTest):
 
         mapper(Stat, stats, properties={"data": relationship(Data)})
 
-        session = create_session()
+        session = fixture_session()
 
         data = [Data(a=x) for x in range(5)]
         session.add_all(data)
@@ -538,7 +537,7 @@ class EagerTest3(fixtures.MappedTest):
             .group_by(stats.c.data_id)
         )
 
-        arb_result = arb_data.execute().fetchall()
+        arb_result = session.connection().execute(arb_data).fetchall()
 
         # order the result list descending based on 'max'
         arb_result.sort(key=lambda a: a._mapping["max"], reverse=True)
@@ -633,7 +632,7 @@ class EagerTest4(fixtures.MappedTest):
         for e in "Joe", "Bob", "Mary", "Wally":
             d2.employees.append(Employee(name=e))
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all((d1, d2))
         sess.flush()
 
@@ -751,7 +750,7 @@ class EagerTest5(fixtures.MappedTest):
 
         mapper(DerivedII, derivedII, inherits=baseMapper)
 
-        sess = create_session()
+        sess = fixture_session()
         d = Derived("uid1", "x", "y")
         d.comments = [Comment("uid1", "comment")]
         d2 = DerivedII("uid2", "xx", "z")
@@ -910,7 +909,7 @@ class EagerTest6(fixtures.MappedTest):
         )
 
         d = Design()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(d)
         sess.flush()
         sess.expunge_all()
@@ -1024,7 +1023,7 @@ class EagerTest7(fixtures.MappedTest):
         c1 = Company(company_name="company 1", addresses=[a1, a2])
         i1 = Invoice(date=datetime.datetime.now(), company=c1)
 
-        session = create_session()
+        session = fixture_session()
         session.add(i1)
         session.flush()
 
@@ -1169,7 +1168,7 @@ class EagerTest8(fixtures.MappedTest):
             properties=dict(type=relationship(Task_Type, lazy="joined")),
         )
 
-        session = create_session()
+        session = fixture_session()
 
         eq_(
             session.query(Joined).limit(10).offset(0).one(),
@@ -1284,7 +1283,7 @@ class EagerTest9(fixtures.MappedTest):
             self.classes.Transaction,
         )
 
-        session = create_session()
+        session = fixture_session()
 
         tx1 = Transaction(name="tx1")
         tx2 = Transaction(name="tx2")

@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -221,7 +221,7 @@ class ABCTest(fixtures.MappedTest):
         parent_class = {"a": A, "b": B, "c": C}[parent]
         child_class = {"a": A, "b": B, "c": C}[child]
 
-        sess = create_session()
+        sess = fixture_session(autoflush=False, expire_on_commit=False)
 
         parent_obj = parent_class("parent1")
         child_obj = child_class("child1")

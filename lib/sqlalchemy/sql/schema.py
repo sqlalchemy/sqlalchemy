@@ -2685,9 +2685,12 @@ class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
         for this :class:`.Sequence` within any SQL expression.
 
         """
-        return util.preloaded.sql_functions.func.next_value(
-            self, bind=self.bind
-        )
+        if self.bind:
+            return util.preloaded.sql_functions.func.next_value(
+                self, bind=self.bind
+            )
+        else:
+            return util.preloaded.sql_functions.func.next_value(self)
 
     def _set_parent(self, column, **kw):
         super(Sequence, self)._set_parent(column)

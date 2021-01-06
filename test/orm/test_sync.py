@@ -3,7 +3,6 @@ from sqlalchemy import Integer
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import sync
@@ -11,6 +10,7 @@ from sqlalchemy.orm import unitofwork
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -61,7 +61,7 @@ class SyncTest(
 
     def _fixture(self):
         A, B = self.classes.A, self.classes.B
-        session = create_session()
+        session = fixture_session()
         uowcommit = self._get_test_uow(session)
         a_mapper = class_mapper(A)
         b_mapper = class_mapper(B)

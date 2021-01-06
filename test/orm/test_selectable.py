@@ -12,6 +12,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -44,7 +45,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         mapper(Subset, selectable, primary_key=[selectable.c.x])
 
         self.assert_compile(
-            Session().query(Subset),
+            fixture_session().query(Subset),
             "SELECT anon_1.x AS anon_1_x, anon_1.y AS anon_1_y, "
             "anon_1.z AS anon_1_z FROM (SELECT x, y, z) AS anon_1",
             use_default_dialect=True,

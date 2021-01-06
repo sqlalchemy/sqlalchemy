@@ -21,14 +21,13 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -108,7 +107,7 @@ class RelationshipTest1(fixtures.MappedTest):
             [(managers.c.person_id, people.c.manager_id)],
         )
 
-        session = create_session()
+        session = fixture_session()
         p = Person(name="some person")
         m = Manager(name="some manager")
         p.manager = m
@@ -140,7 +139,7 @@ class RelationshipTest1(fixtures.MappedTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session()
         p = Person(name="some person")
         m = Manager(name="some manager")
         m.employee = p
@@ -297,7 +296,7 @@ class RelationshipTest2(fixtures.MappedTest):
                 },
             )
 
-        sess = create_session()
+        sess = fixture_session()
         p = Person(name="person1")
         m = Manager(name="manager1")
         m.colleague = p
@@ -462,7 +461,7 @@ class RelationshipTest3(fixtures.MappedTest):
         self._setup_mappings(jointype, usedata)
         Person, Manager, Data = self.classes("Person", "Manager", "Data")
 
-        sess = create_session()
+        sess = fixture_session()
         p = Person(name="person1")
         p2 = Person(name="person2")
         p3 = Person(name="person3")
@@ -611,7 +610,7 @@ class RelationshipTest4(fixtures.MappedTest):
         )
         mapper(Car, cars, properties={"employee": relationship(person_mapper)})
 
-        session = create_session()
+        session = fixture_session()
 
         # creating 5 managers named from M1 to E5
         for i in range(1, 5):
@@ -780,7 +779,7 @@ class RelationshipTest5(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         car1 = Car()
         car2 = Car()
         car2.manager = Manager()
@@ -855,7 +854,7 @@ class RelationshipTest6(fixtures.MappedTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
         m = Manager(name="manager1")
         m2 = Manager(name="manager2")
         m.colleague = m2
@@ -1027,7 +1026,7 @@ class RelationshipTest7(fixtures.MappedTest):
             polymorphic_identity="manager",
         )
 
-        session = create_session()
+        session = fixture_session()
 
         for i in range(1, 4):
             if i % 2:
@@ -1095,7 +1094,7 @@ class RelationshipTest8(fixtures.MappedTest):
 
         u1 = User(data="u1")
         t1 = Taggable(owner=u1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(t1)
         sess.flush()
 
@@ -1303,7 +1302,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         Status, Person, Engineer, Manager, Car = self.classes(
             "Status", "Person", "Engineer", "Manager", "Car"
         )
-        session = create_session()
+        session = fixture_session()
 
         r = (
             session.query(Person)
@@ -1328,7 +1327,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         Status, Person, Engineer, Manager, Car = self.classes(
             "Status", "Person", "Engineer", "Manager", "Car"
         )
-        session = create_session()
+        session = fixture_session()
         r = (
             session.query(Engineer)
             .join("status")
@@ -1351,7 +1350,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         Status, Person, Engineer, Manager, Car = self.classes(
             "Status", "Person", "Engineer", "Manager", "Car"
         )
-        session = create_session()
+        session = fixture_session()
         r = session.query(Person).filter(
             exists().where(Car.owner == Person.person_id)
         )
@@ -1471,7 +1470,7 @@ class MultiLevelTest(fixtures.MappedTest):
         b = Engineer().set(egn="two", machine="any")
         c = Manager().set(name="head", machine="fast", duties="many")
 
-        session = create_session()
+        session = fixture_session()
         session.add(a)
         session.add(b)
         session.add(c)
@@ -1621,7 +1620,7 @@ class CustomPKTest(fixtures.MappedTest):
         mapper(T2, t2, inherits=T1, polymorphic_identity="t2")
         ot1 = T1()
         ot2 = T2()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(ot1)
         sess.add(ot2)
         sess.flush()
@@ -1668,7 +1667,7 @@ class CustomPKTest(fixtures.MappedTest):
 
         ot1 = T1()
         ot2 = T2()
-        sess = create_session()
+        sess = fixture_session()
         sess.add(ot1)
         sess.add(ot2)
         sess.flush()
@@ -1754,7 +1753,7 @@ class InheritingEagerTest(fixtures.MappedTest):
         )
         mapper(Tag, tags)
 
-        session = create_session()
+        session = fixture_session()
 
         bob = Employee()
         session.add(bob)
@@ -1852,7 +1851,7 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
 
         c = C(cdata="c1", adata="a1", b=B(data="c"))
         d = D(cdata="c2", adata="a2", ddata="d2", b=B(data="d"))
-        sess = create_session()
+        sess = fixture_session()
         sess.add(c)
         sess.add(d)
         sess.flush()
@@ -1899,7 +1898,7 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
 
     def _roundtrip(self):
         User = self.classes.User
-        sess = Session()
+        sess = fixture_session()
         u1 = User()
         u2 = User()
         u2.supervisor = u1
@@ -1910,7 +1909,7 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
 
     def _dude_roundtrip(self):
         Dude, User = self.classes.Dude, self.classes.User
-        sess = Session()
+        sess = fixture_session()
         u1 = User()
         d1 = Dude()
         d1.supervisor = u1
@@ -2070,7 +2069,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
     )
     def test_join_w_eager_w_any(self):
         B, C, D = (self.classes.B, self.classes.C, self.classes.D)
-        s = Session(testing.db)
+        s = fixture_session()
 
         b = B(ds=[D()])
         s.add_all([C(b=b)])
@@ -2114,7 +2113,7 @@ class ColSubclassTest(
     def test_polymorphic_adaptation(self):
         A, B = self.classes.A, self.classes.B
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A).join(B).filter(B.x == "test"),
             "SELECT a.id AS a_id FROM a JOIN "
@@ -2181,7 +2180,7 @@ class CorrelateExceptWPolyAdaptTest(
 
         poly = with_polymorphic(Superclass, "*")
 
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(poly)
             .options(contains_eager(poly.common_relationship))
@@ -2210,7 +2209,7 @@ class CorrelateExceptWPolyAdaptTest(
 
         poly = with_polymorphic(Superclass, "*")
 
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(poly)
             .options(contains_eager(poly.common_relationship))

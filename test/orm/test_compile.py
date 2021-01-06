@@ -9,9 +9,9 @@ from sqlalchemy import Unicode
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 
@@ -232,7 +232,7 @@ class CompileTest(fixtures.ORMTest):
                 "host": relationship(Host),
             },
         )
-        sess = create_session(connection)
+        sess = Session(connection)
         assert sess.query(Node).get(1).names == []
 
     def test_conflicting_backref_two(self):

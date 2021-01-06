@@ -6,11 +6,11 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.fixtures import fixture_session
 from . import _fixtures
 
 # class GetFromIdentityTest(_fixtures.FixtureTest):
@@ -40,7 +40,7 @@ class InstanceProcessorTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses)
 
-        s = Session()
+        s = fixture_session()
 
         def go():
             eq_(
@@ -69,7 +69,7 @@ class InstancesTest(_fixtures.FixtureTest):
 
     def test_cursor_close_w_failed_rowproc(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User)
 
@@ -83,7 +83,7 @@ class InstancesTest(_fixtures.FixtureTest):
 
     def test_row_proc_not_created(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User.id, User.name)
         stmt = select(User.id)
@@ -107,7 +107,7 @@ class MergeResultTest(_fixtures.FixtureTest):
     def _fixture(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         u1, u2, u3, u4 = (
             User(id=1, name="u1"),
             User(id=2, name="u2"),
@@ -130,7 +130,7 @@ class MergeResultTest(_fixtures.FixtureTest):
     def test_single_column(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User.id)
         collection = [(1,), (2,), (7,), (8,)]

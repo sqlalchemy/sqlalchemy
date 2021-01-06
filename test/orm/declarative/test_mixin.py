@@ -19,7 +19,6 @@ from sqlalchemy.orm import events as orm_events
 from sqlalchemy.orm import has_inherited_table
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -28,7 +27,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -69,7 +68,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all(testing.db)
-        session = create_session()
+        session = fixture_session()
         session.add(MyModel(name="testing"))
         session.flush()
         session.expunge_all()
@@ -95,7 +94,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all(testing.db)
-        session = create_session()
+        session = fixture_session()
         session.add(MyModel(name="testing"))
         session.flush()
         session.expunge_all()
@@ -136,7 +135,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all(testing.db)
-        session = create_session()
+        session = fixture_session()
         session.add(MyModel(name="testing", baz="fu"))
         session.flush()
         session.expunge_all()
@@ -167,7 +166,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             name = Column(String(100), nullable=False, index=True)
 
         Base.metadata.create_all(testing.db)
-        session = create_session()
+        session = fixture_session()
         session.add(MyModel(name="testing", baz="fu"))
         session.flush()
         session.expunge_all()
@@ -460,7 +459,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         )
         # do a brief round trip on this
         Base.metadata.create_all(testing.db)
-        session = create_session()
+        session = fixture_session()
         o1, o2 = Other(), Other()
         session.add_all(
             [Engineer(target=o1), Manager(target=o2), Manager(target=o1)]
@@ -1389,7 +1388,7 @@ class DeclarativeMixinPropertyTest(
             MyModel.prop_hoho.property is not MyOtherModel.prop_hoho.property
         )
         Base.metadata.create_all(testing.db)
-        sess = create_session()
+        sess = fixture_session()
         m1, m2 = MyModel(prop_hoho="foo"), MyOtherModel(prop_hoho="bar")
         sess.add_all([m1, m2])
         sess.flush()
@@ -1498,7 +1497,7 @@ class DeclarativeMixinPropertyTest(
         d1 = inspect(Derived)
         is_(b1.attrs["data_syn"], d1.attrs["data_syn"])
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Base.data_syn).filter(Base.data_syn == "foo"),
             "SELECT test.data AS test_data FROM test "
@@ -1568,7 +1567,7 @@ class DeclarativeMixinPropertyTest(
             )
 
         Base.metadata.create_all(testing.db)
-        sess = create_session()
+        sess = fixture_session()
         sess.add_all([MyModel(data="d1"), MyModel(data="d2")])
         sess.flush()
         sess.expunge_all()
@@ -1620,7 +1619,7 @@ class DeclarativeMixinPropertyTest(
             )
 
         Base.metadata.create_all(testing.db)
-        sess = create_session()
+        sess = fixture_session()
         t1, t2 = Target(), Target()
         f1, f2, b1 = Foo(target=t1), Foo(target=t2), Bar(target=t1)
         sess.add_all([f1, f2, b1])
@@ -1679,7 +1678,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         is_(a_col, A.__table__.c.x)
         is_(b_col, B.__table__.c.x)
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A),
             "SELECT a.x AS a_x, a.x + :x_1 AS anon_1, a.id AS a_id FROM a",
@@ -1983,7 +1982,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         eq_(counter.mock_calls, [mock.call(User.id)])
 
-        sess = Session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(User).having(User.address_count > 5),
             "SELECT (SELECT count(address.id) AS "

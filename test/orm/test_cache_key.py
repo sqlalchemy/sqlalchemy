@@ -21,6 +21,7 @@ from sqlalchemy.sql.base import CacheableOptions
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
@@ -260,20 +261,25 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         self._run_cache_key_fixture(
             lambda: stmt_20(
-                Session().query(User).join(User.addresses),
-                Session().query(User).join(User.orders),
-                Session().query(User).join(User.addresses).join(User.orders),
-                Session()
+                fixture_session().query(User).join(User.addresses),
+                fixture_session().query(User).join(User.orders),
+                fixture_session()
+                .query(User)
+                .join(User.addresses)
+                .join(User.orders),
+                fixture_session()
                 .query(User)
                 .join("addresses")
                 .join("dingalings", from_joinpoint=True),
-                Session().query(User).join("addresses"),
-                Session().query(User).join("orders"),
-                Session().query(User).join("addresses").join("orders"),
-                Session().query(User).join(Address, User.addresses),
-                Session().query(User).join(a1, "addresses"),
-                Session().query(User).join(a1, "addresses", aliased=True),
-                Session().query(User).join(User.addresses.of_type(a1)),
+                fixture_session().query(User).join("addresses"),
+                fixture_session().query(User).join("orders"),
+                fixture_session().query(User).join("addresses").join("orders"),
+                fixture_session().query(User).join(Address, User.addresses),
+                fixture_session().query(User).join(a1, "addresses"),
+                fixture_session()
+                .query(User)
+                .join(a1, "addresses", aliased=True),
+                fixture_session().query(User).join(User.addresses.of_type(a1)),
             ),
             compare_values=True,
         )
@@ -285,21 +291,21 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         self._run_cache_key_fixture(
             lambda: stmt_20(
-                Session()
+                fixture_session()
                 .query(User)
                 .from_statement(text("select * from user")),
-                Session()
+                fixture_session()
                 .query(User)
                 .options(selectinload(User.addresses))
                 .from_statement(text("select * from user")),
-                Session()
+                fixture_session()
                 .query(User)
                 .options(subqueryload(User.addresses))
                 .from_statement(text("select * from user")),
-                Session()
+                fixture_session()
                 .query(User)
                 .from_statement(text("select * from user order by id")),
-                Session()
+                fixture_session()
                 .query(User.id)
                 .from_statement(text("select * from user")),
             ),
@@ -316,28 +322,40 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         self._run_cache_key_fixture(
             lambda: stmt_20(
-                Session().query(User),
-                Session().query(User).prefix_with("foo"),
-                Session().query(User).filter_by(name="ed"),
-                Session().query(User).filter_by(name="ed").order_by(User.id),
-                Session().query(User).filter_by(name="ed").order_by(User.name),
-                Session().query(User).filter_by(name="ed").group_by(User.id),
-                Session()
+                fixture_session().query(User),
+                fixture_session().query(User).prefix_with("foo"),
+                fixture_session().query(User).filter_by(name="ed"),
+                fixture_session()
+                .query(User)
+                .filter_by(name="ed")
+                .order_by(User.id),
+                fixture_session()
+                .query(User)
+                .filter_by(name="ed")
+                .order_by(User.name),
+                fixture_session()
+                .query(User)
+                .filter_by(name="ed")
+                .group_by(User.id),
+                fixture_session()
                 .query(User)
                 .join(User.addresses)
                 .filter(User.name == "ed"),
-                Session().query(User).join(User.orders),
-                Session()
+                fixture_session().query(User).join(User.orders),
+                fixture_session()
                 .query(User)
                 .join(User.orders)
                 .filter(Order.description == "adsf"),
-                Session().query(User).join(User.addresses).join(User.orders),
-                Session().query(User).join(Address, User.addresses),
-                Session().query(User).join(a1, User.addresses),
-                Session().query(User).join(User.addresses.of_type(a1)),
-                Session().query(Address).join(Address.user),
-                Session().query(User, Address).filter_by(name="ed"),
-                Session().query(User, a1).filter_by(name="ed"),
+                fixture_session()
+                .query(User)
+                .join(User.addresses)
+                .join(User.orders),
+                fixture_session().query(User).join(Address, User.addresses),
+                fixture_session().query(User).join(a1, User.addresses),
+                fixture_session().query(User).join(User.addresses.of_type(a1)),
+                fixture_session().query(Address).join(Address.user),
+                fixture_session().query(User, Address).filter_by(name="ed"),
+                fixture_session().query(User, a1).filter_by(name="ed"),
             ),
             compare_values=True,
         )
@@ -401,27 +419,29 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
         def one():
             return (
-                Session().query(Person).with_polymorphic([Manager, Engineer])
+                fixture_session()
+                .query(Person)
+                .with_polymorphic([Manager, Engineer])
             )
 
         def two():
             wp = with_polymorphic(Person, [Manager, Engineer])
 
-            return Session().query(wp)
+            return fixture_session().query(wp)
 
         def three():
             wp = with_polymorphic(Person, [Manager, Engineer])
 
-            return Session().query(wp).filter(wp.name == "asdfo")
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
 
         def three_a():
             wp = with_polymorphic(Person, [Manager, Engineer], flat=True)
 
-            return Session().query(wp).filter(wp.name == "asdfo")
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
 
         def four():
             return (
-                Session()
+                fixture_session()
                 .query(Person)
                 .with_polymorphic([Manager, Engineer])
                 .filter(Person.name == "asdf")
@@ -436,7 +456,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             )
             wp = with_polymorphic(Person, [Manager, Engineer], subq)
 
-            return Session().query(wp).filter(wp.name == "asdfo")
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
 
         def six():
             subq = (
@@ -447,7 +467,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             )
 
             return (
-                Session()
+                fixture_session()
                 .query(Person)
                 .with_polymorphic([Manager, Engineer], subq)
                 .filter(Person.name == "asdfo")
@@ -467,7 +487,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
         def one():
             return (
-                Session()
+                fixture_session()
                 .query(Company)
                 .join(Company.employees)
                 .filter(Person.name == "asdf")
@@ -476,7 +496,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
         def two():
             wp = with_polymorphic(Person, [Manager, Engineer])
             return (
-                Session()
+                fixture_session()
                 .query(Company)
                 .join(Company.employees.of_type(wp))
                 .filter(wp.name == "asdf")
@@ -485,7 +505,7 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
         def three():
             wp = with_polymorphic(Person, [Manager, Engineer])
             return (
-                Session()
+                fixture_session()
                 .query(Company)
                 .join(Company.employees.of_type(wp))
                 .filter(wp.Engineer.name == "asdf")

@@ -22,7 +22,6 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
-from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -43,7 +42,6 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
@@ -70,9 +68,9 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
-from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import collections_abc
@@ -95,8 +93,8 @@ class MiscTest(QueryTest):
 
     def test_with_session(self):
         User = self.classes.User
-        s1 = Session()
-        s2 = Session()
+        s1 = fixture_session()
+        s2 = fixture_session()
         q1 = s1.query(User)
         q2 = q1.with_session(s2)
         assert q2.session is s2
@@ -106,14 +104,14 @@ class MiscTest(QueryTest):
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
         User = self.classes.User
-        query = create_session().query(User).only_return_tuples(False)
+        query = fixture_session().query(User).only_return_tuples(False)
         is_true(query.is_single_entity)
         row = query.first()
         assert isinstance(row, User)
 
     def test_single_entity_true(self):
         User = self.classes.User
-        query = create_session().query(User).only_return_tuples(True)
+        query = fixture_session().query(User).only_return_tuples(True)
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
@@ -121,7 +119,9 @@ class OnlyReturnTuplesTest(QueryTest):
 
     def test_multiple_entity_false(self):
         User = self.classes.User
-        query = create_session().query(User.id, User).only_return_tuples(False)
+        query = (
+            fixture_session().query(User.id, User).only_return_tuples(False)
+        )
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
@@ -129,7 +129,7 @@ class OnlyReturnTuplesTest(QueryTest):
 
     def test_multiple_entity_true(self):
         User = self.classes.User
-        query = create_session().query(User.id, User).only_return_tuples(True)
+        query = fixture_session().query(User.id, User).only_return_tuples(True)
         is_false(query.is_single_entity)
         row = query.first()
         assert isinstance(row, collections_abc.Sequence)
@@ -145,7 +145,7 @@ class RowTupleTest(QueryTest):
         mapper(User, users, properties={"uname": users.c.name})
 
         row = (
-            create_session()
+            fixture_session()
             .query(User.id, User.uname)
             .filter(User.id == 7)
             .first()
@@ -167,7 +167,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session()
+        s = fixture_session()
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -189,7 +189,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session(testing.db)
+        s = fixture_session()
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -207,7 +207,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session()
+        s = fixture_session()
 
         q = testing.resolve_lambda(test_case, **locals())
 
@@ -223,7 +223,7 @@ class RowTupleTest(QueryTest):
         mapper(User, users, properties={"addresses": relationship(Address)})
         mapper(Address, addresses)
 
-        s = Session()
+        s = fixture_session()
 
         row = s.query(User).only_return_tuples(True).first()
         eq_(row._mapping[User], row[0])
@@ -451,7 +451,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
         mapper(Address, addresses)
-        sess = create_session()
+        sess = fixture_session()
         user_alias = aliased(User)
         user_alias_id_label = user_alias.id.label("foo")
         address_alias = aliased(Address, name="aalias")
@@ -481,7 +481,7 @@ class RowTupleTest(QueryTest):
 
         mapper(User, users)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User, type_coerce(users.c.id, MyType).label("foo")).filter(
             User.id == 7
         )
@@ -489,70 +489,11 @@ class RowTupleTest(QueryTest):
         eq_(row, (User(id=7), [7]))
 
 
-class BindSensitiveStringifyTest(fixtures.TestBase):
-    def _fixture(self):
-        # building a totally separate metadata /mapping here
-        # because we need to control if the MetaData is bound or not
-
-        class User(object):
-            pass
-
-        m = MetaData()
-        user_table = Table(
-            "users",
-            m,
-            Column("id", Integer, primary_key=True),
-            Column("name", String(50)),
-        )
-
-        mapper(User, user_table)
-        return User
-
-    def _dialect_fixture(self):
-        class MyDialect(default.DefaultDialect):
-            default_paramstyle = "qmark"
-
-        from sqlalchemy.engine import base
-
-        return base.Engine(mock.Mock(), MyDialect(), mock.Mock())
-
-    def _test(self, bound_session, session_present, expect_bound):
-        if bound_session:
-            eng = self._dialect_fixture()
-        else:
-            eng = None
-
-        User = self._fixture()
-
-        s = Session(eng if bound_session else None)
-        q = s.query(User).filter(User.id == 7)
-        if not session_present:
-            q = q.with_session(None)
-
-        eq_ignore_whitespace(
-            str(q),
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = ?"
-            if expect_bound
-            else "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users WHERE users.id = :id_1",
-        )
-
-    def test_query_bound_session(self):
-        self._test(True, True, True)
-
-    def test_query_no_session(self):
-        self._test(False, False, False)
-
-    def test_query_unbound_session(self):
-        self._test(False, True, False)
-
-
 class GetTest(QueryTest):
     def test_loader_options(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         u1 = s.query(User).options(joinedload(User.addresses)).get(8)
         eq_(len(u1.__dict__["addresses"]), 3)
@@ -560,7 +501,7 @@ class GetTest(QueryTest):
     def test_loader_options_future(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         u1 = s.get(User, 8, options=[joinedload(User.addresses)])
         eq_(len(u1.__dict__["addresses"]), 3)
@@ -568,13 +509,13 @@ class GetTest(QueryTest):
     def test_get_composite_pk_keyword_based_no_result(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         is_(s.query(CompositePk).get({"i": 100, "j": 100}), None)
 
     def test_get_composite_pk_keyword_based_result(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         one_two = s.query(CompositePk).get({"i": 1, "j": 2})
         eq_(one_two.i, 1)
         eq_(one_two.j, 2)
@@ -583,21 +524,21 @@ class GetTest(QueryTest):
     def test_get_composite_pk_keyword_based_wrong_keys(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1, "k": 2})
 
     def test_get_composite_pk_keyword_based_too_few_keys(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1})
 
     def test_get_composite_pk_keyword_based_too_many_keys(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(
             sa_exc.InvalidRequestError, q.get, {"i": 1, "j": "2", "k": 3}
@@ -606,7 +547,7 @@ class GetTest(QueryTest):
     def test_get(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         assert s.query(User).get(19) is None
         u = s.query(User).get(7)
         u2 = s.query(User).get(7)
@@ -618,7 +559,7 @@ class GetTest(QueryTest):
     def test_get_future(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         assert s.get(User, 19) is None
         u = s.get(User, 7)
         u2 = s.get(User, 7)
@@ -630,13 +571,13 @@ class GetTest(QueryTest):
     def test_get_composite_pk_no_result(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         assert s.query(CompositePk).get((100, 100)) is None
 
     def test_get_composite_pk_result(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         one_two = s.query(CompositePk).get((1, 2))
         assert one_two.i == 1
         assert one_two.j == 2
@@ -645,28 +586,28 @@ class GetTest(QueryTest):
     def test_get_too_few_params(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
 
     def test_get_too_few_params_tuple(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, (7,))
 
     def test_get_too_many_params(self):
         CompositePk = self.classes.CompositePk
 
-        s = Session()
+        s = fixture_session()
         q = s.query(CompositePk)
         assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
 
     def test_get_against_col(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User.id)
         assert_raises(sa_exc.InvalidRequestError, q.get, (5,))
 
@@ -694,14 +635,14 @@ class GetTest(QueryTest):
         PK (i.e. map to an outerjoin) works with get()."""
 
         UserThing = outerjoin_mapping
-        sess = create_session()
+        sess = fixture_session()
         u10 = sess.query(UserThing).get((10, None))
         eq_(u10, UserThing(id=10))
 
     def test_get_fully_null_pk(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User)
         assert_raises_message(
             sa_exc.SAWarning,
@@ -714,7 +655,7 @@ class GetTest(QueryTest):
     def test_get_fully_null_composite_pk(self, outerjoin_mapping):
         UserThing = outerjoin_mapping
 
-        s = Session()
+        s = fixture_session()
         q = s.query(UserThing)
 
         assert_raises_message(
@@ -731,7 +672,7 @@ class GetTest(QueryTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(User).join("addresses").filter(Address.user_id == 8)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
@@ -750,7 +691,7 @@ class GetTest(QueryTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         s.query(User).get(7)
 
@@ -767,13 +708,13 @@ class GetTest(QueryTest):
         m = mapper(SomeUser, s)
         assert s.primary_key == m.primary_key
 
-        sess = create_session()
+        sess = fixture_session()
         assert sess.query(SomeUser).get(7).name == "jack"
 
     def test_load(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session(autoflush=False)
 
         assert s.query(User).populate_existing().get(19) is None
 
@@ -796,14 +737,8 @@ class GetTest(QueryTest):
         assert u2.name == "jack"
         assert a not in u2.addresses
 
-    @testing.provide_metadata
     @testing.requires.unicode_connections
-    def test_unicode(self, connection):
-        """test that Query.get properly sets up the type for the bind
-        parameter. using unicode would normally fail on postgresql, mysql and
-        oracle unless it is converted to an encoded string"""
-
-        metadata = self.metadata
+    def test_unicode(self, metadata, connection):
         table = Table(
             "unicode_data",
             metadata,
@@ -828,7 +763,7 @@ class GetTest(QueryTest):
     def test_populate_existing(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session(autoflush=False)
 
         userlist = s.query(User).all()
 
@@ -864,7 +799,7 @@ class GetTest(QueryTest):
     def test_populate_existing_future(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session(testing.db, autoflush=False)
+        s = fixture_session(autoflush=False)
 
         userlist = s.query(User).all()
 
@@ -915,7 +850,7 @@ class GetTest(QueryTest):
         stmt = select(User).execution_options(
             populate_existing=True, autoflush=False, yield_per=10
         )
-        s = Session(testing.db)
+        s = fixture_session()
 
         m1 = mock.Mock()
 
@@ -940,7 +875,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_no_limit_offset(self, test_case):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q = testing.resolve_lambda(test_case, User=User, s=s)
 
@@ -964,7 +899,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_no_from(self):
         users, User = self.tables.users, self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(User).select_from(users)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
@@ -986,7 +921,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_invalid_select_from(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User)
         assert_raises(sa_exc.ArgumentError, q.select_from, User.id == 5)
         assert_raises(sa_exc.ArgumentError, q.select_from, User.id)
@@ -998,7 +933,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             self.tables.users,
         )
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User)
         assert_raises(sa_exc.ArgumentError, q.from_statement, User.id == 5)
         assert_raises(
@@ -1008,14 +943,14 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_invalid_column(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User)
         assert_raises(sa_exc.ArgumentError, q.add_columns, object())
 
     def test_invalid_column_tuple(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User)
         assert_raises(sa_exc.ArgumentError, q.add_columns, (1, 1))
 
@@ -1025,7 +960,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User).distinct()
         assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
         assert_raises(
@@ -1041,7 +976,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User).order_by(User.id)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, User)
         assert_raises(
@@ -1054,14 +989,14 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_only_full_mapper_zero(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(User, Address)
         assert_raises(sa_exc.InvalidRequestError, q.get, 5)
 
     def test_entity_or_mapper_zero_from_context(self):
         User, Address = self.classes.User, self.classes.Address
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(User, Address)._compile_state()
         is_(q._mapper_zero(), inspect(User))
@@ -1103,7 +1038,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_from_statement(self, test_case):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q = testing.resolve_lambda(test_case, User=User, s=s)
 
@@ -1119,7 +1054,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
     def test_from_statement_text(self, meth, test_case):
 
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
         q = s.query(User)
 
         q = q.from_statement(text("x"))
@@ -1152,7 +1087,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             ua,
         )
 
-        s = Session()
+        s = fixture_session()
         assert_raises_message(
             sa_exc.ArgumentError,
             "SQL expression element or literal value expected, got .*User",
@@ -1184,7 +1119,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         if entity is not None:
             # specify a lead entity, so that when we are testing
             # correlation, the correlation actually happens
-            sess = Session()
+            sess = fixture_session()
             lead = sess.query(entity)
             context = lead._compile_context()
             context.compile_state.statement._label_style = (
@@ -1199,7 +1134,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         self, clause, expected, from_, onclause, checkparams=None
     ):
         dialect = default.DefaultDialect()
-        sess = Session()
+        sess = fixture_session()
         lead = sess.query(from_).join(onclause, aliased=True)
         full = lead.filter(clause)
         context = lead._compile_context()
@@ -1236,7 +1171,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         lhs = testing.resolve_lambda(lhs, User=User)
         rhs = testing.resolve_lambda(rhs, User=User)
 
-        create_session().query(User)
+        fixture_session().query(User)
         self._test(py_op(lhs, rhs), res % sql_op)
 
     @testing.combinations(
@@ -1269,7 +1204,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_comparison(self, py_op, fwd_op, rev_op, fixture):
         User = self.classes.User
 
-        create_session().query(User)
+        fixture_session().query(User)
         ualias = aliased(User)
 
         lhs, rhs, l_sql, r_sql = fixture(User=User, ualias=ualias)
@@ -1554,7 +1489,7 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
             self.classes.Dingaling,
         )
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(User).filter(
             User.addresses.any(
@@ -1645,7 +1580,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_function_element_column_labels(self):
         users = self.tables.users
-        sess = Session()
+        sess = fixture_session()
 
         class max_(expression.FunctionElement):
             name = "max"
@@ -1659,7 +1594,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_truly_unlabeled_sql_expressions(self):
         users = self.tables.users
-        sess = Session()
+        sess = fixture_session()
 
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
@@ -1682,7 +1617,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        session = create_session()
+        session = fixture_session()
         s = (
             session.query(User)
             .filter(
@@ -1733,7 +1668,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        session = create_session()
+        session = fixture_session()
 
         q = session.query(User.id).filter(User.id == 7).scalar_subquery()
 
@@ -1751,7 +1686,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_subquery_no_eagerloads(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(User).options(joinedload(User.addresses)).subquery(),
@@ -1760,7 +1695,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_exists_no_eagerloads(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(
@@ -1772,7 +1707,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_named_subquery(self):
         User = self.classes.User
 
-        session = create_session()
+        session = fixture_session()
         a1 = session.query(User.id).filter(User.id == 7).subquery("foo1")
         a2 = session.query(User.id).filter(User.id == 7).subquery(name="foo2")
         a3 = session.query(User.id).filter(User.id == 7).subquery()
@@ -1784,7 +1719,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_labeled_subquery(self):
         User = self.classes.User
 
-        session = create_session()
+        session = fixture_session()
         a1 = (
             session.query(User.id)
             .filter(User.id == 7)
@@ -1796,7 +1731,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         ua = aliased(User)
 
-        session = create_session()
+        session = fixture_session()
         a1 = (
             session.query(User.id, ua.id, ua.name)
             .filter(User.id == ua.id)
@@ -1812,7 +1747,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_label(self):
         User = self.classes.User
 
-        session = create_session()
+        session = fixture_session()
 
         q = session.query(User.id).filter(User.id == 7).label("foo")
         self.assert_compile(
@@ -1824,7 +1759,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_scalar_subquery(self):
         User = self.classes.User
 
-        session = create_session()
+        session = fixture_session()
 
         q = session.query(User.id).filter(User.id == 7).scalar_subquery()
 
@@ -1839,7 +1774,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_param_transfer(self):
         User = self.classes.User
 
-        session = create_session()
+        session = fixture_session()
 
         q = (
             session.query(User.id)
@@ -1855,7 +1790,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_in(self):
         User, Address = self.classes.User, self.classes.Address
 
-        session = create_session()
+        session = fixture_session()
         s = (
             session.query(User.id)
             .join(User.addresses)
@@ -1867,7 +1802,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_union(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User).filter(User.name == "ed").with_labels()
         q2 = s.query(User).filter(User.name == "fred").with_labels()
@@ -1881,7 +1816,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_select(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         # this is actually not legal on most DBs since the subquery has no
         # alias
@@ -1898,7 +1833,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
     def test_join(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         # TODO: do we want aliased() to detect a query and convert to
         # subquery() automatically ?
@@ -1918,7 +1853,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_group_by_plain(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).group_by(User.name)
         self.assert_compile(
@@ -1931,7 +1866,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_group_by_append(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).group_by(User.name)
 
@@ -1946,7 +1881,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_group_by_cancellation(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).group_by(User.name)
         # test cancellation by using None, replacement with something else
@@ -1969,7 +1904,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_group_by_cancelled_still_present(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).group_by(User.name).group_by(None)
 
@@ -1977,7 +1912,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_plain(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name)
         self.assert_compile(
@@ -1990,7 +1925,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_append(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name)
 
@@ -2005,7 +1940,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_cancellation(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name)
         # test cancellation by using None, replacement with something else
@@ -2028,7 +1963,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_cancellation_false(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name)
         # test cancellation by using None, replacement with something else
@@ -2051,7 +1986,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_cancelled_allows_assertions(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name).order_by(None)
 
@@ -2059,7 +1994,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
     def test_legacy_order_by_cancelled_allows_assertions(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User.id, User.name).order_by(User.name).order_by(False)
 
@@ -2118,7 +2053,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._func_fixture()
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         u1 = aliased(User)
         self.assert_compile(
@@ -2131,7 +2066,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._func_fixture(label=True)
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         u1 = aliased(User)
         self.assert_compile(
@@ -2144,7 +2079,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._func_fixture()
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         u1 = aliased(User)
         self.assert_compile(
@@ -2157,7 +2092,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         self._fixture(label=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User).order_by("email_ad")
         self.assert_compile(
             q,
@@ -2172,7 +2107,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         self._fixture(label=True)
 
-        s = Session()
+        s = fixture_session()
         ua = aliased(User)
         q = s.query(ua).order_by("email_ad")
 
@@ -2187,7 +2122,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=True)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(ua).order_by(ua.ead)
         self.assert_compile(
             q,
@@ -2202,7 +2137,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=True)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(ua.ead).order_by(ua.ead)
         self.assert_compile(
             q,
@@ -2228,7 +2163,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=True)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(User.ead, ua.ead).order_by(User.ead, ua.ead)
         self.assert_compile(
             q,
@@ -2256,7 +2191,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=True, polymorphic=True)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(ua, User.id).order_by(ua.ead)
         self.assert_compile(
             q,
@@ -2272,7 +2207,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=False)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(ua).order_by(ua.ead)
         self.assert_compile(
             q,
@@ -2287,7 +2222,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=False)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(ua.ead).order_by(ua.ead)
         self.assert_compile(
             q,
@@ -2313,7 +2248,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture(label=False)
 
         ua = aliased(User)
-        s = Session()
+        s = fixture_session()
         q = s.query(User.ead, ua.ead).order_by(User.ead, ua.ead)
         self.assert_compile(
             q,
@@ -2341,7 +2276,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         self._fixture(label=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User).order_by(User.ead)
         # this one is a bit of a surprise; this is compiler
         # label-order-by logic kicking in, but won't work in more
@@ -2359,7 +2294,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         self._fixture(label=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User).options(defer(User.ead)).order_by(User.ead)
         self.assert_compile(
             q,
@@ -2387,7 +2322,7 @@ class ComparatorTest(QueryTest):
         # this use case isn't exactly needed in this form, however it tests
         # that we resolve for multiple __clause_element__() calls as is needed
         # by systems like composites
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(Comparator(User.id))
             .order_by(Comparator(User.id))
@@ -2404,16 +2339,16 @@ class SliceTest(QueryTest):
     def test_first(self):
         User = self.classes.User
 
-        assert User(id=7) == create_session().query(User).first()
+        assert User(id=7) == fixture_session().query(User).first()
 
         assert (
-            create_session().query(User).filter(User.id == 27).first() is None
+            fixture_session().query(User).filter(User.id == 27).first() is None
         )
 
     def test_negative_indexes_raise(self):
         User = self.classes.User
 
-        sess = create_session(future=True)
+        sess = fixture_session(future=True)
         q = sess.query(User).order_by(User.id)
 
         with expect_raises_message(
@@ -2454,7 +2389,7 @@ class SliceTest(QueryTest):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id)
 
         self.assert_sql(
@@ -2516,7 +2451,7 @@ class SliceTest(QueryTest):
     def test_first_against_expression_offset(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(User)
             .order_by(User.id)
@@ -2540,7 +2475,7 @@ class SliceTest(QueryTest):
     def test_full_slice_against_expression_offset(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(User)
             .order_by(User.id)
@@ -2563,7 +2498,7 @@ class SliceTest(QueryTest):
     def test_full_slice_against_integer_offset(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id).offset(2)
 
         self.assert_sql(
@@ -2583,7 +2518,7 @@ class SliceTest(QueryTest):
     def test_start_slice_against_expression_offset(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id).offset(literal_column("2"))
 
         self.assert_sql(
@@ -2606,14 +2541,14 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_basic(self):
         User = self.classes.User
 
-        users = create_session().query(User).all()
+        users = fixture_session().query(User).all()
         eq_([User(id=7), User(id=8), User(id=9), User(id=10)], users)
 
     @testing.requires.offset
     def test_limit_offset(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         assert [User(id=8), User(id=9)] == sess.query(User).order_by(
             User.id
@@ -2632,7 +2567,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_select_with_bindparam_offset_limit(self):
         """Does a query allow bindparam for the limit?"""
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         q1 = (
             sess.query(self.classes.User)
             .order_by(self.classes.User.id)
@@ -2659,7 +2594,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     @testing.requires.bound_limit_offset
     def test_select_with_bindparam_offset_limit_w_cast(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         eq_(
             list(
                 sess.query(User)
@@ -2677,7 +2612,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_exists(self):
         User = self.classes.User
 
-        sess = create_session(testing.db)
+        sess = fixture_session()
 
         assert sess.query(exists().where(User.id == 9)).scalar()
         assert not sess.query(exists().where(User.id == 29)).scalar()
@@ -2685,16 +2620,16 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_one_filter(self):
         User = self.classes.User
 
-        assert [User(id=8), User(id=9)] == create_session().query(User).filter(
-            User.name.endswith("ed")
-        ).all()
+        assert [User(id=8), User(id=9)] == fixture_session().query(
+            User
+        ).filter(User.name.endswith("ed")).all()
 
     def test_contains(self):
         """test comparing a collection to an object instance."""
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         address = sess.query(Address).get(3)
         assert [User(id=8)] == sess.query(User).filter(
             User.addresses.contains(address)
@@ -2723,7 +2658,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
     def test_clause_element_ok(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(User).filter(User.addresses),
             "SELECT users.id AS users_id, users.name AS users_name "
@@ -2735,7 +2670,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         unique"""
 
         User, Address = self.classes.User, self.classes.Address
-        sess = Session()
+        sess = fixture_session()
         a1, a2 = sess.query(Address).order_by(Address.id)[0:2]
         self.assert_compile(
             sess.query(User)
@@ -2754,7 +2689,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         # SQL compilation
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         assert [User(id=8), User(id=9)] == sess.query(User).filter(
             User.addresses.any(Address.email_address.like("%ed%"))
@@ -2789,7 +2724,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         # SQL compilation
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test that any() doesn't overcorrelate
         assert [User(id=7), User(id=8)] == sess.query(User).join(
@@ -2807,7 +2742,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         assert [Address(id=5)] == sess.query(Address).filter(
             Address.user.has(name="fred")
         ).all()
@@ -2856,7 +2791,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_contains_m2m(self):
         Item, Order = self.classes.Item, self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
         item = sess.query(Item).get(3)
 
         eq_(
@@ -2912,7 +2847,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         assert_raises_message(
             sa.exc.ArgumentError,
             "Mapped instance expected for relationship comparison to object.",
@@ -2933,7 +2868,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         user = sess.query(User).get(8)
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
@@ -2978,7 +2913,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_filter_by(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         user = sess.query(User).get(8)
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
@@ -2999,7 +2934,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
     def test_filter_by_tables(self):
         users = self.tables.users
         addresses = self.tables.addresses
-        sess = create_session()
+        sess = fixture_session()
         self.assert_compile(
             sess.query(users)
             .filter_by(name="ed")
@@ -3014,7 +2949,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
     def test_empty_filters(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         q1 = sess.query(User)
 
@@ -3023,7 +2958,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
     def test_filter_by_no_property(self):
         addresses = self.tables.addresses
-        sess = create_session()
+        sess = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
             'Entity namespace for "addresses" has no property "name"',
@@ -3038,7 +2973,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # scalar
         eq_(
@@ -3111,7 +3046,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             [(7,), (8,), (9,), (10,)],
-            create_session()
+            fixture_session()
             .query(User.id)
             .filter_by()
             .order_by(User.id)
@@ -3119,7 +3054,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
         eq_(
             [(7,), (8,), (9,), (10,)],
-            create_session()
+            fixture_session()
             .query(User.id)
             .filter_by(**{})
             .order_by(User.id)
@@ -3128,7 +3063,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
     def test_text_coerce(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
         self.assert_compile(
             s.query(User).filter(text("name='ed'")),
             "SELECT users.id AS users_id, users.name "
@@ -3136,7 +3071,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_filter_by_non_entity(self):
-        s = create_session()
+        s = fixture_session()
         e = sa.func.count(123)
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -3197,7 +3132,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_has_composite_secondary(self):
         A, D = self.classes("A", "D")
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A).filter(A.d.has(D.id == 1)),
             "SELECT a.id AS a_id, a.b_id AS a_b_id FROM a WHERE EXISTS "
@@ -3207,7 +3142,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_has_many_to_one(self):
         B, C = self.classes("B", "C")
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(B).filter(B.c.has(C.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
@@ -3216,7 +3151,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_any_many_to_many(self):
         B, D = self.classes("B", "D")
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(B).filter(B.d.any(D.id == 1)),
             "SELECT b.id AS b_id, b.c_id AS b_c_id FROM b WHERE "
@@ -3226,7 +3161,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_any_one_to_many(self):
         B, C = self.classes("B", "C")
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(C).filter(C.bs.any(B.id == 1)),
             "SELECT c.id AS c_id, c.d_id AS c_d_id FROM c WHERE "
@@ -3235,7 +3170,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_any_many_to_many_doesnt_overcorrelate(self):
         B, D = self.classes("B", "D")
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(B).join(B.d).filter(B.d.any(D.id == 1)),
@@ -3248,7 +3183,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_has_doesnt_overcorrelate(self):
         B, C = self.classes("B", "C")
-        s = Session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(B).join(B.c).filter(B.c.has(C.id == 1)),
@@ -3260,7 +3195,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_has_doesnt_get_aliased_join_subq(self):
         B, C = self.classes("B", "C")
-        s = Session()
+        s = fixture_session()
 
         ca = aliased(C)
         self.assert_compile(
@@ -3273,7 +3208,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
     def test_any_many_to_many_doesnt_get_aliased_join_subq(self):
         B, D = self.classes("B", "D")
-        s = Session()
+        s = fixture_session()
 
         da = aliased(D)
         self.assert_compile(
@@ -3290,7 +3225,7 @@ class HasAnyTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 class HasMapperEntitiesTest(QueryTest):
     def test_entity(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User)
 
@@ -3298,7 +3233,7 @@ class HasMapperEntitiesTest(QueryTest):
 
     def test_cols(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User.id)
 
@@ -3306,7 +3241,7 @@ class HasMapperEntitiesTest(QueryTest):
 
     def test_cols_set_entities(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User.id)
 
@@ -3315,7 +3250,7 @@ class HasMapperEntitiesTest(QueryTest):
 
     def test_entity_set_entities(self):
         User = self.classes.User
-        s = Session()
+        s = fixture_session()
 
         q = s.query(User)
 
@@ -3329,7 +3264,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_union(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         fred = s.query(User).filter(User.name == "fred")
         ed = s.query(User).filter(User.name == "ed")
@@ -3355,7 +3290,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q1 = (
             s.query(User, Address)
             .join(User.addresses)
@@ -3382,7 +3317,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         q1 = s.query(User, literal("x"))
         q2 = s.query(User, literal_column("'y'"))
         q3 = q1.union(q2)
@@ -3401,7 +3336,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_union_literal_expressions_results(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         x_literal = literal("x")
         q1 = s.query(User, x_literal)
@@ -3435,7 +3370,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_union_labeled_anonymous_columns(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         c1, c2 = column("c1"), column("c2")
         q1 = s.query(User, c1.label("foo"), c1.label("bar"))
@@ -3460,7 +3395,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_order_by_anonymous_col(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         c1, c2 = column("c1"), column("c2")
         f = c1.label("foo")
@@ -3493,7 +3428,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_union_mapped_colnames_preserved_across_subquery(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         q1 = s.query(User.name)
         q2 = s.query(User.name)
 
@@ -3513,7 +3448,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_intersect(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         fred = s.query(User).filter(User.name == "fred")
         ed = s.query(User).filter(User.name == "ed")
@@ -3525,7 +3460,7 @@ class SetOpsTest(QueryTest, AssertsCompiledSQL):
     def test_eager_load(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         fred = s.query(User).filter(User.name == "fred")
         ed = s.query(User).filter(User.name == "ed")
@@ -3551,7 +3486,7 @@ class AggregateTest(QueryTest):
     def test_sum(self):
         Order = self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
         orders = sess.query(Order).filter(Order.id.in_([2, 3, 4]))
         eq_(
             orders.with_entities(
@@ -3563,7 +3498,7 @@ class AggregateTest(QueryTest):
     def test_apply(self):
         Order = self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
         assert sess.query(func.sum(Order.user_id * Order.address_id)).filter(
             Order.id.in_([2, 3, 4])
         ).one() == (79,)
@@ -3571,7 +3506,7 @@ class AggregateTest(QueryTest):
     def test_having(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         assert [User(name="ed", id=8)] == sess.query(User).order_by(
             User.id
         ).group_by(User).join("addresses").having(
@@ -3593,7 +3528,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
 
     def test_exists(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         q1 = sess.query(User)
         self.assert_compile(
@@ -3612,7 +3547,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
     def test_exists_col_warning(self):
         User = self.classes.User
         Address = self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
 
         q1 = sess.query(User, Address).filter(User.id == Address.user_id)
         self.assert_compile(
@@ -3625,7 +3560,7 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
 
     def test_exists_w_select_from(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         q1 = sess.query().select_from(User).exists()
         self.assert_compile(
@@ -3637,7 +3572,7 @@ class CountTest(QueryTest):
     def test_basic(self):
         users, User = self.tables.users, self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         eq_(s.query(User).count(), 4)
 
@@ -3646,7 +3581,7 @@ class CountTest(QueryTest):
     def test_basic_future(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         eq_(
             s.execute(select(func.count()).select_from(User)).scalar(),
@@ -3662,7 +3597,7 @@ class CountTest(QueryTest):
 
     def test_count_char(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
         # '*' is favored here as the most common character,
         # it is reported that Informix doesn't like count(1),
         # rumors about Oracle preferring count(1) don't appear
@@ -3681,7 +3616,7 @@ class CountTest(QueryTest):
     def test_multiple_entity(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User, Address).join(Address, true())
         eq_(q.count(), 20)  # cartesian product
 
@@ -3691,7 +3626,7 @@ class CountTest(QueryTest):
     def test_multiple_entity_future(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         stmt = select(User, Address).join(Address, true())
 
@@ -3706,7 +3641,7 @@ class CountTest(QueryTest):
     def test_nested(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User, Address).join(Address, true()).limit(2)
         eq_(q.count(), 2)
 
@@ -3719,7 +3654,7 @@ class CountTest(QueryTest):
     def test_nested_future(self):
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         stmt = select(User, Address).join(Address, true()).limit(2)
         eq_(
@@ -3744,7 +3679,7 @@ class CountTest(QueryTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(func.count(distinct(User.name)))
         eq_(q.count(), 1)
@@ -3766,7 +3701,7 @@ class CountTest(QueryTest):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         stmt = select(func.count(distinct(User.name)))
         eq_(
@@ -3814,11 +3749,11 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         eq_(
             [User(id=7), User(id=8), User(id=9), User(id=10)],
-            create_session().query(User).order_by(User.id).distinct().all(),
+            fixture_session().query(User).order_by(User.id).distinct().all(),
         )
         eq_(
             [User(id=7), User(id=9), User(id=8), User(id=10)],
-            create_session()
+            fixture_session()
             .query(User)
             .distinct()
             .order_by(desc(User.name))
@@ -3839,7 +3774,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         expr = (User.id.op("+")(2)).label("label")
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(expr).select_from(User).order_by(desc(expr)).distinct()
 
@@ -3856,7 +3791,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         expr = User.id + literal(1)
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(expr).select_from(User).order_by(asc(expr)).distinct()
 
         # no double col in the select list,
@@ -3872,7 +3807,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         expr = (User.id + literal(1)).label("label")
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(expr).select_from(User).order_by(asc(expr)).distinct()
 
         # no double col in the select list,
@@ -3888,7 +3823,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         expr = (User.id + literal(1)).label("label")
 
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(expr)
             .select_from(User)
@@ -3926,7 +3861,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         """
         User, Address = self.classes.User, self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
 
         subq = (
             sess.query(User, Address.email_address)
@@ -3949,7 +3884,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         """
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(User, Address.email_address)
             .join("addresses")
@@ -3972,7 +3907,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test that it works on embedded joinedload/LIMIT subquery
         q = (
@@ -4001,7 +3936,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         subq = (
             sess.query(
@@ -4046,7 +3981,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(
@@ -4086,7 +4021,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         subq = (
             sess.query(
@@ -4123,7 +4058,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_union_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(
@@ -4160,7 +4095,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_union_two(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(
@@ -4190,7 +4125,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_two(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User)
@@ -4226,7 +4161,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_three(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
@@ -4246,7 +4181,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_distinct_on(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         subq = (
             sess.query(
@@ -4285,7 +4220,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_three_using_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
@@ -4305,7 +4240,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_illegal_label_reference(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(User.id, User.name.label("foo"), Address.id).distinct(
             "not a label"
@@ -4324,7 +4259,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_four(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User)
@@ -4363,14 +4298,14 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
     def test_one_prefix(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1")
         expected = "SELECT PREFIX_1 " "users.name AS users_name FROM users"
         self.assert_compile(query, expected, dialect=default.DefaultDialect())
 
     def test_one_suffix(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         query = sess.query(User.name).suffix_with("SUFFIX_1")
         # trailing space for some reason
         expected = "SELECT users.name AS users_name FROM users SUFFIX_1 "
@@ -4378,7 +4313,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
 
     def test_many_prefixes(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         query = sess.query(User.name).prefix_with("PREFIX_1", "PREFIX_2")
         expected = (
             "SELECT PREFIX_1 PREFIX_2 " "users.name AS users_name FROM users"
@@ -4387,7 +4322,7 @@ class PrefixSuffixWithTest(QueryTest, AssertsCompiledSQL):
 
     def test_chained_prefixes(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         query = (
             sess.query(User.name)
             .prefix_with("PREFIX_1")
@@ -4425,7 +4360,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = iter(
             sess.query(User)
             .yield_per(1)
@@ -4451,7 +4386,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         @event.listens_for(sess, "do_orm_execute")
         def check(ctx):
@@ -4475,7 +4410,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         @event.listens_for(sess, "do_orm_execute")
         def check(ctx):
@@ -4500,7 +4435,7 @@ class YieldTest(_fixtures.FixtureTest):
         self._eagerload_mappings()
 
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).options(joinedload("addresses")).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -4513,7 +4448,7 @@ class YieldTest(_fixtures.FixtureTest):
         self._eagerload_mappings()
 
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).options(subqueryload("addresses")).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -4526,7 +4461,7 @@ class YieldTest(_fixtures.FixtureTest):
         self._eagerload_mappings(addresses_lazy="subquery")
 
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -4538,7 +4473,7 @@ class YieldTest(_fixtures.FixtureTest):
     def test_joinedload_m2o_ok(self):
         self._eagerload_mappings(user_lazy="joined")
         Address = self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(Address).yield_per(1)
         q.all()
 
@@ -4546,7 +4481,7 @@ class YieldTest(_fixtures.FixtureTest):
         self._eagerload_mappings()
 
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(User)
             .options(subqueryload("addresses"))
@@ -4566,7 +4501,7 @@ class YieldTest(_fixtures.FixtureTest):
     def test_m2o_joinedload_not_others(self):
         self._eagerload_mappings(addresses_lazy="joined")
         Address = self.classes.Address
-        sess = create_session()
+        sess = fixture_session()
         q = (
             sess.query(Address)
             .options(lazyload("*"), joinedload("user"))
@@ -4591,7 +4526,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
 
         dialect = mysql.dialect()
 
-        sess = create_session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(User).with_hint(
@@ -4627,7 +4562,7 @@ class HintsTest(QueryTest, AssertsCompiledSQL):
     def test_statement_hints(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         stmt = (
             sess.query(User)
             .with_statement_hint("test hint one")
@@ -4658,7 +4593,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             sa_exc.ArgumentError,
             "Textual SQL expression",
-            create_session().query(User).from_statement,
+            fixture_session().query(User).from_statement,
             "select * from users order by id",
         )
 
@@ -4666,14 +4601,14 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         eq_(
-            create_session()
+            fixture_session()
             .query(User)
             .from_statement(text("select * from users order by id"))
             .first(),
             User(id=7),
         )
         eq_(
-            create_session()
+            fixture_session()
             .query(User)
             .from_statement(
                 text("select * from users where name='nonexistent'")
@@ -4685,7 +4620,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_select_star_future(self):
         User = self.classes.User
 
-        sess = Session(testing.db)
+        sess = fixture_session()
         eq_(
             sess.execute(
                 select(User).from_statement(
@@ -4712,7 +4647,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # ordering doesn't matter
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User).from_statement(
             text(
                 "select name, 27 as foo, id as users_id from users order by id"
@@ -4733,7 +4668,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # ordering doesn't matter
         User = self.classes.User
 
-        s = create_session(testing.db)
+        s = fixture_session()
         q = select(User).from_statement(
             text(
                 "select name, 27 as foo, id as users_id from users order by id"
@@ -4755,7 +4690,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User, Address).from_statement(
             text(
                 "select users.name AS users_name, users.id AS users_id, "
@@ -4780,7 +4715,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db)
+        s = fixture_session()
         q = select(User, Address).from_statement(
             text(
                 "select users.name AS users_name, users.id AS users_id, "
@@ -4805,7 +4740,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q = (
             s.query(User)
             .from_statement(
@@ -4831,7 +4766,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db)
+        s = fixture_session()
         q = (
             select(User)
             .from_statement(
@@ -4857,7 +4792,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
         q = (
             s.query(User)
             .from_statement(
@@ -4883,7 +4818,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session(testing.db)
+        s = fixture_session()
         q = (
             select(User)
             .from_statement(
@@ -4911,7 +4846,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User.name, User.id, Address.id).from_statement(
             text(
                 "select users.name AS users_name, users.id AS users_id, "
@@ -4950,7 +4885,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         if add_columns:
             text_clause = text_clause.columns(User.id, User.name)
 
-        s = create_session()
+        s = fixture_session()
         q = (
             s.query(User)
             .from_statement(text_clause)
@@ -4966,12 +4901,12 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
 
         eq_(
-            create_session().query(User).filter(text("id in (8, 9)")).all(),
+            fixture_session().query(User).filter(text("id in (8, 9)")).all(),
             [User(id=8), User(id=9)],
         )
 
         eq_(
-            create_session()
+            fixture_session()
             .query(User)
             .filter(text("name='fred'"))
             .filter(text("id=9"))
@@ -4979,7 +4914,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             [User(id=9)],
         )
         eq_(
-            create_session()
+            fixture_session()
             .query(User)
             .filter(text("name='fred'"))
             .filter(User.id == 9)
@@ -4990,7 +4925,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_whereclause_future(self):
         User = self.classes.User
 
-        s = create_session(testing.db)
+        s = fixture_session()
         eq_(
             s.execute(select(User).filter(text("id in (8, 9)")))
             .scalars()
@@ -5022,14 +4957,14 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             sa_exc.ArgumentError,
             r"Textual SQL expression 'id in \(:id1, :id2\)' "
             "should be explicitly declared",
-            create_session().query(User).filter,
+            fixture_session().query(User).filter,
             "id in (:id1, :id2)",
         )
 
     def test_plain_textual_column(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(User.id, text("users.name")),
@@ -5048,7 +4983,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_via_select(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
         eq_(
             s.query(User)
             .from_statement(
@@ -5062,7 +4997,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_via_textasfrom_from_statement(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         eq_(
             s.query(User)
@@ -5077,7 +5012,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_columns_via_textasfrom_from_statement(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         eq_(
             s.query(User.id, User.name)
@@ -5092,7 +5027,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_via_textasfrom_use_mapped_columns(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         eq_(
             s.query(User)
@@ -5107,7 +5042,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_via_textasfrom_select_from(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         eq_(
             s.query(User)
@@ -5123,7 +5058,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_group_by_accepts_text(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q = s.query(User).group_by(text("name"))
         self.assert_compile(
@@ -5140,7 +5075,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_w_eager_one(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         # from 1.0.0 thru 1.0.2, the "name" symbol here was considered
         # to be part of the things we need to ORDER BY and it was being
@@ -5169,7 +5104,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_w_eager_two(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         q = (
             s.query(User)
@@ -5185,7 +5120,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
     def test_order_by_w_eager_three(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(User)
@@ -5217,7 +5152,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
     def test_order_by_w_eager_four(self):
         User = self.classes.User
         Address = self.classes.Address
-        s = create_session()
+        s = fixture_session()
 
         self.assert_compile(
             s.query(User)
@@ -5254,7 +5189,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(User, Address.email_address.label("email_address"))
 
@@ -5286,16 +5221,20 @@ class TextErrorTest(QueryTest, AssertsCompiledSQL):
 
     def test_filter(self):
         User = self.classes.User
-        self._test(Session().query(User.id).filter, "myid == 5", "myid == 5")
+        self._test(
+            fixture_session().query(User.id).filter, "myid == 5", "myid == 5"
+        )
 
     def test_having(self):
         User = self.classes.User
-        self._test(Session().query(User.id).having, "myid == 5", "myid == 5")
+        self._test(
+            fixture_session().query(User.id).having, "myid == 5", "myid == 5"
+        )
 
     def test_from_statement(self):
         User = self.classes.User
         self._test(
-            Session().query(User.id).from_statement,
+            fixture_session().query(User.id).from_statement,
             "select id from user",
             "select id from user",
         )
@@ -5311,7 +5250,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         u1 = q.filter_by(name="jack").one()
@@ -5362,7 +5301,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_select_from(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         q = sess.query(Address).select_from(Address).with_parent(u1)
         self.assert_compile(
@@ -5377,7 +5316,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_from_entity_standalone_fn(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         q = sess.query(User, Address).filter(
             with_parent(u1, "addresses", from_entity=Address)
@@ -5396,7 +5335,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_from_entity_query_entity(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         q = sess.query(User, Address).with_parent(
             u1, "addresses", from_entity=Address
@@ -5415,7 +5354,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_alias(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         q = sess.query(a1).with_parent(u1)
@@ -5432,7 +5371,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_alias_explicit_prop(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         q = sess.query(a1).with_parent(u1, "addresses")
@@ -5449,7 +5388,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_alias_from_entity(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         a2 = aliased(Address)
@@ -5470,7 +5409,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_alias_of_type(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         a2 = aliased(Address)
@@ -5491,7 +5430,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_noparent(self):
         Item, User = self.classes.Item, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         u1 = q.filter_by(name="jack").one()
@@ -5508,7 +5447,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_m2m(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
-        sess = create_session()
+        sess = fixture_session()
         i1 = sess.query(Item).filter_by(id=2).one()
         k = sess.query(Keyword).with_parent(i1).all()
         assert [
@@ -5520,7 +5459,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_with_transient(self):
         User, Order = self.classes.User, self.classes.Order
 
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(User)
         u1 = q.filter_by(name="jack").one()
@@ -5548,7 +5487,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_with_pending_autoflush(self):
         Order, User = self.classes.Order, self.classes.User
 
-        sess = Session()
+        sess = fixture_session()
 
         o1 = sess.query(Order).first()
         opending = Order(id=20, user_id=o1.user_id)
@@ -5565,7 +5504,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_with_pending_no_autoflush(self):
         Order, User = self.classes.Order, self.classes.User
 
-        sess = Session(autoflush=False)
+        sess = fixture_session(autoflush=False)
 
         o1 = sess.query(Order).first()
         opending = Order(user_id=o1.user_id)
@@ -5579,7 +5518,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         """bindparams used in the 'parent' query are unique"""
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
         u1, u2 = sess.query(User).order_by(User.id)[0:2]
 
         q1 = sess.query(Address).with_parent(u1, "addresses")
@@ -5604,7 +5543,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     def test_unique_binds_or(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
         u1, u2 = sess.query(User).order_by(User.id)[0:2]
 
         self.assert_compile(
@@ -5672,7 +5611,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(Address).filter(Address.user == User())
         assert_raises_message(
@@ -5686,7 +5625,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(Address).filter(Address.user == User(id=None))
         with expect_warnings("Got None for value of column "):
@@ -5703,7 +5642,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User()
         # id is not set, so evaluates to NEVER_SET
@@ -5725,7 +5664,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = s.query(Address).filter(
             Address.special_user == User(id=None, name=None)
         )
@@ -5749,7 +5688,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Dingaling,
             self.classes.HasDingaling,
         )
-        s = Session()
+        s = fixture_session()
         d = Dingaling(id=1)
         s.add(d)
         s.flush()
@@ -5773,7 +5712,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Dingaling,
             self.classes.HasDingaling,
         )
-        s = Session()
+        s = fixture_session()
         d = Dingaling()
         s.add(d)
         s.flush()
@@ -5803,7 +5742,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Dingaling,
             self.classes.HasDingaling,
         )
-        s = Session()
+        s = fixture_session()
         d = Dingaling(data="some data")
         s.add(d)
         s.commit()
@@ -5825,7 +5764,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        sess = Session()
+        sess = fixture_session()
 
         q = sess.query(User).with_parent(Address(user_id=None), "user")
         with expect_warnings("Got None for value of column"):
@@ -5840,7 +5779,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = s.query(User).with_parent(
             Address(user_id=None, email_address=None), "special_user"
         )
@@ -5858,7 +5797,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         q = s.query(Address).filter(Address.user != User(id=None))
         with expect_warnings("Got None for value of column"):
             self.assert_compile(
@@ -5876,7 +5815,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         self._fixture1()
         User, Address = self.classes.User, self.classes.Address
 
-        s = Session()
+        s = fixture_session()
 
         # this one does *not* warn because we do the criteria
         # without deferral
@@ -5965,7 +5904,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
     def test_options(self):
         User, Order = self.classes.User, self.classes.Order
 
-        s = create_session()
+        s = fixture_session()
 
         def go():
             result = (
@@ -5994,7 +5933,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
     def test_options_syn_of_syn(self):
         User, Order = self.classes.User, self.classes.Order
 
-        s = create_session()
+        s = fixture_session()
 
         def go():
             result = (
@@ -6023,7 +5962,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
     def test_options_syn_of_syn_string(self):
         User, Order = self.classes.User, self.classes.Order
 
-        s = create_session()
+        s = fixture_session()
 
         def go():
             result = (
@@ -6061,7 +6000,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             [User.orders_syn, Order.items_syn],
             [User.orders_syn_2, Order.items_syn],
         ):
-            q = create_session().query(User)
+            q = fixture_session().query(User)
             for path in j:
                 q = q.join(path)
             q = q.filter_by(id=3)
@@ -6079,7 +6018,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             ("name_syn", "orders_syn"),
             ("name_syn", "orders_syn_2"),
         ):
-            sess = create_session()
+            sess = fixture_session()
             q = sess.query(User)
 
             u1 = q.filter_by(**{nameprop: "jack"}).one()
@@ -6094,7 +6033,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
     def test_froms_aliased_col(self):
         Address, User = self.classes.Address, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         ua = aliased(User)
 
         q = sess.query(ua.name_syn).join(Address, ua.id == Address.user_id)
@@ -6126,7 +6065,7 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         assert_raises_message(
             sa.orm.exc.NoResultFound,
@@ -6208,7 +6147,7 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_one_or_none(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(sess.query(User).filter(User.id == 99).one_or_none(), None)
 
@@ -6291,7 +6230,7 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_scalar(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         eq_(sess.query(User.id).filter_by(id=7).scalar(), 7)
         eq_(sess.query(User.id, User.name).filter_by(id=7).scalar(), 7)
@@ -6312,7 +6251,7 @@ class ExecutionOptionsTest(QueryTest):
     def test_option_building(self):
         User = self.classes.User
 
-        sess = create_session(bind=testing.db, autocommit=False)
+        sess = fixture_session(autocommit=False)
 
         q1 = sess.query(User)
         eq_(q1._execution_options, dict())
@@ -6330,7 +6269,7 @@ class ExecutionOptionsTest(QueryTest):
     def test_get_options(self):
         User = self.classes.User
 
-        sess = create_session(bind=testing.db, autocommit=False)
+        sess = fixture_session(autocommit=False)
 
         q = sess.query(User).execution_options(foo="bar", stream_results=True)
         eq_(q.get_execution_options(), dict(foo="bar", stream_results=True))
@@ -6350,9 +6289,7 @@ class ExecutionOptionsTest(QueryTest):
                     result.close()
                 return iter([])
 
-        sess = create_session(
-            bind=testing.db, autocommit=False, query_cls=TQuery
-        )
+        sess = fixture_session(autocommit=False, query_cls=TQuery)
         q1 = sess.query(User).execution_options(**execution_options)
         q1.all()
 
@@ -6367,7 +6304,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         return d
 
     def test_one(self):
-        s = Session()
+        s = fixture_session()
         c = column("x", Boolean)
         self.assert_compile(
             s.query(c).filter(c),
@@ -6376,7 +6313,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_two(self):
-        s = Session()
+        s = fixture_session()
         c = column("x", Boolean)
         self.assert_compile(
             s.query(c).filter(c),
@@ -6385,7 +6322,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_three(self):
-        s = Session()
+        s = fixture_session()
         c = column("x", Boolean)
         self.assert_compile(
             s.query(c).filter(~c),
@@ -6394,7 +6331,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_four(self):
-        s = Session()
+        s = fixture_session()
         c = column("x", Boolean)
         self.assert_compile(
             s.query(c).filter(~c),
@@ -6403,7 +6340,7 @@ class BooleanEvalTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_five(self):
-        s = Session()
+        s = fixture_session()
         c = column("x", Boolean)
         self.assert_compile(
             s.query(c).having(c),
@@ -6431,26 +6368,26 @@ class SessionBindTest(QueryTest):
 
     def test_single_entity_q(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User).all()
 
     def test_aliased_entity_q(self):
         User = self.classes.User
         u = aliased(User)
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(u).all()
 
     def test_sql_expr_entity_q(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.id).all()
 
     def test_sql_expr_subquery_from_entity(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             subq = session.query(User.id).subquery()
             session.query(subq).all()
@@ -6458,14 +6395,14 @@ class SessionBindTest(QueryTest):
     @testing.requires.boolean_col_expressions
     def test_sql_expr_exists_from_entity(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             subq = session.query(User.id).exists()
             session.query(subq).all()
 
     def test_sql_expr_cte_from_entity(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             cte = session.query(User.id).cte()
             subq = session.query(cte).subquery()
@@ -6473,7 +6410,7 @@ class SessionBindTest(QueryTest):
 
     def test_sql_expr_bundle_cte_from_entity(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             cte = session.query(User.id, User.name).cte()
             subq = session.query(cte).subquery()
@@ -6482,63 +6419,63 @@ class SessionBindTest(QueryTest):
 
     def test_count(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User).count()
 
     def test_single_col(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.name).all()
 
     def test_single_col_from_subq(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             subq = session.query(User.id, User.name).subquery()
             session.query(subq.c.name).all()
 
     def test_aggregate_fn(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(func.max(User.name)).all()
 
     def test_case(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(case([(User.name == "x", "C")], else_="W")).all()
 
     def test_cast(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(cast(User.name, String())).all()
 
     def test_type_coerce(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(type_coerce(User.name, String())).all()
 
     def test_binary_op(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.name + "x").all()
 
     @testing.requires.boolean_col_expressions
     def test_boolean_op(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(User.name == "x").all()
 
     def test_bulk_update_no_sync(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).update(
                 {"name": "foob"}, synchronize_session=False
@@ -6546,7 +6483,7 @@ class SessionBindTest(QueryTest):
 
     def test_bulk_delete_no_sync(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).delete(
                 synchronize_session=False
@@ -6554,7 +6491,7 @@ class SessionBindTest(QueryTest):
 
     def test_bulk_update_fetch_sync(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).update(
                 {"name": "foob"}, synchronize_session="fetch"
@@ -6562,7 +6499,7 @@ class SessionBindTest(QueryTest):
 
     def test_bulk_delete_fetch_sync(self):
         User = self.classes.User
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session):
             session.query(User).filter(User.id == 15).delete(
                 synchronize_session="fetch"
@@ -6576,14 +6513,14 @@ class SessionBindTest(QueryTest):
             "score",
             column_property(func.coalesce(self.tables.users.c.name, None)),
         )
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
             session.query(func.max(User.score)).scalar()
 
     def test_plain_table(self):
         User = self.classes.User
 
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(inspect(User).local_table).all()
 
@@ -6591,14 +6528,14 @@ class SessionBindTest(QueryTest):
         User = self.classes.User
 
         # TODO: this test is dumb
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(inspect(User).local_table).from_self().all()
 
     def test_plain_table_count(self):
         User = self.classes.User
 
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(inspect(User).local_table).count()
 
@@ -6606,7 +6543,7 @@ class SessionBindTest(QueryTest):
         User = self.classes.User
 
         table = inspect(User).local_table
-        session = Session()
+        session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=False):
             session.query(table).select_from(table).all()
 
@@ -6624,7 +6561,7 @@ class SessionBindTest(QueryTest):
                 .scalar_subquery()
             ),
         )
-        session = Session()
+        session = fixture_session()
 
         with self._assert_bind_args(session):
             session.query(func.max(User.score)).scalar()
@@ -6656,7 +6593,7 @@ class QueryClsTest(QueryTest):
     def _test_get(self, fixture):
         User = self.classes.User
 
-        s = Session(query_cls=fixture())
+        s = fixture_session(query_cls=fixture())
 
         assert s.query(User).get(19) is None
         u = s.query(User).get(7)
@@ -6666,7 +6603,7 @@ class QueryClsTest(QueryTest):
     def _test_o2m_lazyload(self, fixture):
         User, Address = self.classes("User", "Address")
 
-        s = Session(query_cls=fixture())
+        s = fixture_session(query_cls=fixture())
 
         u1 = s.query(User).filter(User.id == 7).first()
         eq_(u1.addresses, [Address(id=1)])
@@ -6674,7 +6611,7 @@ class QueryClsTest(QueryTest):
     def _test_m2o_lazyload(self, fixture):
         User, Address = self.classes("User", "Address")
 
-        s = Session(query_cls=fixture())
+        s = fixture_session(query_cls=fixture())
 
         a1 = s.query(Address).filter(Address.id == 1).first()
         eq_(a1.user, User(id=7))
@@ -6682,7 +6619,7 @@ class QueryClsTest(QueryTest):
     def _test_expr(self, fixture):
         User, Address = self.classes("User", "Address")
 
-        s = Session(query_cls=fixture())
+        s = fixture_session(query_cls=fixture())
 
         q = s.query(func.max(User.id).label("max"))
         eq_(q.scalar(), 10)
@@ -6691,7 +6628,7 @@ class QueryClsTest(QueryTest):
         # see #4269.  not documented but already out there.
         User, Address = self.classes("User", "Address")
 
-        s = Session(query_cls=fixture())
+        s = fixture_session(query_cls=fixture())
 
         q = Query(func.max(User.id).label("max")).with_session(s)
         eq_(q.scalar(), 10)

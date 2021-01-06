@@ -14,7 +14,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
 
@@ -161,7 +161,7 @@ class InsertOrderTest(PolymorphTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session()
         c = Company(name="company1")
         c.employees.append(
             Manager(
@@ -391,7 +391,7 @@ class RoundTripTest(PolymorphTest):
         else:
             person_attribute_name = "name"
 
-        session = create_session()
+        session = fixture_session()
 
         dilbert = (
             session.query(Engineer)
@@ -429,7 +429,7 @@ class RoundTripTest(PolymorphTest):
                 self.assert_sql_count(testing.db, go, 3)
 
     def test_baseclass_lookup(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         if self.redefine_colprop:
@@ -449,7 +449,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_subclass_lookup(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         if self.redefine_colprop:
@@ -465,7 +465,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_baseclass_base_alias_filter(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         # test selecting from the query, joining against
@@ -485,7 +485,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_subclass_base_alias_filter(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         palias = people.alias("palias")
@@ -501,7 +501,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_baseclass_sub_table_filter(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         # this unusual test is selecting from the plain people/engineers
@@ -518,7 +518,7 @@ class RoundTripTest(PolymorphTest):
         )
 
     def test_subclass_getitem(self, get_dilbert):
-        session = Session()
+        session = fixture_session()
         dilbert = get_dilbert(session)
 
         is_(
@@ -530,7 +530,7 @@ class RoundTripTest(PolymorphTest):
 
     def test_primary_table_only_for_requery(self):
 
-        session = Session()
+        session = fixture_session()
 
         if self.redefine_colprop:
             person_attribute_name = "person_name"
@@ -560,7 +560,7 @@ class RoundTripTest(PolymorphTest):
         else:
             person_attribute_name = "name"
 
-        session = Session()
+        session = fixture_session()
 
         daboss = Boss(
             status="BBB",

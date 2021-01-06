@@ -10,9 +10,9 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -360,7 +360,7 @@ class MagazineTest(fixtures.MappedTest):
 
         Publication = self.classes.Publication
 
-        session = Session()
+        session = fixture_session()
 
         pub = self._generate_data()
         session.add(pub)

@@ -264,15 +264,23 @@ class QueryTest(fixtures.TablesTest):
     def test_compiled_execute(self, connection):
         users = self.tables.users
         connection.execute(users.insert(), user_id=7, user_name="jack")
-        s = select(users).where(users.c.user_id == bindparam("id")).compile()
+        s = (
+            select(users)
+            .where(users.c.user_id == bindparam("id"))
+            .compile(connection)
+        )
         eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_compiled_insert_execute(self, connection):
         users = self.tables.users
         connection.execute(
-            users.insert().compile(), user_id=7, user_name="jack"
+            users.insert().compile(connection), user_id=7, user_name="jack"
         )
-        s = select(users).where(users.c.user_id == bindparam("id")).compile()
+        s = (
+            select(users)
+            .where(users.c.user_id == bindparam("id"))
+            .compile(connection)
+        )
         eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
 
     def test_repeated_bindparams(self, connection):

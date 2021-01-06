@@ -567,12 +567,11 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
             )
         ).fetchall()
         eq_([5], [r.id for r in results1])
-        results2 = (
-            matchtable.select()
-            .where(matchtable.c.title.match("python AND nutshell"))
-            .execute()
-            .fetchall()
-        )
+        results2 = connection.execute(
+            matchtable.select().where(
+                matchtable.c.title.match("python AND nutshell")
+            )
+        ).fetchall()
         eq_([5], [r.id for r in results2])
 
     def test_match_across_joins(self, connection):

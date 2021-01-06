@@ -16,6 +16,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from .inheritance._poly_fixtures import _PolymorphicAliasedJoins
 from .inheritance._poly_fixtures import _PolymorphicJoins
@@ -33,14 +34,14 @@ class _PolymorphicTestBase(object):
     __dialect__ = "default"
 
     def test_any_one(self):
-        sess = Session()
+        sess = fixture_session()
         any_ = Company.employees.of_type(Engineer).any(
             Engineer.primary_language == "cobol"
         )
         eq_(sess.query(Company).filter(any_).one(), self.c2)
 
     def test_any_two(self):
-        sess = Session()
+        sess = fixture_session()
         calias = aliased(Company)
         any_ = calias.employees.of_type(Engineer).any(
             Engineer.primary_language == "cobol"
@@ -48,26 +49,26 @@ class _PolymorphicTestBase(object):
         eq_(sess.query(calias).filter(any_).one(), self.c2)
 
     def test_any_three(self):
-        sess = Session()
+        sess = fixture_session()
         any_ = Company.employees.of_type(Boss).any(Boss.golf_swing == "fore")
         eq_(sess.query(Company).filter(any_).one(), self.c1)
 
     def test_any_four(self):
-        sess = Session()
+        sess = fixture_session()
         any_ = Company.employees.of_type(Manager).any(
             Manager.manager_name == "pointy"
         )
         eq_(sess.query(Company).filter(any_).one(), self.c1)
 
     def test_any_five(self):
-        sess = Session()
+        sess = fixture_session()
         any_ = Company.employees.of_type(Engineer).any(
             and_(Engineer.primary_language == "cobol")
         )
         eq_(sess.query(Company).filter(any_).one(), self.c2)
 
     def test_join_to_subclass_one(self):
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(Company)
             .join(Company.employees.of_type(Engineer))
@@ -77,7 +78,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_to_subclass_two(self):
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(Company)
             .join(Company.employees.of_type(Engineer), "machines")
@@ -87,7 +88,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_to_subclass_three(self):
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(Company, Engineer)
             .join(Company.employees.of_type(Engineer))
@@ -97,7 +98,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_to_subclass_four(self):
-        sess = Session()
+        sess = fixture_session()
         # test [ticket:2093]
         eq_(
             sess.query(Company.company_id, Engineer)
@@ -108,7 +109,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_join_to_subclass_five(self):
-        sess = Session()
+        sess = fixture_session()
         eq_(
             sess.query(Company)
             .join(Company.employees.of_type(Engineer))
@@ -118,7 +119,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_with_polymorphic_join_compile_one(self):
-        sess = Session()
+        sess = fixture_session()
 
         self.assert_compile(
             sess.query(Company).join(
@@ -134,7 +135,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_with_polymorphic_join_exec_contains_eager_one(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             wp = with_polymorphic(
@@ -163,7 +164,7 @@ class _PolymorphicTestBase(object):
     def test_with_polymorphic_join_exec_contains_eager_two(
         self, contains_eager_option
     ):
-        sess = Session()
+        sess = fixture_session()
 
         wp = with_polymorphic(Person, [Engineer, Manager], aliased=True)
         contains_eager_option = testing.resolve_lambda(
@@ -187,7 +188,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_with_polymorphic_any(self):
-        sess = Session()
+        sess = fixture_session()
         wp = with_polymorphic(Person, [Engineer], aliased=True)
         eq_(
             sess.query(Company.company_id)
@@ -201,7 +202,7 @@ class _PolymorphicTestBase(object):
         )
 
     def test_subqueryload_implicit_withpoly(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -215,7 +216,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 4)
 
     def test_joinedload_implicit_withpoly(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -229,7 +230,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_subqueryload_explicit_withpoly(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             target = with_polymorphic(Person, Engineer)
@@ -244,7 +245,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 4)
 
     def test_joinedload_explicit_withpoly(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             target = with_polymorphic(Person, Engineer, flat=True)
@@ -259,7 +260,7 @@ class _PolymorphicTestBase(object):
         self.assert_sql_count(testing.db, go, 3)
 
     def test_joinedload_stacked_of_type(self):
-        sess = Session()
+        sess = fixture_session()
 
         def go():
             eq_(
@@ -467,7 +468,7 @@ class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
         )
 
     def test_joinedload_explicit_with_unaliased_poly_compile(self):
-        sess = Session()
+        sess = fixture_session()
         target = with_polymorphic(Person, Engineer)
         q = (
             sess.query(Company)
@@ -481,7 +482,7 @@ class PolymorphicJoinsTest(_PolymorphicTestBase, _PolymorphicJoins):
         )
 
     def test_joinedload_explicit_with_flataliased_poly_compile(self):
-        sess = Session()
+        sess = fixture_session()
         target = with_polymorphic(Person, Engineer, flat=True)
         q = (
             sess.query(Company)
@@ -752,7 +753,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob, aliased=True, flat=True)
 
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(Job)
             .join(DataContainer.jobs)
@@ -782,7 +783,7 @@ class SubclassRelationshipTest(
 
         Job_A = aliased(Job)
 
-        s = Session()
+        s = fixture_session()
         q = (
             s.query(Job)
             .join(DataContainer.jobs)
@@ -814,7 +815,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
         self.assert_compile(
             q,
@@ -832,7 +833,7 @@ class SubclassRelationshipTest(
             self.classes.SubJob,
         )
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(SubJob))
         # note the of_type() here renders JOIN for the Job->SubJob.
         # this is because it's using the SubJob mapper directly within
@@ -856,7 +857,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob, innerjoin=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_P))
         self.assert_compile(
             q,
@@ -875,7 +876,7 @@ class SubclassRelationshipTest(
 
         Job_A = aliased(Job)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(DataContainer.jobs.of_type(Job_A))
         self.assert_compile(
             q,
@@ -894,7 +895,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(Job_P, DataContainer.jobs)
         self.assert_compile(
             q,
@@ -915,7 +916,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob, flat=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(Job_P, DataContainer.jobs)
         self.assert_compile(
             q,
@@ -936,7 +937,7 @@ class SubclassRelationshipTest(
 
         Job_P = with_polymorphic(Job, SubJob, aliased=True)
 
-        s = Session()
+        s = fixture_session()
         q = s.query(DataContainer).join(Job_P, DataContainer.jobs)
         self.assert_compile(
             q,
@@ -1185,7 +1186,7 @@ class SubclassRelationshipTest3(
             B1 = aliased(B1, name="bbb")
             C1 = aliased(C1, name="ccc")
 
-        sess = Session()
+        sess = fixture_session()
         abc = sess.query(A1)
 
         if join_of_type:

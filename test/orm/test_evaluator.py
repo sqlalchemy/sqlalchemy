@@ -13,12 +13,12 @@ from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -290,7 +290,7 @@ class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
     def test_delete_not_expired(self):
         Parent, Child = self.classes("Parent", "Child")
 
-        session = Session(expire_on_commit=False)
+        session = fixture_session(expire_on_commit=False)
 
         p = Parent(id=1)
         session.add(p)
@@ -307,7 +307,7 @@ class M2OEvaluateTest(fixtures.DeclarativeMappedTest):
     def test_delete_expired(self):
         Parent, Child = self.classes("Parent", "Child")
 
-        session = Session()
+        session = fixture_session()
 
         p = Parent(id=1)
         session.add(p)

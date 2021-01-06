@@ -9,6 +9,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
+from sqlalchemy import MetaData
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
@@ -16,6 +17,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
@@ -25,7 +27,6 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import defer
@@ -51,18 +52,21 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import eq_ignore_whitespace
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import ComparableEntity
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from . import _fixtures
 from .inheritance import _poly_fixtures
+from .test_bind import GetBindTest as _GetBindTest
 from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
@@ -114,7 +118,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_deprecated_negative_slices(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id)
 
         with testing.expect_deprecated(
@@ -143,7 +147,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_deprecated_negative_slices_compile(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id)
 
         with testing.expect_deprecated(
@@ -181,7 +185,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_aliased(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         with testing.expect_deprecated_20(join_aliased_dep):
             q1 = s.query(User).join(User.addresses, aliased=True)
@@ -197,7 +201,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         u1 = aliased(User)
 
@@ -219,7 +223,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         u1 = aliased(User)
 
@@ -236,7 +240,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_str_join_target(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep):
             q1 = s.query(User).join("addresses")
@@ -251,7 +255,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_str_rel_loader_opt(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User).options(joinedload("addresses"))
 
@@ -272,7 +276,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_str_col_loader_opt(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         q1 = s.query(User).options(defer("name"))
 
@@ -286,7 +290,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         u1 = User(id=1)
 
@@ -321,7 +325,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_invalid_column(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         q = s.query(User.id)
 
         with testing.expect_deprecated(r"Query.add_column\(\) is deprecated"):
@@ -334,7 +338,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_via_textasfrom_select_from(self):
         User = self.classes.User
-        s = create_session()
+        s = fixture_session()
 
         with self._expect_implicit_subquery():
             eq_(
@@ -350,7 +354,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_text_as_column(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         # TODO: this works as of "use rowproxy for ORM keyed tuple"
         # Ieb9085e9bcff564359095b754da9ae0af55679f0
@@ -374,7 +378,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_query_as_scalar(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
         with assertions.expect_deprecated(
             r"The Query.as_scalar\(\) method is deprecated and will "
             "be removed in a future release."
@@ -385,7 +389,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, users = self.classes.User, self.tables.users
 
         sel = users.select()
-        sess = create_session()
+        sess = fixture_session()
 
         with self._expect_implicit_subquery():
             eq_(
@@ -399,7 +403,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_select_entity_from_select(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = create_session()
+        sess = fixture_session()
         with self._expect_implicit_subquery():
             self.assert_compile(
                 sess.query(User.name).select_entity_from(
@@ -413,7 +417,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_select_entity_from_q_statement(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(User)
         with self._expect_implicit_subquery():
@@ -427,7 +431,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_select_from_q_statement_no_aliasing(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(User)
         with self._expect_implicit_subquery():
@@ -455,7 +459,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
             )
         )
-        sess = create_session()
+        sess = fixture_session()
 
         # better way.  use select_entity_from()
         def go():
@@ -477,7 +481,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.tables.users,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # same thing, but alias addresses, so that the adapter
         # generated by select_entity_from() is wrapped within
@@ -506,7 +510,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_select(self):
         users = self.tables.users
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._expect_implicit_subquery():
             self.assert_compile(
@@ -531,7 +535,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # mapper(Address, addresses)
 
         sel = users.select(users.c.id.in_([7, 8]))
-        sess = create_session()
+        sess = fixture_session()
 
         with self._expect_implicit_subquery():
             result = (
@@ -606,7 +610,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         sel = users.select(users.c.id.in_([7, 8]))
 
         with self._expect_implicit_subquery():
@@ -633,7 +637,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, users = self.classes.User, self.tables.users
 
         sel = users.select(users.c.id.in_([7, 8]))
-        sess = create_session()
+        sess = fixture_session()
 
         with self._expect_implicit_subquery():
             eq_(
@@ -649,7 +653,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sel = users.select(users.c.id.in_([7, 8]))
-        sess = create_session()
+        sess = fixture_session()
 
         def go():
             with self._expect_implicit_subquery():
@@ -727,7 +731,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = Session()
+        sess = fixture_session()
 
         oalias = orders.select()
 
@@ -800,7 +804,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
     def insert_data(cls, connection):
         Node = cls.classes.Node
 
-        sess = create_session(connection)
+        sess = Session(connection)
         n1 = Node(data="n1")
         n1.append(Node(data="n11"))
         n1.append(Node(data="n12"))
@@ -819,7 +823,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         n1 = aliased(Node)
 
@@ -886,7 +890,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_two(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -906,7 +910,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_three(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -927,7 +931,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_multiple_explicit_entities_five(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
 
         parent = aliased(Node)
         grandparent = aliased(Node)
@@ -952,7 +956,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
     def test_negative_slice_access_raises(self):
         User, Address = self._user_address_fixture()
-        sess = create_session(testing.db)
+        sess = fixture_session()
         u1 = sess.get(User, 8)
 
         with testing.expect_deprecated_20(
@@ -986,7 +990,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         with self._from_self_deprecated():
             q = s.query(User).from_self()
@@ -1007,7 +1011,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_distinct_on(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             q = (
@@ -1047,7 +1051,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         """
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         with self._from_self_deprecated():
             q = (
                 sess.query(User, Address.email_address)
@@ -1068,7 +1072,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             q = (
@@ -1105,7 +1109,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         # explicit onclause with from_self(), means
         # the onclause must be aliased against the query's custom
         # FROM object
@@ -1127,7 +1131,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             self.assert_compile(
@@ -1153,7 +1157,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_9(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
         with self._from_self_deprecated():
             self.assert_compile(
                 sess.query(User)
@@ -1171,7 +1175,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_anonymous_expression_from_self_twice_oldstyle(self):
         # relies upon _orm_only_from_obj_alias setting
 
-        sess = create_session()
+        sess = fixture_session()
         c1, c2 = column("c1"), column("c2")
         q1 = sess.query(c1, c2).filter(c1 == "dog")
         with self._from_self_deprecated():
@@ -1193,7 +1197,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         Address = self.classes.Address
         addresses = self.tables.addresses
 
-        sess = create_session()
+        sess = fixture_session()
         q1 = sess.query(User.id).filter(User.id > 5)
         with self._from_self_deprecated():
             q1 = q1.from_self()
@@ -1220,7 +1224,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         Address = self.classes.Address
         addresses = self.tables.addresses
 
-        sess = create_session()
+        sess = fixture_session()
         q1 = sess.query(User.id).filter(User.id > 5)
         with self._from_self_deprecated():
             q1 = q1.from_self()
@@ -1242,7 +1246,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         # relies upon _orm_only_from_obj_alias setting
         from sqlalchemy.sql import column
 
-        sess = create_session()
+        sess = fixture_session()
         t1 = table("t1", column("c1"), column("c2"))
         q1 = sess.query(t1.c.c1, t1.c.c2).filter(t1.c.c1 == "dog")
         with self._from_self_deprecated():
@@ -1261,7 +1265,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_self_referential(self):
         Order = self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
         oalias = aliased(Order)
 
         with self._from_self_deprecated():
@@ -1364,7 +1368,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         # relies upon _orm_only_from_obj_alias setting
         Order = self.classes.Order
 
-        sess = create_session()
+        sess = fixture_session()
 
         # ensure column expressions are taken from inside the subquery, not
         # restated at the top
@@ -1394,7 +1398,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
     def test_column_access_from_self(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             q = sess.query(User).from_self()
@@ -1408,7 +1412,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
     def test_column_access_from_self_twice(self):
         User = self.classes.User
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             q = sess.query(User).from_self(User.id, User.name).from_self()
@@ -1428,7 +1432,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         adalias = aliased(Address)
         # select from aliasing + explicit aliasing
@@ -1455,7 +1459,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # anon + select from aliasing
         aa = aliased(Address)
@@ -1475,7 +1479,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         adalias = aliased(Address)
         # test eager aliasing, with/without select_entity_from aliasing
@@ -1606,7 +1610,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         with self._from_self_deprecated():
             eq_(
                 [User(id=8), User(id=9)],
-                create_session()
+                fixture_session()
                 .query(User)
                 .filter(User.id.in_([8, 9]))
                 .from_self()
@@ -1616,7 +1620,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         with self._from_self_deprecated():
             eq_(
                 [User(id=8), User(id=9)],
-                create_session()
+                fixture_session()
                 .query(User)
                 .order_by(User.id)
                 .slice(1, 3)
@@ -1628,7 +1632,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 [User(id=8)],
                 list(
-                    create_session()
+                    fixture_session()
                     .query(User)
                     .filter(User.id.in_([8, 9]))
                     .from_self()
@@ -1647,7 +1651,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
                     (User(id=8), Address(id=4)),
                     (User(id=9), Address(id=5)),
                 ],
-                create_session()
+                fixture_session()
                 .query(User)
                 .filter(User.id.in_([8, 9]))
                 .from_self()
@@ -1661,7 +1665,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         Address = self.classes.Address
 
         eq_(
-            create_session()
+            fixture_session()
             .query(Address.user_id, func.count(Address.id).label("count"))
             .group_by(Address.user_id)
             .order_by(Address.user_id)
@@ -1671,7 +1675,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         with self._from_self_deprecated():
             eq_(
-                create_session()
+                fixture_session()
                 .query(Address.user_id, Address.id)
                 .from_self(Address.user_id, func.count(Address.id))
                 .group_by(Address.user_id)
@@ -1683,7 +1687,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_having(self):
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         with self._from_self_deprecated():
             self.assert_compile(
@@ -1702,7 +1706,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        s = create_session()
+        s = fixture_session()
 
         with self._from_self_deprecated():
             q = s.query(User).options(joinedload(User.addresses)).from_self()
@@ -1723,7 +1727,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
 
         User, Address = self.classes.User, self.classes.Address
 
-        s = create_session()
+        s = fixture_session()
 
         ualias = aliased(User)
 
@@ -1775,7 +1779,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
     def test_multiple_entities(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             eq_(
@@ -1805,7 +1809,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         # relies upon _orm_only_from_obj_alias setting
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         with self._from_self_deprecated():
             eq_(
@@ -1879,7 +1883,7 @@ class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
     def test_subq_w_from_self_one(self):
         A, B, C = self.classes("A", "B", "C")
 
-        s = Session()
+        s = fixture_session()
 
         cache = {}
 
@@ -1956,7 +1960,7 @@ class SubqRelationsFromSelfTest(fixtures.DeclarativeMappedTest):
 
         A, B, C = self.classes("A", "B", "C")
 
-        s = Session()
+        s = fixture_session()
         cache = {}
 
         for i in range(3):
@@ -2165,7 +2169,7 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         with testing.expect_deprecated_20(
             "The Session.autocommit parameter is deprecated"
         ):
-            sess = Session(autocommit=True)
+            sess = Session(testing.db, autocommit=True)
         with sess.begin():
             sess.add(User(name="u1"))
 
@@ -2178,7 +2182,7 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         with testing.expect_deprecated_20(
             "The Session.autocommit parameter is deprecated"
         ):
-            sess = Session(autocommit=True)
+            sess = Session(testing.db, autocommit=True)
 
         def go():
             with sess.begin():
@@ -2191,6 +2195,58 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         with sess.begin():
             sess.add(User(name="u1"))
         eq_(sess.query(User).count(), 1)
+
+
+class AutocommitClosesOnFailTest(fixtures.MappedTest):
+    __requires__ = ("deferrable_or_no_constraints",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("t1", metadata, Column("id", Integer, primary_key=True))
+
+        Table(
+            "t2",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "t1_id",
+                Integer,
+                ForeignKey("t1.id", deferrable=True, initially="deferred"),
+            ),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class T1(cls.Comparable):
+            pass
+
+        class T2(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        T2, T1, t2, t1 = (
+            cls.classes.T2,
+            cls.classes.T1,
+            cls.tables.t2,
+            cls.tables.t1,
+        )
+
+        mapper(T1, t1)
+        mapper(T2, t2)
+
+    def test_close_transaction_on_commit_fail(self):
+        T2 = self.classes.T2
+
+        session = fixture_session(autocommit=True)
+
+        # with a deferred constraint, this fails at COMMIT time instead
+        # of at INSERT time.
+        session.add(T2(t1_id=123))
+
+        assert_raises(sa.exc.IntegrityError, session.flush)
+
+        assert session._legacy_transaction() is None
 
 
 class DeprecatedInhTest(_poly_fixtures._Polymorphic):
@@ -2217,7 +2273,7 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         engineers = self.tables.engineers
         machines = self.tables.machines
 
-        sess = create_session()
+        sess = fixture_session()
 
         mach_alias = machines.select()
         with DeprecatedQueryTest._expect_implicit_subquery():
@@ -2364,7 +2420,7 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("_name", deferred(users.c.name))
         m.add_property("name", synonym("_name"))
 
-        sess = create_session(autocommit=False)
+        sess = fixture_session(autocommit=False)
         assert sess.query(User).get(7)
 
         u = sess.query(User).filter_by(name="jack").one()
@@ -2433,7 +2489,7 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.ArgumentError,
             message,
-            create_session()
+            fixture_session()
             .query(*entity_list)
             .options(*options)
             ._compile_context,
@@ -2458,7 +2514,7 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             },
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated(
             r"The \*addl_attrs on orm.defer is deprecated.  "
@@ -2779,7 +2835,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         User, Address, Order, Item = self.classes(
             "User", "Address", "Order", "Item"
         )
-        q = create_session().query(User).order_by(User.id)
+        q = fixture_session().query(User).order_by(User.id)
 
         def go():
             eq_(
@@ -2813,21 +2869,21 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
         self.assert_sql_count(testing.db, go, count)
 
-        sess = create_session()
+        sess = fixture_session()
         user = sess.query(User).get(7)
 
         closed_mapper = User.closed_orders.entity
         open_mapper = User.open_orders.entity
         eq_(
             [Order(id=1), Order(id=5)],
-            create_session()
+            fixture_session()
             .query(closed_mapper)
             .with_parent(user, property="closed_orders")
             .all(),
         )
         eq_(
             [Order(id=3)],
-            create_session()
+            fixture_session()
             .query(open_mapper)
             .with_parent(user, property="open_orders")
             .all(),
@@ -3004,7 +3060,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
             )
         )
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         # note this has multiple problems because we aren't giving Query
@@ -3040,7 +3096,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
             )
         )
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         def go():
@@ -3066,7 +3122,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         selectquery = users.outerjoin(addresses).select(
             users.c.id < 10,
@@ -3081,7 +3137,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             ):
                 result = list(
                     q.options(contains_eager("addresses")).instances(
-                        selectquery.execute()
+                        sess.execute(selectquery)
                     )
                 )
             assert self.static.user_address_result[0:3] == result
@@ -3096,7 +3152,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             ):
                 result = list(
                     q.options(contains_eager(User.addresses)).instances(
-                        selectquery.execute()
+                        sess.connection().execute(selectquery)
                     )
                 )
             assert self.static.user_address_result[0:3] == result
@@ -3110,7 +3166,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         adalias = addresses.alias("adalias")
@@ -3131,7 +3187,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 result = list(
                     q.options(
                         contains_eager("addresses", alias="adalias")
-                    ).instances(selectquery.execute())
+                    ).instances(sess.connection().execute(selectquery))
                 )
             assert self.static.user_address_result == result
 
@@ -3144,7 +3200,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         adalias = addresses.alias("adalias")
@@ -3161,7 +3217,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 result = list(
                     q.options(
                         contains_eager("addresses", alias=adalias)
-                    ).instances(selectquery.execute())
+                    ).instances(sess.connection().execute(selectquery))
                 )
             assert self.static.user_address_result == result
 
@@ -3176,7 +3232,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         oalias = orders.alias("o1")
@@ -3202,7 +3258,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                     q.options(
                         contains_eager("orders", alias="o1"),
                         contains_eager("orders.items", alias="i1"),
-                    ).instances(query.execute())
+                    ).instances(sess.connection().execute(query))
                 )
             assert self.static.user_order_result == result
 
@@ -3217,7 +3273,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         oalias = orders.alias("o1")
@@ -3245,7 +3301,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                     q.options(
                         contains_eager("orders", alias=oalias),
                         contains_eager("orders.items", alias=ialias),
-                    ).instances(query.execute())
+                    ).instances(sess.connection().execute(query))
                 )
             assert self.static.user_order_result == result
 
@@ -3268,7 +3324,7 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_roundtrip_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_strings_dep):
             q = (
                 sess.query(User)
@@ -3284,7 +3340,7 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_roundtrip_two(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_strings_dep):
             q = (
                 sess.query(User)
@@ -3300,7 +3356,7 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_roundtrip_three(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
@@ -3331,7 +3387,7 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
     def test_columns_augmented_sql_one(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User.id, User.name.label("foo"), Address.id)
@@ -3360,7 +3416,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_on_bulk_update_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = fixture_session()
         canary = Mock()
 
         event.listen(sess, "after_bulk_update", canary.after_bulk_update)
@@ -3390,7 +3446,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_on_bulk_delete_hook(self):
         User, users = self.classes.User, self.tables.users
 
-        sess = Session()
+        sess = fixture_session()
         canary = Mock()
 
         event.listen(sess, "after_bulk_delete", canary.after_bulk_delete)
@@ -3438,7 +3494,7 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_value(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated(r"Query.value\(\) is deprecated"):
             eq_(sess.query(User).filter_by(id=7).value(User.id), 7)
@@ -3457,7 +3513,7 @@ class ImmediateTest(_fixtures.FixtureTest):
     def test_value_cancels_loader_opts(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = (
             sess.query(User)
@@ -3479,7 +3535,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             assert list(sess.query(User).values()) == list()
@@ -3587,7 +3643,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
     def test_values_specific_order_by(self):
         users, User = self.tables.users, self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             assert list(sess.query(User).values()) == list()
@@ -3640,7 +3696,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         q = sess.query(User)
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
@@ -3697,7 +3753,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         OrderAlias = aliased(Order)
 
         with testing.expect_deprecated_20(join_strings_dep):
@@ -3784,7 +3840,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         # no arg error
         with testing.expect_deprecated_20(join_aliased_dep):
             (
@@ -3806,7 +3862,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test a basic aliasized path
         with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
@@ -3892,7 +3948,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_overlapping_paths_two(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test overlapping paths.   User->orders is used by both joins, but
         # rendered once.
@@ -3925,7 +3981,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
             with testing.expect_deprecated_20(*warnings):
                 result = (
-                    create_session()
+                    fixture_session()
                     .query(User)
                     .join("orders", "items", aliased=aliased_)
                     .filter_by(id=3)
@@ -3938,7 +3994,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_overlapping_paths_multilevel(self):
         User = self.classes.User
 
-        s = Session()
+        s = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
             q = (
@@ -3966,7 +4022,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         for oalias, ialias in [
             (True, True),
@@ -4030,7 +4086,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated(join_tuple_form):
             q = (
@@ -4058,7 +4114,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_tuple_form):
             q = (
@@ -4087,7 +4143,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # the old "backwards" form
         with testing.expect_deprecated_20(join_tuple_form, join_strings_dep):
@@ -4115,7 +4171,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep):
             q = (
@@ -4135,7 +4191,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "User", "Order", "Item", "Keyword"
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # ensure when the tokens are broken up that from_joinpoint
         # is set between them
@@ -4163,7 +4219,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_name(self):
         User = self.classes.User
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep):
             self.assert_compile(
@@ -4213,7 +4269,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             User,
         ) = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_chain_dep):
             self.assert_compile(
                 sess.query(User).join(User.orders, Order.items),
@@ -4228,7 +4284,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_7(self):
         Order, User = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         # this query is somewhat nonsensical.  the old system didn't render a
         # correct query for this. In this case its the most faithful to what
         # was asked - there's no linkage between User.orders and "oalias",
@@ -4251,7 +4307,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             User,
         ) = (self.classes.Order, self.classes.User)
 
-        sess = create_session()
+        sess = fixture_session()
         # same as before using an aliased() for User as well
         ualias = aliased(User)
         oalias = aliased(Order)
@@ -4270,7 +4326,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
     def test_single_prop_10(self):
         User, Address = (self.classes.User, self.classes.Address)
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_aliased_dep):
             self.assert_compile(
                 sess.query(User)
@@ -4289,7 +4345,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_aliased_dep, join_chain_dep):
             self.assert_compile(
                 sess.query(User)
@@ -4311,7 +4367,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_chain_dep, join_aliased_dep):
             self.assert_compile(
@@ -4339,7 +4395,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         # this is now a very weird test, nobody should really
         # be using the aliased flag in this way.
@@ -4404,7 +4460,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
             result = (
-                create_session()
+                fixture_session()
                 .query(User)
                 .select_from(users.join(oalias))
                 .filter(
@@ -4418,7 +4474,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
             result = (
-                create_session()
+                fixture_session()
                 .query(User)
                 .select_from(users.join(oalias))
                 .filter(
@@ -4444,7 +4500,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             # id 1 (order 3, owned by jack)
             with testing.expect_deprecated_20(*warnings):
                 result = (
-                    create_session()
+                    fixture_session()
                     .query(User)
                     .join("orders", "items", aliased=aliased_)
                     .filter_by(id=3)
@@ -4457,7 +4513,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
             with testing.expect_deprecated_20(*warnings):
                 result = (
-                    create_session()
+                    fixture_session()
                     .query(User)
                     .join("orders", "items", aliased=aliased_, isouter=True)
                     .filter_by(id=3)
@@ -4470,7 +4526,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
             with testing.expect_deprecated_20(*warnings):
                 result = (
-                    create_session()
+                    fixture_session()
                     .query(User)
                     .outerjoin("orders", "items", aliased=aliased_)
                     .filter_by(id=3)
@@ -4540,7 +4596,7 @@ class AliasFromCorrectLeftTest(
     def test_join_prop_to_string(self):
         A, B, X = self.classes("A", "B", "X")
 
-        s = Session()
+        s = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep):
             q = s.query(B).join(B.a_list, "x_list").filter(X.name == "x1")
@@ -4562,7 +4618,7 @@ class AliasFromCorrectLeftTest(
     def test_join_prop_to_prop(self):
         A, B, X = self.classes("A", "B", "X")
 
-        s = Session()
+        s = fixture_session()
 
         # B -> A, but both are Object.  So when we say A.x_list, make sure
         # we pick the correct right side
@@ -4629,7 +4685,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def insert_data(cls, connection):
         Node = cls.classes.Node
 
-        sess = create_session(connection)
+        sess = Session(connection)
         n1 = Node(data="n1")
         n1.append(Node(data="n11"))
         n1.append(Node(data="n12"))
@@ -4643,7 +4699,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_1(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
             node = (
@@ -4656,7 +4712,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_2(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(join_aliased_dep):
             ret = (
                 sess.query(Node.data)
@@ -4668,7 +4724,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_3_filter_by(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(
             join_strings_dep, join_aliased_dep, join_chain_dep
         ):
@@ -4690,7 +4746,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_3_filter(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
         with testing.expect_deprecated_20(
             join_strings_dep, join_aliased_dep, join_chain_dep
         ):
@@ -4712,7 +4768,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_4_filter_by(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
             q = (
@@ -4739,7 +4795,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def test_join_4_filter(self):
         Node = self.classes.Node
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
             q = (
@@ -4772,7 +4828,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
         nalias = aliased(
             Node, sess.query(Node).filter_by(data="n1").subquery()
         )
@@ -4811,7 +4867,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_string_or_prop_aliased_two(self):
         Node = self.classes.Node
 
-        sess = create_session()
+        sess = fixture_session()
         nalias = aliased(
             Node, sess.query(Node).filter_by(data="n1").subquery()
         )
@@ -4880,7 +4936,7 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
             self.classes.Engineer,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         mach_alias = aliased(Machine, machines.select().subquery())
 
@@ -4913,7 +4969,7 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
             self.classes.Paperwork,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(join_strings_dep, w_polymorphic_dep):
             self.assert_compile(
@@ -4945,7 +5001,7 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
             self.classes.Paperwork,
         )
 
-        sess = create_session()
+        sess = fixture_session()
 
         with testing.expect_deprecated_20(
             join_strings_dep, w_polymorphic_dep, join_aliased_dep
@@ -5002,7 +5058,7 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_mapped_to_select_implicit_left_w_aliased(self):
         T1, T2 = self.classes.T1, self.classes.T2
 
-        sess = Session()
+        sess = fixture_session()
         subq = (
             sess.query(T2.t1_id, func.count(T2.id).label("count"))
             .group_by(T2.t1_id)
@@ -5082,7 +5138,7 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         with testing.expect_deprecated_20(join_strings_dep):
             q = (
-                create_session()
+                fixture_session()
                 .query(T1)
                 .join("t2s_1")
                 .filter(t2.c.id == 5)
@@ -5099,3 +5155,79 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE t2.id = :id_1",
             use_default_dialect=True,
         )
+
+
+class BindSensitiveStringifyTest(fixtures.TestBase):
+    def _fixture(self):
+        # building a totally separate metadata /mapping here
+        # because we need to control if the MetaData is bound or not
+
+        class User(object):
+            pass
+
+        m = MetaData()
+        user_table = Table(
+            "users",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50)),
+        )
+
+        mapper(User, user_table)
+        return User
+
+    def _dialect_fixture(self):
+        class MyDialect(default.DefaultDialect):
+            default_paramstyle = "qmark"
+
+        from sqlalchemy.engine import base
+
+        return base.Engine(mock.Mock(), MyDialect(), mock.Mock())
+
+    def _test(self, bound_session, session_present, expect_bound):
+        if bound_session:
+            eng = self._dialect_fixture()
+        else:
+            eng = None
+
+        User = self._fixture()
+
+        s = Session(eng if bound_session else None)
+        q = s.query(User).filter(User.id == 7)
+        if not session_present:
+            q = q.with_session(None)
+
+        eq_ignore_whitespace(
+            str(q),
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = ?"
+            if expect_bound
+            else "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = :id_1",
+        )
+
+    def test_query_bound_session(self):
+        self._test(True, True, True)
+
+    def test_query_no_session(self):
+        self._test(False, False, False)
+
+    def test_query_unbound_session(self):
+        self._test(False, True, False)
+
+
+class GetBindTest(_GetBindTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        super(GetBindTest, cls).define_tables(metadata)
+        metadata.bind = testing.db
+
+    def test_fallback_table_metadata(self):
+        session = self._fixture({})
+        is_(session.get_bind(self.classes.BaseClass), testing.db)
+
+    def test_bind_base_table_concrete_sub_class(self):
+        base_class_bind = Mock()
+        session = self._fixture({self.tables.base_table: base_class_bind})
+
+        is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)

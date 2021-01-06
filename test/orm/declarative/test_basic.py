@@ -43,7 +43,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import with_metaclass
@@ -68,7 +68,7 @@ class DeclarativeTestBase(
     def teardown(self):
         close_all_sessions()
         clear_mappers()
-        Base.metadata.drop_all()
+        Base.metadata.drop_all(testing.db)
 
 
 class DeclarativeTest(DeclarativeTestBase):
@@ -93,7 +93,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 "user_id", Integer, ForeignKey("users.id"), key="_user_id"
             )
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
 
         eq_(Address.__table__.c["id"].name, "id")
         eq_(Address.__table__.c["_email"].name, "email")
@@ -102,7 +102,7 @@ class DeclarativeTest(DeclarativeTestBase):
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -193,14 +193,15 @@ class DeclarativeTest(DeclarativeTestBase):
             orm_exc.UnmappedClassError,
             "Class .*User has a deferred "
             "mapping on it.  It is not yet usable as a mapped class.",
-            Session().query,
+            fixture_session().query,
             User,
         )
 
         User.prepare()
 
         self.assert_compile(
-            Session().query(User), 'SELECT "user".id AS user_id FROM "user"'
+            fixture_session().query(User),
+            'SELECT "user".id AS user_id FROM "user"',
         )
 
     def test_unicode_string_resolve(self):
@@ -598,8 +599,8 @@ class DeclarativeTest(DeclarativeTestBase):
             email = Column(String(50))
             user_id = Column(Integer)  # note no foreign key
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(
             name="ed",
             addresses=[
@@ -644,8 +645,8 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             name = Column(String(50))
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(name="ed")
         sess.add(u1)
         sess.flush()
@@ -693,7 +694,7 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column(String(50))
             users = relationship("User", order_by="User.fullname")
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(Game).options(joinedload(Game.users)),
             "SELECT game.id AS game_id, game.name AS game_name, "
@@ -738,7 +739,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             id = Column(Integer, primary_key=True)
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A).join(A.d),
             "SELECT a.id AS a_id, a.b_id AS a_b_id FROM a JOIN "
@@ -1061,8 +1062,8 @@ class DeclarativeTest(DeclarativeTestBase):
         # generally go downhill from there.
 
         class_mapper(User)
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(
             name="ed",
             addresses=[
@@ -1158,12 +1159,12 @@ class DeclarativeTest(DeclarativeTestBase):
             master_id = Column(None, ForeignKey(Master.id))
             master = relationship(Master)
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         configure_mappers()
         assert class_mapper(Detail).get_property("master").strategy.use_get
         m1 = Master()
         d1 = Detail(master=m1)
-        sess = create_session()
+        sess = fixture_session()
         sess.add(d1)
         sess.flush()
         sess.expunge_all()
@@ -1193,7 +1194,7 @@ class DeclarativeTest(DeclarativeTestBase):
         assert User.__table__.c.name in set(i.columns)
 
         # tables create fine
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
 
     def test_add_prop(self):
         class User(Base, fixtures.ComparableEntity):
@@ -1217,14 +1218,14 @@ class DeclarativeTest(DeclarativeTestBase):
         Address.user_id = Column(
             "user_id", Integer, ForeignKey("users.id"), key="_user_id"
         )
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         eq_(Address.__table__.c["id"].name, "id")
         eq_(Address.__table__.c["_email"].name, "email")
         eq_(Address.__table__.c["_user_id"].name, "user_id")
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1331,11 +1332,11 @@ class DeclarativeTest(DeclarativeTestBase):
             name = Column("name", String(50))
             addresses = relationship("Address", order_by=Address.email)
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="two"), Address(email="one")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1370,11 +1371,11 @@ class DeclarativeTest(DeclarativeTestBase):
                 "Address", order_by=(Address.email, Address.id)
             )
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="two"), Address(email="one")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1403,7 +1404,7 @@ class DeclarativeTest(DeclarativeTestBase):
         reg = registry(metadata=Base.metadata)
         reg.mapped(User)
         reg.mapped(Address)
-        reg.metadata.create_all()
+        reg.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
@@ -1593,11 +1594,11 @@ class DeclarativeTest(DeclarativeTestBase):
             .where(Address.user_id == User.id)
             .scalar_subquery()
         )
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1641,11 +1642,11 @@ class DeclarativeTest(DeclarativeTestBase):
                     .scalar_subquery()
                 )
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1707,11 +1708,11 @@ class DeclarativeTest(DeclarativeTestBase):
 
         User.a = Column("a", String(10))
         User.b = Column(String(10))
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(name="u1", a="a", b="b")
         eq_(u1.a, "a")
         eq_(User.a.get_history(u1), (["a"], (), ()))
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1742,11 +1743,11 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             addresses = relationship(Address)
 
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -1792,8 +1793,8 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             name = sa.orm.deferred(Column(String(50)))
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         sess.add(User(name="u1"))
         sess.flush()
         sess.expunge_all()
@@ -1825,8 +1826,8 @@ class DeclarativeTest(DeclarativeTestBase):
                 Column("state", String(2)),
             )
 
-        Base.metadata.create_all()
-        sess = Session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         sess.add(User(address=AddressComposite("123 anywhere street", "MD")))
         sess.commit()
         eq_(
@@ -1852,8 +1853,8 @@ class DeclarativeTest(DeclarativeTestBase):
             state = Column(String(2))
             address = composite(AddressComposite, street, state)
 
-        Base.metadata.create_all()
-        sess = Session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         sess.add(User(address=AddressComposite("123 anywhere street", "MD")))
         sess.commit()
         eq_(
@@ -1908,8 +1909,8 @@ class DeclarativeTest(DeclarativeTestBase):
                 "_name", descriptor=property(_get_name, _set_name)
             )
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(name="someuser")
         eq_(u1.name, "SOMENAME someuser")
         sess.add(u1)
@@ -1937,8 +1938,8 @@ class DeclarativeTest(DeclarativeTestBase):
             _name = Column("name", String(50))
             name = sa.orm.synonym("_name", comparator_factory=CustomCompare)
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(name="someuser FOO")
         sess.add(u1)
         sess.flush()
@@ -1962,8 +1963,8 @@ class DeclarativeTest(DeclarativeTestBase):
             name = property(_get_name, _set_name)
 
         User.name = sa.orm.synonym("_name", descriptor=User.name)
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(name="someuser")
         eq_(u1.name, "SOMENAME someuser")
         sess.add(u1)
@@ -2000,11 +2001,11 @@ class DeclarativeTest(DeclarativeTestBase):
             list(Address.user_id.property.columns[0].foreign_keys)[0].column,
             User.__table__.c.id,
         )
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -2044,11 +2045,11 @@ class DeclarativeTest(DeclarativeTestBase):
             .where(Address.user_id == User.id)
             .scalar_subquery()
         )
-        Base.metadata.create_all()
+        Base.metadata.create_all(testing.db)
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -2096,7 +2097,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
             __table__ = Table("t1", Base.metadata, autoload_with=testing.db)
 
-        sess = create_session()
+        sess = fixture_session()
         m = MyObj(id="someid", data="somedata")
         sess.add(m)
         sess.flush()
@@ -2116,8 +2117,8 @@ class DeclarativeTest(DeclarativeTestBase):
             def namesyn(self):
                 return self.name
 
-        Base.metadata.create_all()
-        sess = create_session()
+        Base.metadata.create_all(testing.db)
+        sess = fixture_session()
         u1 = User(name="someuser")
         eq_(u1.name, "someuser")
         eq_(u1.namesyn, "someuser")
@@ -2356,7 +2357,7 @@ def _produce_test(inline, stringbased):
             # PropertyLoader.Comparator will annotate the left side with
             # _orm_adapt, though.
 
-            sess = create_session()
+            sess = fixture_session()
             eq_(
                 sess.query(User)
                 .join(User.addresses, aliased=True)

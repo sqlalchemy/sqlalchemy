@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -77,7 +77,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -110,7 +110,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         u1 = User(
             nom="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -146,7 +146,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
         u1 = User(
             nom="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()
@@ -184,7 +184,7 @@ class DeclarativeReflectionTest(DeclarativeReflectionBase):
                 IMHandle(network="lol", handle="zomg"),
             ],
         )
-        sess = create_session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         sess.expunge_all()

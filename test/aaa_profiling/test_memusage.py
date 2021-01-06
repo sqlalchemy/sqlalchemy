@@ -38,6 +38,7 @@ from sqlalchemy.sql.visitors import replacement_traverse
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -535,7 +536,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
     @testing.emits_warning("Compiled statement cache for.*")
     def test_many_updates(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         wide_table = Table(
             "t",
@@ -551,8 +552,8 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         mapper(Wide, wide_table, _compiled_cache_size=10)
 
-        metadata.create_all()
-        with Session() as session:
+        metadata.create_all(self.engine)
+        with Session(self.engine) as session:
             w1 = Wide()
             session.add(w1)
             session.commit()
@@ -561,7 +562,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         @profile_memory()
         def go():
-            with Session() as session:
+            with Session(self.engine) as session:
                 w1 = session.query(Wide).first()
                 x = counter[0]
                 dec = 10
@@ -578,7 +579,7 @@ class MemUsageWBackendTest(EnsureZeroed):
         try:
             go()
         finally:
-            metadata.drop_all()
+            metadata.drop_all(self.engine)
 
     @testing.requires.savepoints
     @testing.provide_metadata
@@ -1031,7 +1032,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
             t2_mapper = mapper(T2, t2)
             t1_mapper.add_property("bar", relationship(t2_mapper))
-            s1 = Session()
+            s1 = fixture_session()
             # this causes the path_registry to be invoked
             s1.query(t1_mapper)._compile_context()
 
@@ -1151,7 +1152,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         @assert_cycles()
         def go():
@@ -1163,7 +1164,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         @assert_cycles()
         def go():
@@ -1223,7 +1224,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         u1 = aliased(User)
 
@@ -1248,7 +1249,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         def generate():
             objects = s.query(User).filter(User.id == 7).all()
@@ -1264,7 +1265,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_orm_objects_from_query_w_selectinload(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session()
+        s = fixture_session()
 
         def generate():
             objects = s.query(User).options(selectinload(User.addresses)).all()
@@ -1328,7 +1329,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_orm_objects_from_query_w_joinedload(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session()
+        s = fixture_session()
 
         def generate():
             objects = s.query(User).options(joinedload(User.addresses)).all()
@@ -1344,7 +1345,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_query_filtered(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session()
+        s = fixture_session()
 
         @assert_cycles()
         def go():
@@ -1355,7 +1356,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_query_joins(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session()
+        s = fixture_session()
 
         # cycles here are due to ClauseElement._cloned_set, others
         # as of cache key
@@ -1368,7 +1369,7 @@ class CycleTest(_fixtures.FixtureTest):
     def test_query_joinedload(self):
         User, Address = self.classes("User", "Address")
 
-        s = Session()
+        s = fixture_session()
 
         def generate():
             s.query(User).options(joinedload(User.addresses)).all()
@@ -1388,7 +1389,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles()
         def go():
-            str(users.join(addresses))
+            str(users.join(addresses).compile(testing.db))
 
         go()
 
@@ -1400,7 +1401,7 @@ class CycleTest(_fixtures.FixtureTest):
         @assert_cycles(7)
         def go():
             s = select(users).select_from(users.join(addresses))
-            state = s._compile_state_factory(s, s.compile())
+            state = s._compile_state_factory(s, s.compile(testing.db))
             state.froms
 
         go()
@@ -1410,7 +1411,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles()
         def go():
-            str(orm_join(User, Address, User.addresses))
+            str(orm_join(User, Address, User.addresses).compile(testing.db))
 
         go()
 
@@ -1418,7 +1419,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         @assert_cycles()
         def go():
@@ -1430,7 +1431,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         @assert_cycles()
         def go():
@@ -1442,7 +1443,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(User).join(User.addresses).statement
 
@@ -1460,7 +1461,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(User).join(User.addresses).statement
 
@@ -1475,7 +1476,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(User).join(User.addresses).statement
 
@@ -1491,7 +1492,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(User).join(User.addresses).statement
 
@@ -1507,7 +1508,7 @@ class CycleTest(_fixtures.FixtureTest):
         User, Address = self.classes("User", "Address")
         configure_mappers()
 
-        s = Session()
+        s = fixture_session()
 
         stmt = s.query(User).join(User.addresses).statement
 

@@ -1,6 +1,7 @@
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -51,12 +52,14 @@ class RowCountTest(fixtures.TablesTest):
             [{"name": n, "department": d} for n, d in data],
         )
 
-    def test_basic(self):
+    def test_basic(self, connection):
         employees_table = self.tables.employees
-        s = employees_table.select()
-        r = s.execute().fetchall()
+        s = select(
+            employees_table.c.name, employees_table.c.department
+        ).order_by(employees_table.c.employee_id)
+        rows = connection.execute(s).fetchall()
 
-        assert len(r) == len(self.data)
+        eq_(rows, self.data)
 
     def test_update_rowcount1(self, connection):
         employees_table = self.tables.employees

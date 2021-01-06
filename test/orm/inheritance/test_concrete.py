@@ -11,13 +11,12 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -165,7 +164,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        session = create_session()
+        session = fixture_session()
         session.add(Manager("Tom", "knows how to manage things"))
         session.add(Engineer("Kurt", "knows how to hack"))
         session.flush()
@@ -225,7 +224,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="hacker",
         )
-        session = create_session()
+        session = fixture_session()
         tom = Manager("Tom", "knows how to manage things")
 
         assert_raises_message(
@@ -348,7 +347,7 @@ class ConcreteTest(fixtures.MappedTest):
             polymorphic_identity="engineer",
         )
 
-        session = create_session()
+        session = fixture_session()
         tom = ManagerWHybrid("Tom", "mgrdata")
 
         # mapping did not impact the engineer_info
@@ -422,7 +421,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="hacker",
         )
-        session = create_session()
+        session = fixture_session()
         tom = Manager("Tom", "knows how to manage things")
         jerry = Engineer("Jerry", "knows how to program")
         hacker = Hacker("Kurt", "Badass", "knows how to hack")
@@ -509,7 +508,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="hacker",
         )
-        session = create_session()
+        session = fixture_session()
         jdoe = Employee("Jdoe")
         tom = Manager("Tom", "knows how to manage things")
         jerry = Engineer("Jerry", "knows how to program")
@@ -635,7 +634,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        session = create_session()
+        session = fixture_session()
         c = Company()
         c.employees.append(Manager("Tom", "knows how to manage things"))
         c.employees.append(Engineer("Kurt", "knows how to hack"))
@@ -788,7 +787,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                 "many_b": relationship(B, back_populates="some_dest"),
             },
         )
-        sess = sessionmaker()()
+        sess = fixture_session()
         dest1 = Dest(name="c1")
         dest2 = Dest(name="c2")
         a1 = A(some_dest=dest1, aname="a1")
@@ -916,7 +915,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         dest1 = Dest(name="c1")
         dest2 = Dest(name="c2")
         a1 = A(some_dest=dest1, aname="a1", id=1)
@@ -1021,7 +1020,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         assert B.some_dest.property.parent is class_mapper(B)
         assert A.some_dest.property.parent is class_mapper(A)
 
-        sess = sessionmaker()()
+        sess = fixture_session()
         dest1 = Dest(name="d1")
         dest2 = Dest(name="d2")
         a1 = A(some_dest=dest2, aname="a1")
@@ -1030,7 +1029,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         sess.add_all([dest1, dest2, c1, a1, b1])
         sess.commit()
 
-        sess2 = sessionmaker()()
+        sess2 = fixture_session()
         merged_c1 = sess2.merge(c1)
         eq_(merged_c1.some_dest.name, "d2")
         eq_(merged_c1.some_dest_id, c1.some_dest_id)
@@ -1135,7 +1134,7 @@ class ManyToManyTest(fixtures.MappedTest):
             },
         )
         mapper(Related, related)
-        sess = sessionmaker()()
+        sess = fixture_session()
         b1, s1, r1, r2, r3 = Base(), Sub(), Related(), Related(), Related()
         b1.related.append(r1)
         b1.related.append(r2)
@@ -1227,7 +1226,7 @@ class ColKeysTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="refugee",
         )
-        sess = create_session()
+        sess = fixture_session()
         eq_(sess.get(Refugee, 1).name, "refugee1")
         eq_(sess.get(Refugee, 2).name, "refugee2")
         eq_(sess.get(Office, 1).name, "office1")

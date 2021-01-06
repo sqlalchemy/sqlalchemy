@@ -21,7 +21,6 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -34,6 +33,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
@@ -257,7 +257,7 @@ class _CollectionOperations(fixtures.TestBase):
         metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session(testing.db)
+        self.session = fixture_session()
         self.Parent, self.Child = Parent, Child
 
     def teardown(self):
@@ -943,7 +943,7 @@ class ProxyFactoryTest(ListTest):
         metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session(testing.db)
+        self.session = fixture_session()
         self.Parent, self.Child = Parent, Child
 
     def test_sequence_ops(self):
@@ -1004,7 +1004,7 @@ class ScalarTest(fixtures.TestBase):
         mapper(Child, children_table)
 
         metadata.create_all(testing.db)
-        session = create_session(testing.db)
+        session = fixture_session()
 
         def roundtrip(obj):
             if obj not in session:
@@ -1193,7 +1193,7 @@ class LazyLoadTest(fixtures.TestBase):
         metadata.create_all(testing.db)
 
         self.metadata = metadata
-        self.session = create_session(testing.db)
+        self.session = fixture_session()
         self.Parent, self.Child = Parent, Child
         self.table = parents_table
 
@@ -1369,7 +1369,7 @@ class ReconstitutionTest(fixtures.MappedTest):
             properties=dict(children=relationship(Child)),
         )
         mapper(Child, self.tables.children)
-        session = create_session()
+        session = fixture_session()
 
         def add_child(parent_name, child_name):
             parent = session.query(Parent).filter_by(name=parent_name).one()
@@ -3367,7 +3367,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     def test_comparator_ambiguous(self):
         A, B = self.classes("A", "B")
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(A).filter(A.b_data.any()),
             "SELECT a.id AS a_id FROM a WHERE EXISTS "
@@ -3377,7 +3377,7 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     def test_explicit_expr(self):
         (C,) = self.classes("C")
 
-        s = Session()
+        s = fixture_session()
         self.assert_compile(
             s.query(C).filter_by(attr=5),
             "SELECT c.id AS c_id, c.b_id AS c_b_id FROM c WHERE EXISTS "

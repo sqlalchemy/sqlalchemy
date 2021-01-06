@@ -986,23 +986,21 @@ class LOBFetchTest(fixtures.TablesTest):
                 self.data,
             )
 
-    def test_large_stream(self):
+    def test_large_stream(self, connection):
         binary_table = self.tables.binary_table
-        result = (
-            binary_table.select()
-            .order_by(binary_table.c.id)
-            .execute()
-            .fetchall()
-        )
+        result = connection.execute(
+            binary_table.select().order_by(binary_table.c.id)
+        ).fetchall()
         eq_(result, [(i, self.stream) for i in range(1, 11)])
 
     def test_large_stream_single_arraysize(self):
         binary_table = self.tables.binary_table
         eng = testing_engine(options={"arraysize": 1})
-        result = eng.execute(
-            binary_table.select().order_by(binary_table.c.id)
-        ).fetchall()
-        eq_(result, [(i, self.stream) for i in range(1, 11)])
+        with eng.connect() as conn:
+            result = conn.execute(
+                binary_table.select().order_by(binary_table.c.id)
+            ).fetchall()
+            eq_(result, [(i, self.stream) for i in range(1, 11)])
 
 
 class EuroNumericTest(fixtures.TestBase):

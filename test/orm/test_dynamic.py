@@ -9,11 +9,9 @@ from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -21,6 +19,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -126,7 +125,7 @@ class _DynamicFixture(object):
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
     def test_basic(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         eq_(
@@ -152,7 +151,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_slice_access(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.get(User, 8)
 
         eq_(u1.addresses.limit(1).one(), Address(id=2))
@@ -162,7 +161,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_negative_slice_access_raises(self):
         User, Address = self._user_address_fixture()
-        sess = create_session(testing.db, future=True)
+        sess = fixture_session(future=True)
         u1 = sess.get(User, 8)
 
         with expect_raises_message(
@@ -194,7 +193,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         would render, without any _clones called."""
 
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         u = q.filter(User.id == 7).first()
@@ -208,7 +207,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_detached_raise(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).get(8)
         sess.expunge(u)
 
@@ -274,7 +273,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_order_by(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).get(8)
         eq_(
             list(u.addresses.order_by(desc(Address.email_address))),
@@ -291,7 +290,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             addresses_args={"order_by": addresses.c.email_address.desc()}
         )
 
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).get(8)
         eq_(
             list(u.addresses),
@@ -326,7 +325,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_count(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).first()
         eq_(u.addresses.count(), 1)
 
@@ -349,7 +348,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
         mapper(User, users)
 
-        sess = create_session()
+        sess = fixture_session()
         ad = sess.query(Address).get(1)
 
         def go():
@@ -362,7 +361,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
     def test_no_count(self):
         User, Address = self._user_address_fixture()
-        sess = create_session()
+        sess = fixture_session()
         q = sess.query(User)
 
         # dynamic collection cannot implement __len__() (at least one that
@@ -400,7 +399,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             items_args={"backref": backref("orders", lazy="dynamic")}
         )
 
-        sess = create_session()
+        sess = fixture_session()
         o1 = Order(id=15, description="order 10")
         i1 = Item(id=10, description="item 8")
         o1.items.append(i1)
@@ -439,7 +438,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
         mapper(Item, items)
 
-        sess = create_session()
+        sess = fixture_session()
         o = sess.query(Order).first()
 
         self.assert_compile(
@@ -477,7 +476,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
         mapper(Item, items)
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).first()
 
         self.assert_compile(
@@ -529,7 +528,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             properties={"item_keywords": relationship(ItemKeyword)},
         )
 
-        sess = create_session()
+        sess = fixture_session()
         order = sess.query(Order).first()
 
         self.assert_compile(
@@ -572,14 +571,14 @@ class UOWTest(
         addresses = self.tables.addresses
         User, Address = self._user_address_fixture()
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = User(name="jack")
         a1 = Address(email_address="foo")
         sess.add_all([u1, a1])
         sess.flush()
 
         eq_(
-            testing.db.scalar(
+            sess.connection().scalar(
                 select(func.count(cast(1, Integer))).where(
                     addresses.c.user_id != None
                 )
@@ -591,16 +590,18 @@ class UOWTest(
         sess.flush()
 
         eq_(
-            testing.db.execute(
+            sess.connection()
+            .execute(
                 select(addresses).where(addresses.c.user_id != None)  # noqa
-            ).fetchall(),
+            )
+            .fetchall(),
             [(a1.id, u1.id, "foo")],
         )
 
         u1.addresses.remove(a1)
         sess.flush()
         eq_(
-            testing.db.scalar(
+            sess.connection().scalar(
                 select(func.count(cast(1, Integer))).where(
                     addresses.c.user_id != None
                 )
@@ -611,9 +612,11 @@ class UOWTest(
         u1.addresses.append(a1)
         sess.flush()
         eq_(
-            testing.db.execute(
+            sess.connection()
+            .execute(
                 select(addresses).where(addresses.c.user_id != None)  # noqa
-            ).fetchall(),
+            )
+            .fetchall(),
             [(a1.id, u1.id, "foo")],
         )
 
@@ -622,9 +625,11 @@ class UOWTest(
         u1.addresses.append(a2)
         sess.flush()
         eq_(
-            testing.db.execute(
+            sess.connection()
+            .execute(
                 select(addresses).where(addresses.c.user_id != None)  # noqa
-            ).fetchall(),
+            )
+            .fetchall(),
             [(a2.id, u1.id, "bar")],
         )
 
@@ -633,7 +638,7 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"order_by": addresses.c.email_address}
         )
-        sess = create_session()
+        sess = fixture_session(autoflush=False)
         u1 = User(name="jack")
         a1 = Address(email_address="a1")
         a2 = Address(email_address="a2")
@@ -669,7 +674,7 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"order_by": addresses.c.email_address}
         )
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u1 = User(name="jack")
         a1 = Address(email_address="a1")
         a2 = Address(email_address="a2")
@@ -691,7 +696,7 @@ class UOWTest(
         # when flushing an append
         User, Address = self._user_address_fixture()
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="jack", addresses=[Address(email_address="a1")])
         sess.add(u1)
         sess.commit()
@@ -721,7 +726,7 @@ class UOWTest(
         # when flushing a remove
         User, Address = self._user_address_fixture()
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="jack", addresses=[Address(email_address="a1")])
         a2 = Address(email_address="a2")
         u1.addresses.append(a2)
@@ -757,7 +762,7 @@ class UOWTest(
 
     def test_rollback(self):
         User, Address = self._user_address_fixture()
-        sess = create_session(
+        sess = fixture_session(
             expire_on_commit=False, autocommit=False, autoflush=True
         )
         u1 = User(name="jack")
@@ -786,7 +791,7 @@ class UOWTest(
             }
         )
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -854,7 +859,7 @@ class UOWTest(
             },
         )
 
-        sess = Session()
+        sess = fixture_session()
         n2, n3 = Node(), Node()
         n1 = Node(children=[n2, n3])
         sess.add(n1)
@@ -872,7 +877,7 @@ class UOWTest(
             }
         )
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -893,7 +898,7 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"backref": "user"}
         )
-        sess = create_session(autoflush=autoflush, autocommit=False)
+        sess = fixture_session(autoflush=autoflush, autocommit=False)
 
         u = User(name="buffy")
 
@@ -948,29 +953,28 @@ class UOWTest(
             addresses_args={"backref": "user"}
         )
 
-        session = create_session()
-        user = User()
-        user.name = "joe"
-        user.fullname = "Joe User"
-        user.password = "Joe's secret"
-        address = Address()
-        address.email_address = "joe@joesdomain.example"
-        address.user = user
-        session.add(user)
-        session.flush()
-        session.expunge_all()
+        with fixture_session() as session:
+            user = User()
+            user.name = "joe"
+            user.fullname = "Joe User"
+            user.password = "Joe's secret"
+            address = Address()
+            address.email_address = "joe@joesdomain.example"
+            address.user = user
+            session.add(user)
+            session.commit()
 
         def query1():
-            session = create_session(testing.db)
+            session = fixture_session()
             user = session.query(User).first()
             return user.addresses.all()
 
         def query2():
-            session = create_session(testing.db)
+            session = fixture_session()
             return session.query(User).first().addresses.all()
 
         def query3():
-            session = create_session(testing.db)
+            session = fixture_session()
             return session.query(User).first().addresses.all()
 
         eq_(query1(), [Address(email_address="joe@joesdomain.example")])
@@ -997,7 +1001,7 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
 
         u1 = User(name="u1")
         a1 = Address(email_address="a1")
-        s = Session(autoflush=autoflush)
+        s = fixture_session(autoflush=autoflush)
         s.add(u1)
         s.flush()
         return u1, a1, s
@@ -1007,7 +1011,7 @@ class HistoryTest(_DynamicFixture, _fixtures.FixtureTest):
 
         o1 = Order()
         i1 = Item(description="i1")
-        s = Session(autoflush=autoflush)
+        s = fixture_session(autoflush=autoflush)
         s.add(o1)
         s.flush()
         return o1, i1, s

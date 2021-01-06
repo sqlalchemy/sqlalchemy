@@ -176,7 +176,6 @@ class TablesTest(TestBase):
 
         cls.bind = cls.setup_bind()
         cls._tables_metadata = sa.MetaData()
-        cls._tables_metadata.bind = cls.bind
 
     @classmethod
     def _setup_once_inserts(cls):
@@ -351,6 +350,12 @@ class _ORMTest(object):
 def create_session(**kw):
     kw.setdefault("autoflush", False)
     kw.setdefault("expire_on_commit", False)
+    return sa.orm.Session(config.db, **kw)
+
+
+def fixture_session(**kw):
+    kw.setdefault("autoflush", True)
+    kw.setdefault("expire_on_commit", True)
     return sa.orm.Session(config.db, **kw)
 
 

@@ -166,10 +166,10 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
                 # seem to be handling this for a profile that skips
                 result.close()
 
-    def test_contains_doesnt_compile(self):
+    def test_contains_doesnt_compile(self, connection):
         t, t2 = self.tables("table1", "table2")
 
-        row = t.select().execute().first()
+        row = connection.execute(t.select()).first()
         c1 = Column("some column", Integer) + Column(
             "some other column", Integer
         )

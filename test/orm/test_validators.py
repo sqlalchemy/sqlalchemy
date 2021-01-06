@@ -2,13 +2,13 @@ from sqlalchemy import exc
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 from sqlalchemy.orm import validates
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from test.orm import _fixtures
@@ -27,7 +27,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                 return name + " modified"
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="ed")
         eq_(u1.name, "ed modified")
         assert_raises(AssertionError, setattr, u1, "name", "fred")
@@ -60,7 +60,7 @@ class ValidatorTest(_fixtures.FixtureTest):
 
         mapper(User, users, properties={"addresses": relationship(Address)})
         mapper(Address, addresses)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="edward")
         a0 = Address(email_address="noemail")
         assert_raises(AssertionError, u1.addresses.append, a0)

@@ -1064,14 +1064,10 @@ class ExecuteTest(fixtures.TestBase):
     @testing.fails_on_everything_except("postgresql")
     def test_as_from(self, connection):
         # TODO: shouldn't this work on oracle too ?
-        x = connection.execute(func.current_date(bind=testing.db)).scalar()
-        y = connection.execute(
-            func.current_date(bind=testing.db).select()
-        ).scalar()
-        z = connection.scalar(func.current_date(bind=testing.db))
-        w = connection.scalar(
-            select("*").select_from(func.current_date(bind=testing.db))
-        )
+        x = connection.execute(func.current_date()).scalar()
+        y = connection.execute(func.current_date().select()).scalar()
+        z = connection.scalar(func.current_date())
+        w = connection.scalar(select("*").select_from(func.current_date()))
 
         assert x == y == z == w
 

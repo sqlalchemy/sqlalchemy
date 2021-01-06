@@ -18,7 +18,6 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import dynamic_loader
 from sqlalchemy.orm import mapper
@@ -36,6 +35,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import ComparableMixin
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
@@ -274,7 +274,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties={"user_name": synonym("_name")},
         )
 
-        s = create_session()
+        s = fixture_session()
         u = s.query(User).get(7)
         eq_(u._name, "jack")
         eq_(u._id, 7)
@@ -324,7 +324,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, users = self.classes.User, self.tables.users
 
         m = self.mapper(User, users)
-        session = create_session()
+        session = fixture_session()
         session.connection(mapper=m)
 
     def test_incomplete_columns(self):
@@ -333,7 +333,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         addresses, Address = self.tables.addresses, self.classes.Address
 
         self.mapper(Address, addresses)
-        s = create_session()
+        s = fixture_session()
         a = (
             s.query(Address)
             .from_statement(
@@ -708,7 +708,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("name", synonym("_name"))
         m.add_property("addresses", relationship(Address))
 
-        sess = create_session(autocommit=False)
+        sess = fixture_session(autocommit=False)
         assert sess.query(User).get(7)
 
         u = sess.query(User).filter_by(name="jack").one()
@@ -754,7 +754,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("_name", users.c.name)
         m.add_property("name", synonym("_name"))
 
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).filter_by(name="jack").one()
         eq_(u._name, "jack")
         eq_(u.name, "jack")
@@ -810,7 +810,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # add property using annotated User.name,
         # needs to be deannotated
         m.add_property("x", column_property(User.name + "name"))
-        s = create_session()
+        s = fixture_session()
         q = s.query(m2).select_from(Address).join(Address.foo)
         self.assert_compile(
             q,
@@ -884,7 +884,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties={"addresses": relationship(Address, backref="_user")},
         )
 
-        sess = create_session()
+        sess = fixture_session()
         u1 = sess.query(User).get(7)
         u2 = sess.query(User).get(8)
         # comparaison ops need to work
@@ -1218,7 +1218,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             primary_key=[users.c.id],
             properties={"add_id": addresses.c.id},
         )
-        result = create_session().query(User).order_by(users.c.id).all()
+        result = fixture_session().query(User).order_by(users.c.id).all()
         eq_(result, self.static.user_result[:3])
 
     def test_mapping_to_join_exclude_prop(self):
@@ -1239,7 +1239,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             primary_key=[users.c.id],
             exclude_properties=[addresses.c.id],
         )
-        result = create_session().query(User).order_by(users.c.id).all()
+        result = fixture_session().query(User).order_by(users.c.id).all()
         eq_(result, self.static.user_result[:3])
 
     def test_mapping_to_join_no_pk(self):
@@ -1258,13 +1258,23 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert addresses in m._pks_by_table
         assert email_bounces not in m._pks_by_table
 
-        sess = create_session()
+        sess = fixture_session()
         a = Address(id=10, email_address="e1")
         sess.add(a)
         sess.flush()
 
-        eq_(select(func.count("*")).select_from(addresses).scalar(), 6)
-        eq_(select(func.count("*")).select_from(email_bounces).scalar(), 5)
+        eq_(
+            sess.connection().scalar(
+                select(func.count("*")).select_from(addresses)
+            ),
+            6,
+        )
+        eq_(
+            sess.connection().scalar(
+                select(func.count("*")).select_from(email_bounces)
+            ),
+            5,
+        )
 
     def test_mapping_to_outerjoin(self):
         """Mapping to an outer join with a nullable composite primary key."""
@@ -1282,7 +1292,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties=dict(address_id=addresses.c.id),
         )
 
-        session = create_session()
+        session = fixture_session()
         result = session.query(User).order_by(User.id, User.address_id).all()
 
         eq_(
@@ -1314,7 +1324,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties=dict(address_id=addresses.c.id),
         )
 
-        session = create_session()
+        session = fixture_session()
         result = session.query(User).order_by(User.id, User.address_id).all()
 
         eq_(
@@ -1370,7 +1380,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         self.mapper(User, users, properties=dict(orders=relationship(Order)))
 
-        session = create_session()
+        session = fixture_session()
         result = (
             session.query(User)
             .select_from(users.join(orders).join(order_items).join(items))
@@ -1402,7 +1412,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         self.mapper(User, s)
-        sess = create_session()
+        sess = fixture_session()
         result = sess.query(User).order_by(s.c.id).all()
 
         for idx, total in enumerate((14, 16)):
@@ -1416,7 +1426,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         self.mapper(User, users)
 
-        session = create_session()
+        session = fixture_session()
         q = session.query(User)
 
         eq_(q.count(), 4)
@@ -1444,7 +1454,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             ),
         )
 
-        session = create_session()
+        session = fixture_session()
         q = (
             session.query(Item)
             .join("keywords")
@@ -1565,7 +1575,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert User.uname.property
         assert User.adlist.property
 
-        sess = create_session()
+        sess = fixture_session()
 
         # test RowTuple names
         row = sess.query(User.id, User.uname).first()
@@ -1600,7 +1610,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             User, users, properties={"x": synonym("id"), "y": synonym("x")}
         )
 
-        s = Session()
+        s = fixture_session()
         u = s.query(User).filter(User.y == 8).one()
         eq_(u.y, 8)
 
@@ -1732,7 +1742,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(User, "name")
         assert hasattr(User, "_name")
 
-        sess = create_session()
+        sess = fixture_session()
         u = sess.query(User).filter(User.name == "jack").one()
         eq_(u.name, "jack")
         u.name = "foo"
@@ -1814,7 +1824,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         User()
         eq_(recon, [])
-        create_session().query(User).first()
+        fixture_session().query(User).first()
         eq_(recon, ["go"])
 
     def test_reconstructor_inheritance(self):
@@ -1851,7 +1861,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         C()
         eq_(recon, [])
 
-        sess = create_session()
+        sess = fixture_session()
         sess.query(A).first()
         sess.query(B).first()
         sess.query(C).first()
@@ -1874,7 +1884,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(recon, ["go"])
 
         recon[:] = []
-        create_session().query(User).first()
+        fixture_session().query(User).first()
         eq_(recon, ["go"])
 
     def test_reconstructor_init_inheritance(self):
@@ -1912,7 +1922,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         eq_(recon, ["A", "B", "C"])
 
         recon[:] = []
-        sess = create_session()
+        sess = fixture_session()
         sess.query(A).first()
         sess.query(B).first()
         sess.query(C).first()
@@ -1936,7 +1946,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User()
         eq_(recon, [])
 
-        create_session().query(User).first()
+        fixture_session().query(User).first()
         eq_(recon, ["go"])
 
     def test_unmapped_error(self):
@@ -2040,7 +2050,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         # using it with an ORM operation, raises
         assert_raises(
-            sa.orm.exc.UnmappedClassError, create_session().add, Sub()
+            sa.orm.exc.UnmappedClassError, fixture_session().add, Sub()
         )
 
     def test_unmapped_subclass_error_premap(self):
@@ -2064,7 +2074,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         # using it with an ORM operation, raises
         assert_raises(
-            sa.orm.exc.UnmappedClassError, create_session().add, Sub()
+            sa.orm.exc.UnmappedClassError, fixture_session().add, Sub()
         )
 
     def test_oldstyle_mixin(self):
@@ -2222,7 +2232,7 @@ class RequirementsTest(fixtures.MappedTest):
         self.mapper(H3, ht3)
         self.mapper(H6, ht6)
 
-        s = create_session()
+        s = fixture_session()
         s.add_all([H1("abc"), H1("def")])
         h1 = H1("ghi")
         s.add(h1)
@@ -2231,7 +2241,7 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h1s.append(H1())
 
         s.flush()
-        eq_(select(func.count("*")).select_from(ht1).scalar(), 4)
+        eq_(s.connection().scalar(select(func.count("*")).select_from(ht1)), 4)
 
         h6 = H6()
         h6.h1a = h1
@@ -2299,7 +2309,7 @@ class RequirementsTest(fixtures.MappedTest):
             H1, ht1, properties={"h2s": relationship(H2, backref="h1")}
         )
         self.mapper(H2, ht2)
-        s = Session()
+        s = fixture_session()
         s.add_all(
             [
                 H1(
@@ -2478,7 +2488,7 @@ class MagicNamesTest(fixtures.MappedTest):
         )
         Map(state="AK", mapper=c)
 
-        sess = create_session()
+        sess = fixture_session()
         sess.add(c)
         sess.flush()
         sess.expunge_all()
@@ -2632,7 +2642,7 @@ class ORMLoggingTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
         tb = users.select().alias()
         self.mapper(User, tb)
-        s = Session()
+        s = fixture_session()
         s.add(User(name="ed"))
         s.commit()
 

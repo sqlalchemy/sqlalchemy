@@ -35,7 +35,7 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -203,11 +203,11 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        s1 = Session()
+        s1 = fixture_session()
         u1 = User()
         s1.add(u1)
 
-        s2 = Session()
+        s2 = fixture_session()
         u2 = User()
         s2.add(u2)
 
@@ -224,11 +224,11 @@ class SessionUtilTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        s1 = Session()
+        s1 = fixture_session()
         u1 = User()
         s1.add(u1)
 
-        s2 = Session()
+        s2 = fixture_session()
         u2 = User()
         s2.add(u2)
 
@@ -255,7 +255,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = create_session()
+        sess = fixture_session(autoflush=False)
         sess.add(User(name="test"))
         sess.flush()
 
@@ -303,7 +303,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="test")
         sess.add(u1)
         sess.commit()
@@ -318,7 +318,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="test")
         sess.add(u1)
         sess.commit()
@@ -334,7 +334,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="test")
         sess.add(u1)
         assert_raises_message(
@@ -348,7 +348,7 @@ class SessionUtilTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(id=1, name="test")
         sess.add(u1)
         sess.commit()
@@ -367,7 +367,7 @@ class SessionStateTest(_fixtures.FixtureTest):
     __prefer_requires__ = ("independent_connections",)
 
     def test_info(self):
-        s = Session()
+        s = fixture_session()
         eq_(s.info, {})
 
         maker = sessionmaker(info={"global": True, "s1": 5})
@@ -419,7 +419,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
 
         u = User()
         u.name = "ed"
@@ -473,7 +473,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = sessionmaker()()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -504,7 +504,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="u1")
         sess.add(u1)
         sess.commit()
@@ -537,7 +537,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        with create_session(autocommit=False, autoflush=True) as sess:
+        with fixture_session(autocommit=False, autoflush=True) as sess:
             u = User()
             u.name = "ed"
             sess.add(u)
@@ -653,7 +653,7 @@ class SessionStateTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        s = create_session()
+        s = fixture_session()
         mapper(
             User,
             users,
@@ -692,7 +692,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert user in s
         assert user not in s.dirty
 
-        s2 = create_session()
+        s2 = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "is already attached to session",
@@ -722,8 +722,8 @@ class SessionStateTest(_fixtures.FixtureTest):
         users = self.tables.users
         mapper(User, users)
 
-        s1 = Session()
-        s2 = Session()
+        s1 = fixture_session()
+        s2 = fixture_session()
 
         u1 = User(id=1, name="u1")
         make_transient_to_detached(u1)  # shorthand for actually persisting it
@@ -743,7 +743,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        with create_session() as s:
+        with fixture_session() as s:
             s.execute(users.delete())
             u1 = User(name="ed")
             s.add(u1)
@@ -775,7 +775,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
         mapper(Address, addresses)
 
-        session = Session()
+        session = fixture_session()
 
         @event.listens_for(session, "after_flush")
         def load_collections(session, flush_context):
@@ -806,8 +806,8 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, pickleable.User
 
         mapper(User, users)
-        sess1 = create_session()
-        sess2 = create_session()
+        sess1 = fixture_session()
+        sess2 = fixture_session()
         u1 = User(name="u1")
         sess1.add(u1)
         assert_raises_message(
@@ -824,7 +824,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
         Session = sessionmaker()
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -870,7 +870,7 @@ class SessionStateTest(_fixtures.FixtureTest):
     def test_no_double_save(self):
         users = self.tables.users
 
-        sess = create_session()
+        sess = fixture_session()
 
         class Foo(object):
             def __init__(self):
@@ -893,7 +893,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         sess.add_all([User(name="u1"), User(name="u2"), User(name="u3")])
         sess.commit()
@@ -911,7 +911,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
         m = mapper(User, users)
 
-        s = Session()
+        s = fixture_session()
 
         @event.listens_for(m, "after_update")
         def e(mapper, conn, target):
@@ -955,7 +955,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         sess.add(User(name="x"))
         sess.commit()
 
@@ -976,7 +976,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         u1 = User(name="x")
         sess.add(u1)
 
@@ -995,7 +995,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        sess = Session()
+        sess = fixture_session()
         sess.add(User(name="x"))
         sess.commit()
 
@@ -1047,7 +1047,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
         """
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
         eq_(
@@ -1058,7 +1058,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_obj_was_gced(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True, autocommit=False, expire_on_commit=False
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
 
@@ -1078,7 +1080,9 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
 
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True, autocommit=False, expire_on_commit=False
+        )
         u = User(name="ed", addresses=[Address(email_address="foo")])
         sess.add(u)
         sess.commit()
@@ -1091,7 +1095,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_obj_was_never_flushed(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         assert_raises_message(
@@ -1120,7 +1124,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_unflushed_obj_became_detached_unexpired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1134,7 +1138,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_unflushed_obj_became_detached_expired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1149,7 +1153,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expr_unflushed_obj_became_detached_expired_by_key(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(autoflush=True, autocommit=False)
+        sess = fixture_session(autoflush=True, autocommit=False)
         u = User(name="ed", addresses=[Address(email_address="foo")])
 
         q = sess.query(Address).filter(Address.user == u)
@@ -1164,7 +1168,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
     def test_deferred_expression_expired_obj_became_detached_expired(self):
         User, Address = self.classes("User", "Address")
 
-        sess = create_session(
+        sess = fixture_session(
             autoflush=True, autocommit=False, expire_on_commit=True
         )
         u = User(name="ed", addresses=[Address(email_address="foo")])
@@ -1207,7 +1211,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
         mapper(Address, addresses)
         mapper(User, users, properties={"addresses": relationship(Address)})
 
-        sess = create_session(autocommit=False, autoflush=True)
+        sess = fixture_session(autocommit=False, autoflush=True)
         u = sess.query(User).get(8)
         newad = Address(email_address="a new address")
         u.addresses.append(newad)
@@ -1244,7 +1248,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
             },
         )
 
-        session = create_session()
+        session = fixture_session()
         u = session.query(User).filter_by(id=7).one()
 
         # get everything to load in both directions
@@ -1288,7 +1292,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
         User = self.classes.User
         u1 = User()
         u1.name = "ed"
-        sess = Session()
+        sess = fixture_session()
         sess.add(u1)
         sess.flush()
         return sess, u1
@@ -1306,7 +1310,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
         u1.name = "ed"
         self._assert_modified(u1)
         self._assert_no_cycle(u1)
-        sess = Session()
+        sess = fixture_session()
         sess.add(u1)
         self._assert_cycle(u1)
         sess.flush()
@@ -1366,7 +1370,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
     def test_move_persistent_clean(self):
         sess, u1 = self._persistent_fixture()
         sess.close()
-        s2 = Session()
+        s2 = fixture_session()
         s2.add(u1)
         self._assert_no_cycle(u1)
         self._assert_not_modified(u1)
@@ -1378,7 +1382,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
         self._assert_modified(u1)
         sess.close()
         self._assert_no_cycle(u1)
-        s2 = Session()
+        s2 = fixture_session()
         s2.add(u1)
         self._assert_cycle(u1)
         self._assert_modified(u1)
@@ -1392,7 +1396,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
         del sess
         gc_collect()
         self._assert_cycle(u1)
-        s2 = Session()
+        s2 = fixture_session()
         s2.add(u1)
         self._assert_cycle(u1)
         self._assert_modified(u1)
@@ -1417,7 +1421,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         users, User = self.tables.users, self.classes.User
 
-        s = create_session()
+        s = fixture_session()
         mapper(User, users)
 
         s.add(User(name="ed"))
@@ -1449,7 +1453,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
     def test_weakref_pickled(self):
         users, User = self.tables.users, pickleable.User
 
-        s = create_session()
+        s = fixture_session()
         mapper(User, users)
 
         s.add(User(name="ed"))
@@ -1486,7 +1490,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        s = sessionmaker()()
+        s = fixture_session()
         mapper(
             User,
             users,
@@ -1524,7 +1528,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        s = sessionmaker()()
+        s = fixture_session()
         mapper(
             User,
             users,
@@ -1561,7 +1565,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1569,7 +1573,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         # can't add u1 to Session,
         # already belongs to u2
-        s2 = Session()
+        s2 = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
             r".*is already attached to session",
@@ -1592,7 +1596,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = Session()
+        sess = fixture_session()
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1629,7 +1633,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
     def test_is_modified(self):
         User, Address = self._default_mapping_fixture()
 
-        s = create_session()
+        s = fixture_session()
 
         # save user
         u = User(name="fred")
@@ -1662,7 +1666,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
 
         User, Address = self._default_mapping_fixture()
 
-        s = Session()
+        s = fixture_session()
         u = User(name="fred", addresses=[Address(email_address="foo")])
         s.add(u)
         s.commit()
@@ -1687,7 +1691,7 @@ class IsModifiedTest(_fixtures.FixtureTest):
     def test_is_modified_syn(self):
         User, users = self.classes.User, self.tables.users
 
-        s = sessionmaker()()
+        s = fixture_session()
 
         mapper(User, users, properties={"uname": sa.orm.synonym("name")})
         u = User(uname="fred")
@@ -1850,7 +1854,7 @@ class SessionInterface(fixtures.TestBase):
             )
 
         def raises_(method, *args, **kw):
-            x_raises_(create_session(), method, *args, **kw)
+            x_raises_(fixture_session(), method, *args, **kw)
 
         for name in [
             "__contains__",
@@ -1874,7 +1878,7 @@ class SessionInterface(fixtures.TestBase):
 
             self._map_it(OK)
 
-            s = create_session()
+            s = fixture_session()
             s.add(OK())
             x_raises_(s, "flush", (user_arg,))
 
@@ -1903,7 +1907,10 @@ class SessionInterface(fixtures.TestBase):
 
         def raises_(method, *args, **kw):
             watchdog.add(method)
-            callable_ = getattr(Session(), method)
+            callable_ = getattr(
+                Session(),
+                method,
+            )
             if is_class:
                 assert_raises(
                     sa.orm.exc.UnmappedClassError, callable_, *args, **kw
@@ -1976,7 +1983,7 @@ class SessionInterface(fixtures.TestBase):
         self._map_it(Mapped)
 
         m1 = Mapped()
-        s = create_session()
+        s = fixture_session()
 
         with mock.patch.object(s, "_validate_persistent"):
             assert_raises_message(
@@ -2107,7 +2114,7 @@ class FlushWarningsTest(fixtures.MappedTest):
         User = self.classes.User
         Address = self.classes.Address
 
-        s = Session()
+        s = fixture_session()
         event.listen(User, "after_insert", fn)
 
         u1 = User(name="u1", addresses=[Address(name="a1")])

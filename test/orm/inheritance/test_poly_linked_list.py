@@ -8,7 +8,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.fixtures import create_session
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -211,7 +211,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         )
 
     def _testlist(self, classes):
-        sess = create_session()
+        sess = fixture_session()
 
         # create objects in a linked list
         count = 1
