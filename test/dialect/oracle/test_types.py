@@ -206,9 +206,11 @@ class TypesTest(fixtures.TestBase):
         t.create(connection)
         connection.execute(
             t.insert(),
-            dict(id=1, data=v1),
-            dict(id=2, data=v2),
-            dict(id=3, data=v3),
+            [
+                dict(id=1, data=v1),
+                dict(id=2, data=v2),
+                dict(id=3, data=v3),
+            ],
         )
 
         eq_(
@@ -767,7 +769,7 @@ class TypesTest(fixtures.TestBase):
             Column("data", oracle.RAW(35)),
         )
         metadata.create_all(connection)
-        connection.execute(raw_table.insert(), id=1, data=b("ABCDEF"))
+        connection.execute(raw_table.insert(), dict(id=1, data=b("ABCDEF")))
         eq_(connection.execute(raw_table.select()).first(), (1, b("ABCDEF")))
 
     def test_reflect_nvarchar(self, metadata, connection):
@@ -842,7 +844,7 @@ class TypesTest(fixtures.TestBase):
 
         t = Table("t", metadata, Column("data", oracle.LONG))
         metadata.create_all(connection)
-        connection.execute(t.insert(), data="xyz")
+        connection.execute(t.insert(), dict(data="xyz"))
         eq_(connection.scalar(select(t.c.data)), "xyz")
 
     def test_longstring(self, metadata, connection):
@@ -858,7 +860,7 @@ class TypesTest(fixtures.TestBase):
         )
         try:
             t = Table("z_test", metadata, autoload_with=connection)
-            connection.execute(t.insert(), id=1.0, add_user="foobar")
+            connection.execute(t.insert(), dict(id=1.0, add_user="foobar"))
             assert connection.execute(t.select()).fetchall() == [(1, "foobar")]
         finally:
             exec_sql(connection, "DROP TABLE Z_TEST")
@@ -909,7 +911,7 @@ class LOBFetchTest(fixtures.TablesTest):
             cls.stream = stream = file_.read(12000)
 
         for i in range(1, 11):
-            connection.execute(binary_table.insert(), id=i, data=stream)
+            connection.execute(binary_table.insert(), dict(id=i, data=stream))
 
     def test_lobs_without_convert(self):
         engine = testing_engine(options=dict(auto_convert_lobs=False))

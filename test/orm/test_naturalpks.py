@@ -315,9 +315,15 @@ class NaturalPKTest(fixtures.MappedTest):
         )
 
         with testing.db.begin() as conn:
-            conn.execute(users.insert(), username="jack", fullname="jack")
-            conn.execute(addresses.insert(), email="jack1", username="jack")
-            conn.execute(addresses.insert(), email="jack2", username="jack")
+            conn.execute(
+                users.insert(), dict(username="jack", fullname="jack")
+            )
+            conn.execute(
+                addresses.insert(), dict(email="jack1", username="jack")
+            )
+            conn.execute(
+                addresses.insert(), dict(email="jack2", username="jack")
+            )
 
         mapper(User, users)
         mapper(

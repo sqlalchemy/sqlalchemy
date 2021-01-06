@@ -336,9 +336,11 @@ class RoundTripTestBase(object):
     def test_round_trip(self, connection):
         connection.execute(
             self.tables.test_table.insert(),
-            {"x": "X1", "y": "Y1"},
-            {"x": "X2", "y": "Y2"},
-            {"x": "X3", "y": "Y3"},
+            [
+                {"x": "X1", "y": "Y1"},
+                {"x": "X2", "y": "Y2"},
+                {"x": "X3", "y": "Y3"},
+            ],
         )
 
         # test insert coercion alone

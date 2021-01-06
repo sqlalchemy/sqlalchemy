@@ -91,7 +91,7 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
     def test_insert_plain_param(self, connection):
         conn = connection
         cattable = self.tables.cattable
-        conn.execute(cattable.insert(), id=5)
+        conn.execute(cattable.insert(), dict(id=5))
         eq_(conn.scalar(select(cattable.c.id)), 5)
 
     def test_insert_values_key_plain(self, connection):
@@ -156,8 +156,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
     __only_on__ = "mssql"
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_fetchid_trigger(self, connection):
+    def test_fetchid_trigger(self, metadata, connection):
         # TODO: investigate test hang on mssql when connection fixture is used
         """
         Verify identity return value on inserting to a trigger table.
@@ -190,7 +189,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         # TODO: check whether this error also occurs with clients other
         #      than the SQL Server Native Client. Maybe an assert_raises
         #      test should be written.
-        meta = self.metadata
+        meta = metadata
         t1 = Table(
             "t1",
             meta,
@@ -230,9 +229,9 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         # seems to work with all linux drivers + backend.  not sure
         # if windows drivers / servers have different behavior here.
         meta.create_all(connection)
-        r = connection.execute(t2.insert(), descr="hello")
+        r = connection.execute(t2.insert(), dict(descr="hello"))
         eq_(r.inserted_primary_key, (200,))
-        r = connection.execute(t1.insert(), descr="hello")
+        r = connection.execute(t1.insert(), dict(descr="hello"))
         eq_(r.inserted_primary_key, (100,))
 
     @testing.provide_metadata

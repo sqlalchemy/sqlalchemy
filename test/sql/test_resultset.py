@@ -95,9 +95,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
         r = connection.execute(users.select())
         rows = []
@@ -110,9 +112,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
         r = connection.execute(users.select())
         rows = []
@@ -129,9 +133,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
 
         sel = (
@@ -148,7 +154,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_comparison(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
         rp = connection.execute(users.select()).first()
 
         eq_(rp, rp)
@@ -222,9 +228,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
 
         for pickle in False, True:
@@ -330,10 +338,11 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
-        connection.execute(users.insert(), user_id=2, user_name="jack")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="jack"))
         connection.execute(
-            addresses.insert(), address_id=1, user_id=2, address="foo@bar.com"
+            addresses.insert(),
+            dict(address_id=1, user_id=2, address="foo@bar.com"),
         )
 
         r = connection.execute(text("select * from addresses")).first()
@@ -345,10 +354,11 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
-        connection.execute(users.insert(), user_id=2, user_name="jack")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="jack"))
         connection.execute(
-            addresses.insert(), address_id=1, user_id=2, address="foo@bar.com"
+            addresses.insert(),
+            dict(address_id=1, user_id=2, address="foo@bar.com"),
         )
 
         r = connection.execute(text("select * from addresses"))
@@ -362,8 +372,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
 
         r = connection.execute(users.select(users.c.user_id == 2)).first()
@@ -380,8 +392,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
 
         r = connection.execute(users.select(users.c.user_id == 2)).first()
@@ -399,8 +413,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
 
         r = connection.execute(
@@ -414,8 +430,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
         r = connection.execute(
             text("select * from users where user_id=2")
@@ -435,8 +453,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
         r = connection.execute(
             text("select * from users where user_id=2").columns(
@@ -457,8 +477,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
         # this will create column() objects inside
         # the select(), these need to match on name anyway
@@ -619,7 +641,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda r: r.cursor_strategy.fetchone(r, r.cursor),
         ]:
             trans = conn.begin()
-            result = conn.execute(users.insert(), user_id=1)
+            result = conn.execute(users.insert(), dict(user_id=1))
             assert_raises_message(
                 exc.ResourceClosedError,
                 "This result object does not return rows. "
@@ -691,7 +713,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_as_args(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
         r = connection.execute(users.select(users.c.user_id == 1)).first()
         connection.execute(users.delete())
         connection.execute(users.insert(), r._mapping)
@@ -719,7 +741,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(users2.delete())
         r = connection.execute(users.select())
-        connection.execute(users2.insert(), *[row._mapping for row in r])
+        connection.execute(users2.insert(), [row._mapping for row in r])
         eq_(
             connection.execute(
                 users2.select().order_by(users2.c.user_id)
@@ -732,7 +754,7 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
         result = connection.execute(users.outerjoin(addresses).select())
         r = result.first()
 
@@ -775,7 +797,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_ambiguous_column_by_col(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
         ua = users.alias()
         u2 = users.alias()
         result = connection.execute(
@@ -807,7 +829,7 @@ class CursorResultTest(fixtures.TablesTest):
         # ticket 2702.  in 0.7 we'd get True, False.
         # in 0.8, both columns are present so it's True;
         # but when they're fetched you'll get the ambiguous error.
-        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
         result = connection.execute(
             select(users.c.user_id, addresses.c.user_id).select_from(
                 users.outerjoin(addresses)
@@ -896,7 +918,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_ambiguous_column_by_col_plus_label(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="john")
+        connection.execute(users.insert(), dict(user_id=1, user_name="john"))
         result = connection.execute(
             select(
                 users.c.user_id,
@@ -910,7 +932,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_fetch_partial_result_map(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="ed")
+        connection.execute(users.insert(), dict(user_id=7, user_name="ed"))
 
         t = text("select * from users").columns(user_name=String())
         eq_(connection.execute(t).fetchall(), [(7, "ed")])
@@ -918,7 +940,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_fetch_unordered_result_map(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="ed")
+        connection.execute(users.insert(), dict(user_id=7, user_name="ed"))
 
         class Goofy1(TypeDecorator):
             impl = String
@@ -948,7 +970,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_column_label_targeting(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="ed")
+        connection.execute(users.insert(), dict(user_id=7, user_name="ed"))
 
         for s in (
             users.select().alias("foo"),
@@ -962,7 +984,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_ro_mapping_py3k(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
 
         row = result.first()
@@ -985,7 +1007,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_ro_mapping_py2k(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
 
         row = result.first()
@@ -1012,7 +1034,7 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
 
         obj = get_object(result)
@@ -1041,7 +1063,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_mapping_keys(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
         eq_(result.keys(), ["user_id", "user_name"])
         row = result.first()
@@ -1055,7 +1077,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_keys_legacy_dont_warn(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
         row = result.first()
         # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
@@ -1065,7 +1087,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_row_namedtuple_legacy_ok(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
         row = result.first()
         eq_(row.user_id, 1)
@@ -1076,7 +1098,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(
             select(
                 users.c.user_id,
@@ -1093,7 +1115,7 @@ class CursorResultTest(fixtures.TablesTest):
     def test_items(self, connection):
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         r = connection.execute(users.select()).first()
         eq_(
             [(x[0].lower(), x[1]) for x in list(r._mapping.items())],
@@ -1119,9 +1141,11 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="foo"),
-            dict(user_id=2, user_name="bar"),
-            dict(user_id=3, user_name="def"),
+            [
+                dict(user_id=1, user_name="foo"),
+                dict(user_id=2, user_name="bar"),
+                dict(user_id=3, user_name="def"),
+            ],
         )
 
         rows = connection.execute(
@@ -1136,7 +1160,7 @@ class CursorResultTest(fixtures.TablesTest):
         # should return values in column definition order
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="foo")
+        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         r = connection.execute(users.select(users.c.user_id == 1)).first()
         eq_(r[0], 1)
         eq_(r[1], "foo")
@@ -1174,12 +1198,14 @@ class CursorResultTest(fixtures.TablesTest):
         self.metadata.create_all(connection)
         connection.execute(
             shadowed.insert(),
-            shadow_id=1,
-            shadow_name="The Shadow",
-            parent="The Light",
-            row="Without light there is no shadow",
-            _parent="Hidden parent",
-            _row="Hidden row",
+            dict(
+                shadow_id=1,
+                shadow_name="The Shadow",
+                parent="The Light",
+                row="Without light there is no shadow",
+                _parent="Hidden parent",
+                _row="Hidden row",
+            ),
         )
         r = connection.execute(
             shadowed.select(shadowed.c.shadow_id == 1)
@@ -1254,7 +1280,8 @@ class CursorResultTest(fixtures.TablesTest):
             with engine.begin() as conn:
                 mock_rowcount.__get__ = Mock()
                 conn.execute(
-                    t.insert(), {"data": "d1"}, {"data": "d2"}, {"data": "d3"}
+                    t.insert(),
+                    [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}],
                 )
 
                 eq_(len(mock_rowcount.__get__.mock_calls), 0)

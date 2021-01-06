@@ -1650,7 +1650,6 @@ class EngineEventsTest(fixtures.TestBase):
             [{"x": 5, "y": 10}, {"x": 8, "y": 9}],
             {},
         ),
-        ((), {"z": 10}, [], {"z": 10}, testing.requires.legacy_engine),
         (({"z": 10},), {}, [], {"z": 10}),
         argnames="multiparams, params, expected_multiparams, expected_params",
     )

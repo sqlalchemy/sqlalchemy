@@ -86,9 +86,11 @@ class QueryTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
 
         concat = ("test: " + users.c.user_name).label("thedata")
@@ -115,9 +117,11 @@ class QueryTest(fixtures.TablesTest):
         users = self.tables.users
         connection.execute(
             users.insert(),
-            {"user_id": 7, "user_name": "jack"},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9, "user_name": "fred"},
+            [
+                {"user_id": 7, "user_name": "jack"},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9, "user_name": "fred"},
+            ],
         )
 
         concat = ("test: " + users.c.user_name).label("thedata")
@@ -171,11 +175,13 @@ class QueryTest(fixtures.TablesTest):
         users = self.tables.users
         connection.execute(
             users.insert(),
-            {"user_id": 1, "user_name": "apples"},
-            {"user_id": 2, "user_name": "oranges"},
-            {"user_id": 3, "user_name": "bananas"},
-            {"user_id": 4, "user_name": "legumes"},
-            {"user_id": 5, "user_name": "hi % there"},
+            [
+                {"user_id": 1, "user_name": "apples"},
+                {"user_id": 2, "user_name": "oranges"},
+                {"user_id": 3, "user_name": "bananas"},
+                {"user_id": 4, "user_name": "legumes"},
+                {"user_id": 5, "user_name": "hi % there"},
+            ],
         )
 
         for expr, result in (
@@ -223,10 +229,12 @@ class QueryTest(fixtures.TablesTest):
         users = self.tables.users
         connection.execute(
             users.insert(),
-            {"user_id": 1, "user_name": "one"},
-            {"user_id": 2, "user_name": "TwO"},
-            {"user_id": 3, "user_name": "ONE"},
-            {"user_id": 4, "user_name": "OnE"},
+            [
+                {"user_id": 1, "user_name": "one"},
+                {"user_id": 2, "user_name": "TwO"},
+                {"user_id": 3, "user_name": "ONE"},
+                {"user_id": 4, "user_name": "OnE"},
+            ],
         )
 
         eq_(
@@ -263,25 +271,26 @@ class QueryTest(fixtures.TablesTest):
 
     def test_compiled_execute(self, connection):
         users = self.tables.users
-        connection.execute(users.insert(), user_id=7, user_name="jack")
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
         s = (
             select(users)
             .where(users.c.user_id == bindparam("id"))
             .compile(connection)
         )
-        eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
+        eq_(connection.execute(s, dict(id=7)).first()._mapping["user_id"], 7)
 
     def test_compiled_insert_execute(self, connection):
         users = self.tables.users
         connection.execute(
-            users.insert().compile(connection), user_id=7, user_name="jack"
+            users.insert().compile(connection),
+            dict(user_id=7, user_name="jack"),
         )
         s = (
             select(users)
             .where(users.c.user_id == bindparam("id"))
             .compile(connection)
         )
-        eq_(connection.execute(s, id=7).first()._mapping["user_id"], 7)
+        eq_(connection.execute(s, dict(id=7)).first()._mapping["user_id"], 7)
 
     def test_repeated_bindparams(self, connection):
         """Tests that a BindParam can be used more than once.
@@ -291,12 +300,12 @@ class QueryTest(fixtures.TablesTest):
         """
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
-        connection.execute(users.insert(), user_id=8, user_name="fred")
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
+        connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
 
         u = bindparam("userid")
         s = users.select(and_(users.c.user_name == u, users.c.user_name == u))
-        r = connection.execute(s, userid="fred").fetchall()
+        r = connection.execute(s, dict(userid="fred")).fetchall()
         assert len(r) == 1
 
     def test_bindparam_detection(self):
@@ -365,9 +374,9 @@ class QueryTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1, user_name="c")
-        connection.execute(users.insert(), user_id=2, user_name="b")
-        connection.execute(users.insert(), user_id=3, user_name="a")
+        connection.execute(users.insert(), dict(user_id=1, user_name="c"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="b"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="a"))
 
         def a_eq(executable, wanted):
             got = list(connection.execute(executable))
@@ -467,9 +476,9 @@ class QueryTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=1)
-        connection.execute(users.insert(), user_id=2, user_name="b")
-        connection.execute(users.insert(), user_id=3, user_name="a")
+        connection.execute(users.insert(), dict(user_id=1))
+        connection.execute(users.insert(), dict(user_id=2, user_name="b"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="a"))
 
         def a_eq(executable, wanted):
             got = list(connection.execute(executable))
@@ -563,9 +572,9 @@ class QueryTest(fixtures.TablesTest):
         """test the behavior of the in_() function."""
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
-        connection.execute(users.insert(), user_id=8, user_name="fred")
-        connection.execute(users.insert(), user_id=9, user_name=None)
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
+        connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
+        connection.execute(users.insert(), dict(user_id=9, user_name=None))
 
         s = users.select(users.c.user_name.in_([]))
         r = connection.execute(s).fetchall()
@@ -821,16 +830,16 @@ class QueryTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
-        connection.execute(users.insert(), user_id=8, user_name="fred")
-        connection.execute(users.insert(), user_id=9, user_name=None)
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
+        connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
+        connection.execute(users.insert(), dict(user_id=9, user_name=None))
 
         u = bindparam("search_key", type_=String)
 
         s = users.select(not_(u.in_([])))
-        r = connection.execute(s, search_key="john").fetchall()
+        r = connection.execute(s, dict(search_key="john")).fetchall()
         assert len(r) == 3
-        r = connection.execute(s, search_key=None).fetchall()
+        r = connection.execute(s, dict(search_key=None)).fetchall()
         assert len(r) == 3
 
     def test_literal_in(self, connection):
@@ -838,9 +847,9 @@ class QueryTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        connection.execute(users.insert(), user_id=7, user_name="jack")
-        connection.execute(users.insert(), user_id=8, user_name="fred")
-        connection.execute(users.insert(), user_id=9, user_name=None)
+        connection.execute(users.insert(), dict(user_id=7, user_name="jack"))
+        connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
+        connection.execute(users.insert(), dict(user_id=9, user_name=None))
 
         s = users.select(not_(literal("john").in_([])))
         r = connection.execute(s).fetchall()
@@ -891,14 +900,6 @@ class RequiredBindTest(fixtures.TablesTest):
 
     def _assert_raises(self, stmt, params):
         with testing.db.connect() as conn:
-            assert_raises_message(
-                exc.StatementError,
-                "A value is required for bind parameter 'x'",
-                conn.execute,
-                stmt,
-                **params
-            )
-
             assert_raises_message(
                 exc.StatementError,
                 "A value is required for bind parameter 'x'",
@@ -967,33 +968,33 @@ class LimitTest(fixtures.TablesTest):
     def insert_data(cls, connection):
         users, addresses = cls.tables("users", "addresses")
         conn = connection
-        conn.execute(users.insert(), user_id=1, user_name="john")
+        conn.execute(users.insert(), dict(user_id=1, user_name="john"))
         conn.execute(
-            addresses.insert(), address_id=1, user_id=1, address="addr1"
+            addresses.insert(), dict(address_id=1, user_id=1, address="addr1")
         )
-        conn.execute(users.insert(), user_id=2, user_name="jack")
+        conn.execute(users.insert(), dict(user_id=2, user_name="jack"))
         conn.execute(
-            addresses.insert(), address_id=2, user_id=2, address="addr1"
+            addresses.insert(), dict(address_id=2, user_id=2, address="addr1")
         )
-        conn.execute(users.insert(), user_id=3, user_name="ed")
+        conn.execute(users.insert(), dict(user_id=3, user_name="ed"))
         conn.execute(
-            addresses.insert(), address_id=3, user_id=3, address="addr2"
+            addresses.insert(), dict(address_id=3, user_id=3, address="addr2")
         )
-        conn.execute(users.insert(), user_id=4, user_name="wendy")
+        conn.execute(users.insert(), dict(user_id=4, user_name="wendy"))
         conn.execute(
-            addresses.insert(), address_id=4, user_id=4, address="addr3"
+            addresses.insert(), dict(address_id=4, user_id=4, address="addr3")
         )
-        conn.execute(users.insert(), user_id=5, user_name="laura")
+        conn.execute(users.insert(), dict(user_id=5, user_name="laura"))
         conn.execute(
-            addresses.insert(), address_id=5, user_id=5, address="addr4"
+            addresses.insert(), dict(address_id=5, user_id=5, address="addr4")
         )
-        conn.execute(users.insert(), user_id=6, user_name="ralph")
+        conn.execute(users.insert(), dict(user_id=6, user_name="ralph"))
         conn.execute(
-            addresses.insert(), address_id=6, user_id=6, address="addr5"
+            addresses.insert(), dict(address_id=6, user_id=6, address="addr5")
         )
-        conn.execute(users.insert(), user_id=7, user_name="fido")
+        conn.execute(users.insert(), dict(user_id=7, user_name="fido"))
         conn.execute(
-            addresses.insert(), address_id=7, user_id=7, address="addr5"
+            addresses.insert(), dict(address_id=7, user_id=7, address="addr5")
         )
 
     def test_select_limit(self, connection):
@@ -1510,16 +1511,22 @@ class JoinTest(fixtures.TablesTest):
 
         conn.execute(
             t1.insert(),
-            {"t1_id": 10, "name": "t1 #10"},
-            {"t1_id": 11, "name": "t1 #11"},
-            {"t1_id": 12, "name": "t1 #12"},
+            [
+                {"t1_id": 10, "name": "t1 #10"},
+                {"t1_id": 11, "name": "t1 #11"},
+                {"t1_id": 12, "name": "t1 #12"},
+            ],
         )
         conn.execute(
             t2.insert(),
-            {"t2_id": 20, "t1_id": 10, "name": "t2 #20"},
-            {"t2_id": 21, "t1_id": 11, "name": "t2 #21"},
+            [
+                {"t2_id": 20, "t1_id": 10, "name": "t2 #20"},
+                {"t2_id": 21, "t1_id": 11, "name": "t2 #21"},
+            ],
         )
-        conn.execute(t3.insert(), {"t3_id": 30, "t2_id": 20, "name": "t3 #30"})
+        conn.execute(
+            t3.insert(), [{"t3_id": 30, "t2_id": 20, "name": "t3 #30"}]
+        )
 
     def assertRows(self, statement, expected):
         """Execute a statement and assert that rows returned equal expected."""

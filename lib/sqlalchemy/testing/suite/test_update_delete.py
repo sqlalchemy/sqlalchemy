@@ -32,7 +32,9 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
 
     def test_update(self, connection):
         t = self.tables.plain_pk
-        r = connection.execute(t.update().where(t.c.id == 2), data="d2_new")
+        r = connection.execute(
+            t.update().where(t.c.id == 2), dict(data="d2_new")
+        )
         assert not r.is_insert
         assert not r.returns_rows
 

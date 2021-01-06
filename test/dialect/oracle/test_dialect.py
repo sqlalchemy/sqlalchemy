@@ -465,7 +465,7 @@ end;
                 outparam("y_out", Float),
                 outparam("z_out", String),
             ),
-            x_in=5,
+            dict(x_in=5),
         )
         eq_(result.out_parameters, {"x_out": 10, "y_out": 75, "z_out": None})
         assert isinstance(result.out_parameters["x_out"], int)
@@ -527,7 +527,7 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
 
         connection.execute(
             select(t).where(t.c.foo.in_(bindparam("uid", expanding=True))),
-            uid=[1, 2, 3],
+            dict(uid=[1, 2, 3]),
         )
 
 

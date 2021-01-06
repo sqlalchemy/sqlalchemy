@@ -47,12 +47,12 @@ class TransactionTest(fixtures.TablesTest):
         users = self.tables.users
         connection = local_connection
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         transaction.commit()
 
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.commit()
 
         transaction = connection.begin()
@@ -67,9 +67,9 @@ class TransactionTest(fixtures.TablesTest):
         users = self.tables.users
         connection = local_connection
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.rollback()
         result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
@@ -80,9 +80,15 @@ class TransactionTest(fixtures.TablesTest):
 
         transaction = connection.begin()
         try:
-            connection.execute(users.insert(), user_id=1, user_name="user1")
-            connection.execute(users.insert(), user_id=2, user_name="user2")
-            connection.execute(users.insert(), user_id=1, user_name="user3")
+            connection.execute(
+                users.insert(), dict(user_id=1, user_name="user1")
+            )
+            connection.execute(
+                users.insert(), dict(user_id=2, user_name="user2")
+            )
+            connection.execute(
+                users.insert(), dict(user_id=1, user_name="user3")
+            )
             transaction.commit()
             assert False
         except Exception as e:
@@ -242,9 +248,9 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         conn2 = connection.execution_options(dummy=True)
-        conn2.execute(users.insert(), user_id=2, user_name="user2")
+        conn2.execute(users.insert(), dict(user_id=2, user_name="user2"))
         transaction.rollback()
         eq_(
             connection.exec_driver_sql("select count(*) from users").scalar(),
@@ -255,10 +261,12 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         trans = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         try:
-            connection.execute(users.insert(), user_id=2, user_name="user2.5")
+            connection.execute(
+                users.insert(), dict(user_id=2, user_name="user2.5")
+            )
         except Exception:
             trans.__exit__(*sys.exc_info())
 
@@ -271,7 +279,7 @@ class TransactionTest(fixtures.TablesTest):
         )
 
         trans = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans.__exit__(None, None, None)
         assert not trans.is_active
         self.assert_(
@@ -285,9 +293,9 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         assert connection.in_transaction()
         transaction.commit()
         assert not connection.in_transaction()
@@ -298,9 +306,9 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         assert connection.in_transaction()
         transaction.close()
         assert not connection.in_transaction()
@@ -312,11 +320,11 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         trans2.rollback()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.commit()
         eq_(
             connection.execute(
@@ -330,11 +338,11 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         trans2.commit()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.commit()
         eq_(
             connection.execute(
@@ -348,18 +356,18 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         transaction.prepare()
         transaction.commit()
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         transaction.commit()
         transaction.close()
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.rollback()
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
         transaction.prepare()
         transaction.rollback()
         transaction.close()
@@ -386,7 +394,9 @@ class TransactionTest(fixtures.TablesTest):
         connection = testing.db.connect()
 
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(
+            users.insert(), dict(dict(user_id=1, user_name="user1"))
+        )
         transaction.prepare()
         connection.invalidate()
 
@@ -415,18 +425,18 @@ class TransactionTest(fixtures.TablesTest):
         conn = local_connection
         users = self.tables.users
         xa = conn.begin_twophase()
-        conn.execute(users.insert(), user_id=1, user_name="user1")
+        conn.execute(users.insert(), dict(user_id=1, user_name="user1"))
         xa.prepare()
         xa.commit()
         xa = conn.begin_twophase()
-        conn.execute(users.insert(), user_id=2, user_name="user2")
+        conn.execute(users.insert(), dict(user_id=2, user_name="user2"))
         xa.prepare()
         xa.rollback()
         xa = conn.begin_twophase()
-        conn.execute(users.insert(), user_id=3, user_name="user3")
+        conn.execute(users.insert(), dict(user_id=3, user_name="user3"))
         xa.rollback()
         xa = conn.begin_twophase()
-        conn.execute(users.insert(), user_id=4, user_name="user4")
+        conn.execute(users.insert(), dict(user_id=4, user_name="user4"))
         xa.prepare()
         xa.commit()
         result = conn.execute(
@@ -456,7 +466,7 @@ class TransactionTest(fixtures.TablesTest):
             rec = conn.connection._connection_record
             raw_dbapi_con = rec.connection
             conn.begin_twophase()
-            conn.execute(users.insert(), user_id=1, user_name="user1")
+            conn.execute(users.insert(), dict(user_id=1, user_name="user1"))
 
         assert rec.connection is raw_dbapi_con
 

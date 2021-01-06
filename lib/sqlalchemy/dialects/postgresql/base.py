@@ -3335,7 +3335,11 @@ class PGDialect(default.DefaultDialect):
                 "WHERE n.nspname = :schema AND c.relkind IN (%s)"
                 % (", ".join("'%s'" % elem for elem in kinds))
             ).columns(relname=sqltypes.Unicode),
-            schema=schema if schema is not None else self.default_schema_name,
+            dict(
+                schema=schema
+                if schema is not None
+                else self.default_schema_name
+            ),
         )
         return [name for name, in result]
 
@@ -3367,8 +3371,12 @@ class PGDialect(default.DefaultDialect):
                 "WHERE n.nspname = :schema AND c.relname = :view_name "
                 "AND c.relkind IN ('v', 'm')"
             ).columns(view_def=sqltypes.Unicode),
-            schema=schema if schema is not None else self.default_schema_name,
-            view_name=view_name,
+            dict(
+                schema=schema
+                if schema is not None
+                else self.default_schema_name,
+                view_name=view_name,
+            ),
         )
         return view_def
 

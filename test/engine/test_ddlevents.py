@@ -490,17 +490,10 @@ class DDLExecutionTest(fixtures.TestBase):
         engine = create_engine("sqlite:///")
         cx = engine.connect()
         cx.begin()
-        table = self.users
         ddl = DDL("SELECT 1")
 
-        for spec in (
-            (cx.execute, ddl),
-            (cx.execute, ddl, table),
-        ):
-            fn = spec[0]
-            arg = spec[1:]
-            r = fn(*arg)
-            eq_(list(r), [(1,)])
+        r = cx.execute(ddl)
+        eq_(list(r), [(1,)])
 
     def test_platform_escape(self):
         """test the escaping of % characters in the DDL construct."""

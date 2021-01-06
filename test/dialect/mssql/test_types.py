@@ -770,7 +770,7 @@ class TypeRoundTripTest(
     def test_date_roundtrips(self, date_fixture, connection):
         t, (d1, t1, d2) = date_fixture
         connection.execute(
-            t.insert(), adate=d1, adatetime=d2, atime1=t1, atime2=d2
+            t.insert(), dict(adate=d1, adatetime=d2, atime1=t1, atime2=d2)
         )
 
         row = connection.execute(t.select()).first()
@@ -876,13 +876,13 @@ class TypeRoundTripTest(
                 sa.exc.DBAPIError,
                 connection.execute,
                 t.insert(),
-                adatetimeoffset=dto_param_value,
+                dict(adatetimeoffset=dto_param_value),
             )
             return
 
         connection.execute(
             t.insert(),
-            adatetimeoffset=dto_param_value,
+            dict(adatetimeoffset=dto_param_value),
         )
 
         row = connection.execute(t.select()).first()
@@ -1248,7 +1248,7 @@ class BinaryTest(fixtures.TestBase):
                 expected = data
 
         with engine.begin() as conn:
-            conn.execute(binary_table.insert(), data=data)
+            conn.execute(binary_table.insert(), dict(data=data))
 
             eq_(conn.scalar(select(binary_table.c.data)), expected)
 
@@ -1263,7 +1263,7 @@ class BinaryTest(fixtures.TestBase):
 
             conn.execute(binary_table.delete())
 
-            conn.execute(binary_table.insert(), data=None)
+            conn.execute(binary_table.insert(), dict(data=None))
             eq_(conn.scalar(select(binary_table.c.data)), None)
 
             eq_(

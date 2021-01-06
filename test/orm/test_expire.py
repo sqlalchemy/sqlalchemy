@@ -1392,14 +1392,18 @@ class PolymorphicExpireTest(fixtures.MappedTest):
 
         connection.execute(
             people.insert(),
-            {"person_id": 1, "name": "person1", "type": "person"},
-            {"person_id": 2, "name": "engineer1", "type": "engineer"},
-            {"person_id": 3, "name": "engineer2", "type": "engineer"},
+            [
+                {"person_id": 1, "name": "person1", "type": "person"},
+                {"person_id": 2, "name": "engineer1", "type": "engineer"},
+                {"person_id": 3, "name": "engineer2", "type": "engineer"},
+            ],
         )
         connection.execute(
             engineers.insert(),
-            {"person_id": 2, "status": "new engineer"},
-            {"person_id": 3, "status": "old engineer"},
+            [
+                {"person_id": 2, "status": "new engineer"},
+                {"person_id": 3, "status": "old engineer"},
+            ],
         )
 
     @classmethod

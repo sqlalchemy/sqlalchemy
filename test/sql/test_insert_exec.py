@@ -82,9 +82,11 @@ class InsertExecTest(fixtures.TablesTest):
         # a length check on all subsequent parameters.
         connection.execute(
             users.insert(),
-            {"user_id": 7},
-            {"user_id": 8, "user_name": "ed"},
-            {"user_id": 9},
+            [
+                {"user_id": 7},
+                {"user_id": 8, "user_name": "ed"},
+                {"user_id": 9},
+            ],
         )
 
     def _test_lastrow_accessor(self, table_, values, assertvalues):
@@ -107,7 +109,7 @@ class InsertExecTest(fixtures.TablesTest):
                     is_(bool(comp.returning), True)
 
             with engine.begin() as connection:
-                result = connection.execute(table_.insert(), **values)
+                result = connection.execute(table_.insert(), values)
                 ret = values.copy()
 
                 for col, id_ in zip(

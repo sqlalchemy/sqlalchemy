@@ -742,7 +742,7 @@ class PostCompileParamsTest(
 
         with self.sql_execution_asserter() as asserter:
             with config.db.connect() as conn:
-                conn.execute(stmt, q=10)
+                conn.execute(stmt, dict(q=10))
 
         asserter.assert_(
             CursorSQL(
@@ -761,7 +761,7 @@ class PostCompileParamsTest(
 
         with self.sql_execution_asserter() as asserter:
             with config.db.connect() as conn:
-                conn.execute(stmt, q=[5, 6, 7])
+                conn.execute(stmt, dict(q=[5, 6, 7]))
 
         asserter.assert_(
             CursorSQL(
@@ -783,7 +783,7 @@ class PostCompileParamsTest(
 
         with self.sql_execution_asserter() as asserter:
             with config.db.connect() as conn:
-                conn.execute(stmt, q=[(5, 10), (12, 18)])
+                conn.execute(stmt, dict(q=[(5, 10), (12, 18)]))
 
         asserter.assert_(
             CursorSQL(
@@ -807,7 +807,7 @@ class PostCompileParamsTest(
 
         with self.sql_execution_asserter() as asserter:
             with config.db.connect() as conn:
-                conn.execute(stmt, q=[(5, "z1"), (12, "z3")])
+                conn.execute(stmt, dict(q=[(5, "z1"), (12, "z3")]))
 
         asserter.assert_(
             CursorSQL(

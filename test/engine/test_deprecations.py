@@ -2,6 +2,7 @@ import re
 
 import sqlalchemy as tsa
 import sqlalchemy as sa
+from sqlalchemy import bindparam
 from sqlalchemy import create_engine
 from sqlalchemy import DDL
 from sqlalchemy import engine
@@ -508,13 +509,13 @@ class TransactionTest(fixtures.TablesTest):
         connection.begin()
         branched = connection.connect()
         assert branched.in_transaction()
-        branched.execute(users.insert(), user_id=1, user_name="user1")
+        branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             nested = branched.begin()
-        branched.execute(users.insert(), user_id=2, user_name="user2")
+        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
         nested.rollback()
         assert not connection.in_transaction()
 
@@ -559,16 +560,16 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
 
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             trans3 = connection.begin()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         trans3.rollback()
 
         assert_raises_message(
@@ -580,7 +581,7 @@ class TransactionTest(fixtures.TablesTest):
         trans2.rollback()
         assert connection._nested_transaction is None
 
-        connection.execute(users.insert(), user_id=4, user_name="user4")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
         transaction.commit()
         eq_(
             connection.execute(
@@ -602,24 +603,24 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin_twophase()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             transaction2 = connection.begin()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         transaction3 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             transaction4 = connection.begin()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
         transaction4.commit()
         transaction3.rollback()
-        connection.execute(users.insert(), user_id=5, user_name="user5")
+        connection.execute(users.insert(), dict(user_id=5, user_name="user5"))
         transaction2.commit()
         transaction.prepare()
         transaction.commit()
@@ -664,16 +665,16 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             trans2 = connection.begin()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
-        connection.execute(users.insert(), user_id=5, user_name="user5")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
+        connection.execute(users.insert(), dict(user_id=5, user_name="user5"))
         assert connection.in_transaction()
         trans2.close()
         assert connection.in_transaction()
@@ -692,16 +693,16 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             trans2 = connection.begin()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
-        connection.execute(users.insert(), user_id=5, user_name="user5")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
+        connection.execute(users.insert(), dict(user_id=5, user_name="user5"))
         assert connection.in_transaction()
         trans2.close()
         assert connection.in_transaction()
@@ -746,13 +747,13 @@ class TransactionTest(fixtures.TablesTest):
             transaction = connection.begin()
             try:
                 connection.execute(
-                    users.insert(), user_id=1, user_name="user1"
+                    users.insert(), dict(user_id=1, user_name="user1")
                 )
                 connection.execute(
-                    users.insert(), user_id=2, user_name="user2"
+                    users.insert(), dict(user_id=2, user_name="user2")
                 )
                 connection.execute(
-                    users.insert(), user_id=3, user_name="user3"
+                    users.insert(), dict(user_id=3, user_name="user3")
                 )
                 with testing.expect_deprecated_20(
                     r"Calling .begin\(\) when a transaction is already "
@@ -761,10 +762,10 @@ class TransactionTest(fixtures.TablesTest):
                     trans2 = connection.begin()
                 try:
                     connection.execute(
-                        users.insert(), user_id=4, user_name="user4"
+                        users.insert(), dict(user_id=4, user_name="user4")
                     )
                     connection.execute(
-                        users.insert(), user_id=5, user_name="user5"
+                        users.insert(), dict(user_id=5, user_name="user5")
                     )
                     raise Exception("uh oh")
                     trans2.commit()
@@ -786,16 +787,16 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
-        connection.execute(users.insert(), user_id=2, user_name="user2")
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         with testing.expect_deprecated_20(
             r"Calling .begin\(\) when a transaction is already "
             "begun, creating a 'sub' transaction"
         ):
             trans2 = connection.begin()
-        connection.execute(users.insert(), user_id=4, user_name="user4")
-        connection.execute(users.insert(), user_id=5, user_name="user5")
+        connection.execute(users.insert(), dict(user_id=4, user_name="user4"))
+        connection.execute(users.insert(), dict(user_id=5, user_name="user5"))
         trans2.commit()
         transaction.rollback()
         self.assert_(
@@ -930,9 +931,9 @@ class TransactionTest(fixtures.TablesTest):
         trans = connection.begin()
         branched = connection.connect()
         assert branched.in_transaction()
-        branched.execute(users.insert(), user_id=1, user_name="user1")
+        branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
         nested = branched.begin_nested()
-        branched.execute(users.insert(), user_id=2, user_name="user2")
+        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
         nested.rollback()
         assert connection.in_transaction()
         trans.commit()
@@ -951,9 +952,11 @@ class TransactionTest(fixtures.TablesTest):
             r"The current statement is being autocommitted using "
             "implicit autocommit"
         ):
-            branched.execute(users.insert(), user_id=1, user_name="user1")
+            branched.execute(
+                users.insert(), dict(user_id=1, user_name="user1")
+            )
         nested = branched.begin_twophase()
-        branched.execute(users.insert(), user_id=2, user_name="user2")
+        branched.execute(users.insert(), dict(user_id=2, user_name="user2"))
         nested.rollback()
         assert not connection.in_transaction()
         eq_(
@@ -1615,6 +1618,44 @@ class EngineEventsTest(fixtures.TestBase):
                     testparams == params or testparams == posn
                 ):
                     break
+
+    @testing.combinations(
+        ((), {"z": 10}, [], {"z": 10}, testing.requires.legacy_engine),
+    )
+    def test_modify_parameters_from_event_one(
+        self, multiparams, params, expected_multiparams, expected_params
+    ):
+        # this is testing both the normalization added to parameters
+        # as of I97cb4d06adfcc6b889f10d01cc7775925cffb116 as well as
+        # that the return value from the event is taken as the new set
+        # of parameters.
+        def before_execute(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            eq_(multiparams, expected_multiparams)
+            eq_(params, expected_params)
+            return clauseelement, (), {"q": "15"}
+
+        def after_execute(
+            conn, clauseelement, multiparams, params, result, execution_options
+        ):
+            eq_(multiparams, ())
+            eq_(params, {"q": "15"})
+
+        e1 = testing_engine(config.db_url)
+        event.listen(e1, "before_execute", before_execute, retval=True)
+        event.listen(e1, "after_execute", after_execute)
+
+        with e1.connect() as conn:
+            with testing.expect_deprecated_20(
+                r"The connection\.execute\(\) method"
+            ):
+                result = conn.execute(
+                    select(bindparam("q", type_=String)),
+                    *multiparams,
+                    **params
+                )
+            eq_(result.all(), [("15",)])
 
     def test_retval_flag(self):
         canary = []

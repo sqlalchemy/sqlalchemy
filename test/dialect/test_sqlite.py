@@ -106,7 +106,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             exc.StatementError,
             connection.execute,
             select(1).where(bindparam("date", type_=Date)),
-            date=str(datetime.date(2007, 10, 30)),
+            dict(date=str(datetime.date(2007, 10, 30))),
         )
 
     def test_cant_parse_datetime_message(self, connection):
@@ -305,7 +305,7 @@ class JSONTest(fixtures.TestBase):
 
         value = {"json": {"foo": "bar"}, "recs": ["one", "two"]}
 
-        connection.execute(sqlite_json.insert(), foo=value)
+        connection.execute(sqlite_json.insert(), dict(foo=value))
 
         eq_(connection.scalar(select(sqlite_json.c.foo)), value)
 
@@ -316,7 +316,7 @@ class JSONTest(fixtures.TestBase):
 
         value = {"json": {"foo": "bar"}}
 
-        connection.execute(sqlite_json.insert(), foo=value)
+        connection.execute(sqlite_json.insert(), dict(foo=value))
 
         eq_(
             connection.scalar(select(sqlite_json.c.foo["json"])), value["json"]
@@ -2397,11 +2397,11 @@ class SavepointTest(fixtures.TablesTest):
         users = self.tables.users
         connection = self.bind.connect()
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         trans2.rollback()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.commit()
         eq_(
             connection.execute(
@@ -2415,11 +2415,11 @@ class SavepointTest(fixtures.TablesTest):
         users = self.tables.users
         connection = self.bind.connect()
         transaction = connection.begin()
-        connection.execute(users.insert(), user_id=1, user_name="user1")
+        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans2 = connection.begin_nested()
-        connection.execute(users.insert(), user_id=2, user_name="user2")
+        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         trans2.commit()
-        connection.execute(users.insert(), user_id=3, user_name="user3")
+        connection.execute(users.insert(), dict(user_id=3, user_name="user3"))
         transaction.commit()
         eq_(
             connection.execute(

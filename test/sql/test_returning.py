@@ -466,7 +466,7 @@ class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     def test_insert(self, connection):
         table = self.tables.tables
         result = connection.execute(
-            table.insert().returning(table.c.foo_id), data="somedata"
+            table.insert().returning(table.c.foo_id), dict(data="somedata")
         )
         row = result.first()._mapping
         assert row[table.c.foo_id] == row["id"] == 1
