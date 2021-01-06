@@ -121,6 +121,16 @@ class AsyncSession:
             with AsyncSession(async_engine) as session:
                 await session.run_sync(some_business_method)
 
+        .. note::
+
+            The provided callable is invoked inline within the asyncio event
+            loop, and will block on traditional IO calls.  IO within this
+            callable should only call into SQLAlchemy's asyncio database
+            APIs which will be properly adapted to the greenlet context.
+
+        .. seealso::
+
+            :ref:`session_run_sync`
         """
 
         return await greenlet_spawn(fn, self.sync_session, *arg, **kw)

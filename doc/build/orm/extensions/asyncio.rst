@@ -149,6 +149,8 @@ It is then used in a Python asynchronous context manager (i.e. ``async with:`` s
 so that it is automatically closed at the end of the block; this is equivalent
 to calling the :meth:`_asyncio.AsyncSession.close` method.
 
+.. _session_run_sync:
+
 Adapting ORM Lazy loads to asyncio
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

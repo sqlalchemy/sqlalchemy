@@ -448,6 +448,16 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
             with async_engine.begin() as conn:
                 await conn.run_sync(metadata.create_all)
 
+        .. note::
+
+            The provided callable is invoked inline within the asyncio event
+            loop, and will block on traditional IO calls.  IO within this
+            callable should only call into SQLAlchemy's asyncio database
+            APIs which will be properly adapted to the greenlet context.
+
+        .. seealso::
+
+            :ref:`session_run_sync`
         """
 
         conn = self._sync_connection()
