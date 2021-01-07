@@ -40,6 +40,11 @@ class AsyncSessionTest(AsyncFixture):
             bind=async_engine.sync_engine,
         )
 
+    def test_info(self, async_session):
+        async_session.info["foo"] = "bar"
+
+        eq_(async_session.sync_session.info, {"foo": "bar"})
+
 
 class AsyncSessionQueryTest(AsyncFixture):
     @async_test
@@ -296,6 +301,107 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             is_(new_u_merged, u1)
             eq_(u1.name, "new u1")
+
+    @async_test
+    async def test_join_to_external_transaction(self, async_engine):
+        User = self.classes.User
+
+        async with async_engine.connect() as conn:
+            t1 = await conn.begin()
+
+            async_session = AsyncSession(conn)
+
+            aconn = await async_session.connection()
+
+            eq_(aconn.get_transaction(), t1)
+
+            eq_(aconn, conn)
+            is_(aconn.sync_connection, conn.sync_connection)
+
+            u1 = User(id=1, name="u1")
+
+            async_session.add(u1)
+
+            await async_session.commit()
+
+            assert conn.in_transaction()
+            await conn.rollback()
+
+        async with AsyncSession(async_engine) as async_session:
+            result = await async_session.execute(select(User))
+            eq_(result.all(), [])
+
+    @testing.requires.savepoints
+    @async_test
+    async def test_join_to_external_transaction_with_savepoints(
+        self, async_engine
+    ):
+        """This is the full 'join to an external transaction' recipe
+        implemented for async using savepoints.
+
+        It's not particularly simple to understand as we have to switch between
+        async / sync APIs but it works and it's a start.
+
+        """
+
+        User = self.classes.User
+
+        async with async_engine.connect() as conn:
+
+            await conn.begin()
+
+            await conn.begin_nested()
+
+            async_session = AsyncSession(conn)
+
+            @event.listens_for(
+                async_session.sync_session, "after_transaction_end"
+            )
+            def end_savepoint(session, transaction):
+                """here's an event.  inside the event we write blocking
+                style code.    wow will this be fun to try to explain :)
+
+                """
+
+                if conn.closed:
+                    return
+
+                if not conn.in_nested_transaction():
+                    conn.sync_connection.begin_nested()
+
+            aconn = await async_session.connection()
+            is_(aconn.sync_connection, conn.sync_connection)
+
+            u1 = User(id=1, name="u1")
+
+            async_session.add(u1)
+
+            await async_session.commit()
+
+            result = (await async_session.execute(select(User))).all()
+            eq_(len(result), 1)
+
+            u2 = User(id=2, name="u2")
+            async_session.add(u2)
+
+            await async_session.flush()
+
+            result = (await async_session.execute(select(User))).all()
+            eq_(len(result), 2)
+
+            # a rollback inside the session ultimately ends the savepoint
+            await async_session.rollback()
+
+            # but the previous thing we "committed" is still in the DB
+            result = (await async_session.execute(select(User))).all()
+            eq_(len(result), 1)
+
+            assert conn.in_transaction()
+            await conn.rollback()
+
+        async with AsyncSession(async_engine) as async_session:
+            result = await async_session.execute(select(User))
+            eq_(result.all(), [])
 
 
 class AsyncEventTest(AsyncFixture):

@@ -23,8 +23,12 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
 from sqlalchemy.util.concurrency import greenlet_spawn
 
 
@@ -72,6 +76,53 @@ class AsyncEngineTest(EngineFixture):
         eq_(async_engine.driver, sync_engine.driver)
         eq_(async_engine.echo, sync_engine.echo)
 
+    @async_test
+    async def test_engine_eq_ne(self, async_engine):
+        e2 = _async_engine.AsyncEngine(async_engine.sync_engine)
+        e3 = testing.engines.testing_engine(asyncio=True)
+
+        eq_(async_engine, e2)
+        ne_(async_engine, e3)
+
+        is_false(async_engine == None)
+
+    @async_test
+    async def test_connection_info(self, async_engine):
+
+        async with async_engine.connect() as conn:
+            conn.info["foo"] = "bar"
+
+            eq_(conn.sync_connection.info, {"foo": "bar"})
+
+    @async_test
+    async def test_connection_eq_ne(self, async_engine):
+
+        async with async_engine.connect() as conn:
+            c2 = _async_engine.AsyncConnection(
+                async_engine, conn.sync_connection
+            )
+
+            eq_(conn, c2)
+
+            async with async_engine.connect() as c3:
+                ne_(conn, c3)
+
+            is_false(conn == None)
+
+    @async_test
+    async def test_transaction_eq_ne(self, async_engine):
+
+        async with async_engine.connect() as conn:
+            t1 = await conn.begin()
+
+            t2 = _async_engine.AsyncTransaction._from_existing_transaction(
+                conn, t1._proxied
+            )
+
+            eq_(t1, t2)
+
+            is_false(t1 == None)
+
     def test_clear_compiled_cache(self, async_engine):
         async_engine.sync_engine._compiled_cache["foo"] = "bar"
         eq_(async_engine.sync_engine._compiled_cache["foo"], "bar")
@@ -102,6 +153,48 @@ class AsyncEngineTest(EngineFixture):
         is_(conn.closed, sync_conn.closed)
         is_(conn.dialect, async_engine.sync_engine.dialect)
         eq_(conn.default_isolation_level, sync_conn.default_isolation_level)
+
+    @async_test
+    async def test_transaction_accessor(self, async_engine):
+        async with async_engine.connect() as conn:
+            is_none(conn.get_transaction())
+            is_false(conn.in_transaction())
+            is_false(conn.in_nested_transaction())
+
+            trans = await conn.begin()
+
+            is_true(conn.in_transaction())
+            is_false(conn.in_nested_transaction())
+
+            is_(
+                trans.sync_transaction, conn.get_transaction().sync_transaction
+            )
+
+            nested = await conn.begin_nested()
+
+            is_true(conn.in_transaction())
+            is_true(conn.in_nested_transaction())
+
+            is_(
+                conn.get_nested_transaction().sync_transaction,
+                nested.sync_transaction,
+            )
+            eq_(conn.get_nested_transaction(), nested)
+
+            is_(
+                trans.sync_transaction, conn.get_transaction().sync_transaction
+            )
+
+            await nested.commit()
+
+            is_true(conn.in_transaction())
+            is_false(conn.in_nested_transaction())
+
+            await trans.rollback()
+
+            is_none(conn.get_transaction())
+            is_false(conn.in_transaction())
+            is_false(conn.in_nested_transaction())
 
     @async_test
     async def test_invalidate(self, async_engine):

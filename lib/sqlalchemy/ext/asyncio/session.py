@@ -75,12 +75,13 @@ class AsyncSession:
         kw["future"] = True
         if bind:
             self.bind = engine
-            bind = engine._get_sync_engine(bind)
+            bind = engine._get_sync_engine_or_connection(bind)
 
         if binds:
             self.binds = binds
             binds = {
-                key: engine._get_sync_engine(b) for key, b in binds.items()
+                key: engine._get_sync_engine_or_connection(b)
+                for key, b in binds.items()
             }
 
         self.sync_session = self._proxied = Session(

@@ -1,0 +1,30 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 5811
+
+    Implemented "connection-binding" for :class:`.AsyncSession`, the ability to
+    pass an :class:`.AsyncConnection` to create an :class:`.AsyncSession`.
+    Previously, this use case was not implemented and would use the associated
+    engine when the connection were passed.  This fixes the issue where the
+    "join a session to an external transaction" use case would not work
+    correctly for the :class:`.AsyncSession`.  Additionally, added methods
+    :meth:`.AsyncConnection.in_transaction`,
+    :meth:`.AsyncConnection.in_nested_transaction`,
+    :meth:`.AsyncConnection.get_transaction`,
+    :meth:`.AsyncConnection.get_nested_transaction` and
+    :attr:`.AsyncConnection.info` attribute.
+
+.. change::
+    :tags: usecase, asyncio
+
+    The :class:`.AsyncEngine`, :class:`.AsyncConnection` and
+    :class:`.AsyncTransaction` objects may be compared using Python ``==`` or
+    ``!=``, which will compare the two given objects based on the "sync" object
+    they are proxying towards. This is useful as there are cases particularly
+    for :class:`.AsyncTransaction` where multiple instances of
+    :class:`.AsyncTransaction` can be proxying towards the same sync
+    :class:`_engine.Transaction`, and are actually equivalent.   The
+    :meth:`.AsyncConnection.get_transaction` method will currently return a new
+    proxying :class:`.AsyncTransaction` each time as the
+    :class:`.AsyncTransaction` is not otherwise statefully associated with its
+    originating :class:`.AsyncConnection`.

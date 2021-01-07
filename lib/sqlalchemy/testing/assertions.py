@@ -224,6 +224,10 @@ def is_instance_of(a, b, msg=None):
     assert isinstance(a, b), msg or "%r is not an instance of %r" % (a, b)
 
 
+def is_none(a, msg=None):
+    is_(a, None, msg=msg)
+
+
 def is_true(a, msg=None):
     is_(bool(a), True, msg=msg)
 

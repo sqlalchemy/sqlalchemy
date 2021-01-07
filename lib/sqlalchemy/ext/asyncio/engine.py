@@ -4,6 +4,7 @@ from typing import Mapping
 from typing import Optional
 
 from . import exc as async_exc
+from .base import ProxyComparable
 from .base import StartableContext
 from .result import AsyncResult
 from ... import exc
@@ -57,7 +58,7 @@ class AsyncConnectable:
         "default_isolation_level",
     ],
 )
-class AsyncConnection(StartableContext, AsyncConnectable):
+class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     """An asyncio proxy for a :class:`_engine.Connection`.
 
     :class:`_asyncio.AsyncConnection` is acquired using the
@@ -131,6 +132,24 @@ class AsyncConnection(StartableContext, AsyncConnectable):
     def _proxied(self):
         return self.sync_connection
 
+    @property
+    def info(self):
+        """Return the :attr:`_engine.Connection.info` dictionary of the
+        underlying :class:`_engine.Connection`.
+
+        This dictionary is freely writable for user-defined state to be
+        associated with the database connection.
+
+        This attribute is only available if the :class:`.AsyncConnection` is
+        currently connected.   If the :attr:`.AsyncConnection.closed` attribute
+        is ``True``, then accessing this attribute will raise
+        :class:`.ResourceClosedError`.
+
+        .. versionadded:: 1.4.0b2
+
+        """
+        return self.sync_connection.info
+
     def _sync_connection(self):
         if not self.sync_connection:
             self._raise_for_not_started()
@@ -165,6 +184,69 @@ class AsyncConnection(StartableContext, AsyncConnectable):
     async def set_isolation_level(self):
         conn = self._sync_connection()
         return await greenlet_spawn(conn.get_isolation_level)
+
+    def in_transaction(self):
+        """Return True if a transaction is in progress.
+
+        .. versionadded:: 1.4.0b2
+
+        """
+
+        conn = self._sync_connection()
+
+        return conn.in_transaction()
+
+    def in_nested_transaction(self):
+        """Return True if a transaction is in progress.
+
+        .. versionadded:: 1.4.0b2
+
+        """
+        conn = self._sync_connection()
+
+        return conn.in_nested_transaction()
+
+    def get_transaction(self):
+        """Return an :class:`.AsyncTransaction` representing the current
+        transaction, if any.
+
+        This makes use of the underlying synchronous connection's
+        :meth:`_engine.Connection.get_transaction` method to get the current
+        :class:`_engine.Transaction`, which is then proxied in a new
+        :class:`.AsyncTransaction` object.
+
+        .. versionadded:: 1.4.0b2
+
+        """
+        conn = self._sync_connection()
+
+        trans = conn.get_transaction()
+        if trans is not None:
+            return AsyncTransaction._from_existing_transaction(self, trans)
+        else:
+            return None
+
+    def get_nested_transaction(self):
+        """Return an :class:`.AsyncTransaction` representing the current
+        nested (savepoint) transaction, if any.
+
+        This makes use of the underlying synchronous connection's
+        :meth:`_engine.Connection.get_nested_transaction` method to get the
+        current :class:`_engine.Transaction`, which is then proxied in a new
+        :class:`.AsyncTransaction` object.
+
+        .. versionadded:: 1.4.0b2
+
+        """
+        conn = self._sync_connection()
+
+        trans = conn.get_nested_transaction()
+        if trans is not None:
+            return AsyncTransaction._from_existing_transaction(
+                self, trans, True
+            )
+        else:
+            return None
 
     async def execution_options(self, **opt):
         r"""Set non-SQL options for the connection which take effect
@@ -391,7 +473,7 @@ class AsyncConnection(StartableContext, AsyncConnectable):
     ],
     attributes=["url", "pool", "dialect", "engine", "name", "driver", "echo"],
 )
-class AsyncEngine(AsyncConnectable):
+class AsyncEngine(ProxyComparable, AsyncConnectable):
     """An asyncio proxy for a :class:`_engine.Engine`.
 
     :class:`_asyncio.AsyncEngine` is acquired using the
@@ -513,7 +595,7 @@ class AsyncEngine(AsyncConnectable):
         return await greenlet_spawn(self.sync_engine.dispose)
 
 
-class AsyncTransaction(StartableContext):
+class AsyncTransaction(ProxyComparable, StartableContext):
     """An asyncio proxy for a :class:`_engine.Transaction`."""
 
     __slots__ = ("connection", "sync_transaction", "nested")
@@ -523,9 +605,26 @@ class AsyncTransaction(StartableContext):
         self.sync_transaction: Optional[Transaction] = None
         self.nested = nested
 
+    @classmethod
+    def _from_existing_transaction(
+        cls,
+        connection: AsyncConnection,
+        sync_transaction: Transaction,
+        nested: bool = False,
+    ):
+        obj = cls.__new__(cls)
+        obj.connection = connection
+        obj.sync_transaction = sync_transaction
+        obj.nested = nested
+        return obj
+
     def _sync_transaction(self):
         if not self.sync_transaction:
             self._raise_for_not_started()
+        return self.sync_transaction
+
+    @property
+    def _proxied(self):
         return self.sync_transaction
 
     @property
@@ -582,7 +681,10 @@ class AsyncTransaction(StartableContext):
             await self.rollback()
 
 
-def _get_sync_engine(async_engine):
+def _get_sync_engine_or_connection(async_engine):
+    if isinstance(async_engine, AsyncConnection):
+        return async_engine.sync_connection
+
     try:
         return async_engine.sync_engine
     except AttributeError as e:
