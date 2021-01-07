@@ -264,10 +264,9 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
             return pool.AsyncAdaptedQueuePool
 
     def create_connect_args(self, url):
-        args, kw = super(MySQLDialect_aiomysql, self).create_connect_args(url)
-        if "passwd" in kw:
-            kw["password"] = kw.pop("passwd")
-        return args, kw
+        return super(MySQLDialect_aiomysql, self).create_connect_args(
+            url, _translate_args=dict(username="user", database="db")
+        )
 
     def is_disconnect(self, e, connection, cursor):
         if super(MySQLDialect_aiomysql, self).is_disconnect(
