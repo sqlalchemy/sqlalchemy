@@ -1655,7 +1655,7 @@ class FKsAsPksTest(fixtures.MappedTest):
         c1 = C()
         c1.id = 5
         c1.a = None
-        with fixture_session() as sess:
+        with Session(connection) as sess:
             sess.add(c1)
             # test that no error is raised.
             sess.flush()
