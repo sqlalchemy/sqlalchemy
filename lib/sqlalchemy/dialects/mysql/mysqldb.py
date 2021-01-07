@@ -179,10 +179,13 @@ class MySQLDialect_mysqldb(MySQLDialect):
             connection, additional_tests
         )
 
-    def create_connect_args(self, url):
-        opts = url.translate_connect_args(
-            database="db", username="user", password="passwd"
-        )
+    def create_connect_args(self, url, _translate_args=None):
+        if _translate_args is None:
+            _translate_args = dict(
+                database="db", username="user", password="passwd"
+            )
+
+        opts = url.translate_connect_args(**_translate_args)
         opts.update(url.query)
 
         util.coerce_kw_type(opts, "compress", bool)

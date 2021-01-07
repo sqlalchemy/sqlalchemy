@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 5821
+
+    Fixed deprecation warnings that arose as a result of the release of PyMySQL
+    1.0, including deprecation warnings for the "db" and "passwd" parameters
+    now replaced with "database" and "password".
+

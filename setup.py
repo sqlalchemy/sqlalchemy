@@ -186,7 +186,10 @@ def run_setup(with_cext):
         distclass=Distribution,
         extras_require={
             "mysql": ["mysqlclient"],
-            "pymysql": ["pymysql"],
+            "pymysql": [
+                'pymysql; python_version>="3"',
+                'pymysql<1; python_version<"3"',
+            ],
             "postgresql": ["psycopg2"],
             "postgresql_psycopg2binary": ["psycopg2-binary"],
             "postgresql_pg8000": ["pg8000"],
