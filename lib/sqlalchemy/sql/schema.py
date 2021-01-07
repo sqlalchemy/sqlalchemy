@@ -70,6 +70,17 @@ BLANK_SCHEMA = util.symbol(
     """,
 )
 
+NULL_UNSPECIFIED = util.symbol(
+    "NULL_UNSPECIFIED",
+    """Symbol indicating the "nullable" keyword was not passed to a Column.
+
+    Normally we would expect None to be acceptable for this but some backends
+    such as that of SQL Server place special signficance on a "nullability"
+    value of None.
+
+    """,
+)
+
 
 def _get_table_key(name, schema):
     if schema is None:
@@ -1257,11 +1268,18 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             phrase to be added when generating DDL for the column.   When
             ``True``, will normally generate nothing (in SQL this defaults to
             "NULL"), except in some very specific backend-specific edge cases
-            where "NULL" may render explicitly.   Defaults to ``True`` unless
-            :paramref:`_schema.Column.primary_key` is also ``True``,
-            in which case it
-            defaults to ``False``.  This parameter is only used when issuing
-            CREATE TABLE statements.
+            where "NULL" may render explicitly.
+            Defaults to ``True`` unless :paramref:`_schema.Column.primary_key`
+            is also ``True`` or the column specifies a :class:`_sql.Identity`,
+            in which case it defaults to ``False``.
+            This parameter is only used when issuing CREATE TABLE statements.
+
+            .. note::
+
+                When the column specifies a :class:`_sql.Identity` this
+                parameter is in general ignored by the DDL compiler. The
+                PostgreSQL database allows nullable identity column by
+                setting this parameter to ``True`` explicitly.
 
         :param onupdate: A scalar, Python callable, or
             :class:`~sqlalchemy.sql.expression.ClauseElement` representing a
@@ -1393,8 +1411,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
         super(Column, self).__init__(name, type_)
         self.key = kwargs.pop("key", name)
-        self.primary_key = kwargs.pop("primary_key", False)
-        self.nullable = kwargs.pop("nullable", not self.primary_key)
+        self.primary_key = primary_key = kwargs.pop("primary_key", False)
+
+        self._user_defined_nullable = udn = kwargs.pop(
+            "nullable", NULL_UNSPECIFIED
+        )
+
+        if udn is not NULL_UNSPECIFIED:
+            self.nullable = udn
+        else:
+            self.nullable = not primary_key
+
         self.default = kwargs.pop("default", None)
         self.server_default = kwargs.pop("server_default", None)
         self.server_onupdate = kwargs.pop("server_onupdate", None)
@@ -1465,10 +1492,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
     def _extra_kwargs(self, **kwargs):
         self._validate_dialect_kwargs(kwargs)
-
-    #    @property
-    #    def quote(self):
-    #        return getattr(self.name, "quote", None)
 
     def __str__(self):
         if self.name is None:
@@ -1664,12 +1687,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         if isinstance(type_, SchemaEventTarget):
             type_ = type_.copy(**kw)
 
+        if self._user_defined_nullable is not NULL_UNSPECIFIED:
+            column_kwargs["nullable"] = self._user_defined_nullable
+
         c = self._constructor(
             name=self.name,
             type_=type_,
             key=self.key,
             primary_key=self.primary_key,
-            nullable=self.nullable,
             unique=self.unique,
             system=self.system,
             # quote=self.quote,  # disabled 2013-08-27 (commit 031ef080)
@@ -3596,7 +3621,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         for c in self.columns:
             c.primary_key = True
-            c.nullable = False
+            if c._user_defined_nullable is NULL_UNSPECIFIED:
+                c.nullable = False
         if table_pks:
             self.columns.extend(table_pks)
 
@@ -4777,9 +4803,12 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
                 "autoincrement=False"
             )
         self.column = parent
+
         parent.identity = self
-        # self.column.server_onupdate = self
-        self.column.server_default = self
+        if parent._user_defined_nullable is NULL_UNSPECIFIED:
+            parent.nullable = False
+
+        parent.server_default = self
 
     def _as_for_update(self, for_update):
         return self
