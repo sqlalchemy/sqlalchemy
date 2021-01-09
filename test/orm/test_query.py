@@ -1723,7 +1723,8 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         a1 = (
             session.query(User.id)
             .filter(User.id == 7)
-            .subquery(with_labels=True)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
         )
         assert a1.c.users_id is not None
 
@@ -1804,8 +1805,8 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         s = fixture_session()
 
-        q1 = s.query(User).filter(User.name == "ed").with_labels()
-        q2 = s.query(User).filter(User.name == "fred").with_labels()
+        q1 = s.query(User).filter(User.name == "ed")
+        q2 = s.query(User).filter(User.name == "fred")
         eq_(
             s.query(User)
             .from_statement(union(q1, q2).order_by("users_name"))
@@ -1818,15 +1819,12 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         s = fixture_session()
 
-        # this is actually not legal on most DBs since the subquery has no
-        # alias
         q1 = s.query(User).filter(User.name == "ed")
 
         self.assert_compile(
-            select(q1.with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name "
+            select(q1.subquery()),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
             "FROM users WHERE users.name = :name_1) AS anon_1",
         )
 
@@ -1857,11 +1855,9 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q1 = s.query(User.id, User.name).group_by(User.name)
         self.assert_compile(
-            select(q1.with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users GROUP BY users.name) "
-            "AS anon_1",
+            select(q1.subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users GROUP BY users.name) AS anon_1",
         )
 
     def test_group_by_append(self):
@@ -1872,11 +1868,10 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test append something to group_by
         self.assert_compile(
-            select(q1.group_by(User.id).with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users "
-            "GROUP BY users.name, users.id) AS anon_1",
+            select(q1.group_by(User.id).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users GROUP BY users.name, users.id) AS anon_1",
         )
 
     def test_group_by_cancellation(self):
@@ -1886,20 +1881,17 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         q1 = s.query(User.id, User.name).group_by(User.name)
         # test cancellation by using None, replacement with something else
         self.assert_compile(
-            select(
-                q1.group_by(None).group_by(User.id).with_labels().subquery()
-            ),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users GROUP BY users.id) AS anon_1",
+            select(q1.group_by(None).group_by(User.id).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users GROUP BY users.id) AS anon_1",
         )
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select(q1.group_by(None).with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users) AS anon_1",
+            select(q1.group_by(None).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
         )
 
     def test_group_by_cancelled_still_present(self):
@@ -1916,11 +1908,10 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         q1 = s.query(User.id, User.name).order_by(User.name)
         self.assert_compile(
-            select(q1.with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users ORDER BY users.name) "
-            "AS anon_1",
+            select(q1.subquery()),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users ORDER BY users.name) AS anon_1",
         )
 
     def test_order_by_append(self):
@@ -1931,11 +1922,10 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         # test append something to order_by
         self.assert_compile(
-            select(q1.order_by(User.id).with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users "
-            "ORDER BY users.name, users.id) AS anon_1",
+            select(q1.order_by(User.id).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users ORDER BY users.name, users.id) AS anon_1",
         )
 
     def test_order_by_cancellation(self):
@@ -1945,20 +1935,16 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         q1 = s.query(User.id, User.name).order_by(User.name)
         # test cancellation by using None, replacement with something else
         self.assert_compile(
-            select(
-                q1.order_by(None).order_by(User.id).with_labels().subquery()
-            ),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users ORDER BY users.id) AS anon_1",
+            select(q1.order_by(None).order_by(User.id).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users ORDER BY users.id) AS anon_1",
         )
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select(q1.order_by(None).with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users) AS anon_1",
+            select(q1.order_by(None).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
         )
 
     def test_order_by_cancellation_false(self):
@@ -1968,20 +1954,16 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
         q1 = s.query(User.id, User.name).order_by(User.name)
         # test cancellation by using None, replacement with something else
         self.assert_compile(
-            select(
-                q1.order_by(False).order_by(User.id).with_labels().subquery()
-            ),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users ORDER BY users.id) AS anon_1",
+            select(q1.order_by(False).order_by(User.id).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users ORDER BY users.id) AS anon_1",
         )
 
         # test cancellation by using None, replacement with nothing
         self.assert_compile(
-            select(q1.order_by(False).with_labels().subquery()),
-            "SELECT anon_1.users_id, anon_1.users_name FROM "
-            "(SELECT users.id AS users_id, "
-            "users.name AS users_name FROM users) AS anon_1",
+            select(q1.order_by(False).subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
         )
 
     def test_order_by_cancelled_allows_assertions(self):
@@ -2114,7 +2096,9 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.CompileError,
             "Can't resolve label reference for ORDER BY / GROUP BY",
-            q.with_labels().statement.compile,
+            q.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).statement.compile,
         )
 
     def test_order_by_column_labeled_prop_attr_aliased_one(self):
@@ -4032,7 +4016,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             )
             .distinct()
             .order_by(User.id, User.name, Address.email_address)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -4192,7 +4176,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             )
             .distinct(Address.email_address)
             .order_by(User.id, User.name, Address.email_address)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -4252,7 +4236,9 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             sa_exc.CompileError,
             "Can't resolve label reference for ORDER BY / "
             "GROUP BY / DISTINCT etc.",
-            q.with_labels().statement.compile,
+            q.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).statement.compile,
             dialect=postgresql.dialect(),
         )
 
@@ -5099,7 +5085,9 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             sa_exc.CompileError,
             "Can't resolve label reference for ORDER BY / GROUP BY.",
-            q.with_labels().statement.compile,
+            q.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).statement.compile,
         )
 
     def test_order_by_w_eager_two(self):
@@ -5115,7 +5103,9 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         assert_raises_message(
             sa_exc.CompileError,
             "Can't resolve label reference for ORDER BY / GROUP BY.",
-            q.with_labels().statement.compile,
+            q.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).statement.compile,
         )
 
     def test_order_by_w_eager_three(self):

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -728,8 +729,10 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
 
         # test that the join to Child2 doesn't alias Child1 in the select
+
+        stmt = select(Child1).join(Child1.left_child2)
         eq_(
-            set(sess.query(Child1).join(Child1.left_child2)),
+            set(sess.execute(stmt).scalars().unique()),
             set([c11, c12, c13]),
         )
 
@@ -739,12 +742,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
         # test __eq__() on property is annotating correctly
+
+        stmt = (
+            select(Child2)
+            .join(Child2.right_children)
+            .where(Child1.left_child2 == c22)
+        )
         eq_(
-            set(
-                sess.query(Child2)
-                .join(Child2.right_children)
-                .filter(Child1.left_child2 == c22)
-            ),
+            set(sess.execute(stmt).scalars().unique()),
             set([c22]),
         )
 
@@ -753,17 +758,16 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             sess.query(Child2)
             .join(Child2.right_children)
             .filter(Child1.left_child2 == c22)
-            .with_labels()
             .statement,
-            "SELECT child2.id AS child2_id, parent.id AS parent_id, "
-            "parent.cls AS parent_cls FROM secondary AS secondary_1, "
-            "parent JOIN child2 ON parent.id = child2.id JOIN secondary AS "
-            "secondary_2 ON parent.id = secondary_2.left_id JOIN "
-            "(parent AS parent_1 JOIN child1 AS child1_1 "
-            "ON parent_1.id = child1_1.id) "
-            "ON parent_1.id = secondary_2.right_id WHERE "
-            "parent_1.id = secondary_1.right_id AND :param_1 = "
-            "secondary_1.left_id",
+            "SELECT child2.id, parent.id AS id_1, parent.cls "
+            "FROM secondary AS secondary_1, parent "
+            "JOIN child2 ON parent.id = child2.id "
+            "JOIN secondary AS secondary_2 ON parent.id = secondary_2.left_id "
+            "JOIN (parent AS parent_1 JOIN child1 AS child1_1 "
+            "ON parent_1.id = child1_1.id) ON parent_1.id = "
+            "secondary_2.right_id "
+            "WHERE parent_1.id = secondary_1.right_id "
+            "AND :param_1 = secondary_1.left_id",
         )
 
     def test_query_crit_core_workaround(self):
@@ -797,7 +801,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            stmt.apply_labels(),
+            stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT child2.id AS child2_id, parent.id AS parent_id, "
             "parent.cls AS parent_cls "
             "FROM secondary AS secondary_1, "
@@ -822,16 +826,14 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         # the middle of "parent join child1"
         q = sess.query(Child1).options(joinedload("left_child2"))
         self.assert_compile(
-            q.limit(1).with_labels().statement,
-            "SELECT child1.id AS child1_id, parent.id AS parent_id, "
-            "parent.cls AS parent_cls, child2_1.id AS child2_1_id, "
-            "parent_1.id AS parent_1_id, parent_1.cls AS parent_1_cls "
+            q.limit(1).statement,
+            "SELECT child1.id, parent.id AS id_1, parent.cls, "
+            "child2_1.id AS id_2, parent_1.id AS id_3, parent_1.cls AS cls_1 "
             "FROM parent JOIN child1 ON parent.id = child1.id "
-            "LEFT OUTER JOIN (secondary AS secondary_1 JOIN "
-            "(parent AS parent_1 JOIN child2 AS child2_1 "
-            "ON parent_1.id = child2_1.id) "
-            "ON parent_1.id = secondary_1.left_id) "
-            "ON parent.id = secondary_1.right_id "
+            "LEFT OUTER JOIN (secondary AS secondary_1 "
+            "JOIN (parent AS parent_1 JOIN child2 AS child2_1 "
+            "ON parent_1.id = child2_1.id) ON parent_1.id = "
+            "secondary_1.left_id) ON parent.id = secondary_1.right_id "
             "LIMIT :param_1",
             checkparams={"param_1": 1},
         )
@@ -839,9 +841,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         # another way to check
         eq_(
             sess.scalar(
-                select(func.count("*")).select_from(
-                    q.limit(1).with_labels().subquery()
-                )
+                select(func.count("*")).select_from(q.limit(1).subquery())
             ),
             1,
         )
@@ -1761,9 +1761,17 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 
         stmt = select(Sub2)
 
-        subq = aliased(Sub2, stmt.apply_labels().subquery())
+        subq = aliased(
+            Sub2,
+            stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).subquery(),
+        )
 
-        stmt = select(subq).join(subq.ep1).join(Sub2.ep2).apply_labels()
+        stmt = (
+            select(subq)
+            .join(subq.ep1)
+            .join(Sub2.ep2)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        )
         self.assert_compile(
             stmt,
             "SELECT anon_1.sub2_id AS anon_1_sub2_id, "
@@ -1832,7 +1840,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             select(Parent, Sub2)
             .join(Parent.sub1)
             .join(Sub1.sub2)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -1845,7 +1853,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
             select(palias, sub2alias)
             .join(sub2alias.ep1)
             .join(sub2alias.ep2)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
 
         self.assert_compile(

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.engine import default
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
@@ -87,12 +88,20 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     def test_select_labels(self):
         # give some of the cached type values
         # a chance to warm up
-        s = select(t1).where(t1.c.c2 == t2.c.c1).apply_labels()
+        s = (
+            select(t1)
+            .where(t1.c.c2 == t2.c.c1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        )
         s.compile(dialect=self.dialect)
 
         @profiling.function_call_count(variance=0.15, warmup=1)
         def go():
-            s = select(t1).where(t1.c.c2 == t2.c.c1).apply_labels()
+            s = (
+                select(t1)
+                .where(t1.c.c2 == t2.c.c1)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            )
             s.compile(dialect=self.dialect)
 
         go()

@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.util import join
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -274,19 +275,26 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
             "FROM users) AS anon_1",
         )
 
-    def test_correlate_to_union_newstyle(self):
+    def test_correlate_to_union_w_labels_newstyle(self):
         User = self.classes.User
 
-        q = select(User).apply_labels()
+        q = select(User).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
-        q = select(User).union(q).apply_labels().subquery()
+        q = (
+            select(User)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .union(q)
+            .subquery()
+        )
 
         u_alias = aliased(User)
 
         raw_subq = exists().where(u_alias.id > q.c[0])
 
         self.assert_compile(
-            select(q, raw_subq).apply_labels(),
+            select(q, raw_subq).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
             "EXISTS (SELECT * FROM users AS users_1 "
@@ -295,6 +303,27 @@ class QueryCorrelatesLikeSelect(QueryTest, AssertsCompiledSQL):
             "SELECT users.id AS users_id, users.name AS users_name FROM users "
             "UNION SELECT users.id AS users_id, users.name AS users_name "
             "FROM users) AS anon_1",
+        )
+
+    def test_correlate_to_union_newstyle(self):
+        User = self.classes.User
+
+        q = select(User)
+
+        q = select(User).union(q).subquery()
+
+        u_alias = aliased(User)
+
+        raw_subq = exists().where(u_alias.id > q.c[0])
+
+        self.assert_compile(
+            select(q, raw_subq),
+            "SELECT anon_1.id, anon_1.name, EXISTS "
+            "(SELECT * FROM users AS users_1 WHERE users_1.id > anon_1.id) "
+            "AS anon_2 FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users "
+            "UNION SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_1",
         )
 
 
@@ -317,7 +346,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(users)
             .select_entity_from(users.select().subquery())
-            .with_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users, "
@@ -326,7 +355,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(users, exists([1], from_obj=addresses))
-            .with_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name, EXISTS "
             "(SELECT 1 FROM addresses) AS anon_1 FROM users",
@@ -347,7 +376,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             sess.query(users, s.c.email)
             .select_entity_from(users.join(s, s.c.id == users.c.id))
-            .with_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name, "
             "anon_1.email AS anon_1_email "
@@ -480,7 +509,7 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
             select(User.id)
             .group_by(User.id)
             .having(User.id > 5)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -501,7 +530,7 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
         subq = (
             select(User)
             .options(joinedload(User.addresses))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -724,7 +753,7 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         q1 = select(c1, c2).where(c1 == "dog")
         q2 = select(c1, c2).where(c1 == "cat")
         subq = q1.union(q2).subquery()
-        q3 = select(subq).apply_labels()
+        q3 = select(subq).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         self.assert_compile(
             q3.order_by(subq.c.c1),
@@ -738,20 +767,31 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         from sqlalchemy.sql import column
 
         t1 = table("t1", column("c1"), column("c2"))
-        stmt = select(t1.c.c1, t1.c.c2).where(t1.c.c1 == "dog").apply_labels()
+        stmt = (
+            select(t1.c.c1, t1.c.c2)
+            .where(t1.c.c1 == "dog")
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        )
 
-        subq1 = stmt.subquery("anon_2").select().apply_labels()
+        subq1 = (
+            stmt.subquery("anon_2")
+            .select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        )
 
         subq2 = subq1.subquery("anon_1")
 
-        q1 = select(subq2).apply_labels()
+        q1 = select(subq2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         self.assert_compile(
             # as in test_anonymous_expression_from_self_twice_newstyle_wlabels,
-            # apply_labels() means the subquery cols have long names.  however,
-            # here we illustrate if they did use apply_labels(), but they also
+            # set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) means the
+            # subquery cols have long names.  however,
+            # here we illustrate if they did use
+            # set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL), but they also
             # named the subqueries explicitly as one would certainly do if they
-            # were using apply_labels(), we can get at that column based on how
+            # were using set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            # we can get at that column based on how
             # it is aliased, no different than plain SQL.
             q1.order_by(subq2.c.anon_2_t1_c1),
             "SELECT anon_1.anon_2_t1_c1 "
@@ -769,9 +809,13 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         c1, c2 = column("c1"), column("c2")
         subq = select(c1, c2).where(c1 == "dog").subquery()
 
-        subq2 = select(subq).apply_labels().subquery()
+        subq2 = (
+            select(subq)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
-        stmt = select(subq2).apply_labels()
+        stmt = select(subq2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         self.assert_compile(
             # because of the apply labels we don't have simple keys on
@@ -824,7 +868,7 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         q1 = select(c1.label("foo"), c2.label("bar")).where(c1 == "dog")
         q2 = select(c1.label("foo"), c2.label("bar")).where(c1 == "cat")
         subq = union(q1, q2).subquery()
-        q3 = select(subq).apply_labels()
+        q3 = select(subq).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             q3.order_by(subq.c.foo),
             "SELECT anon_1.foo AS anon_1_foo, anon_1.bar AS anon_1_bar FROM "
@@ -842,7 +886,9 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         q1 = sess.query(User.id).filter(User.id > 5)
 
-        uq = aliased(User, q1.apply_labels().subquery())
+        uq = aliased(
+            User, q1.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).subquery()
+        )
 
         aa = aliased(Address)
         q1 = (
@@ -869,7 +915,12 @@ class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
         addresses = self.tables.addresses
 
         sess = fixture_session()
-        q1 = sess.query(User.id).filter(User.id > 5).apply_labels().subquery()
+        q1 = (
+            sess.query(User.id)
+            .filter(User.id > 5)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         uq = aliased(User, q1)
 
@@ -1029,9 +1080,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -1058,9 +1107,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -1088,9 +1135,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
 
@@ -1124,7 +1169,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
-            .select(use_labels=True, order_by=[text("ulist.id"), adalias.c.id])
+            .select(order_by=[text("ulist.id"), adalias.c.id])
         )
 
         def go():
@@ -1151,7 +1196,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .order_by(User.id, addresses.c.id)
         )
         self.assert_compile(
-            q.with_labels().statement,
+            q.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).statement,
             "SELECT addresses.id AS addresses_id, "
             "addresses.user_id AS addresses_user_id, "
             "addresses.email_address AS "
@@ -1201,7 +1246,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         selectquery = users.outerjoin(addresses).select(
             users.c.id < 10,
-            use_labels=True,
             order_by=[users.c.id, addresses.c.id],
         )
 
@@ -1228,7 +1272,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         selectquery = users.outerjoin(addresses).select(
             users.c.id < 10,
-            use_labels=True,
             order_by=[users.c.id, addresses.c.id],
         )
 
@@ -1286,7 +1329,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             users.outerjoin(oalias)
             .outerjoin(order_items)
             .outerjoin(ialias)
-            .select(use_labels=True)
+            .select()
             .order_by(users.c.id, oalias.c.id, ialias.c.id)
         )
 
@@ -2135,9 +2178,12 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             Order.id, Order.description, literal_column("'q'").label("foo")
         ).where(Order.description == "order 3")
 
-        subq = aliased(Order, stmt.apply_labels().subquery())
+        subq = aliased(
+            Order,
+            stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).subquery(),
+        )
 
-        stmt = select(subq).apply_labels()
+        stmt = select(subq).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             stmt,
             "SELECT anon_1.orders_id AS "
@@ -2182,7 +2228,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session(future=True)
 
         selectquery = users.outerjoin(addresses).select(
-            use_labels=True, order_by=[users.c.id, addresses.c.id]
+            order_by=[users.c.id, addresses.c.id]
         )
 
         result = sess.execute(

@@ -28,6 +28,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.sql import column
 from sqlalchemy.sql import functions
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
@@ -95,7 +96,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_use_labels(self):
         self.assert_compile(
-            select(func.foo()).apply_labels(), "SELECT foo() AS foo_1"
+            select(func.foo()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            "SELECT foo() AS foo_1",
         )
 
     def test_use_labels_function_element(self):
@@ -109,7 +111,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             return "max(%s)" % compiler.process(element.clauses, **kw)
 
         self.assert_compile(
-            select(max_(5, 6)).apply_labels(),
+            select(max_(5, 6)).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT max(:max_2, :max_3) AS max_1",
         )
 

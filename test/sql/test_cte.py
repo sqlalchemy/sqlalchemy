@@ -296,10 +296,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s2,
             "WITH RECURSIVE cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2), "
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3), "
             "bar AS (SELECT cte.x AS x FROM cte) "
-            "SELECT cte.x, bar.x FROM cte, bar",
+            "SELECT cte.x, bar.x AS x_1 FROM cte, bar",
         )
 
     def test_recursive_union_alias_three(self):
@@ -321,10 +321,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s2,
             "WITH RECURSIVE cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2), "
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3), "
             "bar AS (SELECT cs1.x AS x FROM cte AS cs1) "
-            "SELECT cs1.x, cs2.x FROM cte AS cs1, bar AS cs2",
+            "SELECT cs1.x, cs2.x AS x_1 FROM cte AS cs1, bar AS cs2",
         )
 
     def test_recursive_union_no_alias_four(self):
@@ -346,10 +346,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s2,
             "WITH RECURSIVE cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2), "
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3), "
             "bar AS (SELECT cte.x AS x FROM cte) "
-            "SELECT cte.x, bar.x FROM cte, bar",
+            "SELECT cte.x, bar.x AS x_1 FROM cte, bar",
         )
 
         # bar rendered, only includes "inner" cte,
@@ -371,9 +371,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
             "cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2) "
-            "SELECT bar.x, cte.x FROM bar, cte",
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3) "
+            "SELECT bar.x, cte.x AS x_1 FROM bar, cte",
         )
 
     def test_recursive_union_alias_four(self):
@@ -397,10 +397,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s2,
             "WITH RECURSIVE cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2), "
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3), "
             "bar AS (SELECT cte.x AS x FROM cte) "
-            "SELECT cs2.x, cs1.x FROM cte AS cs2, bar AS cs1",
+            "SELECT cs2.x, cs1.x AS x_1 FROM cte AS cs2, bar AS cs1",
         )
 
         # bar rendered, only includes "inner" cte,
@@ -422,9 +422,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "
             "cte(x) AS "
             "(SELECT :param_1 AS x UNION ALL "
-            "SELECT cte.x + :x_1 AS anon_1 "
-            "FROM cte WHERE cte.x < :x_2) "
-            "SELECT cs1.x, cs2.x FROM bar AS cs1, cte AS cs2",
+            "SELECT cte.x + :x_2 AS anon_1 "
+            "FROM cte WHERE cte.x < :x_3) "
+            "SELECT cs1.x, cs2.x AS x_1 FROM bar AS cs1, cte AS cs2",
         )
 
     def test_conflicting_names(self):
@@ -615,7 +615,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             'WITH "CTE" AS (SELECT :param_1 AS id) '
-            "SELECT anon_1.id, anon_2.id FROM "
+            "SELECT anon_1.id, anon_2.id AS id_1 FROM "
             '(SELECT "CTE".id AS id FROM "CTE") AS anon_1, '
             '(SELECT "CTE".id AS id FROM "CTE") AS anon_2',
         )
@@ -630,7 +630,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "WITH cte1 AS (SELECT :param_1 AS id) "
-            "SELECT anon_1.id, anon_2.id FROM "
+            "SELECT anon_1.id, anon_2.id AS id_1 FROM "
             "(SELECT aa.id AS id FROM cte1 AS aa) AS anon_1, "
             "(SELECT aa.id AS id FROM cte1 AS aa) AS anon_2",
         )
@@ -667,7 +667,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN cte1 AS aa ON b.fid = aa.id), "
             "cte3 AS (SELECT c.id AS id FROM c "
             "JOIN cte1 AS aa ON c.fid = aa.id) "
-            "SELECT cte3.id, cte2.id FROM cte2 JOIN cte3 ON cte2.id = cte3.id",
+            "SELECT cte3.id, cte2.id AS id_1 "
+            "FROM cte2 JOIN cte3 ON cte2.id = cte3.id",
         )
 
     def test_named_alias_no_quote(self):
@@ -788,13 +789,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             'FROM orders WHERE orders."order" = :1), regional_sales_2 AS '
             '(SELECT orders."order" = :2 AS anon_1, '
             'anon_2."order" AS "order", '
-            'orders."order" AS "order", '
-            'regional_sales_1."order" AS "order" FROM orders, '
+            'orders."order" AS order_1, '
+            'regional_sales_1."order" AS order_2 FROM orders, '
             "regional_sales_1 "
             "AS anon_2, regional_sales_1 "
             'WHERE orders."order" = :3) SELECT regional_sales_2.anon_1, '
-            'regional_sales_2."order", regional_sales_2."order", '
-            'regional_sales_2."order" FROM regional_sales_2',
+            'regional_sales_2."order", regional_sales_2.order_1, '
+            "regional_sales_2.order_2 FROM regional_sales_2",
             checkpositional=("x", "y", "z"),
             dialect=dialect,
         )
@@ -835,13 +836,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE orders.\"order\" = 'x'), "
             "regional_sales_2 AS "
             "(SELECT orders.\"order\" = 'y' AS anon_1, "
-            'anon_2."order" AS "order", orders."order" AS "order", '
-            'regional_sales_1."order" AS "order" '
+            'anon_2."order" AS "order", orders."order" AS order_1, '
+            'regional_sales_1."order" AS order_2 '
             "FROM orders, regional_sales_1 AS anon_2, regional_sales_1 "
             "WHERE orders.\"order\" = 'z') "
             "SELECT regional_sales_2.anon_1, "
-            'regional_sales_2."order", regional_sales_2."order", '
-            'regional_sales_2."order" FROM regional_sales_2',
+            'regional_sales_2."order", regional_sales_2.order_1, '
+            "regional_sales_2.order_2 FROM regional_sales_2",
             checkpositional=(),
             dialect=dialect,
             literal_binds=True,
@@ -860,7 +861,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             s2,
             'WITH regional_sales AS (SELECT "order"."order" '
             'AS "order" FROM "order") '
-            'SELECT anon_1."order", anon_2."order" '
+            'SELECT anon_1."order", anon_2."order" AS order_1 '
             "FROM regional_sales AS anon_1, "
             'regional_sales AS anon_2 WHERE anon_1."order" > anon_2."order"',
         )

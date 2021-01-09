@@ -1551,13 +1551,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = select(tbl1, tbl2).with_hint(tbl1, "ONLY", "postgresql")
         expected = (
-            "SELECT testtbl1.id, testtbl2.id FROM ONLY testtbl1, " "testtbl2"
+            "SELECT testtbl1.id, testtbl2.id AS id_1 FROM ONLY testtbl1, "
+            "testtbl2"
         )
         self.assert_compile(stmt, expected)
 
         stmt = select(tbl1, tbl2).with_hint(tbl2, "ONLY", "postgresql")
         expected = (
-            "SELECT testtbl1.id, testtbl2.id FROM testtbl1, ONLY " "testtbl2"
+            "SELECT testtbl1.id, testtbl2.id AS id_1 FROM testtbl1, ONLY "
+            "testtbl2"
         )
         self.assert_compile(stmt, expected)
 
@@ -1565,7 +1567,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         stmt = stmt.with_hint(tbl1, "ONLY", "postgresql")
         stmt = stmt.with_hint(tbl2, "ONLY", "postgresql")
         expected = (
-            "SELECT testtbl1.id, testtbl2.id FROM ONLY testtbl1, "
+            "SELECT testtbl1.id, testtbl2.id AS id_1 FROM ONLY testtbl1, "
             "ONLY testtbl2"
         )
         self.assert_compile(stmt, expected)
@@ -2387,7 +2389,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             q,
-            "SELECT DISTINCT ON (anon_1.id) t.id, anon_1.id "
+            "SELECT DISTINCT ON (anon_1.id) t.id, anon_1.id AS id_1 "
             "FROM t, (SELECT t.id AS id, t.a AS a, t.b "
             "AS b FROM t) AS anon_1 WHERE t.id = anon_1.id",
         )
@@ -2401,7 +2403,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             q,
-            "SELECT DISTINCT ON (sq.id) t.id, sq.id "
+            "SELECT DISTINCT ON (sq.id) t.id, sq.id AS id_1 "
             "FROM t, (SELECT t.id AS id, t.a AS a, "
             "t.b AS b FROM t) AS sq WHERE t.id = sq.id",
         )

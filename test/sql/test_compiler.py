@@ -81,6 +81,8 @@ from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -577,7 +579,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         sq = (
             select(table1, table2)
             .where(and_(table1.c.myid == 7, table2.c.otherid == table1.c.myid))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .alias("sq")
         )
 
@@ -597,7 +599,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "sq.myothertable_othername FROM (%s) AS sq" % sqstring,
         )
 
-        sq2 = select(sq).apply_labels().alias("sq2")
+        sq2 = (
+            select(sq)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias("sq2")
+        )
 
         self.assert_compile(
             sq2.select(),
@@ -622,22 +628,27 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_use_labels(self):
         self.assert_compile(
-            select(table1.c.myid == 5).apply_labels(),
+            select(table1.c.myid == 5).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT mytable.myid = :myid_1 AS anon_1 FROM mytable",
         )
 
         self.assert_compile(
-            select(func.foo()).apply_labels(), "SELECT foo() AS foo_1"
+            select(func.foo()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            "SELECT foo() AS foo_1",
         )
 
         # this is native_boolean=False for default dialect
         self.assert_compile(
-            select(not_(True)).apply_labels(),
+            select(not_(True)).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT :param_1 = 0 AS anon_1",
         )
 
         self.assert_compile(
-            select(cast("data", Integer)).apply_labels(),
+            select(cast("data", Integer)).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT CAST(:param_1 AS INTEGER) AS anon_1",
         )
 
@@ -653,13 +664,17 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(keyed).apply_labels(),
+            select(keyed).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT keyed.x AS keyed_x, keyed.y AS "
             "keyed_y, keyed.z AS keyed_z FROM keyed",
         )
 
         self.assert_compile(
-            select(select(keyed).apply_labels().subquery()).apply_labels(),
+            select(
+                select(keyed)
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery()
+            ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT anon_1.keyed_x AS anon_1_keyed_x, "
             "anon_1.keyed_y AS anon_1_keyed_y, "
             "anon_1.keyed_z AS anon_1_keyed_z "
@@ -768,7 +783,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         foo = table("foo", column("id"), column("bar_id"))
         foo_bar = table("foo_bar", column("id"))
 
-        stmt = select(foo, foo_bar).apply_labels()
+        stmt = select(foo, foo_bar).set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         self.assert_compile(
             stmt,
             "SELECT foo.id AS foo_id, foo.bar_id AS foo_bar_id, "
@@ -812,7 +829,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             foo.c.bar_id,
             foo_bar.c.id,
             foo_bar.c.id,
-        ).apply_labels()
+        ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             stmt,
             "SELECT foo.id AS foo_id, "
@@ -830,7 +847,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # of the same column are not used.  only the label applied to the
         # first occurrence of each column is used
         self.assert_compile(
-            select(stmt.subquery()),
+            select(stmt.subquery()).set_label_style(LABEL_STYLE_NONE),
             "SELECT "
             "anon_1.foo_id, "  # from 1st foo.id in derived (line 1)
             "anon_1.foo_bar_id, "  # from 1st foo.bar_id in derived (line 2)
@@ -856,17 +873,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_dupe_columns_use_labels(self):
         t = table("t", column("a"), column("b"))
         self.assert_compile(
-            select(t.c.a, t.c.a, t.c.b, t.c.a).apply_labels(),
+            select(t.c.a, t.c.a, t.c.b, t.c.a).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
             "t.a AS t_a__1 FROM t",
         )
 
     def test_dupe_columns_use_labels_derived_selectable(self):
         t = table("t", column("a"), column("b"))
-        stmt = select(t.c.a, t.c.a, t.c.b, t.c.a).apply_labels().subquery()
+        stmt = (
+            select(t.c.a, t.c.a, t.c.b, t.c.a)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         self.assert_compile(
-            select(stmt),
+            select(stmt).set_label_style(LABEL_STYLE_NONE),
             "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
             "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
             "FROM t) AS anon_1",
@@ -877,19 +900,25 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         a, b, a_a = t.c.a, t.c.b, t.c.a._annotate({"some_orm_thing": True})
 
         self.assert_compile(
-            select(a, a_a, b, a_a).apply_labels(),
+            select(a, a_a, b, a_a).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
             "t.a AS t_a__1 FROM t",
         )
 
         self.assert_compile(
-            select(a_a, a, b, a_a).apply_labels(),
+            select(a_a, a, b, a_a).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
             "t.a AS t_a__1 FROM t",
         )
 
         self.assert_compile(
-            select(a_a, a_a, b, a).apply_labels(),
+            select(a_a, a_a, b, a).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
             "t.a AS t_a__1 FROM t",
         )
@@ -897,10 +926,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_dupe_columns_use_labels_derived_selectable_mix_annotations(self):
         t = table("t", column("a"), column("b"))
         a, b, a_a = t.c.a, t.c.b, t.c.a._annotate({"some_orm_thing": True})
-        stmt = select(a, a_a, b, a_a).apply_labels().subquery()
+        stmt = (
+            select(a, a_a, b, a_a)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         self.assert_compile(
-            select(stmt),
+            select(stmt).set_label_style(LABEL_STYLE_NONE),
             "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
             "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
             "FROM t) AS anon_1",
@@ -918,7 +951,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             foo_bar.c.id,
             foo_bar__id,
             foo_bar__id,
-        ).apply_labels()
+        ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         self.assert_compile(
             stmt,
@@ -935,7 +968,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # second and third occurrences of a.c.a are labeled, but are
         # dupes of each other.
         self.assert_compile(
-            select(a.c.a, a.c.a, a.c.b, a.c.a).apply_labels(),
+            select(a.c.a, a.c.a, a.c.b, a.c.a).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT t_1.a AS t_1_a, t_1.a AS t_1_a__1, t_1.b AS t_1_b, "
             "t_1.a AS t_1_a__1 "
             "FROM t AS t_1",
@@ -945,9 +980,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         """test nested anonymous label generation."""
         s1 = table1.select()
         s2 = s1.alias()
-        s3 = select(s2).apply_labels()
+        s3 = select(s2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         s4 = s3.alias()
-        s5 = select(s4).apply_labels()
+        s5 = select(s4).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             s5,
             "SELECT anon_1.anon_2_myid AS "
@@ -966,7 +1001,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_nested_label_targeting_keyed(self):
         s1 = keyed.select()
         s2 = s1.alias()
-        s3 = select(s2).apply_labels()
+        s3 = select(s2).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             s3,
             "SELECT anon_1.x AS anon_1_x, "
@@ -977,7 +1012,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         s4 = s3.alias()
-        s5 = select(s4).apply_labels()
+        s5 = select(s4).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             s5,
             "SELECT anon_1.anon_2_x AS anon_1_anon_2_x, "
@@ -997,7 +1032,11 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         jj = select(table1.c[name]).subquery()
         jjj = join(table1, jj, table1.c[name] == jj.c[name])
 
-        j2 = jjj.select().apply_labels().subquery("foo")
+        j2 = (
+            jjj.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery("foo")
+        )
 
         self.assert_compile(
             j2.select(),
@@ -1172,8 +1211,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(s, table1),
             "SELECT sq2.myid, sq2.name, "
-            "sq2.description, mytable.myid, "
-            "mytable.name, mytable.description FROM "
+            "sq2.description, mytable.myid AS myid_1, "
+            "mytable.name AS name_1, "
+            "mytable.description AS description_1 FROM "
             "(SELECT ta.myid AS myid, ta.name AS name, "
             "ta.description AS description FROM "
             "mytable AS ta WHERE EXISTS (SELECT 1 FROM "
@@ -1934,7 +1974,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             select(table1, table2.c.otherid)
             .where(table1.c.myid == table2.c.otherid)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
 
         # make an alias of the "selectable".  column names
@@ -1945,7 +1985,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         # should produce two underscores.
         # also, reference the column "mytable_myid" off of the t2view alias.
         self.assert_compile(
-            a.select().where(a.c.mytable_myid == 9).apply_labels(),
+            a.select()
+            .where(a.c.mytable_myid == 9)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT t2view.mytable_myid AS t2view_mytable_myid, "
             "t2view.mytable_name "
             "AS t2view_mytable_name, "
@@ -2099,7 +2141,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             column("spaces % more spaces"),
         )
         self.assert_compile(
-            t.select().apply_labels(),
+            t.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             """SELECT "table%name"."percent%" AS "table%name_percent%", """
             """"table%name"."%(oneofthese)s" AS """
             """"table%name_%(oneofthese)s", """
@@ -2146,7 +2188,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 users, addresses, users.c.user_id == addresses.c.user_id
             ).select(),
             "SELECT users.user_id, users.user_name, users.password, "
-            "addresses.address_id, addresses.user_id, addresses.street, "
+            "addresses.address_id, addresses.user_id AS user_id_1, "
+            "addresses.street, "
             "addresses.city, addresses.state, addresses.zip "
             "FROM users JOIN addresses "
             "ON users.user_id = addresses.user_id",
@@ -2221,12 +2264,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
         ]:
             stmt = select(table1).select_from(spec)
-        self.assert_compile(
-            stmt,
-            "SELECT mytable.myid, mytable.name, mytable.description FROM "
-            "mytable FULL OUTER JOIN myothertable "
-            "ON mytable.myid = myothertable.otherid",
-        )
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid, mytable.name, mytable.description FROM "
+                "mytable FULL OUTER JOIN myothertable "
+                "ON mytable.myid = myothertable.otherid",
+            )
 
     def test_compound_selects(self):
         assert_raises_message(
@@ -2375,10 +2418,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = select(table1, table2.c.otherid).where(
             table1.c.myid == table2.c.otherid
         )
+
+        # note myid__1 is a dedupe of same column, same table.  see
+        # test/sql/test_labels.py for the double underscore thing
         self.assert_compile(
             union(s1, s2).order_by(s1.selected_columns.myid),
             "SELECT mytable.myid, mytable.name, mytable.description, "
-            "mytable.myid FROM mytable WHERE mytable.myid = :myid_1 "
+            "mytable.myid AS myid__1 FROM mytable "
+            "WHERE mytable.myid = :myid_1 "
             "UNION SELECT mytable.myid, mytable.name, mytable.description, "
             "myothertable.otherid FROM mytable, myothertable "
             "WHERE mytable.myid = myothertable.otherid ORDER BY myid",
@@ -2563,12 +2610,36 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             # is now officially completely ridiculous AND non-obviously omits
             # coverage on other dialects.
             sel = select(tbl, cast(tbl.c.v1, Numeric)).compile(dialect=dialect)
+
+            # TODO: another unusual result from disambiguate only
             if isinstance(dialect, type(mysql.dialect())):
                 eq_(
                     str(sel),
                     "SELECT casttest.id, casttest.v1, casttest.v2, "
                     "casttest.ts, "
-                    "CAST(casttest.v1 AS DECIMAL) AS v1 \nFROM casttest",
+                    "CAST(casttest.v1 AS DECIMAL) AS casttest_v1__1 \n"
+                    "FROM casttest",
+                )
+            else:
+                eq_(
+                    str(sel),
+                    "SELECT casttest.id, casttest.v1, casttest.v2, "
+                    "casttest.ts, CAST(casttest.v1 AS NUMERIC) AS "
+                    "casttest_v1__1 \nFROM casttest",
+                )
+
+            sel = (
+                select(tbl, cast(tbl.c.v1, Numeric))
+                .set_label_style(LABEL_STYLE_NONE)
+                .compile(dialect=dialect)
+            )
+            if isinstance(dialect, type(mysql.dialect())):
+                eq_(
+                    str(sel),
+                    "SELECT casttest.id, casttest.v1, casttest.v2, "
+                    "casttest.ts, "
+                    "CAST(casttest.v1 AS DECIMAL) AS v1 \n"
+                    "FROM casttest",
                 )
             else:
                 eq_(
@@ -4771,7 +4842,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         s = (
             table4.select()
             .where(and_(table4.c.datatype_id == 7, table4.c.value == "hi"))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
         self.assert_compile(
             s,
@@ -4797,7 +4868,7 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # multi-part schema name labels - convert '.' to '_'
         self.assert_compile(
-            table5.select().apply_labels(),
+            table5.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             'SELECT "dbo.remote_owner".remotetable.rem_id AS'
             " dbo_remote_owner_remotetable_rem_id, "
             '"dbo.remote_owner".remotetable.datatype_id'
@@ -5012,7 +5083,9 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(t1).select_from(t1).apply_labels(),
+            select(t1)
+            .select_from(t1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT here.baz.id AS here_baz_id, here.baz.name AS "
             "here_baz_name, here.baz.meta AS here_baz_meta FROM here.baz",
         )
@@ -5091,7 +5164,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def _assert_where_all_correlated(self, stmt):
         self.assert_compile(
             stmt,
-            "SELECT t1.a, t2.a FROM t1, t2 WHERE t2.a = "
+            "SELECT t1.a, t2.a AS a_1 FROM t1, t2 WHERE t2.a = "
             "(SELECT t1.a WHERE t1.a = t2.a)",
         )
 
@@ -5118,7 +5191,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def _assert_column_all_correlated(self, stmt):
         self.assert_compile(
             stmt,
-            "SELECT t1.a, t2.a, "
+            "SELECT t1.a, t2.a AS a_1, "
             "(SELECT t1.a WHERE t1.a = t2.a) AS anon_1 FROM t1, t2",
         )
 
@@ -5132,14 +5205,14 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
     def _assert_from_uncorrelated(self, stmt):
         self.assert_compile(
             stmt,
-            "SELECT t2.a, anon_1.a FROM t2, "
+            "SELECT t2.a, anon_1.a AS a_1 FROM t2, "
             "(SELECT t1.a AS a FROM t1, t2 WHERE t1.a = t2.a) AS anon_1",
         )
 
     def _assert_from_all_uncorrelated(self, stmt):
         self.assert_compile(
             stmt,
-            "SELECT t1.a, t2.a, anon_1.a FROM t1, t2, "
+            "SELECT t1.a, t2.a AS a_1, anon_1.a AS a_2 FROM t1, t2, "
             "(SELECT t1.a AS a FROM t1, t2 WHERE t1.a = t2.a) AS anon_1",
         )
 
@@ -5335,7 +5408,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
         t1, t2, s1 = self._fixture()
         self.assert_compile(
             select(t1, t2, s1.subquery()),
-            "SELECT t1.a, t2.a, anon_1.a FROM t1, t2, "
+            "SELECT t1.a, t2.a AS a_1, anon_1.a AS a_2 FROM t1, t2, "
             "(SELECT t1.a AS a FROM t1, t2 WHERE t1.a = t2.a) AS anon_1",
         )
 
@@ -5463,7 +5536,7 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             s3,
-            "SELECT t1.x, anon_1.y, anon_1.x FROM t1, "
+            "SELECT t1.x, anon_1.y, anon_1.x AS x_1 FROM t1, "
             "(SELECT t2.y AS y, anon_2.x AS x FROM t2, "
             "(SELECT t1.x AS x FROM t1, t2 WHERE t1.x = t2.y) "
             "AS anon_2) AS anon_1",
@@ -5601,7 +5674,7 @@ class ResultMapTest(fixtures.TestBase):
         stmt = (
             select(t1, t1_alias)
             .select_from(t1.join(union, t1.c.a == union.c.t1_a))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
         comp = stmt.compile()
         eq_(
@@ -5770,7 +5843,9 @@ class ResultMapTest(fixtures.TestBase):
 
         # create the statement with some duplicate columns.  right now
         # the behavior is that these redundant columns are deduped.
-        stmt = select(t.c.x, t.c.y, l1, t.c.y, l2, t.c.x, l3)
+        stmt = select(t.c.x, t.c.y, l1, t.c.y, l2, t.c.x, l3).set_label_style(
+            LABEL_STYLE_NONE
+        )
 
         # so the statement has 7 inner columns...
         eq_(len(list(stmt.selected_columns)), 7)
@@ -5794,7 +5869,9 @@ class ResultMapTest(fixtures.TestBase):
         ).alias()
 
         # so when we wrap here we're going to have only 5 columns
-        wrapped_again = select(*[c for c in wrapped.c])
+        wrapped_again = select(*[c for c in wrapped.c]).set_label_style(
+            LABEL_STYLE_NONE
+        )
 
         # so the compiler logic that matches up the "wrapper" to the
         # "select_wraps_for" can't use inner_columns to match because

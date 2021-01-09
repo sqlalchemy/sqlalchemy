@@ -40,6 +40,7 @@ from ..sql.base import Options
 from ..sql.dml import DeleteDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 
 def _bulk_insert(
@@ -1521,7 +1522,9 @@ def _finalize_insert_update_commands(base_mapper, uowtransaction, states):
 
         if toload_now:
             state.key = base_mapper._identity_key_from_state(state)
-            stmt = future.select(mapper).apply_labels()
+            stmt = future.select(mapper).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
             loading.load_on_ident(
                 uowtransaction.session,
                 stmt,

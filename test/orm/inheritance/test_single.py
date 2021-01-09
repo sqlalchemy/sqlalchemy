@@ -18,6 +18,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -312,7 +313,10 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         Engineer = self.classes.Engineer
 
         stmt = select(Engineer)
-        subq = aliased(Engineer, stmt.apply_labels().subquery())
+        subq = aliased(
+            Engineer,
+            stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).subquery(),
+        )
 
         # so here we have an extra "WHERE type in ()", because
         # both the inner and the outer queries have the Engineer entity.
@@ -321,7 +325,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         # legacy from_self() takes care of this because it applies
         # _enable_single_crit at that moment.
 
-        stmt = select(subq).apply_labels()
+        stmt = select(subq).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             stmt,
             "SELECT anon_1.employees_employee_id AS "
@@ -526,7 +530,7 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
                     ),
                 )
             )
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
         eq_(
@@ -1638,7 +1642,7 @@ class SingleFromPolySelectableTest(
                 null().label("manager_id"),
             )
             .select_from(employee.join(manager))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .union_all(
                 select(
                     employee.c.id,
@@ -1649,7 +1653,7 @@ class SingleFromPolySelectableTest(
                     engineer.c.manager_id,
                 )
                 .select_from(employee.join(engineer))
-                .apply_labels()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             )
             .alias()
         )

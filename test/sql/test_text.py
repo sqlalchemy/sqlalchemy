@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.sql import column
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
@@ -119,7 +120,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.myid,
             )
             .select_from(table1)
-            .apply_labels(),
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT column1, column2, column3 AS bar, "
             "mytable.myid AS mytable_myid "
             "FROM mytable",
@@ -135,7 +136,7 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.myid,
             )
             .select_from(table1)
-            .apply_labels(),
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT column1 AS foobar, column2 AS hoho, "
             "mytable.myid AS mytable_myid FROM mytable",
         )
@@ -700,7 +701,11 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_order_by_alias_colname(self):
         t1 = table1.alias()
-        stmt = select(t1.c.myid).apply_labels().order_by("name")
+        stmt = (
+            select(t1.c.myid)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .order_by("name")
+        )
         self.assert_compile(
             stmt,
             "SELECT mytable_1.myid AS mytable_1_myid "
@@ -803,7 +808,11 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_group_by_subquery(self):
         stmt = select(table1).alias()
-        stmt = select(stmt).apply_labels().group_by("myid")
+        stmt = (
+            select(stmt)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .group_by("myid")
+        )
         self.assert_compile(
             stmt,
             "SELECT anon_1.myid AS anon_1_myid, anon_1.name AS anon_1_name, "
@@ -923,7 +932,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s1 = (
             select(*[adapter.columns[expr] for expr in exprs])
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .order_by("myid", "t1name", "x")
         )
 
@@ -955,7 +964,7 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s1 = (
             select(*[adapter.columns[expr] for expr in exprs])
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .order_by("myid", "t1name", "x")
         )
 

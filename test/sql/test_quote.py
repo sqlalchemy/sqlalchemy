@@ -16,6 +16,7 @@ from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql.elements import _anonymous_label
 from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -176,11 +177,15 @@ class QuoteExecTest(fixtures.TablesTest):
             table1.c.MixedCase,
             table1.c.a123,
         ]
-        result = connection.execute(select(columns).apply_labels()).fetchall()
+        result = connection.execute(
+            select(columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ).fetchall()
         assert result == [(1, 2, 3, 4), (2, 2, 3, 4), (4, 3, 2, 1)]
 
         columns = [table2.c.d123, table2.c.u123, table2.c.MixedCase]
-        result = connection.execute(select(columns).apply_labels()).all()
+        result = connection.execute(
+            select(columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
 
 
@@ -556,7 +561,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t2.join(t1).select(),
             "SELECT "
-            "t2.col1, t2.t1col1, t1.col1 "
+            "t2.col1, t2.t1col1, t1.col1 AS col1_1 "
             "FROM "
             "t2 "
             "JOIN "
@@ -578,7 +583,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t2.join(t1).select(),
             "SELECT "
-            '"t2"."col1", "t2"."t1col1", "t1"."col1" '
+            '"t2"."col1", "t2"."t1col1", "t1"."col1" AS col1_1 '
             "FROM "
             '"t2" '
             "JOIN "
@@ -597,7 +602,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t2.join(t1).select(),
             "SELECT "
-            '"T2"."Col1", "T2"."T1Col1", "T1"."Col1" '
+            '"T2"."Col1", "T2"."T1Col1", "T1"."Col1" AS "Col1_1" '
             "FROM "
             '"T2" '
             "JOIN "
@@ -619,7 +624,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             t2.join(t1).select(),
             "SELECT "
-            "T2.Col1, T2.T1Col1, T1.Col1 "
+            'T2.Col1, T2.T1Col1, T1.Col1 AS "Col1_1" '
             "FROM "
             "T2 "
             "JOIN "
@@ -756,7 +761,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = Table("T1", metadata, Column("Col1", Integer), schema="Foo")
 
         self.assert_compile(
-            t1.select().apply_labels(),
+            t1.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT "
             '"Foo"."T1"."Col1" AS "Foo_T1_Col1" '
             "FROM "
@@ -778,7 +783,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         # TODO: is this what we really want here ?
         # what if table/schema *are* quoted?
         self.assert_compile(
-            t1.select().apply_labels(),
+            t1.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT " "Foo.T1.Col1 AS Foo_T1_Col1 " "FROM " "Foo.T1",
         )
 
@@ -804,13 +809,13 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table("t", m, Column("x", Integer, quote=True))
 
         self.assert_compile(
-            select(t.alias()).apply_labels(),
+            select(t.alias()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             'SELECT t_1."x" AS "t_1_x" FROM t AS t_1',
         )
 
         t2 = Table("t2", m, Column("x", Integer), quote=True)
         self.assert_compile(
-            select(t2.c.x).apply_labels(),
+            select(t2.c.x).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             'SELECT "t2".x AS "t2_x" FROM "t2"',
         )
 

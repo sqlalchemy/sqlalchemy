@@ -31,6 +31,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import ddl
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import table
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -706,7 +707,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(other_table, anon)
             .select_from(other_table.outerjoin(anon))
-            .apply_labels(),
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT other_thirty_characters_table_.id "
             "AS other_thirty_characters__1, "
             "other_thirty_characters_table_.thirty_char"
@@ -724,7 +725,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(other_table, anon)
             .select_from(other_table.outerjoin(anon))
-            .apply_labels(),
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT other_thirty_characters_table_.id "
             "AS other_thirty_characters__1, "
             "other_thirty_characters_table_.thirty_char"
@@ -1054,7 +1055,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s,
             "SELECT address_types_1.id, "
-            "address_types_1.name, addresses.id, "
+            "address_types_1.name, addresses.id AS id_1, "
             "addresses.user_id, addresses.address_type_"
             "id, addresses.email_address FROM "
             "addresses LEFT OUTER JOIN address_types "

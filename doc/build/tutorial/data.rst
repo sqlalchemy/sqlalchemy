@@ -879,7 +879,7 @@ below for example returns all unique pairs of user names::
     ...     select(user_alias_1.c.name, user_alias_2.c.name).
     ...     join_from(user_alias_1, user_alias_2, user_alias_1.c.id > user_alias_2.c.id)
     ... )
-    {opensql}SELECT user_account_1.name, user_account_2.name
+    {opensql}SELECT user_account_1.name, user_account_2.name AS name_1
     FROM user_account AS user_account_1
     JOIN user_account AS user_account_2 ON user_account_1.id > user_account_2.id
 

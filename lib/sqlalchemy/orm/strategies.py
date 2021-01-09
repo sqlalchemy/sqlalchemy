@@ -41,6 +41,7 @@ from .. import sql
 from .. import util
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 
 def _register_attribute(
@@ -487,7 +488,9 @@ class DeferredColumnLoader(LoaderStrategy):
         if (
             loading.load_on_ident(
                 session,
-                sql.select(localparent).apply_labels(),
+                sql.select(localparent).set_label_style(
+                    LABEL_STYLE_TABLENAME_PLUS_COL
+                ),
                 state.key,
                 only_load_props=group,
                 refresh_state=state,
@@ -901,7 +904,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
         stmt = sql.lambda_stmt(
             lambda: sql.select(self.entity)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             ._set_compile_options(ORMCompileState.default_compile_options),
             global_track_bound_values=False,
             lambda_cache=self._query_cache,
@@ -1304,7 +1307,7 @@ class SubqueryLoader(PostLoader):
         # which we'll join onto.
         # LEGACY: as "q" is a Query, the before_compile() event is invoked
         # here.
-        embed_q = q.apply_labels().subquery()
+        embed_q = q.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).subquery()
         left_alias = orm_util.AliasedClass(
             leftmost_mapper, embed_q, use_mapper_path=True
         )
@@ -2751,7 +2754,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             lambda: sql.select(
                 orm_util.Bundle("pk", *pk_cols), effective_entity
             )
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             ._set_compile_options(ORMCompileState.default_compile_options)
             ._set_propagate_attrs(
                 {

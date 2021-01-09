@@ -443,7 +443,7 @@ class ConcreteTest(fixtures.MappedTest):
         assert (
             len(
                 session.connection()
-                .execute(session.query(Employee).with_labels().statement)
+                .execute(session.query(Employee).statement)
                 .fetchall()
             )
             == 3
@@ -521,7 +521,6 @@ class ConcreteTest(fixtures.MappedTest):
                 .execute(
                     session.query(Employee)
                     .with_polymorphic("*", pjoin, pjoin.c.type)
-                    .with_labels()
                     .statement
                 )
                 .fetchall()

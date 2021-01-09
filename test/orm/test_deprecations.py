@@ -455,9 +455,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
 
@@ -492,7 +490,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
-            .select(use_labels=True, order_by=[text("ulist.id"), adalias.c.id])
+            .select(order_by=[text("ulist.id"), adalias.c.id])
         )
 
         def go():
@@ -513,16 +511,45 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         sess = fixture_session()
 
         with self._expect_implicit_subquery():
-            self.assert_compile(
-                sess.query(users)
-                .select_entity_from(users.select())
-                .with_labels()
-                .statement,
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users, "
-                "(SELECT users.id AS id, users.name AS name FROM users) "
-                "AS anon_1",
-            )
+            stmt = sess.query(users).select_entity_from(users.select())
+
+        with testing.expect_deprecated_20(r"The Query.with_labels\(\)"):
+            stmt = stmt.apply_labels().statement
+        self.assert_compile(
+            stmt,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users, "
+            "(SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_1",
+        )
+
+    def test_apply_labels(self):
+        User = self.classes.User
+
+        with testing.expect_deprecated_20(
+            r"The Query.with_labels\(\) and Query.apply_labels\(\) "
+            "method is considered legacy"
+        ):
+            q = fixture_session().query(User).apply_labels().statement
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name FROM users",
+        )
+
+    def test_with_labels(self):
+        User = self.classes.User
+
+        with testing.expect_deprecated_20(
+            r"The Query.with_labels\(\) and Query.apply_labels\(\) "
+            "method is considered legacy"
+        ):
+            q = fixture_session().query(User).with_labels().statement
+
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name FROM users",
+        )
 
     def test_join(self):
         users, Address, User = (
@@ -3058,9 +3085,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -3094,9 +3119,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(
-                use_labels=True, order_by=[text("ulist.id"), addresses.c.id]
-            )
+            .select(order_by=[text("ulist.id"), addresses.c.id])
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -3128,7 +3151,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         selectquery = users.outerjoin(addresses).select(
             users.c.id < 10,
-            use_labels=True,
             order_by=[users.c.id, addresses.c.id],
         )
         q = sess.query(User)
@@ -3173,7 +3195,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         adalias = addresses.alias("adalias")
         selectquery = users.outerjoin(adalias).select(
-            use_labels=True, order_by=[users.c.id, adalias.c.id]
+            order_by=[users.c.id, adalias.c.id]
         )
 
         # note this has multiple problems because we aren't giving Query
@@ -3207,7 +3229,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         adalias = addresses.alias("adalias")
         selectquery = users.outerjoin(adalias).select(
-            use_labels=True, order_by=[users.c.id, adalias.c.id]
+            order_by=[users.c.id, adalias.c.id]
         )
 
         # note this has multiple problems because we aren't giving Query
@@ -3243,7 +3265,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             users.outerjoin(oalias)
             .outerjoin(order_items)
             .outerjoin(ialias)
-            .select(use_labels=True)
+            .select()
             .order_by(users.c.id, oalias.c.id, ialias.c.id)
         )
 
@@ -3284,7 +3306,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             users.outerjoin(oalias)
             .outerjoin(order_items)
             .outerjoin(ialias)
-            .select(use_labels=True)
+            .select()
             .order_by(users.c.id, oalias.c.id, ialias.c.id)
         )
 

@@ -26,6 +26,8 @@ from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -383,22 +385,28 @@ class QueryTest(fixtures.TablesTest):
             eq_(got, wanted)
 
         for labels in False, True:
+            label_style = (
+                LABEL_STYLE_NONE
+                if labels is False
+                else LABEL_STYLE_TABLENAME_PLUS_COL
+            )
 
             def go(stmt):
                 if labels:
-                    stmt = stmt.apply_labels()
+                    stmt = stmt.set_label_style(label_style)
                 return stmt
 
             a_eq(
-                users.select(order_by=[users.c.user_id], use_labels=labels),
+                users.select(order_by=[users.c.user_id]).set_label_style(
+                    label_style
+                ),
                 [(1, "c"), (2, "b"), (3, "a")],
             )
 
             a_eq(
                 users.select(
                     order_by=[users.c.user_name, users.c.user_id],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, "c")],
             )
 
@@ -423,9 +431,8 @@ class QueryTest(fixtures.TablesTest):
             a_eq(
                 users.select(
                     distinct=True,
-                    use_labels=labels,
                     order_by=[users.c.user_id],
-                ),
+                ).set_label_style(label_style),
                 [(1, "c"), (2, "b"), (3, "a")],
             )
 
@@ -452,9 +459,8 @@ class QueryTest(fixtures.TablesTest):
             a_eq(
                 users.select(
                     distinct=True,
-                    use_labels=labels,
                     order_by=[desc(users.c.user_id)],
-                ),
+                ).set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, "c")],
             )
 
@@ -485,67 +491,64 @@ class QueryTest(fixtures.TablesTest):
             eq_(got, wanted)
 
         for labels in False, True:
+            label_style = (
+                LABEL_STYLE_NONE
+                if labels is False
+                else LABEL_STYLE_TABLENAME_PLUS_COL
+            )
             a_eq(
                 users.select(
                     order_by=[users.c.user_name.nulls_first()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
                 users.select(
                     order_by=[users.c.user_name.nulls_last()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 
             a_eq(
                 users.select(
                     order_by=[asc(users.c.user_name).nulls_first()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
                 users.select(
                     order_by=[asc(users.c.user_name).nulls_last()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 
             a_eq(
                 users.select(
                     order_by=[users.c.user_name.desc().nulls_first()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(1, None), (2, "b"), (3, "a")],
             )
 
             a_eq(
                 users.select(
                     order_by=[users.c.user_name.desc().nulls_last()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(2, "b"), (3, "a"), (1, None)],
             )
 
             a_eq(
                 users.select(
                     order_by=[desc(users.c.user_name).nulls_first()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(1, None), (2, "b"), (3, "a")],
             )
 
             a_eq(
                 users.select(
                     order_by=[desc(users.c.user_name).nulls_last()],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(2, "b"), (3, "a"), (1, None)],
             )
 
@@ -555,16 +558,14 @@ class QueryTest(fixtures.TablesTest):
                         users.c.user_name.nulls_first(),
                         users.c.user_id,
                     ],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
                 users.select(
                     order_by=[users.c.user_name.nulls_last(), users.c.user_id],
-                    use_labels=labels,
-                ),
+                ).set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 

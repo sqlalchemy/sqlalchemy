@@ -28,6 +28,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import undefer
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -1081,9 +1082,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         # more rows.
         u2 = users.alias("u2")
         s = sa.union_all(
-            u2.select(use_labels=True),
-            u2.select(use_labels=True),
-            u2.select(use_labels=True),
+            u2.select(),
+            u2.select(),
+            u2.select(),
         ).alias("u")
 
         mapper(
@@ -1103,10 +1104,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         def go():
             result = (
-                q.filter(s.c.u2_id == User.id)
-                .distinct()
-                .order_by(User.id)
-                .all()
+                q.filter(s.c.id == User.id).distinct().order_by(User.id).all()
             )
             eq_(self.static.user_address_result, result)
 
@@ -4791,7 +4789,7 @@ class MixedEntitiesTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             sess.query(User, oalias)
             .join(User.orders)
             .options(joinedload(oalias.items))
-            .with_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name, "
             "orders_1.id AS orders_1_id, "

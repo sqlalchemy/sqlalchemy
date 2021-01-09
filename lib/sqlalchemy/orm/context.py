@@ -373,9 +373,11 @@ class ORMFromStatementCompileState(ORMCompileState):
         if (
             isinstance(statement, expression.SelectBase)
             and not statement._is_textual
-            and not statement.use_labels
+            and statement._label_style is util.symbol("LABEL_STYLE_NONE")
         ):
-            self.statement = statement.apply_labels()
+            self.statement = statement.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
         else:
             self.statement = statement
         self.order_by = None

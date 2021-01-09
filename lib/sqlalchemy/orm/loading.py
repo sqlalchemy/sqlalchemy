@@ -31,6 +31,7 @@ from ..engine.result import ChunkedIteratorResult
 from ..engine.result import FrozenResult
 from ..engine.result import SimpleResultMetaData
 from ..sql import util as sql_util
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 _new_runid = util.counter()
 
@@ -1396,7 +1397,9 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
 
         result = load_on_ident(
             session,
-            future.select(mapper).apply_labels(),
+            future.select(mapper).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             identity_key,
             refresh_state=state,
             only_load_props=attribute_names,

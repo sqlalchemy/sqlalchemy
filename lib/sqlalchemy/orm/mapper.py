@@ -54,6 +54,7 @@ from ..sql import operators
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
 
 
@@ -3008,7 +3009,11 @@ class Mapper(
         cols = []
         for key in col_attribute_names:
             cols.extend(props[key].columns)
-        return sql.select(*cols).where(cond).apply_labels()
+        return (
+            sql.select(*cols)
+            .where(cond)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        )
 
     def _iterate_to_target_viawpoly(self, mapper):
         if self.isa(mapper):

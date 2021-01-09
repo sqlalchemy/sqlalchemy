@@ -34,6 +34,7 @@ from sqlalchemy.sql import column
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import desc
 from sqlalchemy.sql import false
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import literal
 from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
@@ -1234,15 +1235,21 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_constant_render_distinct_use_labels(self):
         self.assert_compile(
-            select(null(), null()).apply_labels(),
+            select(null(), null()).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT NULL AS anon_1, NULL AS anon__1",
         )
         self.assert_compile(
-            select(true(), true()).apply_labels(),
+            select(true(), true()).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT true AS anon_1, true AS anon__1",
         )
         self.assert_compile(
-            select(false(), false()).apply_labels(),
+            select(false(), false()).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT false AS anon_1, false AS anon__1",
         )
 
