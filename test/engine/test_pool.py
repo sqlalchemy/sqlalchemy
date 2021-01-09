@@ -10,6 +10,7 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.engine import default
+from sqlalchemy.pool.impl import _AsyncConnDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
 from sqlalchemy.testing import assert_raises_message
@@ -89,10 +90,12 @@ class PoolTestBase(fixtures.TestBase):
 
     def _queuepool_dbapi_fixture(self, **kw):
         dbapi = MockDBAPI()
-        return (
-            dbapi,
-            pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw),
-        )
+        _is_asyncio = kw.pop("_is_asyncio", False)
+        p = pool.QueuePool(creator=lambda: dbapi.connect("foo.db"), **kw)
+        if _is_asyncio:
+            p._is_asyncio = True
+            p._dialect = _AsyncConnDialect()
+        return dbapi, p
 
 
 class PoolTest(PoolTestBase):
@@ -283,6 +286,8 @@ class PoolDialectTest(PoolTestBase):
         canary = []
 
         class PoolDialect(object):
+            is_async = False
+
             def do_rollback(self, dbapi_connection):
                 canary.append("R")
                 dbapi_connection.rollback()
@@ -361,8 +366,8 @@ class PoolEventsTest(PoolTestBase):
 
         return p, canary
 
-    def _checkin_event_fixture(self):
-        p = self._queuepool_fixture()
+    def _checkin_event_fixture(self, _is_asyncio=False):
+        p = self._queuepool_fixture(_is_asyncio=_is_asyncio)
         canary = []
 
         @event.listens_for(p, "checkin")
@@ -639,10 +644,7 @@ class PoolEventsTest(PoolTestBase):
 
     @testing.combinations((True, testing.requires.python3), (False,))
     def test_checkin_event_gc(self, detach_gced):
-        p, canary = self._checkin_event_fixture()
-
-        if detach_gced:
-            p._is_asyncio = True
+        p, canary = self._checkin_event_fixture(_is_asyncio=detach_gced)
 
         c1 = p.connect()
 
@@ -1517,11 +1519,11 @@ class QueuePoolTest(PoolTestBase):
     @testing.combinations((True, testing.requires.python3), (False,))
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
-            pool_size=1, max_overflow=2
+            pool_size=1, max_overflow=2, _is_asyncio=detach_gced
         )
 
         if detach_gced:
-            pool._is_asyncio = True
+            pool._dialect.is_async = True
 
         @event.listens_for(pool, "checkout")
         def handle_checkout_event(dbapi_con, con_record, con_proxy):

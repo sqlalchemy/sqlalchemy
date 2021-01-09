@@ -13,6 +13,7 @@
 import traceback
 import weakref
 
+from .base import _ConnDialect
 from .base import _ConnectionFairy
 from .base import _ConnectionRecord
 from .base import Pool
@@ -221,9 +222,14 @@ class QueuePool(Pool):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
 
 
+class _AsyncConnDialect(_ConnDialect):
+    is_async = True
+
+
 class AsyncAdaptedQueuePool(QueuePool):
     _is_asyncio = True
     _queue_class = sqla_queue.AsyncAdaptedQueue
+    _dialect = _AsyncConnDialect()
 
 
 class FallbackAsyncAdaptedQueuePool(AsyncAdaptedQueuePool):

@@ -26,7 +26,6 @@ reset_none = util.symbol("reset_none")
 
 
 class _ConnDialect(object):
-
     """partial implementation of :class:`.Dialect`
     which provides DBAPI connection methods.
 
@@ -35,6 +34,8 @@ class _ConnDialect(object):
     :class:`.Dialect`.
 
     """
+
+    is_async = False
 
     def do_rollback(self, dbapi_connection):
         dbapi_connection.rollback()
@@ -606,11 +607,20 @@ class _ConnectionRecord(object):
 
 
 def _finalize_fairy(
-    connection, connection_record, pool, ref, echo, fairy=None
+    connection,
+    connection_record,
+    pool,
+    ref,  # this is None when called directly, not by the gc
+    echo,
+    fairy=None,
 ):
     """Cleanup for a :class:`._ConnectionFairy` whether or not it's already
     been garbage collected.
 
+    When using an async dialect no IO can happen here (without using
+    a dedicated thread), since this is called outside the greenlet
+    context and with an already running loop. In this case function
+    will only log a message and raise a warning.
     """
 
     if ref:
@@ -624,7 +634,8 @@ def _finalize_fairy(
         assert connection is None
         connection = connection_record.connection
 
-    dont_restore_gced = pool._is_asyncio
+    # null pool is not _is_asyncio but can be used also with async dialects
+    dont_restore_gced = pool._dialect.is_async
 
     if dont_restore_gced:
         detach = not connection_record or ref
@@ -658,11 +669,17 @@ def _finalize_fairy(
 
                     pool._close_connection(connection)
                 else:
-                    util.warn(
-                        "asyncio connection is being garbage "
-                        "collected without being properly closed: %r"
-                        % connection
-                    )
+                    message = (
+                        "The garbage collector is trying to clean up "
+                        "connection %r. This feature is unsupported on async "
+                        "dbapi, since no IO can be performed at this stage to "
+                        "reset the connection. Please close out all "
+                        "connections when they are no longer used, calling "
+                        "``close()`` or using a context manager to "
+                        "manage their lifetime."
+                    ) % connection
+                    pool.logger.error(message)
+                    util.warn(message)
 
         except BaseException as e:
             pool.logger.error(

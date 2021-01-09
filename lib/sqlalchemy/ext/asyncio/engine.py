@@ -494,7 +494,6 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
 
     .. versionadded:: 1.4
 
-
     """  # noqa
 
     # AsyncEngine is a thin proxy; no state should be added here

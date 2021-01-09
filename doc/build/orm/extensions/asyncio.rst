@@ -255,6 +255,29 @@ differences are as follows:
    concepts, no third party networking libraries as ``gevent`` and ``eventlet``
    provides are in use.
 
+Using multiple asyncio event loops
+----------------------------------
+
+An application that makes use of multiple event loops, for example by combining asyncio
+with multithreading, should not share the same :class:`_asyncio.AsyncEngine`
+with different event loops when using the default pool implementation.
+
+If an :class:`_asyncio.AsyncEngine` is be passed from one event loop to another,
+the method :meth:`_asyncio.AsyncEngine.dispose()` should be called before it's
+re-used on a new event loop. Failing to do so may lead to a ``RuntimeError``
+along the lines of
+``Task <Task pending ...> got Future attached to a different loop``
+
+If the same engine must be shared between different loop, it should be configured
+to disable pooling using :class:`~sqlalchemy.pool.NullPool`, preventing the Engine
+from using any connection more than once:
+
+    from sqlalchemy.pool import NullPool
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:pass@host/dbname", poolclass=NullPool
+    )
+
+
 .. currentmodule:: sqlalchemy.ext.asyncio
 
 Engine API Documentation

@@ -1,12 +1,18 @@
+import threading
+
 from sqlalchemy import exc
 from sqlalchemy import testing
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_true
+from sqlalchemy.util import asyncio
 from sqlalchemy.util import await_fallback
 from sqlalchemy.util import await_only
 from sqlalchemy.util import greenlet_spawn
+from sqlalchemy.util import queue
 
 try:
     from greenlet import greenlet
@@ -152,3 +158,47 @@ class TestAsyncioCompat(fixtures.TestBase):
             "The current operation required an async execution but none was",
         ):
             await greenlet_spawn(run, _require_await=True)
+
+
+class TestAsyncAdaptedQueue(fixtures.TestBase):
+    def test_lazy_init(self):
+        run = [False]
+
+        def thread_go(q):
+            def go():
+                q.get(timeout=0.1)
+
+            with expect_raises(queue.Empty):
+                asyncio.run(greenlet_spawn(go))
+            run[0] = True
+
+        t = threading.Thread(
+            target=thread_go, args=[queue.AsyncAdaptedQueue()]
+        )
+        t.start()
+        t.join()
+
+        is_true(run[0])
+
+    def test_error_other_loop(self):
+        run = [False]
+
+        def thread_go(q):
+            def go():
+                eq_(q.get(block=False), 1)
+                q.get(timeout=0.1)
+
+            with expect_raises_message(
+                RuntimeError, "Task .* attached to a different loop"
+            ):
+                asyncio.run(greenlet_spawn(go))
+
+            run[0] = True
+
+        q = queue.AsyncAdaptedQueue()
+        q.put_nowait(1)
+        t = threading.Thread(target=thread_go, args=[q])
+        t.start()
+        t.join()
+
+        is_true(run[0])

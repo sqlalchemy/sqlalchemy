@@ -26,6 +26,7 @@ from .compat import threading
 from .concurrency import asyncio
 from .concurrency import await_fallback
 from .concurrency import await_only
+from .langhelpers import memoized_property
 
 
 __all__ = ["Empty", "Full", "Queue"]
@@ -206,15 +207,32 @@ class AsyncAdaptedQueue:
     await_ = staticmethod(await_only)
 
     def __init__(self, maxsize=0, use_lifo=False):
-        if use_lifo:
-            self._queue = asyncio.LifoQueue(maxsize=maxsize)
-        else:
-            self._queue = asyncio.Queue(maxsize=maxsize)
         self.use_lifo = use_lifo
         self.maxsize = maxsize
-        self.empty = self._queue.empty
-        self.full = self._queue.full
-        self.qsize = self._queue.qsize
+
+    def empty(self):
+        return self._queue.empty()
+
+    def full(self):
+        return self._queue.full()
+
+    def qsize(self):
+        return self._queue.qsize()
+
+    @memoized_property
+    def _queue(self):
+        # Delay creation of the queue until it is first used, to avoid
+        # binding it to a possibly wrong event loop.
+        # By delaying the creation of the pool we accommodate the common
+        # usage pattern of instanciating the engine at module level, where a
+        # different event loop is in present compared to when the application
+        # is actually run.
+
+        if self.use_lifo:
+            queue = asyncio.LifoQueue(maxsize=self.maxsize)
+        else:
+            queue = asyncio.Queue(maxsize=self.maxsize)
+        return queue
 
     def put_nowait(self, item):
         try:

@@ -10,4 +10,6 @@
     the connection including transaction rollback or connection close as this
     will often be outside of the event loop.
 
-
+    The ``AsyncAdaptedQueue`` used by default on async dpapis
+    should instantiate a queue only when it's first used
+    to avoid binding it to a possibly wrong event loop.
