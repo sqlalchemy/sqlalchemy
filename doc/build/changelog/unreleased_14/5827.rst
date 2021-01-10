@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 5827
+
+    Fixed bug in asyncio connection pool where ``asyncio.TimeoutError`` would
+    be raised rather than :class:`.exc.TimeoutError`.  Also repaired the
+    :paramref:`_sa.create_engine.pool_timeout` parameter set to zero when using
+    the async engine, which previously would ignore the timeout and block
+    rather than timing out immediately as is the behavior with regular
+    :class:`.QueuePool`.

@@ -6000,12 +6000,19 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             [User.orders_syn, Order.items_syn],
             [User.orders_syn_2, Order.items_syn],
         ):
-            q = fixture_session().query(User)
-            for path in j:
-                q = q.join(path)
-            q = q.filter_by(id=3)
-            result = q.all()
-            assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
+            with fixture_session() as sess:
+                q = sess.query(User)
+                for path in j:
+                    q = q.join(path)
+                q = q.filter_by(id=3)
+                result = q.all()
+                eq_(
+                    result,
+                    [
+                        User(id=7, name="jack"),
+                        User(id=9, name="fred"),
+                    ],
+                )
 
     def test_with_parent(self):
         Order, User = self.classes.Order, self.classes.User
@@ -6018,17 +6025,17 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             ("name_syn", "orders_syn"),
             ("name_syn", "orders_syn_2"),
         ):
-            sess = fixture_session()
-            q = sess.query(User)
+            with fixture_session() as sess:
+                q = sess.query(User)
 
-            u1 = q.filter_by(**{nameprop: "jack"}).one()
+                u1 = q.filter_by(**{nameprop: "jack"}).one()
 
-            o = sess.query(Order).with_parent(u1, property=orderprop).all()
-            assert [
-                Order(description="order 1"),
-                Order(description="order 3"),
-                Order(description="order 5"),
-            ] == o
+                o = sess.query(Order).with_parent(u1, property=orderprop).all()
+                assert [
+                    Order(description="order 1"),
+                    Order(description="order 3"),
+                    Order(description="order 5"),
+                ] == o
 
     def test_froms_aliased_col(self):
         Address, User = self.classes.Address, self.classes.User

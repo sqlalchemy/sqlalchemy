@@ -19,7 +19,6 @@ from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -42,7 +41,7 @@ class ShardTest(object):
 
     schema = None
 
-    def setUp(self):
+    def setup_test(self):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
         db1, db2, db3, db4 = self._dbs = self._init_dbs()
@@ -88,7 +87,7 @@ class ShardTest(object):
 
     @classmethod
     def setup_session(cls):
-        global create_session
+        global sharded_session
         shard_lookup = {
             "North America": "north_america",
             "Asia": "asia",
@@ -128,10 +127,10 @@ class ShardTest(object):
             else:
                 return ids
 
-        create_session = sessionmaker(
+        sharded_session = sessionmaker(
             class_=ShardedSession, autoflush=True, autocommit=False
         )
-        create_session.configure(
+        sharded_session.configure(
             shards={
                 "north_america": db1,
                 "asia": db2,
@@ -180,7 +179,7 @@ class ShardTest(object):
         tokyo.reports.append(Report(80.0, id_=1))
         newyork.reports.append(Report(75, id_=1))
         quito.reports.append(Report(85))
-        sess = create_session(future=True)
+        sess = sharded_session(future=True)
         for c in [tokyo, newyork, toronto, london, dublin, brasilia, quito]:
             sess.add(c)
         sess.flush()
@@ -671,11 +670,10 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         self.dbs = [db1, db2, db3, db4]
         return self.dbs
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
-        for db in self.dbs:
-            db.connect().invalidate()
+        testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
@@ -702,10 +700,10 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
         self.engine = e
         return db1, db2, db3, db4
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
-        self.engine.connect().invalidate()
+        testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
@@ -778,10 +776,13 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
         self.postgresql_engine = e2
         return db1, db2, db3, db4
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
-        self.sqlite_engine.connect().invalidate()
+        # the tests in this suite don't cleanly close out the Session
+        # at the moment so use the reaper to close all connections
+        testing_reaper.checkin_all()
+
         for i in [1, 3]:
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
@@ -789,6 +790,7 @@ class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
             self.tables_test_metadata.drop_all(conn)
             for i in [2, 4]:
                 conn.exec_driver_sql("DROP SCHEMA shard%s CASCADE" % (i,))
+        self.postgresql_engine.dispose()
 
 
 class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
@@ -904,11 +906,11 @@ class LazyLoadIdentityKeyTest(fixtures.DeclarativeMappedTest):
 
         return self.dbs
 
-    def teardown(self):
+    def teardown_test(self):
         for db in self.dbs:
             db.connect().invalidate()
 
-        testing_reaper.close_all()
+        testing_reaper.checkin_all()
         for i in range(1, 3):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 

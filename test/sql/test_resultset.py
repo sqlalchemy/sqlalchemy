@@ -661,8 +661,8 @@ class CursorResultTest(fixtures.TablesTest):
         assert_raises(KeyError, lambda: row._mapping["Case_insensitive"])
         assert_raises(KeyError, lambda: row._mapping["casesensitive"])
 
-    def test_row_case_sensitive_unoptimized(self):
-        with engines.testing_engine().connect() as ins_conn:
+    def test_row_case_sensitive_unoptimized(self, testing_engine):
+        with testing_engine().connect() as ins_conn:
             row = ins_conn.execute(
                 select(
                     literal_column("1").label("case_insensitive"),
@@ -1234,8 +1234,7 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(proxy[0], "value")
         eq_(proxy._mapping["key"], "value")
 
-    @testing.provide_metadata
-    def test_no_rowcount_on_selects_inserts(self):
+    def test_no_rowcount_on_selects_inserts(self, metadata, testing_engine):
         """assert that rowcount is only called on deletes and updates.
 
         This because cursor.rowcount may can be expensive on some dialects
@@ -1244,9 +1243,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         """
 
-        metadata = self.metadata
-
-        engine = engines.testing_engine()
+        engine = testing_engine()
 
         t = Table("t1", metadata, Column("data", String(10)))
         metadata.create_all(engine)
@@ -2132,7 +2129,9 @@ class AlternateCursorResultTest(fixtures.TablesTest):
 
     @classmethod
     def setup_bind(cls):
-        cls.engine = engine = engines.testing_engine("sqlite://")
+        cls.engine = engine = engines.testing_engine(
+            "sqlite://", options={"scope": "class"}
+        )
         return engine
 
     @classmethod

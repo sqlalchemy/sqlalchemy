@@ -48,11 +48,11 @@ class DocTest(fixtures.TestBase):
 
         ddl.sort_tables_and_constraints = self.orig_sort
 
-    def setup(self):
+    def setup_test(self):
         self._setup_logger()
         self._setup_create_table_patcher()
 
-    def teardown(self):
+    def teardown_test(self):
         self._teardown_create_table_patcher()
         self._teardown_logger()
 

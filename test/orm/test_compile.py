@@ -19,7 +19,7 @@ from sqlalchemy.testing import fixtures
 class CompileTest(fixtures.ORMTest):
     """test various mapper compilation scenarios"""
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     def test_with_polymorphic(self):

@@ -16,7 +16,7 @@ from sqlalchemy.testing.util import gc_collect
 
 
 class TearDownLocalEventsFixture(object):
-    def tearDown(self):
+    def teardown_test(self):
         classes = set()
         for entry in event.base._registrars.values():
             for evt_cls in entry:
@@ -30,7 +30,7 @@ class TearDownLocalEventsFixture(object):
 class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """Test class- and instance-level event registration."""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             def event_one(self, x, y):
                 pass
@@ -438,7 +438,7 @@ class NamedCallTest(TearDownLocalEventsFixture, fixtures.TestBase):
 class LegacySignatureTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """test adaption of legacy args"""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEventsOne(event.Events):
             @event._legacy_signature("0.9", ["x", "y"])
             def event_three(self, x, y, z, q):
@@ -608,7 +608,7 @@ class LegacySignatureTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class ClsLevelListenTest(TearDownLocalEventsFixture, fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class TargetEventsOne(event.Events):
             def event_one(self, x, y):
                 pass
@@ -677,7 +677,7 @@ class ClsLevelListenTest(TearDownLocalEventsFixture, fixtures.TestBase):
 class AcceptTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """Test default target acceptance."""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEventsOne(event.Events):
             def event_one(self, x, y):
                 pass
@@ -734,7 +734,7 @@ class AcceptTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 class CustomTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """Test custom target acceptance."""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             @classmethod
             def _accept_with(cls, target):
@@ -771,7 +771,7 @@ class CustomTargetsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 class SubclassGrowthTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """test that ad-hoc subclasses are garbage collected."""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             def some_event(self, x, y):
                 pass
@@ -797,7 +797,7 @@ class ListenOverrideTest(TearDownLocalEventsFixture, fixtures.TestBase):
     """Test custom listen functions which change the listener function
     signature."""
 
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             @classmethod
             def _listen(cls, event_key, add=False):
@@ -855,7 +855,7 @@ class ListenOverrideTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class PropagateTest(TearDownLocalEventsFixture, fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             def event_one(self, arg):
                 pass
@@ -889,7 +889,7 @@ class PropagateTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class JoinTest(TearDownLocalEventsFixture, fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             def event_one(self, target, arg):
                 pass
@@ -1109,7 +1109,7 @@ class JoinTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class DisableClsPropagateTest(TearDownLocalEventsFixture, fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class TargetEvents(event.Events):
             def event_one(self, target, arg):
                 pass

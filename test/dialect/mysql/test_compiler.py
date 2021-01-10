@@ -991,7 +991,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
 class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mysql.dialect()
 
-    def setup(self):
+    def setup_test(self):
         self.table = Table(
             "foos",
             MetaData(),
@@ -1062,7 +1062,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class RegexpCommon(testing.AssertsCompiledSQL):
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )

@@ -1814,7 +1814,7 @@ class CompileIdentityTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class SchemaTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         t = Table(
             "sometable",
             MetaData(),

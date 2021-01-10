@@ -30,7 +30,7 @@ class LogParamsTest(fixtures.TestBase):
     __only_on__ = "sqlite"
     __requires__ = ("ad_hoc_engines",)
 
-    def setup(self):
+    def setup_test(self):
         self.eng = engines.testing_engine(options={"echo": True})
         self.no_param_engine = engines.testing_engine(
             options={"echo": True, "hide_parameters": True}
@@ -44,7 +44,7 @@ class LogParamsTest(fixtures.TestBase):
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.addHandler(self.buf)
 
-    def teardown(self):
+    def teardown_test(self):
         exec_sql(self.eng, "drop table if exists foo")
         for log in [logging.getLogger("sqlalchemy.engine")]:
             log.removeHandler(self.buf)
@@ -413,14 +413,14 @@ class LogParamsTest(fixtures.TestBase):
 
 
 class PoolLoggingTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.existing_level = logging.getLogger("sqlalchemy.pool").level
 
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [logging.getLogger("sqlalchemy.pool")]:
             log.addHandler(self.buf)
 
-    def teardown(self):
+    def teardown_test(self):
         for log in [logging.getLogger("sqlalchemy.pool")]:
             log.removeHandler(self.buf)
         logging.getLogger("sqlalchemy.pool").setLevel(self.existing_level)
@@ -528,7 +528,7 @@ class LoggingNameTest(fixtures.TestBase):
         kw.update({"echo": True})
         return engines.testing_engine(options=kw)
 
-    def setup(self):
+    def setup_test(self):
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [
             logging.getLogger("sqlalchemy.engine"),
@@ -536,7 +536,7 @@ class LoggingNameTest(fixtures.TestBase):
         ]:
             log.addHandler(self.buf)
 
-    def teardown(self):
+    def teardown_test(self):
         for log in [
             logging.getLogger("sqlalchemy.engine"),
             logging.getLogger("sqlalchemy.pool"),
@@ -588,13 +588,13 @@ class LoggingNameTest(fixtures.TestBase):
 class EchoTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
 
-    def setup(self):
+    def setup_test(self):
         self.level = logging.getLogger("sqlalchemy.engine").level
         logging.getLogger("sqlalchemy.engine").setLevel(logging.WARN)
         self.buf = logging.handlers.BufferingHandler(100)
         logging.getLogger("sqlalchemy.engine").addHandler(self.buf)
 
-    def teardown(self):
+    def teardown_test(self):
         logging.getLogger("sqlalchemy.engine").removeHandler(self.buf)
         logging.getLogger("sqlalchemy.engine").setLevel(self.level)
 

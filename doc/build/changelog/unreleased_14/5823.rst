@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, pool, asyncio
+    :tickets: 5823
+
+    When using an asyncio engine, the connection pool will now detach and
+    discard a pooled connection that is was not explicitly closed/returned to
+    the pool when its tracking object is garbage collected, emitting a warning
+    that the connection was not properly closed.   As this operation occurs
+    during Python gc finalizers, it's not safe to run any IO operations upon
+    the connection including transaction rollback or connection close as this
+    will often be outside of the event loop.
+
+

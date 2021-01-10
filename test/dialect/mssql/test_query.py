@@ -455,7 +455,7 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         return testing.db.execution_options(isolation_level="AUTOCOMMIT")
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         with testing.db.connect().execution_options(
             isolation_level="AUTOCOMMIT"
         ) as conn:
@@ -463,7 +463,6 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
                 conn.exec_driver_sql("DROP FULLTEXT CATALOG Catalog")
             except:
                 pass
-        super(MatchTest, cls).setup_class()
 
     @classmethod
     def insert_data(cls, connection):

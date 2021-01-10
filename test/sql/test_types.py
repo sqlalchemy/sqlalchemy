@@ -1375,7 +1375,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
 
 
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
-    def setup(self):
+    def setup_test(self):
         class UTypeOne(types.UserDefinedType):
             def get_col_spec(self):
                 return "UTYPEONE"
@@ -2504,7 +2504,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
 
 
 class JSONTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
         self.test_table = Table(
             "test_table",
@@ -3445,7 +3445,12 @@ class BooleanTest(
     @testing.requires.non_native_boolean_unconstrained
     def test_constraint(self, connection):
         assert_raises(
-            (exc.IntegrityError, exc.ProgrammingError, exc.OperationalError),
+            (
+                exc.IntegrityError,
+                exc.ProgrammingError,
+                exc.OperationalError,
+                exc.InternalError,  # older pymysql's do this
+            ),
             connection.exec_driver_sql,
             "insert into boolean_table (id, value) values(1, 5)",
         )

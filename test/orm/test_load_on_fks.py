@@ -9,14 +9,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
 
-engine = testing.db
-
-
 class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         global Parent, Child, Base
         Base = declarative_base()
 
@@ -36,27 +34,27 @@ class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
             )
             parent_id = Column(Integer, ForeignKey("parent.id"))
 
-        Base.metadata.create_all(engine)
+        Base.metadata.create_all(testing.db)
 
-    def tearDown(self):
-        Base.metadata.drop_all(engine)
+    def teardown_test(self):
+        Base.metadata.drop_all(testing.db)
 
     def test_annoying_autoflush_one(self):
-        sess = Session(engine)
+        sess = fixture_session()
 
         p1 = Parent()
         sess.add(p1)
         p1.children = []
 
     def test_annoying_autoflush_two(self):
-        sess = Session(engine)
+        sess = fixture_session()
 
         p1 = Parent()
         sess.add(p1)
         assert p1.children == []
 
     def test_dont_load_if_no_keys(self):
-        sess = Session(engine)
+        sess = fixture_session()
 
         p1 = Parent()
         sess.add(p1)
@@ -68,7 +66,9 @@ class FlushOnPendingTest(AssertsExecutionResults, fixtures.TestBase):
 
 
 class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
-    def setUp(self):
+    __leave_connections_for_teardown__ = True
+
+    def setup_test(self):
         global Parent, Child, Base
         Base = declarative_base()
 
@@ -91,10 +91,10 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
 
             parent = relationship(Parent, backref=backref("children"))
 
-        Base.metadata.create_all(engine)
+        Base.metadata.create_all(testing.db)
 
         global sess, p1, p2, c1, c2
-        sess = Session(bind=engine)
+        sess = Session(bind=testing.db)
 
         p1 = Parent()
         p2 = Parent()
@@ -105,9 +105,9 @@ class LoadOnFKsTest(AssertsExecutionResults, fixtures.TestBase):
 
         sess.commit()
 
-    def tearDown(self):
+    def teardown_test(self):
         sess.rollback()
-        Base.metadata.drop_all(engine)
+        Base.metadata.drop_all(testing.db)
 
     def test_load_on_pending_allows_backref_event(self):
         Child.parent.property.load_on_pending = True

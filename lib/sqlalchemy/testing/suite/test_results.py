@@ -261,10 +261,6 @@ class ServerSideCursorsTest(
             )
         return self.engine
 
-    def tearDown(self):
-        engines.testing_reaper.close_all()
-        self.engine.dispose()
-
     @testing.combinations(
         ("global_string", True, "select 1", True),
         ("global_text", True, text("select 1"), True),
@@ -309,24 +305,22 @@ class ServerSideCursorsTest(
     def test_conn_option(self):
         engine = self._fixture(False)
 
-        # should be enabled for this one
-        result = (
-            engine.connect()
-            .execution_options(stream_results=True)
-            .exec_driver_sql("select 1")
-        )
-        assert self._is_server_side(result.cursor)
+        with engine.connect() as conn:
+            # should be enabled for this one
+            result = conn.execution_options(
+                stream_results=True
+            ).exec_driver_sql("select 1")
+            assert self._is_server_side(result.cursor)
 
     def test_stmt_enabled_conn_option_disabled(self):
         engine = self._fixture(False)
 
         s = select(1).execution_options(stream_results=True)
 
-        # not this one
-        result = (
-            engine.connect().execution_options(stream_results=False).execute(s)
-        )
-        assert not self._is_server_side(result.cursor)
+        with engine.connect() as conn:
+            # not this one
+            result = conn.execution_options(stream_results=False).execute(s)
+            assert not self._is_server_side(result.cursor)
 
     def test_aliases_and_ss(self):
         engine = self._fixture(False)
@@ -344,8 +338,7 @@ class ServerSideCursorsTest(
             assert not self._is_server_side(result.cursor)
             result.close()
 
-    @testing.provide_metadata
-    def test_roundtrip_fetchall(self):
+    def test_roundtrip_fetchall(self, metadata):
         md = self.metadata
 
         engine = self._fixture(True)
@@ -385,8 +378,7 @@ class ServerSideCursorsTest(
                 0,
             )
 
-    @testing.provide_metadata
-    def test_roundtrip_fetchmany(self):
+    def test_roundtrip_fetchmany(self, metadata):
         md = self.metadata
 
         engine = self._fixture(True)

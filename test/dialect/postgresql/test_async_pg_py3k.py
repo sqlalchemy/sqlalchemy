@@ -27,7 +27,7 @@ class AsyncPgTest(fixtures.TestBase):
         # TODO: remove when Iae6ab95938a7e92b6d42086aec534af27b5577d3
         # merges
 
-        from sqlalchemy.testing import engines
+        from sqlalchemy.testing import util as testing_util
         from sqlalchemy.sql import schema
 
         metadata = schema.MetaData()
@@ -35,7 +35,7 @@ class AsyncPgTest(fixtures.TestBase):
         try:
             yield metadata
         finally:
-            engines.drop_all_tables(metadata, testing.db)
+            testing_util.drop_all_tables_from_metadata(metadata, testing.db)
 
     @async_test
     async def test_detect_stale_ddl_cache_raise_recover(

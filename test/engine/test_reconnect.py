@@ -162,7 +162,7 @@ def MockDBAPI():
 
 
 class PrePingMockTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.dbapi = MockDBAPI()
 
     def _pool_fixture(self, pre_ping, pool_kw=None):
@@ -182,7 +182,7 @@ class PrePingMockTest(fixtures.TestBase):
         )
         return _pool
 
-    def teardown(self):
+    def teardown_test(self):
         self.dbapi.dispose()
 
     def test_ping_not_on_first_connect(self):
@@ -357,7 +357,7 @@ class PrePingMockTest(fixtures.TestBase):
 
 
 class MockReconnectTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.dbapi = MockDBAPI()
 
         self.db = testing_engine(
@@ -373,7 +373,7 @@ class MockReconnectTest(fixtures.TestBase):
             e, MockDisconnect
         )
 
-    def teardown(self):
+    def teardown_test(self):
         self.dbapi.dispose()
 
     def test_reconnect(self):
@@ -1004,10 +1004,10 @@ class RealReconnectTest(fixtures.TestBase):
     __backend__ = True
     __requires__ = "graceful_disconnects", "ad_hoc_engines"
 
-    def setup(self):
+    def setup_test(self):
         self.engine = engines.reconnecting_engine()
 
-    def teardown(self):
+    def teardown_test(self):
         self.engine.dispose()
 
     def test_reconnect(self):
@@ -1336,7 +1336,7 @@ class PrePingRealTest(fixtures.TestBase):
 class InvalidateDuringResultTest(fixtures.TestBase):
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         self.engine = engines.reconnecting_engine()
         self.meta = MetaData()
         table = Table(
@@ -1353,7 +1353,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
                 [{"id": i, "name": "row %d" % i} for i in range(1, 100)],
             )
 
-    def teardown(self):
+    def teardown_test(self):
         with self.engine.begin() as conn:
             self.meta.drop_all(conn)
         self.engine.dispose()
@@ -1470,7 +1470,7 @@ class ReconnectRecipeTest(fixtures.TestBase):
 
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         self.engine = engines.reconnecting_engine(
             options=dict(future=self.future)
         )
@@ -1483,7 +1483,7 @@ class ReconnectRecipeTest(fixtures.TestBase):
         )
         self.meta.create_all(self.engine)
 
-    def teardown(self):
+    def teardown_test(self):
         self.meta.drop_all(self.engine)
         self.engine.dispose()
 

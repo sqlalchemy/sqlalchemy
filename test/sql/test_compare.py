@@ -1203,7 +1203,7 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
 
 class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         # TODO: we need to get dialects here somehow, perhaps in test_suite?
         [
             importlib.import_module("sqlalchemy.dialects.%s" % d)

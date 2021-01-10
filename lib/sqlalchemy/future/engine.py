@@ -368,12 +368,15 @@ class Engine(_LegacyEngine):
             return self.conn
 
         def __exit__(self, type_, value, traceback):
-            if type_ is not None:
-                self.transaction.rollback()
-            else:
-                if self.transaction.is_active:
-                    self.transaction.commit()
-            self.conn.close()
+            try:
+                if type_ is not None:
+                    if self.transaction.is_active:
+                        self.transaction.rollback()
+                else:
+                    if self.transaction.is_active:
+                        self.transaction.commit()
+            finally:
+                self.conn.close()
 
     def begin(self):
         """Return a :class:`_future.Connection` object with a transaction

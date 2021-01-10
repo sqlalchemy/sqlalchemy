@@ -1115,7 +1115,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 class RawReflectionTest(fixtures.TestBase):
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         dialect = mysql.dialect()
         self.parser = _reflection.MySQLTableDefinitionParser(
             dialect, dialect.identifier_preparer

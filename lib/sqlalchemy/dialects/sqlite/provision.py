@@ -7,7 +7,7 @@ from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
 from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
-from ...testing.provision import stop_test_class
+from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
 
 
@@ -57,8 +57,8 @@ def _sqlite_drop_db(cfg, eng, ident):
             os.remove(path)
 
 
-@stop_test_class.for_db("sqlite")
-def stop_test_class(config, db, cls):
+@stop_test_class_outside_fixtures.for_db("sqlite")
+def stop_test_class_outside_fixtures(config, db, cls):
     with db.connect() as conn:
         files = [
             row.file

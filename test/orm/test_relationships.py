@@ -637,7 +637,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
     """
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     def _fixture_one(
@@ -2474,7 +2474,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
 
@@ -4354,7 +4354,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
 
 
 class SecondaryArgTest(fixtures.TestBase):
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     @testing.combinations((True,), (False,))

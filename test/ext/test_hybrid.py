@@ -697,7 +697,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy import literal
 
         symbols = ("usd", "gbp", "cad", "eur", "aud")

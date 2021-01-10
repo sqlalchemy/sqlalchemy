@@ -241,7 +241,7 @@ def assert_no_mappers():
 
 
 class EnsureZeroed(fixtures.ORMTest):
-    def setup(self):
+    def setup_test(self):
         _sessions.clear()
         _mapper_registry.clear()
 
@@ -1032,7 +1032,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
             t2_mapper = mapper(T2, t2)
             t1_mapper.add_property("bar", relationship(t2_mapper))
-            s1 = fixture_session()
+            s1 = Session(testing.db)
             # this causes the path_registry to be invoked
             s1.query(t1_mapper)._compile_context()
 

@@ -101,7 +101,7 @@ class AutoFlushTest(fixtures.TablesTest):
             Column("name", String(50)),
         )
 
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     def _fixture(self, collection_class, is_dict=False):
@@ -198,7 +198,7 @@ class AutoFlushTest(fixtures.TablesTest):
 
 
 class _CollectionOperations(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         collection_class = self.collection_class
 
         metadata = MetaData()
@@ -260,7 +260,7 @@ class _CollectionOperations(fixtures.TestBase):
         self.session = fixture_session()
         self.Parent, self.Child = Parent, Child
 
-    def teardown(self):
+    def teardown_test(self):
         self.metadata.drop_all(testing.db)
 
     def roundtrip(self, obj):
@@ -885,7 +885,7 @@ class CustomObjectTest(_CollectionOperations):
 
 
 class ProxyFactoryTest(ListTest):
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
 
         parents_table = Table(
@@ -1157,7 +1157,7 @@ class ScalarTest(fixtures.TestBase):
 
 
 class LazyLoadTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
 
         parents_table = Table(
@@ -1197,7 +1197,7 @@ class LazyLoadTest(fixtures.TestBase):
         self.Parent, self.Child = Parent, Child
         self.table = parents_table
 
-    def teardown(self):
+    def teardown_test(self):
         self.metadata.drop_all(testing.db)
 
     def roundtrip(self, obj):
@@ -2294,7 +2294,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
 
 
 class DictOfTupleUpdateTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         class B(object):
             def __init__(self, key, elem):
                 self.key = key
@@ -2434,7 +2434,7 @@ class CompositeAccessTest(fixtures.DeclarativeMappedTest):
 
 
 class AttributeAccessTest(fixtures.TestBase):
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     def test_resolve_aliased_class(self):

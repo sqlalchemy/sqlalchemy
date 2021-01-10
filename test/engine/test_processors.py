@@ -25,7 +25,7 @@ class CBooleanProcessorTest(_BooleanProcessorTest):
     __requires__ = ("cextensions",)
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy import cprocessors
 
         cls.module = cprocessors
@@ -83,7 +83,7 @@ class _DateProcessorTest(fixtures.TestBase):
 
 class PyDateProcessorTest(_DateProcessorTest):
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy import processors
 
         cls.module = type(
@@ -100,7 +100,7 @@ class CDateProcessorTest(_DateProcessorTest):
     __requires__ = ("cextensions",)
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy import cprocessors
 
         cls.module = cprocessors
@@ -185,7 +185,7 @@ class _DistillArgsTest(fixtures.TestBase):
 
 class PyDistillArgsTest(_DistillArgsTest):
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy.engine import util
 
         cls.module = type(
@@ -202,7 +202,7 @@ class CDistillArgsTest(_DistillArgsTest):
     __requires__ = ("cextensions",)
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy import cutils as util
 
         cls.module = util

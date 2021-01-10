@@ -511,24 +511,23 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     __backend__ = True
 
     @testing.fixture
-    def do_numeric_test(self, metadata):
+    def do_numeric_test(self, metadata, connection):
         @testing.emits_warning(
             r".*does \*not\* support Decimal objects natively"
         )
         def run(type_, input_, output, filter_=None, check_scale=False):
             t = Table("t", metadata, Column("x", type_))
-            t.create(testing.db)
-            with config.db.begin() as conn:
-                conn.execute(t.insert(), [{"x": x} for x in input_])
+            t.create(connection)
+            connection.execute(t.insert(), [{"x": x} for x in input_])
 
-                result = {row[0] for row in conn.execute(t.select())}
-                output = set(output)
-                if filter_:
-                    result = set(filter_(x) for x in result)
-                    output = set(filter_(x) for x in output)
-                eq_(result, output)
-                if check_scale:
-                    eq_([str(x) for x in result], [str(x) for x in output])
+            result = {row[0] for row in connection.execute(t.select())}
+            output = set(output)
+            if filter_:
+                result = set(filter_(x) for x in result)
+                output = set(filter_(x) for x in output)
+            eq_(result, output)
+            if check_scale:
+                eq_([str(x) for x in result], [str(x) for x in output])
 
         return run
 
@@ -1165,40 +1164,39 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 },
             )
 
-    def test_eval_none_flag_orm(self):
+    def test_eval_none_flag_orm(self, connection):
 
         Base = declarative_base()
 
         class Data(Base):
             __table__ = self.tables.data_table
 
-        s = Session(testing.db)
+        with Session(connection) as s:
+            d1 = Data(name="d1", data=None, nulldata=None)
+            s.add(d1)
+            s.commit()
 
-        d1 = Data(name="d1", data=None, nulldata=None)
-        s.add(d1)
-        s.commit()
-
-        s.bulk_insert_mappings(
-            Data, [{"name": "d2", "data": None, "nulldata": None}]
-        )
-        eq_(
-            s.query(
-                cast(self.tables.data_table.c.data, String()),
-                cast(self.tables.data_table.c.nulldata, String),
+            s.bulk_insert_mappings(
+                Data, [{"name": "d2", "data": None, "nulldata": None}]
             )
-            .filter(self.tables.data_table.c.name == "d1")
-            .first(),
-            ("null", None),
-        )
-        eq_(
-            s.query(
-                cast(self.tables.data_table.c.data, String()),
-                cast(self.tables.data_table.c.nulldata, String),
+            eq_(
+                s.query(
+                    cast(self.tables.data_table.c.data, String()),
+                    cast(self.tables.data_table.c.nulldata, String),
+                )
+                .filter(self.tables.data_table.c.name == "d1")
+                .first(),
+                ("null", None),
             )
-            .filter(self.tables.data_table.c.name == "d2")
-            .first(),
-            ("null", None),
-        )
+            eq_(
+                s.query(
+                    cast(self.tables.data_table.c.data, String()),
+                    cast(self.tables.data_table.c.nulldata, String),
+                )
+                .filter(self.tables.data_table.c.name == "d2")
+                .first(),
+                ("null", None),
+            )
 
 
 class JSONLegacyStringCastIndexTest(

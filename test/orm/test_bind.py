@@ -428,39 +428,46 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
-        c = testing.db.connect()
+        with testing.db.connect() as c:
 
-        sess = Session(bind=c, autocommit=False)
-        u = User(name="u1")
-        sess.add(u)
-        sess.flush()
-        sess.close()
-        assert not c.in_transaction()
-        assert c.exec_driver_sql("select count(1) from users").scalar() == 0
+            sess = Session(bind=c, autocommit=False)
+            u = User(name="u1")
+            sess.add(u)
+            sess.flush()
+            sess.close()
+            assert not c.in_transaction()
+            assert (
+                c.exec_driver_sql("select count(1) from users").scalar() == 0
+            )
 
-        sess = Session(bind=c, autocommit=False)
-        u = User(name="u2")
-        sess.add(u)
-        sess.flush()
-        sess.commit()
-        assert not c.in_transaction()
-        assert c.exec_driver_sql("select count(1) from users").scalar() == 1
+            sess = Session(bind=c, autocommit=False)
+            u = User(name="u2")
+            sess.add(u)
+            sess.flush()
+            sess.commit()
+            assert not c.in_transaction()
+            assert (
+                c.exec_driver_sql("select count(1) from users").scalar() == 1
+            )
 
-        with c.begin():
-            c.exec_driver_sql("delete from users")
-        assert c.exec_driver_sql("select count(1) from users").scalar() == 0
+            with c.begin():
+                c.exec_driver_sql("delete from users")
+            assert (
+                c.exec_driver_sql("select count(1) from users").scalar() == 0
+            )
 
-        c = testing.db.connect()
-
-        trans = c.begin()
-        sess = Session(bind=c, autocommit=True)
-        u = User(name="u3")
-        sess.add(u)
-        sess.flush()
-        assert c.in_transaction()
-        trans.commit()
-        assert not c.in_transaction()
-        assert c.exec_driver_sql("select count(1) from users").scalar() == 1
+        with testing.db.connect() as c:
+            trans = c.begin()
+            sess = Session(bind=c, autocommit=True)
+            u = User(name="u3")
+            sess.add(u)
+            sess.flush()
+            assert c.in_transaction()
+            trans.commit()
+            assert not c.in_transaction()
+            assert (
+                c.exec_driver_sql("select count(1) from users").scalar() == 1
+            )
 
 
 class SessionBindTest(fixtures.MappedTest):
@@ -506,6 +513,7 @@ class SessionBindTest(fixtures.MappedTest):
             finally:
                 if hasattr(bind, "close"):
                     bind.close()
+                sess.close()
 
     def test_session_unbound(self):
         Foo = self.classes.Foo

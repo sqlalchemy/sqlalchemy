@@ -1355,7 +1355,7 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "oracle"
 
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )

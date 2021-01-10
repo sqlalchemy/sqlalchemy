@@ -100,12 +100,12 @@ class SequenceExecTest(fixtures.TestBase):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         cls.seq = Sequence("my_sequence")
         cls.seq.create(testing.db)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         cls.seq.drop(testing.db)
 
     def _assert_seq_result(self, ret):

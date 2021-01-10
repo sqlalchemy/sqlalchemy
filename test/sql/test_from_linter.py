@@ -25,7 +25,7 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         Table("table_c", metadata, Column("col_c", Integer, primary_key=True))
         Table("table_d", metadata, Column("col_d", Integer, primary_key=True))
 
-    def setup(self):
+    def setup_test(self):
         self.a = self.tables.table_a
         self.b = self.tables.table_b
         self.c = self.tables.table_c
@@ -267,8 +267,10 @@ class TestLinter(fixtures.TablesTest):
             with self.bind.connect() as conn:
                 conn.execute(query)
 
-    def test_no_linting(self):
-        eng = engines.testing_engine(options={"enable_from_linting": False})
+    def test_no_linting(self, metadata, connection):
+        eng = engines.testing_engine(
+            options={"enable_from_linting": False, "use_reaper": False}
+        )
         eng.pool = self.bind.pool  # needed for SQLite
         a, b = self.tables("table_a", "table_b")
         query = select(a.c.col_a).where(b.c.col_b == 5)

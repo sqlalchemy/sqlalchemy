@@ -39,7 +39,7 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         # currently assuming full DBA privs for the user.
         # don't really know how else to go here unless
         # we connect as the other user.
@@ -85,7 +85,7 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
                     conn.exec_driver_sql(stmt)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         with testing.db.begin() as conn:
             for stmt in (
                 """
@@ -379,7 +379,7 @@ class SystemTableTablenamesTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("create table my_table (id integer)")
             conn.exec_driver_sql(
@@ -389,7 +389,7 @@ class SystemTableTablenamesTest(fixtures.TestBase):
                 "create table foo_table (id integer) tablespace SYSTEM"
             )
 
-    def teardown(self):
+    def teardown_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("drop table my_temp_table")
             conn.exec_driver_sql("drop table my_table")
@@ -421,7 +421,7 @@ class DontReflectIOTTest(fixtures.TestBase):
     __only_on__ = "oracle"
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql(
                 """
@@ -438,7 +438,7 @@ class DontReflectIOTTest(fixtures.TestBase):
             """,
             )
 
-    def teardown(self):
+    def teardown_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("drop table admin_docindex")
 
@@ -715,7 +715,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy.testing import config
 
         cls.dblink = config.file_config.get("sqla_testing", "oracle_db_link")
@@ -734,7 +734,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
             )
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("drop synonym test_table_syn")
             conn.exec_driver_sql("drop table test_table")

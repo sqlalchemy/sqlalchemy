@@ -21,7 +21,7 @@ from sqlalchemy.testing.schema import Table
 
 
 class DDLEventTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.bind = engines.mock_engine()
         self.metadata = MetaData()
         self.table = Table("t", self.metadata, Column("id", Integer))
@@ -374,7 +374,7 @@ class DDLEventTest(fixtures.TestBase):
 
 
 class DDLExecutionTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.engine = engines.mock_engine()
         self.metadata = MetaData()
         self.users = Table(

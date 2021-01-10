@@ -717,24 +717,24 @@ class LazyTest(_fixtures.FixtureTest):
                 ),
             )
 
-            sess = fixture_session()
+            with fixture_session() as sess:
 
-            # load address
-            a1 = (
-                sess.query(Address)
-                .filter_by(email_address="ed@wood.com")
-                .one()
-            )
+                # load address
+                a1 = (
+                    sess.query(Address)
+                    .filter_by(email_address="ed@wood.com")
+                    .one()
+                )
 
-            # load user that is attached to the address
-            u1 = sess.query(User).get(8)
+                # load user that is attached to the address
+                u1 = sess.query(User).get(8)
 
-            def go():
-                # lazy load of a1.user should get it from the session
-                assert a1.user is u1
+                def go():
+                    # lazy load of a1.user should get it from the session
+                    assert a1.user is u1
 
-            self.assert_sql_count(testing.db, go, 0)
-            sa.orm.clear_mappers()
+                self.assert_sql_count(testing.db, go, 0)
+                sa.orm.clear_mappers()
 
     def test_uses_get_compatible_types(self):
         """test the use_get optimization with compatible
@@ -789,24 +789,23 @@ class LazyTest(_fixtures.FixtureTest):
                 properties=dict(user=relationship(mapper(User, users))),
             )
 
-            sess = fixture_session()
+            with fixture_session() as sess:
+                # load address
+                a1 = (
+                    sess.query(Address)
+                    .filter_by(email_address="ed@wood.com")
+                    .one()
+                )
 
-            # load address
-            a1 = (
-                sess.query(Address)
-                .filter_by(email_address="ed@wood.com")
-                .one()
-            )
+                # load user that is attached to the address
+                u1 = sess.query(User).get(8)
 
-            # load user that is attached to the address
-            u1 = sess.query(User).get(8)
+                def go():
+                    # lazy load of a1.user should get it from the session
+                    assert a1.user is u1
 
-            def go():
-                # lazy load of a1.user should get it from the session
-                assert a1.user is u1
-
-            self.assert_sql_count(testing.db, go, 0)
-            sa.orm.clear_mappers()
+                self.assert_sql_count(testing.db, go, 0)
+                sa.orm.clear_mappers()
 
     def test_many_to_one(self):
         users, Address, addresses, User = (

@@ -2199,6 +2199,7 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
 
 class AutocommitClosesOnFailTest(fixtures.MappedTest):
     __requires__ = ("deferrable_fks",)
+    __only_on__ = ("postgresql+psycopg2",)  # needs #5824 for asyncpg
 
     @classmethod
     def define_tables(cls, metadata):
@@ -4498,44 +4499,49 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 warnings += (join_aliased_dep,)
             # load a user who has an order that contains item id 3 and address
             # id 1 (order 3, owned by jack)
-            with testing.expect_deprecated_20(*warnings):
-                result = (
-                    fixture_session()
-                    .query(User)
-                    .join("orders", "items", aliased=aliased_)
-                    .filter_by(id=3)
-                    .reset_joinpoint()
-                    .join("orders", "address", aliased=aliased_)
-                    .filter_by(id=1)
-                    .all()
-                )
-            assert [User(id=7, name="jack")] == result
 
-            with testing.expect_deprecated_20(*warnings):
-                result = (
-                    fixture_session()
-                    .query(User)
-                    .join("orders", "items", aliased=aliased_, isouter=True)
-                    .filter_by(id=3)
-                    .reset_joinpoint()
-                    .join("orders", "address", aliased=aliased_, isouter=True)
-                    .filter_by(id=1)
-                    .all()
-                )
-            assert [User(id=7, name="jack")] == result
+            with fixture_session() as sess:
+                with testing.expect_deprecated_20(*warnings):
+                    result = (
+                        sess.query(User)
+                        .join("orders", "items", aliased=aliased_)
+                        .filter_by(id=3)
+                        .reset_joinpoint()
+                        .join("orders", "address", aliased=aliased_)
+                        .filter_by(id=1)
+                        .all()
+                    )
+                assert [User(id=7, name="jack")] == result
 
-            with testing.expect_deprecated_20(*warnings):
-                result = (
-                    fixture_session()
-                    .query(User)
-                    .outerjoin("orders", "items", aliased=aliased_)
-                    .filter_by(id=3)
-                    .reset_joinpoint()
-                    .outerjoin("orders", "address", aliased=aliased_)
-                    .filter_by(id=1)
-                    .all()
-                )
-            assert [User(id=7, name="jack")] == result
+            with fixture_session() as sess:
+                with testing.expect_deprecated_20(*warnings):
+                    result = (
+                        sess.query(User)
+                        .join(
+                            "orders", "items", aliased=aliased_, isouter=True
+                        )
+                        .filter_by(id=3)
+                        .reset_joinpoint()
+                        .join(
+                            "orders", "address", aliased=aliased_, isouter=True
+                        )
+                        .filter_by(id=1)
+                        .all()
+                    )
+                assert [User(id=7, name="jack")] == result
+
+            with fixture_session() as sess:
+                with testing.expect_deprecated_20(*warnings):
+                    result = (
+                        sess.query(User)
+                        .outerjoin("orders", "items", aliased=aliased_)
+                        .filter_by(id=3)
+                        .reset_joinpoint()
+                        .outerjoin("orders", "address", aliased=aliased_)
+                        .filter_by(id=1)
+                        .all()
+                    )
+                assert [User(id=7, name="jack")] == result
 
 
 class AliasFromCorrectLeftTest(

@@ -1810,7 +1810,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
 
-    def setup(self):
+    def setup_test(self):
         self.table1 = table1 = table(
             "mytable",
             column("myid", Integer),
@@ -2222,7 +2222,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
 
-    def setup(self):
+    def setup_test(self):
         self.table = Table(
             "t",
             MetaData(),
@@ -2373,7 +2373,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
 
-    def setup(self):
+    def setup_test(self):
         self.table = Table(
             "t",
             MetaData(),
@@ -2464,7 +2464,7 @@ class FullTextSearchTest(fixtures.TestBase, AssertsCompiledSQL):
 class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "postgresql"
 
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )

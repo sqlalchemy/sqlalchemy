@@ -2729,14 +2729,16 @@ class Engine(Connectable, log.Identified):
             return self.conn
 
         def __exit__(self, type_, value, traceback):
-
-            if type_ is not None:
-                self.transaction.rollback()
-            else:
-                if self.transaction.is_active:
-                    self.transaction.commit()
-            if not self.close_with_result:
-                self.conn.close()
+            try:
+                if type_ is not None:
+                    if self.transaction.is_active:
+                        self.transaction.rollback()
+                else:
+                    if self.transaction.is_active:
+                        self.transaction.commit()
+            finally:
+                if not self.close_with_result:
+                    self.conn.close()
 
     def begin(self, close_with_result=False):
         """Return a context manager delivering a :class:`_engine.Connection`

@@ -31,7 +31,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     """
 
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
         self.t1 = table(
             "t1",

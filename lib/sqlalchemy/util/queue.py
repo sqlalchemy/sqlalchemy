@@ -230,13 +230,16 @@ class AsyncAdaptedQueue:
             return self.put_nowait(item)
 
         try:
-            if timeout:
+            if timeout is not None:
                 return self.await_(
                     asyncio.wait_for(self._queue.put(item), timeout)
                 )
             else:
                 return self.await_(self._queue.put(item))
-        except asyncio.queues.QueueFull as err:
+        except (
+            asyncio.queues.QueueFull,
+            asyncio.exceptions.TimeoutError,
+        ) as err:
             compat.raise_(
                 Full(),
                 replace_context=err,
@@ -254,14 +257,18 @@ class AsyncAdaptedQueue:
     def get(self, block=True, timeout=None):
         if not block:
             return self.get_nowait()
+
         try:
-            if timeout:
+            if timeout is not None:
                 return self.await_(
                     asyncio.wait_for(self._queue.get(), timeout)
                 )
             else:
                 return self.await_(self._queue.get())
-        except asyncio.queues.QueueEmpty as err:
+        except (
+            asyncio.queues.QueueEmpty,
+            asyncio.exceptions.TimeoutError,
+        ) as err:
             compat.raise_(
                 Empty(),
                 replace_context=err,

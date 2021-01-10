@@ -232,6 +232,14 @@ def is_false(a, msg=None):
     is_(bool(a), False, msg=msg)
 
 
+def is_none(a, msg=None):
+    is_(a, None, msg=msg)
+
+
+def is_not_none(a, msg=None):
+    is_not(a, None, msg=msg)
+
+
 def is_(a, b, msg=None):
     """Assert a is b, with repr messaging on failure."""
     assert a is b, msg or "%r is not %r" % (a, b)

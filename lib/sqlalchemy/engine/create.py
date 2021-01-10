@@ -655,9 +655,12 @@ def create_engine(url, **kwargs):
             c = base.Connection(
                 engine, connection=dbapi_connection, _has_events=False
             )
-            c._execution_options = util.immutabledict()
-            dialect.initialize(c)
-            dialect.do_rollback(c.connection)
+            c._execution_options = util.EMPTY_DICT
+
+            try:
+                dialect.initialize(c)
+            finally:
+                dialect.do_rollback(c.connection)
 
         # previously, the "first_connect" event was used here, which was then
         # scaled back if the "on_connect" handler were present.  now,

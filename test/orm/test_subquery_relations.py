@@ -734,35 +734,35 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
     def _do_query_tests(self, opts, count):
         Order, User = self.classes.Order, self.classes.User
 
-        sess = fixture_session()
+        with fixture_session() as sess:
 
-        def go():
+            def go():
+                eq_(
+                    sess.query(User).options(*opts).order_by(User.id).all(),
+                    self.static.user_item_keyword_result,
+                )
+
+            self.assert_sql_count(testing.db, go, count)
+
             eq_(
-                sess.query(User).options(*opts).order_by(User.id).all(),
-                self.static.user_item_keyword_result,
+                sess.query(User)
+                .options(*opts)
+                .filter(User.name == "fred")
+                .order_by(User.id)
+                .all(),
+                self.static.user_item_keyword_result[2:3],
             )
 
-        self.assert_sql_count(testing.db, go, count)
-
-        eq_(
-            sess.query(User)
-            .options(*opts)
-            .filter(User.name == "fred")
-            .order_by(User.id)
-            .all(),
-            self.static.user_item_keyword_result[2:3],
-        )
-
-        sess = fixture_session()
-        eq_(
-            sess.query(User)
-            .options(*opts)
-            .join(User.orders)
-            .filter(Order.id == 3)
-            .order_by(User.id)
-            .all(),
-            self.static.user_item_keyword_result[0:1],
-        )
+        with fixture_session() as sess:
+            eq_(
+                sess.query(User)
+                .options(*opts)
+                .join(User.orders)
+                .filter(Order.id == 3)
+                .order_by(User.id)
+                .all(),
+                self.static.user_item_keyword_result[0:1],
+            )
 
     def test_cyclical(self):
         """A circular eager relationship breaks the cycle with a lazy loader"""

@@ -426,7 +426,7 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = "default"
 
-    def teardown(self):
+    def teardown_test(self):
         for cls in (Select, BindParameter):
             deregister(cls)
 

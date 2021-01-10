@@ -67,6 +67,7 @@ def setup_config(db_url, options, file_config, follower_ident):
         db_url = follower_url_from_main(db_url, follower_ident)
     db_opts = {}
     update_db_opts(db_url, db_opts)
+    db_opts["scope"] = "global"
     eng = engines.testing_engine(db_url, db_opts)
     post_configure_engine(db_url, eng, follower_ident)
     eng.connect().close()
@@ -264,6 +265,7 @@ def drop_all_schema_objects(cfg, eng):
 
     if config.requirements.schemas.enabled_for_config(cfg):
         util.drop_all_tables(eng, inspector, schema=cfg.test_schema)
+        util.drop_all_tables(eng, inspector, schema=cfg.test_schema_2)
 
     drop_all_schema_objects_post_tables(cfg, eng)
 
@@ -299,7 +301,7 @@ def update_db_opts(db_url, db_opts):
 def post_configure_engine(url, engine, follower_ident):
     """Perform extra steps after configuring an engine for testing.
 
-    (For the internal dialects, currently only used by sqlite.)
+    (For the internal dialects, currently only used by sqlite, oracle)
     """
     pass
 
@@ -375,7 +377,12 @@ def temp_table_keyword_args(cfg, eng):
 
 
 @register.init
-def stop_test_class(config, db, testcls):
+def prepare_for_drop_tables(config, connection):
+    pass
+
+
+@register.init
+def stop_test_class_outside_fixtures(config, db, testcls):
     pass
 
 
