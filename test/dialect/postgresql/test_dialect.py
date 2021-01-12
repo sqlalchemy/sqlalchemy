@@ -114,6 +114,26 @@ class DialectTest(fixtures.TestBase):
         ]:
             eq_(dialect._get_server_version_info(mock_conn(string)), version)
 
+    @testing.requires.python3
+    @testing.requires.psycopg2_compatibility
+    def test_pg_dialect_no_native_unicode_in_python3(self, testing_engine):
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            "psycopg2 native_unicode mode is required under Python 3",
+        ):
+            testing_engine(options=dict(use_native_unicode=False))
+
+    @testing.requires.python2
+    @testing.requires.psycopg2_compatibility
+    def test_pg_dialect_no_native_unicode_in_python2(self, testing_engine):
+        e = testing_engine(options=dict(use_native_unicode=False))
+        with e.connect() as conn:
+            eq_(
+                conn.exec_driver_sql(u"SELECT '🐍 voix m’a réveillé'").scalar(),
+                u"🐍 voix m’a réveillé".encode("utf-8"),
+            )
+
+    @testing.requires.python2
     @testing.requires.psycopg2_compatibility
     def test_pg_dialect_use_native_unicode_from_config(self):
         config = {
