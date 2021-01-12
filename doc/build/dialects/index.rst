@@ -76,6 +76,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +---------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via python-tds) | sqlalchemy-tds_                       |
 +---------------------------------------+---------------------------------------+
+| Microsoft SQL Server (via turbodbc)   | sqlalchemy-turbodbc_                  |
++---------------------------------------+---------------------------------------+
 | MonetDB                               | sqlalchemy-monetdb_                   |
 +---------------------------------------+---------------------------------------+
 | SAP Hana                              | sqlalchemy-hana_                      |
@@ -107,3 +109,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _gsheets: https://github.com/betodealmeida/gsheets-db-api
 .. _sqlalchemy-firebird: https://github.com/pauldex/sqlalchemy-firebird
 .. _sqlalchemy-cockroachdb: https://github.com/cockroachdb/sqlalchemy-cockroachdb
+.. _sqlalchemy-turbodbc: https://pypi.org/project/sqlalchemy-turbodbc/
