@@ -57,7 +57,7 @@ class TestAsyncioCompat(fixtures.TestBase):
     async def test_await_only_no_greenlet(self):
         to_await = run1()
         with expect_raises_message(
-            exc.InvalidRequestError,
+            exc.MissingGreenlet,
             r"greenlet_spawn has not been called; can't call await_\(\) here.",
         ):
             await_only(to_await)
@@ -80,7 +80,7 @@ class TestAsyncioCompat(fixtures.TestBase):
             await_fallback(inner_await())
 
         with expect_raises_message(
-            exc.InvalidRequestError,
+            exc.MissingGreenlet,
             "greenlet_spawn has not been called and asyncio event loop",
         ):
             await greenlet_spawn(go)

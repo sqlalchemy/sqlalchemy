@@ -294,6 +294,15 @@ class AwaitRequired(InvalidRequestError):
     code = "xd1r"
 
 
+class MissingGreenlet(InvalidRequestError):
+    r"""Error raised by the async greenlet await\_ if called while not inside
+    the greenlet spawn context.
+
+    """
+
+    code = "xd2s"
+
+
 class NoReferencedTableError(NoReferenceError):
     """Raised by ``ForeignKey`` when the referred ``Table`` cannot be
     located.
