@@ -525,8 +525,10 @@ on the class itself as declarative class variables::
     from sqlalchemy import MetaData
     from sqlalchemy import String
     from sqlalchemy import Table
-    from sqlalchemy.orm import mapper
+    from sqlalchemy.orm import registry
     from sqlalchemy.orm import relationship
+
+    mapper_registry = registry()
 
     @dataclass
     class User:
@@ -561,11 +563,11 @@ on the class itself as declarative class variables::
         Column('email_address', String(50)),
     )
 
-    mapper(User, user, properties={
+    mapper_registry.map_imperatively(User, user, properties={
         'addresses': relationship(Address, backref='user', order_by=address.c.id),
     })
 
-    mapper(Address, address)
+    mapper_registry.map_imperatively(Address, address)
 
 .. _orm_mapper_configuration_overview:
 
@@ -583,7 +585,7 @@ There are four general classes of configuration information that the
 :func:`_orm.mapper` function looks for:
 
 The class to be mapped
------------------------
+----------------------
 
 This is a class that we construct in our application.
 There are generally no restrictions on the structure of this class. [1]_
@@ -628,7 +630,7 @@ class, but does not modify the given :class:`_schema.Table` or other
 .. _orm_mapping_properties:
 
 The properties dictionary
---------------------------
+-------------------------
 
 This is a dictionary of all of the attributes
 that will be associated with the mapped class.    By default, the
@@ -650,7 +652,7 @@ to :meth:`_orm.registry.map_imperatively`, which will pass it along to the
 :paramref:`_orm.mapper.properties` parameter.
 
 Other mapper configuration parameters
----------------------------------------
+-------------------------------------
 
 These flags are documented at  :func:`_orm.mapper`.
 
