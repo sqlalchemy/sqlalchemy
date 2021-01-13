@@ -136,6 +136,61 @@ producing output like::
     WHERE mytable.x > my_fancy_formatting(5)
 
 
+.. _faq_sql_expression_percent_signs:
+
+Why are percent signs being doubled up when stringifying SQL statements?
+------------------------------------------------------------------------
+
+Many :term:`DBAPI` implementations make use of the ``pyformat`` or ``format``
+`paramstyle <https://www.python.org/dev/peps/pep-0249/#paramstyle>`_, which
+necessarily involve percent signs in their syntax.  Most DBAPIs that do this
+expect percent signs used for other reasons to be doubled up (i.e. escaped) in
+the string form of the statements used, e.g.::
+
+    SELECT a, b FROM some_table WHERE a = %s AND c = %s AND num %% modulus = 0
+
+When SQL statements are passed to the underlying DBAPI by SQLAlchemy,
+substitution of bound parameters works in the same way as the Python string
+interpolation operator ``%``, and in many cases the DBAPI actually uses this
+operator directly.  Above, the substitution of bound parameters would then look
+like::
+
+    SELECT a, b FROM some_table WHERE a = 5 AND c = 10 AND num % modulus = 0
+
+The default compilers for databases like PostgreSQL (default DBAPI is psycopg2)
+and MySQL (default DBAPI is mysqlclient) will have this percent sign
+escaping behavior::
+
+    >>> from sqlalchemy import table, column
+    >>> from sqlalchemy.dialects import postgresql
+    >>> t = table("my_table", column("value % one"), column("value % two"))
+    >>> print(t.select().compile(dialect=postgresql.dialect()))
+    SELECT my_table."value %% one", my_table."value %% two"
+    FROM my_table
+
+When such a dialect is being used, if non-DBAPI statements are desired that
+don't include bound parameter symbols, one quick way to remove the percent
+signs is to simply substitute in an empty set of parameters using Python's
+``%`` operator directly::
+
+    >>> strstmt = str(t.select().compile(dialect=postgresql.dialect()))
+    >>> print(strstmt % ())
+    SELECT my_table."value % one", my_table."value % two"
+    FROM my_table
+
+The other is to set a different parameter style on the dialect being used; all
+:class:`.Dialect` implementations accept a parameter
+``paramstyle`` which will cause the compiler for that
+dialect to use the given parameter style.  Below, the very common ``named``
+parameter style is set within the dialect used for the compilation so that
+percent signs are no longer significant in the compiled form of SQL, and will
+no longer be escaped::
+
+    >>> print(t.select().compile(dialect=postgresql.dialect(paramstyle="named")))
+    SELECT my_table."value % one", my_table."value % two"
+    FROM my_table
+
+
 .. _faq_sql_expression_op_parenthesis:
 
 I'm using op() to generate a custom operator and my parenthesis are not coming out correctly
