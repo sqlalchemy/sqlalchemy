@@ -2599,3 +2599,7 @@ Connection Reference: :ref:`connections_toplevel`
 Types Reference: :ref:`types_toplevel`
 
 
+
+..  Setup code, not for display
+
+    >>> conn.close()

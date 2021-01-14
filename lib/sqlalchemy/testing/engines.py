@@ -14,6 +14,7 @@ import weakref
 
 from . import config
 from .util import decorator
+from .util import gc_collect
 from .. import event
 from .. import pool
 
@@ -123,6 +124,19 @@ class ConnectionKiller(object):
         self.checkin_all()
         self._drop_testing_engines("function")
         self._drop_testing_engines("class")
+
+    def stop_test_class_outside_fixtures(self):
+        # ensure no refs to checked out connections at all.
+
+        if pool.base._strong_ref_connection_records:
+            gc_collect()
+
+            if pool.base._strong_ref_connection_records:
+                ln = len(pool.base._strong_ref_connection_records)
+                pool.base._strong_ref_connection_records.clear()
+                assert (
+                    False
+                ), "%d connection recs not cleared after test suite" % (ln)
 
     def final_cleanup(self):
         self.checkin_all()
