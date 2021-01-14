@@ -425,9 +425,11 @@ def compiles(class_, *specs):
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
                         util.raise_(
-                            exc.CompileError(
-                                "%s construct has no default "
-                                "compilation handler." % type(element)
+                            exc.UnsupportedCompilationError(
+                                compiler,
+                                type(element),
+                                message="%s construct has no default "
+                                "compilation handler." % type(element),
                             ),
                             from_=uce,
                         )
@@ -476,9 +478,11 @@ class _dispatcher(object):
                 fn = self.specs["default"]
             except KeyError as ke:
                 util.raise_(
-                    exc.CompileError(
-                        "%s construct has no default "
-                        "compilation handler." % type(element)
+                    exc.UnsupportedCompilationError(
+                        compiler,
+                        type(element),
+                        message="%s construct has no default "
+                        "compilation handler." % type(element),
                     ),
                     replace_context=ke,
                 )
