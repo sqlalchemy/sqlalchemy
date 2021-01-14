@@ -151,12 +151,32 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return "mythingy"
 
         assert_raises_message(
-            exc.CompileError,
+            exc.UnsupportedCompilationError,
             "<class 'test.ext.test_compiler..*MyThingy'> "
             "construct has no default compilation handler.",
             str,
             MyThingy(),
         )
+
+    def test_no_default_proxy_generation(self):
+        class my_function(FunctionElement):
+            name = "my_function"
+            type = Numeric()
+
+        @compiles(my_function, "sqlite")
+        def sqlite_my_function(element, compiler, **kw):
+            return "my_function(%s)" % compiler.process(element.clauses, **kw)
+
+        t1 = table("t1", column("q"))
+        stmt = select(my_function(t1.c.q))
+
+        self.assert_compile(
+            stmt,
+            "SELECT my_function(t1.q) AS my_function_1 FROM t1",
+            dialect="sqlite",
+        )
+
+        eq_(stmt.selected_columns.keys(), [stmt._raw_columns[0].anon_label])
 
     def test_no_default_message(self):
         class MyThingy(ClauseElement):
@@ -167,7 +187,8 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             return "mythingy"
 
         assert_raises_message(
-            exc.CompileError,
+            exc.UnsupportedCompilationError,
+            "Compiler .*StrSQLCompiler.* can't .* "
             "<class 'test.ext.test_compiler..*MyThingy'> "
             "construct has no default compilation handler.",
             str,
