@@ -796,7 +796,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         assert f1 in b1.constraints
         assert len(b1.constraints) == 2
 
-    def test_override_keys(self, connection, metadata):
+    def test_override_keys(self, metadata, connection):
         """test that columns can be overridden with a 'key',
         and that ForeignKey targeting during reflection still works."""
 
@@ -1375,7 +1375,7 @@ class CreateDropTest(fixtures.TablesTest):
     run_create_tables = None
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         # TablesTest is used here without
         # run_create_tables, so add an explicit drop of whatever is in
         # metadata
@@ -1658,7 +1658,6 @@ class SchemaTest(fixtures.TestBase):
     @testing.requires.schemas
     @testing.requires.cross_schema_fk_reflection
     @testing.requires.implicit_default_schema
-    @testing.provide_metadata
     def test_blank_schema_arg(self, connection, metadata):
 
         Table(
@@ -1913,7 +1912,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
     __backend__ = True
 
     @testing.requires.denormalized_names
-    def setup(self):
+    def setup_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql(
                 """
@@ -1926,7 +1925,7 @@ class ReverseCasingReflectTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     @testing.requires.denormalized_names
-    def teardown(self):
+    def teardown_test(self):
         with testing.db.begin() as conn:
             conn.exec_driver_sql("drop table weird_casing")
 

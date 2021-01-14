@@ -21,6 +21,9 @@ import logging
 import re
 import sys
 
+# flag which indicates we are in the SQLAlchemy testing suite,
+# and not that of Alembic or a third party dialect.
+bootstrapped_as_sqlalchemy = False
 
 log = logging.getLogger("sqlalchemy.testing.plugin_base")
 
@@ -381,7 +384,7 @@ def _init_symbols(options, file_config):
 
 @post
 def _set_disable_asyncio(opt, file_config):
-    if opt.disable_asyncio:
+    if opt.disable_asyncio or not py3k:
         from sqlalchemy.testing import asyncio
 
         asyncio.ENABLE_ASYNCIO = False
@@ -457,6 +460,8 @@ def _setup_requirements(argument):
     req_cls = getattr(mod, clsname)
 
     config.requirements = testing.requires = req_cls()
+
+    config.bootstrapped_as_sqlalchemy = bootstrapped_as_sqlalchemy
 
 
 @post
@@ -566,17 +571,22 @@ def generate_sub_tests(cls, module):
         yield cls
 
 
-def start_test_class(cls):
+def start_test_class_outside_fixtures(cls):
     _do_skips(cls)
     _setup_engine(cls)
 
 
 def stop_test_class(cls):
-    # from sqlalchemy import inspect
-    # assert not inspect(testing.db).get_table_names()
+    # close sessions, immediate connections, etc.
+    fixtures.stop_test_class_inside_fixtures(cls)
 
-    provision.stop_test_class(config, config.db, cls)
-    engines.testing_reaper._stop_test_ctx()
+    # close outstanding connection pool connections, dispose of
+    # additional engines
+    engines.testing_reaper.stop_test_class_inside_fixtures()
+
+
+def stop_test_class_outside_fixtures(cls):
+    provision.stop_test_class_outside_fixtures(config, config.db, cls)
     try:
         if not options.low_connections:
             assertions.global_cleanup_assertions()
@@ -590,14 +600,16 @@ def _restore_engine():
 
 
 def final_process_cleanup():
-    engines.testing_reaper._stop_test_ctx_aggressive()
+    engines.testing_reaper.final_cleanup()
     assertions.global_cleanup_assertions()
     _restore_engine()
 
 
 def _setup_engine(cls):
     if getattr(cls, "__engine_options__", None):
-        eng = engines.testing_engine(options=cls.__engine_options__)
+        opts = dict(cls.__engine_options__)
+        opts["scope"] = "class"
+        eng = engines.testing_engine(options=opts)
         config._current.push_engine(eng, testing)
 
 
@@ -614,7 +626,12 @@ def before_test(test, test_module_name, test_class, test_name):
 
 
 def after_test(test):
-    engines.testing_reaper._after_test_ctx()
+    fixtures.after_test()
+    engines.testing_reaper.after_test()
+
+
+def after_test_fixtures(test):
+    engines.testing_reaper.after_test_outside_fixtures(test)
 
 
 def _possible_configs_for_cls(cls, reasons=None, sparse=False):
@@ -746,6 +763,10 @@ class FixtureFunctions(ABC):
         raise NotImplementedError()
 
     def get_current_test_name(self):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def mark_base_test_class(self):
         raise NotImplementedError()
 
 

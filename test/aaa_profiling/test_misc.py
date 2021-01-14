@@ -19,7 +19,7 @@ from sqlalchemy.util import classproperty
 class EnumTest(fixtures.TestBase):
     __requires__ = ("cpython", "python_profiling_backend")
 
-    def setup(self):
+    def setup_test(self):
         class SomeEnum(object):
             # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
 

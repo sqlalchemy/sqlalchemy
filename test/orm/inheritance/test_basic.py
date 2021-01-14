@@ -31,7 +31,6 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm.util import instance_str
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1889,7 +1888,6 @@ class VersioningTest(fixtures.MappedTest):
 
     @testing.emits_warning(r".*updated rowcount")
     @testing.requires.sane_rowcount_w_returning
-    @engines.close_open_connections
     def test_save_update(self):
         subtable, base, stuff = (
             self.tables.subtable,
@@ -2927,7 +2925,7 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         )
         return parent, child
 
-    def tearDown(self):
+    def teardown_test(self):
         clear_mappers()
 
     def test_warning_on_sub(self):
@@ -3417,27 +3415,26 @@ class DiscriminatorOrPkNoneTest(fixtures.DeclarativeMappedTest):
     @classmethod
     def insert_data(cls, connection):
         Parent, A, B = cls.classes("Parent", "A", "B")
-        s = fixture_session()
+        with Session(connection) as s:
+            p1 = Parent(id=1)
+            p2 = Parent(id=2)
+            s.add_all([p1, p2])
+            s.flush()
 
-        p1 = Parent(id=1)
-        p2 = Parent(id=2)
-        s.add_all([p1, p2])
-        s.flush()
+            s.add_all(
+                [
+                    A(id=1, parent_id=1),
+                    B(id=2, parent_id=1),
+                    A(id=3, parent_id=1),
+                    B(id=4, parent_id=1),
+                ]
+            )
+            s.flush()
 
-        s.add_all(
-            [
-                A(id=1, parent_id=1),
-                B(id=2, parent_id=1),
-                A(id=3, parent_id=1),
-                B(id=4, parent_id=1),
-            ]
-        )
-        s.flush()
-
-        s.query(A).filter(A.id.in_([3, 4])).update(
-            {A.type: None}, synchronize_session=False
-        )
-        s.commit()
+            s.query(A).filter(A.id.in_([3, 4])).update(
+                {A.type: None}, synchronize_session=False
+            )
+            s.commit()
 
     def test_pk_is_null(self):
         Parent, A = self.classes("Parent", "A")
@@ -3527,10 +3524,12 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
         ASingleSubA, ASingleSubB, AJoinedSubA, AJoinedSubB = cls.classes(
             "ASingleSubA", "ASingleSubB", "AJoinedSubA", "AJoinedSubB"
         )
-        s = fixture_session()
+        with Session(connection) as s:
 
-        s.add_all([ASingleSubA(), ASingleSubB(), AJoinedSubA(), AJoinedSubB()])
-        s.commit()
+            s.add_all(
+                [ASingleSubA(), ASingleSubB(), AJoinedSubA(), AJoinedSubB()]
+            )
+            s.commit()
 
     def test_single_invalid_ident(self):
         ASingle, ASingleSubA = self.classes("ASingle", "ASingleSubA")

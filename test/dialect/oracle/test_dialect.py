@@ -439,7 +439,7 @@ class OutParamTest(fixtures.TestBase, AssertsExecutionResults):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         with testing.db.begin() as c:
             c.exec_driver_sql(
                 """
@@ -471,7 +471,7 @@ end;
         assert isinstance(result.out_parameters["x_out"], int)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         with testing.db.begin() as conn:
             conn.execute(text("DROP PROCEDURE foo"))
 

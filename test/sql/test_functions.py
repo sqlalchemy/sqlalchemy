@@ -54,10 +54,10 @@ table1 = table(
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def setup(self):
+    def setup_test(self):
         self._registry = deepcopy(functions._registry)
 
-    def teardown(self):
+    def teardown_test(self):
         functions._registry = self._registry
 
     def test_compile(self):
@@ -938,7 +938,7 @@ class ReturnTypeTest(AssertsCompiledSQL, fixtures.TestBase):
 class ExecuteTest(fixtures.TestBase):
     __backend__ = True
 
-    def tearDown(self):
+    def teardown_test(self):
         pass
 
     def test_conn_execute(self, connection):
@@ -1113,10 +1113,10 @@ class ExecuteTest(fixtures.TestBase):
 class RegisterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def setup(self):
+    def setup_test(self):
         self._registry = deepcopy(functions._registry)
 
-    def teardown(self):
+    def teardown_test(self):
         functions._registry = self._registry
 
     def test_GenericFunction_is_registered(self):

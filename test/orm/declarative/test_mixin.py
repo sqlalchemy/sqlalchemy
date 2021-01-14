@@ -38,13 +38,13 @@ mapper_registry = None
 
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
-    def setup(self):
+    def setup_test(self):
         global Base, mapper_registry
 
         mapper_registry = registry(metadata=MetaData())
         Base = mapper_registry.generate_base()
 
-    def teardown(self):
+    def teardown_test(self):
         close_all_sessions()
         clear_mappers()
         with testing.db.begin() as conn:

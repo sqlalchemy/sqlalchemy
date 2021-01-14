@@ -97,6 +97,10 @@ def get_current_test_name():
     return _fixture_functions.get_current_test_name()
 
 
+def mark_base_test_class():
+    return _fixture_functions.mark_base_test_class()
+
+
 class Config(object):
     def __init__(self, db, db_opts, options, file_config):
         self._set_name(db)

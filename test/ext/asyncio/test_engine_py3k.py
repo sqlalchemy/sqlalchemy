@@ -362,7 +362,7 @@ class AsyncEngineTest(EngineFixture):
                 await trans.rollback(),
 
     @async_test
-    async def test_pool_exhausted(self, async_engine):
+    async def test_pool_exhausted_some_timeout(self, async_engine):
         engine = create_async_engine(
             testing.db.url,
             pool_size=1,
@@ -370,7 +370,19 @@ class AsyncEngineTest(EngineFixture):
             pool_timeout=0.1,
         )
         async with engine.connect():
-            with expect_raises(asyncio.TimeoutError):
+            with expect_raises(exc.TimeoutError):
+                await engine.connect()
+
+    @async_test
+    async def test_pool_exhausted_no_timeout(self, async_engine):
+        engine = create_async_engine(
+            testing.db.url,
+            pool_size=1,
+            max_overflow=0,
+            pool_timeout=0,
+        )
+        async with engine.connect():
+            with expect_raises(exc.TimeoutError):
                 await engine.connect()
 
     @async_test

@@ -1273,7 +1273,7 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
     run_inserts = None
 
-    def setup(self):
+    def setup_test(self):
         mapper(self.classes.User, self.tables.users)
 
     def _assert_modified(self, u1):
@@ -1288,11 +1288,14 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
     def _assert_no_cycle(self, u1):
         assert sa.orm.attributes.instance_state(u1)._strong_obj is None
 
-    def _persistent_fixture(self):
+    def _persistent_fixture(self, gc_collect=False):
         User = self.classes.User
         u1 = User()
         u1.name = "ed"
-        sess = fixture_session()
+        if gc_collect:
+            sess = Session(testing.db)
+        else:
+            sess = fixture_session()
         sess.add(u1)
         sess.flush()
         return sess, u1
@@ -1389,14 +1392,14 @@ class NoCyclesOnTransientDetachedTest(_fixtures.FixtureTest):
 
     @testing.requires.predictable_gc
     def test_move_gc_session_persistent_dirty(self):
-        sess, u1 = self._persistent_fixture()
+        sess, u1 = self._persistent_fixture(gc_collect=True)
         u1.name = "edchanged"
         self._assert_cycle(u1)
         self._assert_modified(u1)
         del sess
         gc_collect()
         self._assert_cycle(u1)
-        s2 = fixture_session()
+        s2 = Session(testing.db)
         s2.add(u1)
         self._assert_cycle(u1)
         self._assert_modified(u1)
@@ -1565,7 +1568,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         mapper(User, users)
 
-        sess = fixture_session()
+        sess = Session(testing.db)
 
         u1 = User(name="u1")
         sess.add(u1)
@@ -1573,7 +1576,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         # can't add u1 to Session,
         # already belongs to u2
-        s2 = fixture_session()
+        s2 = Session(testing.db)
         assert_raises_message(
             sa.exc.InvalidRequestError,
             r".*is already attached to session",
@@ -1725,11 +1728,10 @@ class DisposedStates(fixtures.MappedTest):
 
         mapper(T, cls.tables.t1)
 
-    def teardown(self):
+    def teardown_test(self):
         from sqlalchemy.orm.session import _sessions
 
         _sessions.clear()
-        super(DisposedStates, self).teardown()
 
     def _set_imap_in_disposal(self, sess, *objs):
         """remove selected objects from the given session, as though

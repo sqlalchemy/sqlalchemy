@@ -13,7 +13,7 @@ class TestFixture(object):
 
 
 class TestInspection(fixtures.TestBase):
-    def tearDown(self):
+    def teardown_test(self):
         for type_ in list(inspection._registrars):
             if issubclass(type_, TestFixture):
                 del inspection._registrars[type_]

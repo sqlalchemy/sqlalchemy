@@ -198,17 +198,17 @@ class ExecuteManyMode(object):
 
     @config.fixture()
     def connection(self):
-        eng = engines.testing_engine(options=self.options)
+        opts = dict(self.options)
+        opts["use_reaper"] = False
+        eng = engines.testing_engine(options=opts)
 
         conn = eng.connect()
         trans = conn.begin()
-        try:
-            yield conn
-        finally:
-            if trans.is_active:
-                trans.rollback()
-            conn.close()
-            eng.dispose()
+        yield conn
+        if trans.is_active:
+            trans.rollback()
+        conn.close()
+        eng.dispose()
 
     @classmethod
     def define_tables(cls, metadata):
@@ -510,8 +510,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
         # assert result.closed
         assert result.cursor is None
 
-    @testing.provide_metadata
-    def test_insert_returning_preexecute_pk(self, connection):
+    def test_insert_returning_preexecute_pk(self, metadata, connection):
         counter = itertools.count(1)
 
         t = Table(
@@ -525,7 +524,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
             ),
             Column("data", Integer),
         )
-        self.metadata.create_all(connection)
+        metadata.create_all(connection)
 
         result = connection.execute(
             t.insert().return_defaults(),

@@ -18,7 +18,7 @@ class CompileTest(fixtures.TestBase, AssertsExecutionResults):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
 
         global t1, t2, metadata
         metadata = MetaData()

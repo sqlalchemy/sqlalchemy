@@ -2785,15 +2785,14 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, dbname, owner, schema):
         if tablename.startswith("#"):  # temporary table
             tables = ischema.mssql_temp_table_columns
-            result = connection.execute(
-                sql.select(tables.c.table_name)
-                .where(
-                    tables.c.table_name.like(
-                        self._temp_table_name_like_pattern(tablename)
-                    )
+
+            s = sql.select(tables.c.table_name).where(
+                tables.c.table_name.like(
+                    self._temp_table_name_like_pattern(tablename)
                 )
-                .limit(1)
             )
+
+            result = connection.execute(s.limit(1))
             return result.scalar() is not None
         else:
             tables = ischema.tables

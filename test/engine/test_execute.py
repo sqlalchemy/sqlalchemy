@@ -43,7 +43,6 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
@@ -94,13 +93,13 @@ class ExecuteTest(fixtures.TablesTest):
             ).default_from()
         )
 
-        conn = testing.db.connect()
-        result = (
-            conn.execution_options(no_parameters=True)
-            .exec_driver_sql(stmt)
-            .scalar()
-        )
-        eq_(result, "%")
+        with testing.db.connect() as conn:
+            result = (
+                conn.execution_options(no_parameters=True)
+                .exec_driver_sql(stmt)
+                .scalar()
+            )
+            eq_(result, "%")
 
     def test_raw_positional_invalid(self, connection):
         assert_raises_message(
@@ -261,16 +260,15 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
-    @testing.engines.close_open_connections
     def test_exception_wrapping_dbapi(self):
-        conn = testing.db.connect()
-        # engine does not have exec_driver_sql
-        assert_raises_message(
-            tsa.exc.DBAPIError,
-            r"not_a_valid_statement",
-            conn.exec_driver_sql,
-            "not_a_valid_statement",
-        )
+        with testing.db.connect() as conn:
+            # engine does not have exec_driver_sql
+            assert_raises_message(
+                tsa.exc.DBAPIError,
+                r"not_a_valid_statement",
+                conn.exec_driver_sql,
+                "not_a_valid_statement",
+            )
 
     @testing.requires.sqlite
     def test_exception_wrapping_non_dbapi_error(self):
@@ -864,12 +862,10 @@ class CompiledCacheTest(fixtures.TestBase):
         ["sqlite", "mysql", "postgresql"],
         "uses blob value that is problematic for some DBAPIs",
     )
-    @testing.provide_metadata
-    def test_cache_noleak_on_statement_values(self, connection):
+    def test_cache_noleak_on_statement_values(self, metadata, connection):
         # This is a non regression test for an object reference leak caused
         # by the compiled_cache.
 
-        metadata = self.metadata
         photo = Table(
             "photo",
             metadata,
@@ -1040,7 +1036,19 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
     __requires__ = ("schemas",)
     __backend__ = True
 
-    def test_create_table(self):
+    @testing.fixture
+    def plain_tables(self, metadata):
+        t1 = Table(
+            "t1", metadata, Column("x", Integer), schema=config.test_schema
+        )
+        t2 = Table(
+            "t2", metadata, Column("x", Integer), schema=config.test_schema
+        )
+        t3 = Table("t3", metadata, Column("x", Integer), schema=None)
+
+        return t1, t2, t3
+
+    def test_create_table(self, plain_tables, connection):
         map_ = {
             None: config.test_schema,
             "foo": config.test_schema,
@@ -1052,18 +1060,16 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         t2 = Table("t2", metadata, Column("x", Integer), schema="foo")
         t3 = Table("t3", metadata, Column("x", Integer), schema="bar")
 
-        with self.sql_execution_asserter(config.db) as asserter:
-            with config.db.begin() as conn, conn.execution_options(
-                schema_translate_map=map_
-            ) as conn:
+        with self.sql_execution_asserter(connection) as asserter:
+            conn = connection.execution_options(schema_translate_map=map_)
 
-                t1.create(conn)
-                t2.create(conn)
-                t3.create(conn)
+            t1.create(conn)
+            t2.create(conn)
+            t3.create(conn)
 
-                t3.drop(conn)
-                t2.drop(conn)
-                t1.drop(conn)
+            t3.drop(conn)
+            t2.drop(conn)
+            t1.drop(conn)
 
         asserter.assert_(
             CompiledSQL("CREATE TABLE [SCHEMA__none].t1 (x INTEGER)"),
@@ -1074,14 +1080,7 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             CompiledSQL("DROP TABLE [SCHEMA__none].t1"),
         )
 
-    def _fixture(self):
-        metadata = self.metadata
-        Table("t1", metadata, Column("x", Integer), schema=config.test_schema)
-        Table("t2", metadata, Column("x", Integer), schema=config.test_schema)
-        Table("t3", metadata, Column("x", Integer), schema=None)
-        metadata.create_all(testing.db)
-
-    def test_ddl_hastable(self):
+    def test_ddl_hastable(self, plain_tables, connection):
 
         map_ = {
             None: config.test_schema,
@@ -1094,27 +1093,28 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         Table("t2", metadata, Column("x", Integer), schema="foo")
         Table("t3", metadata, Column("x", Integer), schema="bar")
 
-        with config.db.begin() as conn:
-            conn = conn.execution_options(schema_translate_map=map_)
-            metadata.create_all(conn)
+        conn = connection.execution_options(schema_translate_map=map_)
+        metadata.create_all(conn)
 
-        insp = inspect(config.db)
+        insp = inspect(connection)
         is_true(insp.has_table("t1", schema=config.test_schema))
         is_true(insp.has_table("t2", schema=config.test_schema))
         is_true(insp.has_table("t3", schema=None))
 
-        with config.db.begin() as conn:
-            conn = conn.execution_options(schema_translate_map=map_)
-            metadata.drop_all(conn)
+        conn = connection.execution_options(schema_translate_map=map_)
 
-        insp = inspect(config.db)
+        # if this test fails, the tables won't get dropped.  so need a
+        # more robust fixture for this
+        metadata.drop_all(conn)
+
+        insp = inspect(connection)
         is_false(insp.has_table("t1", schema=config.test_schema))
         is_false(insp.has_table("t2", schema=config.test_schema))
         is_false(insp.has_table("t3", schema=None))
 
-    @testing.provide_metadata
-    def test_option_on_execute(self):
-        self._fixture()
+    def test_option_on_execute(self, plain_tables, connection):
+        # provided by metadata fixture provided by plain_tables fixture
+        self.metadata.create_all(connection)
 
         map_ = {
             None: config.test_schema,
@@ -1127,61 +1127,54 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         t2 = Table("t2", metadata, Column("x", Integer), schema="foo")
         t3 = Table("t3", metadata, Column("x", Integer), schema="bar")
 
-        with self.sql_execution_asserter(config.db) as asserter:
-            with config.db.begin() as conn:
+        with self.sql_execution_asserter(connection) as asserter:
+            conn = connection
+            execution_options = {"schema_translate_map": map_}
+            conn._execute_20(
+                t1.insert(), {"x": 1}, execution_options=execution_options
+            )
+            conn._execute_20(
+                t2.insert(), {"x": 1}, execution_options=execution_options
+            )
+            conn._execute_20(
+                t3.insert(), {"x": 1}, execution_options=execution_options
+            )
 
-                execution_options = {"schema_translate_map": map_}
-                conn._execute_20(
-                    t1.insert(), {"x": 1}, execution_options=execution_options
-                )
-                conn._execute_20(
-                    t2.insert(), {"x": 1}, execution_options=execution_options
-                )
-                conn._execute_20(
-                    t3.insert(), {"x": 1}, execution_options=execution_options
-                )
+            conn._execute_20(
+                t1.update().values(x=1).where(t1.c.x == 1),
+                execution_options=execution_options,
+            )
+            conn._execute_20(
+                t2.update().values(x=2).where(t2.c.x == 1),
+                execution_options=execution_options,
+            )
+            conn._execute_20(
+                t3.update().values(x=3).where(t3.c.x == 1),
+                execution_options=execution_options,
+            )
 
+            eq_(
                 conn._execute_20(
-                    t1.update().values(x=1).where(t1.c.x == 1),
-                    execution_options=execution_options,
-                )
+                    select(t1.c.x), execution_options=execution_options
+                ).scalar(),
+                1,
+            )
+            eq_(
                 conn._execute_20(
-                    t2.update().values(x=2).where(t2.c.x == 1),
-                    execution_options=execution_options,
-                )
+                    select(t2.c.x), execution_options=execution_options
+                ).scalar(),
+                2,
+            )
+            eq_(
                 conn._execute_20(
-                    t3.update().values(x=3).where(t3.c.x == 1),
-                    execution_options=execution_options,
-                )
+                    select(t3.c.x), execution_options=execution_options
+                ).scalar(),
+                3,
+            )
 
-                eq_(
-                    conn._execute_20(
-                        select(t1.c.x), execution_options=execution_options
-                    ).scalar(),
-                    1,
-                )
-                eq_(
-                    conn._execute_20(
-                        select(t2.c.x), execution_options=execution_options
-                    ).scalar(),
-                    2,
-                )
-                eq_(
-                    conn._execute_20(
-                        select(t3.c.x), execution_options=execution_options
-                    ).scalar(),
-                    3,
-                )
-
-                conn._execute_20(
-                    t1.delete(), execution_options=execution_options
-                )
-                conn._execute_20(
-                    t2.delete(), execution_options=execution_options
-                )
-                conn._execute_20(
-                    t3.delete(), execution_options=execution_options
-                )
+            conn._execute_20(t1.delete(), execution_options=execution_options)
+            conn._execute_20(t2.delete(), execution_options=execution_options)
+            conn._execute_20(t3.delete(), execution_options=execution_options)
 
         asserter.assert_(
             CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
@@ -1207,9 +1200,9 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
         )
 
-    @testing.provide_metadata
-    def test_crud(self):
-        self._fixture()
+    def test_crud(self, plain_tables, connection):
+        # provided by metadata fixture provided by plain_tables fixture
+        self.metadata.create_all(connection)
 
         map_ = {
             None: config.test_schema,
@@ -1222,26 +1215,24 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
         t2 = Table("t2", metadata, Column("x", Integer), schema="foo")
         t3 = Table("t3", metadata, Column("x", Integer), schema="bar")
 
-        with self.sql_execution_asserter(config.db) as asserter:
-            with config.db.begin() as conn, conn.execution_options(
-                schema_translate_map=map_
-            ) as conn:
+        with self.sql_execution_asserter(connection) as asserter:
+            conn = connection.execution_options(schema_translate_map=map_)
 
-                conn.execute(t1.insert(), {"x": 1})
-                conn.execute(t2.insert(), {"x": 1})
-                conn.execute(t3.insert(), {"x": 1})
+            conn.execute(t1.insert(), {"x": 1})
+            conn.execute(t2.insert(), {"x": 1})
+            conn.execute(t3.insert(), {"x": 1})
 
-                conn.execute(t1.update().values(x=1).where(t1.c.x == 1))
-                conn.execute(t2.update().values(x=2).where(t2.c.x == 1))
-                conn.execute(t3.update().values(x=3).where(t3.c.x == 1))
+            conn.execute(t1.update().values(x=1).where(t1.c.x == 1))
+            conn.execute(t2.update().values(x=2).where(t2.c.x == 1))
+            conn.execute(t3.update().values(x=3).where(t3.c.x == 1))
 
-                eq_(conn.scalar(select(t1.c.x)), 1)
-                eq_(conn.scalar(select(t2.c.x)), 2)
-                eq_(conn.scalar(select(t3.c.x)), 3)
+            eq_(conn.scalar(select(t1.c.x)), 1)
+            eq_(conn.scalar(select(t2.c.x)), 2)
+            eq_(conn.scalar(select(t3.c.x)), 3)
 
-                conn.execute(t1.delete())
-                conn.execute(t2.delete())
-                conn.execute(t3.delete())
+            conn.execute(t1.delete())
+            conn.execute(t2.delete())
+            conn.execute(t3.delete())
 
         asserter.assert_(
             CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
@@ -1267,9 +1258,10 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
         )
 
-    @testing.provide_metadata
-    def test_via_engine(self):
-        self._fixture()
+    def test_via_engine(self, plain_tables, metadata):
+
+        with config.db.begin() as connection:
+            metadata.create_all(connection)
 
         map_ = {
             None: config.test_schema,
@@ -1282,25 +1274,25 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
 
         with self.sql_execution_asserter(config.db) as asserter:
             eng = config.db.execution_options(schema_translate_map=map_)
-            conn = eng.connect()
-            conn.execute(select(t2.c.x))
+            with eng.connect() as conn:
+                conn.execute(select(t2.c.x))
         asserter.assert_(
             CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2")
         )
 
 
 class ExecutionOptionsTest(fixtures.TestBase):
-    def test_dialect_conn_options(self):
+    def test_dialect_conn_options(self, testing_engine):
         engine = testing_engine("sqlite://", options=dict(_initialize=False))
         engine.dialect = Mock()
-        conn = engine.connect()
-        c2 = conn.execution_options(foo="bar")
-        eq_(
-            engine.dialect.set_connection_execution_options.mock_calls,
-            [call(c2, {"foo": "bar"})],
-        )
+        with engine.connect() as conn:
+            c2 = conn.execution_options(foo="bar")
+            eq_(
+                engine.dialect.set_connection_execution_options.mock_calls,
+                [call(c2, {"foo": "bar"})],
+            )
 
-    def test_dialect_engine_options(self):
+    def test_dialect_engine_options(self, testing_engine):
         engine = testing_engine("sqlite://")
         engine.dialect = Mock()
         e2 = engine.execution_options(foo="bar")
@@ -1319,14 +1311,14 @@ class ExecutionOptionsTest(fixtures.TestBase):
             [call(engine, {"foo": "bar"})],
         )
 
-    def test_propagate_engine_to_connection(self):
+    def test_propagate_engine_to_connection(self, testing_engine):
         engine = testing_engine(
             "sqlite://", options=dict(execution_options={"foo": "bar"})
         )
-        conn = engine.connect()
-        eq_(conn._execution_options, {"foo": "bar"})
+        with engine.connect() as conn:
+            eq_(conn._execution_options, {"foo": "bar"})
 
-    def test_propagate_option_engine_to_connection(self):
+    def test_propagate_option_engine_to_connection(self, testing_engine):
         e1 = testing_engine(
             "sqlite://", options=dict(execution_options={"foo": "bar"})
         )
@@ -1336,27 +1328,30 @@ class ExecutionOptionsTest(fixtures.TestBase):
         eq_(c1._execution_options, {"foo": "bar"})
         eq_(c2._execution_options, {"foo": "bar", "bat": "hoho"})
 
-    def test_get_engine_execution_options(self):
+        c1.close()
+        c2.close()
+
+    def test_get_engine_execution_options(self, testing_engine):
         engine = testing_engine("sqlite://")
         engine.dialect = Mock()
         e2 = engine.execution_options(foo="bar")
 
         eq_(e2.get_execution_options(), {"foo": "bar"})
 
-    def test_get_connection_execution_options(self):
+    def test_get_connection_execution_options(self, testing_engine):
         engine = testing_engine("sqlite://", options=dict(_initialize=False))
         engine.dialect = Mock()
-        conn = engine.connect()
-        c = conn.execution_options(foo="bar")
+        with engine.connect() as conn:
+            c = conn.execution_options(foo="bar")
 
-        eq_(c.get_execution_options(), {"foo": "bar"})
+            eq_(c.get_execution_options(), {"foo": "bar"})
 
 
 class EngineEventsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
     __backend__ = True
 
-    def tearDown(self):
+    def teardown_test(self):
         Engine.dispatch._clear()
         Engine._has_events = False
 
@@ -1376,7 +1371,7 @@ class EngineEventsTest(fixtures.TestBase):
                 ):
                     break
 
-    def test_per_engine_independence(self):
+    def test_per_engine_independence(self, testing_engine):
         e1 = testing_engine(config.db_url)
         e2 = testing_engine(config.db_url)
 
@@ -1400,7 +1395,7 @@ class EngineEventsTest(fixtures.TestBase):
             conn.execute(s2)
         eq_([arg[1][1] for arg in canary.mock_calls], [s1, s1, s2])
 
-    def test_per_engine_plus_global(self):
+    def test_per_engine_plus_global(self, testing_engine):
         canary = Mock()
         event.listen(Engine, "before_execute", canary.be1)
         e1 = testing_engine(config.db_url)
@@ -1409,8 +1404,6 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(e1, "before_execute", canary.be2)
 
         event.listen(Engine, "before_execute", canary.be3)
-        e1.connect()
-        e2.connect()
 
         with e1.connect() as conn:
             conn.execute(select(1))
@@ -1424,7 +1417,7 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be2.call_count, 1)
         eq_(canary.be3.call_count, 2)
 
-    def test_per_connection_plus_engine(self):
+    def test_per_connection_plus_engine(self, testing_engine):
         canary = Mock()
         e1 = testing_engine(config.db_url)
 
@@ -1442,9 +1435,14 @@ class EngineEventsTest(fixtures.TestBase):
             eq_(canary.be1.call_count, 2)
             eq_(canary.be2.call_count, 2)
 
-    @testing.combinations((True, False), (True, True), (False, False))
+    @testing.combinations(
+        (True, False),
+        (True, True),
+        (False, False),
+        argnames="mock_out_on_connect, add_our_own_onconnect",
+    )
     def test_insert_connect_is_definitely_first(
-        self, mock_out_on_connect, add_our_own_onconnect
+        self, mock_out_on_connect, add_our_own_onconnect, testing_engine
     ):
         """test issue #5708.
 
@@ -1478,7 +1476,7 @@ class EngineEventsTest(fixtures.TestBase):
             patcher = util.nullcontext()
 
         with patcher:
-            e1 = create_engine(config.db_url)
+            e1 = testing_engine(config.db_url)
 
             initialize = e1.dialect.initialize
 
@@ -1559,10 +1557,11 @@ class EngineEventsTest(fixtures.TestBase):
             conn.exec_driver_sql(select1(testing.db))
         eq_(m1.mock_calls, [])
 
-    def test_add_event_after_connect(self):
+    def test_add_event_after_connect(self, testing_engine):
         # new feature as of #2978
+
         canary = Mock()
-        e1 = create_engine(config.db_url)
+        e1 = testing_engine(config.db_url, future=False)
         assert not e1._has_events
 
         conn = e1.connect()
@@ -1575,9 +1574,9 @@ class EngineEventsTest(fixtures.TestBase):
         conn._branch().execute(select(1))
         eq_(canary.be1.call_count, 2)
 
-    def test_force_conn_events_false(self):
+    def test_force_conn_events_false(self, testing_engine):
         canary = Mock()
-        e1 = create_engine(config.db_url)
+        e1 = testing_engine(config.db_url, future=False)
         assert not e1._has_events
 
         event.listen(e1, "before_execute", canary.be1)
@@ -1593,7 +1592,7 @@ class EngineEventsTest(fixtures.TestBase):
         conn._branch().execute(select(1))
         eq_(canary.be1.call_count, 0)
 
-    def test_cursor_events_ctx_execute_scalar(self):
+    def test_cursor_events_ctx_execute_scalar(self, testing_engine):
         canary = Mock()
         e1 = testing_engine(config.db_url)
 
@@ -1620,7 +1619,7 @@ class EngineEventsTest(fixtures.TestBase):
             [call(conn, ctx.cursor, stmt, ctx.parameters[0], ctx, False)],
         )
 
-    def test_cursor_events_execute(self):
+    def test_cursor_events_execute(self, testing_engine):
         canary = Mock()
         e1 = testing_engine(config.db_url)
 
@@ -1653,9 +1652,15 @@ class EngineEventsTest(fixtures.TestBase):
         ),
         ((), {"z": 10}, [], {"z": 10}, testing.requires.legacy_engine),
         (({"z": 10},), {}, [], {"z": 10}),
+        argnames="multiparams, params, expected_multiparams, expected_params",
     )
     def test_modify_parameters_from_event_one(
-        self, multiparams, params, expected_multiparams, expected_params
+        self,
+        multiparams,
+        params,
+        expected_multiparams,
+        expected_params,
+        testing_engine,
     ):
         # this is testing both the normalization added to parameters
         # as of I97cb4d06adfcc6b889f10d01cc7775925cffb116 as well as
@@ -1704,7 +1709,9 @@ class EngineEventsTest(fixtures.TestBase):
             [(15,), (19,)],
         )
 
-    def test_modify_parameters_from_event_three(self, connection):
+    def test_modify_parameters_from_event_three(
+        self, connection, testing_engine
+    ):
         def before_execute(
             conn, clauseelement, multiparams, params, execution_options
         ):
@@ -1721,7 +1728,7 @@ class EngineEventsTest(fixtures.TestBase):
             with e1.connect() as conn:
                 conn.execute(select(literal("1")))
 
-    def test_argument_format_execute(self):
+    def test_argument_format_execute(self, testing_engine):
         def before_execute(
             conn, clauseelement, multiparams, params, execution_options
         ):
@@ -1956,9 +1963,9 @@ class EngineEventsTest(fixtures.TestBase):
         )
 
     @testing.requires.ad_hoc_engines
-    def test_dispose_event(self):
+    def test_dispose_event(self, testing_engine):
         canary = Mock()
-        eng = create_engine(testing.db.url)
+        eng = testing_engine(testing.db.url)
         event.listen(eng, "engine_disposed", canary)
 
         conn = eng.connect()
@@ -2102,13 +2109,13 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(engine, "commit", tracker("commit"))
         event.listen(engine, "rollback", tracker("rollback"))
 
-        conn = engine.connect()
-        trans = conn.begin()
-        conn.execute(select(1))
-        trans.rollback()
-        trans = conn.begin()
-        conn.execute(select(1))
-        trans.commit()
+        with engine.connect() as conn:
+            trans = conn.begin()
+            conn.execute(select(1))
+            trans.rollback()
+            trans = conn.begin()
+            conn.execute(select(1))
+            trans.commit()
 
         eq_(
             canary,
@@ -2145,13 +2152,13 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(engine, "commit", tracker("commit"), named=True)
         event.listen(engine, "rollback", tracker("rollback"), named=True)
 
-        conn = engine.connect()
-        trans = conn.begin()
-        conn.execute(select(1))
-        trans.rollback()
-        trans = conn.begin()
-        conn.execute(select(1))
-        trans.commit()
+        with engine.connect() as conn:
+            trans = conn.begin()
+            conn.execute(select(1))
+            trans.rollback()
+            trans = conn.begin()
+            conn.execute(select(1))
+            trans.commit()
 
         eq_(
             canary,
@@ -2310,7 +2317,7 @@ class HandleErrorTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
     __backend__ = True
 
-    def tearDown(self):
+    def teardown_test(self):
         Engine.dispatch._clear()
         Engine._has_events = False
 
@@ -2742,7 +2749,7 @@ class HandleErrorTest(fixtures.TestBase):
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):
     __requires__ = ("sqlite",)
 
-    def setUp(self):
+    def setup_test(self):
         e = create_engine("sqlite://")
 
         connection = Mock(get_server_version_info=Mock(return_value="5.0"))
@@ -3013,6 +3020,9 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
                 call.on_connect(dbapi_conn_two),
             ],
         )
+
+        c.close()
+        c2.close()
 
 
 class DialectEventTest(fixtures.TestBase):
@@ -3370,7 +3380,7 @@ class SetInputSizesTest(fixtures.TablesTest):
         )
 
     @testing.fixture
-    def input_sizes_fixture(self):
+    def input_sizes_fixture(self, testing_engine):
         canary = mock.Mock()
 
         def do_set_input_sizes(cursor, list_of_tuples, context):

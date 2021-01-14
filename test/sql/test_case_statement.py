@@ -26,7 +26,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         metadata = MetaData()
         global info_table
         info_table = Table(
@@ -52,7 +52,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         with testing.db.begin() as conn:
             info_table.drop(conn)
 

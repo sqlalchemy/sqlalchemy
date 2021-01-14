@@ -45,13 +45,14 @@ from test.orm import _fixtures
 
 
 class _RemoveListeners(object):
-    def teardown(self):
+    @testing.fixture(autouse=True)
+    def _remove_listeners(self):
+        yield
         events.MapperEvents._clear()
         events.InstanceEvents._clear()
         events.SessionEvents._clear()
         events.InstrumentationEvents._clear()
         events.QueryEvents._clear()
-        super(_RemoveListeners, self).teardown()
 
 
 class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
@@ -1174,7 +1175,7 @@ class RestoreLoadContextTest(fixtures.DeclarativeMappedTest):
             argnames="target, event_name, fn",
         )(fn)
 
-    def teardown(self):
+    def teardown_test(self):
         A = self.classes.A
         A._sa_class_manager.dispatch._clear()
 

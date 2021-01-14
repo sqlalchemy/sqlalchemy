@@ -608,7 +608,7 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-    def setUp(self):
+    def setup_test(self):
         class MyTypeCompiler(compiler.GenericTypeCompiler):
             def visit_mytype(self, type_, **kw):
                 return "MYTYPE"
@@ -766,7 +766,7 @@ class JSONIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
 
 class ArrayIndexOpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-    def setUp(self):
+    def setup_test(self):
         class MyTypeCompiler(compiler.GenericTypeCompiler):
             def visit_mytype(self, type_, **kw):
                 return "MYTYPE"
@@ -2370,7 +2370,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )
@@ -2403,7 +2403,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class RegexpTestStrCompiler(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default_enhanced"
 
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )

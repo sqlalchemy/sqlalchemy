@@ -1011,7 +1011,7 @@ class EuroNumericTest(fixtures.TestBase):
     __only_on__ = "oracle+cx_oracle"
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         connect = testing.db.pool._creator
 
         def _creator():
@@ -1023,7 +1023,7 @@ class EuroNumericTest(fixtures.TestBase):
 
         self.engine = testing_engine(options={"creator": _creator})
 
-    def teardown(self):
+    def teardown_test(self):
         self.engine.dispose()
 
     def test_were_getting_a_comma(self):

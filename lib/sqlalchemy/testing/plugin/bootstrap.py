@@ -40,6 +40,11 @@ def load_file_as_module(name):
 
 if to_bootstrap == "pytest":
     sys.modules["sqla_plugin_base"] = load_file_as_module("plugin_base")
+    sys.modules["sqla_plugin_base"].bootstrapped_as_sqlalchemy = True
+    if sys.version_info < (3, 0):
+        sys.modules["sqla_reinvent_fixtures"] = load_file_as_module(
+            "reinvent_fixtures_py2k"
+        )
     sys.modules["sqla_pytestplugin"] = load_file_as_module("pytestplugin")
 else:
     raise Exception("unknown bootstrap: %s" % to_bootstrap)  # noqa

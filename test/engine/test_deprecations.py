@@ -965,7 +965,7 @@ class TransactionTest(fixtures.TablesTest):
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):
     __requires__ = ("sqlite",)
 
-    def setUp(self):
+    def setup_test(self):
         e = create_engine("sqlite://")
 
         connection = Mock(get_server_version_info=Mock(return_value="5.0"))
@@ -1021,18 +1021,18 @@ def MockDBAPI():  # noqa
 
 
 class PoolTestBase(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         pool.clear_managers()
         self._teardown_conns = []
 
-    def teardown(self):
+    def teardown_test(self):
         for ref in self._teardown_conns:
             conn = ref()
             if conn:
                 conn.close()
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         pool.clear_managers()
 
     def _queuepool_fixture(self, **kw):
@@ -1597,7 +1597,7 @@ class EngineEventsTest(fixtures.TestBase):
     __requires__ = ("ad_hoc_engines",)
     __backend__ = True
 
-    def tearDown(self):
+    def teardown_test(self):
         Engine.dispatch._clear()
         Engine._has_events = False
 
@@ -1650,6 +1650,7 @@ class EngineEventsTest(fixtures.TestBase):
         event.listen(
             engine, "before_cursor_execute", cursor_execute, retval=True
         )
+
         with testing.expect_deprecated(
             r"The argument signature for the "
             r"\"ConnectionEvents.before_execute\" event listener",
@@ -1676,11 +1677,12 @@ class EngineEventsTest(fixtures.TestBase):
             r"The argument signature for the "
             r"\"ConnectionEvents.after_execute\" event listener",
         ):
-            e1.execute(select(1))
+            result = e1.execute(select(1))
+            result.close()
 
 
 class DDLExecutionTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         self.engine = engines.mock_engine()
         self.metadata = MetaData()
         self.users = Table(

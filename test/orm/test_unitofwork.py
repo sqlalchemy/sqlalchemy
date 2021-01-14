@@ -203,14 +203,6 @@ class UnicodeSchemaTest(fixtures.MappedTest):
         cls.tables["t1"] = t1
         cls.tables["t2"] = t2
 
-    @classmethod
-    def setup_class(cls):
-        super(UnicodeSchemaTest, cls).setup_class()
-
-    @classmethod
-    def teardown_class(cls):
-        super(UnicodeSchemaTest, cls).teardown_class()
-
     def test_mapping(self):
         t2, t1 = self.tables.t2, self.tables.t1
 

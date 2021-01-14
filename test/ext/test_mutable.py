@@ -90,11 +90,10 @@ class _MutableDictTestFixture(object):
     def _type_fixture(cls):
         return MutableDict
 
-    def teardown(self):
+    def teardown_test(self):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(_MutableDictTestFixture, self).teardown()
 
 
 class _MutableDictTestBase(_MutableDictTestFixture):
@@ -312,11 +311,10 @@ class _MutableListTestFixture(object):
     def _type_fixture(cls):
         return MutableList
 
-    def teardown(self):
+    def teardown_test(self):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(_MutableListTestFixture, self).teardown()
 
 
 class _MutableListTestBase(_MutableListTestFixture):
@@ -619,11 +617,10 @@ class _MutableSetTestFixture(object):
     def _type_fixture(cls):
         return MutableSet
 
-    def teardown(self):
+    def teardown_test(self):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(_MutableSetTestFixture, self).teardown()
 
 
 class _MutableSetTestBase(_MutableSetTestFixture):
@@ -1234,17 +1231,15 @@ class _CompositeTestBase(object):
             Column("unrelated_data", String(50)),
         )
 
-    def setup(self):
+    def setup_test(self):
         from sqlalchemy.ext import mutable
 
         mutable._setup_composite_listener()
-        super(_CompositeTestBase, self).setup()
 
-    def teardown(self):
+    def teardown_test(self):
         # clear out mapper events
         Mapper.dispatch._clear()
         ClassManager.dispatch._clear()
-        super(_CompositeTestBase, self).teardown()
 
     @classmethod
     def _type_fixture(cls):

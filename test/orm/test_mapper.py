@@ -2560,7 +2560,7 @@ class MagicNamesTest(fixtures.MappedTest):
 
 
 class DocumentTest(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
 
         self.mapper = registry().map_imperatively
 
@@ -2624,14 +2624,14 @@ class DocumentTest(fixtures.TestBase):
 
 
 class ORMLoggingTest(_fixtures.FixtureTest):
-    def setup(self):
+    def setup_test(self):
         self.buf = logging.handlers.BufferingHandler(100)
         for log in [logging.getLogger("sqlalchemy.orm")]:
             log.addHandler(self.buf)
 
         self.mapper = registry().map_imperatively
 
-    def teardown(self):
+    def teardown_test(self):
         for log in [logging.getLogger("sqlalchemy.orm")]:
             log.removeHandler(self.buf)
 

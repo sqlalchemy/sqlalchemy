@@ -17,14 +17,13 @@ from sqlalchemy.testing.schema import Table
 class DeclarativeReflectionBase(fixtures.TablesTest):
     __requires__ = ("reflectable_autoincrement",)
 
-    def setup(self):
+    def setup_test(self):
         global Base, registry
 
         registry = decl.registry(metadata=MetaData())
         Base = registry.generate_base()
 
-    def teardown(self):
-        super(DeclarativeReflectionBase, self).teardown()
+    def teardown_test(self):
         clear_mappers()
 
 

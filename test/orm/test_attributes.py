@@ -209,7 +209,7 @@ class AttributeImplAPITest(fixtures.MappedTest):
 
 
 class AttributesTest(fixtures.ORMTest):
-    def setup(self):
+    def setup_test(self):
         global MyTest, MyTest2
 
         class MyTest(object):
@@ -218,7 +218,7 @@ class AttributesTest(fixtures.ORMTest):
         class MyTest2(object):
             pass
 
-    def teardown(self):
+    def teardown_test(self):
         global MyTest, MyTest2
         MyTest, MyTest2 = None, None
 
@@ -3690,7 +3690,7 @@ class EventPropagateTest(fixtures.TestBase):
 
 
 class CollectionInitTest(fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class A(object):
             pass
 
@@ -3749,7 +3749,7 @@ class CollectionInitTest(fixtures.TestBase):
 
 
 class TestUnlink(fixtures.TestBase):
-    def setUp(self):
+    def setup_test(self):
         class A(object):
             pass
 

@@ -4257,7 +4257,7 @@ class DialectKWArgTest(fixtures.TestBase):
         with mock.patch("sqlalchemy.dialects.registry.load", load):
             yield
 
-    def teardown(self):
+    def teardown_test(self):
         Index._kw_registry.clear()
 
     def test_participating(self):

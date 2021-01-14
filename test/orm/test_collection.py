@@ -92,13 +92,12 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             return str((id(self), self.a, self.b, self.c))
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         instrumentation.register_class(cls.Entity)
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         instrumentation.unregister_class(cls.Entity)
-        super(CollectionsTest, cls).teardown_class()
 
     _entity_id = 1
 

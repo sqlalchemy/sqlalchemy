@@ -17,6 +17,7 @@ import sys
 
 import pytest
 
+
 try:
     import typing
 except ImportError:
@@ -31,6 +32,14 @@ try:
     has_xdist = True
 except ImportError:
     has_xdist = False
+
+
+py2k = sys.version_info < (3, 0)
+if py2k:
+    try:
+        import sqla_reinvent_fixtures as reinvent_fixtures_py2k
+    except ImportError:
+        from . import reinvent_fixtures_py2k
 
 
 def pytest_addoption(parser):
@@ -238,6 +247,10 @@ def pytest_collection_modifyitems(session, config, items):
         else:
             newitems.append(item)
 
+    if py2k:
+        for item in newitems:
+            reinvent_fixtures_py2k.scan_for_fixtures_to_use_for_class(item)
+
     # seems like the functions attached to a test class aren't sorted already?
     # is that true and why's that? (when using unittest, they're sorted)
     items[:] = sorted(
@@ -251,7 +264,6 @@ def pytest_collection_modifyitems(session, config, items):
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
-
     if inspect.isclass(obj) and plugin_base.want_class(name, obj):
         from sqlalchemy.testing import config
 
@@ -259,7 +271,6 @@ def pytest_pycollect_makeitem(collector, name, obj):
             obj = _apply_maybe_async(obj)
 
         ctor = getattr(pytest.Class, "from_parent", pytest.Class)
-
         return [
             ctor(name=parametrize_cls.__name__, parent=collector)
             for parametrize_cls in _parametrize_cls(collector.module, obj)
@@ -287,12 +298,11 @@ def _is_wrapped_coroutine_function(fn):
 def _apply_maybe_async(obj, recurse=True):
     from sqlalchemy.testing import asyncio
 
-    setup_names = {"setup", "setup_class", "teardown", "teardown_class"}
     for name, value in vars(obj).items():
         if (
             (callable(value) or isinstance(value, classmethod))
             and not getattr(value, "_maybe_async_applied", False)
-            and (name.startswith("test_") or name in setup_names)
+            and (name.startswith("test_"))
             and not _is_wrapped_coroutine_function(value)
         ):
             is_classmethod = False
@@ -315,9 +325,6 @@ def _apply_maybe_async(obj, recurse=True):
             if cls != object:
                 _apply_maybe_async(cls, False)
     return obj
-
-
-_current_class = None
 
 
 def _parametrize_cls(module, cls):
@@ -355,63 +362,153 @@ def _parametrize_cls(module, cls):
     return classes
 
 
+_current_class = None
+
+
 def pytest_runtest_setup(item):
     from sqlalchemy.testing import asyncio
-
-    # here we seem to get called only based on what we collected
-    # in pytest_collection_modifyitems.   So to do class-based stuff
-    # we have to tear that out.
-    global _current_class
 
     if not isinstance(item, pytest.Function):
         return
 
-    # ... so we're doing a little dance here to figure it out...
+    # pytest_runtest_setup runs *before* pytest fixtures with scope="class".
+    # plugin_base.start_test_class_outside_fixtures may opt to raise SkipTest
+    # for the whole class and has to run things that are across all current
+    # databases, so we run this outside of the pytest fixture system altogether
+    # and ensure asyncio greenlet if any engines are async
+
+    global _current_class
+
     if _current_class is None:
-        asyncio._maybe_async(class_setup, item.parent.parent)
+        asyncio._maybe_async_provisioning(
+            plugin_base.start_test_class_outside_fixtures,
+            item.parent.parent.cls,
+        )
         _current_class = item.parent.parent
 
-        # this is needed for the class-level, to ensure that the
-        # teardown runs after the class is completed with its own
-        # class-level teardown...
         def finalize():
             global _current_class
-            asyncio._maybe_async(class_teardown, item.parent.parent)
             _current_class = None
+
+            asyncio._maybe_async_provisioning(
+                plugin_base.stop_test_class_outside_fixtures,
+                item.parent.parent.cls,
+            )
 
         item.parent.parent.addfinalizer(finalize)
 
-    asyncio._maybe_async(test_setup, item)
 
+def pytest_runtest_call(item):
+    # runs inside of pytest function fixture scope
+    # before test function runs
 
-def pytest_runtest_teardown(item):
     from sqlalchemy.testing import asyncio
 
-    # ...but this works better as the hook here rather than
-    # using a finalizer, as the finalizer seems to get in the way
-    # of the test reporting failures correctly (you get a bunch of
-    # pytest assertion stuff instead)
-    asyncio._maybe_async(test_teardown, item)
-
-
-def test_setup(item):
-    plugin_base.before_test(
-        item, item.parent.module.__name__, item.parent.cls, item.name
+    asyncio._maybe_async(
+        plugin_base.before_test,
+        item,
+        item.parent.module.__name__,
+        item.parent.cls,
+        item.name,
     )
 
 
-def test_teardown(item):
-    plugin_base.after_test(item)
+def pytest_runtest_teardown(item, nextitem):
+    # runs inside of pytest function fixture scope
+    # after test function runs
 
-
-def class_setup(item):
     from sqlalchemy.testing import asyncio
 
-    asyncio._maybe_async_provisioning(plugin_base.start_test_class, item.cls)
+    asyncio._maybe_async(plugin_base.after_test, item)
 
 
-def class_teardown(item):
-    plugin_base.stop_test_class(item.cls)
+@pytest.fixture(scope="class")
+def setup_class_methods(request):
+    from sqlalchemy.testing import asyncio
+
+    cls = request.cls
+
+    if hasattr(cls, "setup_test_class"):
+        asyncio._maybe_async(cls.setup_test_class)
+
+    if py2k:
+        reinvent_fixtures_py2k.run_class_fixture_setup(request)
+
+    yield
+
+    if py2k:
+        reinvent_fixtures_py2k.run_class_fixture_teardown(request)
+
+    if hasattr(cls, "teardown_test_class"):
+        asyncio._maybe_async(cls.teardown_test_class)
+
+    asyncio._maybe_async(plugin_base.stop_test_class, cls)
+
+
+@pytest.fixture(scope="function")
+def setup_test_methods(request):
+    from sqlalchemy.testing import asyncio
+
+    # called for each test
+
+    self = request.instance
+
+    # 1. run outer xdist-style setup
+    if hasattr(self, "setup_test"):
+        asyncio._maybe_async(self.setup_test)
+
+    # alembic test suite is using setUp and tearDown
+    # xdist methods; support these in the test suite
+    # for the near term
+    if hasattr(self, "setUp"):
+        asyncio._maybe_async(self.setUp)
+
+    # 2. run homegrown function level "autouse" fixtures under py2k
+    if py2k:
+        reinvent_fixtures_py2k.run_fn_fixture_setup(request)
+
+    # inside the yield:
+
+    # 3. function level "autouse" fixtures under py3k (examples: TablesTest
+    #    define tables / data, MappedTest define tables / mappers / data)
+
+    # 4. function level fixtures defined on test functions themselves,
+    #    e.g. "connection", "metadata" run next
+
+    # 5. pytest hook pytest_runtest_call then runs
+
+    # 6. test itself runs
+
+    yield
+
+    # yield finishes:
+
+    # 7. pytest hook pytest_runtest_teardown hook runs, this is associated
+    #    with fixtures close all sessions, provisioning.stop_test_class(),
+    #    engines.testing_reaper -> ensure all connection pool connections
+    #    are returned, engines created by testing_engine that aren't the
+    #    config engine are disposed
+
+    # 8. function level fixtures defined on test functions
+    #    themselves, e.g. "connection" rolls back the transaction, "metadata"
+    #    emits drop all
+
+    # 9. function level "autouse" fixtures under py3k (examples: TablesTest /
+    #    MappedTest delete table data, possibly drop tables and clear mappers
+    #    depending on the flags defined by the test class)
+
+    # 10. run homegrown function-level "autouse" fixtures under py2k
+    if py2k:
+        reinvent_fixtures_py2k.run_fn_fixture_teardown(request)
+
+    asyncio._maybe_async(plugin_base.after_test_fixtures, self)
+
+    # 11. run outer xdist-style teardown
+    if hasattr(self, "tearDown"):
+        asyncio._maybe_async(self.tearDown)
+
+    if hasattr(self, "teardown_test"):
+        asyncio._maybe_async(self.teardown_test)
 
 
 def getargspec(fn):
@@ -461,6 +558,8 @@ def %(name)s(%(args)s):
             # for the wrapped function
             decorated.__module__ = fn.__module__
             decorated.__name__ = fn.__name__
+            if hasattr(fn, "pytestmark"):
+                decorated.pytestmark = fn.pytestmark
             return decorated
 
     return decorate
@@ -469,6 +568,11 @@ def %(name)s(%(args)s):
 class PytestFixtureFunctions(plugin_base.FixtureFunctions):
     def skip_test_exception(self, *arg, **kw):
         return pytest.skip.Exception(*arg, **kw)
+
+    def mark_base_test_class(self):
+        return pytest.mark.usefixtures(
+            "setup_class_methods", "setup_test_methods"
+        )
 
     _combination_id_fns = {
         "i": lambda obj: obj,
@@ -647,8 +751,18 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                 fn = asyncio._maybe_async_wrapper(fn)
             # other wrappers may be added here
 
-            # now apply FixtureFunctionMarker
-            fn = fixture(fn)
+            if py2k and "autouse" in kw:
+                # py2k workaround for too-slow collection of autouse fixtures
+                # in pytest 4.6.11.  See notes in reinvent_fixtures_py2k for
+                # rationale.
+
+                # comment this condition out in order to disable the
+                # py2k workaround entirely.
+                reinvent_fixtures_py2k.add_fixture(fn, fixture)
+            else:
+                # now apply FixtureFunctionMarker
+                fn = fixture(fn)
+
             return fn
 
         if fn:

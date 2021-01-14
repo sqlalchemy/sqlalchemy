@@ -49,7 +49,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -156,8 +155,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "postgresql > 8.3"
 
-    @testing.provide_metadata
-    def test_create_table(self, connection):
+    def test_create_table(self, metadata, connection):
         metadata = self.metadata
         t1 = Table(
             "table",
@@ -177,8 +175,8 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             [(1, "two"), (2, "three"), (3, "three")],
         )
 
-    @testing.combinations(None, "foo")
-    def test_create_table_schema_translate_map(self, symbol_name):
+    @testing.combinations(None, "foo", argnames="symbol_name")
+    def test_create_table_schema_translate_map(self, connection, symbol_name):
         # note we can't use the fixture here because it will not drop
         # from the correct schema
         metadata = MetaData()
@@ -199,35 +197,30 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ),
             schema=symbol_name,
         )
-        with testing.db.begin() as conn:
-            conn = conn.execution_options(
-                schema_translate_map={symbol_name: testing.config.test_schema}
-            )
-            t1.create(conn)
-            assert "schema_enum" in [
-                e["name"]
-                for e in inspect(conn).get_enums(
-                    schema=testing.config.test_schema
-                )
-            ]
-            t1.create(conn, checkfirst=True)
+        conn = connection.execution_options(
+            schema_translate_map={symbol_name: testing.config.test_schema}
+        )
+        t1.create(conn)
+        assert "schema_enum" in [
+            e["name"]
+            for e in inspect(conn).get_enums(schema=testing.config.test_schema)
+        ]
+        t1.create(conn, checkfirst=True)
 
-            conn.execute(t1.insert(), value="two")
-            conn.execute(t1.insert(), value="three")
-            conn.execute(t1.insert(), value="three")
-            eq_(
-                conn.execute(t1.select().order_by(t1.c.id)).fetchall(),
-                [(1, "two"), (2, "three"), (3, "three")],
-            )
+        conn.execute(t1.insert(), value="two")
+        conn.execute(t1.insert(), value="three")
+        conn.execute(t1.insert(), value="three")
+        eq_(
+            conn.execute(t1.select().order_by(t1.c.id)).fetchall(),
+            [(1, "two"), (2, "three"), (3, "three")],
+        )
 
-            t1.drop(conn)
-            assert "schema_enum" not in [
-                e["name"]
-                for e in inspect(conn).get_enums(
-                    schema=testing.config.test_schema
-                )
-            ]
-            t1.drop(conn, checkfirst=True)
+        t1.drop(conn)
+        assert "schema_enum" not in [
+            e["name"]
+            for e in inspect(conn).get_enums(schema=testing.config.test_schema)
+        ]
+        t1.drop(conn, checkfirst=True)
 
     def test_name_required(self, metadata, connection):
         etype = Enum("four", "five", "six", metadata=metadata)
@@ -270,8 +263,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             [util.u("réveillé"), util.u("drôle"), util.u("S’il")],
         )
 
-    @testing.provide_metadata
-    def test_non_native_enum(self, connection):
+    def test_non_native_enum(self, metadata, connection):
         metadata = self.metadata
         t1 = Table(
             "foo",
@@ -290,10 +282,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
         def go():
-            t1.create(testing.db)
+            t1.create(connection)
 
         self.assert_sql(
-            testing.db,
+            connection,
             go,
             [
                 (
@@ -307,8 +299,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         connection.execute(t1.insert(), {"bar": "two"})
         eq_(connection.scalar(select(t1.c.bar)), "two")
 
-    @testing.provide_metadata
-    def test_non_native_enum_w_unicode(self, connection):
+    def test_non_native_enum_w_unicode(self, metadata, connection):
         metadata = self.metadata
         t1 = Table(
             "foo",
@@ -326,10 +317,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         )
 
         def go():
-            t1.create(testing.db)
+            t1.create(connection)
 
         self.assert_sql(
-            testing.db,
+            connection,
             go,
             [
                 (
@@ -346,8 +337,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         connection.execute(t1.insert(), {"bar": util.u("Ü")})
         eq_(connection.scalar(select(t1.c.bar)), util.u("Ü"))
 
-    @testing.provide_metadata
-    def test_disable_create(self):
+    def test_disable_create(self, metadata, connection):
         metadata = self.metadata
 
         e1 = postgresql.ENUM(
@@ -357,13 +347,12 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         t1 = Table("e1", metadata, Column("c1", e1))
         # table can be created separately
         # without conflict
-        e1.create(bind=testing.db)
-        t1.create(testing.db)
-        t1.drop(testing.db)
-        e1.drop(bind=testing.db)
+        e1.create(bind=connection)
+        t1.create(connection)
+        t1.drop(connection)
+        e1.drop(bind=connection)
 
-    @testing.provide_metadata
-    def test_dont_keep_checking(self, connection):
+    def test_dont_keep_checking(self, metadata, connection):
         metadata = self.metadata
 
         e1 = postgresql.ENUM("one", "two", "three", name="myenum")
@@ -560,11 +549,10 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             e["name"] for e in inspect(connection).get_enums()
         ]
 
-    def test_non_native_dialect(self):
-        engine = engines.testing_engine()
+    def test_non_native_dialect(self, metadata, testing_engine):
+        engine = testing_engine()
         engine.connect()
         engine.dialect.supports_native_enum = False
-        metadata = MetaData()
         t1 = Table(
             "foo",
             metadata,
@@ -583,21 +571,18 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         def go():
             t1.create(engine)
 
-        try:
-            self.assert_sql(
-                engine,
-                go,
-                [
-                    (
-                        "CREATE TABLE foo (bar "
-                        "VARCHAR(5), CONSTRAINT myenum CHECK "
-                        "(bar IN ('one', 'two', 'three')))",
-                        {},
-                    )
-                ],
-            )
-        finally:
-            metadata.drop_all(engine)
+        self.assert_sql(
+            engine,
+            go,
+            [
+                (
+                    "CREATE TABLE foo (bar "
+                    "VARCHAR(5), CONSTRAINT myenum CHECK "
+                    "(bar IN ('one', 'two', 'three')))",
+                    {},
+                )
+            ],
+        )
 
     def test_standalone_enum(self, connection, metadata):
         etype = Enum(
@@ -605,26 +590,26 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         )
         etype.create(connection)
         try:
-            assert testing.db.dialect.has_type(connection, "fourfivesixtype")
+            assert connection.dialect.has_type(connection, "fourfivesixtype")
         finally:
             etype.drop(connection)
-            assert not testing.db.dialect.has_type(
+            assert not connection.dialect.has_type(
                 connection, "fourfivesixtype"
             )
         metadata.create_all(connection)
         try:
-            assert testing.db.dialect.has_type(connection, "fourfivesixtype")
+            assert connection.dialect.has_type(connection, "fourfivesixtype")
         finally:
             metadata.drop_all(connection)
-            assert not testing.db.dialect.has_type(
+            assert not connection.dialect.has_type(
                 connection, "fourfivesixtype"
             )
 
-    def test_no_support(self):
+    def test_no_support(self, testing_engine):
         def server_version_info(self):
             return (8, 2)
 
-        e = engines.testing_engine()
+        e = testing_engine()
         dialect = e.dialect
         dialect._get_server_version_info = server_version_info
 
@@ -692,8 +677,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(t2.c.value2.type.name, "fourfivesixtype")
         eq_(t2.c.value2.type.schema, "test_schema")
 
-    @testing.provide_metadata
-    def test_custom_subclass(self, connection):
+    def test_custom_subclass(self, metadata, connection):
         class MyEnum(TypeDecorator):
             impl = Enum("oneHI", "twoHI", "threeHI", name="myenum")
 
@@ -708,13 +692,12 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 return value
 
         t1 = Table("table1", self.metadata, Column("data", MyEnum()))
-        self.metadata.create_all(testing.db)
+        self.metadata.create_all(connection)
 
         connection.execute(t1.insert(), {"data": "two"})
         eq_(connection.scalar(select(t1.c.data)), "twoHITHERE")
 
-    @testing.provide_metadata
-    def test_generic_w_pg_variant(self, connection):
+    def test_generic_w_pg_variant(self, metadata, connection):
         some_table = Table(
             "some_table",
             self.metadata,
@@ -752,8 +735,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             e["name"] for e in inspect(connection).get_enums()
         ]
 
-    @testing.provide_metadata
-    def test_generic_w_some_other_variant(self, connection):
+    def test_generic_w_some_other_variant(self, metadata, connection):
         some_table = Table(
             "some_table",
             self.metadata,
@@ -809,26 +791,28 @@ class RegClassTest(fixtures.TestBase):
     __only_on__ = "postgresql"
     __backend__ = True
 
-    @staticmethod
-    def _scalar(expression):
-        with testing.db.connect() as conn:
-            return conn.scalar(select(expression))
+    @testing.fixture()
+    def scalar(self, connection):
+        def go(expression):
+            return connection.scalar(select(expression))
 
-    def test_cast_name(self):
-        eq_(self._scalar(cast("pg_class", postgresql.REGCLASS)), "pg_class")
+        return go
 
-    def test_cast_path(self):
+    def test_cast_name(self, scalar):
+        eq_(scalar(cast("pg_class", postgresql.REGCLASS)), "pg_class")
+
+    def test_cast_path(self, scalar):
         eq_(
-            self._scalar(cast("pg_catalog.pg_class", postgresql.REGCLASS)),
+            scalar(cast("pg_catalog.pg_class", postgresql.REGCLASS)),
             "pg_class",
         )
 
-    def test_cast_oid(self):
+    def test_cast_oid(self, scalar):
         regclass = cast("pg_class", postgresql.REGCLASS)
-        oid = self._scalar(cast(regclass, postgresql.OID))
+        oid = scalar(cast(regclass, postgresql.OID))
         assert isinstance(oid, int)
         eq_(
-            self._scalar(
+            scalar(
                 cast(type_coerce(oid, postgresql.OID), postgresql.REGCLASS)
             ),
             "pg_class",
@@ -1339,13 +1323,12 @@ class ArrayRoundTripTest(object):
             Column("dimarr", ProcValue),
         )
 
-    def _fixture_456(self, table):
-        with testing.db.begin() as conn:
-            conn.execute(table.insert(), intarr=[4, 5, 6])
+    def _fixture_456(self, table, connection):
+        connection.execute(table.insert(), intarr=[4, 5, 6])
 
-    def test_reflect_array_column(self):
+    def test_reflect_array_column(self, connection):
         metadata2 = MetaData()
-        tbl = Table("arrtable", metadata2, autoload_with=testing.db)
+        tbl = Table("arrtable", metadata2, autoload_with=connection)
         assert isinstance(tbl.c.intarr.type, self.ARRAY)
         assert isinstance(tbl.c.strarr.type, self.ARRAY)
         assert isinstance(tbl.c.intarr.type.item_type, Integer)
@@ -1564,7 +1547,7 @@ class ArrayRoundTripTest(object):
 
     def test_array_getitem_single_exec(self, connection):
         arrtable = self.tables.arrtable
-        self._fixture_456(arrtable)
+        self._fixture_456(arrtable, connection)
         eq_(connection.scalar(select(arrtable.c.intarr[2])), 5)
         connection.execute(arrtable.update().values({arrtable.c.intarr[2]: 7}))
         eq_(connection.scalar(select(arrtable.c.intarr[2])), 7)
@@ -1654,11 +1637,10 @@ class ArrayRoundTripTest(object):
             set([("1", "2", "3"), ("4", "5", "6"), (("4", "5"), ("6", "7"))]),
         )
 
-    def test_array_plus_native_enum_create(self):
-        m = MetaData()
+    def test_array_plus_native_enum_create(self, metadata, connection):
         t = Table(
             "t",
-            m,
+            metadata,
             Column(
                 "data_1",
                 self.ARRAY(postgresql.ENUM("a", "b", "c", name="my_enum_1")),
@@ -1669,13 +1651,13 @@ class ArrayRoundTripTest(object):
             ),
         )
 
-        t.create(testing.db)
+        t.create(connection)
         eq_(
-            set(e["name"] for e in inspect(testing.db).get_enums()),
+            set(e["name"] for e in inspect(connection).get_enums()),
             set(["my_enum_1", "my_enum_2"]),
         )
-        t.drop(testing.db)
-        eq_(inspect(testing.db).get_enums(), [])
+        t.drop(connection)
+        eq_(inspect(connection).get_enums(), [])
 
 
 class CoreArrayRoundTripTest(
@@ -1690,33 +1672,35 @@ class PGArrayRoundTripTest(
 ):
     ARRAY = postgresql.ARRAY
 
-    @testing.combinations((set,), (list,), (lambda elem: (x for x in elem),))
-    def test_undim_array_contains_typed_exec(self, struct):
+    @testing.combinations(
+        (set,), (list,), (lambda elem: (x for x in elem),), argnames="struct"
+    )
+    def test_undim_array_contains_typed_exec(self, struct, connection):
         arrtable = self.tables.arrtable
-        self._fixture_456(arrtable)
-        with testing.db.begin() as conn:
-            eq_(
-                conn.scalar(
-                    select(arrtable.c.intarr).where(
-                        arrtable.c.intarr.contains(struct([4, 5]))
-                    )
-                ),
-                [4, 5, 6],
-            )
+        self._fixture_456(arrtable, connection)
+        eq_(
+            connection.scalar(
+                select(arrtable.c.intarr).where(
+                    arrtable.c.intarr.contains(struct([4, 5]))
+                )
+            ),
+            [4, 5, 6],
+        )
 
-    @testing.combinations((set,), (list,), (lambda elem: (x for x in elem),))
-    def test_dim_array_contains_typed_exec(self, struct):
+    @testing.combinations(
+        (set,), (list,), (lambda elem: (x for x in elem),), argnames="struct"
+    )
+    def test_dim_array_contains_typed_exec(self, struct, connection):
         dim_arrtable = self.tables.dim_arrtable
-        self._fixture_456(dim_arrtable)
-        with testing.db.begin() as conn:
-            eq_(
-                conn.scalar(
-                    select(dim_arrtable.c.intarr).where(
-                        dim_arrtable.c.intarr.contains(struct([4, 5]))
-                    )
-                ),
-                [4, 5, 6],
-            )
+        self._fixture_456(dim_arrtable, connection)
+        eq_(
+            connection.scalar(
+                select(dim_arrtable.c.intarr).where(
+                    dim_arrtable.c.intarr.contains(struct([4, 5]))
+                )
+            ),
+            [4, 5, 6],
+        )
 
     def test_array_contained_by_exec(self, connection):
         arrtable = self.tables.arrtable
@@ -1730,7 +1714,7 @@ class PGArrayRoundTripTest(
 
     def test_undim_array_empty(self, connection):
         arrtable = self.tables.arrtable
-        self._fixture_456(arrtable)
+        self._fixture_456(arrtable, connection)
         eq_(
             connection.scalar(
                 select(arrtable.c.intarr).where(arrtable.c.intarr.contains([]))
@@ -1782,8 +1766,9 @@ class ArrayEnum(fixtures.TestBase):
         sqltypes.ARRAY, postgresql.ARRAY, argnames="array_cls"
     )
     @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
-    @testing.provide_metadata
-    def test_raises_non_native_enums(self, array_cls, enum_cls):
+    def test_raises_non_native_enums(
+        self, metadata, connection, array_cls, enum_cls
+    ):
         Table(
             "my_table",
             self.metadata,
@@ -1808,7 +1793,7 @@ class ArrayEnum(fixtures.TestBase):
             "for ARRAY of non-native ENUM; please specify "
             "create_constraint=False on this Enum datatype.",
             self.metadata.create_all,
-            testing.db,
+            connection,
         )
 
     @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
@@ -1818,8 +1803,7 @@ class ArrayEnum(fixtures.TestBase):
         (_ArrayOfEnum, testing.only_on("postgresql+psycopg2")),
         argnames="array_cls",
     )
-    @testing.provide_metadata
-    def test_array_of_enums(self, array_cls, enum_cls, connection):
+    def test_array_of_enums(self, array_cls, enum_cls, metadata, connection):
         tbl = Table(
             "enum_table",
             self.metadata,
@@ -1875,8 +1859,7 @@ class ArrayJSON(fixtures.TestBase):
     @testing.combinations(
         sqltypes.JSON, postgresql.JSON, postgresql.JSONB, argnames="json_cls"
     )
-    @testing.provide_metadata
-    def test_array_of_json(self, array_cls, json_cls, connection):
+    def test_array_of_json(self, array_cls, json_cls, metadata, connection):
         tbl = Table(
             "json_table",
             self.metadata,
@@ -1982,40 +1965,14 @@ class HashableFlagORMTest(fixtures.TestBase):
                 },
             ],
         ),
-        id_="iaa",
-    )
-    @testing.provide_metadata
-    def test_hashable_flag(self, type_, data):
-        Base = declarative_base(metadata=self.metadata)
-
-        class A(Base):
-            __tablename__ = "a1"
-            id = Column(Integer, primary_key=True)
-            data = Column(type_)
-
-        Base.metadata.create_all(testing.db)
-        s = Session(testing.db)
-        s.add_all([A(data=elem) for elem in data])
-        s.commit()
-
-        eq_(
-            [
-                (obj.A.id, obj.data)
-                for obj in s.query(A, A.data).order_by(A.id)
-            ],
-            list(enumerate(data, 1)),
-        )
-
-    @testing.requires.hstore
-    def test_hstore(self):
-        self.test_hashable_flag(
+        (
+            "HSTORE",
             postgresql.HSTORE(),
             [{"a": "1", "b": "2", "c": "3"}, {"d": "4", "e": "5", "f": "6"}],
-        )
-
-    @testing.requires.postgresql_jsonb
-    def test_jsonb(self):
-        self.test_hashable_flag(
+            testing.requires.hstore,
+        ),
+        (
+            "JSONB",
             postgresql.JSONB(),
             [
                 {"a": "1", "b": "2", "c": "3"},
@@ -2025,6 +1982,30 @@ class HashableFlagORMTest(fixtures.TestBase):
                     "f": {"f1": [9, 10, 11]},
                 },
             ],
+            testing.requires.postgresql_jsonb,
+        ),
+        argnames="type_,data",
+        id_="iaa",
+    )
+    def test_hashable_flag(self, metadata, connection, type_, data):
+        Base = declarative_base(metadata=metadata)
+
+        class A(Base):
+            __tablename__ = "a1"
+            id = Column(Integer, primary_key=True)
+            data = Column(type_)
+
+        Base.metadata.create_all(connection)
+        s = Session(connection)
+        s.add_all([A(data=elem) for elem in data])
+        s.commit()
+
+        eq_(
+            [
+                (obj.A.id, obj.data)
+                for obj in s.query(A, A.data).order_by(A.id)
+            ],
+            list(enumerate(data, 1)),
         )
 
 
@@ -2108,14 +2089,14 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
         return table
 
-    def test_reflection(self, special_types_table):
+    def test_reflection(self, special_types_table, connection):
         # cheat so that the "strict type check"
         # works
         special_types_table.c.year_interval.type = postgresql.INTERVAL()
         special_types_table.c.month_interval.type = postgresql.INTERVAL()
 
         m = MetaData()
-        t = Table("sometable", m, autoload_with=testing.db)
+        t = Table("sometable", m, autoload_with=connection)
 
         self.assert_tables_equal(special_types_table, t, strict_types=True)
         assert t.c.plain_interval.type.precision is None
@@ -2210,7 +2191,7 @@ class UUIDTest(fixtures.TestBase):
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = "postgresql"
 
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
         self.test_table = Table(
             "test_table",
@@ -2494,17 +2475,16 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             Column("data", HSTORE),
         )
 
-    def _fixture_data(self, engine):
+    def _fixture_data(self, connection):
         data_table = self.tables.data_table
-        with engine.begin() as conn:
-            conn.execute(
-                data_table.insert(),
-                {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-                {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
-                {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
-                {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
-                {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2"}},
-            )
+        connection.execute(
+            data_table.insert(),
+            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+            {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
+            {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
+            {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
+            {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2"}},
+        )
 
     def _assert_data(self, compare, conn):
         data = conn.execute(
@@ -2514,26 +2494,32 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         ).fetchall()
         eq_([d for d, in data], compare)
 
-    def _test_insert(self, engine):
-        with engine.begin() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-            )
-            self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], conn)
+    def _test_insert(self, connection):
+        connection.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+        )
+        self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], connection)
 
-    def _non_native_engine(self):
-        if testing.requires.psycopg2_native_hstore.enabled:
-            engine = engines.testing_engine(
-                options=dict(use_native_hstore=False)
-            )
+    @testing.fixture
+    def non_native_hstore_connection(self, testing_engine):
+        local_engine = testing.requires.psycopg2_native_hstore.enabled
+
+        if local_engine:
+            engine = testing_engine(options=dict(use_native_hstore=False))
         else:
             engine = testing.db
-        engine.connect().close()
-        return engine
 
-    def test_reflect(self):
-        insp = inspect(testing.db)
+        conn = engine.connect()
+        trans = conn.begin()
+        yield conn
+        try:
+            trans.rollback()
+        finally:
+            conn.close()
+
+    def test_reflect(self, connection):
+        insp = inspect(connection)
         cols = insp.get_columns("data_table")
         assert isinstance(cols[2]["type"], HSTORE)
 
@@ -2548,106 +2534,88 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         eq_(connection.scalar(select(expr)), "3")
 
     @testing.requires.psycopg2_native_hstore
-    def test_insert_native(self):
-        engine = testing.db
-        self._test_insert(engine)
+    def test_insert_native(self, connection):
+        self._test_insert(connection)
 
-    def test_insert_python(self):
-        engine = self._non_native_engine()
-        self._test_insert(engine)
+    def test_insert_python(self, non_native_hstore_connection):
+        self._test_insert(non_native_hstore_connection)
 
     @testing.requires.psycopg2_native_hstore
-    def test_criterion_native(self):
-        engine = testing.db
-        self._fixture_data(engine)
-        self._test_criterion(engine)
+    def test_criterion_native(self, connection):
+        self._fixture_data(connection)
+        self._test_criterion(connection)
 
-    def test_criterion_python(self):
-        engine = self._non_native_engine()
-        self._fixture_data(engine)
-        self._test_criterion(engine)
+    def test_criterion_python(self, non_native_hstore_connection):
+        self._fixture_data(non_native_hstore_connection)
+        self._test_criterion(non_native_hstore_connection)
 
-    def _test_criterion(self, engine):
+    def _test_criterion(self, connection):
         data_table = self.tables.data_table
-        with engine.begin() as conn:
-            result = conn.execute(
-                select(data_table.c.data).where(
-                    data_table.c.data["k1"] == "r3v1"
-                )
-            ).first()
-            eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
+        result = connection.execute(
+            select(data_table.c.data).where(data_table.c.data["k1"] == "r3v1")
+        ).first()
+        eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
 
-    def _test_fixed_round_trip(self, engine):
-        with engine.begin() as conn:
-            s = select(
-                hstore(
-                    array(["key1", "key2", "key3"]),
-                    array(["value1", "value2", "value3"]),
-                )
+    def _test_fixed_round_trip(self, connection):
+        s = select(
+            hstore(
+                array(["key1", "key2", "key3"]),
+                array(["value1", "value2", "value3"]),
             )
-            eq_(
-                conn.scalar(s),
-                {"key1": "value1", "key2": "value2", "key3": "value3"},
-            )
+        )
+        eq_(
+            connection.scalar(s),
+            {"key1": "value1", "key2": "value2", "key3": "value3"},
+        )
 
-    def test_fixed_round_trip_python(self):
-        engine = self._non_native_engine()
-        self._test_fixed_round_trip(engine)
+    def test_fixed_round_trip_python(self, non_native_hstore_connection):
+        self._test_fixed_round_trip(non_native_hstore_connection)
 
     @testing.requires.psycopg2_native_hstore
-    def test_fixed_round_trip_native(self):
-        engine = testing.db
-        self._test_fixed_round_trip(engine)
+    def test_fixed_round_trip_native(self, connection):
+        self._test_fixed_round_trip(connection)
 
-    def _test_unicode_round_trip(self, engine):
-        with engine.begin() as conn:
-            s = select(
-                hstore(
-                    array(
-                        [util.u("réveillé"), util.u("drôle"), util.u("S’il")]
-                    ),
-                    array(
-                        [util.u("réveillé"), util.u("drôle"), util.u("S’il")]
-                    ),
-                )
+    def _test_unicode_round_trip(self, connection):
+        s = select(
+            hstore(
+                array([util.u("réveillé"), util.u("drôle"), util.u("S’il")]),
+                array([util.u("réveillé"), util.u("drôle"), util.u("S’il")]),
             )
-            eq_(
-                conn.scalar(s),
-                {
-                    util.u("réveillé"): util.u("réveillé"),
-                    util.u("drôle"): util.u("drôle"),
-                    util.u("S’il"): util.u("S’il"),
-                },
-            )
+        )
+        eq_(
+            connection.scalar(s),
+            {
+                util.u("réveillé"): util.u("réveillé"),
+                util.u("drôle"): util.u("drôle"),
+                util.u("S’il"): util.u("S’il"),
+            },
+        )
 
     @testing.requires.psycopg2_native_hstore
-    def test_unicode_round_trip_python(self):
-        engine = self._non_native_engine()
-        self._test_unicode_round_trip(engine)
+    def test_unicode_round_trip_python(self, non_native_hstore_connection):
+        self._test_unicode_round_trip(non_native_hstore_connection)
 
     @testing.requires.psycopg2_native_hstore
-    def test_unicode_round_trip_native(self):
-        engine = testing.db
-        self._test_unicode_round_trip(engine)
+    def test_unicode_round_trip_native(self, connection):
+        self._test_unicode_round_trip(connection)
 
-    def test_escaped_quotes_round_trip_python(self):
-        engine = self._non_native_engine()
-        self._test_escaped_quotes_round_trip(engine)
+    def test_escaped_quotes_round_trip_python(
+        self, non_native_hstore_connection
+    ):
+        self._test_escaped_quotes_round_trip(non_native_hstore_connection)
 
     @testing.requires.psycopg2_native_hstore
-    def test_escaped_quotes_round_trip_native(self):
-        engine = testing.db
-        self._test_escaped_quotes_round_trip(engine)
+    def test_escaped_quotes_round_trip_native(self, connection):
+        self._test_escaped_quotes_round_trip(connection)
 
-    def _test_escaped_quotes_round_trip(self, engine):
-        with engine.begin() as conn:
-            conn.execute(
-                self.tables.data_table.insert(),
-                {"name": "r1", "data": {r"key \"foo\"": r'value \"bar"\ xyz'}},
-            )
-            self._assert_data([{r"key \"foo\"": r'value \"bar"\ xyz'}], conn)
+    def _test_escaped_quotes_round_trip(self, connection):
+        connection.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": {r"key \"foo\"": r'value \"bar"\ xyz'}},
+        )
+        self._assert_data([{r"key \"foo\"": r'value \"bar"\ xyz'}], connection)
 
-    def test_orm_round_trip(self):
+    def test_orm_round_trip(self, connection):
         from sqlalchemy import orm
 
         class Data(object):
@@ -2656,13 +2624,14 @@ class HStoreRoundTripTest(fixtures.TablesTest):
                 self.data = data
 
         orm.mapper(Data, self.tables.data_table)
-        s = orm.Session(testing.db)
-        d = Data(
-            name="r1",
-            data={"key1": "value1", "key2": "value2", "key3": "value3"},
-        )
-        s.add(d)
-        eq_(s.query(Data.data, Data).all(), [(d.data, d)])
+
+        with orm.Session(connection) as s:
+            d = Data(
+                name="r1",
+                data={"key1": "value1", "key2": "value2", "key3": "value3"},
+            )
+            s.add(d)
+            eq_(s.query(Data.data, Data).all(), [(d.data, d)])
 
 
 class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
@@ -2671,7 +2640,7 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
     # operator tests
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         table = Table(
             "data_table",
             MetaData(),
@@ -2852,10 +2821,10 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
     def test_actual_type(self):
         eq_(str(self._col_type()), self._col_str)
 
-    def test_reflect(self):
+    def test_reflect(self, connection):
         from sqlalchemy import inspect
 
-        insp = inspect(testing.db)
+        insp = inspect(connection)
         cols = insp.get_columns("data_table")
         assert isinstance(cols[0]["type"], self._col_type)
 
@@ -2986,8 +2955,8 @@ class _DateTimeTZRangeTests(object):
 
     def tstzs(self):
         if self._tstzs is None:
-            with testing.db.begin() as conn:
-                lower = conn.scalar(func.current_timestamp().select())
+            with testing.db.connect() as connection:
+                lower = connection.scalar(func.current_timestamp().select())
                 upper = lower + datetime.timedelta(1)
                 self._tstzs = (lower, upper)
         return self._tstzs
@@ -3052,7 +3021,7 @@ class DateTimeTZRangeRoundTripTest(_DateTimeTZRangeTests, _RangeTypeRoundTrip):
 class JSONTest(AssertsCompiledSQL, fixtures.TestBase):
     __dialect__ = "postgresql"
 
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
         self.test_table = Table(
             "test_table",
@@ -3151,7 +3120,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             Column("nulldata", cls.data_type(none_as_null=True)),
         )
 
-    def _fixture_data(self, engine):
+    def _fixture_data(self, connection):
         data_table = self.tables.data_table
 
         data = [
@@ -3162,8 +3131,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2", "k3": 5}},
             {"name": "r6", "data": {"k1": {"r6v1": {"subr": [1, 2, 3]}}}},
         ]
-        with engine.begin() as conn:
-            conn.execute(data_table.insert(), data)
+        connection.execute(data_table.insert(), data)
         return data
 
     def _assert_data(self, compare, conn, column="data"):
@@ -3185,51 +3153,39 @@ class JSONRoundTripTest(fixtures.TablesTest):
         ).fetchall()
         eq_([d for d, in data], [None])
 
-    def _test_insert(self, conn):
-        conn.execute(
-            self.tables.data_table.insert(),
-            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-        )
-        self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], conn)
-
-    def _test_insert_nulls(self, conn):
-        conn.execute(
-            self.tables.data_table.insert(), {"name": "r1", "data": null()}
-        )
-        self._assert_data([None], conn)
-
-    def _test_insert_none_as_null(self, conn):
-        conn.execute(
-            self.tables.data_table.insert(),
-            {"name": "r1", "nulldata": None},
-        )
-        self._assert_column_is_NULL(conn, column="nulldata")
-
-    def _test_insert_nulljson_into_none_as_null(self, conn):
-        conn.execute(
-            self.tables.data_table.insert(),
-            {"name": "r1", "nulldata": JSON.NULL},
-        )
-        self._assert_column_is_JSON_NULL(conn, column="nulldata")
-
-    def test_reflect(self):
-        insp = inspect(testing.db)
+    def test_reflect(self, connection):
+        insp = inspect(connection)
         cols = insp.get_columns("data_table")
         assert isinstance(cols[2]["type"], self.data_type)
 
     def test_insert(self, connection):
-        self._test_insert(connection)
+        connection.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+        )
+        self._assert_data([{"k1": "r1v1", "k2": "r1v2"}], connection)
 
     def test_insert_nulls(self, connection):
-        self._test_insert_nulls(connection)
+        connection.execute(
+            self.tables.data_table.insert(), {"name": "r1", "data": null()}
+        )
+        self._assert_data([None], connection)
 
     def test_insert_none_as_null(self, connection):
-        self._test_insert_none_as_null(connection)
+        connection.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "nulldata": None},
+        )
+        self._assert_column_is_NULL(connection, column="nulldata")
 
     def test_insert_nulljson_into_none_as_null(self, connection):
-        self._test_insert_nulljson_into_none_as_null(connection)
+        connection.execute(
+            self.tables.data_table.insert(),
+            {"name": "r1", "nulldata": JSON.NULL},
+        )
+        self._assert_column_is_JSON_NULL(connection, column="nulldata")
 
-    def test_custom_serialize_deserialize(self):
+    def test_custom_serialize_deserialize(self, testing_engine):
         import json
 
         def loads(value):
@@ -3242,7 +3198,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
             value["x"] = "dumps_y"
             return json.dumps(value)
 
-        engine = engines.testing_engine(
+        engine = testing_engine(
             options=dict(json_serializer=dumps, json_deserializer=loads)
         )
 
@@ -3250,14 +3206,26 @@ class JSONRoundTripTest(fixtures.TablesTest):
         with engine.begin() as conn:
             eq_(conn.scalar(s), {"key": "value", "x": "dumps_y_loads"})
 
-    def test_criterion(self):
-        engine = testing.db
-        self._fixture_data(engine)
-        self._test_criterion(engine)
+    def test_criterion(self, connection):
+        self._fixture_data(connection)
+        data_table = self.tables.data_table
+
+        result = connection.execute(
+            select(data_table.c.data).where(
+                data_table.c.data["k1"].astext == "r3v1"
+            )
+        ).first()
+        eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
+
+        result = connection.execute(
+            select(data_table.c.data).where(
+                data_table.c.data["k1"].astext.cast(String) == "r3v1"
+            )
+        ).first()
+        eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
 
     def test_path_query(self, connection):
-        engine = testing.db
-        self._fixture_data(engine)
+        self._fixture_data(connection)
         data_table = self.tables.data_table
 
         result = connection.execute(
@@ -3271,8 +3239,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         "postgresql < 9.4", "Improvement in PostgreSQL behavior?"
     )
     def test_multi_index_query(self, connection):
-        engine = testing.db
-        self._fixture_data(engine)
+        self._fixture_data(connection)
         data_table = self.tables.data_table
 
         result = connection.execute(
@@ -3283,20 +3250,18 @@ class JSONRoundTripTest(fixtures.TablesTest):
         eq_(result.scalar(), "r6")
 
     def test_query_returned_as_text(self, connection):
-        engine = testing.db
-        self._fixture_data(engine)
+        self._fixture_data(connection)
         data_table = self.tables.data_table
         result = connection.execute(
             select(data_table.c.data["k1"].astext)
         ).first()
-        if engine.dialect.returns_unicode_strings:
+        if connection.dialect.returns_unicode_strings:
             assert isinstance(result[0], util.text_type)
         else:
             assert isinstance(result[0], util.string_types)
 
     def test_query_returned_as_int(self, connection):
-        engine = testing.db
-        self._fixture_data(engine)
+        self._fixture_data(connection)
         data_table = self.tables.data_table
         result = connection.execute(
             select(data_table.c.data["k3"].astext.cast(Integer)).where(
@@ -3304,23 +3269,6 @@ class JSONRoundTripTest(fixtures.TablesTest):
             )
         ).first()
         assert isinstance(result[0], int)
-
-    def _test_criterion(self, engine):
-        data_table = self.tables.data_table
-        with engine.begin() as conn:
-            result = conn.execute(
-                select(data_table.c.data).where(
-                    data_table.c.data["k1"].astext == "r3v1"
-                )
-            ).first()
-            eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
-
-            result = conn.execute(
-                select(data_table.c.data).where(
-                    data_table.c.data["k1"].astext.cast(String) == "r3v1"
-                )
-            ).first()
-            eq_(result, ({"k1": "r3v1", "k2": "r3v2"},))
 
     def test_fixed_round_trip(self, connection):
         s = select(
@@ -3352,42 +3300,41 @@ class JSONRoundTripTest(fixtures.TablesTest):
             },
         )
 
-    def test_eval_none_flag_orm(self):
+    def test_eval_none_flag_orm(self, connection):
         Base = declarative_base()
 
         class Data(Base):
             __table__ = self.tables.data_table
 
-        s = Session(testing.db)
+        with Session(connection) as s:
+            d1 = Data(name="d1", data=None, nulldata=None)
+            s.add(d1)
+            s.commit()
 
-        d1 = Data(name="d1", data=None, nulldata=None)
-        s.add(d1)
-        s.commit()
-
-        s.bulk_insert_mappings(
-            Data, [{"name": "d2", "data": None, "nulldata": None}]
-        )
-        eq_(
-            s.query(
-                cast(self.tables.data_table.c.data, String),
-                cast(self.tables.data_table.c.nulldata, String),
+            s.bulk_insert_mappings(
+                Data, [{"name": "d2", "data": None, "nulldata": None}]
             )
-            .filter(self.tables.data_table.c.name == "d1")
-            .first(),
-            ("null", None),
-        )
-        eq_(
-            s.query(
-                cast(self.tables.data_table.c.data, String),
-                cast(self.tables.data_table.c.nulldata, String),
+            eq_(
+                s.query(
+                    cast(self.tables.data_table.c.data, String),
+                    cast(self.tables.data_table.c.nulldata, String),
+                )
+                .filter(self.tables.data_table.c.name == "d1")
+                .first(),
+                ("null", None),
             )
-            .filter(self.tables.data_table.c.name == "d2")
-            .first(),
-            ("null", None),
-        )
+            eq_(
+                s.query(
+                    cast(self.tables.data_table.c.data, String),
+                    cast(self.tables.data_table.c.nulldata, String),
+                )
+                .filter(self.tables.data_table.c.name == "d2")
+                .first(),
+                ("null", None),
+            )
 
     def test_literal(self, connection):
-        exp = self._fixture_data(testing.db)
+        exp = self._fixture_data(connection)
         result = connection.exec_driver_sql(
             "select data from data_table order by name"
         )
@@ -3395,11 +3342,10 @@ class JSONRoundTripTest(fixtures.TablesTest):
         eq_(len(res), len(exp))
         for row, expected in zip(res, exp):
             eq_(row[0], expected["data"])
-        result.close()
 
 
 class JSONBTest(JSONTest):
-    def setup(self):
+    def setup_test(self):
         metadata = MetaData()
         self.test_table = Table(
             "test_table",

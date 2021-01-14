@@ -17,7 +17,9 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_none
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
@@ -63,18 +65,18 @@ def MockDBAPI():  # noqa
 
 
 class PoolTestBase(fixtures.TestBase):
-    def setup(self):
+    def setup_test(self):
         pool.clear_managers()
         self._teardown_conns = []
 
-    def teardown(self):
+    def teardown_test(self):
         for ref in self._teardown_conns:
             conn = ref()
             if conn:
                 conn.close()
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         pool.clear_managers()
 
     def _with_teardown(self, connection):
@@ -364,10 +366,17 @@ class PoolEventsTest(PoolTestBase):
         p = self._queuepool_fixture()
         canary = []
 
+        @event.listens_for(p, "checkin")
         def checkin(*arg, **kw):
             canary.append("checkin")
 
-        event.listen(p, "checkin", checkin)
+        @event.listens_for(p, "close_detached")
+        def close_detached(*arg, **kw):
+            canary.append("close_detached")
+
+        @event.listens_for(p, "detach")
+        def detach(*arg, **kw):
+            canary.append("detach")
 
         return p, canary
 
@@ -629,15 +638,35 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
+    @testing.combinations((True, testing.requires.python3), (False,))
     @testing.requires.predictable_gc
-    def test_checkin_event_gc(self):
+    def test_checkin_event_gc(self, detach_gced):
         p, canary = self._checkin_event_fixture()
 
+        if detach_gced:
+            p._is_asyncio = True
+
         c1 = p.connect()
+
+        dbapi_connection = weakref.ref(c1.connection)
+
         eq_(canary, [])
         del c1
         lazy_gc()
-        eq_(canary, ["checkin"])
+
+        if detach_gced:
+            # "close_detached" is not called because for asyncio the
+            # connection is just lost.
+            eq_(canary, ["detach"])
+
+        else:
+            eq_(canary, ["checkin"])
+
+        gc_collect()
+        if detach_gced:
+            is_none(dbapi_connection())
+        else:
+            is_not_none(dbapi_connection())
 
     def test_checkin_event_on_subsequently_recreated(self):
         p, canary = self._checkin_event_fixture()
@@ -744,7 +773,7 @@ class PoolEventsTest(PoolTestBase):
         eq_(conn.info["important_flag"], True)
         conn.close()
 
-    def teardown(self):
+    def teardown_test(self):
         # TODO: need to get remove() functionality
         # going
         pool.Pool.dispatch._clear()
@@ -1490,11 +1519,15 @@ class QueuePoolTest(PoolTestBase):
 
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
+    @testing.combinations((True, testing.requires.python3), (False,))
     @testing.requires.predictable_gc
-    def test_userspace_disconnectionerror_weakref_finalizer(self):
+    def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
             pool_size=1, max_overflow=2
         )
+
+        if detach_gced:
+            pool._is_asyncio = True
 
         @event.listens_for(pool, "checkout")
         def handle_checkout_event(dbapi_con, con_record, con_proxy):
@@ -1514,8 +1547,12 @@ class QueuePoolTest(PoolTestBase):
         del conn
         gc_collect()
 
-        # new connection was reset on return appropriately
-        eq_(dbapi_conn.mock_calls, [call.rollback()])
+        if detach_gced:
+            # new connection was detached + abandoned on return
+            eq_(dbapi_conn.mock_calls, [])
+        else:
+            # new connection reset and returned to pool
+            eq_(dbapi_conn.mock_calls, [call.rollback()])
 
         # old connection was just closed - did not get an
         # erroneous reset on return

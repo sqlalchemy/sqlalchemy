@@ -32,6 +32,7 @@ from .assertions import is_instance_of  # noqa
 from .assertions import is_none  # noqa
 from .assertions import is_not  # noqa
 from .assertions import is_not_  # noqa
+from .assertions import is_not_none  # noqa
 from .assertions import is_true  # noqa
 from .assertions import le_  # noqa
 from .assertions import ne_  # noqa

@@ -293,7 +293,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             from sqlalchemy import pool
 
             return engines.testing_engine(
-                options=dict(poolclass=pool.StaticPool)
+                options=dict(poolclass=pool.StaticPool, scope="class"),
             )
         else:
             return config.db

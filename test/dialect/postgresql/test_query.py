@@ -40,10 +40,10 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     __only_on__ = "postgresql"
     __backend__ = True
 
-    def setup(self):
+    def setup_test(self):
         self.metadata = MetaData()
 
-    def teardown(self):
+    def teardown_test(self):
         with testing.db.begin() as conn:
             self.metadata.drop_all(conn)
 
@@ -890,7 +890,7 @@ class ExtractTest(fixtures.TablesTest):
     def setup_bind(cls):
         from sqlalchemy import event
 
-        eng = engines.testing_engine()
+        eng = engines.testing_engine(options={"scope": "class"})
 
         @event.listens_for(eng, "connect")
         def connect(dbapi_conn, rec):

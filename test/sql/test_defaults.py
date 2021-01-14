@@ -503,9 +503,8 @@ class DefaultRoundTripTest(fixtures.TablesTest):
             Column("col11", MyType(), default="foo"),
         )
 
-    def teardown(self):
+    def teardown_test(self):
         self.default_generator["x"] = 50
-        super(DefaultRoundTripTest, self).teardown()
 
     def test_standalone(self, connection):
         t = self.tables.default_test
@@ -1226,7 +1225,7 @@ class SpecialTypePKTest(fixtures.TestBase):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         class MyInteger(TypeDecorator):
             impl = Integer
 

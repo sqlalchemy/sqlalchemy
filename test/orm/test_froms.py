@@ -2395,16 +2395,19 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         ]
 
         adalias = addresses.alias()
-        q = (
-            fixture_session()
-            .query(User)
-            .add_columns(func.count(adalias.c.id), ("Name:" + users.c.name))
-            .outerjoin(adalias, "addresses")
-            .group_by(users)
-            .order_by(users.c.id)
-        )
 
-        assert q.all() == expected
+        with fixture_session() as sess:
+            q = (
+                sess.query(User)
+                .add_columns(
+                    func.count(adalias.c.id), ("Name:" + users.c.name)
+                )
+                .outerjoin(adalias, "addresses")
+                .group_by(users)
+                .order_by(users.c.id)
+            )
+
+            eq_(q.all(), expected)
 
         # test with a straight statement
         s = (
@@ -2417,52 +2420,57 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             .group_by(*[c for c in users.c])
             .order_by(users.c.id)
         )
-        q = fixture_session().query(User)
-        result = (
-            q.add_columns(s.selected_columns.count, s.selected_columns.concat)
-            .from_statement(s)
-            .all()
-        )
-        assert result == expected
 
-        sess.expunge_all()
+        with fixture_session() as sess:
+            q = sess.query(User)
+            result = (
+                q.add_columns(
+                    s.selected_columns.count, s.selected_columns.concat
+                )
+                .from_statement(s)
+                .all()
+            )
+            eq_(result, expected)
 
-        # test with select_entity_from()
-        q = (
-            fixture_session()
-            .query(User)
-            .add_columns(func.count(addresses.c.id), ("Name:" + users.c.name))
-            .select_entity_from(users.outerjoin(addresses))
-            .group_by(users)
-            .order_by(users.c.id)
-        )
+        with fixture_session() as sess:
+            # test with select_entity_from()
+            q = (
+                fixture_session()
+                .query(User)
+                .add_columns(
+                    func.count(addresses.c.id), ("Name:" + users.c.name)
+                )
+                .select_entity_from(users.outerjoin(addresses))
+                .group_by(users)
+                .order_by(users.c.id)
+            )
 
-        assert q.all() == expected
-        sess.expunge_all()
+            eq_(q.all(), expected)
 
-        q = (
-            fixture_session()
-            .query(User)
-            .add_columns(func.count(addresses.c.id), ("Name:" + users.c.name))
-            .outerjoin("addresses")
-            .group_by(users)
-            .order_by(users.c.id)
-        )
+        with fixture_session() as sess:
+            q = (
+                sess.query(User)
+                .add_columns(
+                    func.count(addresses.c.id), ("Name:" + users.c.name)
+                )
+                .outerjoin("addresses")
+                .group_by(users)
+                .order_by(users.c.id)
+            )
+            eq_(q.all(), expected)
 
-        assert q.all() == expected
-        sess.expunge_all()
+        with fixture_session() as sess:
+            q = (
+                sess.query(User)
+                .add_columns(
+                    func.count(adalias.c.id), ("Name:" + users.c.name)
+                )
+                .outerjoin(adalias, "addresses")
+                .group_by(users)
+                .order_by(users.c.id)
+            )
 
-        q = (
-            fixture_session()
-            .query(User)
-            .add_columns(func.count(adalias.c.id), ("Name:" + users.c.name))
-            .outerjoin(adalias, "addresses")
-            .group_by(users)
-            .order_by(users.c.id)
-        )
-
-        assert q.all() == expected
-        sess.expunge_all()
+            eq_(q.all(), expected)
 
     def test_expression_selectable_matches_mzero(self):
         User, Address = self.classes.User, self.classes.Address

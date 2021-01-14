@@ -17,7 +17,7 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
         def close(self):
             pass
 
-    def setup(self):
+    def setup_test(self):
         # create a throwaway pool which
         # has the effect of initializing
         # class-level event listeners on Pool,

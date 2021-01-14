@@ -27,7 +27,7 @@ class BakedTest(_fixtures.FixtureTest):
     run_inserts = "once"
     run_deletes = None
 
-    def setup(self):
+    def setup_test(self):
         self.bakery = baked.bakery()
 
 

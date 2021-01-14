@@ -29,15 +29,13 @@ class NoCache(object):
     run_setup_bind = "each"
 
     @classmethod
-    def setup_class(cls):
-        super(NoCache, cls).setup_class()
+    def setup_test_class(cls):
         cls._cache = config.db._compiled_cache
         config.db._compiled_cache = None
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         config.db._compiled_cache = cls._cache
-        super(NoCache, cls).teardown_class()
 
 
 class MergeTest(NoCache, fixtures.MappedTest):

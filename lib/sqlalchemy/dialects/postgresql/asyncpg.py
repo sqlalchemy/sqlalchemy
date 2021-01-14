@@ -670,7 +670,6 @@ class AsyncAdapt_asyncpg_connection:
     def rollback(self):
         if self._started:
             self.await_(self._transaction.rollback())
-
             self._transaction = None
             self._started = False
 

@@ -27,11 +27,11 @@ Base = None
 
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
-    def setup(self):
+    def setup_test(self):
         global Base
         Base = decl.declarative_base(testing.db)
 
-    def teardown(self):
+    def teardown_test(self):
         close_all_sessions()
         clear_mappers()
         Base.metadata.drop_all(testing.db)

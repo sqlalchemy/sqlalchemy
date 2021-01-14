@@ -1523,9 +1523,7 @@ class PickleTest(PathTest, QueryTest):
 
 class LocalOptsTest(PathTest, QueryTest):
     @classmethod
-    def setup_class(cls):
-        super(LocalOptsTest, cls).setup_class()
-
+    def setup_test_class(cls):
         @strategy_options.loader_option()
         def some_col_opt_only(loadopt, key, opts):
             return loadopt.set_column_strategy(

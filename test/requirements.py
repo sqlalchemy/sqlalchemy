@@ -1624,15 +1624,15 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def postgresql_utf8_server_encoding(self):
+        def go(config):
+            if not against(config, "postgresql"):
+                return False
 
-        return only_if(
-            lambda config: against(config, "postgresql")
-            and config.db.connect(close_with_result=True)
-            .exec_driver_sql("show server_encoding")
-            .scalar()
-            .lower()
-            == "utf8"
-        )
+            with config.db.connect() as conn:
+                enc = conn.exec_driver_sql("show server_encoding").scalar()
+                return enc.lower() == "utf8"
+
+        return only_if(go)
 
     @property
     def cxoracle6_or_greater(self):

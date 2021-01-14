@@ -771,14 +771,13 @@ class RudimentaryFlushTest(UOWTest):
 
 
 class SingleCycleTest(UOWTest):
-    def teardown(self):
+    def teardown_test(self):
         engines.testing_reaper.rollback_all()
         # mysql can't handle delete from nodes
         # since it doesn't deal with the FKs correctly,
         # so wipe out the parent_id first
         with testing.db.begin() as conn:
             conn.execute(self.tables.nodes.update().values(parent_id=None))
-        super(SingleCycleTest, self).teardown()
 
     def test_one_to_many_save(self):
         Node, nodes = self.classes.Node, self.tables.nodes

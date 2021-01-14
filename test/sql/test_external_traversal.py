@@ -47,7 +47,7 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
     ability to copy and modify a ClauseElement in place."""
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global A, B
 
         # establish two fictitious ClauseElements.
@@ -321,7 +321,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global t1, t2, t3
         t1 = table("table1", column("col1"), column("col2"), column("col3"))
         t2 = table("table2", column("col1"), column("col2"), column("col3"))
@@ -1012,7 +1012,7 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global t1, t2
         t1 = table(
             "table1",
@@ -1196,7 +1196,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global t1, t2
         t1 = table("table1", column("col1"), column("col2"), column("col3"))
         t2 = table("table2", column("col1"), column("col2"), column("col3"))
@@ -1943,7 +1943,7 @@ class SpliceJoinsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global table1, table2, table3, table4
 
         def _table(name):
@@ -2031,7 +2031,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global t1, t2
         t1 = table("table1", column("col1"), column("col2"), column("col3"))
         t2 = table("table2", column("col1"), column("col2"), column("col3"))
@@ -2128,7 +2128,7 @@ class ValuesBaseTest(fixtures.TestBase, AssertsCompiledSQL):
     # fixme: consolidate converage from elsewhere here and expand
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global t1, t2
         t1 = table("table1", column("col1"), column("col2"), column("col3"))
         t2 = table("table2", column("col1"), column("col2"), column("col3"))

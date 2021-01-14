@@ -17,7 +17,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 
 
 class ConcurrentUseDeclMappingTest(fixtures.TestBase):
-    def teardown(self):
+    def teardown_test(self):
         clear_mappers()
 
     @classmethod

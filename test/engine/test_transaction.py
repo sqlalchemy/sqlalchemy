@@ -1,6 +1,5 @@
 import sys
 
-from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
@@ -640,12 +639,12 @@ class AutoRollbackTest(fixtures.TestBase):
     __backend__ = True
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global metadata
         metadata = MetaData()
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         metadata.drop_all(testing.db)
 
     def test_rollback_deadlock(self):
@@ -871,11 +870,13 @@ class IsolationLevelTest(fixtures.TestBase):
 
     def test_per_engine(self):
         # new in 0.9
-        eng = create_engine(
+        eng = testing_engine(
             testing.db.url,
-            execution_options={
-                "isolation_level": self._non_default_isolation_level()
-            },
+            options=dict(
+                execution_options={
+                    "isolation_level": self._non_default_isolation_level()
+                }
+            ),
         )
         conn = eng.connect()
         eq_(
@@ -884,7 +885,7 @@ class IsolationLevelTest(fixtures.TestBase):
         )
 
     def test_per_option_engine(self):
-        eng = create_engine(testing.db.url).execution_options(
+        eng = testing_engine(testing.db.url).execution_options(
             isolation_level=self._non_default_isolation_level()
         )
 
@@ -895,14 +896,14 @@ class IsolationLevelTest(fixtures.TestBase):
         )
 
     def test_isolation_level_accessors_connection_default(self):
-        eng = create_engine(testing.db.url)
+        eng = testing_engine(testing.db.url)
         with eng.connect() as conn:
             eq_(conn.default_isolation_level, self._default_isolation_level())
         with eng.connect() as conn:
             eq_(conn.get_isolation_level(), self._default_isolation_level())
 
     def test_isolation_level_accessors_connection_option_modified(self):
-        eng = create_engine(testing.db.url)
+        eng = testing_engine(testing.db.url)
         with eng.connect() as conn:
             c2 = conn.execution_options(
                 isolation_level=self._non_default_isolation_level()

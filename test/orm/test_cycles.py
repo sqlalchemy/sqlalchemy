@@ -1743,8 +1743,7 @@ class PostUpdateOnUpdateTest(fixtures.DeclarativeMappedTest):
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey("a.id", name="a_fk"))
 
-    def setup(self):
-        super(PostUpdateOnUpdateTest, self).setup()
+    def setup_test(self):
         PostUpdateOnUpdateTest.counter = count()
         PostUpdateOnUpdateTest.db_counter = count()
 

@@ -1,6 +1,14 @@
+from sqlalchemy import inspect
+from sqlalchemy import Integer
 from ... import create_engine
 from ... import exc
+from ...schema import Column
+from ...schema import DropConstraint
+from ...schema import ForeignKeyConstraint
+from ...schema import MetaData
+from ...schema import Table
 from ...testing.provision import create_db
+from ...testing.provision import drop_all_schema_objects_pre_tables
 from ...testing.provision import drop_db
 from ...testing.provision import get_temp_table_name
 from ...testing.provision import log
@@ -38,7 +46,6 @@ def _mssql_drop_ignore(conn, ident):
         #        "where database_id=db_id('%s')" % ident):
         #    log.info("killing SQL server session %s", row['session_id'])
         #    conn.exec_driver_sql("kill %s" % row['session_id'])
-
         conn.exec_driver_sql("drop database %s" % ident)
         log.info("Reaped db: %s", ident)
         return True
@@ -83,4 +90,27 @@ def _mssql_temp_table_keyword_args(cfg, eng):
 
 @get_temp_table_name.for_db("mssql")
 def _mssql_get_temp_table_name(cfg, eng, base_name):
-    return "#" + base_name
+    return "##" + base_name
+
+
+@drop_all_schema_objects_pre_tables.for_db("mssql")
+def drop_all_schema_objects_pre_tables(cfg, eng):
+    with eng.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        inspector = inspect(conn)
+        for schema in (None, "dbo", cfg.test_schema, cfg.test_schema_2):
+            for tname in inspector.get_table_names(schema=schema):
+                tb = Table(
+                    tname,
+                    MetaData(),
+                    Column("x", Integer),
+                    Column("y", Integer),
+                    schema=schema,
+                )
+                for fk in inspect(conn).get_foreign_keys(tname, schema=schema):
+                    conn.execute(
+                        DropConstraint(
+                            ForeignKeyConstraint(
+                                [tb.c.x], [tb.c.y], name=fk["name"]
+                            )
+                        )
+                    )

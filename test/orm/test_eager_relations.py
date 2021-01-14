@@ -559,15 +559,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 5,
             ),
         ]:
-            sess = fixture_session()
+            with fixture_session() as sess:
 
-            def go():
-                eq_(
-                    sess.query(User).options(*opt).order_by(User.id).all(),
-                    self.static.user_item_keyword_result,
-                )
+                def go():
+                    eq_(
+                        sess.query(User).options(*opt).order_by(User.id).all(),
+                        self.static.user_item_keyword_result,
+                    )
 
-            self.assert_sql_count(testing.db, go, count)
+                self.assert_sql_count(testing.db, go, count)
 
     def test_disable_dynamic(self):
         """test no joined option on a dynamic."""

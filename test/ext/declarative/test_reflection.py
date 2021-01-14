@@ -4,7 +4,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.declarative import DeferredReflection
 from sqlalchemy.orm import clear_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import decl_api as decl
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import exc as orm_exc
@@ -14,6 +13,7 @@ from sqlalchemy.orm.decl_base import _DeferredMapperConfig
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -22,20 +22,19 @@ from sqlalchemy.testing.util import gc_collect
 class DeclarativeReflectionBase(fixtures.TablesTest):
     __requires__ = ("reflectable_autoincrement",)
 
-    def setup(self):
+    def setup_test(self):
         global Base, registry
 
         registry = decl.registry()
         Base = registry.generate_base()
 
-    def teardown(self):
-        super(DeclarativeReflectionBase, self).teardown()
+    def teardown_test(self):
         clear_mappers()
 
 
 class DeferredReflectBase(DeclarativeReflectionBase):
-    def teardown(self):
-        super(DeferredReflectBase, self).teardown()
+    def teardown_test(self):
+        super(DeferredReflectBase, self).teardown_test()
         _DeferredMapperConfig._configs.clear()
 
 
@@ -101,22 +100,23 @@ class DeferredReflectionTest(DeferredReflectBase):
         u1 = User(
             name="u1", addresses=[Address(email="one"), Address(email="two")]
         )
-        sess = create_session(testing.db)
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-        eq_(
-            sess.query(User).all(),
-            [
-                User(
-                    name="u1",
-                    addresses=[Address(email="one"), Address(email="two")],
-                )
-            ],
-        )
-        a1 = sess.query(Address).filter(Address.email == "two").one()
-        eq_(a1, Address(email="two"))
-        eq_(a1.user, User(name="u1"))
+        with fixture_session() as sess:
+            sess.add(u1)
+            sess.commit()
+
+        with fixture_session() as sess:
+            eq_(
+                sess.query(User).all(),
+                [
+                    User(
+                        name="u1",
+                        addresses=[Address(email="one"), Address(email="two")],
+                    )
+                ],
+            )
+            a1 = sess.query(Address).filter(Address.email == "two").one()
+            eq_(a1, Address(email="two"))
+            eq_(a1.user, User(name="u1"))
 
     def test_exception_prepare_not_called(self):
         class User(DeferredReflection, fixtures.ComparableEntity, Base):
@@ -191,15 +191,25 @@ class DeferredReflectionTest(DeferredReflectBase):
                 return {"primary_key": cls.__table__.c.id}
 
         DeferredReflection.prepare(testing.db)
-        sess = Session(testing.db)
-        sess.add_all(
-            [User(name="G"), User(name="Q"), User(name="A"), User(name="C")]
-        )
-        sess.commit()
-        eq_(
-            sess.query(User).order_by(User.name).all(),
-            [User(name="A"), User(name="C"), User(name="G"), User(name="Q")],
-        )
+        with fixture_session() as sess:
+            sess.add_all(
+                [
+                    User(name="G"),
+                    User(name="Q"),
+                    User(name="A"),
+                    User(name="C"),
+                ]
+            )
+            sess.commit()
+            eq_(
+                sess.query(User).order_by(User.name).all(),
+                [
+                    User(name="A"),
+                    User(name="C"),
+                    User(name="G"),
+                    User(name="Q"),
+                ],
+            )
 
     @testing.requires.predictable_gc
     def test_cls_not_strong_ref(self):
@@ -255,14 +265,14 @@ class DeferredSecondaryReflectionTest(DeferredReflectBase):
 
         u1 = User(name="u1", items=[Item(name="i1"), Item(name="i2")])
 
-        sess = Session(testing.db)
-        sess.add(u1)
-        sess.commit()
+        with fixture_session() as sess:
+            sess.add(u1)
+            sess.commit()
 
-        eq_(
-            sess.query(User).all(),
-            [User(name="u1", items=[Item(name="i1"), Item(name="i2")])],
-        )
+            eq_(
+                sess.query(User).all(),
+                [User(name="u1", items=[Item(name="i1"), Item(name="i2")])],
+            )
 
     def test_string_resolution(self):
         class User(DeferredReflection, fixtures.ComparableEntity, Base):
@@ -296,27 +306,26 @@ class DeferredInhReflectBase(DeferredReflectBase):
         Foo = Base.registry._class_registry["Foo"]
         Bar = Base.registry._class_registry["Bar"]
 
-        s = Session(testing.db)
+        with fixture_session() as s:
+            s.add_all(
+                [
+                    Bar(data="d1", bar_data="b1"),
+                    Bar(data="d2", bar_data="b2"),
+                    Bar(data="d3", bar_data="b3"),
+                    Foo(data="d4"),
+                ]
+            )
+            s.commit()
 
-        s.add_all(
-            [
-                Bar(data="d1", bar_data="b1"),
-                Bar(data="d2", bar_data="b2"),
-                Bar(data="d3", bar_data="b3"),
-                Foo(data="d4"),
-            ]
-        )
-        s.commit()
-
-        eq_(
-            s.query(Foo).order_by(Foo.id).all(),
-            [
-                Bar(data="d1", bar_data="b1"),
-                Bar(data="d2", bar_data="b2"),
-                Bar(data="d3", bar_data="b3"),
-                Foo(data="d4"),
-            ],
-        )
+            eq_(
+                s.query(Foo).order_by(Foo.id).all(),
+                [
+                    Bar(data="d1", bar_data="b1"),
+                    Bar(data="d2", bar_data="b2"),
+                    Bar(data="d3", bar_data="b3"),
+                    Foo(data="d4"),
+                ],
+            )
 
 
 class DeferredSingleInhReflectionTest(DeferredInhReflectBase):

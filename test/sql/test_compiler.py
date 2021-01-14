@@ -4306,7 +4306,7 @@ class StringifySpecialTest(fixtures.TestBase):
 
 class KwargPropagationTest(fixtures.TestBase):
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         from sqlalchemy.sql.expression import ColumnClause, TableClause
 
         class CatchCol(ColumnClause):

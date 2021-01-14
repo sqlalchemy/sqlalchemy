@@ -426,6 +426,7 @@ class _ConnectionRecord(object):
                 rec._checkin_failed(err)
         echo = pool._should_log_debug()
         fairy = _ConnectionFairy(dbapi_connection, rec, echo)
+
         rec.fairy_ref = weakref.ref(
             fairy,
             lambda ref: _finalize_fairy
@@ -609,6 +610,15 @@ def _finalize_fairy(
         assert connection is None
         connection = connection_record.connection
 
+    dont_restore_gced = pool._is_asyncio
+
+    if dont_restore_gced:
+        detach = not connection_record or ref
+        can_manipulate_connection = not ref
+    else:
+        detach = not connection_record
+        can_manipulate_connection = True
+
     if connection is not None:
         if connection_record and echo:
             pool.logger.debug(
@@ -620,13 +630,26 @@ def _finalize_fairy(
                 connection, connection_record, echo
             )
             assert fairy.connection is connection
-            fairy._reset(pool)
+            if can_manipulate_connection:
+                fairy._reset(pool)
 
-            # Immediately close detached instances
-            if not connection_record:
-                if pool.dispatch.close_detached:
-                    pool.dispatch.close_detached(connection)
-                pool._close_connection(connection)
+            if detach:
+                if connection_record:
+                    fairy._pool = pool
+                    fairy.detach()
+
+                if can_manipulate_connection:
+                    if pool.dispatch.close_detached:
+                        pool.dispatch.close_detached(connection)
+
+                    pool._close_connection(connection)
+                else:
+                    util.warn(
+                        "asyncio connection is being garbage "
+                        "collected without being properly closed: %r"
+                        % connection
+                    )
+
         except BaseException as e:
             pool.logger.error(
                 "Exception during reset or similar", exc_info=True

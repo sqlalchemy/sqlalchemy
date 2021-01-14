@@ -37,6 +37,7 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import util
 from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.sqlite import provision
 from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.schema import CreateTable
@@ -46,6 +47,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import combinations
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
@@ -774,7 +776,7 @@ class AttachedDBTest(fixtures.TestBase):
 
     def _fixture(self):
         meta = self.metadata
-        self.conn = testing.db.connect()
+        self.conn = self.engine.connect()
         Table("created", meta, Column("foo", Integer), Column("bar", String))
         Table("local_only", meta, Column("q", Integer), Column("p", Integer))
 
@@ -798,14 +800,20 @@ class AttachedDBTest(fixtures.TestBase):
             meta.create_all(self.conn)
         return ct
 
-    def setup(self):
-        self.conn = testing.db.connect()
+    def setup_test(self):
+        self.engine = engines.testing_engine(options={"use_reaper": False})
+
+        provision._sqlite_post_configure_engine(
+            self.engine.url, self.engine, config.ident
+        )
+        self.conn = self.engine.connect()
         self.metadata = MetaData()
 
-    def teardown(self):
+    def teardown_test(self):
         with self.conn.begin():
             self.metadata.drop_all(self.conn)
         self.conn.close()
+        self.engine.dispose()
 
     def test_no_tables(self):
         insp = inspect(self.conn)
@@ -1495,7 +1503,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
     __skip_if__ = (full_text_search_missing,)
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         global metadata, cattable, matchtable
         metadata = MetaData()
         exec_sql(
@@ -1559,7 +1567,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         metadata.drop_all(testing.db)
 
     def test_expression(self):
@@ -1681,7 +1689,7 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
 class ReflectHeadlessFKsTest(fixtures.TestBase):
     __only_on__ = "sqlite"
 
-    def setup(self):
+    def setup_test(self):
         exec_sql(testing.db, "CREATE TABLE a (id INTEGER PRIMARY KEY)")
         # this syntax actually works on other DBs perhaps we'd want to add
         # tests to test_reflection
@@ -1689,7 +1697,7 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
             testing.db, "CREATE TABLE b (id INTEGER PRIMARY KEY REFERENCES a)"
         )
 
-    def teardown(self):
+    def teardown_test(self):
         exec_sql(testing.db, "drop table b")
         exec_sql(testing.db, "drop table a")
 
@@ -1728,7 +1736,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
 
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         with testing.db.begin() as conn:
 
             conn.exec_driver_sql("CREATE TABLE a1 (id INTEGER PRIMARY KEY)")
@@ -1876,7 +1884,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
             )
 
     @classmethod
-    def teardown_class(cls):
+    def teardown_test_class(cls):
         with testing.db.begin() as conn:
             for name in [
                 "implicit_referrer_comp_fake",
@@ -2370,7 +2378,7 @@ class SavepointTest(fixtures.TablesTest):
 
     @classmethod
     def setup_bind(cls):
-        engine = engines.testing_engine(options={"use_reaper": False})
+        engine = engines.testing_engine(options={"scope": "class"})
 
         @event.listens_for(engine, "connect")
         def do_connect(dbapi_connection, connection_record):
@@ -2579,7 +2587,7 @@ class TypeReflectionTest(fixtures.TestBase):
 class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "sqlite"
 
-    def setUp(self):
+    def setup_test(self):
         self.table = table(
             "mytable", column("myid", Integer), column("name", String)
         )

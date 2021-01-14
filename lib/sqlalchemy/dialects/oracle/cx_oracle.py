@@ -93,6 +93,7 @@ The parameters accepted by the cx_oracle dialect are as follows:
 
 * ``encoding_errors`` - see :ref:`cx_oracle_unicode_encoding_errors` for detail.
 
+
 .. _cx_oracle_unicode:
 
 Unicode

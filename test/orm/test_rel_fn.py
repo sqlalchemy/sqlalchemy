@@ -26,7 +26,7 @@ from sqlalchemy.testing import mock
 
 class _JoinFixtures(object):
     @classmethod
-    def setup_class(cls):
+    def setup_test_class(cls):
         m = MetaData()
         cls.left = Table(
             "lft",
