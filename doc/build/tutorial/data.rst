@@ -1387,7 +1387,7 @@ Correlated Updates
 ~~~~~~~~~~~~~~~~~~
 
 An UPDATE statement can make use of rows in other tables by using a
-:ref:`correlated subquery <tutorial_scalar_subquery>`.  A subuqery may be used
+:ref:`correlated subquery <tutorial_scalar_subquery>`.  A subquery may be used
 anywhere a column expression might be placed::
 
   >>> scalar_subq = (

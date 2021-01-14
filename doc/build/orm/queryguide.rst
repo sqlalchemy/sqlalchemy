@@ -361,7 +361,7 @@ construct, in a similar manner as discussed below in :ref:`orm_queryguide_subque
 
 The difference between using the :class:`_sql.TextualSelect` directly with
 :meth:`_sql.Select.from_statement` versus making use of :func:`_sql.aliased`
-is that in the former case, no subuqery is produced in the resulting SQL.
+is that in the former case, no subquery is produced in the resulting SQL.
 This can in some scenarios be advantageous from a performance or complexity
 perspective.
 
