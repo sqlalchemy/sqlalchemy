@@ -248,7 +248,7 @@ To illustrate the parameters rendered:
     [...] (1, 1, 2, 2){stop}
     [('spongebob',), ('sandy',)]
 
-Subuqery IN
+Subquery IN
 ~~~~~~~~~~~
 
 Finally, the :meth:`_sql.ColumnOperators.in_` and :meth:`_sql.ColumnOperators.not_in`
