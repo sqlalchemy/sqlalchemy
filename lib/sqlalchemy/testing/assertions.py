@@ -228,20 +228,16 @@ def is_none(a, msg=None):
     is_(a, None, msg=msg)
 
 
+def is_not_none(a, msg=None):
+    is_not(a, None, msg=msg)
+
+
 def is_true(a, msg=None):
     is_(bool(a), True, msg=msg)
 
 
 def is_false(a, msg=None):
     is_(bool(a), False, msg=msg)
-
-
-def is_none(a, msg=None):
-    is_(a, None, msg=msg)
-
-
-def is_not_none(a, msg=None):
-    is_not(a, None, msg=msg)
 
 
 def is_(a, b, msg=None):
