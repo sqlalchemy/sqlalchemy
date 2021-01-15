@@ -870,17 +870,27 @@ A constructor similar to that supplied by Declarative is illustrated::
     class Engineer(Employee):
         pass
 
-    employee_mapper = mapper(Employee, pjoin,
-                                        with_polymorphic=('*', pjoin),
-                                        polymorphic_on=pjoin.c.type)
-    manager_mapper = mapper(Manager, managers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='manager')
-    engineer_mapper = mapper(Engineer, engineers_table,
-                                        inherits=employee_mapper,
-                                        concrete=True,
-                                        polymorphic_identity='engineer')
+    employee_mapper = mapper_registry.map_imperatively(
+        Employee,
+        pjoin,
+        with_polymorphic=('*', pjoin),
+        polymorphic_on=pjoin.c.type,
+    )
+    manager_mapper = mapper_registry.map_imperatively(
+        Manager,
+        managers_table,
+        inherits=employee_mapper,
+        concrete=True,
+        polymorphic_identity='manager',
+    )
+    engineer_mapper = mapper_registry.map_imperatively(
+        Engineer,
+        engineers_table,
+        inherits=employee_mapper,
+        concrete=True,
+        polymorphic_identity='engineer',
+    )
+
 
 
 The "abstract" example can also be mapped using "semi-classical" or "classical"

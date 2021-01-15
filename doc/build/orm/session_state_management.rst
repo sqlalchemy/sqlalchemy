@@ -10,8 +10,8 @@ It's helpful to know the states which an instance can have within a session:
 
 * **Transient** - an instance that's not in a session, and is not saved to the
   database; i.e. it has no database identity. The only relationship such an
-  object has to the ORM is that its class has a ``mapper()`` associated with
-  it.
+  object has to the ORM is that its class has a :class:`_orm.Mapper` associated
+  with it.
 
 * **Pending** - when you :meth:`~.Session.add` a transient
   instance, it becomes pending. It still wasn't actually flushed to the

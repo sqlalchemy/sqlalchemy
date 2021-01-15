@@ -585,9 +585,10 @@ A classical mapping situation here is similar, where ``node_to_node`` can be joi
 to ``node.c.id``::
 
     from sqlalchemy import Integer, ForeignKey, String, Column, Table, MetaData
-    from sqlalchemy.orm import relationship, mapper
+    from sqlalchemy.orm import relationship, registry
 
     metadata = MetaData()
+    mapper_registry = registry()
 
     node_to_node = Table("node_to_node", metadata,
         Column("left_node_id", Integer, ForeignKey("node.id"), primary_key=True),
@@ -601,7 +602,7 @@ to ``node.c.id``::
     class Node(object):
         pass
 
-    mapper(Node, node, properties={
+    mapper_registry.map_imperatively(Node, node, properties={
         'right_nodes':relationship(Node,
                             secondary=node_to_node,
                             primaryjoin=node.c.id==node_to_node.c.left_node_id,

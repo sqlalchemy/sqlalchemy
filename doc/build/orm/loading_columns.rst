@@ -38,7 +38,7 @@ attribute is first referenced on the individual object instance::
 Classical mappings as always place the usage of :func:`_orm.deferred` in the
 ``properties`` dictionary against the table-bound :class:`_schema.Column`::
 
-    mapper(Book, book_table, properties={
+    mapper_registry.map_imperatively(Book, book_table, properties={
         'photo':deferred(book_table.c.photo)
     })
 

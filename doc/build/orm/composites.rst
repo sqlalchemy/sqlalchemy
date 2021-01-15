@@ -64,7 +64,7 @@ attributes that will represent sets of columns via the ``Point`` class::
 A classical mapping above would define each :func:`.composite`
 against the existing table::
 
-    mapper(Vertex, vertices_table, properties={
+    mapper_registry.map_imperatively(Vertex, vertices_table, properties={
         'start':composite(Point, vertices_table.c.x1, vertices_table.c.y1),
         'end':composite(Point, vertices_table.c.x2, vertices_table.c.y2),
     })
