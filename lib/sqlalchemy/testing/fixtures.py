@@ -93,7 +93,7 @@ class TestBase(object):
         from . import engines
 
         def gen_testing_engine(
-            url=None, options=None, future=False, asyncio=False
+            url=None, options=None, future=None, asyncio=False
         ):
             if options is None:
                 options = {}

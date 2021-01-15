@@ -531,6 +531,10 @@ class SessionTransaction(object):
 
         self._take_snapshot(autobegin=autobegin)
 
+        # make sure transaction is assigned before we call the
+        # dispatch
+        self.session._transaction = self
+
         self.session.dispatch.after_transaction_create(self.session, self)
 
     @property
@@ -1242,7 +1246,8 @@ class Session(_SessionClassMethods):
 
     def _autobegin(self):
         if not self.autocommit and self._transaction is None:
-            self._transaction = SessionTransaction(self, autobegin=True)
+            trans = SessionTransaction(self, autobegin=True)
+            assert self._transaction is trans
             return True
 
         return False
@@ -1299,7 +1304,7 @@ class Session(_SessionClassMethods):
         if self._transaction is not None:
             if subtransactions or _subtrans or nested:
                 trans = self._transaction._begin(nested=nested)
-                self._transaction = trans
+                assert self._transaction is trans
                 if nested:
                     self._nested_transaction = trans
             else:
@@ -1307,7 +1312,8 @@ class Session(_SessionClassMethods):
                     "A transaction is already begun on this Session."
                 )
         else:
-            self._transaction = SessionTransaction(self, nested=nested)
+            trans = SessionTransaction(self, nested=nested)
+            assert self._transaction is trans
         return self._transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):

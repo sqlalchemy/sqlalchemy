@@ -1417,6 +1417,27 @@ class EngineEventsTest(fixtures.TestBase):
         eq_(canary.be2.call_count, 1)
         eq_(canary.be3.call_count, 2)
 
+    def test_emit_sql_in_autobegin(self, testing_engine):
+        e1 = testing_engine(config.db_url)
+
+        canary = Mock()
+
+        @event.listens_for(e1, "begin")
+        def begin(connection):
+            result = connection.execute(select(1)).scalar()
+            canary.got_result(result)
+
+        with e1.connect() as conn:
+            assert not conn._is_future
+
+            with conn.begin():
+                conn.execute(select(1)).scalar()
+                assert conn.in_transaction()
+
+            assert not conn.in_transaction()
+
+        eq_(canary.mock_calls, [call.got_result(1)])
+
     def test_per_connection_plus_engine(self, testing_engine):
         canary = Mock()
         e1 = testing_engine(config.db_url)
@@ -2309,7 +2330,34 @@ class EngineEventsTest(fixtures.TestBase):
 
 
 class FutureEngineEventsTest(fixtures.FutureEngineMixin, EngineEventsTest):
-    pass
+    def test_future_fixture(self, testing_engine):
+        e1 = testing_engine()
+
+        assert e1._is_future
+        with e1.connect() as conn:
+            assert conn._is_future
+
+    def test_emit_sql_in_autobegin(self, testing_engine):
+        e1 = testing_engine(config.db_url)
+
+        canary = Mock()
+
+        @event.listens_for(e1, "begin")
+        def begin(connection):
+            result = connection.execute(select(1)).scalar()
+            canary.got_result(result)
+
+        with e1.connect() as conn:
+            assert conn._is_future
+            conn.execute(select(1)).scalar()
+
+            assert conn.in_transaction()
+
+            conn.commit()
+
+            assert not conn.in_transaction()
+
+        eq_(canary.mock_calls, [call.got_result(1)])
 
 
 class HandleErrorTest(fixtures.TestBase):

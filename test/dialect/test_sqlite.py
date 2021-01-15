@@ -2430,6 +2430,10 @@ class SavepointTest(fixtures.TablesTest):
         connection.close()
 
 
+class FutureSavepointTest(fixtures.FutureEngineMixin, SavepointTest):
+    pass
+
+
 class TypeReflectionTest(fixtures.TestBase):
 
     __only_on__ = "sqlite"
