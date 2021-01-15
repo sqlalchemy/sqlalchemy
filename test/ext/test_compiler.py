@@ -7,10 +7,13 @@ from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import Numeric
 from sqlalchemy import select
+from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy import testing
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.ext.compiler import deregister
+from sqlalchemy.orm import Session
 from sqlalchemy.schema import CreateColumn
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import DDLElement
@@ -18,6 +21,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import BindParameter
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ColumnClause
+from sqlalchemy.sql.expression import Executable
 from sqlalchemy.sql.expression import FunctionElement
 from sqlalchemy.sql.expression import Select
 from sqlalchemy.sql.sqltypes import NULLTYPE
@@ -491,3 +495,72 @@ class DefaultOnExistingTest(fixtures.TestBase, AssertsCompiledSQL):
             {"a": 1, "b": 2},
             use_default_dialect=True,
         )
+
+
+class ExecuteTest(fixtures.TablesTest):
+    """test that Executable constructs work at a rudimentary level."""
+
+    __requires__ = ("standard_cursor_sql",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True, autoincrement=False),
+            Column("data", String(50)),
+        )
+
+    @testing.fixture()
+    def insert_fixture(self):
+        class MyInsert(Executable, ClauseElement):
+            pass
+
+        @compiles(MyInsert)
+        def _run_myinsert(element, compiler, **kw):
+            return "INSERT INTO some_table (id, data) VALUES(1, 'some data')"
+
+        return MyInsert
+
+    @testing.fixture()
+    def select_fixture(self):
+        class MySelect(Executable, ClauseElement):
+            pass
+
+        @compiles(MySelect)
+        def _run_myinsert(element, compiler, **kw):
+            return "SELECT id, data FROM some_table"
+
+        return MySelect
+
+    def test_insert(self, connection, insert_fixture):
+        connection.execute(insert_fixture())
+
+        some_table = self.tables.some_table
+        eq_(connection.scalar(select(some_table.c.data)), "some data")
+
+    def test_insert_session(self, connection, insert_fixture):
+        with Session(connection) as session:
+            session.execute(insert_fixture())
+
+        some_table = self.tables.some_table
+
+        eq_(connection.scalar(select(some_table.c.data)), "some data")
+
+    def test_select(self, connection, select_fixture):
+        some_table = self.tables.some_table
+
+        connection.execute(some_table.insert().values(id=1, data="some data"))
+        result = connection.execute(select_fixture())
+
+        eq_(result.first(), (1, "some data"))
+
+    def test_select_session(self, connection, select_fixture):
+        some_table = self.tables.some_table
+
+        connection.execute(some_table.insert().values(id=1, data="some data"))
+
+        with Session(connection) as session:
+            result = session.execute(select_fixture())
+
+            eq_(result.first(), (1, "some data"))

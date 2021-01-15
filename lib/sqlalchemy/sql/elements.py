@@ -1502,7 +1502,6 @@ class TextClause(
     roles.OrderByRole,
     roles.FromClauseRole,
     roles.SelectStatementRole,
-    roles.CoerceTextStatementRole,
     roles.BinaryElementRole,
     roles.InElementRole,
     Executable,

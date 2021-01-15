@@ -729,7 +729,7 @@ class ExecutableOption(HasCopyInternals, HasCacheKey):
         return c
 
 
-class Executable(Generative):
+class Executable(roles.CoerceTextStatementRole, Generative):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
