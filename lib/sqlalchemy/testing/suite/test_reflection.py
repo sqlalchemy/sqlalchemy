@@ -523,6 +523,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
         insp = inspect(self.bind)
         eq_(insp.default_schema_name, self.bind.dialect.default_schema_name)
 
+    @testing.requires.foreign_key_constraint_reflection
     @testing.combinations(
         (None, True, False, False),
         (None, True, False, True, testing.requires.schemas),
@@ -630,8 +631,12 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.combinations(
         (False, False),
         (False, True, testing.requires.schemas),
-        (True, False),
-        (False, True, testing.requires.schemas),
+        (True, False, testing.requires.view_reflection),
+        (
+            True,
+            True,
+            testing.requires.schemas + testing.requires.view_reflection,
+        ),
         argnames="use_views,use_schema",
     )
     def test_get_columns(self, connection, use_views, use_schema):
@@ -999,6 +1004,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             eq_(names_that_duplicate_index, idx_names)
             eq_(uq_names, set())
 
+    @testing.requires.view_reflection
     @testing.combinations(
         (False,), (True, testing.requires.schemas), argnames="use_schema"
     )
