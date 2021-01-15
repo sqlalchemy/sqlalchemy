@@ -1160,7 +1160,7 @@ $$ LANGUAGE plpgsql;
         )
         t = Table("speedy_users", meta, autoload_with=connection)
         r = connection.execute(
-            t.insert(), user_name="user", user_password="lala"
+            t.insert(), dict(user_name="user", user_password="lala")
         )
         eq_(r.inserted_primary_key, (1,))
         result = connection.execute(t.select()).fetchall()

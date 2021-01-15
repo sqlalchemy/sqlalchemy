@@ -62,7 +62,7 @@ def _pg_drop_db(cfg, eng, ident):
                     "where usename=current_user and pid != pg_backend_pid() "
                     "and datname=:dname"
                 ),
-                dname=ident,
+                dict(dname=ident),
             )
             conn.exec_driver_sql("DROP DATABASE %s" % ident)
 

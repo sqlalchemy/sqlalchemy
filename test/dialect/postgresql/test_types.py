@@ -128,7 +128,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         )
         metadata.create_all(connection)
         connection.execute(
-            t1.insert(), x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")]
+            t1.insert(), dict(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
         )
         row = connection.execute(t1.select()).first()
         eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
@@ -144,7 +144,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
         )
         metadata.create_all(connection)
         connection.execute(
-            t1.insert(), x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")]
+            t1.insert(), dict(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
         )
         row = connection.execute(t1.select()).first()
         eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
@@ -167,9 +167,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         )
         t1.create(connection)
         t1.create(connection, checkfirst=True)  # check the create
-        connection.execute(t1.insert(), value="two")
-        connection.execute(t1.insert(), value="three")
-        connection.execute(t1.insert(), value="three")
+        connection.execute(t1.insert(), dict(value="two"))
+        connection.execute(t1.insert(), dict(value="three"))
+        connection.execute(t1.insert(), dict(value="three"))
         eq_(
             connection.execute(t1.select().order_by(t1.c.id)).fetchall(),
             [(1, "two"), (2, "three"), (3, "three")],
@@ -207,9 +207,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         ]
         t1.create(conn, checkfirst=True)
 
-        conn.execute(t1.insert(), value="two")
-        conn.execute(t1.insert(), value="three")
-        conn.execute(t1.insert(), value="three")
+        conn.execute(t1.insert(), dict(value="two"))
+        conn.execute(t1.insert(), dict(value="three"))
+        conn.execute(t1.insert(), dict(value="three"))
         eq_(
             conn.execute(t1.select().order_by(t1.c.id)).fetchall(),
             [(1, "two"), (2, "three"), (3, "three")],
@@ -245,9 +245,9 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             ),
         )
         metadata.create_all(connection)
-        connection.execute(t1.insert(), value=util.u("drôle"))
-        connection.execute(t1.insert(), value=util.u("réveillé"))
-        connection.execute(t1.insert(), value=util.u("S’il"))
+        connection.execute(t1.insert(), dict(value=util.u("drôle")))
+        connection.execute(t1.insert(), dict(value=util.u("réveillé")))
+        connection.execute(t1.insert(), dict(value=util.u("S’il")))
         eq_(
             connection.execute(t1.select().order_by(t1.c.id)).fetchall(),
             [
@@ -940,7 +940,9 @@ class TimezoneTest(fixtures.TablesTest):
 
         somedate = connection.scalar(func.current_timestamp().select())
         assert somedate.tzinfo
-        connection.execute(tztable.insert(), id=1, name="row1", date=somedate)
+        connection.execute(
+            tztable.insert(), dict(id=1, name="row1", date=somedate)
+        )
         row = connection.execute(
             select(tztable.c.date).where(tztable.c.id == 1)
         ).first()
@@ -951,7 +953,9 @@ class TimezoneTest(fixtures.TablesTest):
         )
         result = connection.execute(
             tztable.update(tztable.c.id == 1).returning(tztable.c.date),
-            name="newname",
+            dict(
+                name="newname",
+            ),
         )
         row = result.first()
         assert row[0] >= somedate
@@ -964,7 +968,7 @@ class TimezoneTest(fixtures.TablesTest):
         somedate = datetime.datetime(2005, 10, 20, 11, 52, 0)
         assert not somedate.tzinfo
         connection.execute(
-            notztable.insert(), id=1, name="row1", date=somedate
+            notztable.insert(), dict(id=1, name="row1", date=somedate)
         )
         row = connection.execute(
             select(notztable.c.date).where(notztable.c.id == 1)
@@ -973,7 +977,9 @@ class TimezoneTest(fixtures.TablesTest):
         eq_(row[0].tzinfo, None)
         result = connection.execute(
             notztable.update(notztable.c.id == 1).returning(notztable.c.date),
-            name="newname",
+            dict(
+                name="newname",
+            ),
         )
         row = result.first()
         assert row[0] >= somedate
@@ -1324,7 +1330,7 @@ class ArrayRoundTripTest(object):
         )
 
     def _fixture_456(self, table, connection):
-        connection.execute(table.insert(), intarr=[4, 5, 6])
+        connection.execute(table.insert(), dict(intarr=[4, 5, 6]))
 
     def test_reflect_array_column(self, connection):
         metadata2 = MetaData()
@@ -1403,8 +1409,10 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[1, 2, 3],
-            strarr=[util.u("abc"), util.u("def")],
+            dict(
+                intarr=[1, 2, 3],
+                strarr=[util.u("abc"), util.u("def")],
+            ),
         )
         results = connection.execute(arrtable.select()).fetchall()
         eq_(len(results), 1)
@@ -1415,8 +1423,10 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[1, None, 3],
-            strarr=[util.u("abc"), None],
+            dict(
+                intarr=[1, None, 3],
+                strarr=[util.u("abc"), None],
+            ),
         )
         results = connection.execute(arrtable.select()).fetchall()
         eq_(len(results), 1)
@@ -1427,11 +1437,13 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[1, 2, 3],
-            strarr=[util.u("abc"), util.u("def")],
+            dict(
+                intarr=[1, 2, 3],
+                strarr=[util.u("abc"), util.u("def")],
+            ),
         )
         connection.execute(
-            arrtable.insert(), intarr=[4, 5, 6], strarr=util.u("ABC")
+            arrtable.insert(), dict(intarr=[4, 5, 6], strarr=util.u("ABC"))
         )
         results = connection.execute(
             arrtable.select().where(arrtable.c.intarr == [1, 2, 3])
@@ -1443,8 +1455,7 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[1, 2, 3],
-            strarr=[util.u("abc"), util.u("def")],
+            dict(intarr=[1, 2, 3], strarr=[util.u("abc"), util.u("def")]),
         )
         results = connection.execute(
             select(arrtable.c.intarr + [4, 5, 6])
@@ -1456,9 +1467,9 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            id=5,
-            intarr=[1, 2, 3],
-            strarr=[util.u("abc"), util.u("def")],
+            dict(
+                id=5, intarr=[1, 2, 3], strarr=[util.u("abc"), util.u("def")]
+            ),
         )
         results = connection.execute(
             select(arrtable.c.id).where(arrtable.c.intarr < [4, 5, 6])
@@ -1470,13 +1481,17 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[4, 5, 6],
-            strarr=[[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
+            dict(
+                intarr=[4, 5, 6],
+                strarr=[[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
+            ),
         )
         connection.execute(
             arrtable.insert(),
-            intarr=[1, 2, 3],
-            strarr=[util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")],
+            dict(
+                intarr=[1, 2, 3],
+                strarr=[util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")],
+            ),
         )
         results = connection.execute(
             arrtable.select(order_by=[arrtable.c.intarr])
@@ -1556,8 +1571,10 @@ class ArrayRoundTripTest(object):
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            intarr=[4, 5, 6],
-            strarr=[util.u("abc"), util.u("def")],
+            dict(
+                intarr=[4, 5, 6],
+                strarr=[util.u("abc"), util.u("def")],
+            ),
         )
         eq_(connection.scalar(select(arrtable.c.intarr[2:3])), [5, 6])
         connection.execute(
@@ -1567,7 +1584,9 @@ class ArrayRoundTripTest(object):
 
     def test_multi_dim_roundtrip(self, connection):
         arrtable = self.tables.arrtable
-        connection.execute(arrtable.insert(), dimarr=[[1, 2, 3], [4, 5, 6]])
+        connection.execute(
+            arrtable.insert(), dict(dimarr=[[1, 2, 3], [4, 5, 6]])
+        )
         eq_(
             connection.scalar(select(arrtable.c.dimarr)),
             [[-1, 0, 1], [2, 3, 4]],
@@ -1575,7 +1594,7 @@ class ArrayRoundTripTest(object):
 
     def test_array_any_exec(self, connection):
         arrtable = self.tables.arrtable
-        connection.execute(arrtable.insert(), intarr=[4, 5, 6])
+        connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
         eq_(
             connection.scalar(
                 select(arrtable.c.intarr).where(
@@ -1587,7 +1606,7 @@ class ArrayRoundTripTest(object):
 
     def test_array_all_exec(self, connection):
         arrtable = self.tables.arrtable
-        connection.execute(arrtable.insert(), intarr=[4, 5, 6])
+        connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
         eq_(
             connection.scalar(
                 select(arrtable.c.intarr).where(
@@ -1610,16 +1629,18 @@ class ArrayRoundTripTest(object):
         )
         metadata.create_all(connection)
         connection.execute(
-            t1.insert(), id=1, data=["1", "2", "3"], data2=[5.4, 5.6]
+            t1.insert(), dict(id=1, data=["1", "2", "3"], data2=[5.4, 5.6])
         )
         connection.execute(
-            t1.insert(), id=2, data=["4", "5", "6"], data2=[1.0]
+            t1.insert(), dict(id=2, data=["4", "5", "6"], data2=[1.0])
         )
         connection.execute(
             t1.insert(),
-            id=3,
-            data=[["4", "5"], ["6", "7"]],
-            data2=[[5.4, 5.6], [1.0, 1.1]],
+            dict(
+                id=3,
+                data=[["4", "5"], ["6", "7"]],
+                data2=[[5.4, 5.6], [1.0, 1.1]],
+            ),
         )
 
         r = connection.execute(t1.select().order_by(t1.c.id)).fetchall()
@@ -1704,7 +1725,7 @@ class PGArrayRoundTripTest(
 
     def test_array_contained_by_exec(self, connection):
         arrtable = self.tables.arrtable
-        connection.execute(arrtable.insert(), intarr=[6, 5, 4])
+        connection.execute(arrtable.insert(), dict(intarr=[6, 5, 4]))
         eq_(
             connection.scalar(
                 select(arrtable.c.intarr.contained_by([4, 5, 6, 7]))
@@ -1724,7 +1745,7 @@ class PGArrayRoundTripTest(
 
     def test_array_overlap_exec(self, connection):
         arrtable = self.tables.arrtable
-        connection.execute(arrtable.insert(), intarr=[4, 5, 6])
+        connection.execute(arrtable.insert(), dict(intarr=[4, 5, 6]))
         eq_(
             connection.scalar(
                 select(arrtable.c.intarr).where(
@@ -2106,10 +2127,12 @@ class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
     def test_tsvector_round_trip(self, connection, metadata):
         t = Table("t1", metadata, Column("data", postgresql.TSVECTOR))
         t.create(connection)
-        connection.execute(t.insert(), data="a fat cat sat")
+        connection.execute(t.insert(), dict(data="a fat cat sat"))
         eq_(connection.scalar(select(t.c.data)), "'a' 'cat' 'fat' 'sat'")
 
-        connection.execute(t.update(), data="'a' 'cat' 'fat' 'mat' 'sat'")
+        connection.execute(
+            t.update(), dict(data="'a' 'cat' 'fat' 'mat' 'sat'")
+        )
 
         eq_(
             connection.scalar(select(t.c.data)),
@@ -2479,11 +2502,13 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         data_table = self.tables.data_table
         connection.execute(
             data_table.insert(),
-            {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
-            {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
-            {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
-            {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
-            {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2"}},
+            [
+                {"name": "r1", "data": {"k1": "r1v1", "k2": "r1v2"}},
+                {"name": "r2", "data": {"k1": "r2v1", "k2": "r2v2"}},
+                {"name": "r3", "data": {"k1": "r3v1", "k2": "r3v2"}},
+                {"name": "r4", "data": {"k1": "r4v1", "k2": "r4v2"}},
+                {"name": "r5", "data": {"k1": "r5v1", "k2": "r5v2"}},
+            ],
         )
 
     def _assert_data(self, compare, conn):

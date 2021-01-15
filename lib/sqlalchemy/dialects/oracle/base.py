@@ -1731,7 +1731,7 @@ class OracleDialect(default.DefaultDialect):
                 sql.text(
                     "SELECT username FROM user_db_links " "WHERE db_link=:link"
                 ),
-                link=dblink,
+                dict(link=dblink),
             )
             dblink = "@" + dblink
         elif not owner:
@@ -1805,7 +1805,7 @@ class OracleDialect(default.DefaultDialect):
                 "SELECT sequence_name FROM all_sequences "
                 "WHERE sequence_owner = :schema_name"
             ),
-            schema_name=self.denormalize_name(schema),
+            dict(schema_name=self.denormalize_name(schema)),
         )
         return [self.normalize_name(row[0]) for row in cursor]
 

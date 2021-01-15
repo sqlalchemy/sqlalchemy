@@ -264,6 +264,7 @@ def clear_mappers():
     upon a fixed set of classes.
 
     """
+
     with mapperlib._CONFIGURE_MUTEX:
         while _mapper_registry:
             try:

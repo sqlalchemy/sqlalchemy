@@ -1089,7 +1089,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         conn.execute(cls.tables.keyed2.insert(), dict(a="a2", b="b2"))
         conn.execute(cls.tables.keyed3.insert(), dict(a="a3", d="d3"))
         conn.execute(cls.tables.keyed4.insert(), dict(b="b4", q="q4"))
-        conn.execute(cls.tables.content.insert(), type="t1")
+        conn.execute(cls.tables.content.insert(), dict(type="t1"))
 
         if testing.requires.schemas.enabled:
             conn.execute(
@@ -1475,8 +1475,10 @@ class CursorResultTest(fixtures.TablesTest):
 
         connection.execute(
             users.insert(),
-            dict(user_id=1, user_name="john"),
-            dict(user_id=2, user_name="jack"),
+            [
+                dict(user_id=1, user_name="john"),
+                dict(user_id=2, user_name="jack"),
+            ],
         )
 
     def test_column_accessor_textual_select(self, connection):
@@ -1602,9 +1604,11 @@ class CursorResultTest(fixtures.TablesTest):
             conn.execute(users.delete())
             conn.execute(
                 users.insert(),
-                {"user_id": 7, "user_name": "jack"},
-                {"user_id": 8, "user_name": "ed"},
-                {"user_id": 9, "user_name": "fred"},
+                [
+                    {"user_id": 7, "user_name": "jack"},
+                    {"user_id": 8, "user_name": "ed"},
+                    {"user_id": 9, "user_name": "fred"},
+                ],
             )
 
             for pickle in False, True:

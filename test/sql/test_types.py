@@ -1494,7 +1494,7 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
         t = Table("t", self.metadata, Column("x", variant))
         t.create(connection)
 
-        connection.execute(t.insert(), x="foo")
+        connection.execute(t.insert(), dict(x="foo"))
 
         eq_(connection.scalar(select(t.c.x).where(t.c.x == "foo")), "fooUTWO")
 
@@ -1509,7 +1509,8 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
         t.create(connection)
 
         connection.execute(
-            t.insert(), x=datetime.datetime(2015, 4, 18, 10, 15, 17, 4839)
+            t.insert(),
+            dict(x=datetime.datetime(2015, 4, 18, 10, 15, 17, 4839)),
         )
 
         eq_(
@@ -2418,28 +2419,34 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
         stream2 = self.load_stream("binary_data_two.dat")
         connection.execute(
             binary_table.insert(),
-            primary_id=1,
-            misc="binary_data_one.dat",
-            data=stream1,
-            data_slice=stream1[0:100],
-            pickled=testobj1,
-            mypickle=testobj3,
+            dict(
+                primary_id=1,
+                misc="binary_data_one.dat",
+                data=stream1,
+                data_slice=stream1[0:100],
+                pickled=testobj1,
+                mypickle=testobj3,
+            ),
         )
         connection.execute(
             binary_table.insert(),
-            primary_id=2,
-            misc="binary_data_two.dat",
-            data=stream2,
-            data_slice=stream2[0:99],
-            pickled=testobj2,
+            dict(
+                primary_id=2,
+                misc="binary_data_two.dat",
+                data=stream2,
+                data_slice=stream2[0:99],
+                pickled=testobj2,
+            ),
         )
         connection.execute(
             binary_table.insert(),
-            primary_id=3,
-            misc="binary_data_two.dat",
-            data=None,
-            data_slice=stream2[0:99],
-            pickled=None,
+            dict(
+                primary_id=3,
+                misc="binary_data_two.dat",
+                data=None,
+                data_slice=stream2[0:99],
+                pickled=None,
+            ),
         )
 
         for stmt in (
@@ -2475,7 +2482,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
         assert isinstance(expr.right.type, LargeBinary)
 
         data = os.urandom(32)
-        connection.execute(binary_table.insert(), data=data)
+        connection.execute(binary_table.insert(), dict(data=data))
         eq_(
             connection.scalar(
                 select(func.count("*"))
@@ -3299,7 +3306,7 @@ class NumericRawSQLTest(fixtures.TestBase):
     def _fixture(self, connection, metadata, type_, data):
         t = Table("t", metadata, Column("val", type_))
         metadata.create_all(connection)
-        connection.execute(t.insert(), val=data)
+        connection.execute(t.insert(), dict(val=data))
 
     @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
     @testing.provide_metadata
@@ -3379,9 +3386,11 @@ class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
         delta = datetime.timedelta(14)
         connection.execute(
             interval_table.insert(),
-            native_interval=small_delta,
-            native_interval_args=delta,
-            non_native_interval=delta,
+            dict(
+                native_interval=small_delta,
+                native_interval_args=delta,
+                non_native_interval=delta,
+            ),
         )
         row = connection.execute(interval_table.select()).first()
         eq_(row.native_interval, small_delta)
@@ -3393,9 +3402,11 @@ class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):
 
         connection.execute(
             interval_table.insert(),
-            id=1,
-            native_inverval=None,
-            non_native_interval=None,
+            dict(
+                id=1,
+                native_inverval=None,
+                non_native_interval=None,
+            ),
         )
         row = connection.execute(interval_table.select()).first()
         eq_(row.native_interval, None)

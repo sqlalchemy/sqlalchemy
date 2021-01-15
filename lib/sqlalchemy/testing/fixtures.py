@@ -396,9 +396,7 @@ def stop_test_class_inside_fixtures(cls):
 
 
 def after_test():
-
     if _fixture_sessions:
-
         _close_all_sessions()
 
 

@@ -4969,19 +4969,23 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
 
         connection.execute(
             users.insert(),
-            {"id": 1, "name": "user1"},
-            {"id": 2, "name": "user2"},
-            {"id": 3, "name": "user3"},
+            [
+                {"id": 1, "name": "user1"},
+                {"id": 2, "name": "user2"},
+                {"id": 3, "name": "user3"},
+            ],
         )
 
         connection.execute(
             stuff.insert(),
-            {"id": 1, "user_id": 1, "date": datetime.date(2007, 10, 15)},
-            {"id": 2, "user_id": 1, "date": datetime.date(2007, 12, 15)},
-            {"id": 3, "user_id": 1, "date": datetime.date(2007, 11, 15)},
-            {"id": 4, "user_id": 2, "date": datetime.date(2008, 1, 15)},
-            {"id": 5, "user_id": 3, "date": datetime.date(2007, 6, 15)},
-            {"id": 6, "user_id": 3, "date": datetime.date(2007, 3, 15)},
+            [
+                {"id": 1, "user_id": 1, "date": datetime.date(2007, 10, 15)},
+                {"id": 2, "user_id": 1, "date": datetime.date(2007, 12, 15)},
+                {"id": 3, "user_id": 1, "date": datetime.date(2007, 11, 15)},
+                {"id": 4, "user_id": 2, "date": datetime.date(2008, 1, 15)},
+                {"id": 5, "user_id": 3, "date": datetime.date(2007, 6, 15)},
+                {"id": 6, "user_id": 3, "date": datetime.date(2007, 3, 15)},
+            ],
         )
 
     def test_labeled_on_date_noalias(self):

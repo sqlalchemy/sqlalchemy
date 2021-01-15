@@ -180,13 +180,15 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
 
                 # executemany, uses SERIAL
 
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
 
                 # single execute, explicit id, inline
 
@@ -252,10 +254,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 eq_(r.inserted_primary_key, (5,))
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
                 conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
                 conn.execute(table.insert().inline(), {"data": "d8"})
 
@@ -320,13 +324,15 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
 
                 # executemany, uses SERIAL
 
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
 
                 # single execute, explicit id, inline
 
@@ -392,10 +398,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 eq_(r.inserted_primary_key, (5,))
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
                 conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
                 conn.execute(table.insert().inline(), {"data": "d8"})
 
@@ -451,10 +459,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 conn.execute(table.insert(), {"data": "d2"})
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
                 conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
                 conn.execute(table.insert().inline(), {"data": "d8"})
 
@@ -514,10 +524,12 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
                 conn.execute(table.insert(), {"data": "d2"})
                 conn.execute(
                     table.insert(),
-                    {"id": 31, "data": "d3"},
-                    {"id": 32, "data": "d4"},
+                    [
+                        {"id": 31, "data": "d3"},
+                        {"id": 32, "data": "d4"},
+                    ],
                 )
-                conn.execute(table.insert(), {"data": "d5"}, {"data": "d6"})
+                conn.execute(table.insert(), [{"data": "d5"}, {"data": "d6"}])
                 conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
                 conn.execute(table.insert().inline(), {"data": "d8"})
 

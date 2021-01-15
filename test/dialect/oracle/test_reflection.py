@@ -668,8 +668,10 @@ class RoundTripIndexTest(fixtures.TestBase):
                AND owner = :owner
                AND constraint_type = 'P' """
             ),
-            table_name=s_table.name.upper(),
-            owner=testing.db.dialect.default_schema_name.upper(),
+            dict(
+                table_name=s_table.name.upper(),
+                owner=testing.db.dialect.default_schema_name.upper(),
+            ),
         )
 
         reflectedtable = inspect.tables[s_table.name]

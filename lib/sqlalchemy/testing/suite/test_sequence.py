@@ -46,11 +46,13 @@ class SequenceTest(fixtures.TablesTest):
         )
 
     def test_insert_roundtrip(self, connection):
-        connection.execute(self.tables.seq_pk.insert(), data="some data")
+        connection.execute(self.tables.seq_pk.insert(), dict(data="some data"))
         self._assert_round_trip(self.tables.seq_pk, connection)
 
     def test_insert_lastrowid(self, connection):
-        r = connection.execute(self.tables.seq_pk.insert(), data="some data")
+        r = connection.execute(
+            self.tables.seq_pk.insert(), dict(data="some data")
+        )
         eq_(
             r.inserted_primary_key, (testing.db.dialect.default_sequence_base,)
         )
@@ -62,7 +64,7 @@ class SequenceTest(fixtures.TablesTest):
     @requirements.sequences_optional
     def test_optional_seq(self, connection):
         r = connection.execute(
-            self.tables.seq_opt_pk.insert(), data="some data"
+            self.tables.seq_opt_pk.insert(), dict(data="some data")
         )
         eq_(r.inserted_primary_key, (1,))
 

@@ -980,12 +980,12 @@ class PKDefaultTest(fixtures.TablesTest):
                 options={"implicit_returning": returning}
             )
         with engine.begin() as conn:
-            conn.execute(t2.insert(), nextid=1)
-            r = conn.execute(t1.insert(), data="hi")
+            conn.execute(t2.insert(), dict(nextid=1))
+            r = conn.execute(t1.insert(), dict(data="hi"))
             eq_((1,), r.inserted_primary_key)
 
-            conn.execute(t2.insert(), nextid=2)
-            r = conn.execute(t1.insert(), data="there")
+            conn.execute(t2.insert(), dict(nextid=2))
+            r = conn.execute(t1.insert(), dict(data="there"))
             eq_((2,), r.inserted_primary_key)
 
             r = conn.execute(date_table.insert())
@@ -1015,19 +1015,19 @@ class PKIncrementTest(fixtures.TablesTest):
         aitable = self.tables.aitable
 
         ids = set()
-        rs = connection.execute(aitable.insert(), int1=1)
+        rs = connection.execute(aitable.insert(), dict(int1=1))
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
-        rs = connection.execute(aitable.insert(), str1="row 2")
+        rs = connection.execute(aitable.insert(), dict(str1="row 2"))
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
         ids.add(last)
 
-        rs = connection.execute(aitable.insert(), int1=3, str1="row 3")
+        rs = connection.execute(aitable.insert(), dict(int1=3, str1="row 3"))
         last = rs.inserted_primary_key[0]
         self.assert_(last)
         self.assert_(last not in ids)
@@ -1066,14 +1066,13 @@ class EmptyInsertTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.fails_on("oracle", "FIXME: unknown")
-    @testing.provide_metadata
-    def test_empty_insert(self, connection):
+    def test_empty_insert(self, metadata, connection):
         t1 = Table(
             "t1",
-            self.metadata,
+            metadata,
             Column("is_true", Boolean, server_default=("1")),
         )
-        self.metadata.create_all(connection)
+        metadata.create_all(connection)
         connection.execute(t1.insert())
         eq_(
             1,
