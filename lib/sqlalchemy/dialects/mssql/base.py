@@ -9,6 +9,16 @@
     :name: Microsoft SQL Server
 
 
+.. _mssql_external_dialects:
+
+External Dialects
+-----------------
+
+In addition to the above DBAPI layers with native SQLAlchemy support, there
+are third-party dialects for other DBAPI layers that are compatible
+with SQL Server. See the "External Dialects" list on the
+:ref:`dialect_toplevel` page. 
+
 .. _mssql_identity:
 
 Auto Increment Behavior / IDENTITY Columns
