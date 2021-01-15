@@ -615,6 +615,10 @@ class AsyncAdapt_asyncpg_connection:
         return prepared_stmt, attributes
 
     def _handle_exception(self, error):
+        if self._connection.is_closed():
+            self._transaction = None
+            self._started = False
+
         if not isinstance(error, AsyncAdapt_asyncpg_dbapi.Error):
             exception_mapping = self.dbapi._asyncpg_error_translate
 
@@ -669,15 +673,23 @@ class AsyncAdapt_asyncpg_connection:
 
     def rollback(self):
         if self._started:
-            self.await_(self._transaction.rollback())
-            self._transaction = None
-            self._started = False
+            try:
+                self.await_(self._transaction.rollback())
+            except Exception as error:
+                self._handle_exception(error)
+            finally:
+                self._transaction = None
+                self._started = False
 
     def commit(self):
         if self._started:
-            self.await_(self._transaction.commit())
-            self._transaction = None
-            self._started = False
+            try:
+                self.await_(self._transaction.commit())
+            except Exception as error:
+                self._handle_exception(error)
+            finally:
+                self._transaction = None
+                self._started = False
 
     def close(self):
         self.rollback()

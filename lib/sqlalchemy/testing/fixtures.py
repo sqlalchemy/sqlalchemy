@@ -107,6 +107,14 @@ class TestBase(object):
         engines.testing_reaper._drop_testing_engines("fixture")
 
     @config.fixture()
+    def async_testing_engine(self, testing_engine):
+        def go(**kw):
+            kw["asyncio"] = True
+            return testing_engine(**kw)
+
+        return go
+
+    @config.fixture()
     def metadata(self, request):
         """Provide bound MetaData for a single test, dropping afterwards."""
 

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql, asyncio
+    :tickets: 5824
+
+    Fixed bug in asyncpg dialect where a failure during a "commit" or less
+    likely a "rollback" should cancel the entire transaction; it's no longer
+    possible to emit rollback. Previously the connection would continue to
+    await a rollback that could not succeed as asyncpg would reject it.

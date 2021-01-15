@@ -2199,11 +2199,6 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
 
 class AutocommitClosesOnFailTest(fixtures.MappedTest):
     __requires__ = ("deferrable_fks",)
-    __only_on__ = ("postgresql+psycopg2",)  # needs #5824 for asyncpg
-
-    # this test has a lot of problems, am investigating asyncpg
-    # issues separately.  just get this legacy use case to pass for now.
-    __only_on__ = ("postgresql+psycopg2",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2247,9 +2242,11 @@ class AutocommitClosesOnFailTest(fixtures.MappedTest):
 
         # with a deferred constraint, this fails at COMMIT time instead
         # of at INSERT time.
-        session.add(T2(t1_id=123))
+        session.add(T2(id=1, t1_id=123))
 
-        assert_raises(sa.exc.IntegrityError, session.flush)
+        assert_raises(
+            (sa.exc.IntegrityError, sa.exc.DatabaseError), session.flush
+        )
 
         assert session._legacy_transaction() is None
 
