@@ -898,3 +898,8 @@ any number of database rows while also being able to synchronize the state of
 matching objects locally present in the :class:`_orm.Session`. See the section
 :ref:`orm_expression_update_delete` for background on this feature.
 
+
+..  Setup code, not for display
+
+    >>> conn.close()
+    ROLLBACK

@@ -18,7 +18,6 @@ from .. import event
 from .. import exc
 from .. import log
 from .. import util
-from ..util import threading
 
 
 reset_rollback = util.symbol("reset_rollback")
@@ -172,7 +171,6 @@ class Pool(log.Identified):
             self._orig_logging_name = None
 
         log.instance_logger(self, echoflag=echo)
-        self._threadconns = threading.local()
         self._creator = creator
         self._recycle = recycle
         self._invalidate_time = 0
@@ -423,27 +421,37 @@ class _ConnectionRecord(object):
             dbapi_connection = rec.get_connection()
         except Exception as err:
             with util.safe_reraise():
-                rec._checkin_failed(err)
+                rec._checkin_failed(err, _fairy_was_created=False)
         echo = pool._should_log_debug()
         fairy = _ConnectionFairy(dbapi_connection, rec, echo)
 
-        rec.fairy_ref = weakref.ref(
+        rec.fairy_ref = ref = weakref.ref(
             fairy,
             lambda ref: _finalize_fairy
             and _finalize_fairy(None, rec, pool, ref, echo),
         )
+        _strong_ref_connection_records[ref] = rec
         if echo:
             pool.logger.debug(
                 "Connection %r checked out from pool", dbapi_connection
             )
         return fairy
 
-    def _checkin_failed(self, err):
+    def _checkin_failed(self, err, _fairy_was_created=True):
         self.invalidate(e=err)
-        self.checkin(_no_fairy_ref=True)
+        self.checkin(
+            _fairy_was_created=_fairy_was_created,
+        )
 
-    def checkin(self, _no_fairy_ref=False):
-        if self.fairy_ref is None and not _no_fairy_ref:
+    def checkin(self, _fairy_was_created=True):
+        if self.fairy_ref is None and _fairy_was_created:
+            # _fairy_was_created is False for the initial get connection phase;
+            # meaning there was no _ConnectionFairy and we must unconditionally
+            # do a checkin.
+            #
+            # otherwise, if fairy_was_created==True, if fairy_ref is None here
+            # that means we were checked in already, so this looks like
+            # a double checkin.
             util.warn("Double checkin attempted on %s" % self)
             return
         self.fairy_ref = None
@@ -454,6 +462,7 @@ class _ConnectionRecord(object):
             finalizer(connection)
         if pool.dispatch.checkin:
             pool.dispatch.checkin(connection, self)
+
         pool._return_conn(self)
 
     @property
@@ -604,6 +613,11 @@ def _finalize_fairy(
 
     """
 
+    if ref:
+        _strong_ref_connection_records.pop(ref, None)
+    elif fairy:
+        _strong_ref_connection_records.pop(weakref.ref(fairy), None)
+
     if ref is not None:
         if connection_record.fairy_ref is not ref:
             return
@@ -661,6 +675,13 @@ def _finalize_fairy(
 
     if connection_record and connection_record.fairy_ref is not None:
         connection_record.checkin()
+
+
+# a dictionary of the _ConnectionFairy weakrefs to _ConnectionRecord, so that
+# GC under pypy will call ConnectionFairy finalizers.  linked directly to the
+# weakref that will empty itself when collected so that it should not create
+# any unmanaged memory references.
+_strong_ref_connection_records = {}
 
 
 class _ConnectionFairy(object):
@@ -797,7 +818,17 @@ class _ConnectionFairy(object):
                     )
                 except Exception as err:
                     with util.safe_reraise():
-                        fairy._connection_record._checkin_failed(err)
+                        fairy._connection_record._checkin_failed(
+                            err,
+                            _fairy_was_created=True,
+                        )
+
+                        # prevent _ConnectionFairy from being carried
+                        # in the stack trace.  Do this after the
+                        # connection record has been checked in, so that
+                        # if the del triggers a finalize fairy, it won't
+                        # try to checkin a second time.
+                        del fairy
 
                 attempts -= 1
 

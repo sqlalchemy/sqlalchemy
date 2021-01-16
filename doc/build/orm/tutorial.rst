@@ -2243,3 +2243,9 @@ Mapper Reference: :ref:`mapper_config_toplevel`
 Relationship Reference: :ref:`relationship_config_toplevel`
 
 Session Reference: :doc:`/orm/session`
+
+
+..  Setup code, not for display
+
+    >>> session.close()
+    ROLLBACK

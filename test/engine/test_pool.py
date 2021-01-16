@@ -259,7 +259,6 @@ class PoolTest(PoolTestBase):
             d2.pop(k, None)
 
         for k in (
-            "_threadconns",
             "_invoke_creator",
             "_pool",
             "_overflow_lock",
@@ -639,7 +638,6 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][2] is exc
 
     @testing.combinations((True, testing.requires.python3), (False,))
-    @testing.requires.predictable_gc
     def test_checkin_event_gc(self, detach_gced):
         p, canary = self._checkin_event_fixture()
 
@@ -848,8 +846,6 @@ class QueuePoolTest(PoolTestBase):
 
     def _do_testqueuepool(self, useclose=False):
         p = self._queuepool_fixture(pool_size=3, max_overflow=-1)
-        reaper = testing.engines.ConnectionKiller()
-        reaper.add_pool(p)
 
         def status(pool):
             return (
@@ -878,7 +874,7 @@ class QueuePoolTest(PoolTestBase):
         else:
             c4 = c3 = c2 = None
             lazy_gc()
-        self.assert_(status(p) == (3, 3, 3, 3))
+        eq_(status(p), (3, 3, 3, 3))
         if useclose:
             c1.close()
             c5.close()
@@ -897,8 +893,6 @@ class QueuePoolTest(PoolTestBase):
             lazy_gc()
         self.assert_(status(p) == (3, 2, 0, 1))
         c1.close()
-
-        reaper.assert_all_closed()
 
     def test_timeout_accessor(self):
         expected_timeout = 123
@@ -1391,6 +1385,7 @@ class QueuePoolTest(PoolTestBase):
             dbapi.shutdown(True)
             assert_raises_context_ok(Exception, p.connect)
             eq_(p._overflow, 0)
+
             eq_(p.checkedout(), 0)  # and not 1
 
             dbapi.shutdown(False)
@@ -1520,7 +1515,6 @@ class QueuePoolTest(PoolTestBase):
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
     @testing.combinations((True, testing.requires.python3), (False,))
-    @testing.requires.predictable_gc
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
             pool_size=1, max_overflow=2

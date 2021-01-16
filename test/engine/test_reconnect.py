@@ -1324,13 +1324,25 @@ class PrePingRealTest(fixtures.TestBase):
     def test_pre_ping_db_stays_shutdown(self):
         engine = engines.reconnecting_engine(options={"pool_pre_ping": True})
 
+        if isinstance(engine.pool, pool.QueuePool):
+            eq_(engine.pool.checkedin(), 0)
+            eq_(engine.pool._overflow, -5)
+
         conn = engine.connect()
         eq_(conn.execute(select(1)).scalar(), 1)
         conn.close()
 
+        if isinstance(engine.pool, pool.QueuePool):
+            eq_(engine.pool.checkedin(), 1)
+            eq_(engine.pool._overflow, -4)
+
         engine.test_shutdown(stop=True)
 
         assert_raises(exc.DBAPIError, engine.connect)
+
+        if isinstance(engine.pool, pool.QueuePool):
+            eq_(engine.pool.checkedin(), 1)
+            eq_(engine.pool._overflow, -4)
 
 
 class InvalidateDuringResultTest(fixtures.TestBase):
