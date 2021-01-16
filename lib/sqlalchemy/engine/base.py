@@ -813,10 +813,11 @@ class Connection(Connectable):
         if self._echo:
             self.engine.logger.info("BEGIN (implicit)")
 
+        self.__in_begin = True
+
         if self._has_events or self.engine._has_events:
             self.dispatch.begin(self)
 
-        self.__in_begin = True
         try:
             self.engine.dialect.do_begin(self.connection)
         except BaseException as e:

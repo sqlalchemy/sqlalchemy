@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, engine, sqlite
+    :tickets: 5845
+
+    Fixed bug in the 2.0 "future" version of :class:`.Engine` where emitting
+    SQL during the :meth:`.EngineEvents.begin` event hook would cause a
+    re-entrant (recursive) condition due to autobegin, affecting among other
+    things the recipe documented for SQLite to allow for savepoints and
+    serializable isolation support.
+
+
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 5845
+
+    Fixed issue in new :class:`_orm.Session` similar to that of the
+    :class:`_engine.Connection` where the new "autobegin" logic could be
+    tripped into a re-entrant (recursive) state if SQL were executed within the
+    :meth:`.SessionEvents.after_transaction_create` event hook.

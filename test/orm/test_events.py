@@ -2173,6 +2173,22 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.rollback()
         eq_(assertions, [True, True])
 
+    @testing.combinations((True,), (False,))
+    def test_autobegin_no_reentrant(self, future):
+        s1 = fixture_session(future=future)
+
+        canary = Mock()
+
+        @event.listens_for(s1, "after_transaction_create")
+        def after_transaction_create(session, transaction):
+            result = session.execute(select(1)).scalar()
+            canary.got_result(result)
+
+        with s1.begin():
+            pass
+
+        eq_(canary.mock_calls, [call.got_result(1)])
+
     def test_flush_noautocommit_hook(self):
         User, users = self.classes.User, self.tables.users
 
