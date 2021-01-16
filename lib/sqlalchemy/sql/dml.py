@@ -14,6 +14,7 @@ from . import coercions
 from . import roles
 from . import util as sql_util
 from .base import _entity_namespace_key
+from .base import _exclusive_against
 from .base import _from_objects
 from .base import _generative
 from .base import ColumnCollection
@@ -495,6 +496,15 @@ class ValuesBase(UpdateBase):
             self._setup_prefixes(prefixes)
 
     @_generative
+    @_exclusive_against(
+        "_select_names",
+        "_ordered_values",
+        msgs={
+            "_select_names": "This construct already inserts from a SELECT",
+            "_ordered_values": "This statement already has ordered "
+            "values present",
+        },
+    )
     def values(self, *args, **kwargs):
         r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
@@ -607,15 +617,6 @@ class ValuesBase(UpdateBase):
 
 
         """
-        if self._select_names:
-            raise exc.InvalidRequestError(
-                "This construct already inserts from a SELECT"
-            )
-        elif self._ordered_values:
-            raise exc.ArgumentError(
-                "This statement already has ordered values present"
-            )
-
         if args:
             # positional case.  this is currently expensive.   we don't
             # yet have positional-only args so we have to check the length.
@@ -699,6 +700,13 @@ class ValuesBase(UpdateBase):
                 self._values = util.immutabledict(arg)
 
     @_generative
+    @_exclusive_against(
+        "_returning",
+        msgs={
+            "_returning": "RETURNING is already configured on this statement"
+        },
+        defaults={"_returning": _returning},
+    )
     def return_defaults(self, *cols):
         """Make use of a :term:`RETURNING` clause for the purpose
         of fetching server-side expressions and defaults.
@@ -783,10 +791,6 @@ class ValuesBase(UpdateBase):
             :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
-        if self._returning:
-            raise exc.InvalidRequestError(
-                "RETURNING is already configured on this statement"
-            )
         self._return_defaults = cols or True
 
 

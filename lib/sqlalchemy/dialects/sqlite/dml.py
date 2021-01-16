@@ -7,6 +7,7 @@
 from ... import util
 from ...sql import coercions
 from ...sql import roles
+from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
@@ -46,7 +47,16 @@ class Insert(StandardInsert):
         """
         return alias(self.table, name="excluded").columns
 
+    _on_conflict_exclusive = _exclusive_against(
+        "_post_values_clause",
+        msgs={
+            "_post_values_clause": "This Insert construct already has "
+            "an ON CONFLICT clause established"
+        },
+    )
+
     @_generative
+    @_on_conflict_exclusive
     def on_conflict_do_update(
         self,
         index_elements=None,
@@ -99,6 +109,7 @@ class Insert(StandardInsert):
         )
 
     @_generative
+    @_on_conflict_exclusive
     def on_conflict_do_nothing(self, index_elements=None, index_where=None):
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.

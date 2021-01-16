@@ -1,5 +1,6 @@
 from ... import exc
 from ... import util
+from ...sql.base import _exclusive_against
 from ...sql.base import _generative
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
@@ -49,6 +50,13 @@ class Insert(StandardInsert):
         return alias(self.table, name="inserted")
 
     @_generative
+    @_exclusive_against(
+        "_post_values_clause",
+        msgs={
+            "_post_values_clause": "This Insert construct already "
+            "has an ON DUPLICATE KEY clause present"
+        },
+    )
     def on_duplicate_key_update(self, *args, **kw):
         r"""
         Specifies the ON DUPLICATE KEY UPDATE clause.

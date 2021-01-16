@@ -1842,6 +1842,27 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             "goofy_index", table1.c.name, postgresql_where=table1.c.name > "m"
         )
 
+    def test_on_conflict_do_no_call_twice(self):
+        users = self.table1
+
+        for stmt in (
+            insert(users).on_conflict_do_nothing(),
+            insert(users).on_conflict_do_update(
+                index_elements=[users.c.myid], set_=dict(name="foo")
+            ),
+        ):
+            for meth in (
+                stmt.on_conflict_do_nothing,
+                stmt.on_conflict_do_update,
+            ):
+
+                with testing.expect_raises_message(
+                    exc.InvalidRequestError,
+                    "This Insert construct already has an "
+                    "ON CONFLICT clause established",
+                ):
+                    meth()
+
     def test_do_nothing_no_target(self):
 
         i = insert(

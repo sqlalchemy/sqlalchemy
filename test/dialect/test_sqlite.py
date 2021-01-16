@@ -2717,6 +2717,27 @@ class OnConflictTest(fixtures.TablesTest):
             ValueError, insert(self.tables.users).on_conflict_do_update
         )
 
+    def test_on_conflict_do_no_call_twice(self):
+        users = self.tables.users
+
+        for stmt in (
+            insert(users).on_conflict_do_nothing(),
+            insert(users).on_conflict_do_update(
+                index_elements=[users.c.id], set_=dict(name="foo")
+            ),
+        ):
+            for meth in (
+                stmt.on_conflict_do_nothing,
+                stmt.on_conflict_do_update,
+            ):
+
+                with testing.expect_raises_message(
+                    exc.InvalidRequestError,
+                    "This Insert construct already has an "
+                    "ON CONFLICT clause established",
+                ):
+                    meth()
+
     def test_on_conflict_do_nothing(self, connection):
         users = self.tables.users
 

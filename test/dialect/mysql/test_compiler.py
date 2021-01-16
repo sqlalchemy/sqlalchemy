@@ -1000,6 +1000,22 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("baz", String(10)),
         )
 
+    def test_no_call_twice(self):
+        stmt = insert(self.table).values(
+            [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]
+        )
+        stmt = stmt.on_duplicate_key_update(
+            bar=stmt.inserted.bar, baz=stmt.inserted.baz
+        )
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            "This Insert construct already has an "
+            "ON DUPLICATE KEY clause present",
+        ):
+            stmt = stmt.on_duplicate_key_update(
+                bar=stmt.inserted.bar, baz=stmt.inserted.baz
+            )
+
     def test_from_values(self):
         stmt = insert(self.table).values(
             [{"id": 1, "bar": "ab"}, {"id": 2, "bar": "b"}]

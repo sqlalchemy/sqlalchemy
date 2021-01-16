@@ -672,7 +672,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         stmt = table1.update().ordered_values(("myid", 1), ("name", "d1"))
 
         assert_raises_message(
-            exc.ArgumentError,
+            exc.InvalidRequestError,
             "This statement already has ordered values present",
             stmt.values,
             {"myid": 2, "name": "d2"},

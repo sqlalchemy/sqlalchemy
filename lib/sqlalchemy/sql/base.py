@@ -102,6 +102,31 @@ def _generative(fn):
     return decorated
 
 
+def _exclusive_against(*names, **kw):
+    msgs = kw.pop("msgs", {})
+
+    defaults = kw.pop("defaults", {})
+
+    getters = [
+        (name, operator.attrgetter(name), defaults.get(name, None))
+        for name in names
+    ]
+
+    @util.decorator
+    def check(fn, self, *args, **kw):
+        for name, getter, default_ in getters:
+            if getter(self) is not default_:
+                msg = msgs.get(
+                    name,
+                    "Method %s() has already been invoked on this %s construct"
+                    % (fn.__name__, self.__class__),
+                )
+                raise exc.InvalidRequestError(msg)
+        return fn(self, *args, **kw)
+
+    return check
+
+
 def _clone(element, **kw):
     return element._clone()
 
