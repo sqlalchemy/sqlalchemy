@@ -604,6 +604,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def table_value_constructor(self):
+        return only_on(["postgresql", "mssql"])
+
+    @property
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(
@@ -948,6 +952,13 @@ class DefaultRequirements(SuiteRequirements):
         also using an aggregate"""
 
         return skip_if(["mssql", "sqlite"])
+
+    @property
+    def tuple_valued_builtin_functions(self):
+        return only_on(
+            lambda config: self._sqlite_json(config)
+            or against(config, "postgresql")
+        )
 
     @property
     def array_type(self):

@@ -139,6 +139,9 @@ The classes here are generated using the constructors listed at
 .. autoclass:: TableSample
    :members:
 
+.. autoclass:: TableValuedAlias
+   :members:
+
 .. autoclass:: TextualSelect
    :members:
    :inherited-members:

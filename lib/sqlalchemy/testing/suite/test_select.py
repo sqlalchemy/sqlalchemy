@@ -32,6 +32,7 @@ from ... import true
 from ... import tuple_
 from ... import union
 from ... import util
+from ... import values
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
 
@@ -149,6 +150,22 @@ class OrderByLabelTest(fixtures.TablesTest):
             select(func.count(table.c.id), expr).group_by(expr).order_by(expr)
         )
         self._assert_result(stmt, [(1, 3), (1, 5), (1, 7)])
+
+
+class ValuesExpressionTest(fixtures.TestBase):
+    __requires__ = ("table_value_constructor",)
+
+    __backend__ = True
+
+    def test_tuples(self, connection):
+        value_expr = values(
+            column("id", Integer), column("name", String), name="my_values"
+        ).data([(1, "name1"), (2, "name2"), (3, "name3")])
+
+        eq_(
+            connection.execute(select(value_expr)).all(),
+            [(1, "name1"), (2, "name2"), (3, "name3")],
+        )
 
 
 class FetchLimitOffsetTest(fixtures.TablesTest):

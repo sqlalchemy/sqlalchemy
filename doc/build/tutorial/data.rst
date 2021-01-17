@@ -797,6 +797,9 @@ we call upon the name ``count()`` name::
     >>> print(count_fn)
     {opensql}count(user_account.id)
 
+SQL functions are described in more detail later in this tutorial at
+:ref:`tutorial_functions`.
+
 When using aggregate functions in SQL, the GROUP BY clause is essential in that
 it allows rows to be partitioned into groups where aggregate functions will
 be applied to each group individually.  When requesting non-aggregated columns
@@ -1277,6 +1280,419 @@ clause:
     [...] (){stop}
     [('patrick',)]
     {opensql}ROLLBACK{stop}
+
+.. _tutorial_functions:
+
+Working with SQL Functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+First introduced earlier in this section at
+:ref:`tutorial_group_by_w_aggregates`, the :data:`_sql.func` object serves as a
+factory for creating new :class:`_functions.Function` objects, which when used
+in a construct like :func:`_sql.select`, produce a SQL function display,
+typically consisting of a name, some parenthesis (although not always), and
+possibly some arguments. Examples of typical SQL functions include:
+
+* the ``count()`` function, an aggregate function which counts how many
+  rows are returned:
+
+  .. sourcecode:: pycon+sql
+
+      >>> print(select(func.count()).select_from(user_table))
+      SELECT count(*) AS count_1
+      FROM user_account
+
+  ..
+
+* the ``lower()`` function, a string function that converts a string to lower
+  case:
+
+  .. sourcecode:: pycon+sql
+
+      >>> print(select(func.lower("A String With Much UPPERCASE")))
+      SELECT lower(:lower_2) AS lower_1
+
+  ..
+
+* the ``now()`` function, which provides for the current date and time; as this
+  is a common function, SQLAlchemy knows how to render this differently for each
+  backend, in the case of SQLite using the CURRENT_TIMESTAMP function:
+
+  .. sourcecode:: pycon+sql
+
+      >>> stmt = select(func.now())
+      >>> with engine.connect() as conn:
+      ...     result = conn.execute(stmt)
+      ...     print(result.all())
+      {opensql}BEGIN (implicit)
+      SELECT CURRENT_TIMESTAMP AS now_1
+      [...] ()
+      [(datetime.datetime(...),)]
+      ROLLBACK
+
+  ..
+
+As most database backends feature dozens if not hundreds of different SQL
+functions, :data:`_sql.func` tries to be as liberal as possible in what it
+accepts. Any name that is accessed from this namespace is automatically
+considered to be a SQL function that will render in a generic way::
+
+    >>> print(select(func.some_crazy_function(user_table.c.name, 17)))
+    SELECT some_crazy_function(user_account.name, :some_crazy_function_2) AS some_crazy_function_1
+    FROM user_account
+
+At the same time, a relatively small set of extremely common SQL functions such
+as :class:`_functions.count`, :class:`_functions.now`, :class:`_functions.max`,
+:class:`_functions.concat` include pre-packaged versions of themselves which
+provide for proper typing information as well as backend-specific SQL
+generation in some cases.  The example below contrasts the SQL generation
+that occurs for the PostgreSQL dialect compared to the Oracle dialect for
+the :class:`_functions.now` function::
+
+    >>> from sqlalchemy.dialects import postgresql
+    >>> print(select(func.now()).compile(dialect=postgresql.dialect()))
+    SELECT now() AS now_1
+
+    >>> from sqlalchemy.dialects import oracle
+    >>> print(select(func.now()).compile(dialect=oracle.dialect()))
+    SELECT CURRENT_TIMESTAMP AS now_1 FROM DUAL
+
+Functions Have Return Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As functions are column expressions, they also have
+SQL :ref:`datatypes <types_toplevel>` that describe the data type of
+a generated SQL expression.  We refer to these types here as "SQL return types",
+in reference to the type of SQL value that is returned by the function
+in the context of a database-side SQL expression,
+as opposed to the "return type" of a Python function.
+
+The SQL return type of any SQL function may be accessed, typically for
+debugging purposes, by referring to the :attr:`_functions.Function.type`
+attribute::
+
+    >>> func.now().type
+    DateTime()
+
+These SQL return types are significant when making
+use of the function expression in the context of a larger expression; that is,
+math operators will work better when the datatype of the expression is
+something like :class:`_types.Integer` or :class:`_types.Numeric`, JSON
+accessors in order to work need to be using a type such as
+:class:`_types.JSON`.  Certain classes of functions return entire rows
+instead of column values, where there is a need to refer to specific columns;
+such functions are referred towards
+as :ref:`table valued functions <tutorial_functions_table_valued>`.
+
+The SQL return type of the function may also be significant when executing a
+statement and getting rows back, for those cases where SQLAlchemy has to apply
+result-set processing. A prime example of this are date-related functions on
+SQLite, where SQLAlchemy's :class:`_types.DateTime` and related datatypes take
+on the role of converting from string values to Python ``datetime()`` objects
+as result rows are received.
+
+To apply a specific type to a function we're creating, we pass it using the
+:paramref:`_functions.Function.type_` parameter; the type argument may be
+either a :class:`_types.TypeEngine` class or an instance.  In the example
+below we pass the :class:`_types.JSON` class to generate the PostgreSQL
+``json_object()`` function, noting that the SQL return type will be of
+type JSON::
+
+    >>> from sqlalchemy import JSON
+    >>> function_expr = func.json_object('{a, 1, b, "def", c, 3.5}', type_=JSON)
+
+By creating our JSON function with the :class:`_types.JSON` datatype, the
+SQL expression object takes on JSON-related features, such as that of accessing
+elements::
+
+    >>> stmt = select(function_expr["def"])
+    >>> print(stmt)
+    SELECT json_object(:json_object_1)[:json_object_2] AS anon_1
+
+Built-in Functions Have Pre-Configured Return Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For common aggregate functions like :class:`_functions.count`,
+:class:`_functions.max`, :class:`_functions.min` as well as a very small number
+of date functions like :class:`_functions.now` and string functions like
+:class:`_functions.concat`, the SQL return type is set up appropriately,
+sometimes based on usage. The :class:`_functions.max` function and similar
+aggregate filtering functions will set up the SQL return type based on the
+argument given::
+
+    >>> m1 = func.max(Column("some_int", Integer))
+    >>> m1.type
+    Integer()
+
+    >>> m2 = func.max(Column("some_str", String))
+    >>> m2.type
+    String()
+
+Date and time functions typically correspond to SQL expressions described by
+:class:`_types.DateTime`, :class:`_types.Date` or :class:`_types.Time`::
+
+    >>> func.now().type
+    DateTime()
+    >>> func.current_date().type
+    Date()
+
+A known string function such as :class:`_functions.concat`
+will know that a SQL expression would be of type :class:`_types.String`::
+
+    >>> func.concat("x", "y").type
+    String()
+
+However, for the vast majority of SQL functions, SQLAlchemy does not have them
+explicitly present in its very small list of known functions.  For example,
+while there is typically no issue using SQL functions ``func.lower()``
+and ``func.upper()`` to convert the casing of strings, SQLAlchemy doesn't
+actually know about these functions, so they have a "null" SQL return type::
+
+    >>> func.upper("lowercase").type
+    NullType()
+
+For simple functions like ``upper`` and ``lower``, the issue is not usually
+significant, as string values may be received from the database without any
+special type handling on the SQLAlchemy side, and SQLAlchemy's type
+coercion rules can often correctly guess intent as well; the Python ``+``
+operator for example will be correctly interpreted as the string concatenation
+operator based on looking at both sides of the expression::
+
+    >>> print(select(func.upper("lowercase") + " suffix"))
+    SELECT upper(:upper_1) || :upper_2 AS anon_1
+
+Overall, the scenario where the
+:paramref:`_functions.Function.type_` parameter is likely necessary is:
+
+1. the function is not already a SQLAlchemy built-in function; this can be
+   evidenced by creating the function and observing the :attr:`_functions.Function.type`
+   attribute, that is::
+
+      >>> func.count().type
+      Integer()
+
+   ..
+
+   vs.::
+
+      >>> func.json_object('{"a", "b"}').type
+      NullType()
+
+2. Function-aware expression support is needed; this most typically refers to
+   special operators related to datatypes such as :class:`_types.JSON` or
+   :class:`_types.ARRAY`
+
+3. Result value processing is needed, which may include types such as
+   :class:`_functions.DateTime`, :class:`_types.Boolean`, :class:`_types.Enum`,
+   or again special datatypes such as :class:`_types.JSON`,
+   :class:`_types.ARRAY`.
+
+.. _tutorial_window_functions:
+
+Using Window Functions
+~~~~~~~~~~~~~~~~~~~~~~
+
+A window function is a special use of a SQL aggregate function which calculates
+the aggregate value over the rows being returned in a group as the individual
+result rows are processed.  Whereas a function like ``MAX()`` will give you
+the highest value of a column within a set of rows, using the same function
+as a "window function" will given you the highest value for each row,
+*as of that row*.
+
+In SQL, window functions allow one to specify the rows over which the
+function should be applied, a "partition" value which considers the window
+over different sub-sets of rows, and an "order by" expression which importantly
+indicates the order in which rows should be applied to the aggregate function.
+
+In SQLAlchemy, all SQL functions generated by the :data:`_sql.func` namespace
+include a method :meth:`_functions.FunctionElement.over` which
+grants the window function, or "OVER", syntax; the construct produced
+is the :class:`_sql.Over` construct.
+
+A common function used with window functions is the ``row_number()`` function
+which simply counts rows. We may partition this row count against user name to
+number the email addresses of individual users:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select(
+    ...     func.row_number().over(partition_by=user_table.c.name),
+    ...     user_table.c.name,
+    ...     address_table.c.email_address
+    ... ).select_from(user_table).join(address_table)
+    >>> with engine.connect() as conn:
+    ...     result = conn.execute(stmt)
+    ...     print(result.all())
+    {opensql}BEGIN (implicit)
+    SELECT row_number() OVER (PARTITION BY user_account.name) AS anon_1,
+    user_account.name, address.email_address
+    FROM user_account JOIN address ON user_account.id = address.user_id
+    [...] ()
+    [(1, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (1, 'spongebob', 'spongebob@sqlalchemy.org')]
+    ROLLBACK
+
+Above, the :paramref:`_functions.FunctionElement.over.partition_by` parameter
+is used so that the ``PARTITION BY`` clause is rendered within the OVER clause.
+We also may make use of the ``ORDER BY`` clause using :paramref:`_functions.FunctionElement.over.order_by`:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select(
+    ...     func.count().over(order_by=user_table.c.name),
+    ...     user_table.c.name,
+    ...     address_table.c.email_address).select_from(user_table).join(address_table)
+    >>> with engine.connect() as conn:
+    ...     result = conn.execute(stmt)
+    ...     print(result.all())
+    {opensql}BEGIN (implicit)
+    SELECT count(*) OVER (ORDER BY user_account.name) AS anon_1,
+    user_account.name, address.email_address
+    FROM user_account JOIN address ON user_account.id = address.user_id
+    [...] ()
+    [(2, 'sandy', 'sandy@sqlalchemy.org'), (2, 'sandy', 'sandy@squirrelpower.org'), (3, 'spongebob', 'spongebob@sqlalchemy.org')]
+    ROLLBACK
+
+Further options for window functions include usage of ranges; see
+:func:`_expression.over` for more examples.
+
+.. tip::
+
+   It's important to note that the :meth:`_functions.FunctionElement.over`
+   method only applies to those SQL functions which are in fact aggregate
+   functions; while the :class:`_sql.Over` construct will happily render itself
+   for any SQL function given, the database will reject the expression if the
+   function itself is not a SQL aggregate function.
+
+.. _tutorial_functions_within_group:
+
+Special Modifiers WITHIN GROUP, FILTER
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The "WITHIN GROUP" SQL syntax is used in conjunction with an "ordered set"
+or a "hypothetical set" aggregate
+function.  Common "ordered set" functions include ``percentile_cont()``
+and ``rank()``.  SQLAlchemy includes built in implementations
+:class:`_functions.rank`, :class:`_functions.dense_rank`,
+:class:`_functions.mode`, :class:`_functions.percentile_cont` and
+:class:`_functions.percentile_disc` which include a :meth:`_functions.FunctionElement.within_group`
+method::
+
+    >>> print(
+    ...     func.unnest(
+    ...         func.percentile_disc([0.25,0.5,0.75,1]).within_group(user_table.c.name)
+    ...     )
+    ... )
+    unnest(percentile_disc(:percentile_disc_1) WITHIN GROUP (ORDER BY user_account.name))
+
+"FILTER" is supported by some backends to limit the range of an aggregate function to a
+particular subset of rows compared to the total range of rows returned, available
+using the :meth:`_functions.FunctionElement.filter` method::
+
+    >>> stmt = select(
+    ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'sandy'),
+    ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'spongebob')
+    ... ).select_from(user_table).join(address_table)
+    >>> with engine.connect() as conn:
+    ...     result = conn.execute(stmt)
+    ...     print(result.all())
+    {opensql}BEGIN (implicit)
+    SELECT count(address.email_address) FILTER (WHERE user_account.name = ?) AS anon_1,
+    count(address.email_address) FILTER (WHERE user_account.name = ?) AS anon_2
+    FROM user_account JOIN address ON user_account.id = address.user_id
+    [...] ('sandy', 'spongebob')
+    [(2, 1)]
+    ROLLBACK
+
+.. _tutorial_functions_table_valued:
+
+Table-Valued Functions
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Table-valued SQL functions support a scalar representation that contains named
+sub-elements. Often used for JSON and ARRAY-oriented functions as well as
+functions like ``generate_series()``, the table-valued function is specified in
+the FROM clause, and is then referred towards as a table, or sometimes even as
+a column. Functions of this form are prominent within the PostgreSQL database,
+however some forms of table valued functions are also supported by SQLite,
+Oracle, and SQL Server.
+
+.. seealso::
+
+    :ref:`postgresql_table_valued_overview` - in the :ref:`postgresql_toplevel` documentation.
+
+    While many databases support table valued and other special
+    forms, PostgreSQL tends to be where there is the most demand for these
+    features.   See this section for additional examples of PostgreSQL
+    syntaxes as well as additional features.
+
+SQLAlchemy provides the :meth:`_functions.FunctionElement.table_valued` method
+as the basic "table valued function" construct, which will convert a
+:data:`_sql.func` object into a FROM clause containing a series of named
+columns, based on string names passed positionally. This returns a
+:class:`_sql.TableValuedAlias` object, which is a function-enabled
+:class:`_sql.Alias` construct that may be used as any other FROM clause as
+introduced at :ref:`tutorial_using_aliases`. Below we illustrate the
+``json_each()`` function, which while common on PostgreSQL is also supported by
+modern versions of SQLite::
+
+    >>> onetwothree = func.json_each('["one", "two", "three"]').table_valued("value")
+    >>> stmt = select(onetwothree).where(onetwothree.c.value.in_(["two", "three"]))
+    >>> with engine.connect() as conn:
+    ...     result = conn.execute(stmt)
+    ...     print(result.all())
+    {opensql}BEGIN (implicit)
+    SELECT anon_1.value
+    FROM json_each(?) AS anon_1
+    WHERE anon_1.value IN (?, ?)
+    [...] ('["one", "two", "three"]', 'two', 'three')
+    [('two',), ('three',)]
+    ROLLBACK
+
+Above, we used the ``json_each()`` JSON function supported by SQLite and
+PostgreSQL to generate a table valued expression with a single column referred
+towards as ``value``, and then selected two of its three rows.
+
+.. seealso::
+
+    :ref:`postgresql_table_valued` - in the :ref:`postgresql_toplevel` documentation -
+    this section will detail additional syntaxes such as special column derivations
+    and "WITH ORDINALITY" that are known to work with PostgreSQL.
+
+.. _tutorial_functions_column_valued:
+
+Column Valued Functions - Table Valued Function as a Scalar Column
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A special syntax supported by PostgreSQL and Oracle is that of referring
+towards a function in the FROM clause, which then delivers itself as a
+single column in the columns clause of a SELECT statement or other column
+expression context.  PostgreSQL makes great use of this syntax for such
+functions as ``json_array_elements()``, ``json_object_keys()``,
+``json_each_text()``, ``json_each()``, etc.
+
+SQLAlchemy refers to this as a "column valued" function and is available
+by applying the :meth:`_functions.FunctionElement.column_valued` modifier
+to a :class:`_functions.Function` construct::
+
+    >>> from sqlalchemy import select, func
+    >>> stmt = select(func.json_array_elements('["one", "two"]').column_valued("x"))
+    >>> print(stmt)
+    SELECT x
+    FROM json_array_elements(:json_array_elements_1) AS x
+
+The "column valued" form is also supported by the Oracle dialect, where
+it is usable for custom SQL functions::
+
+    >>> from sqlalchemy.dialects import oracle
+    >>> stmt = select(func.scalar_strings(5).column_valued("s"))
+    >>> print(stmt.compile(dialect=oracle.dialect()))
+    SELECT COLUMN_VALUE s
+    FROM TABLE (scalar_strings(:scalar_strings_1)) s
+
+
+.. seealso::
+
+    :ref:`postgresql_column_valued` - in the :ref:`postgresql_toplevel` documentation.
 
 
 .. rst-class:: core-header, orm-addin

@@ -34,6 +34,7 @@ __all__ = [
     "Select",
     "Selectable",
     "TableClause",
+    "TableValuedAlias",
     "Update",
     "Values",
     "alias",
@@ -172,6 +173,7 @@ from .selectable import Subquery  # noqa
 from .selectable import subquery  # noqa
 from .selectable import TableClause  # noqa
 from .selectable import TableSample  # noqa
+from .selectable import TableValuedAlias  # noqa
 from .selectable import TextAsFrom  # noqa
 from .selectable import TextualSelect  # noqa
 from .selectable import Values  # noqa

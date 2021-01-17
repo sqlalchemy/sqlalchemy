@@ -494,6 +494,12 @@ class Compiled(object):
         else:
             raise exc.ObjectNotExecutableError(self.statement)
 
+    def visit_unsupported_compilation(self, element, err):
+        util.raise_(
+            exc.UnsupportedCompilationError(self, type(element)),
+            replace_context=err,
+        )
+
     @property
     def sql_compiler(self):
         """Return a Compiled that is capable of processing SQL expressions.
@@ -1718,13 +1724,18 @@ class SQLCompiler(Compiled):
             extract.expr._compiler_dispatch(self, **kwargs),
         )
 
+    def visit_scalar_function_column(self, element, **kw):
+        compiled_fn = self.visit_function(element.fn, **kw)
+        compiled_col = self.visit_column(element, **kw)
+        return "(%s).%s" % (compiled_fn, compiled_col)
+
     def visit_function(self, func, add_to_result_map=None, **kwargs):
         if add_to_result_map is not None:
             add_to_result_map(func.name, func.name, (), func.type)
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
         if disp:
-            return disp(func, **kwargs)
+            text = disp(func, **kwargs)
         else:
             name = FUNCTIONS.get(func.__class__, None)
             if name:
@@ -1739,7 +1750,7 @@ class SQLCompiler(Compiled):
                     else name
                 )
                 name = name + "%(expr)s"
-            return ".".join(
+            text = ".".join(
                 [
                     (
                         self.preparer.quote(tok)
@@ -1751,6 +1762,10 @@ class SQLCompiler(Compiled):
                 ]
                 + [name]
             ) % {"expr": self.function_argspec(func, **kwargs)}
+
+        if func._with_ordinality:
+            text += " WITH ORDINALITY"
+        return text
 
     def visit_next_value_func(self, next_value, **kw):
         return self.visit_sequence(next_value.sequence)
@@ -2533,6 +2548,15 @@ class SQLCompiler(Compiled):
             else:
                 return self.preparer.format_alias(cte, cte_name)
 
+    def visit_table_valued_alias(self, element, **kw):
+        if element._is_lateral:
+            return self.visit_lateral(element, **kw)
+        else:
+            return self.visit_alias(element, **kw)
+
+    def visit_table_valued_column(self, element, **kw):
+        return self.visit_column(element, **kw)
+
     def visit_alias(
         self,
         alias,
@@ -2584,6 +2608,24 @@ class SQLCompiler(Compiled):
             ret = inner + self.get_render_as_alias_suffix(
                 self.preparer.format_alias(alias, alias_name)
             )
+
+            if alias._supports_derived_columns and alias._render_derived:
+                ret += "(%s)" % (
+                    ", ".join(
+                        "%s%s"
+                        % (
+                            col.name,
+                            " %s"
+                            % self.dialect.type_compiler.process(
+                                col.type, **kwargs
+                            )
+                            if alias._render_derived_w_types
+                            else "",
+                        )
+                        for col in alias.c
+                    )
+                )
+
             if fromhints and alias in fromhints:
                 ret = self.format_from_hint_text(
                     ret, alias, fromhints[alias], iscrud
@@ -2600,9 +2642,9 @@ class SQLCompiler(Compiled):
         kw["subquery"] = True
         return self.visit_alias(subquery, **kw)
 
-    def visit_lateral(self, lateral, **kw):
+    def visit_lateral(self, lateral_, **kw):
         kw["lateral"] = True
-        return "LATERAL %s" % self.visit_alias(lateral, **kw)
+        return "LATERAL %s" % self.visit_alias(lateral_, **kw)
 
     def visit_tablesample(self, tablesample, asfrom=False, **kw):
         text = "%s TABLESAMPLE %s" % (
@@ -3736,6 +3778,20 @@ class StrSQLCompiler(SQLCompiler):
 
     def _fallback_column_name(self, column):
         return "<name unknown>"
+
+    @util.preload_module("sqlalchemy.engine.url")
+    def visit_unsupported_compilation(self, element, err, **kw):
+        if element.stringify_dialect != "default":
+            url = util.preloaded.engine_url
+            dialect = url.URL.create(element.stringify_dialect).get_dialect()()
+
+            compiler = dialect.statement_compiler(dialect, None)
+            if not isinstance(compiler, StrSQLCompiler):
+                return compiler.process(element)
+
+        return super(StrSQLCompiler, self).visit_unsupported_compilation(
+            element, err
+        )
 
     def visit_getitem_binary(self, binary, operator, **kw):
         return "%s[%s]" % (

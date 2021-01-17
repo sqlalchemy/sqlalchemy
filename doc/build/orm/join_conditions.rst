@@ -310,6 +310,8 @@ Will render as::
    flag to assist in the creation of :func:`_orm.relationship` constructs using
    custom operators.
 
+.. _relationship_custom_operator_sql_function:
+
 Custom operators based on SQL functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
