@@ -4130,7 +4130,7 @@ class DDLCompiler(Compiled):
         if column.identity is not None:
             colspec += " " + self.process(column.identity)
 
-        if not column.nullable:
+        if not column.nullable and not column.identity:
             colspec += " NOT NULL"
         return colspec
 

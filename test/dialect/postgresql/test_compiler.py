@@ -1778,6 +1778,25 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(INCREMENT BY 7 START WITH 4))",
         )
 
+    def test_column_identity_null(self):
+        # all other tests are in test_identity_column.py
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column(
+                "y",
+                Integer,
+                Identity(always=True, start=4, increment=7),
+                nullable=True,
+            ),
+        )
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
+            "(INCREMENT BY 7 START WITH 4) NULL)",
+        )
+
     def test_index_extra_include_1(self):
         metadata = MetaData()
         tbl = Table(
