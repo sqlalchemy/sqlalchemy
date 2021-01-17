@@ -924,6 +924,19 @@ class OracleCompiler(compiler.SQLCompiler):
         else:
             return ""
 
+    def visit_function(self, func, **kw):
+        text = super(OracleCompiler, self).visit_function(func, **kw)
+        if kw.get("asfrom", False):
+            text = "TABLE (%s)" % func
+        return text
+
+    def visit_table_valued_column(self, element, **kw):
+        text = super(OracleCompiler, self).visit_table_valued_column(
+            element, **kw
+        )
+        text = "COLUMN_VALUE " + text
+        return text
+
     def default_from(self):
         """Called when a ``SELECT`` statement has no froms,
         and no ``FROM`` clause is to be appended.

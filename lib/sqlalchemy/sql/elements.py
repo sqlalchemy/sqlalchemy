@@ -4317,11 +4317,82 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self.key, e
 
 
+class NamedColumn(ColumnElement):
+    is_literal = False
+    table = None
+
+    def _compare_name_for_result(self, other):
+        return (hasattr(other, "name") and self.name == other.name) or (
+            hasattr(other, "_label") and self._label == other._label
+        )
+
+    @util.memoized_property
+    def description(self):
+        if util.py3k:
+            return self.name
+        else:
+            return self.name.encode("ascii", "backslashreplace")
+
+    @HasMemoized.memoized_attribute
+    def _key_label(self):
+        if self.key != self.name:
+            return self._gen_label(self.key)
+        else:
+            return self._label
+
+    @HasMemoized.memoized_attribute
+    def _label(self):
+        return self._gen_label(self.name)
+
+    @HasMemoized.memoized_attribute
+    def _render_label_in_columns_clause(self):
+        return True
+
+    def _gen_label(self, name, dedupe_on_key=True):
+        return name
+
+    def _bind_param(self, operator, obj, type_=None, expanding=False):
+        return BindParameter(
+            self.key,
+            obj,
+            _compared_to_operator=operator,
+            _compared_to_type=self.type,
+            type_=type_,
+            unique=True,
+            expanding=expanding,
+        )
+
+    def _make_proxy(
+        self,
+        selectable,
+        name=None,
+        name_is_truncatable=False,
+        disallow_is_literal=False,
+        **kw
+    ):
+        c = ColumnClause(
+            coercions.expect(roles.TruncatedLabelRole, name or self.name)
+            if name_is_truncatable
+            else (name or self.name),
+            type_=self.type,
+            _selectable=selectable,
+            is_literal=False,
+        )
+        c._propagate_attrs = selectable._propagate_attrs
+        if name is None:
+            c.key = self.key
+        c._proxies = [self]
+        if selectable._is_clone_of is not None:
+            c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
+        return c.key, c
+
+
 class ColumnClause(
     roles.DDLReferredColumnRole,
     roles.LabeledColumnExprRole,
+    roles.StrAsPlainColumnRole,
     Immutable,
-    ColumnElement,
+    NamedColumn,
 ):
     """Represents a column expression from any textual string.
 
@@ -4359,6 +4430,9 @@ class ColumnClause(
         :class:`_schema.Column`
 
     """
+
+    table = None
+    is_literal = False
 
     __visit_name__ = "column"
 
@@ -4470,6 +4544,28 @@ class ColumnClause(
         self.type = type_api.to_instance(type_)
         self.is_literal = is_literal
 
+    def get_children(self, column_tables=False, **kw):
+        # override base get_children() to not return the Table
+        # or selectable that is parent to this column.  Traversals
+        # expect the columns of tables and subqueries to be leaf nodes.
+        return []
+
+    @HasMemoized.memoized_attribute
+    def _from_objects(self):
+        t = self.table
+        if t is not None:
+            return [t]
+        else:
+            return []
+
+    @HasMemoized.memoized_attribute
+    def _render_label_in_columns_clause(self):
+        return self.table is not None
+
+    @property
+    def _ddl_label(self):
+        return self._gen_label(self.name, dedupe_on_key=False)
+
     def _compare_name_for_result(self, other):
         if (
             self.is_literal
@@ -4490,46 +4586,6 @@ class ColumnClause(
             )
         else:
             return other.proxy_set.intersection(self.proxy_set)
-
-    def get_children(self, column_tables=False, **kw):
-        # override base get_children() to not return the Table
-        # or selectable that is parent to this column.  Traversals
-        # expect the columns of tables and subqueries to be leaf nodes.
-        return []
-
-    @HasMemoized.memoized_attribute
-    def _from_objects(self):
-        t = self.table
-        if t is not None:
-            return [t]
-        else:
-            return []
-
-    @util.memoized_property
-    def description(self):
-        if util.py3k:
-            return self.name
-        else:
-            return self.name.encode("ascii", "backslashreplace")
-
-    @HasMemoized.memoized_attribute
-    def _key_label(self):
-        if self.key != self.name:
-            return self._gen_label(self.key)
-        else:
-            return self._label
-
-    @HasMemoized.memoized_attribute
-    def _label(self):
-        return self._gen_label(self.name)
-
-    @HasMemoized.memoized_attribute
-    def _render_label_in_columns_clause(self):
-        return self.table is not None
-
-    @property
-    def _ddl_label(self):
-        return self._gen_label(self.name, dedupe_on_key=False)
 
     def _gen_label(self, name, dedupe_on_key=True):
         t = self.table
@@ -4575,17 +4631,6 @@ class ColumnClause(
         else:
             return name
 
-    def _bind_param(self, operator, obj, type_=None, expanding=False):
-        return BindParameter(
-            self.key,
-            obj,
-            _compared_to_operator=operator,
-            _compared_to_type=self.type,
-            type_=type_,
-            unique=True,
-            expanding=expanding,
-        )
-
     def _make_proxy(
         self,
         selectable,
@@ -4625,6 +4670,46 @@ class ColumnClause(
         if selectable._is_clone_of is not None:
             c._is_clone_of = selectable._is_clone_of.columns.get(c.key)
         return c.key, c
+
+
+class Record(NamedColumn):
+    _traverse_internals = [
+        ("name", InternalTraversal.dp_anon_name),
+        ("type", InternalTraversal.dp_type),
+        ("fromclause", InternalTraversal.dp_clauseelement),
+    ]
+
+    __visit_name__ = "column"
+
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def __init__(self, fromclause):
+        sqltypes = util.preloaded.sql_sqltypes
+        self.name = fromclause.name
+        self.fromclause = fromclause
+        self.type = sqltypes.RecordType()
+
+    @property
+    def _from_objects(self):
+        return [self.fromclause]
+
+
+class TableValuedColumn(NamedColumn):
+    __visit_name__ = "table_valued_column"
+
+    _traverse_internals = [
+        ("name", InternalTraversal.dp_anon_name),
+        ("type", InternalTraversal.dp_type),
+        ("scalar_alias", InternalTraversal.dp_clauseelement),
+    ]
+
+    def __init__(self, scalar_alias):
+        self.scalar_alias = scalar_alias
+        self.key = self.name = scalar_alias.name
+        self.type = scalar_alias.element.type
+
+    @property
+    def _from_objects(self):
+        return [self.scalar_alias]
 
 
 class CollationClause(ColumnElement):

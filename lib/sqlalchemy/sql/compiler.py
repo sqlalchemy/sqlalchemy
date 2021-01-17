@@ -1718,13 +1718,18 @@ class SQLCompiler(Compiled):
             extract.expr._compiler_dispatch(self, **kwargs),
         )
 
+    def visit_scalar_function_column(self, element, **kw):
+        compiled_fn = self.visit_function(element.fn, **kw)
+        compiled_col = self.visit_column(element, **kw)
+        return "(%s).%s" % (compiled_fn, compiled_col)
+
     def visit_function(self, func, add_to_result_map=None, **kwargs):
         if add_to_result_map is not None:
             add_to_result_map(func.name, func.name, (), func.type)
 
         disp = getattr(self, "visit_%s_func" % func.name.lower(), None)
         if disp:
-            return disp(func, **kwargs)
+            text = disp(func, **kwargs)
         else:
             name = FUNCTIONS.get(func.__class__, None)
             if name:
@@ -1739,7 +1744,7 @@ class SQLCompiler(Compiled):
                     else name
                 )
                 name = name + "%(expr)s"
-            return ".".join(
+            text = ".".join(
                 [
                     (
                         self.preparer.quote(tok)
@@ -1751,6 +1756,10 @@ class SQLCompiler(Compiled):
                 ]
                 + [name]
             ) % {"expr": self.function_argspec(func, **kwargs)}
+
+        if func._with_ordinality:
+            text += " WITH ORDINALITY"
+        return text
 
     def visit_next_value_func(self, next_value, **kw):
         return self.visit_sequence(next_value.sequence)
@@ -2526,6 +2535,27 @@ class SQLCompiler(Compiled):
                 return text
             else:
                 return self.preparer.format_alias(cte, cte_name)
+
+    def visit_table_valued_alias(self, element, **kw):
+        text = self.visit_alias(element, **kw)
+        if kw.get("asfrom") and element.named:
+            text += "(%s)" % (
+                ", ".join(
+                    "%s%s"
+                    % (
+                        col.name,
+                        " %s"
+                        % self.dialect.type_compiler.process(col.type, **kw)
+                        if not col.type._isnull
+                        else "",
+                    )
+                    for col in element.element.c
+                )
+            )
+        return text
+
+    def visit_table_valued_column(self, element, **kw):
+        return self.visit_column(element, **kw)
 
     def visit_alias(
         self,

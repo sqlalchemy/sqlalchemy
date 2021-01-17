@@ -51,6 +51,8 @@ from .elements import ColumnClause
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
+from .elements import Record
+from .elements import TableValuedColumn
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
@@ -622,6 +624,33 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
 
         return Alias._construct(self, name)
+
+    def record(self):
+        """Return a :class:`_sql.Record` object for this
+        :class:`_expression.FromClause`.
+
+        A "record" is a :class:`_sql.ColumnElement` that represents a complete
+        row in a table.   Support for this construct is backend dependent,
+        however databases such as PostgreSQL and Oracle have support
+        for "record" datatypes.
+
+        E.g.::
+
+            >>> from sqlalchemy import select, column, func, table
+            >>> a = table("a", column("id"), column("x"), column("y"))
+            >>> stmt = select(func.row_to_json(a.record()))
+            >>> print(stmt)
+            SELECT row_to_json(a) AS row_to_json_1
+            FROM a
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
+
+        """
+        return Record(self)
 
     def tablesample(self, sampling, name=None, seed=None):
         """Return a TABLESAMPLE alias of this :class:`_expression.FromClause`.
@@ -1581,6 +1610,44 @@ class Alias(roles.DMLTableRole, AliasedReturnsRows):
         return coercions.expect(
             roles.FromClauseRole, selectable, allow_select=True
         ).alias(name=name, flat=flat)
+
+
+class TableValuedAlias(Alias):
+    """An alias that includes the ability to be used in a columns context.
+
+    Provides the :attr:`_sql.ScalarAlias.column` accessor that returns
+    a :class:`_sql.ColumnElement` representing this object.
+
+    The main use case for this construct is that of PostgreSQL functions
+    that may be used in the FROM clause of a SELECT.
+
+    .. versionadded:: 1.4.0b2
+
+    """
+
+    __visit_name__ = "table_valued_alias"
+
+    named = False
+
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("name", InternalTraversal.dp_anon_name),
+        ("named", InternalTraversal.dp_boolean),
+    ]
+
+    def _init(self, selectable, name=None, named=False):
+        self.named = named
+        super(TableValuedAlias, self)._init(selectable, name=name)
+
+    @HasMemoized.memoized_attribute
+    def column(self):
+        """Return a column expression representing this
+        :class:`_sql.ScalarAlias`."""
+
+        return TableValuedColumn(self)
+
+    def alias(self, name=None):
+        return self.element.alias(name=name)
 
 
 class Lateral(AliasedReturnsRows):

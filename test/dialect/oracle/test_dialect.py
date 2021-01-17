@@ -7,6 +7,7 @@ from sqlalchemy import Computed
 from sqlalchemy import create_engine
 from sqlalchemy import exc
 from sqlalchemy import Float
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import outparam
@@ -946,3 +947,110 @@ class CXOracleConnectArgsTest(fixtures.TestBase):
             "auto_convert_lobs",
             False,
         )
+
+
+class TableValuedTest(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "oracle"
+
+    @testing.fixture
+    def scalar_strings(self, connection):
+        connection.exec_driver_sql(
+            "CREATE OR REPLACE TYPE strings_t IS TABLE OF VARCHAR2 (100)"
+        )
+        connection.exec_driver_sql(
+            r"""
+CREATE OR REPLACE FUNCTION scalar_strings (
+   count_in IN INTEGER)
+   RETURN strings_t
+   AUTHID DEFINER
+IS
+   l_strings   strings_t := strings_t ();
+BEGIN
+   l_strings.EXTEND (count_in);
+
+   FOR indx IN 1 .. count_in
+   LOOP
+      l_strings (indx) := 'some string';
+   END LOOP;
+
+   RETURN l_strings;
+END;
+        """
+        )
+        yield
+        connection.exec_driver_sql("DROP FUNCTION scalar_strings")
+        connection.exec_driver_sql("DROP TYPE strings_t")
+
+    @testing.fixture
+    def two_strings(self, connection):
+        connection.exec_driver_sql(
+            """
+CREATE OR REPLACE TYPE two_strings_ot
+   AUTHID DEFINER IS OBJECT
+(
+   string1 VARCHAR2 (10),
+   string2 VARCHAR2 (10)
+)"""
+        )
+        connection.exec_driver_sql(
+            """
+            CREATE OR REPLACE TYPE two_strings_nt IS TABLE OF two_strings_ot
+"""
+        )
+
+        connection.exec_driver_sql(
+            """
+        CREATE OR REPLACE FUNCTION three_pairs
+   RETURN two_strings_nt
+   AUTHID DEFINER
+IS
+   l_strings   two_strings_nt;
+BEGIN
+   RETURN two_strings_nt (two_strings_ot ('a', 'b'),
+                          two_strings_ot ('c', 'd'),
+                          two_strings_ot ('e', 'f'));
+END;
+"""
+        )
+        yield
+        connection.exec_driver_sql("DROP FUNCTION three_pairs")
+        connection.exec_driver_sql("DROP TYPE two_strings_nt")
+        connection.exec_driver_sql("DROP TYPE two_strings_ot")
+
+    def test_scalar_strings_control(self, scalar_strings, connection):
+        result = (
+            connection.exec_driver_sql(
+                "SELECT COLUMN_VALUE my_string FROM TABLE (scalar_strings (5))"
+            )
+            .scalars()
+            .all()
+        )
+        eq_(result, ["some string"] * 5)
+
+    def test_scalar_strings_named_control(self, scalar_strings, connection):
+        result = (
+            connection.exec_driver_sql(
+                "SELECT COLUMN_VALUE anon_1 "
+                "FROM TABLE (scalar_strings (5)) anon_1"
+            )
+            .scalars()
+            .all()
+        )
+        eq_(result, ["some string"] * 5)
+
+    def test_scalar_strings(self, scalar_strings, connection):
+        fn = func.scalar_strings(5)
+        result = connection.execute(select(fn.column_valued())).scalars().all()
+        eq_(result, ["some string"] * 5)
+
+    def test_two_strings_control(self, two_strings, connection):
+        result = connection.exec_driver_sql(
+            "SELECT string1, string2 FROM TABLE (three_pairs ())"
+        ).all()
+        eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])
+
+    def test_two_strings(self, two_strings, connection):
+        fn = func.three_pairs().table_valued("string1", "string2")
+        result = connection.execute(select(fn.c.string1, fn.c.string2)).all()
+        eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])
