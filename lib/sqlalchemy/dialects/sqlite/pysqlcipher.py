@@ -18,6 +18,12 @@
     ``pysqlcipher3`` is a fork of ``pysqlcipher`` for Python 3. This dialect
     will attempt to import it if ``pysqlcipher`` is non-present.
 
+    ``sqlcipher3`` is an independent DB-API 2.0 interface which is up-to-date
+    since ``pysqlcipher3`` is no longer actively maintained and fails to install
+    on ``python3.9`` on some systems.
+
+    .. versionadded:: 1.3.22 - added fallback import of sqlcipher3
+
     .. versionadded:: 1.1.4 - added fallback import for pysqlcipher3
 
     .. versionadded:: 0.9.9 - added pysqlcipher dialect
@@ -96,9 +102,12 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
             from pysqlcipher import dbapi2 as sqlcipher
         except ImportError as e:
             try:
-                from pysqlcipher3 import dbapi2 as sqlcipher
+                from sqlcipher3 import dbapi2 as sqlcipher
             except ImportError:
-                raise e
+                try:
+                    from pysqlcipher3 import dbapi2 as sqlcipher
+                except ImportError:
+                    raise e
 
         return sqlcipher
 
