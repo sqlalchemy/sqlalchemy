@@ -569,7 +569,7 @@ default takes place on attribute change events emitted from backrefs.  This is
 probably a confusing statement more easily described through demonstration; it
 means that, given a mapping such as this::
 
-    mapper(Order, order_table, properties={
+    mapper_registry.map_imperatively(Order, order_table, properties={
         'items' : relationship(Item, backref='order')
     })
 
@@ -592,9 +592,8 @@ place::
 
 This behavior can be disabled using the :paramref:`_orm.relationship.cascade_backrefs` flag::
 
-    mapper(Order, order_table, properties={
-        'items' : relationship(Item, backref='order',
-                                    cascade_backrefs=False)
+    mapper_registry.map_imperatively(Order, order_table, properties={
+        'items' : relationship(Item, backref='order', cascade_backrefs=False)
     })
 
 So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``

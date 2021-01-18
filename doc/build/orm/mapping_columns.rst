@@ -46,7 +46,7 @@ The corresponding technique for an :term:`imperative` mapping is
 to place the desired key in the :paramref:`_orm.mapper.properties`
 dictionary with the desired key::
 
-    registry.mapper(User, user_table, properties={
+    mapper_registry.map_imperatively(User, user_table, properties={
        'id': user_table.c.user_id,
        'name': user_table.c.user_name,
     })
