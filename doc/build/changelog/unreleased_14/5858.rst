@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5858
+
+    Fixed issue in new :meth:`_sql.Select.join` method where chaining from the
+    current JOIN wasn't looking at the right state, causing an expression like
+    "FROM a JOIN b <onclause>, b JOIN c <onclause>" rather than
+    "FROM a JOIN b <onclause> JOIN c <onclause>".
+
+.. change::
+    :tags: usecase, sql
+
+    Added :meth:`_sql.Select.outerjoin_from` method to complement
+    :meth:`_sql.Select.join_from`.

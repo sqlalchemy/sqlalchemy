@@ -3944,7 +3944,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
         replace_from_obj_index = None
 
-        from_clauses = self.statement._from_obj
+        from_clauses = self.from_clauses
 
         if from_clauses:
 
@@ -4642,6 +4642,19 @@ class Select(
             onclause = coercions.expect(roles.OnClauseRole, onclause)
         self._setup_joins += (
             (target, onclause, None, {"isouter": isouter, "full": full}),
+        )
+
+    def outerjoin_from(self, from_, target, onclause=None, full=False):
+        r"""Create a SQL LEFT OUTER JOIN against this :class:`_expression.Select`
+        object's criterion
+        and apply generatively, returning the newly resulting
+        :class:`_expression.Select`.
+
+        Usage is the same as that of :meth:`_selectable.Select.join_from`.
+
+        """
+        return self.join_from(
+            from_, target, onclause=onclause, isouter=True, full=full
         )
 
     @_generative
