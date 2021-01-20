@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql, postgresql, mysql, sqlite
+    :tickets: 5169
+
+    An informative error message is now raised for a selected set of DML
+    methods (currently all part of :class:`_dml.Insert` constructs) if they are
+    called a second time, which would implicitly cancel out the previous
+    setting.  The methods altered include:
+    :class:`_sqlite.Insert.on_conflict_do_update`,
+    :class:`_sqlite.Insert.on_conflict_do_nothing` (SQLite),
+    :class:`_postgresql.Insert.on_conflict_do_update`,
+    :class:`_postgresql.Insert.on_conflict_do_nothing` (PostgreSQL),
+    :class:`_mysql.Insert.on_duplicate_key_update` (MySQL)
