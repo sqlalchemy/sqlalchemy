@@ -482,6 +482,44 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
     __visit_name__ = "table"
 
+    constraints = None
+    """A collection of all :class:`_schema.Constraint` objects associated with
+      this :class:`_schema.Table`.
+
+      Includes :class:`_schema.PrimaryKeyConstraint`,
+      :class:`_schema.ForeignKeyConstraint`, :class:`_schema.UniqueConstraint`,
+      :class:`_schema.CheckConstraint`.  A separate collection
+      :attr:`_schema.Table.foreign_key_constraints` refers to the collection
+      of all :class:`_schema.ForeignKeyConstraint` objects, and the
+      :attr:`_schema.Table.primary_key` attribute refers to the single
+      :class:`_schema.PrimaryKeyConstraint` associated with the
+      :class:`_schema.Table`.
+
+      .. seealso::
+
+            :attr:`_schema.Table.constraints`
+
+            :attr:`_schema.Table.primary_key`
+
+            :attr:`_schema.Table.foreign_key_constraints`
+
+            :attr:`_schema.Table.indexes`
+
+            :class:`_reflection.Inspector`
+
+
+    """
+
+    indexes = None
+    """A collection of all :class:`_schema.Index` objects associated with this
+      :class:`_schema.Table`.
+
+      .. seealso::
+
+            :meth:`_reflection.Inspector.get_indexes`
+
+    """
+
     _traverse_internals = TableClause._traverse_internals + [
         ("schema", InternalTraversal.dp_string)
     ]
@@ -683,7 +721,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         :class:`_schema.ForeignKey`
         objects currently associated.
 
-        .. versionadded:: 1.0.0
+
+        .. seealso::
+
+            :attr:`_schema.Table.constraints`
+
+            :attr:`_schema.Table.foreign_keys`
+
+            :attr:`_schema.Table.indexes`
 
         """
         return set(fkc.constraint for fkc in self.foreign_keys)
@@ -1261,6 +1306,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             contain multiple columns, use the :class:`.Index` construct
             instead.
 
+            .. note:: the :attr:`_schema.Column.index` attribute on
+               :class:`_schema.Column`
+               **does not indicate** if this column is indexed or not, only
+               if this flag was explicitly set here.  To view indexes on
+               a column, view the :attr:`_schema.Table.indexes` collection
+               or use :meth:`_reflection.Inspector.get_indexes`.
+
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
 
@@ -1362,6 +1414,17 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
              To specify multiple columns in the constraint/index or to specify
              an explicit name, use the :class:`.UniqueConstraint` or
              :class:`.Index` constructs explicitly.
+
+            .. note:: the :attr:`_schema.Column.unique` attribute on
+                :class:`_schema.Column`
+                **does not indicate** if this column has a unique constraint or
+                not, only if this flag was explicitly set here.  To view
+                indexes and unique constraints that may involve this column,
+                view the
+                :attr:`_schema.Table.indexes` and/or
+                :attr:`_schema.Table.constraints` collections or use
+                :meth:`_reflection.Inspector.get_indexes` and/or
+                :meth:`_reflection.Inspector.get_unique_constraints`
 
         :param system: When ``True``, indicates this is a "system" column,
              that is a column which is automatically made available by the
@@ -1489,6 +1552,45 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             self.info = kwargs.pop("info")
 
         self._extra_kwargs(**kwargs)
+
+    foreign_keys = None
+    """A collection of all :class:`_schema.ForeignKey` marker objects
+       associated with this :class:`_schema.Column`.
+
+       Each object is a member of a :class:`_schema.Table`-wide
+       :class:`_schema.ForeignKeyConstraint`.
+
+       .. seealso::
+
+           :attr:`_schema.Table.foreign_keys`
+
+    """
+
+    index = None
+    """The value of the :paramref:`_schema.Column.index` parameter.
+
+       Does not indicate if this :class:`_schema.Column` is actually indexed
+       or not; use :attr:`_schema.Table.indexes`.
+
+       .. seealso::
+
+           :attr:`_schema.Table.indexes`
+    """
+
+    unique = None
+    """The value of the :paramref:`_schema.Column.unique` parameter.
+
+       Does not indicate if this :class:`_schema.Column` is actually subject to
+       a unique constraint or not; use :attr:`_schema.Table.indexes` and
+       :attr:`_schema.Table.constraints`.
+
+       .. seealso::
+
+           :attr:`_schema.Table.indexes`
+
+           :attr:`_schema.Table.constraints`.
+
+    """
 
     def _extra_kwargs(self, **kwargs):
         self._validate_dialect_kwargs(kwargs)

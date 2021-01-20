@@ -749,8 +749,16 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     @util.memoized_property
     def foreign_keys(self):
-        """Return the collection of :class:`_schema.ForeignKey` objects
+        """Return the collection of :class:`_schema.ForeignKey` marker objects
         which this FromClause references.
+
+        Each :class:`_schema.ForeignKey` is a member of a
+        :class:`_schema.Table`-wide
+        :class:`_schema.ForeignKeyConstraint`.
+
+        .. seealso::
+
+            :attr:`_schema.Table.foreign_key_constraints`
 
         """
         self._init_collections()
