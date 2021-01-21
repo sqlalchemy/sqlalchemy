@@ -19,10 +19,6 @@ unknown to SQLAlchemy, built-in or user defined. The section here only
 describes those functions where SQLAlchemy already knows what argument and
 return types are in use.
 
-.. seealso::
-
-    :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
-
 .. automodule:: sqlalchemy.sql.functions
    :members:
    :undoc-members:

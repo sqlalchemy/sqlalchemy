@@ -272,31 +272,6 @@ class CoreFixtures(object):
             func.next_value(Sequence("q")),
             func.next_value(Sequence("p")),
         ),
-        lambda: (
-            func.json_to_recordset("{foo}"),
-            func.json_to_recordset("{foo}").table_valued("a", "b"),
-            func.jsonb_to_recordset("{foo}").table_valued("a", "b"),
-            func.json_to_recordset("{foo}").named_table_valued("a", "b"),
-            func.json_to_recordset("{foo}").named_table_valued(
-                "a", with_ordinality="b"
-            ),
-            func.json_to_recordset("{foo}").named_table_valued(
-                "a", with_ordinality="c"
-            ),
-            func.json_to_recordset("{foo}").named_table_valued(
-                column("a", Integer), column("b", String)
-            ),
-            func.json_to_recordset("{foo}").named_table_valued("b", "c"),
-            func.json_to_recordset("{foo}")
-            .named_table_valued("a", "b")
-            .alias("foo"),
-            func.json_to_recordset("{foo}")
-            .table_valued("a", "b")
-            .alias("foo"),
-            func.json_to_recordset("{foo}").column_valued(),
-            func.json_to_recordset("{foo}").scalar_table_valued("foo"),
-        ),
-        lambda: (table_a.record(), table_b.record()),
         lambda: (True_(), False_()),
         lambda: (Null(),),
         lambda: (ReturnTypeFromArgs("foo"), ReturnTypeFromArgs(5)),

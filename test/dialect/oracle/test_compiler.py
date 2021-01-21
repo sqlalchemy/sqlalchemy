@@ -1481,34 +1481,3 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "REGEXP_REPLACE(mytable.myid, :myid_1, :myid_2, mytable.name)",
             checkparams={"myid_1": "pattern", "myid_2": "replacement"},
         )
-
-
-class TableValuedFunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
-    __dialect__ = "oracle"
-
-    def test_scalar_alias_column(self):
-        fn = func.scalar_strings(5)
-        stmt = select(fn.alias().column)
-        self.assert_compile(
-            stmt,
-            "SELECT COLUMN_VALUE anon_1 "
-            "FROM TABLE (scalar_strings(:scalar_strings_1)) anon_1",
-        )
-
-    def test_column_valued(self):
-        fn = func.scalar_strings(5)
-        stmt = select(fn.column_valued())
-        self.assert_compile(
-            stmt,
-            "SELECT COLUMN_VALUE anon_1 "
-            "FROM TABLE (scalar_strings(:scalar_strings_1)) anon_1",
-        )
-
-    def test_table_valued(self):
-        fn = func.three_pairs().table_valued("string1", "string2")
-        stmt = select(fn.c.string1, fn.c.string2)
-        self.assert_compile(
-            stmt,
-            "SELECT anon_1.string1, anon_1.string2 "
-            "FROM TABLE (three_pairs()) anon_1",
-        )

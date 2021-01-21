@@ -431,20 +431,6 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
             except exc.ArgumentError as err:
                 self._raise_for_expected(element, err=err)
 
-    def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
-        if isinstance(element, roles.AnonymizedFromClauseRole):
-            advice = (
-                "To create a "
-                "column expression from a FROM clause row "
-                "as a whole, use the .record() method."
-            )
-        else:
-            advice = None
-
-        return super(ExpressionElementImpl, self)._raise_for_expected(
-            element, argname=argname, resolved=resolved, advice=advice, **kw
-        )
-
 
 class BinaryElementImpl(ExpressionElementImpl, RoleImpl):
 
@@ -609,13 +595,6 @@ class ColumnArgumentImpl(_NoTextCoercion, RoleImpl):
 
 class ColumnArgumentOrKeyImpl(_ReturnsStringKey, RoleImpl):
     __slots__ = ()
-
-
-class StrAsPlainColumnImpl(_CoerceLiterals, RoleImpl):
-    __slots__ = ()
-
-    def _text_coercion(self, element, argname=None):
-        return elements.ColumnClause(element)
 
 
 class ByOfImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl, roles.ByOfRole):

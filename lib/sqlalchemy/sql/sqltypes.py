@@ -3110,10 +3110,6 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
-class RecordType(TypeEngine):
-    """Refers to a table record type."""
-
-
 class MatchType(Boolean):
     """Refers to the return type of the MATCH operator.
 

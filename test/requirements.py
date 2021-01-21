@@ -957,13 +957,6 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["mssql", "sqlite"])
 
     @property
-    def tuple_valued_builtin_functions(self):
-        return only_on(
-            lambda config: self._sqlite_json(config)
-            or against(config, "postgresql")
-        )
-
-    @property
     def array_type(self):
         return only_on(
             [

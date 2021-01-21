@@ -44,10 +44,6 @@ class ColumnArgumentOrKeyRole(ColumnArgumentRole):
     _role_name = "Column expression or string key"
 
 
-class StrAsPlainColumnRole(ColumnArgumentRole):
-    _role_name = "Column expression or string key"
-
-
 class ColumnListRole(SQLRole):
     """Elements suitable for forming comma separated lists of expressions."""
 
