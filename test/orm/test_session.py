@@ -1726,11 +1726,11 @@ class SessionInterface(fixtures.TestBase):
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blacklist = set(("begin", "query"))
+        blocklist = set(("begin", "query"))
 
         ok = set()
         for meth in Session.public_methods:
-            if meth in blacklist:
+            if meth in blocklist:
                 continue
             spec = inspect_getfullargspec(getattr(Session, meth))
             if len(spec[0]) > 1 or spec[1]:
