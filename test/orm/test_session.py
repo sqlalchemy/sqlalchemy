@@ -1811,7 +1811,7 @@ class SessionInterface(fixtures.TestBase):
     def _public_session_methods(self):
         Session = sa.orm.session.Session
 
-        blacklist = {"begin", "query", "bind_mapper", "get", "bind_table"}
+        blocklist = {"begin", "query", "bind_mapper", "get", "bind_table"}
         specials = {"__iter__", "__contains__"}
         ok = set()
         for name in dir(Session):
@@ -1823,7 +1823,7 @@ class SessionInterface(fixtures.TestBase):
                     or _py_inspect.isfunction(getattr(Session, name))
                 )
             ):
-                if name in blacklist:
+                if name in blocklist:
                     continue
                 spec = inspect_getfullargspec(getattr(Session, name))
                 if len(spec[0]) > 1 or spec[1]:
