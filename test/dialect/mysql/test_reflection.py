@@ -16,6 +16,7 @@ from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
 from sqlalchemy import MetaData
 from sqlalchemy import NCHAR
+from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import SmallInteger
 from sqlalchemy import sql
@@ -24,6 +25,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import TIMESTAMP
+from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import UniqueConstraint
@@ -249,98 +251,55 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
     __only_on__ = "mysql", "mariadb"
     __backend__ = True
 
-    def test_default_reflection(self):
-        """Test reflection of column defaults."""
-
-        # TODO: this test is a mess.   should be broken into individual
-        # combinations
-
-        from sqlalchemy.dialects.mysql import VARCHAR
-
-        def_table = Table(
-            "mysql_def",
-            MetaData(),
-            Column(
-                "c1",
-                VARCHAR(10, collation="utf8_unicode_ci"),
-                DefaultClause(""),
-                nullable=False,
+    @testing.combinations(
+        (
+            mysql.VARCHAR(10, collation="utf8_unicode_ci"),
+            DefaultClause(""),
+            "''",
+        ),
+        (String(10), DefaultClause("abc"), "'abc'"),
+        (String(10), DefaultClause("0"), "'0'"),
+        (
+            TIMESTAMP,
+            DefaultClause("2009-04-05 12:00:00"),
+            "'2009-04-05 12:00:00'",
+        ),
+        (TIMESTAMP, None, None),
+        (
+            TIMESTAMP,
+            DefaultClause(
+                sql.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
             ),
-            Column("c2", String(10), DefaultClause("0")),
-            Column("c3", String(10), DefaultClause("abc")),
-            Column("c4", TIMESTAMP, DefaultClause("2009-04-05 12:00:00")),
-            Column("c5", TIMESTAMP),
-            Column(
-                "c6",
-                TIMESTAMP,
-                DefaultClause(
-                    sql.text(
-                        "CURRENT_TIMESTAMP " "ON UPDATE CURRENT_TIMESTAMP"
-                    )
-                ),
+            re.compile(
+                r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
+                re.I,
             ),
-            Column("c7", mysql.DOUBLE(), DefaultClause("0.0000")),
-            Column("c8", mysql.DOUBLE(22, 6), DefaultClause("0.0000")),
-        )
+        ),
+        (mysql.DOUBLE(), DefaultClause("0.0000"), "0"),
+        (mysql.DOUBLE(22, 6), DefaultClause("0.0000"), "0.000000"),
+        (Integer, DefaultClause("1"), "1"),
+        (Integer, DefaultClause("-1"), "-1"),
+        (mysql.DOUBLE, DefaultClause("-25.03"), "-25.03"),
+        (mysql.DOUBLE, DefaultClause("-.001"), "-0.001"),
+        argnames="datatype, default, expected",
+    )
+    def test_default_reflection(
+        self, datatype, default, expected, metadata, connection
+    ):
+        t1 = Table("t1", metadata, Column("x", datatype, default))
+        t1.create(connection)
+        insp = inspect(connection)
 
-        def_table.create(testing.db)
-        try:
-            reflected = Table(
-                "mysql_def", MetaData(), autoload_with=testing.db
-            )
-        finally:
-            def_table.drop(testing.db)
-        assert def_table.c.c1.server_default.arg == ""
-        assert def_table.c.c2.server_default.arg == "0"
-        assert def_table.c.c3.server_default.arg == "abc"
-        assert def_table.c.c4.server_default.arg == "2009-04-05 12:00:00"
-        assert str(reflected.c.c1.server_default.arg) == "''"
-        assert str(reflected.c.c2.server_default.arg) == "'0'"
-        assert str(reflected.c.c3.server_default.arg) == "'abc'"
-        assert (
-            str(reflected.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
-        )
-        assert reflected.c.c5.default is None
-        assert reflected.c.c5.server_default is None
-        assert reflected.c.c6.default is None
-        assert str(reflected.c.c7.server_default.arg) in ("0", "'0'")
+        datatype_inst = types.to_instance(datatype)
 
-        # this is because the numeric is 6 decimal places, MySQL
-        # formats it to that many places.
-        assert str(reflected.c.c8.server_default.arg) in (
-            "0.000000",
-            "'0.000000'",
-        )
-
-        assert re.match(
-            r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
-            str(reflected.c.c6.server_default.arg).upper(),
-        )
-        reflected.create(testing.db)
-        try:
-            reflected2 = Table(
-                "mysql_def", MetaData(), autoload_with=testing.db
-            )
-        finally:
-            reflected.drop(testing.db)
-        assert str(reflected2.c.c1.server_default.arg) == "''"
-        assert str(reflected2.c.c2.server_default.arg) == "'0'"
-        assert str(reflected2.c.c3.server_default.arg) == "'abc'"
-        assert (
-            str(reflected2.c.c4.server_default.arg) == "'2009-04-05 12:00:00'"
-        )
-        assert reflected.c.c5.default is None
-        assert reflected.c.c5.server_default is None
-        assert reflected.c.c6.default is None
-        assert str(reflected.c.c7.server_default.arg) in ("0", "'0'")
-        assert str(reflected.c.c8.server_default.arg) in (
-            "0.000000",
-            "'0.000000'",
-        )
-        assert re.match(
-            r"CURRENT_TIMESTAMP(\(\))? ON UPDATE CURRENT_TIMESTAMP(\(\))?",
-            str(reflected.c.c6.server_default.arg).upper(),
-        )
+        col = insp.get_columns("t1")[0]
+        if hasattr(expected, "match"):
+            assert expected.match(col["default"])
+        elif isinstance(datatype_inst, (Integer, Numeric)):
+            pattern = re.compile(r"\'?%s\'?" % expected)
+            assert pattern.match(col["default"])
+        else:
+            eq_(col["default"], expected)
 
     def test_reflection_with_table_options(self, metadata, connection):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
