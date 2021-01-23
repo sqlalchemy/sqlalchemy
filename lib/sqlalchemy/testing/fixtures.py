@@ -28,10 +28,6 @@ from ..schema import sort_tables_and_constraints
 
 
 class TestBase(object):
-    # A sequence of database names to always run, regardless of the
-    # constraints below.
-    __allowlist__ = ()
-
     # A sequence of requirement names matching testing.requires decorators
     __requires__ = ()
 
