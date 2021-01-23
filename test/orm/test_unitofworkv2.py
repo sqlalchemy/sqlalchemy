@@ -1,20 +1,25 @@
 from sqlalchemy import cast
+from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import FetchedValue
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import Identity
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import JSON
 from sqlalchemy import literal
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -3098,3 +3103,80 @@ class EnsureCacheTest(fixtures.FutureEngineMixin, UOWTest):
 
             is_(conn._execution_options["compiled_cache"], cache)
             eq_(len(inspect(User)._compiled_cache), 3)
+
+
+class ORMOnlyPrimaryKeyTest(fixtures.TestBase):
+    @testing.requires.identity_columns
+    @testing.requires.returning
+    def test_a(self, base, run_test):
+        class A(base):
+            __tablename__ = "a"
+
+            id = Column(Integer, Identity())
+            included_col = Column(Integer)
+
+            __mapper_args__ = {"primary_key": [id], "eager_defaults": True}
+
+        run_test(A, A())
+
+    @testing.requires.sequences_as_server_defaults
+    @testing.requires.returning
+    def test_b(self, base, run_test):
+
+        seq = Sequence("x_seq")
+
+        class A(base):
+            __tablename__ = "a"
+
+            id = Column(Integer, seq, server_default=seq.next_value())
+            included_col = Column(Integer)
+
+            __mapper_args__ = {"primary_key": [id], "eager_defaults": True}
+
+        run_test(A, A())
+
+    def test_c(self, base, run_test):
+        class A(base):
+            __tablename__ = "a"
+
+            id = Column(Integer, nullable=False)
+            included_col = Column(Integer)
+
+            __mapper_args__ = {"primary_key": [id]}
+
+        a1 = A(id=1, included_col=select(1).scalar_subquery())
+        run_test(A, a1)
+
+    def test_d(self, base, run_test):
+        class A(base):
+            __tablename__ = "a"
+
+            id = Column(Integer, nullable=False)
+            updated_at = Column(DateTime, server_default=func.now())
+
+            __mapper_args__ = {"primary_key": [id], "eager_defaults": True}
+
+        a1 = A(id=1)
+        run_test(A, a1)
+
+    @testing.fixture
+    def base(self, metadata):
+        yield declarative_base(metadata=metadata)
+        clear_mappers()
+
+    @testing.fixture
+    def run_test(self, metadata, connection):
+        def go(A, a1):
+            metadata.create_all(connection)
+
+            with Session(connection) as s:
+                s.add(a1)
+
+                s.flush()
+                eq_(a1.id, 1)
+                s.commit()
+
+                aa = s.query(A).first()
+                is_(a1, aa)
+
+        return go

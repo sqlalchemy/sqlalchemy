@@ -1082,11 +1082,11 @@ class EmptyInsertTest(fixtures.TestBase):
 
 
 class AutoIncrementTest(fixtures.TestBase):
-    __requires__ = ("identity",)
+
     __backend__ = True
 
-    @testing.provide_metadata
-    def test_autoincrement_single_col(self, connection):
+    @testing.requires.empty_inserts
+    def test_autoincrement_single_col(self, metadata, connection):
         single = Table(
             "single", self.metadata, Column("id", Integer, primary_key=True)
         )
