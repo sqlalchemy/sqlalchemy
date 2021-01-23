@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5645
+
+    For SQLAlchemy 1.3 only, setup.py pins pg8000 to a version lower than
+    1.16.6. Version 1.16.6 and above is supported by SQLAlchemy 1.4. Pull
+    request courtesy Giuseppe Lumia.
