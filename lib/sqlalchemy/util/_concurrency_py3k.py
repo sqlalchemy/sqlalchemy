@@ -44,8 +44,9 @@ def await_only(awaitable: Coroutine) -> Any:
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
-        raise exc.InvalidRequestError(
-            "greenlet_spawn has not been called; can't call await_() here."
+        raise exc.MissingGreenlet(
+            "greenlet_spawn has not been called; can't call await_() here. "
+            "Was IO attempted in an unexpected place?"
         )
 
     # returns the control to the driver greenlet passing it
@@ -69,9 +70,10 @@ def await_fallback(awaitable: Coroutine) -> Any:
     if not isinstance(current, _AsyncIoGreenlet):
         loop = asyncio.get_event_loop()
         if loop.is_running():
-            raise exc.InvalidRequestError(
+            raise exc.MissingGreenlet(
                 "greenlet_spawn has not been called and asyncio event "
-                "loop is already running; can't call await_() here."
+                "loop is already running; can't call await_() here. "
+                "Was IO attempted in an unexpected place?"
             )
         return loop.run_until_complete(awaitable)
 
