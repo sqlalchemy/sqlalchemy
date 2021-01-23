@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql, reflection
+    :tickets: 5860
+
+    Fixed bug where MySQL server default reflection would fail for numeric
+    values with a negation symbol present.
+
