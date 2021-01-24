@@ -192,7 +192,7 @@ def run_setup(with_cext):
             ],
             "postgresql": ["psycopg2"],
             "postgresql_psycopg2binary": ["psycopg2-binary"],
-            "postgresql_pg8000": ["pg8000"],
+            "postgresql_pg8000": ["pg8000<1.16.6"],
             "postgresql_psycopg2cffi": ["psycopg2cffi"],
             "oracle": ["cx_oracle"],
             "mssql_pyodbc": ["pyodbc"],
