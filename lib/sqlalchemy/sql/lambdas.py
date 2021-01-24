@@ -1001,7 +1001,7 @@ class AnalyzedFunction(object):
             # additionally, each PyWrapper will log that it did in fact
             # create a parameter, otherwise, it's some kind of Python
             # object in the closure and we want to track that, to make
-            # sure it doesn't change to somehting else, or if it does,
+            # sure it doesn't change to something else, or if it does,
             # that we create a different tracked function with that
             # variable.
             self.expr = lambda_element._invoke_user_fn(tracker_instrumented_fn)

@@ -413,7 +413,7 @@ class ORMExecuteState(util.MemoizedSlots):
 
         Handlers will very likely not want to add any options to queries
         when such an operation is occurring, as loader options are already
-        capable of being propigated to relationship loaders and should
+        capable of being propagated to relationship loaders and should
         be already present.
 
         .. seealso::
@@ -978,7 +978,7 @@ class Session(_SessionClassMethods):
         :param autocommit:
           Defaults to ``False``. When ``True``, the
           :class:`.Session` does not automatically begin transactions for
-          individual statement exections, will acquire connections from the
+          individual statement executions, will acquire connections from the
           engine on an as-needed basis, releasing to the connection pool
           after each statement. Flushes will begin and commit (or possibly
           rollback) their own transaction if no transaction is present.

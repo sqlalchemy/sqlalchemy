@@ -533,7 +533,7 @@ def format_argspec_plus(fn, grouped=True):
         )
 
     elif spec[1]:
-        # im not sure what this is
+        # I'm not sure what this is
         self_arg = "%s[0]" % spec[1]
 
         apply_pos_proxied = apply_pos
@@ -1844,7 +1844,7 @@ def inject_param_text(doctext, inject_params):
                     indent = " " * len(m.group(1)) + " "
 
                     # but if the next line has text, use that line's
-                    # indentntation
+                    # indentation
                     if doclines:
                         m2 = re.match(r"(\s+)\S", doclines[0])
                         if m2:

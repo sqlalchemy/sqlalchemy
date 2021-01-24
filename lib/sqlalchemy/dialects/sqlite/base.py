@@ -2132,7 +2132,7 @@ class SQLiteDialect(default.DefaultDialect):
         return colspec
 
     def _resolve_type_affinity(self, type_):
-        """Return a data type from a reflected column, using affinity tules.
+        """Return a data type from a reflected column, using affinity rules.
 
         SQLite's goal for universal compatibility introduces some complexity
         during reflection, as a column's defined type might not actually be a
@@ -2143,7 +2143,7 @@ class SQLiteDialect(default.DefaultDialect):
         listed in http://www.sqlite.org/datatype3.html section 2.1.
 
         This method allows SQLAlchemy to support that algorithm, while still
-        providing access to smarter reflection utilities by regcognizing
+        providing access to smarter reflection utilities by recognizing
         column definitions that SQLite only supports through affinity (like
         DATE and DOUBLE).
 
@@ -2224,7 +2224,7 @@ class SQLiteDialect(default.DefaultDialect):
                 referred_pk = self.get_pk_constraint(
                     connection, rtbl, schema=schema, **kw
                 )
-                # note that if table doesnt exist, we still get back a record,
+                # note that if table doesn't exist, we still get back a record,
                 # just it has no columns in it
                 referred_columns = referred_pk["constrained_columns"]
             else:

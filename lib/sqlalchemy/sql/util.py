@@ -504,7 +504,7 @@ class _repr_row(_repr_base):
 class _repr_params(_repr_base):
     """Provide a string view of bound parameters.
 
-    Truncates display to a given numnber of 'multi' parameter sets,
+    Truncates display to a given number of 'multi' parameter sets,
     as well as long values to a given number of characters.
 
     """
@@ -852,7 +852,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
             ):
                 # we are a SELECT statement and not derived from an alias of a
                 # table (which nonetheless may be a table our SELECT derives
-                # from), so return the alias to prevent futher traversal
+                # from), so return the alias to prevent further traversal
                 # or
                 # we are an alias of a table and we are not derived from an
                 # alias of a table (which nonetheless may be the same table

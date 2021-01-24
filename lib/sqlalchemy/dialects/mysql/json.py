@@ -21,7 +21,7 @@ class JSON(sqltypes.JSON):
 
     .. seealso::
 
-        :class:`_types.JSON` - main documenation for the generic
+        :class:`_types.JSON` - main documentation for the generic
         cross-platform JSON datatype.
 
     The :class:`.mysql.JSON` type supports persistence of JSON values

@@ -154,7 +154,7 @@ class Mapper(
         legacy_is_orphan=False,
         _compiled_cache_size=100,
     ):
-        r"""Direct consructor for a new :class:`_orm.Mapper` object.
+        r"""Direct constructor for a new :class:`_orm.Mapper` object.
 
         The :func:`_orm.mapper` function is normally invoked through the
         use of the :class:`_orm.registry` object through either the

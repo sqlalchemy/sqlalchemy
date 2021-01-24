@@ -125,7 +125,7 @@ of ``1024``::
         mysql_key_block_size="1024"
        )
 
-When supporing :ref:`mysql_mariadb_only_mode` mode, similar keys against
+When supporting :ref:`mysql_mariadb_only_mode` mode, similar keys against
 the "mariadb" prefix must be included as well.  The values can of course
 vary independently so that different settings on MySQL vs. MariaDB may
 be maintained::
@@ -272,7 +272,7 @@ Server Side Cursors
 -------------------
 
 Server-side cursor support is available for the mysqlclient, PyMySQL,
-maridbconnector dialects and may also be available in others.   This makes use
+mariadbconnector dialects and may also be available in others.   This makes use
 of either the "buffered=True/False" flag if available or by using a class such
 as ``MySQLdb.cursors.SSCursor`` or ``pymysql.cursors.SSCursor`` internally.
 

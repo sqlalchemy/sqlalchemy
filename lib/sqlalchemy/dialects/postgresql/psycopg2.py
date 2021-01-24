@@ -74,8 +74,8 @@ using ``host`` as an additional keyword argument::
 
 .. _psycopg2_multi_host:
 
-Specfiying multiple fallback hosts
-------------------------------------
+Specifiying multiple fallback hosts
+-----------------------------------
 
 psycopg2 supports multiple connection points in the connection string.
 When the ``host`` parameter is used multiple times in the query section of
