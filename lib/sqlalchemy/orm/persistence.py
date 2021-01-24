@@ -1222,7 +1222,6 @@ def _emit_insert_statements(
                         )
 
                     primary_key = result.inserted_primary_key
-                    assert primary_key
                     for pk, col in zip(
                         primary_key, mapper._pks_by_table[table]
                     ):

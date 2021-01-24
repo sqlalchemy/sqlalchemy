@@ -253,21 +253,6 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["oracle"])
 
     @property
-    def identity(self):
-        """Target database must support GENERATED AS IDENTITY or a facsimile.
-
-        Includes GENERATED AS IDENTITY, AUTOINCREMENT, AUTO_INCREMENT, or other
-        column DDL feature that fills in a DB-generated identifier at
-        INSERT-time without requiring pre-execution of a SEQUENCE or other
-        artifact.
-
-        """
-        return skip_if(
-            ["firebird", "oracle", "postgresql", "sybase"],
-            "not supported by database",
-        )
-
-    @property
     def temporary_tables(self):
         """target database supports temporary tables"""
         return skip_if(["firebird", self._sqlite_file_db], "not supported (?)")
