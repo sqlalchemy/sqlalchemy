@@ -1847,6 +1847,9 @@ colspecs = {
     sqltypes.Enum: ENUM,
     sqltypes.JSON.JSONPathType: _json.JSONPathType,
     sqltypes.JSON: _json.JSON,
+    sqltypes.DateTime: default._StrDateTime,
+    sqltypes.Date: default._StrDate,
+    sqltypes.Time: default._StrTime,
 }
 
 ischema_names = {
