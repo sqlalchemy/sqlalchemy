@@ -496,7 +496,7 @@ class SuiteRequirements(Requirements):
 
     @property
     def no_sequences(self):
-        """the oppopsite of "sequences", DB does not support sequences at
+        """the opposite of "sequences", DB does not support sequences at
         all."""
 
         return exclusions.NotPredicate(self.sequences)

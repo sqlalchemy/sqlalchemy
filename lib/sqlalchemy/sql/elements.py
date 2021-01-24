@@ -2242,7 +2242,7 @@ class BooleanClauseList(ClauseList, ColumnElement):
                     lcc = 1
                 else:
                     against = operator
-                    # techincally this would be len(convert_clauses) + 1
+                    # technically this would be len(convert_clauses) + 1
                     # however this only needs to indicate "greater than one"
                     lcc = 2
                 convert_clauses.append(clause)
@@ -2550,7 +2550,7 @@ class Tuple(ClauseList, ColumnElement):
             )
 
     def self_group(self, against=None):
-        # Tuple is parenthsized by definition.
+        # Tuple is parenthesized by definition.
         return self
 
 

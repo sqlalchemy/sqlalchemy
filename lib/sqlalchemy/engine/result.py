@@ -1096,7 +1096,7 @@ class Result(_WithKeys, ResultInternal):
         # type: () -> Any
         """Return exactly one scalar result or raise an exception.
 
-        This is equvalent to calling :meth:`.Result.scalars` and then
+        This is equivalent to calling :meth:`.Result.scalars` and then
         :meth:`.Result.one`.
 
         .. seealso::
@@ -1112,7 +1112,7 @@ class Result(_WithKeys, ResultInternal):
         # type: () -> Optional[Any]
         """Return exactly one or no scalar result.
 
-        This is equvalent to calling :meth:`.Result.scalars` and then
+        This is equivalent to calling :meth:`.Result.scalars` and then
         :meth:`.Result.one_or_none`.
 
         .. seealso::
@@ -1528,7 +1528,7 @@ class FrozenResult(object):
     :meth:`_engine.Result.freeze` method of any :class:`_engine.Result`
     object.
 
-    A new iterable :class:`.Result` object is generatged from a fixed
+    A new iterable :class:`.Result` object is generated from a fixed
     set of data each time the :class:`.FrozenResult` is invoked as
     a callable::
 
@@ -1709,7 +1709,7 @@ class MergedResult(IteratorResult):
         self._unique_filter_state = results[0]._unique_filter_state
         self._yield_per = results[0]._yield_per
 
-        # going to try someting w/ this in next rev
+        # going to try something w/ this in next rev
         self._source_supports_scalars = results[0]._source_supports_scalars
 
         self._attributes = self._attributes.merge_with(

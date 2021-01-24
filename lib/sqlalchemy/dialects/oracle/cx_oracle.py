@@ -53,7 +53,7 @@ and converted to the correct symbol::
    :paramref:`_sa.create_engine.connect_args` parameter also accepts all
    cx_Oracle DBAPI connect arguments.
 
-To pass arguments directly to ``.connect()`` wihtout using the query
+To pass arguments directly to ``.connect()`` without using the query
 string, use the :paramref:`_sa.create_engine.connect_args` dictionary.
 Any cx_Oracle parameter value and/or constant may be passed, such as::
 
@@ -334,7 +334,7 @@ disable this coercion to decimal for performance reasons, pass the flag
     engine = create_engine("oracle+cx_oracle://dsn", coerce_to_decimal=False)
 
 The ``coerce_to_decimal`` flag only impacts the results of plain string
-SQL staements that are not otherwise associated with a :class:`.Numeric`
+SQL statements that are not otherwise associated with a :class:`.Numeric`
 SQLAlchemy type (or a subclass of such).
 
 .. versionchanged:: 1.2  The numeric handling system for cx_Oracle has been

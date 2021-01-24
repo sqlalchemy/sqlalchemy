@@ -1156,7 +1156,7 @@ class CreateEnginePlugin(object):
 
             The :class:`_engine.URL` object is now immutable, so a
             :class:`_engine.CreateEnginePlugin` that needs to alter the
-            :class:`_engine.URL` object should impliement the
+            :class:`_engine.URL` object should implement the
             :meth:`_engine.CreateEnginePlugin.update_url` method.
 
         :param kwargs: The keyword arguments passed to

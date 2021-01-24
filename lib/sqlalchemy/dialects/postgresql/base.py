@@ -234,7 +234,7 @@ that will be implicitly referred towards when a particular table or other
 object is referenced in a SQL statement.  As detailed in the next section
 :ref:`postgresql_schema_reflection`, SQLAlchemy is generally organized around
 the concept of keeping this variable at its default value of ``public``,
-however, in order to have it set to any arbirary name or names when connections
+however, in order to have it set to any arbitrary name or names when connections
 are used automatically, the "SET SESSION search_path" command may be invoked
 for all connections in a pool using the following event handler, as discussed
 at :ref:`schema_set_default_connections`::
@@ -255,7 +255,7 @@ at :ref:`schema_set_default_connections`::
 
 The reason the recipe is complicated by use of the ``.autocommit`` DBAPI
 attribute is so that when the ``SET SESSION search_path`` directive is invoked,
-it is invoked outside of the scope of any tranasction and therefore will not
+it is invoked outside of the scope of any transaction and therefore will not
 be reverted when the DBAPI connection has a rollback.
 
 .. seealso::
@@ -1189,7 +1189,7 @@ Using JSON/JSONB with ARRAY
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Similar to using ENUM, prior to SQLAlchemy 1.3.17, for an ARRAY of JSON/JSONB
-we need to render the appropriate CAST.   Current psycopg2 drivers accomodate
+we need to render the appropriate CAST.   Current psycopg2 drivers accommodate
 the result set correctly without any special steps.
 
 .. versionchanged:: 1.3.17 The combination of JSON/JSONB and ARRAY is now
@@ -2262,7 +2262,7 @@ class PGCompiler(compiler.SQLCompiler):
     def fetch_clause(self, select, **kw):
         # pg requires parens for non literal clauses. It's also required for
         # bind parameters if a ::type casts is used by the driver (asyncpg),
-        # so it's easies to just always add it
+        # so it's easiest to just always add it
         text = ""
         if select._offset_clause is not None:
             text += "\n OFFSET (%s) ROWS" % self.process(

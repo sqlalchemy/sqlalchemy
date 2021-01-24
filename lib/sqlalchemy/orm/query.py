@@ -96,7 +96,7 @@ class Query(
     :meth:`_query.Query.with_session`
     method.
 
-    For a full walkthrough of :class:`_query.Query` usage, see the
+    For a full walk through of :class:`_query.Query` usage, see the
     :ref:`ormtutorial_toplevel`.
 
     """
@@ -771,7 +771,7 @@ class Query(
         rows (which are most).
 
         As of SQLAlchemy 1.4, the :meth:`_orm.Query.yield_per` method is
-        equvalent to using the ``yield_per`` execution option at the ORM level.
+        equivalent to using the ``yield_per`` execution option at the ORM level.
         See the section :ref:`orm_queryguide_yield_per` for further background
         on this option.
 
@@ -936,7 +936,7 @@ class Query(
         """Return a Query with a specific 'autoflush' setting.
 
         As of SQLAlchemy 1.4, the :meth:`_orm.Query.autoflush` method
-        is equvalent to using the ``autoflush`` execution option at the
+        is equivalent to using the ``autoflush`` execution option at the
         ORM level. See the section :ref:`orm_queryguide_autoflush` for
         further background on this option.
 
@@ -950,7 +950,7 @@ class Query(
         as they are loaded, or reused from the current :class:`.Session`.
 
         As of SQLAlchemy 1.4, the :meth:`_orm.Query.populate_existing` method
-        is equvalent to using the ``populate_existing`` execution option at the
+        is equivalent to using the ``populate_existing`` execution option at the
         ORM level. See the section :ref:`orm_queryguide_populate_existing` for
         further background on this option.
 
@@ -1135,7 +1135,7 @@ class Query(
         **automatic aliasing** to the entities inside the subquery, when
         they are referenced on the outside.  Above, if we continue to
         refer to the ``User`` entity without any additional aliasing applied
-        to it, those references wil be in terms of the subquery::
+        to it, those references will be in terms of the subquery::
 
             q = session.query(User).filter(User.name.like('e%')).\
                 limit(5).from_self().\
@@ -1301,7 +1301,7 @@ class Query(
         # this enables clause adaptation for non-ORM
         # expressions.
         # legacy.  see test/orm/test_froms.py for various
-        # "oldstyle" tests that rely on this and the correspoinding
+        # "oldstyle" tests that rely on this and the corresponding
         # "newtyle" that do not.
         self._compile_options += {"_orm_only_from_obj_alias": False}
 

@@ -291,7 +291,7 @@ def declarative_base(
 
         Base = declarative_base()
 
-    Is equvialent to::
+    Is equivalent to::
 
         from sqlalchemy.orm import registry
 
@@ -612,7 +612,7 @@ class registry(object):
         """Map a class declaratively.
 
         In this form of mapping, the class is scanned for mapping information,
-        including for columns to be associaed with a table, and/or an
+        including for columns to be associated with a table, and/or an
         actual table object.
 
         Returns the :class:`_orm.Mapper` object.

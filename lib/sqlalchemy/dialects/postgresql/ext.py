@@ -87,7 +87,7 @@ class aggregate_order_by(expression.ColumnElement):
 class ExcludeConstraint(ColumnCollectionConstraint):
     """A table-level EXCLUDE constraint.
 
-    Defines an EXCLUDE constraint as described in the `postgres
+    Defines an EXCLUDE constraint as described in the `PostgreSQL
     documentation`__.
 
     __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE

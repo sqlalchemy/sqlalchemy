@@ -409,7 +409,7 @@ class DeferredReflection(object):
                                 ),
                             )
 
-                            # contoversy!  do we resolve it here? or leave
+                            # controversy!  do we resolve it here? or leave
                             # it deferred?   I think doing it here is necessary
                             # so the connection does not leak.
                             rel.secondary = rel.secondary()

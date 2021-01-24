@@ -306,7 +306,7 @@ def _shallow_annotate(element, annotations):
     """Annotate the given ClauseElement and copy its internals so that
     internal objects refer to the new annotated object.
 
-    Basically used to apply a "dont traverse" annotation to a
+    Basically used to apply a "don't traverse" annotation to a
     selectable, without digging throughout the whole
     structure wasting time.
     """
