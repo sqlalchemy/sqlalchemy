@@ -41,6 +41,7 @@ from sqlalchemy.schema import DropIndex
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import naming
 from sqlalchemy.sql.elements import _NONE_NAME
+from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -760,7 +761,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             eq_(repr(const), exp)
 
 
-class ToMetaDataTest(fixtures.TestBase, ComparesTables):
+class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
     @testing.requires.check_constraints
     def test_copy(self):
         # TODO: modernize this test
@@ -912,6 +913,53 @@ class ToMetaDataTest(fixtures.TestBase, ComparesTables):
         b2 = b.tometadata(m2)
         a2 = a.tometadata(m2)
         assert b2.c.y.references(a2.c.x)
+
+    def test_column_collection_constraint_w_ad_hoc_columns(self):
+        """Test ColumnCollectionConstraint that has columns that aren't
+        part of the Table.
+
+        """
+        meta = MetaData()
+
+        uq1 = UniqueConstraint(literal_column("some_name"))
+        cc1 = CheckConstraint(literal_column("some_name") > 5)
+        table = Table(
+            "mytable",
+            meta,
+            Column("myid", Integer, primary_key=True),
+            Column("name", String(40), nullable=True),
+            uq1,
+            cc1,
+        )
+
+        self.assert_compile(
+            schema.AddConstraint(uq1),
+            "ALTER TABLE mytable ADD UNIQUE (some_name)",
+            dialect="default",
+        )
+        self.assert_compile(
+            schema.AddConstraint(cc1),
+            "ALTER TABLE mytable ADD CHECK (some_name > 5)",
+            dialect="default",
+        )
+        meta2 = MetaData()
+        table2 = table.tometadata(meta2)
+        uq2 = [
+            c for c in table2.constraints if isinstance(c, UniqueConstraint)
+        ][0]
+        cc2 = [
+            c for c in table2.constraints if isinstance(c, CheckConstraint)
+        ][0]
+        self.assert_compile(
+            schema.AddConstraint(uq2),
+            "ALTER TABLE mytable ADD UNIQUE (some_name)",
+            dialect="default",
+        )
+        self.assert_compile(
+            schema.AddConstraint(cc2),
+            "ALTER TABLE mytable ADD CHECK (some_name > 5)",
+            dialect="default",
+        )
 
     def test_change_schema(self):
         meta = MetaData()

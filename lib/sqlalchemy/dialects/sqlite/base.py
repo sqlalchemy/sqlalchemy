@@ -618,6 +618,7 @@ from ...engine import default
 from ...engine import reflection
 from ...sql import ColumnElement
 from ...sql import compiler
+from ...sql import schema
 from ...types import BLOB  # noqa
 from ...types import BOOLEAN  # noqa
 from ...types import CHAR  # noqa
@@ -1187,9 +1188,11 @@ class SQLiteDDLCompiler(compiler.DDLCompiler):
             "on_conflict"
         ]
         if on_conflict_clause is None and len(constraint.columns) == 1:
-            on_conflict_clause = list(constraint)[0].dialect_options["sqlite"][
-                "on_conflict_unique"
-            ]
+            col1 = list(constraint)[0]
+            if isinstance(col1, schema.SchemaItem):
+                on_conflict_clause = list(constraint)[0].dialect_options[
+                    "sqlite"
+                ]["on_conflict_unique"]
 
         if on_conflict_clause is not None:
             text += " ON CONFLICT " + on_conflict_clause

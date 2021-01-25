@@ -9,6 +9,7 @@ from .array import ARRAY
 from ...sql import elements
 from ...sql import expression
 from ...sql import functions
+from ...sql import schema
 from ...sql.schema import ColumnCollectionConstraint
 
 
@@ -218,8 +219,14 @@ class ExcludeConstraint(ColumnCollectionConstraint):
 
         self.ops = kw.get("ops", {})
 
-    def copy(self, **kw):
-        elements = [(col, self.operators[col]) for col in self.columns.keys()]
+    def copy(self, target_table=None, **kw):
+        elements = [
+            (
+                schema._copy_expression(expr, self.parent, target_table),
+                self.operators[expr.name],
+            )
+            for expr in self.columns
+        ]
         c = self.__class__(
             *elements,
             name=self.name,
