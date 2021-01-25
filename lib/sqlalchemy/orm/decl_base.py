@@ -325,6 +325,94 @@ class _ClassScanMapperConfig(_MapperConfig):
             def before_configured():
                 self.cls.__declare_first__()
 
+    def _cls_attr_override_checker(self, cls):
+        """Produce a function that checks if a class has overridden an
+        attribute, taking SQLAlchemy-enabled dataclass fields into account.
+
+        """
+        sa_dataclass_metadata_key = _get_immediate_cls_attr(
+            cls, "__sa_dataclass_metadata_key__", None
+        )
+
+        if sa_dataclass_metadata_key is None:
+
+            def attribute_is_overridden(key, obj):
+                return getattr(cls, key) is not obj
+
+        else:
+
+            all_datacls_fields = {
+                f.name: f.metadata[sa_dataclass_metadata_key]
+                for f in util.dataclass_fields(cls)
+                if sa_dataclass_metadata_key in f.metadata
+            }
+            local_datacls_fields = {
+                f.name: f.metadata[sa_dataclass_metadata_key]
+                for f in util.local_dataclass_fields(cls)
+                if sa_dataclass_metadata_key in f.metadata
+            }
+
+            absent = object()
+
+            def attribute_is_overridden(key, obj):
+                # this function likely has some failure modes still if
+                # someone is doing a deep mixing of the same attribute
+                # name as plain Python attribute vs. dataclass field.
+
+                ret = local_datacls_fields.get(key, absent)
+
+                if ret is obj:
+                    return False
+                elif ret is not absent:
+                    return True
+
+                ret = getattr(cls, key, obj)
+
+                if ret is obj:
+                    return False
+                elif ret is not absent:
+                    return True
+
+                ret = all_datacls_fields.get(key, absent)
+
+                if ret is obj:
+                    return False
+                elif ret is not absent:
+                    return True
+
+                # can't find another attribute
+                return False
+
+        return attribute_is_overridden
+
+    def _cls_attr_resolver(self, cls):
+        """produce a function to iterate the "attributes" of a class,
+        adjusting for SQLAlchemy fields embedded in dataclass fields.
+
+        """
+        sa_dataclass_metadata_key = _get_immediate_cls_attr(
+            cls, "__sa_dataclass_metadata_key__", None
+        )
+
+        if sa_dataclass_metadata_key is None:
+
+            def local_attributes_for_class():
+                for name, obj in vars(cls).items():
+                    yield name, obj
+
+        else:
+
+            def local_attributes_for_class():
+                for name, obj in vars(cls).items():
+                    yield name, obj
+                for field in util.local_dataclass_fields(cls):
+                    if sa_dataclass_metadata_key in field.metadata:
+                        yield field.name, field.metadata[
+                            sa_dataclass_metadata_key
+                        ]
+
+        return local_attributes_for_class
+
     def _scan_attributes(self):
         cls = self.cls
         dict_ = self.dict_
@@ -333,9 +421,9 @@ class _ClassScanMapperConfig(_MapperConfig):
         table_args = inherited_table_args = None
         tablename = None
 
-        for base in cls.__mro__:
+        attribute_is_overridden = self._cls_attr_override_checker(self.cls)
 
-            sa_dataclass_metadata_key = None
+        for base in cls.__mro__:
 
             class_mapped = (
                 base is not cls
@@ -345,25 +433,14 @@ class _ClassScanMapperConfig(_MapperConfig):
                 )
             )
 
-            if sa_dataclass_metadata_key is None:
-                sa_dataclass_metadata_key = _get_immediate_cls_attr(
-                    base, "__sa_dataclass_metadata_key__", None
-                )
-
-            def attributes_for_class(cls):
-                for name, obj in vars(cls).items():
-                    yield name, obj
-                if sa_dataclass_metadata_key:
-                    for field in util.dataclass_fields(cls):
-                        if sa_dataclass_metadata_key in field.metadata:
-                            yield field.name, field.metadata[
-                                sa_dataclass_metadata_key
-                            ]
+            local_attributes_for_class = self._cls_attr_resolver(base)
 
             if not class_mapped and base is not cls:
-                self._produce_column_copies(attributes_for_class, base)
+                self._produce_column_copies(
+                    local_attributes_for_class, attribute_is_overridden
+                )
 
-            for name, obj in attributes_for_class(base):
+            for name, obj in local_attributes_for_class():
                 if name == "__mapper_args__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -471,6 +548,15 @@ class _ClassScanMapperConfig(_MapperConfig):
                     else:
                         self._warn_for_decl_attributes(base, name, obj)
                 elif name not in dict_ or dict_[name] is not obj:
+                    # here, we are definitely looking at the target class
+                    # and not a superclass.   this is currently a
+                    # dataclass-only path.  if the name is only
+                    # a dataclass field and isn't in local cls.__dict__,
+                    # put the object there.
+
+                    # assert that the dataclass-enabled resolver agrees
+                    # with what we are seeing
+                    assert not attribute_is_overridden(name, obj)
                     dict_[name] = obj
 
         if inherited_table_args and not tablename:
@@ -489,14 +575,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                 % (key, cls)
             )
 
-    def _produce_column_copies(self, attributes_for_class, base):
+    def _produce_column_copies(
+        self, attributes_for_class, attribute_is_overridden
+    ):
         cls = self.cls
         dict_ = self.dict_
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
-        for name, obj in attributes_for_class(base):
+
+        for name, obj in attributes_for_class():
             if isinstance(obj, Column):
-                if getattr(cls, name) is not obj:
+                if attribute_is_overridden(name, obj):
                     # if column has been overridden
                     # (like by the InstrumentedAttribute of the
                     # superclass), skip

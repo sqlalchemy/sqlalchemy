@@ -425,8 +425,25 @@ if py37:
     import dataclasses
 
     def dataclass_fields(cls):
+        """Return a sequence of all dataclasses.Field objects associated
+        with a class."""
+
         if dataclasses.is_dataclass(cls):
             return dataclasses.fields(cls)
+        else:
+            return []
+
+    def local_dataclass_fields(cls):
+        """Return a sequence of all dataclasses.Field objects associated with
+        a class, excluding those that originate from a superclass."""
+
+        if dataclasses.is_dataclass(cls):
+            super_fields = set()
+            for sup in cls.__bases__:
+                super_fields.update(dataclass_fields(sup))
+            return [
+                f for f in dataclasses.fields(cls) if f not in super_fields
+            ]
         else:
             return []
 
@@ -434,6 +451,9 @@ if py37:
 else:
 
     def dataclass_fields(cls):
+        return []
+
+    def local_dataclass_fields(cls):
         return []
 
 

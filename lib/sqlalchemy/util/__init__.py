@@ -66,6 +66,7 @@ from .compat import int_types  # noqa
 from .compat import iterbytes  # noqa
 from .compat import itertools_filter  # noqa
 from .compat import itertools_filterfalse  # noqa
+from .compat import local_dataclass_fields  # noqa
 from .compat import namedtuple  # noqa
 from .compat import next  # noqa
 from .compat import nullcontext  # noqa

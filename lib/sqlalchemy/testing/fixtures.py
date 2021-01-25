@@ -552,6 +552,7 @@ class DeclarativeMappedTest(MappedTest):
             metaclass=FindFixtureDeclarative,
             cls=DeclarativeBasic,
         )
+
         cls.DeclarativeBasic = _DeclBase
 
         # sets up cls.Basic which is helpful for things like composite
