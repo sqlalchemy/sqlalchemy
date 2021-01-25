@@ -6,6 +6,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import Computed
+from sqlalchemy import Date
 from sqlalchemy import delete
 from sqlalchemy import Enum
 from sqlalchemy import exc
@@ -804,6 +805,64 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.AddConstraint(cons),
             "ALTER TABLE testtbl ADD EXCLUDE USING gist " "(room WITH =)",
+            dialect=postgresql.dialect(),
+        )
+
+    @testing.combinations(
+        (True, "deferred"),
+        (False, "immediate"),
+        argnames="deferrable_value, initially_value",
+    )
+    def test_copy_exclude_constraint_adhoc_columns(
+        self, deferrable_value, initially_value
+    ):
+        meta = MetaData()
+        table = Table(
+            "mytable",
+            meta,
+            Column("myid", Integer, Sequence("foo_id_seq"), primary_key=True),
+            Column("valid_from_date", Date(), nullable=True),
+            Column("valid_thru_date", Date(), nullable=True),
+        )
+        cons = ExcludeConstraint(
+            (
+                literal_column(
+                    "daterange(valid_from_date, valid_thru_date, '[]')"
+                ),
+                "&&",
+            ),
+            where=column("valid_from_date") <= column("valid_thru_date"),
+            name="ex_mytable_valid_date_range",
+            deferrable=deferrable_value,
+            initially=initially_value,
+        )
+
+        table.append_constraint(cons)
+        expected = (
+            "ALTER TABLE mytable ADD CONSTRAINT ex_mytable_valid_date_range "
+            "EXCLUDE USING gist "
+            "(daterange(valid_from_date, valid_thru_date, '[]') WITH &&) "
+            "WHERE (valid_from_date <= valid_thru_date) "
+            "%s %s"
+            % (
+                "NOT DEFERRABLE" if not deferrable_value else "DEFERRABLE",
+                "INITIALLY %s" % initially_value,
+            )
+        )
+        self.assert_compile(
+            schema.AddConstraint(cons),
+            expected,
+            dialect=postgresql.dialect(),
+        )
+
+        meta2 = MetaData()
+        table2 = table.to_metadata(meta2)
+        cons2 = [
+            c for c in table2.constraints if isinstance(c, ExcludeConstraint)
+        ][0]
+        self.assert_compile(
+            schema.AddConstraint(cons2),
+            expected,
             dialect=postgresql.dialect(),
         )
 
