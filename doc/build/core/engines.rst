@@ -297,14 +297,62 @@ are described in the following sub-sections.
 Special Keyword Arguments Passed to dbapi.connect()
 ---------------------------------------------------
 
-For special arguments that must be passed to the DBAPI for which the
-SQLAlchemy dialect does not parse from the query string correctly,
-the :paramref:`_sa.create_engine.connect_args` dictionary can be used.
-This is often when special sub-structures or objects must be passed to
-the DBAPI, or sometimes it's just that a particular flag must be sent as
+All Python DBAPIs accept additional arguments beyond the basics of connecting.
+Common parameters include those to specify character set encodings and timeout
+values; more complex data includes special DBAPI constants and objects and SSL
+sub-parameters. There are two rudimentary means of passing these arguments
+without complexity.
+
+Add Parameters to the URL Query string
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Simple string values, as well as some numeric values and boolean flags, may be
+often specified in the query string of the URL directly. A common example of
+this is DBAPIs that accept an argument ``encoding`` for character encodings,
+such as most MySQL DBAPIs::
+
+    engine = create_engine(
+        "mysql+pymysql://user:pass@host/test?charset=utf8mb4"
+    )
+
+The advantage of using the query string is that additional DBAPI options may be
+specified in configuration files in a manner that's portable to the DBAPI
+specified in the URL. The specific parameters passed through at this level vary
+by SQLAlchemy dialect. Some dialects pass all arguments through as strings,
+while others will parse for specific datatypes and move parameters to different
+places, such as into driver-level DSNs and connect strings. As per-dialect
+behavior in this area currently varies, the dialect documentation should be
+consulted for the specific dialect in use to see if particular parameters are
+supported at this level.
+
+.. tip::
+
+  A general technique to display the exact arguments passed to the DBAPI
+  for a given URL may be performed using the :meth:`.Dialect.create_connect_args`
+  method directly as follows::
+
+    >>> from sqlalchemy import create_engine
+    >>> engine = create_engine("mysql+pymysql://some_user:some_pass@some_host/test?charset=utf8mb4")
+    >>> args, kwargs = engine.dialect.create_connect_args(engine.url)
+    >>> args, kwargs
+    ([], {'host': 'some_host', 'database': 'test', 'user': 'some_user', 'password': 'some_pass', 'charset': 'utf8mb4', 'client_flag': 2})
+
+  The above ``args, kwargs`` pair is normally passed to the DBAPI as
+  ``dbapi.connect(*args, **kwargs)``.
+
+Use the connect_args dictionary parameter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A more general system of passing any parameter to the ``dbapi.connect()``
+function that is guaranteed to pass all parameters at all times is the
+:paramref:`_sa.create_engine.connect_args` dictionary parameter. This may be
+used for parameters that are otherwise not handled by the dialect when added to
+the query string, as well as when special sub-structures or objects must be
+passed to the DBAPI. Sometimes it's just that a particular flag must be sent as
 the ``True`` symbol and the SQLAlchemy dialect is not aware of this keyword
-argument.  Below illustrates the use of a psycopg2 "connection factory"
-that replaces the underlying implementation the connection::
+argument to coerce it from its string form as presented in the URL. Below
+illustrates the use of a psycopg2 "connection factory" that replaces the
+underlying implementation the connection::
 
 
     engine = create_engine(
@@ -312,15 +360,26 @@ that replaces the underlying implementation the connection::
         connect_args={"connection_factory": MyConnectionFactory}
     )
 
+Another example is the pyodbc "timeout" parameter::
+
+    engine = create_engine(
+      "mssql+pyodbc://user:pass@sqlsrvr?driver=ODBC+Driver+13+for+SQL+Server",
+      connect_args={"timeout": 30}
+    )
+
+The above example also illustrates that both URL "query string" parameters as
+well as :paramref:`_sa.create_engine.connect_args` may be used at the same
+time; in the case of pyodbc, the "driver" keyword has special meaning
+within the URL.
 
 Controlling how parameters are passed to the DBAPI connect() function
 ---------------------------------------------------------------------
 
-At the next level, we can customize how the DBAPI ``connect()`` function
-itself is called using the :meth:`.DialectEvents.do_connect` event hook.
-This hook is passed the full ``*args, **kwargs`` that the dialect would
-send to ``connect()``.  These collections can then be modified in place
-to alter how they are used::
+Beyond manipulating the parameters passed to ``connect()``, we can further
+customize how the DBAPI ``connect()`` function itself is called using the
+:meth:`.DialectEvents.do_connect` event hook. This hook is passed the full
+``*args, **kwargs`` that the dialect would send to ``connect()``. These
+collections can then be modified in place to alter how they are used::
 
     from sqlalchemy import event
 
