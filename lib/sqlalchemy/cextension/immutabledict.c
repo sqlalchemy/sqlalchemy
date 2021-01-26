@@ -80,9 +80,13 @@ ImmutableDict_subscript(ImmutableDict *self, PyObject *key)
     PyObject *err_bytes;
 #endif
 
-    value = PyDict_GetItem((PyObject *)self->dict, key);
+    value = PyDict_GetItemWithError(self->dict, key);
 
     if (value == NULL) {
+        if (PyErr_Occurred() != NULL) {
+            // there was an error while hashing the key
+            return NULL;
+        }
 #if PY_MAJOR_VERSION >= 3
         err_bytes = PyUnicode_AsUTF8String(key);
         if (err_bytes == NULL)
@@ -280,20 +284,34 @@ static PyObject *
 ImmutableDict_get(ImmutableDict *self, PyObject *args)
 {
     PyObject *key;
+    PyObject *value;
     PyObject *default_value = Py_None;
 
     if (!PyArg_UnpackTuple(args, "key", 1, 2, &key, &default_value)) {
         return NULL;
     }
 
+    value = PyDict_GetItemWithError(self->dict, key);
 
-    return PyObject_CallMethod(self->dict, "get", "OO", key, default_value);
+    if (value == NULL) {
+        if (PyErr_Occurred() != NULL) {
+            // there was an error while hashing the key
+            return NULL;
+        } else {
+            // return default
+            Py_INCREF(default_value);
+            return default_value;
+        }
+    } else {
+        Py_INCREF(value);
+        return value;
+    }
 }
 
 static PyObject *
 ImmutableDict_keys(ImmutableDict *self)
 {
-    return PyObject_CallMethod(self->dict, "keys", "");
+    return PyDict_Keys(self->dict);
 }
 
 static int
@@ -312,20 +330,19 @@ ImmutableDict_richcompare(ImmutableDict *self, PyObject *other, int op)
 static PyObject *
 ImmutableDict_iter(ImmutableDict *self)
 {
-    return PyObject_CallMethod(self->dict, "__iter__", "");
+    return PyObject_GetIter(self->dict);
 }
 
 static PyObject *
 ImmutableDict_items(ImmutableDict *self)
 {
-    return PyObject_CallMethod(self->dict, "items", "");
+    return PyDict_Items(self->dict);
 }
 
 static PyObject *
 ImmutableDict_values(ImmutableDict *self)
 {
-    return PyObject_CallMethod(self->dict, "values", "");
-
+    return PyDict_Values(self->dict);
 }
 
 static PyObject *
