@@ -36,6 +36,7 @@ from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
@@ -1122,7 +1123,9 @@ $$ LANGUAGE plpgsql;
         )
         eq_(
             connection.execute(
-                users.select().apply_labels().where(users.c.name == "name2")
+                users.select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .where(users.c.name == "name2")
             ).fetchall(),
             [(2, "name2")],
         )
@@ -1138,7 +1141,9 @@ $$ LANGUAGE plpgsql;
         )
         eq_(
             connection.execute(
-                users.select().apply_labels().where(users.c.id == 4)
+                users.select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .where(users.c.id == 4)
             ).fetchall(),
             [(4, "newname")],
         )

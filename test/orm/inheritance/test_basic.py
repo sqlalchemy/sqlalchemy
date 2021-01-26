@@ -29,6 +29,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm.util import instance_str
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -2589,7 +2590,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
             polymorphic_identity="sub",
             with_polymorphic=(
                 "*",
-                base.outerjoin(sub).select().apply_labels().alias("foo"),
+                base.outerjoin(sub)
+                .select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .alias("foo"),
             ),
         )
         sess = fixture_session()

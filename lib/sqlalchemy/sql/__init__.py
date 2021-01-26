@@ -47,6 +47,10 @@ from .expression import intersect_all  # noqa
 from .expression import Join  # noqa
 from .expression import join  # noqa
 from .expression import label  # noqa
+from .expression import LABEL_STYLE_DEFAULT  # noqa
+from .expression import LABEL_STYLE_DISAMBIGUATE_ONLY  # noqa
+from .expression import LABEL_STYLE_NONE  # noqa
+from .expression import LABEL_STYLE_TABLENAME_PLUS_COL  # noqa
 from .expression import lambda_stmt  # noqa
 from .expression import LambdaElement  # noqa
 from .expression import lateral  # noqa

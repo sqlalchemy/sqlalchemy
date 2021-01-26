@@ -13,11 +13,13 @@ from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import roles
 from sqlalchemy.sql import table
 from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import WrapsColumnExpression
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -200,7 +202,8 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(table1, ta)
             .select_from(table1.join(ta, on))
-            .where(ta.c.this_is_the_data_column == "data3"),
+            .where(ta.c.this_is_the_data_column == "data3")
+            .set_label_style(LABEL_STYLE_NONE),
             "SELECT "
             "some_large_named_table.this_is_the_primarykey_column, "
             "some_large_named_table.this_is_the_data_column, "
@@ -261,7 +264,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
         s = (
             table1.select()
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .order_by(table1.c.this_is_the_primarykey_column)
         )
 
@@ -275,7 +278,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
         # select query
         s = (
             table1.select()
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .order_by(table1.c.this_is_the_primarykey_column)
             .limit(2)
         )
@@ -312,7 +315,7 @@ class MaxIdentTest(fixtures.TestBase, AssertsCompiledSQL):
             .where(table1.c.this_is_the_primarykey_column == 4)
             .alias()
         )
-        s = select(q).apply_labels()
+        s = select(q).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         self.assert_compile(
             s,
@@ -579,7 +582,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
             .where(table1.c.this_is_the_primarykey_column == 4)
             .alias()
         )
-        x = select(q).apply_labels()
+        x = select(q).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         compile_dialect = default.DefaultDialect(label_length=10)
         self.assert_compile(
@@ -610,7 +613,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
             .where(table1.c.this_is_the_primarykey_column == 4)
             .alias()
         )
-        x = select(q).apply_labels()
+        x = select(q).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         compile_dialect = default.DefaultDialect(label_length=4)
         self.assert_compile(
@@ -640,7 +643,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             table1.select()
             .where(table1.c.this_is_the_primarykey_column == 4)
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .alias("foo")
         )
 
@@ -714,7 +717,9 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            select(other_table, anon).select_from(j1).apply_labels(),
+            select(other_table, anon)
+            .select_from(j1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT "
             "other_thirty_characters_table_.id "
             "AS other_thirty_characters__1, "
@@ -756,7 +761,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         # column still there, but short label
-        s = select(a1).apply_labels()
+        s = select(a1).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         self.assert_compile(
             s, "SELECT asdf.abcde AS _1 FROM a AS asdf", dialect=dialect
         )
@@ -772,7 +777,7 @@ class LabelLengthTest(fixtures.TestBase, AssertsCompiledSQL):
             "tablename", column("columnname_one"), column("columnn_1")
         )
 
-        stmt = select(table1).apply_labels()
+        stmt = select(table1).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         dialect = default.DefaultDialect(label_length=23)
         self.assert_compile(
@@ -817,7 +822,23 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return SomeColThing
 
-    def test_column_auto_label_dupes(self):
+    def test_column_auto_label_dupes_label_style_none(self):
+        expr = self._fixture()
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                table1.c.name,
+                table1.c.name,
+                expr(table1.c.name),
+                expr(table1.c.name),
+            ).set_label_style(LABEL_STYLE_NONE),
+            "SELECT some_table.name, some_table.name, "
+            "SOME_COL_THING(some_table.name) AS name, "
+            "SOME_COL_THING(some_table.name) AS name FROM some_table",
+        )
+
+    def test_column_auto_label_dupes_label_style_disambiguate(self):
         expr = self._fixture()
         table1 = self.table1
 
@@ -828,9 +849,10 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 expr(table1.c.name),
                 expr(table1.c.name),
             ),
-            "SELECT some_table.name, some_table.name, "
-            "SOME_COL_THING(some_table.name) AS name, "
-            "SOME_COL_THING(some_table.name) AS name FROM some_table",
+            "SELECT some_table.name, some_table.name AS name__1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name__1, "
+            "SOME_COL_THING(some_table.name) AS some_table_name__2 "
+            "FROM some_table",
         )
 
     def test_anon_expression_fallback(self):
@@ -851,7 +873,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(
                 table1.c.name + "foo", expr(table1.c.name + "foo")
-            ).apply_labels(),
+            ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT some_table.name || :name_1 AS anon_1, "
             "SOME_COL_THING(some_table.name || :name_2) AS anon_2 "
             "FROM some_table",
@@ -871,7 +893,21 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             "some_table.name AS bar, some_table.value FROM some_table",
         )
 
-    def test_cast_auto_label(self):
+    def test_cast_auto_label_label_style_none(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                cast(table1.c.name, Integer),
+                cast(table1.c.name, String),
+                table1.c.name,
+            ).set_label_style(LABEL_STYLE_NONE),
+            "SELECT CAST(some_table.name AS INTEGER) AS name, "
+            "CAST(some_table.name AS VARCHAR) AS name, "
+            "some_table.name FROM some_table",
+        )
+
+    def test_cast_auto_label_label_style_disabmiguate(self):
         table1 = self.table1
 
         self.assert_compile(
@@ -881,11 +917,26 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.name,
             ),
             "SELECT CAST(some_table.name AS INTEGER) AS name, "
-            "CAST(some_table.name AS VARCHAR) AS name, "
+            "CAST(some_table.name AS VARCHAR) AS some_table_name__1, "
+            "some_table.name AS name_1 FROM some_table",
+        )
+
+    def test_type_coerce_auto_label_label_style_none(self):
+        table1 = self.table1
+
+        self.assert_compile(
+            select(
+                type_coerce(table1.c.name, Integer),
+                type_coerce(table1.c.name, String),
+                table1.c.name,
+            ).set_label_style(LABEL_STYLE_NONE),
+            # ideally type_coerce wouldn't label at all...
+            "SELECT some_table.name AS name, "
+            "some_table.name AS name, "
             "some_table.name FROM some_table",
         )
 
-    def test_type_coerce_auto_label(self):
+    def test_type_coerce_auto_label_label_style_disambiguate(self):
         table1 = self.table1
 
         self.assert_compile(
@@ -896,8 +947,8 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             # ideally type_coerce wouldn't label at all...
             "SELECT some_table.name AS name, "
-            "some_table.name AS name, "
-            "some_table.name FROM some_table",
+            "some_table.name AS some_table_name__1, "
+            "some_table.name AS name_1 FROM some_table",
         )
 
     def test_boolean_auto_label(self):
@@ -919,7 +970,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 expr(table1.c.name.label("foo")),
                 table1.c.name.label("bar"),
                 table1.c.value,
-            ).apply_labels(),
+            ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             # the expr around label is treated the same way as plain column
             # with label
             "SELECT SOME_COL_THING(some_table.name) AS foo, "
@@ -937,7 +988,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.name,
                 expr(table1.c.name),
                 expr(table1.c.name),
-            ).apply_labels(),
+            ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT some_table.name AS some_table_name, "
             "some_table.name AS some_table_name__1, "
             "SOME_COL_THING(some_table.name) AS some_table_name_1, "
@@ -950,7 +1001,9 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
         table1 = self.table1
 
         self.assert_compile(
-            select(table1.c.name, expr(table1.c.value)).apply_labels(),
+            select(table1.c.name, expr(table1.c.value)).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
             "SELECT some_table.name AS some_table_name, "
             "SOME_COL_THING(some_table.value) "
             "AS some_table_value FROM some_table",

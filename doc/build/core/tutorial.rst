@@ -579,7 +579,7 @@ our :func:`_expression.select` statement:
 
     {sql}>>> for row in conn.execute(select(users, addresses)):
     ...     print(row)
-    SELECT users.id, users.name, users.fullname, addresses.id, addresses.user_id, addresses.email_address
+    SELECT users.id, users.name, users.fullname, addresses.id AS id_1, addresses.user_id, addresses.email_address
     FROM users, addresses
     [...] ()
     {stop}(1, u'jack', u'Jack Jones', 1, 1, u'jack@yahoo.com')
@@ -602,7 +602,7 @@ WHERE clause.  We do that using :meth:`_expression.Select.where`:
     >>> s = select(users, addresses).where(users.c.id == addresses.c.user_id)
     {sql}>>> for row in conn.execute(s):
     ...     print(row)
-    SELECT users.id, users.name, users.fullname, addresses.id,
+    SELECT users.id, users.name, users.fullname, addresses.id AS id_1,
        addresses.user_id, addresses.email_address
     FROM users, addresses
     WHERE users.id = addresses.user_id
@@ -1277,8 +1277,8 @@ by a column name that appears more than once:
     ...             order_by(u1a.c.name)  # using "name" here would be ambiguous
 
     {sql}>>> conn.execute(stmt).fetchall()
-    SELECT users_1.id, users_1.name, users_1.fullname, users_2.id,
-    users_2.name, users_2.fullname
+    SELECT users_1.id, users_1.name, users_1.fullname, users_2.id AS id_1,
+    users_2.name AS name_1, users_2.fullname AS fullname_1
     FROM users AS users_1, users AS users_2
     WHERE users_1.name > users_2.name ORDER BY users_1.name
     [...] ()
@@ -1597,7 +1597,7 @@ single named value is needed in the execute parameters:
     ...     select_from(users.outerjoin(addresses)).\
     ...     order_by(addresses.c.id)
     {sql}>>> conn.execute(s, {"name": "jack"}).fetchall()
-    SELECT users.id, users.name, users.fullname, addresses.id,
+    SELECT users.id, users.name, users.fullname, addresses.id AS id_1,
         addresses.user_id, addresses.email_address
     FROM users LEFT OUTER JOIN addresses ON users.id = addresses.user_id
     WHERE users.name LIKE ? || '%' OR addresses.email_address LIKE ? || '@%'

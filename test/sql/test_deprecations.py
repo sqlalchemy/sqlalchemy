@@ -34,12 +34,14 @@ from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import literal
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
 from sqlalchemy.sql import update
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -492,9 +494,9 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "ORDER BY table1.col1",
         ),
         (
-            lambda table1, table2: table1.join(table2).select(
-                table1.c.col1 == 5
-            ),
+            lambda table1, table2: table1.join(table2)
+            .select(table1.c.col1 == 5)
+            .set_label_style(LABEL_STYLE_NONE),
             "Join",
             "whereclause",
             "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
@@ -503,9 +505,9 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE table1.col1 = :col1_1",
         ),
         (
-            lambda table1, table2: table1.join(table2).select(
-                whereclause=table1.c.col1 == 5
-            ),
+            lambda table1, table2: table1.join(table2)
+            .select(whereclause=table1.c.col1 == 5)
+            .set_label_style(LABEL_STYLE_NONE),
             "Join",
             "whereclause",
             "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
@@ -514,9 +516,9 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE table1.col1 = :col1_1",
         ),
         (
-            lambda table1, table2: table1.join(table2).select(
-                order_by=table1.c.col1
-            ),
+            lambda table1, table2: table1.join(table2)
+            .select(order_by=table1.c.col1)
+            .set_label_style(LABEL_STYLE_NONE),
             "Join",
             "kwargs",
             "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
@@ -758,8 +760,12 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             )
             .alias("analias")
         )
-        s1 = self.table1.select().apply_labels()
-        s2 = self.table2.select().apply_labels()
+        s1 = self.table1.select().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
+        s2 = self.table2.select().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         with self._c_deprecated():
             assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
             assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
@@ -823,7 +829,9 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     def test_select_labels(self):
-        a = self.table1.select().apply_labels()
+        a = self.table1.select().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         j = join(a._implicit_subquery, self.table2)
 
         criterion = a._implicit_subquery.c.table1_col1 == self.table2.c.col2
@@ -1557,7 +1565,9 @@ class CursorResultTest(fixtures.TablesTest):
         self.metadata.create_all(testing.db)
         connection.execute(content.insert().values(type="t1"))
 
-        row = connection.execute(content.select().apply_labels()).first()
+        row = connection.execute(
+            content.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ).first()
         in_(content.c.type, row._mapping)
         not_in(bar.c.content_type, row)
         with testing.expect_deprecated(
@@ -1615,7 +1625,9 @@ class CursorResultTest(fixtures.TablesTest):
                 for use_labels in False, True:
                     stmt = users.select()
                     if use_labels:
-                        stmt = stmt.apply_labels()
+                        stmt = stmt.set_label_style(
+                            LABEL_STYLE_TABLENAME_PLUS_COL
+                        )
 
                     result = conn.execute(
                         stmt.order_by(users.c.user_id)

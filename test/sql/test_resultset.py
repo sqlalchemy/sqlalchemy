@@ -31,6 +31,8 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import TextualSelect
 from sqlalchemy.sql.sqltypes import NULLTYPE
 from sqlalchemy.sql.util import ClauseAdapter
@@ -209,7 +211,9 @@ class CursorResultTest(fixtures.TablesTest):
         self.metadata.create_all(connection)
         connection.execute(content.insert().values(type="t1"))
 
-        row = connection.execute(content.select(use_labels=True)).first()
+        row = connection.execute(
+            content.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ).first()
         in_(content.c.type, row._mapping)
         not_in(bar.c.content_type, row._mapping)
 
@@ -238,8 +242,12 @@ class CursorResultTest(fixtures.TablesTest):
         for pickle in False, True:
             for use_labels in False, True:
                 result = connection.execute(
-                    users.select(use_labels=use_labels).order_by(
-                        users.c.user_id
+                    users.select()
+                    .order_by(users.c.user_id)
+                    .set_label_style(
+                        LABEL_STYLE_TABLENAME_PLUS_COL
+                        if use_labels
+                        else LABEL_STYLE_NONE
                     )
                 ).fetchall()
 
@@ -755,7 +763,11 @@ class CursorResultTest(fixtures.TablesTest):
         addresses = self.tables.addresses
 
         connection.execute(users.insert(), dict(user_id=1, user_name="john"))
-        result = connection.execute(users.outerjoin(addresses).select())
+        result = connection.execute(
+            users.outerjoin(addresses)
+            .select()
+            .set_label_style(LABEL_STYLE_NONE)
+        )
         r = result.first()
 
         assert_raises_message(
@@ -801,9 +813,9 @@ class CursorResultTest(fixtures.TablesTest):
         ua = users.alias()
         u2 = users.alias()
         result = connection.execute(
-            select(users.c.user_id, ua.c.user_id).select_from(
-                users.join(ua, true())
-            )
+            select(users.c.user_id, ua.c.user_id)
+            .select_from(users.join(ua, true()))
+            .set_label_style(LABEL_STYLE_NONE)
         )
         row = result.first()
 
@@ -976,7 +988,9 @@ class CursorResultTest(fixtures.TablesTest):
             users.select().alias("foo"),
             users.select().alias(users.name),
         ):
-            row = connection.execute(s.select(use_labels=True)).first()
+            row = connection.execute(
+                s.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            ).first()
             eq_(row._mapping[s.c.user_id], 7)
             eq_(row._mapping[s.c.user_name], "ed")
 
@@ -1499,7 +1513,9 @@ class KeyTargetingTest(fixtures.TablesTest):
 
     def test_keyed_accessor_single_labeled(self, connection):
         keyed1 = self.tables.keyed1
-        row = connection.execute(keyed1.select().apply_labels()).first()
+        row = connection.execute(
+            keyed1.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        ).first()
 
         eq_(row.keyed1_b, "a1")
         eq_(row.keyed1_q, "c1")
@@ -1567,7 +1583,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed2 = self.tables.keyed2
 
         row = connection.execute(
-            select(keyed1, keyed2).select_from(keyed1.join(keyed2, true()))
+            select(keyed1, keyed2)
+            .select_from(keyed1.join(keyed2, true()))
+            .set_label_style(LABEL_STYLE_NONE)
         ).first()
 
         # column access is unambiguous
@@ -1604,7 +1622,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(
             select(keyed1, keyed2)
             .select_from(keyed1.join(keyed2, true()))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         ).first()
 
         # column access is unambiguous
@@ -1631,7 +1649,9 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed3 = self.tables.keyed3
 
         row = connection.execute(
-            select(keyed1, keyed3).select_from(keyed1.join(keyed3, true()))
+            select(keyed1, keyed3)
+            .select_from(keyed1.join(keyed3, true()))
+            .set_label_style(LABEL_STYLE_NONE)
         ).first()
         eq_(row.q, "c1")
 
@@ -1657,7 +1677,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         row = connection.execute(
             select(keyed1, keyed2)
             .select_from(keyed1.join(keyed2, true()))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         ).first()
         eq_(row.keyed1_b, "a1")
         eq_(row.keyed1_a, "a1")
@@ -1696,7 +1716,7 @@ class KeyTargetingTest(fixtures.TablesTest):
                 keyed3.c.d,
             )
             .select_from(keyed2.join(keyed3, true()))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         )
 
         result = connection.execute(stmt)
@@ -1793,7 +1813,7 @@ class KeyTargetingTest(fixtures.TablesTest):
         keyed1 = self.tables.keyed1
         stmt = (
             select(keyed1.c.b, keyed1.c.q.label("foo"))
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -1813,7 +1833,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def _adapt_result_columns_fixture_four(self):
         keyed1 = self.tables.keyed1
 
-        stmt1 = select(keyed1).apply_labels()
+        stmt1 = select(keyed1).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         a1 = keyed1.alias()
         stmt2 = ClauseAdapter(a1).traverse(stmt1)

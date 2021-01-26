@@ -54,6 +54,10 @@ from .sql import insert  # noqa
 from .sql import intersect  # noqa
 from .sql import intersect_all  # noqa
 from .sql import join  # noqa
+from .sql import LABEL_STYLE_DEFAULT  # noqa
+from .sql import LABEL_STYLE_DISAMBIGUATE_ONLY  # noqa
+from .sql import LABEL_STYLE_NONE  # noqa
+from .sql import LABEL_STYLE_TABLENAME_PLUS_COL  # noqa
 from .sql import lambda_stmt  # noqa
 from .sql import lateral  # noqa
 from .sql import literal  # noqa

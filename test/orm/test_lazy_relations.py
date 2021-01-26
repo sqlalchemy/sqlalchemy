@@ -336,13 +336,11 @@ class LazyTest(_fixtures.FixtureTest):
         # use a union all to get a lot of rows to join against
         u2 = users.alias("u2")
         s = sa.union_all(
-            u2.select(use_labels=True),
-            u2.select(use_labels=True),
-            u2.select(use_labels=True),
+            u2.select(),
+            u2.select(),
+            u2.select(),
         ).alias("u")
-        result = (
-            q.filter(s.c.u2_id == User.id).order_by(User.id).distinct().all()
-        )
+        result = q.filter(s.c.id == User.id).order_by(User.id).distinct().all()
         eq_(self.static.user_all_result, result)
 
     def test_uselist_false_warning(self):

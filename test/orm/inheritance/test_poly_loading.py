@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectin_polymorphic
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import AllOf
@@ -434,7 +435,7 @@ class TestGeometries(GeometryFixtureBase):
             .select_from(
                 a_table.join(c_table).outerjoin(d_table).outerjoin(e_table)
             )
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .alias("poly")
         )
 

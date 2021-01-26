@@ -470,7 +470,7 @@ class Query(
         """
         q = self.enable_eagerloads(False)
         if with_labels:
-            q = q.with_labels()
+            q = q.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         q = q.statement
 
@@ -576,7 +576,11 @@ class Query(
         return self.enable_eagerloads(False).statement.scalar_subquery()
 
     def __clause_element__(self):
-        return self.enable_eagerloads(False).with_labels().statement
+        return (
+            self.enable_eagerloads(False)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .statement
+        )
 
     @_generative
     def only_return_tuples(self, value):
@@ -637,8 +641,27 @@ class Query(
         """
         self._compile_options += {"_enable_eagerloads": value}
 
-    @_generative
+    @util.deprecated_20(
+        ":meth:`_orm.Query.with_labels` and :meth:`_orm.Query.apply_labels`",
+        alternative="Use set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
+        "instead.",
+    )
     def with_labels(self):
+        return self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+
+    apply_labels = with_labels
+
+    @property
+    def get_label_style(self):
+        """
+        Retrieve the current label style.
+
+        .. versionadded:: 1.4
+
+        """
+        return self._label_style
+
+    def set_label_style(self, style):
         """Apply column labels to the return value of Query.statement.
 
         Indicates that this Query's `statement` accessor should return
@@ -650,26 +673,28 @@ class Query(
         When the `Query` actually issues SQL to load rows, it always
         uses column labeling.
 
-        .. note:: The :meth:`_query.Query.with_labels` method *only* applies
+        .. note:: The :meth:`_query.Query.set_label_style` method *only* applies
            the output of :attr:`_query.Query.statement`, and *not* to any of
            the result-row invoking systems of :class:`_query.Query` itself,
            e.g.
            :meth:`_query.Query.first`, :meth:`_query.Query.all`, etc.
            To execute
-           a query using :meth:`_query.Query.with_labels`, invoke the
+           a query using :meth:`_query.Query.set_label_style`, invoke the
            :attr:`_query.Query.statement` using :meth:`.Session.execute`::
 
-                result = session.execute(query.with_labels().statement)
+                result = session.execute(
+                    query
+                    .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                    .statement
+                )
 
+        .. versionadded:: 1.4
 
-        """
-        self._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
-
-    apply_labels = with_labels
-
-    @property
-    def use_labels(self):
-        return self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
+        """  # noqa
+        if self._label_style is not style:
+            self = self._generate()
+            self._label_style = style
+        return self
 
     @_generative
     def enable_assertions(self, value):
@@ -1259,7 +1284,7 @@ class Query(
 
     def _from_self(self, *entities):
         fromclause = (
-            self.with_labels()
+            self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .enable_eagerloads(False)
             .correlate(None)
             .subquery()
@@ -2903,7 +2928,7 @@ class Query(
         inner = (
             self.enable_eagerloads(False)
             .add_columns(sql.literal_column("1"))
-            .with_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement.with_only_columns(1)
         )
 

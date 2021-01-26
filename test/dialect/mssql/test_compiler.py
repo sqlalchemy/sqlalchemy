@@ -123,7 +123,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(
             join,
-            "SELECT t1.a, t1.b, t1.c, t2.a, t2.b, t2.c "
+            "SELECT t1.a, t1.b, t1.c, t2.a AS a_1, t2.b AS b_1, t2.c AS c_1 "
             "FROM t1 WITH (NOLOCK) JOIN t2 ON t1.a = t2.a",
         )
 

@@ -10,6 +10,7 @@ from sqlalchemy import testing
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
@@ -89,7 +90,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         assert self.t2.c.a in set(c._create_result_map()["a"][1])
 
     def test_result_map_use_labels(self):
-        s = self.t2.select(use_labels=True)
+        s = self.t2.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         c = s.compile(dialect=self._legacy_dialect())
         assert self.t2.c.a in set(c._create_result_map()["schema_t2_a"][1])
 
@@ -103,7 +104,7 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_straight_select_use_labels(self):
         self._assert_sql(
-            self.t2.select(use_labels=True),
+            self.t2.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT t2_1.a AS schema_t2_a, t2_1.b AS schema_t2_b, "
             "t2_1.c AS schema_t2_c FROM [schema].t2 AS t2_1",
             "SELECT [schema].t2.a AS schema_t2_a, "
@@ -115,18 +116,25 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
         t1, t2 = self.t1, self.t2
         self._assert_sql(
             t1.join(t2, t1.c.a == t2.c.a).select(),
-            "SELECT t1.a, t1.b, t1.c, t2_1.a, t2_1.b, t2_1.c FROM t1 "
+            "SELECT t1.a, t1.b, t1.c, t2_1.a AS a_1, t2_1.b AS b_1, "
+            "t2_1.c AS c_1 FROM t1 "
             "JOIN [schema].t2 AS t2_1 ON t2_1.a = t1.a",
-            "SELECT t1.a, t1.b, t1.c, [schema].t2.a, [schema].t2.b, "
-            "[schema].t2.c FROM t1 JOIN [schema].t2 ON [schema].t2.a = t1.a",
+            "SELECT t1.a, t1.b, t1.c, [schema].t2.a AS a_1, "
+            "[schema].t2.b AS b_1, "
+            "[schema].t2.c AS c_1 FROM t1 JOIN [schema].t2 "
+            "ON [schema].t2.a = t1.a",
         )
 
     def test_union_schema_to_non(self):
         t1, t2 = self.t1, self.t2
         s = (
             select(t2.c.a, t2.c.b)
-            .apply_labels()
-            .union(select(t1.c.a, t1.c.b).apply_labels())
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .union(
+                select(t1.c.a, t1.c.b).set_label_style(
+                    LABEL_STYLE_TABLENAME_PLUS_COL
+                )
+            )
             .alias()
             .select()
         )

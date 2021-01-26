@@ -14,6 +14,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -341,19 +342,19 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
         ),
         lambda User, Address: select(lambda: User)
         .join(lambda: Address)
-        .apply_labels(),
+        .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         lambda User, Address: select(lambda: User)
         .join(lambda: User.addresses)
-        .apply_labels(),
+        .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         lambda User, Address: select(lambda: User)
         .join(lambda: Address, lambda: User.addresses)
-        .apply_labels(),
+        .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         lambda User, Address: select(lambda: User)
         .join(Address, lambda: User.addresses)
-        .apply_labels(),
+        .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         lambda User, Address: select(lambda: User)
         .join(lambda: Address, User.addresses)
-        .apply_labels(),
+        .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         argnames="test_case",
     )
     def test_join_entity_arg(self, plain_fixture, test_case):

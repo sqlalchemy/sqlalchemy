@@ -37,6 +37,7 @@ from ..sql import dml
 from ..sql import roles
 from ..sql import visitors
 from ..sql.base import CompileState
+from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
 __all__ = ["Session", "SessionTransaction", "sessionmaker"]
 
@@ -2741,15 +2742,17 @@ class Session(_SessionClassMethods):
             elif instance is attributes.PASSIVE_CLASS_MISMATCH:
                 return None
 
-        # apply_labels() not strictly necessary, however this will ensure that
-        # tablename_colname style is used which at the moment is asserted
-        # in a lot of unit tests :)
+        # set_label_style() not strictly necessary, however this will ensure
+        # that tablename_colname style is used which at the moment is
+        # asserted in a lot of unit tests :)
 
         load_options = context.QueryContext.default_load_options
 
         if populate_existing:
             load_options += {"_populate_existing": populate_existing}
-        statement = sql.select(mapper).apply_labels()
+        statement = sql.select(mapper).set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         if with_for_update is not None:
             statement._for_update_arg = query.ForUpdateArg._from_argument(
                 with_for_update

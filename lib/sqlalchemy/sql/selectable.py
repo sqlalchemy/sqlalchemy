@@ -825,7 +825,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         this is used to "ping" a derived selectable to add a new column
         to its .c. collection when a Column has been added to one of the
-        Table objects it ultimtely derives from.
+        Table objects it ultimately derives from.
 
         If the given selectable hasn't populated its .c. collection yet,
         it should at least pass on the message to the contained selectables,
@@ -847,6 +847,96 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     def _anonymous_fromclause(self, name=None, flat=False):
         return self.alias(name=name)
+
+
+LABEL_STYLE_NONE = util.symbol(
+    "LABEL_STYLE_NONE",
+    """Label style indicating no automatic labeling should be applied to the
+    columns clause of a SELECT statement.
+
+    Below, the columns named ``columna`` are both rendered as is, meaning that
+    the name ``columna`` can only refer to the first occurrence of this name
+    within a result set, as well as if the statement were used as a subquery::
+
+        >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_NONE
+        >>> table1 = table("table1", column("columna"), column("columnb"))
+        >>> table2 = table("table2", column("columna"), column("columnc"))
+        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_NONE))
+        SELECT table1.columna, table1.columnb, table2.columna, table2.columnc
+        FROM table1 JOIN table2 ON true
+
+    Used with the :meth:`_sql.Select.set_label_style` method.
+
+    .. versionadded:: 1.4
+
+""",  # noqa E501
+)
+
+LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
+    "LABEL_STYLE_TABLENAME_PLUS_COL",
+    """Label style indicating all columns should be labeled as
+    ``<tablename>_<columnname>`` when generating the columns clause of a SELECT
+    statement, to disambiguate same-named columns referenced from different
+    tables, aliases, or subqueries.
+
+    Below, all column names are given a label so that the two same-named
+    columns ``columna`` are disambiguated as ``table1_columna`` and
+    ``table2_columna`::
+
+        >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_TABLENAME_PLUS_COL
+        >>> table1 = table("table1", column("columna"), column("columnb"))
+        >>> table2 = table("table2", column("columna"), column("columnc"))
+        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL))
+        SELECT table1.columna AS table1_columna, table1.columnb AS table1_columnb, table2.columna AS table2_columna, table2.columnc AS table2_columnc
+        FROM table1 JOIN table2 ON true
+
+    Used with the :meth:`_sql.GenerativeSelect.set_label_style` method.
+    Equivalent to the legacy method ``Select.apply_labels()``;
+    :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL` is SQLAlchemy's legacy
+    auto-labeling style. :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY` provides a
+    less intrusive approach to disambiguation of same-named column expressions.
+
+
+    .. versionadded:: 1.4
+
+""",  # noqa E501
+)
+
+
+LABEL_STYLE_DISAMBIGUATE_ONLY = util.symbol(
+    "LABEL_STYLE_DISAMBIGUATE_ONLY",
+    """Label style indicating that columns with a name that conflicts with
+    an existing name should be labeled with a semi-anonymizing label
+    when generating the columns clause of a SELECT statement.
+
+    Below, most column names are left unaffected, except for the second
+    occurrence of the name ``columna``, which is labeled using the
+    label ``columna_1`` to disambiguate it from that of ``tablea.columna``::
+
+        >>> from sqlalchemy import table, column, select, true, LABEL_STYLE_DISAMBIGUATE_ONLY
+        >>> table1 = table("table1", column("columna"), column("columnb"))
+        >>> table2 = table("table2", column("columna"), column("columnc"))
+        >>> print(select(table1, table2).join(table2, true()).set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY))
+        SELECT table1.columna, table1.columnb, table2.columna AS columna_1, table2.columnc
+        FROM table1 JOIN table2 ON true
+
+    Used with the :meth:`_sql.GenerativeSelect.set_label_style` method,
+    :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY` is the default labeling style
+    for all SELECT statements outside of :term:`1.x style` ORM queries.
+
+    .. versionadded:: 1.4
+
+""",  # noqa: E501,
+)
+
+
+LABEL_STYLE_DEFAULT = LABEL_STYLE_DISAMBIGUATE_ONLY
+"""The default label style, refers to
+:data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`.
+
+.. versionadded:: 1.4
+
+"""
 
 
 class Join(roles.DMLTableRole, FromClause):
@@ -1277,7 +1367,12 @@ class Join(roles.DMLTableRole, FromClause):
                 full=self.full,
             )
         else:
-            return self.select().apply_labels().correlate(None).alias(name)
+            return (
+                self.select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .correlate(None)
+                .alias(name)
+            )
 
     @util.deprecated_20(
         ":meth:`_sql.Join.alias`",
@@ -1312,7 +1407,7 @@ class Join(roles.DMLTableRole, FromClause):
             j = alias(
                 select(j.left, j.right).\
                     select_from(j).\
-                    apply_labels().\
+                    set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).\
                     correlate(False),
                 name=name
             )
@@ -2054,9 +2149,7 @@ class Subquery(AliasedReturnsRows):
         "use the :meth:`_query.Query.scalar_subquery` method.",
     )
     def as_scalar(self):
-        return self.element._set_label_style(
-            LABEL_STYLE_NONE
-        ).scalar_subquery()
+        return self.element.set_label_style(LABEL_STYLE_NONE).scalar_subquery()
 
 
 class FromGrouping(GroupedElement, FromClause):
@@ -2633,7 +2726,7 @@ class SelectBase(
 
         """
         if self._label_style is not LABEL_STYLE_NONE:
-            self = self._set_label_style(LABEL_STYLE_NONE)
+            self = self.set_label_style(LABEL_STYLE_NONE)
 
         return ScalarSelect(self)
 
@@ -2760,6 +2853,14 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         else:
             return self
 
+    def get_label_style(self):
+        return self._label_style
+
+    def set_label_style(self, label_style):
+        return SelectStatementGrouping(
+            self.element.set_label_style(label_style)
+        )
+
     @property
     def _label_style(self):
         return self.element._label_style
@@ -2854,11 +2955,6 @@ class DeprecatedSelectBaseGenerations(object):
         self.group_by.non_generative(self, *clauses)
 
 
-LABEL_STYLE_NONE = util.symbol("LABEL_STYLE_NONE")
-LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol("LABEL_STYLE_TABLENAME_PLUS_COL")
-LABEL_STYLE_DISAMBIGUATE_ONLY = util.symbol("LABEL_STYLE_DISAMBIGUATE_ONLY")
-
-
 class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     """Base class for SELECT statements where additional elements can be
     added.
@@ -2892,7 +2988,7 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     )
     def __init__(
         self,
-        _label_style=LABEL_STYLE_NONE,
+        _label_style=LABEL_STYLE_DEFAULT,
         use_labels=False,
         limit=None,
         offset=None,
@@ -2901,6 +2997,15 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         bind=None,
     ):
         if use_labels:
+            if util.SQLALCHEMY_WARN_20:
+                util.warn_deprecated_20(
+                    "The use_labels=True keyword argument to GenerativeSelect "
+                    "is deprecated and will be removed in version 2.0. Please "
+                    "use "
+                    "select.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
+                    "if you need to replicate this legacy behavior.",
+                    stacklevel=4,
+                )
             _label_style = LABEL_STYLE_TABLENAME_PLUS_COL
 
         self._label_style = _label_style
@@ -2979,28 +3084,65 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             key_share=key_share,
         )
 
-    @property
-    def use_labels(self):
-        return self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
+    def get_label_style(self):
+        """
+        Retrieve the current label style.
 
-    def apply_labels(self):
-        """Return a new selectable with the 'use_labels' flag set to True.
-
-        This will result in column expressions being generated using labels
-        against their table name, such as "SELECT somecolumn AS
-        tablename_somecolumn". This allows selectables which contain multiple
-        FROM clauses to produce a unique set of column names regardless of
-        name conflicts among the individual FROM clauses.
-
+        .. versionadded:: 1.4
 
         """
-        return self._set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        return self._label_style
 
-    def _set_label_style(self, style):
+    def set_label_style(self, style):
+        """Return a new selectable with the specified label style.
+
+        There are three "label styles" available,
+        :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`,
+        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`, and
+        :data:`_sql.LABEL_STYLE_NONE`.   The default style is
+        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`.
+
+        In modern SQLAlchemy, there is not generally a need to change the
+        labeling style, as per-expression labels are more effectively used by
+        making use of the :meth:`_sql.ColumnElement.label` method. In past
+        versions, :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL` was used to
+        disambiguate same-named columns from different tables, aliases, or
+        subqueries; the newer :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY` now
+        applies labels only to names that conflict with an existing name so
+        that the impact of this labeling is minimal.
+
+        The rationale for disambiguation is mostly so that all column
+        expressions are available from a given :attr:`_sql.FromClause.c`
+        collection when a subquery is created.
+
+        .. versionadded:: 1.4 - the
+            :meth:`_sql.GenerativeSelect.set_label_style` method replaces the
+            previous combination of ``.apply_labels()``, ``.with_labels()`` and
+            ``use_labels=True`` methods and/or parameters.
+
+        .. seealso::
+
+            :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`
+
+            :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`
+
+            :data:`_sql.LABEL_STYLE_NONE`
+
+            :data:`_sql.LABEL_STYLE_DEFAULT`
+
+        """
         if self._label_style is not style:
             self = self._generate()
             self._label_style = style
         return self
+
+    @util.deprecated_20(
+        ":meth:`_sql.GenerativeSelect.apply_labels`",
+        alternative="Use set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
+        "instead.",
+    )
+    def apply_labels(self):
+        return self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
     @property
     def _group_by_clause(self):
@@ -3525,8 +3667,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         # ForeignKeys in. this would allow the union() to have all
         # those fks too.
         select_0 = self.selects[0]
-        if self._label_style is not LABEL_STYLE_NONE:
-            select_0 = select_0._set_label_style(self._label_style)
+
+        if self._label_style is not LABEL_STYLE_DEFAULT:
+            select_0 = select_0.set_label_style(self._label_style)
         select_0._generate_fromclause_column_proxies(subquery)
 
         # hand-construct the "_proxies" collection to include all
@@ -4347,12 +4490,12 @@ class Select(
 
           This parameter can also be specified on an existing
           :class:`_expression.Select` object using the
-          :meth:`_expression.Select.apply_labels`
+          :meth:`_expression.Select.set_label_style`
           method.
 
           .. seealso::
 
-            :meth:`_expression.Select.apply_labels`
+            :meth:`_expression.Select.set_label_style`
 
         """
         self = cls.__new__(cls)
@@ -4917,7 +5060,8 @@ class Select(
         comparison in the WHERE clause of the statement.   The primary purpose
         of this method is to automatically construct a select statement
         with all uniquely-named columns, without the need to use
-        table-qualified labels as :meth:`_expression.Select.apply_labels`
+        table-qualified labels as
+        :meth:`_expression.Select.set_label_style`
         does.
 
         When columns are omitted based on foreign key, the referred-to
@@ -5263,7 +5407,7 @@ class Select(
 
     def _ensure_disambiguated_names(self):
         if self._label_style is LABEL_STYLE_NONE:
-            self = self._set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY)
+            self = self.set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY)
         return self
 
     def _generate_columns_plus_names(self, anon_for_dupe_key):

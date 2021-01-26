@@ -32,10 +32,12 @@ from sqlalchemy.sql import annotation
 from sqlalchemy.sql import base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -265,7 +267,7 @@ class SelectableTest(
         assert sel2.corresponding_column(keyed.c.z) is sel2.c.z
 
     def test_keyed_label_gen(self):
-        s = select(keyed).apply_labels()
+        s = select(keyed).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         assert (
             s.selected_columns.corresponding_column(keyed.c.colx)
@@ -371,8 +373,12 @@ class SelectableTest(
     def test_distance_on_aliases(self):
         a1 = table1.alias("a1")
         for s in (
-            select(a1, table1).apply_labels().subquery(),
-            select(table1, a1).apply_labels().subquery(),
+            select(a1, table1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery(),
+            select(table1, a1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery(),
         ):
             assert s.corresponding_column(table1.c.col1) is s.c.table1_col1
             assert s.corresponding_column(a1.c.col1) is s.c.a1_col1
@@ -397,7 +403,11 @@ class SelectableTest(
 
         # test alias of the join
 
-        j2 = jjj.select().apply_labels().subquery("foo")
+        j2 = (
+            jjj.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery("foo")
+        )
         assert j2.corresponding_column(table1.c.col1) is j2.c.table1_col1
 
     def test_clone_append_column(self):
@@ -505,7 +515,11 @@ class SelectableTest(
         self.assert_compile(group, "b / (y * w)")
 
     def test_subquery_on_table(self):
-        sel = select(table1, table2).apply_labels().subquery()
+        sel = (
+            select(table1, table2)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         assert sel.corresponding_column(table1.c.col1) is sel.c.table1_col1
         assert (
@@ -609,8 +623,8 @@ class SelectableTest(
                 table2.c.coly,
             )
         )
-        s1 = table1.select(use_labels=True)
-        s2 = table2.select(use_labels=True)
+        s1 = table1.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        s2 = table2.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         assert (
             u.corresponding_column(s1.selected_columns.table1_col2)
@@ -705,8 +719,16 @@ class SelectableTest(
             )
             .alias("analias")
         )
-        s1 = table1.select(use_labels=True).subquery()
-        s2 = table2.select(use_labels=True).subquery()
+        s1 = (
+            table1.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
+        s2 = (
+            table2.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
         assert u.corresponding_column(s1.c.table1_col2) is u.c.col2
         assert u.corresponding_column(s2.c.table2_col2) is u.c.col2
         assert u.corresponding_column(s2.c.table2_coly) is u.c.coly
@@ -837,8 +859,12 @@ class SelectableTest(
         d = table("d", column("id"), column("aid"))
 
         u1 = union(
-            a.join(b, a.c.id == b.c.aid).select().apply_labels(),
-            a.join(d, a.c.id == d.c.aid).select().apply_labels(),
+            a.join(b, a.c.id == b.c.aid)
+            .select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            a.join(d, a.c.id == d.c.aid)
+            .select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         ).alias()
 
         eq_(u1.c.keys(), ["a_id", "b_id", "b_aid"])
@@ -927,8 +953,16 @@ class SelectableTest(
             .alias("analias")
         )
         s = select(u).subquery()
-        s1 = table1.select(use_labels=True).subquery()
-        s2 = table2.select(use_labels=True).subquery()
+        s1 = (
+            table1.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
+        s2 = (
+            table2.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
         assert s.corresponding_column(s1.c.table1_col2) is s.c.col2
         assert s.corresponding_column(s2.c.table2_col2) is s.c.col2
 
@@ -961,7 +995,7 @@ class SelectableTest(
 
     def test_join(self):
         a = join(table1, table2)
-        print(str(a.select().apply_labels()))
+        print(str(a.select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)))
         b = table2.alias("b")
         j = join(a, b)
         print(str(j))
@@ -976,7 +1010,11 @@ class SelectableTest(
         self.assert_(criterion.compare(j.onclause))
 
     def test_subquery_labels_join(self):
-        a = table1.select().apply_labels().subquery()
+        a = (
+            table1.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
         j = join(a, table2)
 
         criterion = a.c.table1_col1 == table2.c.col2
@@ -1020,7 +1058,11 @@ class SelectableTest(
         eq_(s.corresponding_column(l1), s.c.foo)
 
     def test_select_alias_labels(self):
-        a = table2.select(use_labels=True).alias("a")
+        a = (
+            table2.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias("a")
+        )
         j = join(a, table1)
 
         criterion = table1.c.col1 == a.c.table2_col2
@@ -1046,7 +1088,11 @@ class SelectableTest(
         t2 = Table("t2", m, Column("id", Integer, ForeignKey("t1.id")))
         t3 = Table("t3", m2, Column("id", Integer, ForeignKey("t1.id2")))
 
-        s = select(t2, t3).apply_labels().subquery()
+        s = (
+            select(t2, t3)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         assert_raises(exc.NoReferencedTableError, s.join, t1)
 
@@ -1076,7 +1122,7 @@ class SelectableTest(
         # style to the select, eliminating the self-referential call unless
         # the select already had labeling applied
 
-        s = select(t).apply_labels()
+        s = select(t).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
         with testing.expect_deprecated("The SelectBase.c"):
             s.where.non_generative(s, s.c.t_x > 5)
@@ -1280,7 +1326,7 @@ class RefreshForNewColTest(fixtures.TestBase):
     def test_select_samename_init(self):
         a = table("a", column("x"))
         b = table("b", column("y"))
-        s = select(a, b).apply_labels()
+        s = select(a, b).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         s.selected_columns
         q = column("x")
         b.append_column(q)
@@ -1290,7 +1336,11 @@ class RefreshForNewColTest(fixtures.TestBase):
     def test_alias_alias_samename_init(self):
         a = table("a", column("x"))
         b = table("b", column("y"))
-        s1 = select(a, b).apply_labels().alias()
+        s1 = (
+            select(a, b)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         s2 = s1.alias()
 
         s1.c
@@ -1309,7 +1359,11 @@ class RefreshForNewColTest(fixtures.TestBase):
     def test_aliased_select_samename_uninit(self):
         a = table("a", column("x"))
         b = table("b", column("y"))
-        s = select(a, b).apply_labels().alias()
+        s = (
+            select(a, b)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         q = column("x")
         b.append_column(q)
         s._refresh_for_new_column(q)
@@ -1318,7 +1372,11 @@ class RefreshForNewColTest(fixtures.TestBase):
     def test_aliased_select_samename_init(self):
         a = table("a", column("x"))
         b = table("b", column("y"))
-        s = select(a, b).apply_labels().alias()
+        s = (
+            select(a, b)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         s.c
         q = column("x")
         b.append_column(q)
@@ -1329,7 +1387,11 @@ class RefreshForNewColTest(fixtures.TestBase):
         a = table("a", column("x"))
         b = table("b", column("y"))
         c = table("c", column("z"))
-        s = select(a, b).apply_labels().alias()
+        s = (
+            select(a, b)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         s.c
         q = column("x")
         c.append_column(q)
@@ -1338,7 +1400,11 @@ class RefreshForNewColTest(fixtures.TestBase):
 
     def test_aliased_select_no_cols_clause(self):
         a = table("a", column("x"))
-        s = select(a.c.x).apply_labels().alias()
+        s = (
+            select(a.c.x)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         s.c
         q = column("q")
         a.append_column(q)
@@ -1616,7 +1682,13 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
             (t1, t4, None),
             (t1t2, t2t3, None),
             (t5, t1, None),
-            (t5.select(use_labels=True).subquery(), t1, None),
+            (
+                t5.select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+                .subquery(),
+                t1,
+                None,
+            ),
         ]:
             assert_raises(
                 exc.ArgumentError,
@@ -1705,7 +1777,11 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         t1t2 = t1.join(t2)
         t2t3 = t2.join(t3)
 
-        st2t3 = t2t3.select().apply_labels().subquery()
+        st2t3 = (
+            t2t3.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
         j = t1t2.join(st2t3)
         assert j.onclause.compare(t2.c.id == st2t3.c.t3_t2id)
         self.assert_compile(
@@ -2142,7 +2218,7 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
             people.outerjoin(engineers)
             .outerjoin(managers)
             .select()
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .alias("pjoin")
         )
         eq_(
@@ -2850,7 +2926,7 @@ class WithLabelsTest(fixtures.TestBase):
         m = MetaData()
         t1 = Table("t1", m, Column("x", Integer))
         t2 = Table("t2", m, Column("x", Integer))
-        return select(t1, t2)
+        return select(t1, t2).set_label_style(LABEL_STYLE_NONE)
 
     def test_names_overlap_nolabel(self):
         sel = self._names_overlap()
@@ -2859,7 +2935,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_subq_result_keys(sel, ["x", "x_1"])
 
     def test_names_overlap_label(self):
-        sel = self._names_overlap().apply_labels()
+        sel = self._names_overlap().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(list(sel.selected_columns.keys()), ["t1_x", "t2_x"])
         eq_(list(sel.subquery().c.keys()), ["t1_x", "t2_x"])
         self._assert_result_keys(sel, ["t1_x", "t2_x"])
@@ -2868,7 +2946,7 @@ class WithLabelsTest(fixtures.TestBase):
         m = MetaData()
         t1 = Table("t1", m, Column("x", Integer, key="a"))
         t2 = Table("t2", m, Column("x", Integer, key="b"))
-        return select(t1, t2)
+        return select(t1, t2).set_label_style(LABEL_STYLE_NONE)
 
     def test_names_overlap_keys_dont_nolabel(self):
         sel = self._names_overlap_keys_dont()
@@ -2878,7 +2956,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ["x"])
 
     def test_names_overlap_keys_dont_label(self):
-        sel = self._names_overlap_keys_dont().apply_labels()
+        sel = self._names_overlap_keys_dont().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(list(sel.selected_columns.keys()), ["t1_a", "t2_b"])
         eq_(list(sel.subquery().c.keys()), ["t1_a", "t2_b"])
         self._assert_result_keys(sel, ["t1_x", "t2_x"])
@@ -2896,7 +2976,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ["x_id", "id"])
 
     def test_labels_overlap_label(self):
-        sel = self._labels_overlap().apply_labels()
+        sel = self._labels_overlap().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(
             list(sel.selected_columns.keys()),
             ["t_x_id", "t_x_id_1"],
@@ -2922,7 +3004,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ["x_id", "id"])
 
     def test_labels_overlap_keylabels_dont_label(self):
-        sel = self._labels_overlap_keylabels_dont().apply_labels()
+        sel = self._labels_overlap_keylabels_dont().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(list(sel.selected_columns.keys()), ["t_a", "t_x_b"])
         eq_(list(sel.subquery().c.keys()), ["t_a", "t_x_b"])
         self._assert_result_keys(sel, ["t_x_id", "t_x_id_1"])
@@ -2940,7 +3024,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ["a", "b"])
 
     def test_keylabels_overlap_labels_dont_label(self):
-        sel = self._keylabels_overlap_labels_dont().apply_labels()
+        sel = self._keylabels_overlap_labels_dont().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(
             list(sel.selected_columns.keys()),
             ["t_x_id", "t_x_b_1"],
@@ -2966,7 +3052,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_subq_result_keys(sel, ["x_id", "id"])
 
     def test_keylabels_overlap_labels_overlap_label(self):
-        sel = self._keylabels_overlap_labels_overlap().apply_labels()
+        sel = self._keylabels_overlap_labels_overlap().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(
             list(sel.selected_columns.keys()),
             ["t_x_a", "t_x_id_1"],
@@ -2992,7 +3080,9 @@ class WithLabelsTest(fixtures.TestBase):
         self._assert_result_keys(sel, ["a", "b"])
 
     def test_keys_overlap_names_dont_label(self):
-        sel = self._keys_overlap_names_dont().apply_labels()
+        sel = self._keys_overlap_names_dont().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
         eq_(list(sel.selected_columns.keys()), ["t1_x", "t2_x"])
         eq_(list(sel.subquery().c.keys()), ["t1_x", "t2_x"])
         self._assert_result_keys(sel, ["t1_a", "t2_b"])
@@ -3041,7 +3131,11 @@ class ResultMapTest(fixtures.TestBase):
     def test_select_alias_column_apply_labels(self):
         t = self._fixture()
         x, y = t.c.x, t.c.y
-        s = select(x, y).apply_labels().alias()
+        s = (
+            select(x, y)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         mapping = self._mapping(s)
         assert t.c.x in mapping
 
@@ -3124,7 +3218,7 @@ class ResultMapTest(fixtures.TestBase):
 
     def test_unary_boolean(self):
 
-        s1 = select(not_(True)).apply_labels()
+        s1 = select(not_(True)).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         eq_(
             [type(entry[-1]) for entry in s1.compile()._result_columns],
             [Boolean],

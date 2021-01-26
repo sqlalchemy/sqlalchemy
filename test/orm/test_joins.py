@@ -24,6 +24,7 @@ from sqlalchemy.orm import outerjoin
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -386,7 +387,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         subq = (
             sess.query(User)
             .filter(User.name == "ed")
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -2199,7 +2200,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         subq = (
             sess.query(Node)
             .filter(Node.data == "n122")
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
 
@@ -2226,7 +2227,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             .filter(Node.data == "n122")
             .filter(parent.data == "n12")
             .filter(grandparent.data == "n1")
-            .apply_labels()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .subquery()
         )
         na = aliased(Node, subq)

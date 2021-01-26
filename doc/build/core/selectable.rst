@@ -145,3 +145,28 @@ The classes here are generated using the constructors listed at
 
 .. autoclass:: Values
    :members:
+
+Label Style Constants
+---------------------
+
+Constants used with the :meth:`_sql.GenerativeSelect.set_label_style`
+method.
+
+.. autodata:: LABEL_STYLE_DISAMBIGUATE_ONLY
+
+.. autodata:: LABEL_STYLE_NONE
+
+.. autodata:: LABEL_STYLE_TABLENAME_PLUS_COL
+
+.. data:: LABEL_STYLE_DEFAULT
+
+  The default label style, refers to :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`.
+
+  .. versionadded:: 1.4
+
+  .. seealso::
+
+      :meth:`_sql.Select.set_label_style`
+
+      :meth:`_sql.Select.get_label_style`
+

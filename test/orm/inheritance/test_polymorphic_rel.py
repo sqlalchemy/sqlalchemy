@@ -156,7 +156,6 @@ class _PolymorphicTestBase(object):
                     .order_by(Person.person_id)
                     .limit(2)
                     .offset(1)
-                    .with_labels()
                     .subquery()
                 )
             ),

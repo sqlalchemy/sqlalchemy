@@ -8,6 +8,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -128,7 +129,7 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         table = self._fixture()
 
         self.assert_compile(
-            select(table).apply_labels(),
+            select(table).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
             "SELECT test_table.x AS test_table_x, "
             "lower(test_table.y) AS test_table_y FROM test_table",
         )
@@ -136,7 +137,11 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
     def test_select_cols_use_labels_result_map_targeting(self):
         table = self._fixture()
 
-        compiled = select(table).apply_labels().compile()
+        compiled = (
+            select(table)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .compile()
+        )
         assert table.c.y in compiled._create_result_map()["test_table_y"][1]
         assert table.c.x in compiled._create_result_map()["test_table_x"][1]
 
@@ -323,8 +328,8 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         s3 = j.select()
         self.assert_compile(
             s3,
-            "SELECT anon_1.x, lower(anon_1.y) AS y, anon_2.x, "
-            "lower(anon_2.y) AS y "
+            "SELECT anon_1.x, lower(anon_1.y) AS y, anon_2.x AS x_1, "
+            "lower(anon_2.y) AS y_1 "
             "FROM (SELECT test_table.x AS x, test_table.y AS y "
             "FROM test_table) AS anon_1 JOIN (SELECT "
             "test_table.x AS x, test_table.y AS y "
@@ -380,7 +385,9 @@ class RoundTripTestBase(object):
             self.tables.test_table.insert(), {"x": "X1", "y": "Y1"}
         )
         row = connection.execute(
-            select(self.tables.test_table).apply_labels()
+            select(self.tables.test_table).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
         ).first()
         eq_(row._mapping[self.tables.test_table.c.y], "Y1")
 

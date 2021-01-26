@@ -19,6 +19,7 @@ from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.sql import column
+from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
@@ -807,7 +808,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s2,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -821,7 +823,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s4,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -833,7 +836,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s6,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -851,7 +855,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s2,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -863,7 +868,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s4,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -875,7 +881,8 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             s6,
             "SELECT table1.col1, table1.col2, table1.col3, "
-            "table2.col1, table2.col2, table2.col3 FROM table1 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col2 JOIN table3 "
             "ON table3.col1 = table1.col1",
         )
@@ -1055,7 +1062,11 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         t2a = t2.alias(name="t2a")
         a1 = sql_util.ColumnAdapter(t1a)
 
-        s1 = select(t1a.c.col1, t2a.c.col1).apply_labels().alias()
+        s1 = (
+            select(t1a.c.col1, t2a.c.col1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         a2 = sql_util.ColumnAdapter(s1)
         a3 = a2.wrap(a1)
         a4 = a1.wrap(a2)
@@ -1103,7 +1114,11 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         """
 
-        stmt = select(t1.c.col1, t2.c.col1).apply_labels().subquery()
+        stmt = (
+            select(t1.c.col1, t2.c.col1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         sa = stmt.alias()
         stmt2 = select(t2, sa).subquery()
@@ -1165,7 +1180,11 @@ class ColumnAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             t1a, include_fn=lambda col: "a1" in col._annotations
         )
 
-        s1 = select(t1a, t2a).apply_labels().alias()
+        s1 = (
+            select(t1a, t2a)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .alias()
+        )
         a2 = sql_util.ColumnAdapter(
             s1, include_fn=lambda col: "a2" in col._annotations
         )
@@ -1360,7 +1379,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT "
             "(SELECT table2.col1 FROM table1 "
             "WHERE table2.col1 = table1.col1) AS anon_1, "
-            "table1.col1, table2.col1 "
+            "table1.col1, table2.col1 AS col1_1 "
             "FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col1",
         )
@@ -1369,7 +1388,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT "
             "(SELECT table2.col1 FROM table1 "
             "WHERE table2.col1 = table1.col1) AS anon_1, "
-            "table1.col1, table2.col1 "
+            "table1.col1, table2.col1 AS col1_1 "
             "FROM table1 "
             "JOIN table2 ON table1.col1 = table2.col1",
         )
@@ -1384,7 +1403,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT table2.col1 FROM "
             "table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
             "WHERE table2.col1 = table1.col1) AS anon_1, "
-            "table1.col1, table2.col1 "
+            "table1.col1, table2.col1 AS col1_1 "
             "FROM table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
             "JOIN table2 ON table1.col1 = table2.col1",
         )
@@ -1398,7 +1417,7 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT table2.col1 FROM "
             "table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
             "WHERE table2.col1 = table1.col1) AS anon_1, "
-            "table1.col1, table2.col1 "
+            "table1.col1, table2.col1 AS col1_1 "
             "FROM table1 JOIN table1 AS t1alias ON table1.col1 = t1alias.col2 "
             "JOIN table2 ON table1.col1 = table2.col1",
         )
@@ -1484,7 +1503,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
-            "table2.col1, table2.col2, table2.col3 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 "
             "FROM table1 AS t1alias, table2 WHERE t1alias.col1 = "
             "(SELECT * FROM table2 WHERE t1alias.col1 = table2.col2)",
         )
@@ -1504,7 +1524,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
-            "table2.col1, table2.col2, table2.col3 "
+            "table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 "
             "FROM table1 AS t1alias, table2 "
             "WHERE t1alias.col1 = "
             "(SELECT * FROM table1 AS t1alias "
@@ -1612,7 +1633,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
             ),
             "SELECT t1alias.col1, t1alias.col2, t1alias.col3, "
-            "t2alias.col1, t2alias.col2, t2alias.col3 "
+            "t2alias.col1 AS col1_1, t2alias.col2 AS col2_1, "
+            "t2alias.col3 AS col3_1 "
             "FROM table1 AS t1alias, table2 AS t2alias "
             "WHERE t1alias.col1 = "
             "(SELECT * FROM table2 AS t2alias "
@@ -1720,7 +1742,11 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         j1 = a.outerjoin(b)
-        j2 = select(j1).apply_labels().subquery()
+        j2 = (
+            select(j1)
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery()
+        )
 
         j3 = c.join(j2, j2.c.b_id == c.c.bid)
 
@@ -1732,7 +1758,11 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN b ON a.id = b.aid) AS anon_1 ON anon_1.b_id = c.bid "
             "LEFT OUTER JOIN d ON anon_1.a_id = d.aid",
         )
-        j5 = j3.select().apply_labels().subquery("foo")
+        j5 = (
+            j3.select()
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            .subquery("foo")
+        )
         j6 = sql_util.ClauseAdapter(j5).copy_and_process([j4])[0]
 
         # this statement takes c join(a join b), wraps it inside an
@@ -1786,8 +1816,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sql_util.ClauseAdapter(s2).traverse(j).select(),
             "SELECT anon_1.col1, anon_1.col2, "
-            "anon_1.col3, table2.col1, table2.col2, "
-            "table2.col3 FROM (SELECT foo.col1 AS "
+            "anon_1.col3, table2.col1 AS col1_1, table2.col2 AS col2_1, "
+            "table2.col3 AS col3_1 FROM (SELECT foo.col1 AS "
             "col1, foo.col2 AS col2, foo.col3 AS col3 "
             "FROM (SELECT table1.col1 AS col1, "
             "table1.col2 AS col2, table1.col3 AS col3 "
@@ -1819,7 +1849,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sql_util.ClauseAdapter(s2).traverse(j).select(),
             "SELECT anon_1.col1, anon_1.col2, "
-            "anon_1.col3, bar.col1, bar.col2, bar.col3 "
+            "anon_1.col3, bar.col1 AS col1_1, bar.col2 AS col2_1, "
+            "bar.col3 AS col3_1 "
             "FROM (SELECT foo.col1 AS col1, foo.col2 "
             "AS col2, foo.col3 AS col3 FROM (SELECT "
             "table1.col1 AS col1, table1.col2 AS col2, "
@@ -1866,8 +1897,8 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         u = union(
-            a.join(b).select().apply_labels(),
-            a.join(d).select().apply_labels(),
+            a.join(b).select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            a.join(d).select().set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
         ).alias()
 
         self.assert_compile(

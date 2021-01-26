@@ -158,6 +158,10 @@ from .selectable import HasCTE  # noqa
 from .selectable import HasPrefixes  # noqa
 from .selectable import HasSuffixes  # noqa
 from .selectable import Join  # noqa
+from .selectable import LABEL_STYLE_DEFAULT  # noqa
+from .selectable import LABEL_STYLE_DISAMBIGUATE_ONLY  # noqa
+from .selectable import LABEL_STYLE_NONE  # noqa
+from .selectable import LABEL_STYLE_TABLENAME_PLUS_COL  # noqa
 from .selectable import Lateral  # noqa
 from .selectable import ReturnsRows  # noqa
 from .selectable import ScalarSelect  # noqa
