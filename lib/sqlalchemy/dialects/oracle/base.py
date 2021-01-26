@@ -2010,7 +2010,7 @@ class OracleDialect(default.DefaultDialect):
 
     def _parse_identity_options(self, identity_options, default_on_nul):
         # identity_options is a string that starts with 'ALWAYS,' or
-        # 'BY DEFAULT,' and contues with
+        # 'BY DEFAULT,' and continues with
         # START WITH: 1, INCREMENT BY: 1, MAX_VALUE: 123, MIN_VALUE: 1,
         # CYCLE_FLAG: N, CACHE_SIZE: 1, ORDER_FLAG: N, SCALE_FLAG: N,
         # EXTEND_FLAG: N, SESSION_FLAG: N, KEEP_VALUE: N

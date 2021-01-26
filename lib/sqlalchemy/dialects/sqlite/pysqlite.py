@@ -65,7 +65,7 @@ Modern versions of SQLite support an alternative system of connecting using a
 that additional driver-level arguments can be passed including options such as
 "read only".   The Python sqlite3 driver supports this mode under modern Python
 3 versions.   The SQLAlchemy pysqlite driver supports this mode of use by
-specifing "uri=true" in the URL query string.  The SQLite-level "URI" is kept
+specifying "uri=true" in the URL query string.  The SQLite-level "URI" is kept
 as the "database" portion of the SQLAlchemy url (that is, following a slash)::
 
     e = create_engine("sqlite:///file:path/to/database?mode=ro&uri=true")

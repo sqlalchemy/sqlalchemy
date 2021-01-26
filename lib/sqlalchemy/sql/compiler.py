@@ -711,7 +711,7 @@ class SQLCompiler(Compiled):
          expect that they are to be invoked in an "executemany" style,
          which may impact how the statement will be expected to return the
          values of defaults and autoincrement / sequences and similar.
-         Depending on the backend and driver in use, support for retreiving
+         Depending on the backend and driver in use, support for retrieving
          these values may be disabled which means SQL expressions may
          be rendered inline, RETURNING may not be rendered, etc.
 
@@ -4684,7 +4684,7 @@ class IdentifierPreparer(object):
         return self.quote(schema)
 
     def quote(self, ident, force=None):
-        """Conditionally quote an identfier.
+        """Conditionally quote an identifier.
 
         The identifier is quoted if it is a reserved word, contains
         quote-necessary characters, or is an instance of

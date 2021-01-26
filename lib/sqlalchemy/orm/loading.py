@@ -1329,7 +1329,7 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
     # in the case of inheritance, particularly concrete and abstract
     # concrete inheritance, the class manager might have some keys
     # of attributes on the superclass that we didn't actually map.
-    # These could be mapped as "concrete, dont load" or could be completely
+    # These could be mapped as "concrete, don't load" or could be completely
     # excluded from the mapping and we know nothing about them.  Filter them
     # here to prevent them from coming through.
     if attribute_names:

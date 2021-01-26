@@ -88,7 +88,7 @@ def subquery(alias, *args, **kwargs):
 
 
 class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
-    """The basemost class for Core constructs that have some concept of
+    """The base-most class for Core constructs that have some concept of
     columns that can represent rows.
 
     While the SELECT statement and TABLE are the primary things we think
@@ -4557,7 +4557,7 @@ class Select(
         .. versionadded:: 1.4 - The :func:`_sql.select` function now accepts
            column arguments positionally.   The top-level :func:`_sql.select`
            function will automatically use the 1.x or 2.x style API based on
-           the incoming argumnents; using :func:`_future.select` from the
+           the incoming arguments; using :func:`_future.select` from the
            ``sqlalchemy.future`` module will enforce that only the 2.x style
            constructor is used.
 
@@ -4730,7 +4730,7 @@ class Select(
 
             stmt = select(user_table).join(address_table, user_table.c.id == address_table.c.user_id)
 
-        The above statement generages SQL similar to::
+        The above statement generates SQL similar to::
 
             SELECT user.id, user.name FROM user JOIN address ON user.id = address.user_id
 
@@ -4815,7 +4815,7 @@ class Select(
                 user_table, address_table, user_table.c.id == address_table.c.user_id
             )
 
-        The above statement generages SQL similar to::
+        The above statement generates SQL similar to::
 
             SELECT user.id, user.name, address.id, address.email, address.user_id
             FROM user JOIN address ON user.id = address.user_id
@@ -5110,7 +5110,7 @@ class Select(
 
          .. versionchanged:: 1.4 the :meth:`_sql.Select.with_only_columns`
             method accepts the list of column expressions positionally;
-            passing the expressions as a list is deprecateed.
+            passing the expressions as a list is deprecated.
 
         """
 
@@ -5415,7 +5415,7 @@ class Select(
 
         # when use_labels is on:
         # in all cases == if we see the same label name, use _label_anon_label
-        # for subsequent occurences of that label
+        # for subsequent occurrences of that label
         #
         # anon_for_dupe_key == if we see the same column object multiple
         # times under a particular name, whether it's the _label name or the

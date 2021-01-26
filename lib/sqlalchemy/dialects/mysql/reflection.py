@@ -451,7 +451,7 @@ class MySQLTableDefinitionParser(object):
         # CONSTRAINT `CONSTRAINT_1` CHECK (`x` > 5)'
         # testing on MariaDB 10.2 shows that the CHECK constraint
         # is returned on a line by itself, so to match without worrying
-        # about parenthesis in the expresion we go to the end of the line
+        # about parenthesis in the expression we go to the end of the line
         self._re_ck_constraint = _re_compile(
             r"  "
             r"CONSTRAINT +"

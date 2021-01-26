@@ -224,7 +224,7 @@ class AsyncAdaptedQueue:
         # Delay creation of the queue until it is first used, to avoid
         # binding it to a possibly wrong event loop.
         # By delaying the creation of the pool we accommodate the common
-        # usage pattern of instanciating the engine at module level, where a
+        # usage pattern of instantiating the engine at module level, where a
         # different event loop is in present compared to when the application
         # is actually run.
 

@@ -225,7 +225,7 @@ class AsyncResult(AsyncCommon):
         # type: () -> Any
         """Return exactly one scalar result or raise an exception.
 
-        This is equvalent to calling :meth:`_asyncio.AsyncResult.scalars` and
+        This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
         then :meth:`_asyncio.AsyncResult.one`.
 
         .. seealso::
@@ -241,7 +241,7 @@ class AsyncResult(AsyncCommon):
         # type: () -> Optional[Any]
         """Return exactly one or no scalar result.
 
-        This is equvalent to calling :meth:`_asyncio.AsyncResult.scalars` and
+        This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
         then :meth:`_asyncio.AsyncResult.one_or_none`.
 
         .. seealso::

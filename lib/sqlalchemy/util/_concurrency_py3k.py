@@ -35,7 +35,7 @@ class _AsyncIoGreenlet(greenlet.greenlet):
 def await_only(awaitable: Coroutine) -> Any:
     """Awaits an async function in a sync method.
 
-    The sync method must be insice a :func:`greenlet_spawn` context.
+    The sync method must be inside a :func:`greenlet_spawn` context.
     :func:`await_` calls cannot be nested.
 
     :param awaitable: The coroutine to call.
@@ -59,7 +59,7 @@ def await_only(awaitable: Coroutine) -> Any:
 def await_fallback(awaitable: Coroutine) -> Any:
     """Awaits an async function in a sync method.
 
-    The sync method must be insice a :func:`greenlet_spawn` context.
+    The sync method must be inside a :func:`greenlet_spawn` context.
     :func:`await_` calls cannot be nested.
 
     :param awaitable: The coroutine to call.

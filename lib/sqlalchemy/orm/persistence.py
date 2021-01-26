@@ -1984,7 +1984,7 @@ class BulkUDCompileState(CompileState):
             and eval_condition(state.obj())
             and (
                 update_options._refresh_identity_token is None
-                # TODO: coverage for the case where horiziontal sharding
+                # TODO: coverage for the case where horizontal sharding
                 # invokes an update() or delete() given an explicit identity
                 # token up front
                 or state.identity_token

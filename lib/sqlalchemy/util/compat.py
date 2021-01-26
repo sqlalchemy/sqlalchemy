@@ -362,7 +362,7 @@ if py3k:
         Instead of introducing all the object-creation overhead and having
         to reinvent from scratch, just copy their compatibility routine.
 
-        Utimately we would need to rewrite our "decorator" routine completely
+        Ultimately we would need to rewrite our "decorator" routine completely
         which is not really worth it right now, until all Python 2.x support
         is dropped.
 

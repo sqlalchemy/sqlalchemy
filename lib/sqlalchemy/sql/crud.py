@@ -400,7 +400,7 @@ def _scan_cols(
                     # if we have to invoke a server-side function, we need
                     # to pre-execute it.   or if this is a straight
                     # autoincrement column and the dialect supports it
-                    # we can use curosr.lastrowid.
+                    # we can use cursor.lastrowid.
 
                     _append_param_insert_pk_no_returning(
                         compiler, stmt, c, values, kw
@@ -607,7 +607,7 @@ def _append_param_insert_pk_no_returning(compiler, stmt, c, values, kw):
                 )
                 or
                 # column has no default on it, but dialect can run the
-                # "autoincrement" mechanism explictly, e.g. PostrgreSQL
+                # "autoincrement" mechanism explicitly, e.g. PostgreSQL
                 # SERIAL we know the sequence name
                 (
                     c.default is None

@@ -12,7 +12,7 @@ def generate_driver_url(url, driver, query_str):
 
     # NOTE: at the moment, tests are running mariadbconnector
     # against both mariadb and mysql backends.   if we want this to be
-    # limited, do the decisionmaking here to reject a "mysql+mariadbconnector"
+    # limited, do the decision making here to reject a "mysql+mariadbconnector"
     # URL.  Optionally also re-enable the module level
     # MySQLDialect_mariadbconnector.is_mysql flag as well, which must include
     # a unit and/or functional test.

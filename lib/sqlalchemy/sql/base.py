@@ -543,7 +543,7 @@ class Generative(HasMemoized):
 
 class InPlaceGenerative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
-    @_generative decorator taht mutates in place."""
+    @_generative decorator that mutates in place."""
 
     def _generate(self):
         skip = self._memoized_keys
@@ -653,7 +653,7 @@ class Options(util.with_metaclass(_MetaOptions)):
         d = other._state_dict()
 
         # only support a merge with another object of our class
-        # and which does not have attrs that we dont.   otherwise
+        # and which does not have attrs that we don't.   otherwise
         # we risk having state that might not be part of our cache
         # key strategy
 

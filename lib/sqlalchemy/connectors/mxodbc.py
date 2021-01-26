@@ -108,7 +108,7 @@ class MxODBCConnector(Connector):
             connect(dsn, user='', password='',
                     clear_auto_commit=1, errorhandler=None)
 
-        This method translates the values in the provided uri
+        This method translates the values in the provided URI
         into args and kwargs needed to instantiate an mxODBC Connection.
 
         The arg 'errorhandler' is not used by SQLAlchemy and will
