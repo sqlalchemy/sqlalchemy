@@ -22,9 +22,9 @@ if sys.platform == "win32":
     # Work around issue https://github.com/pypa/setuptools/issues/1902
     ext_errors += (IOError, TypeError)
     extra_compile_args = []
-elif sys.platform == "linux":
+elif sys.platform in ("linux", "linux2"):
     # warn for undefined symbols in .c files
-    extra_compile_args = ["-Wundef"]
+    extra_compile_args = ["-Wundef", "-Werror=implicit-function-declaration"]
 else:
     extra_compile_args = []
 

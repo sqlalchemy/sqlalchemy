@@ -20,6 +20,40 @@ typedef struct {
 static PyTypeObject ImmutableDictType;
 
 
+#if PY_MAJOR_VERSION < 3
+/* For Python 2.7, VENDORED from cPython: https://github.com/python/cpython/commit/1c496178d2c863f135bd4a43e32e0f099480cd06
+   This function was added to Python 2.7.12 as an underscore function.
+
+   Variant of PyDict_GetItem() that doesn't suppress exceptions.
+   This returns NULL *with* an exception set if an exception occurred.
+   It returns NULL *without* an exception set if the key wasn't present.
+*/
+PyObject *
+PyDict_GetItemWithError(PyObject *op, PyObject *key)
+{
+    long hash;
+    PyDictObject *mp = (PyDictObject *)op;
+    PyDictEntry *ep;
+    if (!PyDict_Check(op)) {
+        PyErr_BadInternalCall();
+        return NULL;
+    }
+    if (!PyString_CheckExact(key) ||
+        (hash = ((PyStringObject *) key)->ob_shash) == -1)
+    {
+        hash = PyObject_Hash(key);
+        if (hash == -1) {
+            return NULL;
+        }
+    }
+
+    ep = (mp->ma_lookup)(mp, key, hash);
+    if (ep == NULL) {
+        return NULL;
+    }
+    return ep->me_value;
+}
+#endif
 
 static PyObject *
 
