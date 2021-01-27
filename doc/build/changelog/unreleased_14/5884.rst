@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 5884
+
+    Oracle two-phase transactions at a rudimentary level are now no longer
+    deprecated. After receiving support from cx_Oracle devs we can provide for
+    basic xid + begin/prepare support with some limitations, which will work
+    more fully in an upcoming release of cx_Oracle. Two phase "recovery" is not
+    currently supported.

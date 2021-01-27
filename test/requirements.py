@@ -769,9 +769,6 @@ class DefaultRequirements(SuiteRequirements):
                 no_support("firebird", "no SA implementation"),
                 no_support("mssql", "two-phase xact not supported by drivers"),
                 no_support(
-                    "oracle", "two-phase xact not implemented in SQLA/oracle"
-                ),
-                no_support(
                     "sqlite", "two-phase xact not supported by database"
                 ),
                 no_support(
@@ -801,6 +798,7 @@ class DefaultRequirements(SuiteRequirements):
                 ["mysql", "mariadb"],
                 "still can't get recover to work w/ MariaDB / MySQL",
             )
+            + skip_if("oracle", "recovery not functional")
         )
 
     @property

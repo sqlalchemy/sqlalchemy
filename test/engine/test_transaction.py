@@ -407,12 +407,12 @@ class TransactionTest(fixtures.TablesTest):
                 ).fetchall(),
                 [],
             )
-
         # recover_twophase needs to be run in a new transaction
         with testing.db.connect() as connection2:
             recoverables = connection2.recover_twophase()
             assert transaction.xid in recoverables
             connection2.commit_prepared(transaction.xid, recover=True)
+
             eq_(
                 connection2.execute(
                     select(users.c.user_id).order_by(users.c.user_id)
