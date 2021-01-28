@@ -514,7 +514,7 @@ class _OracleUnicodeStringNCHAR(oracle.NVARCHAR2):
 
 class _OracleUnicodeStringCHAR(sqltypes.Unicode):
     def get_dbapi_type(self, dbapi):
-        return None
+        return dbapi.LONG_STRING
 
 
 class _OracleUnicodeTextNCLOB(oracle.NCLOB):
@@ -617,19 +617,63 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                 if bindparam.isoutparam:
                     name = self.compiled.bind_names[bindparam]
                     type_impl = bindparam.type.dialect_impl(self.dialect)
+
                     if hasattr(type_impl, "_cx_oracle_var"):
                         self.out_parameters[name] = type_impl._cx_oracle_var(
                             self.dialect, self.cursor
                         )
                     else:
                         dbtype = type_impl.get_dbapi_type(self.dialect.dbapi)
+
+                        cx_Oracle = self.dialect.dbapi
+
                         if dbtype is None:
                             raise exc.InvalidRequestError(
-                                "Cannot create out parameter for parameter "
+                                "Cannot create out parameter for "
+                                "parameter "
                                 "%r - its type %r is not supported by"
                                 " cx_oracle" % (bindparam.key, bindparam.type)
                             )
-                        self.out_parameters[name] = self.cursor.var(dbtype)
+
+                        if compat.py2k and dbtype in (
+                            cx_Oracle.CLOB,
+                            cx_Oracle.NCLOB,
+                        ):
+                            outconverter = (
+                                processors.to_unicode_processor_factory(
+                                    self.dialect.encoding,
+                                    errors=self.dialect.encoding_errors,
+                                )
+                            )
+                            self.out_parameters[name] = self.cursor.var(
+                                dbtype,
+                                outconverter=lambda value: outconverter(
+                                    value.read()
+                                ),
+                            )
+
+                        elif dbtype in (
+                            cx_Oracle.BLOB,
+                            cx_Oracle.CLOB,
+                            cx_Oracle.NCLOB,
+                        ):
+                            self.out_parameters[name] = self.cursor.var(
+                                dbtype, outconverter=lambda value: value.read()
+                            )
+                        elif compat.py2k and isinstance(
+                            type_impl, sqltypes.Unicode
+                        ):
+                            outconverter = (
+                                processors.to_unicode_processor_factory(
+                                    self.dialect.encoding,
+                                    errors=self.dialect.encoding_errors,
+                                )
+                            )
+                            self.out_parameters[name] = self.cursor.var(
+                                dbtype, outconverter=outconverter
+                            )
+                        else:
+                            self.out_parameters[name] = self.cursor.var(dbtype)
                     self.parameters[0][
                         quoted_bind_names.get(name, name)
                     ] = self.out_parameters[name]

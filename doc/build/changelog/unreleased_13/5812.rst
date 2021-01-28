@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 5812
+
+    Fixed bug in Oracle dialect where retriving a CLOB/BLOB column via
+    :meth:`_dml.Insert.returning` would fail as the LOB value would need to be
+    read when returned; additionally, repaired support for retrieval of Unicode
+    values via RETURNING under Python 2.

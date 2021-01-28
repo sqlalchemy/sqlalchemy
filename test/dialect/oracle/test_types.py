@@ -4,6 +4,7 @@
 import datetime
 import decimal
 import os
+import random
 
 from sqlalchemy import bindparam
 from sqlalchemy import cast
@@ -987,6 +988,71 @@ class LOBFetchTest(fixtures.TablesTest):
                 ],
                 self.data,
             )
+
+    @testing.combinations(
+        (UnicodeText(),), (Text(),), (LargeBinary(),), argnames="datatype"
+    )
+    @testing.combinations((10,), (100,), (250,), argnames="datasize")
+    @testing.combinations(
+        ("x,y,z"), ("y"), ("y,x,z"), ("x,z,y"), argnames="retcols"
+    )
+    def test_insert_returning_w_lobs(
+        self, datatype, datasize, retcols, metadata, connection
+    ):
+        long_text = Table(
+            "long_text",
+            metadata,
+            Column("x", Integer),
+            Column("y", datatype),
+            Column("z", Integer),
+        )
+        long_text.create(connection)
+
+        if isinstance(datatype, UnicodeText):
+            word_seed = u"ab🐍’«cdefg"
+        else:
+            word_seed = "abcdef"
+
+        some_text = u" ".join(
+            "".join(random.choice(word_seed) for j in range(150))
+            for i in range(datasize)
+        )
+        if isinstance(datatype, LargeBinary):
+            some_text = some_text.encode("ascii")
+
+        data = {"x": 5, "y": some_text, "z": 10}
+        return_columns = [long_text.c[col] for col in retcols.split(",")]
+        expected = tuple(data[col] for col in retcols.split(","))
+        result = connection.execute(
+            long_text.insert().returning(*return_columns),
+            data,
+        )
+
+        eq_(result.fetchall(), [expected])
+
+    def test_insert_returning_w_unicode(self, metadata, connection):
+        long_text = Table(
+            "long_text",
+            metadata,
+            Column("x", Integer),
+            Column("y", Unicode(255)),
+        )
+        long_text.create(connection)
+
+        word_seed = u"ab🐍’«cdefg"
+
+        some_text = u" ".join(
+            "".join(random.choice(word_seed) for j in range(10))
+            for i in range(15)
+        )
+
+        data = {"x": 5, "y": some_text}
+        result = connection.execute(
+            long_text.insert().returning(long_text.c.y),
+            data,
+        )
+
+        eq_(result.fetchall(), [(some_text,)])
 
     def test_large_stream(self, connection):
         binary_table = self.tables.binary_table
