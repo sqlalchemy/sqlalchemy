@@ -6,6 +6,7 @@ from ...testing.provision import create_db
 from ...testing.provision import drop_db
 from ...testing.provision import follower_url_from_main
 from ...testing.provision import log
+from ...testing.provision import post_configure_engine
 from ...testing.provision import run_reap_dbs
 from ...testing.provision import stop_test_class
 from ...testing.provision import temp_table_keyword_args
@@ -71,6 +72,32 @@ def stop_test_class(config, db, cls):
 
     with db.begin() as conn:
         conn.execute("purge recyclebin")
+
+    # clear statement cache on all connections that were used
+    # https://github.com/oracle/python-cx_Oracle/issues/519
+
+    for cx_oracle_conn in _all_conns:
+        try:
+            sc = cx_oracle_conn.stmtcachesize
+        except db.dialect.dbapi.InterfaceError:
+            # connection closed
+            pass
+        else:
+            cx_oracle_conn.stmtcachesize = 0
+            cx_oracle_conn.stmtcachesize = sc
+    _all_conns.clear()
+
+
+_all_conns = set()
+
+
+@post_configure_engine.for_db("oracle")
+def _oracle_post_configure_engine(url, engine, follower_ident):
+    from sqlalchemy import event
+
+    @event.listens_for(engine, "checkout")
+    def checkout(dbapi_con, con_record, con_proxy):
+        _all_conns.add(dbapi_con)
 
 
 @run_reap_dbs.for_db("oracle")
