@@ -820,7 +820,10 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             "Column 't.id' is marked as a member.*" "may not store NULL.$"
         ):
             self.assert_compile(
-                t.insert(), "INSERT INTO t () VALUES ()", params={}
+                t.insert(),
+                "INSERT INTO t () VALUES ()",
+                params={},
+                supports_default_values=False,
             )
 
 
@@ -928,17 +931,20 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         stmt = table1.insert().values({})  # hide from 2to3
-        self.assert_compile(stmt, "INSERT INTO mytable () VALUES ()")
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable () VALUES ()",
+            supports_default_values=False,
+        )
 
     def test_supports_empty_insert_true(self):
         table1 = self.tables.mytable
 
-        dialect = default.DefaultDialect()
-        dialect.supports_empty_insert = dialect.supports_default_values = True
-
         stmt = table1.insert().values({})
         self.assert_compile(
-            stmt, "INSERT INTO mytable DEFAULT VALUES", dialect=dialect
+            stmt,
+            "INSERT INTO mytable DEFAULT VALUES",
+            supports_default_values=True,
         )
 
     def test_supports_empty_insert_true_executemany_mode(self):
@@ -977,7 +983,10 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         ins = table1.insert().values(collection)
 
         self.assert_compile(
-            ins, "INSERT INTO mytable () VALUES ()", checkparams={}
+            ins,
+            "INSERT INTO mytable () VALUES ()",
+            checkparams={},
+            supports_default_values=False,
         )
 
         # empty dict populates on next values call

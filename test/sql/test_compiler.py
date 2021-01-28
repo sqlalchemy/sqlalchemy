@@ -4171,6 +4171,74 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             checkparams={"foo_1": 1, "foo_2": 2, "foo_3": 3},
         )
 
+    @testing.combinations(
+        (
+            select(table1.c.myid).where(
+                table1.c.myid == bindparam("x", value=None)
+            ),
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = NULL",
+            True,
+            None,
+        ),
+        (
+            select(table1.c.myid).where(table1.c.myid == None),
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid IS NULL",
+            False,
+            None,
+        ),
+        (
+            select(table1.c.myid, None),
+            "SELECT mytable.myid, NULL AS anon_1 FROM mytable",
+            False,
+            None,
+        ),
+        (
+            select(table1.c.myid).where(
+                table1.c.myid.is_(bindparam("x", value=None))
+            ),
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid IS NULL",
+            False,
+            None,
+        ),
+        (
+            # as of SQLAlchemy 1.4, values like these are considered to be
+            # SQL expressions up front, so it is coerced to null()
+            # immediately and no bindparam() is created
+            table1.insert().values({"myid": None}),
+            "INSERT INTO mytable (myid) VALUES (NULL)",
+            False,
+            None,
+        ),
+        (table1.insert(), "INSERT INTO mytable DEFAULT VALUES", False, {}),
+        (
+            table1.update().values({"myid": None}),
+            "UPDATE mytable SET myid=NULL",
+            False,
+            None,
+        ),
+        (
+            table1.update()
+            .where(table1.c.myid == bindparam("x"))
+            .values({"myid": None}),
+            "UPDATE mytable SET myid=NULL WHERE mytable.myid = NULL",
+            True,
+            None,
+        ),
+    )
+    def test_render_nulls_literal_binds(self, stmt, expected, warns, params):
+        if warns:
+            with testing.expect_warnings(
+                r"Bound parameter '.*?' rendering literal "
+                "NULL in a SQL expression"
+            ):
+                self.assert_compile(
+                    stmt, expected, literal_binds=True, params=params
+                )
+        else:
+            self.assert_compile(
+                stmt, expected, literal_binds=True, params=params
+            )
+
 
 class UnsupportedTest(fixtures.TestBase):
     def test_unsupported_element_str_visit_name(self):
