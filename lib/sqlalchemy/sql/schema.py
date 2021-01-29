@@ -1300,11 +1300,42 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             application, including ORM attribute mapping; the ``name`` field
             is used only when rendering SQL.
 
-        :param index: When ``True``, indicates that the column is indexed.
-            This is a shortcut for using a :class:`.Index` construct on the
-            table. To specify indexes with explicit names or indexes that
-            contain multiple columns, use the :class:`.Index` construct
-            instead.
+        :param index: When ``True``, indicates that a :class:`_schema.Index`
+            construct will be automatically generated for this
+            :class:`_schema.Column`, which will result in a "CREATE INDEX"
+            statement being emitted for the :class:`_schema.Table` when the DDL
+            create operation is invoked.
+
+            Using this flag is equivalent to making use of the
+            :class:`_schema.Index` construct explicitly at the level of the
+            :class:`_schema.Table` construct itself::
+
+                Table(
+                    "some_table",
+                    metadata,
+                    Column("x", Integer),
+                    Index("ix_some_table_x", "x")
+                )
+
+            To add the :paramref:`_schema.Index.unique` flag to the
+            :class:`_schema.Index`, set both the
+            :paramref:`_schema.Column.unique` and
+            :paramref:`_schema.Column.index` flags to True simultaneously,
+            which will have the effect of rendering the "CREATE UNIQUE INDEX"
+            DDL instruction instead of "CREATE INDEX".
+
+            The name of the index is generated using the
+            :ref:`default naming convention <constraint_default_naming_convention>`
+            which for the :class:`_schema.Index` construct is of the form
+            ``ix_<tablename>_<columnname>``.
+
+            As this flag is intended only as a convenience for the common case
+            of adding a single-column, default configured index to a table
+            definition, explicit use of the :class:`_schema.Index` construct
+            should be preferred for most use cases, including composite indexes
+            that encompass more than one column, indexes with SQL expressions
+            or ordering, backend-specific index configuration options, and
+            indexes that use a specific name.
 
             .. note:: the :attr:`_schema.Column.index` attribute on
                :class:`_schema.Column`
@@ -1312,6 +1343,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                if this flag was explicitly set here.  To view indexes on
                a column, view the :attr:`_schema.Table.indexes` collection
                or use :meth:`_reflection.Inspector.get_indexes`.
+
+            .. seealso::
+
+                :ref:`schema_indexes`
+
+                :ref:`constraint_naming_conventions`
+
+                :paramref:`_schema.Column.unique`
 
         :param info: Optional data dictionary which will be populated into the
             :attr:`.SchemaItem.info` attribute of this object.
@@ -1408,12 +1447,48 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
              reserved word. This flag is only needed to force quoting of a
              reserved word which is not known by the SQLAlchemy dialect.
 
-        :param unique: When ``True``, indicates that this column contains a
-             unique constraint, or if ``index`` is ``True`` as well, indicates
-             that the :class:`.Index` should be created with the unique flag.
-             To specify multiple columns in the constraint/index or to specify
-             an explicit name, use the :class:`.UniqueConstraint` or
-             :class:`.Index` constructs explicitly.
+        :param unique: When ``True``, and the :paramref:`_schema.Column.index`
+            parameter is left at its default value of ``False``,
+            indicates that a :class:`_schema.UniqueConstraint`
+            construct will be automatically generated for this
+            :class:`_schema.Column`,
+            which will result in a "UNIQUE CONSTRAINT" clause referring
+            to this column being included
+            in the ``CREATE TABLE`` statement emitted, when the DDL create
+            operation for the :class:`_schema.Table` object is invoked.
+
+            When this flag is ``True`` while the
+            :paramref:`_schema.Column.index` parameter is simultaneously
+            set to ``True``, the effect instead is that a
+            :class:`_schema.Index` construct which includes the
+            :paramref:`_schema.Index.unique` parameter set to ``True``
+            is generated.  See the documentation for
+            :paramref:`_schema.Column.index` for additional detail.
+
+            Using this flag is equivalent to making use of the
+            :class:`_schema.UniqueConstraint` construct explicitly at the
+            level of the :class:`_schema.Table` construct itself::
+
+                Table(
+                    "some_table",
+                    metadata,
+                    Column("x", Integer),
+                    UniqueConstraint("x")
+                )
+
+            The :paramref:`_schema.UniqueConstraint.name` parameter
+            of the unique constraint object is left at its default value
+            of ``None``; in the absence of a :ref:`naming convention <constraint_naming_conventions>`
+            for the enclosing :class:`_schema.MetaData`, the UNIQUE CONSTRAINT
+            construct will be emitted as unnamed, which typically invokes
+            a database-specific naming convention to take place.
+
+            As this flag is intended only as a convenience for the common case
+            of adding a single-column, default configured unique constraint to a table
+            definition, explicit use of the :class:`_schema.UniqueConstraint` construct
+            should be preferred for most use cases, including composite constraints
+            that encompass more than one column, backend-specific index configuration options, and
+            constraints that use a specific name.
 
             .. note:: the :attr:`_schema.Column.unique` attribute on
                 :class:`_schema.Column`
@@ -1425,6 +1500,14 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 :attr:`_schema.Table.constraints` collections or use
                 :meth:`_reflection.Inspector.get_indexes` and/or
                 :meth:`_reflection.Inspector.get_unique_constraints`
+
+            .. seealso::
+
+                :ref:`schema_unique_constraint`
+
+                :ref:`constraint_naming_conventions`
+
+                :paramref:`_schema.Column.index`
 
         :param system: When ``True``, indicates this is a "system" column,
              that is a column which is automatically made available by the
@@ -1443,7 +1526,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 parameter to :class:`_schema.Column`.
 
 
-        """
+        """  # noqa E501
 
         name = kwargs.pop("name", None)
         type_ = kwargs.pop("type_", None)
