@@ -312,6 +312,8 @@ They may also not be supported on other databases.
 
     :ref:`passive_deletes_many_to_many`
 
+.. _schema_unique_constraint:
+
 UNIQUE Constraint
 -----------------
 
@@ -450,6 +452,9 @@ and :paramref:`_schema.Column.index` parameters.  As of SQLAlchemy 0.9.2 this
 event-based approach is included, and can be configured using the argument
 :paramref:`_schema.MetaData.naming_convention`.
 
+Configuring a Naming Convention for a MetaData Collection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 :paramref:`_schema.MetaData.naming_convention` refers to a dictionary which accepts
 the :class:`.Index` class or individual :class:`.Constraint` classes as keys,
 and Python string templates as values.   It also accepts a series of
@@ -506,14 +511,6 @@ will be explicit when a new migration script is generated::
 The above ``"uq_user_name"`` string was copied from the :class:`.UniqueConstraint`
 object that ``--autogenerate`` located in our metadata.
 
-The default value for :paramref:`_schema.MetaData.naming_convention` handles
-the long-standing SQLAlchemy behavior of assigning a name to a :class:`.Index`
-object that is created using the :paramref:`_schema.Column.index` parameter::
-
-    >>> from sqlalchemy.sql.schema import DEFAULT_NAMING_CONVENTION
-    >>> DEFAULT_NAMING_CONVENTION
-    immutabledict({'ix': 'ix_%(column_0_label)s'})
-
 The tokens available include ``%(table_name)s``, ``%(referred_table_name)s``,
 ``%(column_0_name)s``, ``%(column_0_label)s``, ``%(column_0_key)s``,
 ``%(referred_column_0_name)s``, and  ``%(constraint_name)s``, as well as
@@ -522,6 +519,22 @@ multiple-column versions of each including ``%(column_0N_name)s``,
 column names separated with or without an underscore.  The documentation for
 :paramref:`_schema.MetaData.naming_convention` has further detail on each  of these
 conventions.
+
+.. _constraint_default_naming_convention:
+
+The Default Naming Convention
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The default value for :paramref:`_schema.MetaData.naming_convention` handles
+the long-standing SQLAlchemy behavior of assigning a name to a :class:`.Index`
+object that is created using the :paramref:`_schema.Column.index` parameter::
+
+    >>> from sqlalchemy.sql.schema import DEFAULT_NAMING_CONVENTION
+    >>> DEFAULT_NAMING_CONVENTION
+    immutabledict({'ix': 'ix_%(column_0_label)s'})
+
+Truncation of Long Names
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When a generated name, particularly those that use the multiple-column tokens,
 is too long for the identifier length limit of the target database
@@ -556,6 +569,9 @@ as in the following example::
 The above suffix ``a79e`` is based on the md5 hash of the long name and will
 generate the same value every time to produce consistent names for a given
 schema.
+
+Creating Custom Tokens for Naming Conventions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 New tokens can also be added, by specifying an additional token
 and a callable within the naming_convention dictionary.  For example, if we
