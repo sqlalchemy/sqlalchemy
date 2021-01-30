@@ -78,6 +78,14 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(no_support("sqlite", "not supported by database"))
 
     @property
+    def foreign_key_constraint_name_reflection(self):
+        return fails_if(
+            lambda config: against(config, ["mysql", "mariadb"])
+            and not self._mysql_80(config)
+            and not self._mariadb_105(config)
+        )
+
+    @property
     def table_ddl_if_exists(self):
         """target platform supports IF NOT EXISTS / IF EXISTS for tables."""
 
@@ -1546,9 +1554,16 @@ class DefaultRequirements(SuiteRequirements):
 
     def _mariadb_102(self, config):
         return (
-            against(config, "mysql")
+            against(config, ["mysql", "mariadb"])
             and config.db.dialect._is_mariadb
-            and config.db.dialect._mariadb_normalized_version_info > (10, 2)
+            and config.db.dialect._mariadb_normalized_version_info >= (10, 2)
+        )
+
+    def _mariadb_105(self, config):
+        return (
+            against(config, ["mysql", "mariadb"])
+            and config.db.dialect._is_mariadb
+            and config.db.dialect._mariadb_normalized_version_info >= (10, 5)
         )
 
     def _mysql_and_check_constraints_exist(self, config):

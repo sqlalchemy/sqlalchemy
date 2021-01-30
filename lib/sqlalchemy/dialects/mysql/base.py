@@ -2513,6 +2513,7 @@ class MySQLDialect(default.DefaultDialect):
     # identifiers are 64, however aliases can be 255...
     max_identifier_length = 255
     max_index_name_length = 64
+    max_constraint_name_length = 64
 
     supports_native_enum = True
 

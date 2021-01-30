@@ -10,6 +10,7 @@ from sqlalchemy import DefaultClause
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Index
 from sqlalchemy import inspect
 from sqlalchemy import Integer
@@ -1012,6 +1013,52 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                     },
                 ],
             )
+
+    def test_get_foreign_key_name_w_foreign_key_in_name(
+        self, metadata, connection
+    ):
+        Table(
+            "a",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            mysql_engine="InnoDB",
+        )
+
+        cons = ForeignKeyConstraint(
+            ["aid"], ["a.id"], name="foreign_key_thing_with_stuff"
+        )
+        Table(
+            "b",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "aid",
+            ),
+            cons,
+            mysql_engine="InnoDB",
+        )
+        actual_name = cons.name
+
+        metadata.create_all(connection)
+
+        if testing.requires.foreign_key_constraint_name_reflection.enabled:
+            expected_name = actual_name
+        else:
+            expected_name = "b_ibfk_1"
+
+        eq_(
+            inspect(connection).get_foreign_keys("b"),
+            [
+                {
+                    "name": expected_name,
+                    "constrained_columns": ["aid"],
+                    "referred_schema": None,
+                    "referred_table": "a",
+                    "referred_columns": ["id"],
+                    "options": {},
+                }
+            ],
+        )
 
     @testing.requires.mysql_fully_case_sensitive
     def test_case_sensitive_reflection_dual_case_references(
