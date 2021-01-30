@@ -7,13 +7,16 @@
 """Public API functions and helpers for declarative."""
 from __future__ import absolute_import
 
+import itertools
 import re
 import weakref
 
 from . import attributes
 from . import clsregistry
 from . import exc as orm_exc
+from . import instrumentation
 from . import interfaces
+from . import mapper as mapperlib
 from .base import _inspect_mapped_class
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
@@ -456,11 +459,178 @@ class registry(object):
             class_registry = weakref.WeakValueDictionary()
 
         self._class_registry = class_registry
+        self._managers = weakref.WeakKeyDictionary()
+        self._non_primary_mappers = weakref.WeakKeyDictionary()
         self.metadata = lcl_metadata
         self.constructor = constructor
 
+        self._dependents = set()
+        self._dependencies = set()
+
+        self._new_mappers = False
+
+        mapperlib._mapper_registries[self] = True
+
+    @property
+    def mappers(self):
+        """read only collection of all :class:`_orm.Mapper` objects."""
+
+        return frozenset(manager.mapper for manager in self._managers).union(
+            self._non_primary_mappers
+        )
+
+    def _set_depends_on(self, registry):
+        if registry is self:
+            return
+        registry._dependents.add(self)
+        self._dependencies.add(registry)
+
+    def _flag_new_mapper(self, mapper):
+        mapper._ready_for_configure = True
+        if self._new_mappers:
+            return
+
+        for reg in self._recurse_with_dependents({self}):
+            reg._new_mappers = True
+
+    @classmethod
+    def _recurse_with_dependents(cls, registries):
+        todo = registries
+        done = set()
+        while todo:
+            reg = todo.pop()
+            done.add(reg)
+
+            # if yielding would remove dependents, make sure we have
+            # them before
+            todo.update(reg._dependents.difference(done))
+            yield reg
+
+            # if yielding would add dependents, make sure we have them
+            # after
+            todo.update(reg._dependents.difference(done))
+
+    @classmethod
+    def _recurse_with_dependencies(cls, registries):
+        todo = registries
+        done = set()
+        while todo:
+            reg = todo.pop()
+            done.add(reg)
+
+            # if yielding would remove dependencies, make sure we have
+            # them before
+            todo.update(reg._dependencies.difference(done))
+
+            yield reg
+
+            # if yielding would remove dependencies, make sure we have
+            # them before
+            todo.update(reg._dependencies.difference(done))
+
+    def _mappers_to_configure(self):
+        return itertools.chain(
+            (
+                manager.mapper
+                for manager in self._managers
+                if manager.is_mapped
+                and not manager.mapper.configured
+                and manager.mapper._ready_for_configure
+            ),
+            (
+                npm
+                for npm in self._non_primary_mappers
+                if not npm.configured and npm._ready_for_configure
+            ),
+        )
+
+    def _add_non_primary_mapper(self, np_mapper):
+        self._non_primary_mappers[np_mapper] = True
+
     def _dispose_cls(self, cls):
         clsregistry.remove_class(cls.__name__, cls, self._class_registry)
+
+    def _add_manager(self, manager):
+        self._managers[manager] = True
+        assert manager.registry is None
+        manager.registry = self
+
+    def configure(self, cascade=False):
+        """Configure all as-yet unconfigured mappers in this
+        :class:`_orm.registry`.
+
+        The configure step is used to reconcile and initialize the
+        :func:`_orm.relationship` linkages between mapped classes, as well as
+        to invoke configuration events such as the
+        :meth:`_orm.MapperEvents.before_configured` and
+        :meth:`_orm.MapperEvents.after_configured`, which may be used by ORM
+        extensions or user-defined extension hooks.
+
+        If one or more mappers in this registry contain
+        :func:`_orm.relationship` constructs that refer to mapped classes in
+        other registries, this registry is said to be *dependent* on those
+        registries. In order to configure those dependent registries
+        automatically, the :paramref:`_orm.registry.configure.cascade` flag
+        should be set to ``True``. Otherwise, if they are not configured, an
+        exception will be raised.  The rationale behind this behavior is to
+        allow an application to programmatically invoke configuration of
+        registries while controlling whether or not the process implicitly
+        reaches other registries.
+
+        As an alternative to invoking :meth:`_orm.registry.configure`, the ORM
+        function :func:`_orm.configure_mappers` function may be used to ensure
+        configuration is complete for all :class:`_orm.registry` objects in
+        memory. This is generally simpler to use and also predates the usage of
+        :class:`_orm.registry` objects overall. However, this function will
+        impact all mappings throughout the running Python process and may be
+        more memory/time consuming for an application that has many registries
+        in use for different purposes that may not be needed immediately.
+
+        .. seealso::
+
+            :func:`_orm.configure_mappers`
+
+
+        .. versionadded:: 1.4.0b2
+
+        """
+        mapperlib._configure_registries({self}, cascade=cascade)
+
+    def dispose(self, cascade=False):
+        """Dispose of all mappers in this :class:`_orm.registry`.
+
+        After invocation, all the classes that were mapped within this registry
+        will no longer have class instrumentation associated with them. This
+        method is the per-:class:`_orm.registry` analogue to the
+        application-wide :func:`_orm.clear_mappers` function.
+
+        If this registry contains mappers that are dependencies of other
+        registries, typically via :func:`_orm.relationship` links, then those
+        registries must be disposed as well. When such registries exist in
+        relation to this one, their :meth:`_orm.registry.dispose` method will
+        also be called, if the :paramref:`_orm.registry.dispose.cascade` flag
+        is set to ``True``; otherwise, an error is raised if those registries
+        were not already disposed.
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :func:`_orm.clear_mappers`
+
+        """
+
+        mapperlib._dispose_registries({self}, cascade=cascade)
+
+    def _dispose_manager_and_mapper(self, manager):
+        if "mapper" in manager.__dict__:
+            mapper = manager.mapper
+
+            mapper._set_dispose_flags()
+
+        class_ = manager.class_
+        self._dispose_cls(class_)
+        instrumentation._instrumentation_factory.unregister(class_)
 
     def generate_base(
         self,
@@ -705,6 +875,9 @@ class registry(object):
 
         """
         return _mapper(self, class_, local_table, kw)
+
+
+mapperlib._legacy_registry = registry()
 
 
 @util.deprecated_params(

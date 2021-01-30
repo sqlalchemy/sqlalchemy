@@ -19,13 +19,13 @@ from sqlalchemy.orm import EXT_SKIP
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import mapperlib
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1073,7 +1073,11 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.mock_calls,
         )
 
-    def test_before_mapper_configured_event(self):
+    @testing.combinations((True,), (False,), argnames="create_dependency")
+    @testing.combinations((True,), (False,), argnames="configure_at_once")
+    def test_before_mapper_configured_event(
+        self, create_dependency, configure_at_once
+    ):
         """Test [ticket:4397].
 
         This event is intended to allow a specific mapper to be skipped during
@@ -1088,7 +1092,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         """
 
         User, users = self.classes.User, self.tables.users
-        mapper(User, users)
+        ump = mapper(User, users)
 
         AnotherBase = declarative_base()
 
@@ -1098,12 +1102,18 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             __mapper_args__ = dict(
                 polymorphic_on="species", polymorphic_identity="Animal"
             )
+            if create_dependency:
+                user_id = Column("user_id", ForeignKey(users.c.id))
 
-        # Register the first classes and create their Mappers:
-        configure_mappers()
+        if not configure_at_once:
+            # Register the first classes and create their Mappers:
+            configure_mappers()
 
-        unconfigured = [m for m in _mapper_registry if not m.configured]
-        eq_(0, len(unconfigured))
+            unconfigured = list(mapperlib._unconfigured_mappers())
+            eq_(0, len(unconfigured))
+
+        if create_dependency:
+            ump.add_property("animal", relationship(Animal))
 
         # Declare a subclass, table and mapper, which refers to one that has
         # not been loaded yet (Employer), and therefore cannot be configured:
@@ -1111,8 +1121,12 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             nonexistent = relationship("Nonexistent")
 
         # These new classes should not be configured at this point:
-        unconfigured = [m for m in _mapper_registry if not m.configured]
-        eq_(1, len(unconfigured))
+        unconfigured = list(mapperlib._unconfigured_mappers())
+
+        if configure_at_once:
+            eq_(3, len(unconfigured))
+        else:
+            eq_(1, len(unconfigured))
 
         # Now try to query User, which is internally consistent. This query
         # fails by default because Mammal needs to be configured, and cannot
@@ -1121,7 +1135,10 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             s = fixture_session()
             s.query(User)
 
-        assert_raises(sa.exc.InvalidRequestError, probe)
+        if create_dependency:
+            assert_raises(sa.exc.InvalidRequestError, probe)
+        else:
+            probe()
 
         # If we disable configuring mappers while querying, then it succeeds:
         @event.listens_for(

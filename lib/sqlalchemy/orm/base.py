@@ -158,7 +158,6 @@ PASSIVE_ONLY_PERSISTENT = util.symbol(
 
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
 DEFAULT_STATE_ATTR = "_sa_instance_state"
-_INSTRUMENTOR = ("mapper", "instrumentor")
 
 EXT_CONTINUE = util.symbol("EXT_CONTINUE")
 EXT_STOP = util.symbol("EXT_STOP")
@@ -412,8 +411,8 @@ def _inspect_mapped_class(class_, configure=False):
     except exc.NO_STATE:
         return None
     else:
-        if configure and mapper._new_mappers:
-            mapper._configure_all()
+        if configure:
+            mapper._check_configure()
         return mapper
 
 

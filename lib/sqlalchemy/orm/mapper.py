@@ -29,7 +29,6 @@ from . import loading
 from . import properties
 from . import util as orm_util
 from .base import _class_to_mapper
-from .base import _INSTRUMENTOR
 from .base import _state_mapper
 from .base import class_mapper
 from .base import state_str
@@ -57,8 +56,21 @@ from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
 
+_mapper_registries = weakref.WeakKeyDictionary()
 
-_mapper_registry = weakref.WeakKeyDictionary()
+_legacy_registry = None
+
+
+def _all_registries():
+    return set(_mapper_registries)
+
+
+def _unconfigured_mappers():
+    for reg in _mapper_registries:
+        for mapper in reg._mappers_to_configure():
+            yield mapper
+
+
 _already_compiling = False
 
 
@@ -111,8 +123,8 @@ class Mapper(
 
     """
 
-    _new_mappers = False
     _dispose_called = False
+    _ready_for_configure = False
 
     @util.deprecated_params(
         non_primary=(
@@ -567,7 +579,6 @@ class Mapper(
               techniques.
 
         """
-
         self.class_ = util.assert_arg_type(class_, type, "class_")
         self._sort_key = "%s.%s" % (
             self.class_.__module__,
@@ -620,7 +631,7 @@ class Mapper(
             else None
         )
         self._dependency_processors = []
-        self.validators = util.immutabledict()
+        self.validators = util.EMPTY_DICT
         self.passive_updates = passive_updates
         self.passive_deletes = passive_deletes
         self.legacy_is_orphan = legacy_is_orphan
@@ -662,8 +673,6 @@ class Mapper(
         else:
             self.exclude_properties = None
 
-        self.configured = False
-
         # prevent this mapper from being constructed
         # while a configure_mappers() is occurring (and defer a
         # configure_mappers() until construction succeeds)
@@ -674,7 +683,7 @@ class Mapper(
             self._configure_properties()
             self._configure_polymorphic_setter()
             self._configure_pks()
-            Mapper._new_mappers = True
+            self.registry._flag_new_mapper(self)
             self._log("constructed")
             self._expire_memoizations()
 
@@ -768,7 +777,7 @@ class Mapper(
 
     """
 
-    configured = None
+    configured = False
     """Represent ``True`` if this :class:`_orm.Mapper` has been configured.
 
     This is a *read only* attribute determined during mapper construction.
@@ -1191,8 +1200,9 @@ class Mapper(
                     "Mapper." % self.class_
                 )
             self.class_manager = manager
+            self.registry = manager.registry
             self._identity_class = manager.mapper._identity_class
-            _mapper_registry[self] = True
+            manager.registry._add_non_primary_mapper(self)
             return
 
         if manager is not None:
@@ -1206,8 +1216,6 @@ class Mapper(
             # a ClassManager may already exist as
             # ClassManager.instrument_attribute() creates
             # new managers for each subclass if they don't yet exist.
-
-        _mapper_registry[self] = True
 
         self.dispatch.instrument_class(self, self.class_)
 
@@ -1227,6 +1235,7 @@ class Mapper(
             # and call the class_instrument event
             finalize=True,
         )
+
         if not manager.registry:
             util.warn_deprecated_20(
                 "Calling the mapper() function directly outside of a "
@@ -1234,18 +1243,17 @@ class Mapper(
                 " Please use the sqlalchemy.orm.registry.map_imperatively() "
                 "function for a classical mapping."
             )
-            from . import registry
-
-            manager.registry = registry()
+            assert _legacy_registry is not None
+            _legacy_registry._add_manager(manager)
 
         self.class_manager = manager
+        self.registry = manager.registry
 
         # The remaining members can be added by any mapper,
         # e_name None or not.
-        if manager.info.get(_INSTRUMENTOR, False):
+        if manager.mapper is None:
             return
 
-        event.listen(manager, "first_init", _event_on_first_init, raw=True)
         event.listen(manager, "init", _event_on_init, raw=True)
 
         for key, method in util.iterate_attributes(self.class_):
@@ -1270,29 +1278,12 @@ class Mapper(
                             {name: (method, validation_opts)}
                         )
 
-        manager.info[_INSTRUMENTOR] = self
-
-    @classmethod
-    def _configure_all(cls):
-        """Class-level path to the :func:`.configure_mappers` call."""
-        configure_mappers()
-
-    def dispose(self):
-        # Disable any attribute-based compilation.
+    def _set_dispose_flags(self):
         self.configured = True
+        self._ready_for_configure = True
         self._dispose_called = True
 
-        if hasattr(self, "_configure_failed"):
-            del self._configure_failed
-
-        if (
-            not self.non_primary
-            and self.class_manager is not None
-            and self.class_manager.is_mapped
-            and self.class_manager.mapper is self
-        ):
-            self.class_manager.registry._dispose_cls(self.class_)
-            instrumentation.unregister_class(self.class_)
+        self.__dict__.pop("_configure_failed", None)
 
     def _configure_pks(self):
         self.tables = sql_util.find_tables(self.persist_selectable)
@@ -1877,6 +1868,10 @@ class Mapper(
                 "columns get mapped." % (key, self, column.key, prop)
             )
 
+    def _check_configure(self):
+        if self.registry._new_mappers:
+            _configure_registries({self.registry}, cascade=True)
+
     def _post_configure_properties(self):
         """Call the ``init()`` method on all ``MapperProperties``
         attached to this mapper.
@@ -1983,8 +1978,8 @@ class Mapper(
     def get_property(self, key, _configure_mappers=True):
         """return a MapperProperty associated with the given key."""
 
-        if _configure_mappers and Mapper._new_mappers:
-            configure_mappers()
+        if _configure_mappers:
+            self._check_configure()
 
         try:
             return self._props[key]
@@ -2005,8 +2000,8 @@ class Mapper(
     @property
     def iterate_properties(self):
         """return an iterator of all MapperProperty objects."""
-        if Mapper._new_mappers:
-            configure_mappers()
+
+        self._check_configure()
         return iter(self._props.values())
 
     def _mappers_from_spec(self, spec, selectable):
@@ -2081,8 +2076,8 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _with_polymorphic_mappers(self):
-        if Mapper._new_mappers:
-            configure_mappers()
+        self._check_configure()
+
         if not self.with_polymorphic:
             return []
         return self._mappers_from_spec(*self.with_polymorphic)
@@ -2098,8 +2093,7 @@ class Mapper(
         This allows the inspection process run a configure mappers hook.
 
         """
-        if Mapper._new_mappers:
-            configure_mappers()
+        self._check_configure()
 
     @HasMemoized.memoized_attribute
     def _with_polymorphic_selectable(self):
@@ -2403,8 +2397,8 @@ class Mapper(
             :attr:`_orm.Mapper.all_orm_descriptors`
 
         """
-        if Mapper._new_mappers:
-            configure_mappers()
+
+        self._check_configure()
         return util.ImmutableProperties(self._props)
 
     @HasMemoized.memoized_attribute
@@ -2559,8 +2553,7 @@ class Mapper(
         )
 
     def _filter_properties(self, type_):
-        if Mapper._new_mappers:
-            configure_mappers()
+        self._check_configure()
         return util.ImmutableProperties(
             util.OrderedDict(
                 (k, v) for k, v in self._props.items() if isinstance(v, type_)
@@ -3288,24 +3281,54 @@ class _OptGetColumnsNotAvailable(Exception):
 
 def configure_mappers():
     """Initialize the inter-mapper relationships of all mappers that
-    have been constructed thus far.
+    have been constructed thus far across all :class:`_orm.registry`
+    collections.
 
-    This function can be called any number of times, but in
-    most cases is invoked automatically, the first time mappings are used,
-    as well as whenever mappings are used and additional not-yet-configured
-    mappers have been constructed.
+    The configure step is used to reconcile and initialize the
+    :func:`_orm.relationship` linkages between mapped classes, as well as to
+    invoke configuration events such as the
+    :meth:`_orm.MapperEvents.before_configured` and
+    :meth:`_orm.MapperEvents.after_configured`, which may be used by ORM
+    extensions or user-defined extension hooks.
 
-    Points at which this occur include when a mapped class is instantiated
-    into an instance, as well as when the :meth:`.Session.query` method
-    is used.
+    Mapper configuration is normally invoked automatically, the first time
+    mappings from a particular :class:`_orm.registry` are used, as well as
+    whenever mappings are used and additional not-yet-configured mappers have
+    been constructed. The automatic configuration process however is local only
+    to the :class:`_orm.registry` involving the target mapper and any related
+    :class:`_orm.registry` objects which it may depend on; this is
+    equivalent to invoking the :meth:`_orm.registry.configure` method
+    on a particular :class:`_orm.registry`.
 
-    The :func:`.configure_mappers` function provides several event hooks
-    that can be used to augment its functionality.  These methods include:
+    By contrast, the :func:`_orm.configure_mappers` function will invoke the
+    configuration process on all :class:`_orm.registry` objects that
+    exist in memory, and may be useful for scenarios where many individual
+    :class:`_orm.registry` objects that are nonetheless interrelated are
+    in use.
+
+    .. versionchanged:: 1.4
+
+        As of SQLAlchemy 1.4.0b2, this function works on a
+        per-:class:`_orm.registry` basis, locating all :class:`_orm.registry`
+        objects present and invoking the :meth:`_orm.registry.configure` method
+        on each. The :meth:`_orm.registry.configure` method may be preferred to
+        limit the configuration of mappers to those local to a particular
+        :class:`_orm.registry` and/or declarative base class.
+
+    Points at which automatic configuration is invoked include when a mapped
+    class is instantiated into an instance, as well as when ORM queries
+    are emitted using :meth:`.Session.query` or :meth:`_orm.Session.execute`
+    with an ORM-enabled statement.
+
+    The mapper configure process, whether invoked by
+    :func:`_orm.configure_mappers` or from :meth:`_orm.registry.configure`,
+    provides several event hooks that can be used to augment the mapper
+    configuration step. These hooks include:
 
     * :meth:`.MapperEvents.before_configured` - called once before
-      :func:`.configure_mappers` does any work; this can be used to establish
-      additional options, properties, or related mappings before the operation
-      proceeds.
+      :func:`.configure_mappers` or :meth:`_orm.registry.configure` does any
+      work; this can be used to establish additional options, properties, or
+      related mappings before the operation proceeds.
 
     * :meth:`.MapperEvents.mapper_configured` - called as each individual
       :class:`_orm.Mapper` is configured within the process; will include all
@@ -3313,15 +3336,25 @@ def configure_mappers():
       to be configured.
 
     * :meth:`.MapperEvents.after_configured` - called once after
-      :func:`.configure_mappers` is complete; at this stage, all
-      :class:`_orm.Mapper` objects that are known  to SQLAlchemy will be fully
-      configured.  Note that the calling application may still have other
-      mappings that haven't been produced yet, such as if they are in modules
-      as yet unimported.
+      :func:`.configure_mappers` or :meth:`_orm.registry.configure` is
+      complete; at this stage, all :class:`_orm.Mapper` objects that fall
+      within the scope of the configuration operation will be fully configured.
+      Note that the calling application may still have other mappings that
+      haven't been produced yet, such as if they are in modules as yet
+      unimported, and may also have mappings that are still to be configured,
+      if they are in other :class:`_orm.registry` collections not part of the
+      current scope of configuration.
 
     """
 
-    if not Mapper._new_mappers:
+    _configure_registries(set(_mapper_registries), cascade=True)
+
+
+def _configure_registries(registries, cascade):
+    for reg in registries:
+        if reg._new_mappers:
+            break
+    else:
         return
 
     with _CONFIGURE_MUTEX:
@@ -3332,10 +3365,11 @@ def configure_mappers():
         try:
 
             # double-check inside mutex
-            if not Mapper._new_mappers:
+            for reg in registries:
+                if reg._new_mappers:
+                    break
+            else:
                 return
-
-            has_skip = False
 
             Mapper.dispatch._for_class(Mapper).before_configured()
             # initialize properties on all mappers
@@ -3343,45 +3377,91 @@ def configure_mappers():
             # may randomly conceal/reveal issues related to
             # the order of mapper compilation
 
-            for mapper in list(_mapper_registry):
-                run_configure = None
-                for fn in mapper.dispatch.before_mapper_configured:
-                    run_configure = fn(mapper, mapper.class_)
-                    if run_configure is EXT_SKIP:
-                        has_skip = True
-                        break
-                if run_configure is EXT_SKIP:
-                    continue
-
-                if getattr(mapper, "_configure_failed", False):
-                    e = sa_exc.InvalidRequestError(
-                        "One or more mappers failed to initialize - "
-                        "can't proceed with initialization of other "
-                        "mappers. Triggering mapper: '%s'. "
-                        "Original exception was: %s"
-                        % (mapper, mapper._configure_failed)
-                    )
-                    e._configure_failed = mapper._configure_failed
-                    raise e
-
-                if not mapper.configured:
-                    try:
-                        mapper._post_configure_properties()
-                        mapper._expire_memoizations()
-                        mapper.dispatch.mapper_configured(
-                            mapper, mapper.class_
-                        )
-                    except Exception:
-                        exc = sys.exc_info()[1]
-                        if not hasattr(exc, "_configure_failed"):
-                            mapper._configure_failed = exc
-                        raise
-
-            if not has_skip:
-                Mapper._new_mappers = False
+            _do_configure_registries(registries, cascade)
         finally:
             _already_compiling = False
     Mapper.dispatch._for_class(Mapper).after_configured()
+
+
+@util.preload_module("sqlalchemy.orm.decl_api")
+def _do_configure_registries(registries, cascade):
+
+    registry = util.preloaded.orm_decl_api.registry
+
+    orig = set(registries)
+
+    for reg in registry._recurse_with_dependencies(registries):
+        has_skip = False
+
+        for mapper in reg._mappers_to_configure():
+            run_configure = None
+            for fn in mapper.dispatch.before_mapper_configured:
+                run_configure = fn(mapper, mapper.class_)
+                if run_configure is EXT_SKIP:
+                    has_skip = True
+                    break
+            if run_configure is EXT_SKIP:
+                continue
+
+            if getattr(mapper, "_configure_failed", False):
+                e = sa_exc.InvalidRequestError(
+                    "One or more mappers failed to initialize - "
+                    "can't proceed with initialization of other "
+                    "mappers. Triggering mapper: '%s'. "
+                    "Original exception was: %s"
+                    % (mapper, mapper._configure_failed)
+                )
+                e._configure_failed = mapper._configure_failed
+                raise e
+
+            if not mapper.configured:
+                try:
+                    mapper._post_configure_properties()
+                    mapper._expire_memoizations()
+                    mapper.dispatch.mapper_configured(mapper, mapper.class_)
+                except Exception:
+                    exc = sys.exc_info()[1]
+                    if not hasattr(exc, "_configure_failed"):
+                        mapper._configure_failed = exc
+                    raise
+        if not has_skip:
+            reg._new_mappers = False
+
+        if not cascade and reg._dependencies.difference(orig):
+            raise sa_exc.InvalidRequestError(
+                "configure was called with cascade=False but "
+                "additional registries remain"
+            )
+
+
+@util.preload_module("sqlalchemy.orm.decl_api")
+def _dispose_registries(registries, cascade):
+
+    registry = util.preloaded.orm_decl_api.registry
+
+    orig = set(registries)
+
+    for reg in registry._recurse_with_dependents(registries):
+        if not cascade and reg._dependents.difference(orig):
+            raise sa_exc.InvalidRequestError(
+                "Registry has dependent registries that are not disposed; "
+                "pass cascade=True to clear these also"
+            )
+
+        while reg._managers:
+            manager, _ = reg._managers.popitem()
+            reg._dispose_manager_and_mapper(manager)
+
+        reg._non_primary_mappers.clear()
+        reg._dependents.clear()
+        for dep in reg._dependencies:
+            dep._dependents.discard(reg)
+        reg._dependencies.clear()
+        # this wasn't done in the 1.3 clear_mappers() and in fact it
+        # was a bug, as it could cause configure_mappers() to invoke
+        # the "before_configured" event even though mappers had all been
+        # disposed.
+        reg._new_mappers = False
 
 
 def reconstructor(fn):
@@ -3460,23 +3540,10 @@ def validates(*names, **kw):
 
 
 def _event_on_load(state, ctx):
-    instrumenting_mapper = state.manager.info[_INSTRUMENTOR]
+    instrumenting_mapper = state.manager.mapper
+
     if instrumenting_mapper._reconstructor:
         instrumenting_mapper._reconstructor(state.obj())
-
-
-def _event_on_first_init(manager, cls):
-    """Initial mapper compilation trigger.
-
-    instrumentation calls this one when InstanceState
-    is first generated, and is needed for legacy mutable
-    attributes to work.
-    """
-
-    instrumenting_mapper = manager.info.get(_INSTRUMENTOR)
-    if instrumenting_mapper:
-        if Mapper._new_mappers:
-            configure_mappers()
 
 
 def _event_on_init(state, args, kwargs):
@@ -3488,10 +3555,9 @@ def _event_on_init(state, args, kwargs):
 
     """
 
-    instrumenting_mapper = state.manager.info.get(_INSTRUMENTOR)
+    instrumenting_mapper = state.manager.mapper
     if instrumenting_mapper:
-        if Mapper._new_mappers:
-            configure_mappers()
+        instrumenting_mapper._check_configure()
         if instrumenting_mapper._set_polymorphic_identity:
             instrumenting_mapper._set_polymorphic_identity(state)
 

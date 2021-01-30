@@ -27,7 +27,6 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.orm.mapper import _mapper_registry
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.processors import to_decimal_processor_factory
 from sqlalchemy.processors import to_unicode_processor_factory
@@ -237,13 +236,12 @@ def profile_memory(
 def assert_no_mappers():
     clear_mappers()
     gc_collect()
-    assert len(_mapper_registry) == 0
 
 
 class EnsureZeroed(fixtures.ORMTest):
     def setup_test(self):
         _sessions.clear()
-        _mapper_registry.clear()
+        clear_mappers()
 
         # enable query caching, however make the cache small so that
         # the tests don't take too long.  issues w/ caching include making

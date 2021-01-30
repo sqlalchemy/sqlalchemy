@@ -43,7 +43,6 @@ from .interfaces import ONETOMANY  # noqa
 from .interfaces import PropComparator  # noqa
 from .loading import merge_frozen_result  # noqa
 from .loading import merge_result  # noqa
-from .mapper import _mapper_registry
 from .mapper import class_mapper  # noqa
 from .mapper import configure_mappers  # noqa
 from .mapper import Mapper  # noqa
@@ -247,6 +246,10 @@ synonym = public_factory(SynonymProperty, ".orm.synonym")
 def clear_mappers():
     """Remove all mappers from all classes.
 
+    .. versionchanged:: 1.4  This function now locates all
+       :class:`_orm.registry` objects and calls upon the
+       :meth:`_orm.registry.dispose` method of each.
+
     This function removes all instrumentation from classes and disposes
     of their associated mappers.  Once called, the classes are unmapped
     and can be later re-mapped with new mappers.
@@ -266,14 +269,8 @@ def clear_mappers():
     """
 
     with mapperlib._CONFIGURE_MUTEX:
-        while _mapper_registry:
-            try:
-                mapper, b = _mapper_registry.popitem()
-            except KeyError:
-                # weak registry, item could have been collected
-                pass
-            else:
-                mapper.dispose()
+        all_regs = mapperlib._all_registries()
+        mapperlib._dispose_registries(all_regs, False)
 
 
 joinedload = strategy_options.joinedload._unbound_fn
