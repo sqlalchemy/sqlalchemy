@@ -114,12 +114,11 @@ class DefaultDialect(interfaces.Dialect):
     max_identifier_length = 9999
     _user_defined_max_identifier_length = None
 
-    # length at which to truncate
-    # the name of an index.
-    # Usually None to indicate
-    # 'use max_identifier_length'.
-    # thanks to MySQL, sigh
+    # sub-categories of max_identifier_length.
+    # currently these accommodate for MySQL which allows alias names
+    # of 255 but DDL names only of 64.
     max_index_name_length = None
+    max_constraint_name_length = None
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True

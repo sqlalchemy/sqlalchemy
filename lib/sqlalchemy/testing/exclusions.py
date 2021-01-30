@@ -40,6 +40,13 @@ class compound(object):
     def __add__(self, other):
         return self.add(other)
 
+    def as_skips(self):
+        rule = compound()
+        rule.skips.update(self.skips)
+        rule.skips.update(self.fails)
+        rule.tags.update(self.tags)
+        return rule
+
     def add(self, *others):
         copy = compound()
         copy.fails.update(self.fails)
