@@ -15,6 +15,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
@@ -31,8 +32,11 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import ComparableMixin
 from sqlalchemy.testing.fixtures import fixture_session
@@ -304,9 +308,9 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        self.mapper(User, users)
+        mp = self.mapper(User, users)
         sa.orm.configure_mappers()
-        assert sa.orm.mapperlib.Mapper._new_mappers is False
+        assert mp.registry._new_mappers is False
 
         m = self.mapper(
             Address,
@@ -315,10 +319,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         assert m.configured is False
-        assert sa.orm.mapperlib.Mapper._new_mappers is True
+        assert m.registry._new_mappers is True
         User()
         assert User.addresses
-        assert sa.orm.mapperlib.Mapper._new_mappers is False
+        assert m.registry._new_mappers is False
 
     def test_configure_on_session(self):
         User, users = self.classes.User, self.tables.users
@@ -1810,6 +1814,35 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.mapper(Address, addresses)
         configure_mappers()
 
+    @testing.combinations((True,), (False,))
+    def test_registry_configure(self, cascade):
+        User, users = self.classes.User, self.tables.users
+
+        reg1 = registry()
+        ump = reg1.map_imperatively(User, users)
+
+        reg2 = registry()
+        AnotherBase = reg2.generate_base()
+
+        class Animal(AnotherBase):
+            __tablename__ = "animal"
+            species = Column(String(30), primary_key=True)
+            __mapper_args__ = dict(
+                polymorphic_on="species", polymorphic_identity="Animal"
+            )
+            user_id = Column("user_id", ForeignKey(users.c.id))
+
+        ump.add_property("animal", relationship(Animal))
+
+        if cascade:
+            reg1.configure(cascade=True)
+        else:
+            with expect_raises_message(
+                sa.exc.InvalidRequestError,
+                "configure was called with cascade=False",
+            ):
+                reg1.configure()
+
     def test_reconstructor(self):
         users = self.tables.users
 
@@ -2810,3 +2843,158 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "foobar(users_1.id) = foobar(:foobar_1)",
             dialect=default.DefaultDialect(),
         )
+
+
+class RegistryConfigDisposeTest(fixtures.TestBase):
+    """test the cascading behavior of registry configure / dispose."""
+
+    @testing.fixture
+    def threeway_fixture(self):
+        reg1 = registry()
+        reg2 = registry()
+        reg3 = registry()
+
+        ab = bc = True
+
+        @reg1.mapped
+        class A(object):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+        @reg2.mapped
+        class B(object):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey(A.id))
+
+        @reg3.mapped
+        class C(object):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey(B.id))
+
+        if ab:
+            A.__mapper__.add_property("b", relationship(B))
+
+        if bc:
+            B.__mapper__.add_property("c", relationship(C))
+
+        yield reg1, reg2, reg3
+
+        clear_mappers()
+
+    @testing.fixture
+    def threeway_configured_fixture(self, threeway_fixture):
+        reg1, reg2, reg3 = threeway_fixture
+        configure_mappers()
+
+        return reg1, reg2, reg3
+
+    @testing.combinations((True,), (False,), argnames="cascade")
+    def test_configure_cascade_on_dependencies(
+        self, threeway_fixture, cascade
+    ):
+        reg1, reg2, reg3 = threeway_fixture
+        A, B, C = (
+            reg1._class_registry["A"],
+            reg2._class_registry["B"],
+            reg3._class_registry["C"],
+        )
+
+        is_(reg3._new_mappers, True)
+        is_(reg2._new_mappers, True)
+        is_(reg1._new_mappers, True)
+
+        if cascade:
+            reg1.configure(cascade=True)
+
+            is_(reg3._new_mappers, False)
+            is_(reg2._new_mappers, False)
+            is_(reg1._new_mappers, False)
+
+            is_true(C.__mapper__.configured)
+            is_true(B.__mapper__.configured)
+            is_true(A.__mapper__.configured)
+        else:
+            with testing.expect_raises_message(
+                sa.exc.InvalidRequestError,
+                "configure was called with cascade=False but additional ",
+            ):
+                reg1.configure()
+
+    @testing.combinations((True,), (False,), argnames="cascade")
+    def test_configure_cascade_not_on_dependents(
+        self, threeway_fixture, cascade
+    ):
+        reg1, reg2, reg3 = threeway_fixture
+        A, B, C = (
+            reg1._class_registry["A"],
+            reg2._class_registry["B"],
+            reg3._class_registry["C"],
+        )
+
+        is_(reg3._new_mappers, True)
+        is_(reg2._new_mappers, True)
+        is_(reg1._new_mappers, True)
+
+        reg3.configure(cascade=cascade)
+
+        is_(reg3._new_mappers, False)
+        is_(reg2._new_mappers, True)
+        is_(reg1._new_mappers, True)
+
+        is_true(C.__mapper__.configured)
+        is_false(B.__mapper__.configured)
+        is_false(A.__mapper__.configured)
+
+    @testing.combinations((True,), (False,), argnames="cascade")
+    def test_dispose_cascade_not_on_dependencies(
+        self, threeway_configured_fixture, cascade
+    ):
+        reg1, reg2, reg3 = threeway_configured_fixture
+        A, B, C = (
+            reg1._class_registry["A"],
+            reg2._class_registry["B"],
+            reg3._class_registry["C"],
+        )
+        am, bm, cm = A.__mapper__, B.__mapper__, C.__mapper__
+
+        reg1.dispose(cascade=cascade)
+
+        eq_(reg3.mappers, {cm})
+        eq_(reg2.mappers, {bm})
+        eq_(reg1.mappers, set())
+
+        is_false(cm._dispose_called)
+        is_false(bm._dispose_called)
+        is_true(am._dispose_called)
+
+    @testing.combinations((True,), (False,), argnames="cascade")
+    def test_clear_cascade_not_on_dependents(
+        self, threeway_configured_fixture, cascade
+    ):
+        reg1, reg2, reg3 = threeway_configured_fixture
+        A, B, C = (
+            reg1._class_registry["A"],
+            reg2._class_registry["B"],
+            reg3._class_registry["C"],
+        )
+        am, bm, cm = A.__mapper__, B.__mapper__, C.__mapper__
+
+        if cascade:
+            reg3.dispose(cascade=True)
+
+            eq_(reg3.mappers, set())
+            eq_(reg2.mappers, set())
+            eq_(reg1.mappers, set())
+
+            is_true(cm._dispose_called)
+            is_true(bm._dispose_called)
+            is_true(am._dispose_called)
+        else:
+            with testing.expect_raises_message(
+                sa.exc.InvalidRequestError,
+                "Registry has dependent registries that are not disposed; "
+                "pass cascade=True to clear these also",
+            ):
+                reg3.dispose()

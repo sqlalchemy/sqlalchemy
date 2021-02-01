@@ -1658,11 +1658,8 @@ class RelationshipProperty(StrategizedProperty):
                 return _orm_annotate(self.__negated_contains_or_equals(other))
 
         @util.memoized_property
-        @util.preload_module("sqlalchemy.orm.mapper")
         def property(self):
-            mapperlib = util.preloaded.orm_mapper
-            if mapperlib.Mapper._new_mappers:
-                mapperlib.Mapper._configure_all()
+            self.prop.parent._check_configure()
             return self.prop
 
     def _with_parent(self, instance, alias_secondary=True, from_entity=None):
@@ -2130,9 +2127,9 @@ class RelationshipProperty(StrategizedProperty):
         return self.entity.mapper
 
     def do_init(self):
-
         self._check_conflicts()
         self._process_dependent_arguments()
+        self._setup_registry_dependencies()
         self._setup_join_conditions()
         self._check_cascade_settings(self._cascade)
         self._post_init()
@@ -2140,6 +2137,11 @@ class RelationshipProperty(StrategizedProperty):
         self._join_condition._warn_for_conflicting_sync_targets()
         super(RelationshipProperty, self).do_init()
         self._lazy_strategy = self._get_strategy((("lazy", "select"),))
+
+    def _setup_registry_dependencies(self):
+        self.parent.mapper.registry._set_depends_on(
+            self.entity.mapper.registry
+        )
 
     def _process_dependent_arguments(self):
         """Convert incoming configuration arguments to their
@@ -3391,9 +3393,7 @@ class JoinCondition(object):
 
     _track_overlapping_sync_targets = weakref.WeakKeyDictionary()
 
-    @util.preload_module("sqlalchemy.orm.mapper")
     def _warn_for_conflicting_sync_targets(self):
-        mapperlib = util.preloaded.orm_mapper
         if not self.support_sync:
             return
 
@@ -3424,7 +3424,7 @@ class JoinCondition(object):
 
                 for pr, fr_ in prop_to_from.items():
                     if (
-                        pr.mapper in mapperlib._mapper_registry
+                        not pr.mapper._dispose_called
                         and pr not in self.prop._reverse_property
                         and pr.key not in self.prop._overlaps
                         and self.prop.key not in pr._overlaps

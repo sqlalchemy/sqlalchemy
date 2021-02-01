@@ -129,7 +129,7 @@ class ClassManager(HasMemoized, dict):
         if mapper:
             self.mapper = mapper
         if registry:
-            self.registry = registry
+            registry._add_manager(self)
         if declarative_scan:
             self.declarative_scan = declarative_scan
         if expired_attribute_loader:
@@ -278,11 +278,6 @@ class ClassManager(HasMemoized, dict):
 
         setattr(self.class_, self.MANAGER_ATTR, self)
 
-    def dispose(self):
-        """Disassociate this manager from its class."""
-
-        delattr(self.class_, self.MANAGER_ATTR)
-
     @util.hybridmethod
     def manager_getter(self):
         return _default_manager_getter
@@ -358,6 +353,9 @@ class ClassManager(HasMemoized, dict):
         for key in list(self):
             if key in self.local_attrs:
                 self.uninstrument_attribute(key)
+
+        if self.MANAGER_ATTR in self.class_.__dict__:
+            delattr(self.class_, self.MANAGER_ATTR)
 
     def install_descriptor(self, key, inst):
         if key in (self.STATE_ATTR, self.MANAGER_ATTR):
@@ -496,7 +494,7 @@ class _SerializeManager(object):
                 "Python process!" % self.class_,
             )
         elif manager.is_mapped and not manager.mapper.configured:
-            manager.mapper._configure_all()
+            manager.mapper._check_configure()
 
         # setup _sa_instance_state ahead of time so that
         # unpickle events can access the object normally.
@@ -538,10 +536,7 @@ class InstrumentationFactory(object):
     def unregister(self, class_):
         manager = manager_of_class(class_)
         manager.unregister()
-        manager.dispose()
         self.dispatch.class_uninstrument(class_)
-        if ClassManager.MANAGER_ATTR in class_.__dict__:
-            delattr(class_, ClassManager.MANAGER_ATTR)
 
 
 # this attribute is replaced by sqlalchemy.ext.instrumentation

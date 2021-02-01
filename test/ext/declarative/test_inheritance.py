@@ -227,7 +227,7 @@ class ConcreteInhTest(
             Employee,
         )
 
-        configure_mappers()
+        Base.registry.configure()
 
         # no subclasses yet.
         assert_raises_message(
@@ -257,7 +257,7 @@ class ConcreteInhTest(
             Employee,
         )
 
-        configure_mappers()
+        Base.registry.configure()
 
         self.assert_compile(
             Session().query(Employee),

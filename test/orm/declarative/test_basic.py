@@ -547,8 +547,6 @@ class DeclarativeTest(DeclarativeTestBase):
     def test_recompile_on_othermapper(self):
         """declarative version of the same test in mappers.py"""
 
-        from sqlalchemy.orm import mapperlib
-
         class User(Base):
             __tablename__ = "users"
 
@@ -565,10 +563,10 @@ class DeclarativeTest(DeclarativeTestBase):
                 "User", primaryjoin=user_id == User.id, backref="addresses"
             )
 
-        assert mapperlib.Mapper._new_mappers is True
+        assert User.__mapper__.registry._new_mappers is True
         u = User()  # noqa
         assert User.addresses
-        assert mapperlib.Mapper._new_mappers is False
+        assert User.__mapper__.registry._new_mappers is False
 
     def test_string_dependency_resolution(self):
         class User(Base, fixtures.ComparableEntity):
