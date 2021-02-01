@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, mysql
-    :tickets: 5808
-
-    Casting to ``FLOAT`` is now supported in MySQL >= (8, 0, 17) and
-    MariaDb >= (10, 4, 5).

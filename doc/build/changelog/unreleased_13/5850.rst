@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 5850
-
-    Fixed issue where using :meth:`_schema.Table.to_metadata` (called
-    :meth:`_schema.Table.tometadata` in 1.3) in conjunction with a PostgreSQL
-    :class:`_postgresql.ExcludeConstraint` that made use of ad-hoc column
-    expressions would fail to copy correctly.
