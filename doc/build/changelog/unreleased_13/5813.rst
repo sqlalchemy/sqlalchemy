@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 5813
-
-    Fixed regression in Oracle dialect introduced by :ticket:`4894` in
-    SQLAlchemy 1.3.11 where use of a SQL expression in RETURNING for an UPDATE
-    would fail to compile, due to a check for "server_default" when an
-    arbitrary SQL expression is not a column.
-

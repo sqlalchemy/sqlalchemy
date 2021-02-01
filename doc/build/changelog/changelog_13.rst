@@ -12,7 +12,115 @@
 
 .. changelog::
     :version: 1.3.23
-    :include_notes_from: unreleased_13
+    :released: February 1, 2021
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 5836
+
+        Fixed issue where the stringification that is sometimes called when
+        attempting to generate the "key" for the ``.c`` collection on a selectable
+        would fail if the column were an unlabeled custom SQL construct using the
+        ``sqlalchemy.ext.compiler`` extension, and did not provide a default
+        compilation form; while this seems like an unusual case, it can get invoked
+        for some ORM scenarios such as when the expression is used in an "order by"
+        in combination with joined eager loading.  The issue is that the lack of a
+        default compiler function was raising :class:`.CompileError` and not
+        :class:`.UnsupportedCompilationError`.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5645
+
+        For SQLAlchemy 1.3 only, setup.py pins pg8000 to a version lower than
+        1.16.6. Version 1.16.6 and above is supported by SQLAlchemy 1.4. Pull
+        request courtesy Giuseppe Lumia.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5850
+
+        Fixed issue where using :meth:`_schema.Table.to_metadata` (called
+        :meth:`_schema.Table.tometadata` in 1.3) in conjunction with a PostgreSQL
+        :class:`_postgresql.ExcludeConstraint` that made use of ad-hoc column
+        expressions would fail to copy correctly.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5816
+
+        Fixed bug where making use of the :meth:`.TypeEngine.with_variant` method
+        on a :class:`.TypeDecorator` type would fail to take into account the
+        dialect-specific mappings in use, due to a rule in :class:`.TypeDecorator`
+        that was instead attempting to check for chains of :class:`.TypeDecorator`
+        instances.
+
+
+    .. change::
+        :tags: bug, mysql, reflection
+        :tickets: 5860
+
+        Fixed bug where MySQL server default reflection would fail for numeric
+        values with a negation symbol present.
+
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5813
+
+        Fixed regression in Oracle dialect introduced by :ticket:`4894` in
+        SQLAlchemy 1.3.11 where use of a SQL expression in RETURNING for an UPDATE
+        would fail to compile, due to a check for "server_default" when an
+        arbitrary SQL expression is not a column.
+
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 5808
+
+        Casting to ``FLOAT`` is now supported in MySQL >= (8, 0, 17) and
+        MariaDb >= (10, 4, 5).
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5898
+
+        Fixed long-lived bug in MySQL dialect where the maximum identifier length
+        of 255 was too long for names of all types of constraints, not just
+        indexes, all of which have a size limit of 64. As metadata naming
+        conventions can create too-long names in this area, apply the limit to the
+        identifier generator within the DDL compiler.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5812
+
+        Fixed bug in Oracle dialect where retriving a CLOB/BLOB column via
+        :meth:`_dml.Insert.returning` would fail as the LOB value would need to be
+        read when returned; additionally, repaired support for retrieval of Unicode
+        values via RETURNING under Python 2.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5821
+
+        Fixed deprecation warnings that arose as a result of the release of PyMySQL
+        1.0, including deprecation warnings for the "db" and "passwd" parameters
+        now replaced with "database" and "password".
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 5800
+
+        Fixed regression from SQLAlchemy 1.3.20 caused by the fix for
+        :ticket:`5462` which adds double-parenthesis for MySQL functional
+        expressions in indexes, as is required by the backend, this inadvertently
+        extended to include arbitrary :func:`_sql.text` expressions as well as
+        Alembic's internal textual component,  which are required by Alembic for
+        arbitrary index expressions which don't imply double parenthesis.  The
+        check has been narrowed to include only binary/ unary/functional
+        expressions directly.
 
 .. changelog::
     :version: 1.3.22

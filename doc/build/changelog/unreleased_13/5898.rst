@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 5898
-
-    Fixed long-lived bug in MySQL dialect where the maximum identifier length
-    of 255 was too long for names of all types of constraints, not just
-    indexes, all of which have a size limit of 64. As metadata naming
-    conventions can create too-long names in this area, apply the limit to the
-    identifier generator within the DDL compiler.
