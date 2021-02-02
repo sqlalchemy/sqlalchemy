@@ -469,7 +469,8 @@ class registry(object):
 
         self._new_mappers = False
 
-        mapperlib._mapper_registries[self] = True
+        with mapperlib._CONFIGURE_MUTEX:
+            mapperlib._mapper_registries[self] = True
 
     @property
     def mappers(self):

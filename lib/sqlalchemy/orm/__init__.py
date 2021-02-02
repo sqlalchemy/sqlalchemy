@@ -268,9 +268,7 @@ def clear_mappers():
 
     """
 
-    with mapperlib._CONFIGURE_MUTEX:
-        all_regs = mapperlib._all_registries()
-        mapperlib._dispose_registries(all_regs, False)
+    mapperlib._dispose_registries(mapperlib._all_registries(), False)
 
 
 joinedload = strategy_options.joinedload._unbound_fn

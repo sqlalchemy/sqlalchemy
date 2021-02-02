@@ -62,11 +62,12 @@ _legacy_registry = None
 
 
 def _all_registries():
-    return set(_mapper_registries)
+    with _CONFIGURE_MUTEX:
+        return set(_mapper_registries)
 
 
 def _unconfigured_mappers():
-    for reg in _mapper_registries:
+    for reg in _all_registries():
         for mapper in reg._mappers_to_configure():
             yield mapper
 
@@ -3347,7 +3348,7 @@ def configure_mappers():
 
     """
 
-    _configure_registries(set(_mapper_registries), cascade=True)
+    _configure_registries(_all_registries(), cascade=True)
 
 
 def _configure_registries(registries, cascade):

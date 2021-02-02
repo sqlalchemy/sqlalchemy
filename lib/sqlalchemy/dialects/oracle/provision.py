@@ -60,10 +60,13 @@ def _oracle_drop_db(cfg, eng, ident):
 @stop_test_class_outside_fixtures.for_db("oracle")
 def stop_test_class_outside_fixtures(config, db, cls):
 
-    with db.begin() as conn:
-        # run magic command to get rid of identity sequences
-        # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa E501
-        conn.exec_driver_sql("purge recyclebin")
+    try:
+        with db.begin() as conn:
+            # run magic command to get rid of identity sequences
+            # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa E501
+            conn.exec_driver_sql("purge recyclebin")
+    except exc.DatabaseError as err:
+        log.warning("purge recyclebin command failed: %s", err)
 
     # clear statement cache on all connections that were used
     # https://github.com/oracle/python-cx_Oracle/issues/519

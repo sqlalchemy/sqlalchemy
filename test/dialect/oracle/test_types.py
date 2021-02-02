@@ -1199,7 +1199,6 @@ class SetInputSizesTest(fixtures.TestBase):
             "t2", m, Column("foo", NullType().with_variant(datatype, "oracle"))
         )
         t3 = Table("t3", m, Column("foo", TestTypeDec()))
-        m.create_all(testing.db)
 
         class CursorWrapper(object):
             # cx_oracle cursor can't be modified so we have to
@@ -1222,7 +1221,11 @@ class SetInputSizesTest(fixtures.TestBase):
         else:
             engine = testing.db
 
-        with engine.begin() as conn:
+        with engine.connect() as conn:
+            conn.begin()
+
+            m.create_all(conn, checkfirst=False)
+
             connection_fairy = conn.connection
             for tab in [t1, t2, t3]:
                 with mock.patch.object(
