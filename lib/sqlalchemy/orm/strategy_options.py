@@ -1341,11 +1341,19 @@ def immediateload(*keys):
 def noload(loadopt, attr):
     """Indicate that the given relationship attribute should remain unloaded.
 
+    The relationship attribute will return ``None`` when accessed without
+    producing any loading effect.
+
     This function is part of the :class:`_orm.Load` interface and supports
     both method-chained and standalone operation.
 
     :func:`_orm.noload` applies to :func:`_orm.relationship` attributes; for
     column-based attributes, see :func:`_orm.defer`.
+
+    .. note:: Setting this loading strategy as the default strategy
+        for a relationship using the :paramref:`.orm.relationship.lazy`
+        parameter may cause issues with flushes, such if a delete operation
+        needs to load related objects and instead ``None`` was returned.
 
     .. seealso::
 
