@@ -332,6 +332,8 @@ def create_engine(url, **kwargs):
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
+            :paramref:`_engine.Connection.execution_options.logging_token`
+
 
 
     :param max_identifier_length: integer; override the max_identifier_length

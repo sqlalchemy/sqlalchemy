@@ -1228,7 +1228,7 @@ class BaseCursorResult(object):
             # is the most common case
 
             if echo:
-                log = self.context.engine.logger.debug
+                log = self.context.connection._log_debug
 
                 def log_row(row):
                     log("Row %r", sql_util._repr_row(row))
@@ -1302,7 +1302,7 @@ class BaseCursorResult(object):
                 self, cursor_description
             )
         if self._echo:
-            context.engine.logger.debug(
+            context.connection._log_debug(
                 "Col %r", tuple(x[0] for x in cursor_description)
             )
         return metadata
