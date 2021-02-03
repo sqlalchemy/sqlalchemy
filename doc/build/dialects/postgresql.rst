@@ -5,8 +5,8 @@ PostgreSQL
 
 .. automodule:: sqlalchemy.dialects.postgresql.base
 
-PostgreSQL Data Types
----------------------
+PostgreSQL Data Types and Custom SQL Constructs
+------------------------------------------------
 
 As with all SQLAlchemy dialects, all UPPERCASE types that are known to be
 valid with PostgreSQL are importable from the top level dialect, whether

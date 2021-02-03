@@ -1038,26 +1038,157 @@ dialect in conjunction with the :class:`_schema.Table` construct:
     `PostgreSQL CREATE TABLE options
     <http://www.postgresql.org/docs/current/static/sql-createtable.html>`_
 
-Table values, Row and Tuple objects
------------------------------------
+.. _postgresql_table_valued_overview:
+
+Table values, Table and Column valued functions, Row and Tuple objects
+-----------------------------------------------------------------------
+
+PostgreSQL makes great use of modern SQL forms such as table-valued functions,
+tables and rows as values.   These constructs are commonly used as part
+of PostgreSQL's support for complex datatypes such as JSON, ARRAY, and other
+datatypes.  SQLAlchemy's SQL expression language has native support for
+most table-valued and row-valued forms.
+
+.. _postgresql_table_valued:
+
+Table-Valued Functions
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Many PostgreSQL built-in functions are intended to be used in the FROM clause
+of a SELECT statement, and are capable of returning table rows or sets of table
+rows. A large portion of PostgreSQL's JSON functions for example such as
+``json_array_elements()``, ``json_object_keys()``, ``json_each_text()``,
+``json_each()``, ``json_to_record()``, ``json_populate_recordset()`` use such
+forms. These classes of SQL function calling forms in SQLAlchemy are available
+using the :meth:`_functions.FunctionElement.table_valued` method in conjunction
+with :class:`_function.Function` objects generated from the :data:`_sql.func`
+namespace.
+
+Examples from PostgreSQL's reference documentation follow below:
+
+* ``json_each()``::
+
+    >>> from sqlalchemy import select, func
+    >>> stmt = select(func.json_each('{"a":"foo", "b":"bar"}').table_valued("key", "value"))
+    >>> print(stmt)
+    SELECT anon_1.key, anon_1.value
+    FROM json_each(:json_each_1) AS anon_1
+
+* ``json_populate_record()``::
+
+    >>> from sqlalchemy import select, func, literal_column
+    >>> stmt = select(
+    ...     func.json_populate_record(
+    ...         literal_column("null::myrowtype"),
+    ...         '{"a":1,"b":2}'
+    ...     ).table_valued("a", "b", name="x")
+    ... )
+    >>> print(stmt)
+    SELECT x.a, x.b
+    FROM json_populate_record(null::myrowtype, :json_populate_record_1) AS x
+
+* ``json_to_record()`` - this form uses a PostgreSQL specific form of derived
+  columns in the alias, where we may make use of :func:`_sql.column` elements with
+  types to produce them.  The :meth:`_functions.FunctionElement.table_valued`
+  method produces  a :class:`_sql.TableValuedAlias` construct, and the method
+  :meth:`_sql.TableValuedAlias.render_derived` method sets up the derived
+  columns specification::
+
+    >>> from sqlalchemy import select, func, column, Integer, Text
+    >>> stmt = select(
+    ...     func.json_to_record('{"a":1,"b":[1,2,3],"c":"bar"}').table_valued(
+    ...         column("a", Integer), column("b", Text), column("d", Text),
+    ...     ).render_derived(name="x", with_types=True)
+    ... )
+    >>> print(stmt)
+    SELECT x.a, x.b, x.d
+    FROM json_to_record(:json_to_record_1) AS x(a INTEGER, b TEXT, d TEXT)
+
+* ``WITH ORDINALITY`` - part of the SQL standard, ``WITH ORDINALITY`` adds an
+  ordinal counter to the output of a function and is accepted by a limited set
+  of PostgreSQL functions including ``unnest()`` and ``generate_series()``. The
+  :meth:`_functions.FunctionElement.table_valued` method accepts a keyword
+  parameter ``with_ordinality`` for this purpose, which accepts the string name
+  that will be applied to the "ordinality" column::
+
+    >>> from sqlalchemy import select, func
+    >>> stmt = select(
+    ...     func.generate_series(4, 1, -1).table_valued("value", with_ordinality="ordinality")
+    ... )
+    >>> print(stmt)
+    SELECT anon_1.value, anon_1.ordinality
+    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
+
+.. versionadded:: 1.4.0b2
+
+.. seealso::
+
+    :ref:`tutorial_functions_table_valued` - in the :ref:`unified_tutorial`
+
+.. _postgresql_column_valued:
+
+Column Valued Functions
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Similar to the table valued function, a column valued function is present
+in the FROM clause, but delivers itself to the columns clause as a single
+scalar value.  PostgreSQL functions such as ``json_array_elements()``,
+``unnest()`` and ``generate_series()`` may use this form. Column valued functions are available using the
+:meth:`_functions.FunctionElement.column_valued` method of :class:`_functions.FunctionElement`:
+
+* ``json_array_elements()``::
+
+    >>> from sqlalchemy import select, func
+    >>> stmt = select(func.json_array_elements('["one", "two"]').column_valued("x"))
+    >>> print(stmt)
+    SELECT x
+    FROM json_array_elements(:json_array_elements_1) AS x
+
+* ``unnest()`` - in order to generate a PostgreSQL ARRAY literal, the
+  :func:`_postgresql.array` construct may be used::
+
+
+    >>> from sqlalchemy.dialects.postgresql import array
+    >>> from sqlalchemy import select, func
+    >>> stmt = select(func.unnest(array([1, 2])).column_valued())
+    >>> print(stmt)
+    SELECT anon_1
+    FROM unnest(ARRAY[%(param_1)s, %(param_2)s]) AS anon_1
+
+  The function can of course be used against an existing table-bound column
+  that's of type :class:`_types.ARRAY`::
+
+    >>> from sqlalchemy import table, column, ARRAY, Integer
+    >>> from sqlalchemy import select, func
+    >>> t = table("t", column('value', ARRAY(Integer)))
+    >>> stmt = select(func.unnest(t.c.value).column_valued("unnested_value"))
+    >>> print(stmt)
+    SELECT unnested_value
+    FROM unnest(t.value) AS unnested_value
+
+.. seealso::
+
+    :ref:`tutorial_functions_column_valued` - in the :ref:`unified_tutorial`
+
 
 Row Types
 ^^^^^^^^^
 
-Built-in support for rendering a ``ROW`` is not available yet, however the
-:func:`_expression.tuple_` may be used in its place. Another alternative is
-to use the :attr:`_sa.func` generator with ``func.ROW`` ::
+Built-in support for rendering a ``ROW`` may be approximated using
+``func.ROW`` with the :attr:`_sa.func` namespace, or by using the
+:func:`_sql.tuple_` construct::
 
-    table.select().where(
-        tuple_(table.c.id, table.c.fk) > (1,2)
-    ).where(func.ROW(table.c.id, table.c.fk) < func.ROW(3, 7))
-
-Will generate the row-wise comparison::
-
-    SELECT *
-    FROM table
-    WHERE (id, fk) > (1, 2)
-    AND ROW(id, fk) < ROW(3, 7)
+    >>> from sqlalchemy import table, column, func, tuple_
+    >>> t = table("t", column("id"), column("fk"))
+    >>> stmt = t.select().where(
+    ...     tuple_(t.c.id, t.c.fk) > (1,2)
+    ... ).where(
+    ...     func.ROW(t.c.id, t.c.fk) < func.ROW(3, 7)
+    ... )
+    >>> print(stmt)
+    SELECT t.id, t.fk
+    FROM t
+    WHERE (t.id, t.fk) > (:param_1, :param_2) AND ROW(t.id, t.fk) < ROW(:ROW_1, :ROW_2)
 
 .. seealso::
 
@@ -1067,20 +1198,27 @@ Will generate the row-wise comparison::
     `PostgreSQL Row Constructor Comparison
     <https://www.postgresql.org/docs/current/functions-comparisons.html#ROW-WISE-COMPARISON>`_
 
-Table Types
-^^^^^^^^^^^
+Table Types passed to Functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-PostgreSQL also supports passing a table as an argument to a function. This
-is not available yet in sqlalchemy, however the
-:func:`_expression.literal_column` function with the name of the table may be
-used in its place::
+PostgreSQL supports passing a table as an argument to a function, which it
+refers towards as a "record" type. SQLAlchemy :class:`_sql.FromClause` objects
+such as :class:`_schema.Table` support this special form using the
+:meth:`_sql.FromClause.table_valued` method, which is comparable to the
+:meth:`_functions.FunctionElement.table_valued` method except that the collection
+of columns is already established by that of the :class:`_sql.FromClause`
+itself::
 
-    select('*').select_from(func.my_function(literal_column('my_table')))
 
-Will generate the SQL::
+    >>> from sqlalchemy import table, column, func, select
+    >>> a = table( "a", column("id"), column("x"), column("y"))
+    >>> stmt = select(func.row_to_json(a.table_valued()))
+    >>> print(stmt)
+    SELECT row_to_json(a) AS row_to_json_1
+    FROM a
 
-    SELECT *
-    FROM my_function(my_table)
+.. versionadded:: 1.4.0b2
+
 
 ARRAY Types
 -----------

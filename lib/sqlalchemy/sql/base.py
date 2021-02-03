@@ -935,13 +935,11 @@ class Executable(roles.CoerceTextStatementRole, Generative):
 
     @util.deprecated_20(
         ":meth:`.Executable.scalar`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
+        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
+        "by the :meth:`_engine.Connection.scalar` method of "
         ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`; the :meth:`_future.Result.scalar` "
-        "method can then be "
-        "used to return a scalar result.",
+        "or in the ORM by the :meth:`.Session.scalar` method of "
+        ":class:`.Session`.",
     )
     def scalar(self, *multiparams, **params):
         """Compile and execute this :class:`.Executable`, returning the

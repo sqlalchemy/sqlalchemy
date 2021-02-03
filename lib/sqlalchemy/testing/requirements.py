@@ -58,6 +58,18 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def table_value_constructor(self):
+        """Database / dialect supports a query like::
+
+             SELECT * FROM VALUES ( (c1, c2), (c1, c2), ...)
+             AS some_table(col1, col2)
+
+        SQLAlchemy generates this with the :func:`_sql.values` function.
+
+        """
+        return exclusions.closed()
+
+    @property
     def standard_cursor_sql(self):
         """Target database passes SQL-92 style statements to cursor.execute()
         when a statement like select() or insert() is run.

@@ -98,6 +98,19 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "(SELECT people.people_id AS people_id FROM people) AS alias",
         )
 
+    def test_alias_of_lateral(self):
+        table1 = self.tables.people
+        subq = select(table1.c.people_id).subquery()
+
+        # this use case wasn't working until we changed the name of the
+        # "lateral" name to "lateral_" in compiler.visit_lateral(), was
+        # conflicting with the kwarg before
+        self.assert_compile(
+            select(subq.lateral().alias(name="alias")),
+            "SELECT alias.people_id FROM LATERAL "
+            "(SELECT people.people_id AS people_id FROM people) AS alias",
+        )
+
     def test_select_from_implicit_subquery(self):
         table1 = self.tables.people
         subq = select(table1.c.people_id)

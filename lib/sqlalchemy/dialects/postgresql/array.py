@@ -96,6 +96,8 @@ class array(expression.ClauseList, expression.ColumnElement):
 
     __visit_name__ = "array"
 
+    stringify_dialect = "postgresql"
+
     def __init__(self, clauses, **kw):
         clauses = [
             coercions.expect(roles.ExpressionElementRole, c) for c in clauses

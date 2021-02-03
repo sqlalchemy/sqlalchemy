@@ -75,10 +75,8 @@ def _generate_compiler_dispatch(cls):
         try:
             meth = getter(visitor)
         except AttributeError as err:
-            util.raise_(
-                exc.UnsupportedCompilationError(visitor, cls),
-                replace_context=err,
-            )
+            return visitor.visit_unsupported_compilation(self, err, **kw)
+
         else:
             return meth(self, **kw)
 

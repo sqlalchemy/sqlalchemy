@@ -857,7 +857,10 @@ class _GetChildren(InternalTraversal):
     with a _traverse_internals collection."""
 
     def visit_has_cache_key(self, element, **kw):
-        return (element,)
+        # the GetChildren traversal refers explicitly to ClauseElement
+        # structures.  Within these, a plain HasCacheKey is not a
+        # ClauseElement, so don't include these.
+        return ()
 
     def visit_clauseelement(self, element, **kw):
         return (element,)

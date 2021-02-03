@@ -51,6 +51,7 @@ from .elements import ColumnClause
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
+from .elements import TableValuedColumn
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
@@ -622,6 +623,34 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
 
         return Alias._construct(self, name)
+
+    @util.preload_module("sqlalchemy.sql.sqltypes")
+    def table_valued(self):
+        """Return a :class:`_sql.TableValuedColumn` object for this
+        :class:`_expression.FromClause`.
+
+        A :class:`_sql.TableValuedColumn` is a :class:`_sql.ColumnElement` that
+        represents a complete row in a table. Support for this construct is
+        backend dependent, and is supported in various forms by backends
+        such as PostgreSQL, Oracle and SQL Server.
+
+        E.g.::
+
+            >>> from sqlalchemy import select, column, func, table
+            >>> a = table("a", column("id"), column("x"), column("y"))
+            >>> stmt = select(func.row_to_json(a.table_valued()))
+            >>> print(stmt)
+            SELECT row_to_json(a) AS row_to_json_1
+            FROM a
+
+        .. versionadded:: 1.4.0b2
+
+        .. seealso::
+
+            :ref:`tutorial_functions` - in the :ref:`unified_tutorial`
+
+        """
+        return TableValuedColumn(self, type_api.TABLEVALUE)
 
     def tablesample(self, sampling, name=None, seed=None):
         """Return a TABLESAMPLE alias of this :class:`_expression.FromClause`.
@@ -1519,6 +1548,8 @@ class AliasedReturnsRows(NoInit, FromClause):
     _is_from_container = True
     named_with_column = True
 
+    _supports_derived_columns = False
+
     _traverse_internals = [
         ("element", InternalTraversal.dp_clauseelement),
         ("name", InternalTraversal.dp_anon_name),
@@ -1676,6 +1707,151 @@ class Alias(roles.DMLTableRole, AliasedReturnsRows):
         return coercions.expect(
             roles.FromClauseRole, selectable, allow_select=True
         ).alias(name=name, flat=flat)
+
+
+class TableValuedAlias(Alias):
+    """An alias against a "table valued" SQL function.
+
+    This construct provides for a SQL function that returns columns
+    to be used in the FROM clause of a SELECT statement.   The
+    object is generated using the :meth:`_functions.FunctionElement.table_valued`
+    method, e.g.::
+
+        >>> from sqlalchemy import select, func
+        >>> fn = func.json_array_elements_text('["one", "two", "three"]').table_valued("value")
+        >>> print(select(fn.c.value))
+        SELECT anon_1.value
+        FROM json_array_elements_text(:json_array_elements_text_1) AS anon_1
+
+    .. versionadded:: 1.4.0b2
+
+    .. seealso::
+
+        :ref:`tutorial_functions_table_valued` - in the :ref:`unified_tutorial`
+
+    """  # noqa E501
+
+    __visit_name__ = "table_valued_alias"
+
+    _supports_derived_columns = True
+    _render_derived = False
+    _render_derived_w_types = False
+
+    _traverse_internals = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("name", InternalTraversal.dp_anon_name),
+        ("_tableval_type", InternalTraversal.dp_type),
+        ("_render_derived", InternalTraversal.dp_boolean),
+        ("_render_derived_w_types", InternalTraversal.dp_boolean),
+    ]
+
+    def _init(self, selectable, name=None, table_value_type=None):
+        super(TableValuedAlias, self)._init(selectable, name=name)
+
+        self._tableval_type = (
+            type_api.TABLEVALUE
+            if table_value_type is None
+            else table_value_type
+        )
+
+    @HasMemoized.memoized_attribute
+    def column(self):
+        """Return a column expression representing this
+        :class:`_sql.TableValuedAlias`.
+
+        This accessor is used to implement the
+        :meth:`_functions.FunctionElement.column_valued` method. See that
+        method for further details.
+
+        E.g.::
+
+            >>> print(select(func.some_func().table_valued("value").column))
+            SELECT anon_1 FROM some_func() AS anon_1
+
+        .. seealso::
+
+            :meth:`_functions.FunctionElement.column_valued`
+
+        """
+
+        return TableValuedColumn(self, self._tableval_type)
+
+    def alias(self, name=None):
+        """Return a new alias of this :class:`_sql.TableValuedAlias`.
+
+        This creates a distinct FROM object that will be distinguished
+        from the original one when used in a SQL statement.
+
+        """
+
+        tva = TableValuedAlias._construct(self, name=name)
+        if self._render_derived:
+            tva._render_derived = True
+            tva._render_derived_w_types = self._render_derived_w_types
+        return tva
+
+    def lateral(self, name=None):
+        """Return a new :class:`_sql.TableValuedAlias` with the lateral flag set,
+        so that it renders as LATERAL.
+
+        .. seealso::
+
+            :func:`_expression.lateral`
+
+        """
+        tva = self.alias(name=name)
+        tva._is_lateral = True
+        return tva
+
+    def render_derived(self, name=None, with_types=False):
+        """Apply "render derived" to this :class:`_sql.TableValuedAlias`.
+
+        This has the effect of the individual column names listed out
+        after the alias name in the "AS" sequence, e.g.::
+
+            >>> print(
+            ...     select(
+            ...         func.unnest(array(["one", "two", "three"])).
+                        table_valued("x", with_ordinality="o").render_derived()
+            ...     )
+            ... )
+            SELECT anon_1.x, anon_1.o
+            FROM unnest(ARRAY[%(param_1)s, %(param_2)s, %(param_3)s]) WITH ORDINALITY AS anon_1(x, o)
+
+        The ``with_types`` keyword will render column types inline within
+        the alias expression (this syntax currently applies to the
+        PostgreSQL database)::
+
+            >>> print(
+            ...     select(
+            ...         func.json_to_recordset(
+            ...             '[{"a":1,"b":"foo"},{"a":"2","c":"bar"}]'
+            ...         )
+            ...         .table_valued(column("a", Integer), column("b", String))
+            ...         .render_derived(with_types=True)
+            ...     )
+            ... )
+            SELECT anon_1.a, anon_1.b FROM json_to_recordset(:json_to_recordset_1)
+            AS anon_1(a INTEGER, b VARCHAR)
+
+        :param name: optional string name that will be applied to the alias
+         generated.  If left as None, a unique anonymizing name will be used.
+
+        :param with_types: if True, the derived columns will include the
+         datatype specification with each column. This is a special syntax
+         currently known to be required by PostgreSQL for some SQL functions.
+
+        """  # noqa E501
+
+        # note: don't use the @_generative system here, keep a reference
+        # to the original object.  otherwise you can have re-use of the
+        # python id() of the original which can cause name conflicts if
+        # a new anon-name grabs the same identifier as the local anon-name
+        # (just saw it happen on CI)
+        new_alias = TableValuedAlias._construct(self, name=name)
+        new_alias._render_derived = True
+        new_alias._render_derived_w_types = with_types
+        return new_alias
 
 
 class Lateral(AliasedReturnsRows):
@@ -2473,7 +2649,7 @@ class Values(Generative, FromClause):
 
             value_expr = values(
                 column('id', Integer),
-                column('name', Integer),
+                column('name', String),
                 name="my_values"
             ).data(
                 [(1, 'name1'), (2, 'name2'), (3, 'name3')]

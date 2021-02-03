@@ -175,6 +175,26 @@ class RoleTest(fixtures.TestBase):
                 select(column("q")).alias(),
             )
 
+    def test_table_valued_advice(self):
+        msg = (
+            r"SQL expression element expected, got %s. To create a "
+            r"column expression from a FROM clause row as a whole, "
+            r"use the .table_valued\(\) method."
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            msg % ("Table.*",),
+            expect,
+            roles.ExpressionElementRole,
+            t,
+        )
+
+        # no table_valued() message here right now, it goes to scalar subquery
+        with testing.expect_warnings(
+            "implicitly coercing SELECT object to scalar subquery"
+        ):
+            expect(roles.ExpressionElementRole, t.select().alias())
+
     def test_statement_no_text_coercion(self):
         assert_raises_message(
             exc.ArgumentError,

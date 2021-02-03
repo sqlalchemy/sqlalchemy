@@ -273,6 +273,39 @@ class CoreFixtures(object):
             func.next_value(Sequence("q")),
             func.next_value(Sequence("p")),
         ),
+        lambda: (
+            func.json_to_recordset("{foo}"),
+            func.json_to_recordset("{foo}").table_valued("a", "b"),
+            func.jsonb_to_recordset("{foo}").table_valued("a", "b"),
+            func.json_to_recordset("{foo}")
+            .table_valued("a", "b")
+            .render_derived(),
+            func.json_to_recordset("{foo}")
+            .table_valued("a", with_ordinality="b")
+            .render_derived(),
+            func.json_to_recordset("{foo}")
+            .table_valued("a", with_ordinality="c")
+            .render_derived(),
+            func.json_to_recordset("{foo}")
+            .table_valued(column("a", Integer), column("b", String))
+            .render_derived(),
+            func.json_to_recordset("{foo}")
+            .table_valued(column("a", Integer), column("b", String))
+            .render_derived(with_types=True),
+            func.json_to_recordset("{foo}")
+            .table_valued("b", "c")
+            .render_derived(),
+            func.json_to_recordset("{foo}")
+            .table_valued("a", "b")
+            .alias("foo")
+            .render_derived(with_types=True),
+            func.json_to_recordset("{foo}")
+            .table_valued("a", "b")
+            .alias("foo"),
+            func.json_to_recordset("{foo}").column_valued(),
+            func.json_to_recordset("{foo}").scalar_table_valued("foo"),
+        ),
+        lambda: (table_a.table_valued(), table_b.table_valued()),
         lambda: (True_(), False_()),
         lambda: (Null(),),
         lambda: (ReturnTypeFromArgs("foo"), ReturnTypeFromArgs(5)),

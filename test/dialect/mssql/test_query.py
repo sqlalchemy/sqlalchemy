@@ -589,3 +589,83 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
             .order_by(matchtable.c.id)
         ).fetchall()
         eq_([1, 3, 5], [r.id for r in results])
+
+
+class TableValuedTest(fixtures.TestBase):
+    __backend__ = True
+    __only_on__ = "mssql"
+
+    @testing.fixture
+    def scalar_strings(self, connection):
+        connection.exec_driver_sql(
+            """
+
+CREATE FUNCTION scalar_strings (
+)
+RETURNS TABLE
+AS
+RETURN
+    SELECT
+        my_string
+    FROM (
+        VALUES ('some string'), ('some string'), ('some string')
+    ) AS my_tab(my_string)
+        """
+        )
+        yield
+        connection.exec_driver_sql("DROP FUNCTION scalar_strings")
+
+    @testing.fixture
+    def two_strings(self, connection):
+        connection.exec_driver_sql(
+            """
+CREATE FUNCTION three_pairs (
+)
+RETURNS TABLE
+AS
+RETURN
+    SELECT
+        s1 AS string1, s2 AS string2
+    FROM (
+        VALUES ('a', 'b'), ('c', 'd'), ('e', 'f')
+    ) AS my_tab(s1, s2)
+"""
+        )
+        yield
+        connection.exec_driver_sql("DROP FUNCTION three_pairs")
+
+    def test_scalar_strings_control(self, scalar_strings, connection):
+        result = (
+            connection.exec_driver_sql(
+                "SELECT my_string FROM scalar_strings()"
+            )
+            .scalars()
+            .all()
+        )
+        eq_(result, ["some string"] * 3)
+
+    def test_scalar_strings_named_control(self, scalar_strings, connection):
+        result = (
+            connection.exec_driver_sql(
+                "SELECT anon_1.my_string " "FROM scalar_strings() AS anon_1"
+            )
+            .scalars()
+            .all()
+        )
+        eq_(result, ["some string"] * 3)
+
+    def test_scalar_strings(self, scalar_strings, connection):
+        fn = func.scalar_strings().table_valued("my_string")
+        result = connection.execute(select(fn.c.my_string)).scalars().all()
+        eq_(result, ["some string"] * 3)
+
+    def test_two_strings_control(self, two_strings, connection):
+        result = connection.exec_driver_sql(
+            "SELECT string1, string2 FROM three_pairs ()"
+        ).all()
+        eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])
+
+    def test_two_strings(self, two_strings, connection):
+        fn = func.three_pairs().table_valued("string1", "string2")
+        result = connection.execute(select(fn.c.string1, fn.c.string2)).all()
+        eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])

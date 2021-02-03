@@ -26,6 +26,8 @@ from .elements import _defer_name
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
+from .traversals import HasCacheKey
+from .traversals import InternalTraversal
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance
@@ -2049,17 +2051,18 @@ class JSON(Indexable, TypeEngine):
        JSON types.  Since it supports JSON SQL operations, it only
        works on backends that have an actual JSON type, currently:
 
-       * PostgreSQL - see :class:`_postgresql.JSON` and
-         :class:`_postgresql.JSONB` for backend-specific notes
+       * PostgreSQL - see :class:`sqlalchemy.dialects.postgresql.JSON` and
+         :class:`sqlalchemy.dialects.postgresql.JSONB` for backend-specific
+         notes
 
-       * MySQL as of version 5.7 (MariaDB as of the 10.2 series does not) - see
-         :class:`_mysql.JSON` for backend-specific notes
+       * MySQL - see
+         :class:`sqlalchemy.dialects.mysql.JSON` for backend-specific notes
 
-       * SQLite as of version 3.9 - see :class:`_sqlite.JSON` for
-         backend-specific notes
+       * SQLite as of version 3.9 - see
+         :class:`sqlalchemy.dialects.sqlite.JSON` for backend-specific notes
 
-       * Microsoft SQL Server 2016 and later - see :class:`_mssql.JSON` for
-         backend-specific notes
+       * Microsoft SQL Server 2016 and later - see
+         :class:`sqlalchemy.dialects.mssql.JSON` for backend-specific notes
 
     :class:`_types.JSON` is part of the Core in support of the growing
     popularity of native JSON datatypes.
@@ -2102,9 +2105,10 @@ class JSON(Indexable, TypeEngine):
       .. versionadded:: 1.3.11
 
     Additional operations may be available from the dialect-specific versions
-    of :class:`_types.JSON`, such as :class:`_postgresql.JSON` and
-    :class:`_postgresql.JSONB` which both offer additional PostgreSQL-specific
-    operations.
+    of :class:`_types.JSON`, such as
+    :class:`sqlalchemy.dialects.postgresql.JSON` and
+    :class:`sqlalchemy.dialects.postgresql.JSONB` which both offer additional
+    PostgreSQL-specific operations.
 
     **Casting JSON Elements to Other Types**
 
@@ -2219,13 +2223,13 @@ class JSON(Indexable, TypeEngine):
 
     .. seealso::
 
-        :class:`_postgresql.JSON`
+        :class:`sqlalchemy.dialects.postgresql.JSON`
 
-        :class:`_postgresql.JSONB`
+        :class:`sqlalchemy.dialects.postgresql.JSONB`
 
-        :class:`.mysql.JSON`
+        :class:`sqlalchemy.dialects.mysql.JSON`
 
-        :class:`_sqlite.JSON`
+        :class:`sqlalchemy.dialects.sqlite.JSON`
 
     .. versionadded:: 1.1
 
@@ -2579,11 +2583,11 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     """Represent a SQL Array type.
 
     .. note::  This type serves as the basis for all ARRAY operations.
-       However, currently **only the PostgreSQL backend has support
-       for SQL arrays in SQLAlchemy**.  It is recommended to use the
-       :class:`_postgresql.ARRAY` type directly when using ARRAY types
-       with PostgreSQL, as it provides additional operators specific
-       to that backend.
+       However, currently **only the PostgreSQL backend has support for SQL
+       arrays in SQLAlchemy**. It is recommended to use the PostgreSQL-specific
+       :class:`sqlalchemy.dialects.postgresql.ARRAY` type directly when using
+       ARRAY types with PostgreSQL, as it provides additional operators
+       specific to that backend.
 
     :class:`_types.ARRAY` is part of the Core in support of various SQL
     standard functions such as :class:`_functions.array_agg`
@@ -2665,7 +2669,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
 
     .. seealso::
 
-        :class:`_postgresql.ARRAY`
+        :class:`sqlalchemy.dialects.postgresql.ARRAY`
 
     """
 
@@ -3110,6 +3114,22 @@ class NullType(TypeEngine):
     comparator_factory = Comparator
 
 
+class TableValueType(HasCacheKey, TypeEngine):
+    """Refers to a table value type."""
+
+    _is_table_value = True
+
+    _traverse_internals = [
+        ("_elements", InternalTraversal.dp_clauseelement_list),
+    ]
+
+    def __init__(self, *elements):
+        self._elements = [
+            coercions.expect(roles.StrAsPlainColumnRole, elem)
+            for elem in elements
+        ]
+
+
 class MatchType(Boolean):
     """Refers to the return type of the MATCH operator.
 
@@ -3131,6 +3151,7 @@ BOOLEANTYPE = Boolean()
 STRINGTYPE = String()
 INTEGERTYPE = Integer()
 MATCHTYPE = MatchType()
+TABLEVALUE = TableValueType()
 
 _type_map = {
     int: Integer(),
@@ -3183,5 +3204,6 @@ type_api.INTEGERTYPE = INTEGERTYPE
 type_api.NULLTYPE = NULLTYPE
 type_api.MATCHTYPE = MATCHTYPE
 type_api.INDEXABLE = Indexable
+type_api.TABLEVALUE = TABLEVALUE
 type_api._resolve_value_to_type = _resolve_value_to_type
 TypeEngine.Comparator.BOOLEANTYPE = BOOLEANTYPE
