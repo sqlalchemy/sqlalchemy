@@ -536,17 +536,15 @@ class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
             "t",
             self.metadata,
             Column("id", Integer, primary_key=True),
-            Column("x", DateTime(), server_default=func.now()),
+            Column("x", String(), server_default=func.lower("UPPERCASE")),
         )
         t.create(testing.db)
         with testing.db.begin() as conn:
-            now = conn.scalar(func.now())
-            today = datetime.datetime.today()
             conn.execute(t.insert())
-            conn.execute(t.insert().values(x=today))
+            conn.execute(t.insert().values(x="foobar"))
             eq_(
                 conn.execute(select(t.c.x).order_by(t.c.id)).fetchall(),
-                [(now,), (today,)],
+                [("uppercase",), ("foobar",)],
             )
 
     @testing.provide_metadata

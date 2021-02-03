@@ -1520,7 +1520,7 @@ number the email addresses of individual users:
     ...     user_table.c.name,
     ...     address_table.c.email_address
     ... ).select_from(user_table).join(address_table)
-    >>> with engine.connect() as conn:
+    >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
     {opensql}BEGIN (implicit)
@@ -1541,7 +1541,7 @@ We also may make use of the ``ORDER BY`` clause using :paramref:`_functions.Func
     ...     func.count().over(order_by=user_table.c.name),
     ...     user_table.c.name,
     ...     address_table.c.email_address).select_from(user_table).join(address_table)
-    >>> with engine.connect() as conn:
+    >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
     {opensql}BEGIN (implicit)
@@ -1592,7 +1592,7 @@ using the :meth:`_functions.FunctionElement.filter` method::
     ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'sandy'),
     ...     func.count(address_table.c.email_address).filter(user_table.c.name == 'spongebob')
     ... ).select_from(user_table).join(address_table)
-    >>> with engine.connect() as conn:
+    >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
     {opensql}BEGIN (implicit)
@@ -1637,7 +1637,7 @@ modern versions of SQLite::
 
     >>> onetwothree = func.json_each('["one", "two", "three"]').table_valued("value")
     >>> stmt = select(onetwothree).where(onetwothree.c.value.in_(["two", "three"]))
-    >>> with engine.connect() as conn:
+    >>> with engine.connect() as conn:  # doctest:+SKIP
     ...     result = conn.execute(stmt)
     ...     print(result.all())
     {opensql}BEGIN (implicit)

@@ -3017,7 +3017,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            mapper(
+            m = mapper(  # noqa F841
                 User,
                 users,
                 non_primary=True,
