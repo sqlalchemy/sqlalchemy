@@ -3450,8 +3450,13 @@ def _dispose_registries(registries, cascade):
             )
 
         while reg._managers:
-            manager, _ = reg._managers.popitem()
-            reg._dispose_manager_and_mapper(manager)
+            try:
+                manager, _ = reg._managers.popitem()
+            except KeyError:
+                # guard against race between while and popitem
+                pass
+            else:
+                reg._dispose_manager_and_mapper(manager)
 
         reg._non_primary_mappers.clear()
         reg._dependents.clear()
