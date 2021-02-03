@@ -1219,14 +1219,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         else:
             return False
 
-    @util.deprecated(
-        "1.2",
-        "The create_xid() method of the cx_Oracle dialect is deprecated and "
-        "will be removed in a future release.  "
-        "Two-phase transaction support is no longer functional "
-        "in SQLAlchemy's cx_Oracle dialect as of cx_Oracle 6.0b1, which no "
-        "longer supports the API that SQLAlchemy relied upon.",
-    )
     def create_xid(self):
         """create a two-phase transaction ID.
 
@@ -1245,6 +1237,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def do_begin_twophase(self, connection, xid):
         connection.connection.begin(*xid)
+        connection.connection.info["cx_oracle_xid"] = xid
 
     def do_prepare_twophase(self, connection, xid):
         result = connection.connection.prepare()
@@ -1254,16 +1247,23 @@ class OracleDialect_cx_oracle(OracleDialect):
         self, connection, xid, is_prepared=True, recover=False
     ):
         self.do_rollback(connection.connection)
+        # TODO: need to end XA state here
 
     def do_commit_twophase(
         self, connection, xid, is_prepared=True, recover=False
     ):
+
         if not is_prepared:
             self.do_commit(connection.connection)
         else:
+            if recover:
+                raise NotImplementedError(
+                    "2pc recovery not implemented for cx_Oracle"
+                )
             oci_prepared = connection.info["cx_oracle_prepared"]
             if oci_prepared:
                 self.do_commit(connection.connection)
+        # TODO: need to end XA state here
 
     def do_set_input_sizes(self, cursor, list_of_tuples, context):
         if self.positional:
@@ -1289,7 +1289,9 @@ class OracleDialect_cx_oracle(OracleDialect):
             cursor.setinputsizes(**{key: dbtype for key, dbtype in collection})
 
     def do_recover_twophase(self, connection):
-        connection.info.pop("cx_oracle_prepared", None)
+        raise NotImplementedError(
+            "recover two phase query for cx_Oracle not implemented"
+        )
 
 
 dialect = OracleDialect_cx_oracle

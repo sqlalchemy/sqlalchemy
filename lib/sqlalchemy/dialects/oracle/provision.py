@@ -94,6 +94,14 @@ def _oracle_post_configure_engine(url, engine, follower_ident):
     def checkout(dbapi_con, con_record, con_proxy):
         _all_conns.add(dbapi_con)
 
+    @event.listens_for(engine, "checkin")
+    def checkin(dbapi_connection, connection_record):
+        # work around cx_Oracle issue:
+        # https://github.com/oracle/python-cx_Oracle/issues/530
+        # invalidate oracle connections that had 2pc set up
+        if "cx_oracle_xid" in connection_record.info:
+            connection_record.invalidate()
+
 
 @run_reap_dbs.for_db("oracle")
 def _reap_oracle_dbs(url, idents):
