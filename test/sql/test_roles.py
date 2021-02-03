@@ -145,6 +145,19 @@ class RoleTest(fixtures.TestBase):
             )
         )
 
+    def test_no_clauseelement_in_bind(self):
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"Literal Python value expected, got BindParameter",
+        ):
+            literal(bindparam("x"))
+
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"Literal Python value expected, got .*ColumnClause",
+        ):
+            literal(column("q"))
+
     def test_scalar_select_no_coercion(self):
         with testing.expect_warnings(
             "implicitly coercing SELECT object to scalar subquery"

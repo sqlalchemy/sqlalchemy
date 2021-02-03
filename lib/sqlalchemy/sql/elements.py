@@ -150,7 +150,7 @@ def literal(value, type_=None):
         will provide bind-parameter translation for this literal.
 
     """
-    return BindParameter(None, value, type_=type_, unique=True)
+    return coercions.expect(roles.LiteralValueRole, value, type_=type_)
 
 
 def outparam(key, type_=None):

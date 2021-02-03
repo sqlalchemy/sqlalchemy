@@ -138,7 +138,7 @@ def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
     ):
         resolved = None
 
-        if impl._resolve_string_only:
+        if impl._resolve_literal_only:
             resolved = impl._literal_coercion(element, **kw)
         else:
 
@@ -223,7 +223,7 @@ class RoleImpl(object):
         raise NotImplementedError()
 
     _post_coercion = None
-    _resolve_string_only = False
+    _resolve_literal_only = False
 
     def __init__(self, role_class):
         self._role_class = role_class
@@ -274,7 +274,7 @@ class _Deannotate(object):
 class _StringOnly(object):
     __slots__ = ()
 
-    _resolve_string_only = True
+    _resolve_literal_only = True
 
 
 class _ReturnsStringKey(object):
@@ -378,6 +378,23 @@ class _CoerceLiterals(object):
             return elements.ColumnClause(str(element), is_literal=True)
 
         self._raise_for_expected(element, argname)
+
+
+class LiteralValueImpl(RoleImpl):
+    _resolve_literal_only = True
+
+    def _implicit_coercions(
+        self, element, resolved, argname, type_=None, **kw
+    ):
+        if not _is_literal(resolved):
+            self._raise_for_expected(
+                element, resolved=resolved, argname=argname, **kw
+            )
+
+        return elements.BindParameter(None, element, type_=type_, unique=True)
+
+    def _literal_coercion(self, element, argname=None, type_=None, **kw):
+        return element
 
 
 class _SelectIsNotFrom(object):

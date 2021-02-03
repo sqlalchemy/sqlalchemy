@@ -36,6 +36,10 @@ class HasCacheKeyRole(SQLRole):
     _role_name = "Cacheable Core or ORM object"
 
 
+class LiteralValueRole(SQLRole):
+    _role_name = "Literal Python value"
+
+
 class ColumnArgumentRole(SQLRole):
     _role_name = "Column expression"
 
