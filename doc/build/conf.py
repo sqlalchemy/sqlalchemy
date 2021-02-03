@@ -62,6 +62,7 @@ changelog_sections = [
     "sql",
     "schema",
     "extensions",
+    "asyncio",
     "postgresql",
     "mysql",
     "sqlite",
