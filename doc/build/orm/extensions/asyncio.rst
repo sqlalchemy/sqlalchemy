@@ -142,6 +142,8 @@ This also includes that methods such as :meth:`_orm.Session.expire` should be
 avoided in favor of :meth:`_asyncio.AsyncSession.refresh`, and that
 appropriate loader options should be employed for :func:`_orm.deferred`
 columns as well as for :func:`_orm.relationship` constructs.
+The full list of available loaders is documented in the section
+:doc:`/orm/loading_relationships`.
 
 In the example above the :class:`_asyncio.AsyncSession` is instantiated with an
 :class:`_asyncio.AsyncEngine` associated with a particular database URL.
@@ -270,7 +272,7 @@ along the lines of
 
 If the same engine must be shared between different loop, it should be configured
 to disable pooling using :class:`~sqlalchemy.pool.NullPool`, preventing the Engine
-from using any connection more than once:
+from using any connection more than once::
 
     from sqlalchemy.pool import NullPool
     engine = create_async_engine(

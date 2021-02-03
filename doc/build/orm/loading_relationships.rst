@@ -61,7 +61,7 @@ The primary forms of relationship loading are:
   An introduction to raise loading is at :ref:`prevent_lazy_with_raiseload`.
 
 * **no loading** - available via ``lazy='noload'``, or the :func:`.noload`
-  option; this loading style turns the attribute into an empty attribute that
+  option; this loading style turns the attribute into an empty attribute (``None``) that
   will never load or have any loading effect.  "noload" is a fairly
   uncommon loader option.
 
