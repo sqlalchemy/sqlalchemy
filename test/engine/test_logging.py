@@ -1,4 +1,5 @@
 import logging.handlers
+import re
 
 import sqlalchemy as tsa
 from sqlalchemy import bindparam
@@ -583,6 +584,76 @@ class LoggingNameTest(fixtures.TestBase):
     def test_unnamed_logger_echoflags_execute(self):
         eng = self._unnamed_engine(echo="debug", echo_pool="debug")
         self._assert_no_name_in_execute(eng)
+
+
+class LoggingTokenTest(fixtures.TestBase):
+    def setup_test(self):
+        self.buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.addHandler(self.buf)
+
+    def teardown_test(self):
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.removeHandler(self.buf)
+
+    def _assert_token_in_execute(self, conn, token):
+        self.buf.flush()
+        r = conn.execute(select(1))
+        r.all()
+        assert self.buf.buffer
+        for rec in self.buf.buffer:
+            line = rec.msg % rec.args
+            assert re.match(r"\[%s\]" % token, line)
+        self.buf.flush()
+
+    def _assert_no_tokens_in_execute(self, conn):
+        self.buf.flush()
+        r = conn.execute(select(1))
+        r.all()
+        assert self.buf.buffer
+        for rec in self.buf.buffer:
+            line = rec.msg % rec.args
+            assert not re.match(r"\[my_.*?\]", line)
+        self.buf.flush()
+
+    @testing.fixture()
+    def token_engine(self, testing_engine):
+        kw = {"echo": "debug"}
+        return testing_engine(options=kw)
+
+    def test_logging_token_option_connection(self, token_engine):
+        eng = token_engine
+
+        c1 = eng.connect().execution_options(logging_token="my_name_1")
+        c2 = eng.connect().execution_options(logging_token="my_name_2")
+        c3 = eng.connect()
+
+        self._assert_token_in_execute(c1, "my_name_1")
+        self._assert_token_in_execute(c2, "my_name_2")
+        self._assert_no_tokens_in_execute(c3)
+
+        c1.close()
+        c2.close()
+        c3.close()
+
+    def test_logging_token_option_engine(self, token_engine):
+        eng = token_engine
+
+        e1 = eng.execution_options(logging_token="my_name_1")
+        e2 = eng.execution_options(logging_token="my_name_2")
+
+        with e1.connect() as c1:
+            self._assert_token_in_execute(c1, "my_name_1")
+
+        with e2.connect() as c2:
+            self._assert_token_in_execute(c2, "my_name_2")
+
+        with eng.connect() as c3:
+            self._assert_no_tokens_in_execute(c3)
 
 
 class EchoTest(fixtures.TestBase):

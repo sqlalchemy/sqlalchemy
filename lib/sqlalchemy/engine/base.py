@@ -111,6 +111,30 @@ class Connection(Connectable):
         if self._has_events or self.engine._has_events:
             self.dispatch.engine_connect(self, _branch_from is not None)
 
+    @util.memoized_property
+    def _message_formatter(self):
+        if "logging_token" in self._execution_options:
+            token = self._execution_options["logging_token"]
+            return lambda msg: "[%s] %s" % (token, msg)
+        else:
+            return None
+
+    def _log_info(self, message, *arg, **kw):
+        fmt = self._message_formatter
+
+        if fmt:
+            message = fmt(message)
+
+        self.engine.logger.info(message, *arg, **kw)
+
+    def _log_debug(self, message, *arg, **kw):
+        fmt = self._message_formatter
+
+        if fmt:
+            message = fmt(message)
+
+        self.engine.logger.debug(message, *arg, **kw)
+
     @property
     def _schema_translate_map(self):
         return self._execution_options.get("schema_translate_map", None)
@@ -236,6 +260,25 @@ class Connection(Connectable):
           some operations, including flush operations.  The caching
           used by the ORM internally supersedes a cache dictionary
           specified here.
+
+        :param logging_token: Available on: :class:`_engine.Connection`,
+          :class:`_engine.Engine`.
+
+          Adds the specified string token surrounded by brackets in log
+          messages logged by the connection, i.e. the logging that's enabled
+          either via the :paramref:`_sa.create_engine.echo` flag or via the
+          ``logging.getLogger("sqlalchemy.engine")`` logger. This allows a
+          per-connection or per-sub-engine token to be available which is
+          useful for debugging concurrent connection scenarios.
+
+          .. versionadded:: 1.4.0b2
+
+          .. seealso::
+
+            :ref:`dbengine_logging_tokens` - usage example
+
+            :paramref:`_sa.create_engine.logging_name` - adds a name to the
+            name used by the Python logger object itself.
 
         :param isolation_level: Available on: :class:`_engine.Connection`.
 
@@ -811,7 +854,7 @@ class Connection(Connectable):
         assert not self.__branch_from
 
         if self._echo:
-            self.engine.logger.info("BEGIN (implicit)")
+            self._log_info("BEGIN (implicit)")
 
         self.__in_begin = True
 
@@ -833,7 +876,7 @@ class Connection(Connectable):
 
         if self._still_open_and_dbapi_connection_is_valid:
             if self._echo:
-                self.engine.logger.info("ROLLBACK")
+                self._log_info("ROLLBACK")
             try:
                 self.engine.dialect.do_rollback(self.connection)
             except BaseException as e:
@@ -863,7 +906,7 @@ class Connection(Connectable):
             self.dispatch.commit(self)
 
         if self._echo:
-            self.engine.logger.info("COMMIT")
+            self._log_info("COMMIT")
         try:
             self.engine.dialect.do_commit(self.connection)
         except BaseException as e:
@@ -904,7 +947,7 @@ class Connection(Connectable):
         assert not self.__branch_from
 
         if self._echo:
-            self.engine.logger.info("BEGIN TWOPHASE (implicit)")
+            self._log_info("BEGIN TWOPHASE (implicit)")
         if self._has_events or self.engine._has_events:
             self.dispatch.begin_twophase(self, transaction.xid)
 
@@ -1588,12 +1631,12 @@ class Connection(Connectable):
 
         if self._echo:
 
-            self.engine.logger.info(statement)
+            self._log_info(statement)
 
             stats = context._get_cache_stats()
 
             if not self.engine.hide_parameters:
-                self.engine.logger.info(
+                self._log_info(
                     "[%s] %r",
                     stats,
                     sql_util._repr_params(
@@ -1601,7 +1644,7 @@ class Connection(Connectable):
                     ),
                 )
             else:
-                self.engine.logger.info(
+                self._log_info(
                     "[%s] [SQL parameters hidden due to hide_parameters=True]"
                     % (stats,)
                 )
@@ -1702,8 +1745,8 @@ class Connection(Connectable):
                 )
 
         if self._echo:
-            self.engine.logger.info(statement)
-            self.engine.logger.info("%r", parameters)
+            self._log_info(statement)
+            self._log_info("%r", parameters)
         try:
             for fn in (
                 ()
