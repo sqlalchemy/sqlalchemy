@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 5717
-
-    Fixed issue where a :class:`.RemovedIn20Warning` would erroneously emit
-    when the ``.bind`` attribute were accessed internally on objects,
-    particularly when stringifying a SQL construct.

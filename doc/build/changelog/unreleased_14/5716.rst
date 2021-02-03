@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, oracle
-    :tickets: 5716
-
-    The Oracle dialect now uses
-    ``select sys_context( 'userenv', 'current_schema' ) from dual`` to get
-    the default schema name, rather than ``SELECT USER FROM DUAL``, to
-    accommodate for changes to the session-local schema name under Oracle.

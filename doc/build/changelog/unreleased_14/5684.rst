@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, reflection
-    :tickets: 5684
-
-    Fixed bug where the now-deprecated ``autoload`` parameter was being called
-    internally within the reflection routines when a related table were
-    reflected.
-

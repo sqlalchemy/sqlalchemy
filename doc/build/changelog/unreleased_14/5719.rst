@@ -1,6 +1,0 @@
-.. change::
-    :tags: pool, tests, usecase
-    :tickets: 5582
-
-    Improve documentation and add test for sub-second pool timeouts.
-    Pull request courtesy Jordan Pittier.

@@ -15,7 +15,757 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.0b2
-    :include_notes_from: unreleased_14
+    :released: February 3, 2021
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 5695
+
+        Multiple calls to "returning", e.g. :meth:`_sql.Insert.returning`,
+        may now be chained to add new columns to the RETURNING clause.
+
+
+    .. change::
+      :tags: bug, asyncio
+      :tickets: 5615
+
+      Adjusted the greenlet integration, which provides support for Python asyncio
+      in SQLAlchemy, to accommodate for the handling of Python ``contextvars``
+      (introduced in Python 3.7) for ``greenlet`` versions greater than 0.4.17.
+      Greenlet version 0.4.17 added automatic handling of contextvars in a
+      backwards-incompatible way; we've coordinated with the greenlet authors to
+      add a preferred API for this in versions subsequent to 0.4.17 which is now
+      supported by SQLAlchemy's greenlet integration.  For greenlet versions prior
+      to 0.4.17 no behavioral change is needed, version 0.4.17 itself is blocked
+      from the dependencies.
+
+    .. change::
+        :tags: bug, engine, sqlite
+        :tickets: 5845
+
+        Fixed bug in the 2.0 "future" version of :class:`.Engine` where emitting
+        SQL during the :meth:`.EngineEvents.begin` event hook would cause a
+        re-entrant (recursive) condition due to autobegin, affecting among other
+        things the recipe documented for SQLite to allow for savepoints and
+        serializable isolation support.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 5845
+
+        Fixed issue in new :class:`_orm.Session` similar to that of the
+        :class:`_engine.Connection` where the new "autobegin" logic could be
+        tripped into a re-entrant (recursive) state if SQL were executed within the
+        :meth:`.SessionEvents.after_transaction_create` event hook.
+
+    .. change::
+        :tags: sql
+        :tickets: 4757
+
+        Replace :meth:`_orm.Query.with_labels` and
+        :meth:`_sql.GenerativeSelect.apply_labels` with explicit getters and
+        setters :meth:`_sql.GenerativeSelect.get_label_style` and
+        :meth:`_sql.GenerativeSelect.set_label_style` to accommodate the three
+        supported label styles: :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`,
+        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`, and
+        :data:`_sql.LABEL_STYLE_NONE`.
+
+        In addition, for Core and "future style" ORM queries,
+        ``LABEL_STYLE_DISAMBIGUATE_ONLY`` is now the default label style. This
+        style differs from the existing "no labels" style in that labeling is
+        applied in the case of column name conflicts; with ``LABEL_STYLE_NONE``, a
+        duplicate column name is not accessible via name in any case.
+
+        For cases where labeling is significant, namely that the ``.c`` collection
+        of a subquery is able to refer to all columns unambiguously, the behavior
+        of ``LABEL_STYLE_DISAMBIGUATE_ONLY`` is now sufficient for all
+        SQLAlchemy features across Core and ORM which involve this behavior.
+        Result set rows since SQLAlchemy 1.0 are usually aligned with column
+        constructs positionally.
+
+        For legacy ORM queries using :class:`_query.Query`, the table-plus-column
+        names labeling style applied by ``LABEL_STYLE_TABLENAME_PLUS_COL``
+        continues to be used so that existing test suites and logging facilities
+        see no change in behavior by default.
+
+    .. change::
+        :tags: bug, orm, unitofwork
+        :tickets: 5735
+
+        Improved the unit of work topological sorting system such that the
+        toplogical sort is now deterministic based on the sorting of the input set,
+        which itself is now sorted at the level of mappers, so that the same inputs
+        of affected mappers should produce the same output every time, among
+        mappers / tables that don't have any dependency on each other. This further
+        reduces the chance of deadlocks as can be observed in a flush that UPDATEs
+        among multiple, unrelated tables such that row locks are generated.
+
+
+    .. change::
+        :tags: changed, orm
+        :tickets: 5897
+
+        Mapper "configuration", which occurs within the
+        :func:`_orm.configure_mappers` function, is now organized to be on a
+        per-registry basis. This allows for example the mappers within a certain
+        declarative base to be configured, but not those of another base that is
+        also present in memory. The goal is to provide a means of reducing
+        application startup time by only running the "configure" process for sets
+        of mappers that are needed. This also adds the
+        :meth:`_orm.registry.configure` method that will run configure for the
+        mappers local in a particular registry only.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5702
+
+        Fixed regression where the :paramref:`.Bundle.single_entity` flag would
+        take effect for a :class:`.Bundle` even though it were not set.
+        Additionally, this flag is legacy as it only makes sense for the
+        :class:`_orm.Query` object and not 2.0 style execution.  a deprecation
+        warning is emitted when used with new-style execution.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5858
+
+        Fixed issue in new :meth:`_sql.Select.join` method where chaining from the
+        current JOIN wasn't looking at the right state, causing an expression like
+        "FROM a JOIN b <onclause>, b JOIN c <onclause>" rather than
+        "FROM a JOIN b <onclause> JOIN c <onclause>".
+
+    .. change::
+        :tags: usecase, sql
+
+        Added :meth:`_sql.Select.outerjoin_from` method to complement
+        :meth:`_sql.Select.join_from`.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 5888
+
+        Adjusted the "literal_binds" feature of :class:`_sql.Compiler` to render
+        NULL for a bound parameter that has ``None`` as the value, either
+        explicitly passed or omitted. The previous error message "bind parameter
+        without a renderable value" is removed, and a missing or ``None`` value
+        will now render NULL in all cases. Previously, rendering of NULL was
+        starting to happen for DML statements due to internal refactorings, but was
+        not explicitly part of test coverage, which it now is.
+
+        While no error is raised, when the context is within that of a column
+        comparison, and the operator is not "IS"/"IS NOT", a warning is emitted
+        that this is not generally useful from a SQL perspective.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5750
+
+        Fixed regression where creating an :class:`_orm.aliased` construct against
+        a plain selectable and including a name would raise an assertionerror.
+
+
+    .. change::
+        :tags: bug, mssql, mysql, datatypes
+        :tickets: 5788
+        :versions: 1.4.0b2
+
+        Decimal accuracy and behavior has been improved when extracting floating
+        point and/or decimal values from JSON strings using the
+        :meth:`_sql.sqltypes.JSON.Comparator.as_float` method, when the numeric
+        value inside of the JSON string has many significant digits; previously,
+        MySQL backends would truncate values with many significant digits and SQL
+        Server backends would raise an exception due to a DECIMAL cast with
+        insufficient significant digits.   Both backends now use a FLOAT-compatible
+        approach that does not hardcode significant digits for floating point
+        values. For precision numerics, a new method
+        :meth:`_sql.sqltypes.JSON.Comparator.as_numeric` has been added which
+        accepts arguments for precision and scale, and will return values as Python
+        ``Decimal`` objects with no floating point conversion assuming the DBAPI
+        supports it (all but pysqlite).
+
+    .. change::
+        :tags: feature, orm, declarative
+        :tickets: 5745
+
+        Added an alternate resolution scheme to Declarative that will extract the
+        SQLAlchemy column or mapped property from the "metadata" dictionary of a
+        dataclasses.Field object.  This allows full declarative mappings to be
+        combined with dataclass fields.
+
+        .. seealso::
+
+            :ref:`orm_declarative_dataclasses_declarative_table`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5754
+
+        Deprecation warnings are emitted under "SQLALCHEMY_WARN_20" mode when
+        passing a plain string to :meth:`_orm.Session.execute`.
+
+
+    .. change::
+        :tags: bug, sql, orm
+        :tickets: 5760, 5763, 5765, 5768, 5770
+
+        A wide variety of fixes to the "lambda SQL" feature introduced at
+        :ref:`engine_lambda_caching` have been implemented based on user feedback,
+        with an emphasis on its use within the :func:`_orm.with_loader_criteria`
+        feature where it is most prominently used [ticket:5760]:
+
+        * fixed issue where boolean True/False values referred towards in the
+          closure variables of the lambda would cause failures [ticket:5763]
+
+        * Repaired a non-working detection for Python functions embedded in the
+          lambda that produce bound values; this case is likely not supportable
+          so raises an informative error, where the function should be invoked
+          outside the lambda itself.  New documentation has been added to
+          further detail this behavior. [ticket:5770]
+
+        * The lambda system by default now rejects the use of non-SQL elements
+          within the closure variables of the lambda entirely, where the error
+          suggests the two options of either explicitly ignoring closure variables
+          that are not SQL parameters, or specifying a specific set of values to be
+          considered as part of the cache key based on hash value.   This critically
+          prevents the lambda system from assuming that arbitrary objects within
+          the lambda's closure are appropriate for caching while also refusing to
+          ignore them by default, preventing the case where their state might
+          not be constant and have an impact on the SQL construct produced.
+          The error message is comprehensive and new documentation has been
+          added to further detail this behavior. [ticket:5765]
+
+        * Fixed support for the edge case where an ``in_()`` expression
+          against a list of SQL elements, such as :func:`_sql.literal` objects,
+          would fail to be accommodated correctly. [ticket:5768]
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5760, 5766, 5762, 5761, 5764
+
+        Related to the fixes for the lambda criteria system within Core, within the
+        ORM implemented a variety of fixes for the
+        :func:`_orm.with_loader_criteria` feature as well as the
+        :meth:`_orm.SessionEvents.do_orm_execute` event handler that is often
+        used in conjunction [ticket:5760]:
+
+
+        * fixed issue where :func:`_orm.with_loader_criteria` function would fail
+          if the given entity or base included non-mapped mixins in its descending
+          class hierarchy [ticket:5766]
+
+        * The :func:`_orm.with_loader_criteria` feature is now unconditionally
+          disabled for the case of ORM "refresh" operations, including loads
+          of deferred or expired column attributes as well as for explicit
+          operations like :meth:`_orm.Session.refresh`.  These loads are necessarily
+          based on primary key identity where addiional WHERE criteria is
+          never appropriate.  [ticket:5762]
+
+        * Added new attribute :attr:`_orm.ORMExecuteState.is_column_load` to indicate
+          that a :meth:`_orm.SessionEvents.do_orm_execute` handler that a particular
+          operation is a primary-key-directed column attribute load, where additional
+          criteria should not be added.  The :func:`_orm.with_loader_criteria`
+          function as above ignores these in any case now.  [ticket:5761]
+
+        * Fixed issue where the :attr:`_orm.ORMExecuteState.is_relationship_load`
+          attribute would not be set correctly for many lazy loads as well as all
+          selectinloads.  The flag is essential in order to test if options should
+          be added to statements or if they would already have been propagated via
+          relationship loads.  [ticket:5764]
+
+
+    .. change::
+        :tags: usecase, orm
+
+        Added :attr:`_orm.ORMExecuteState.bind_mapper` and
+        :attr:`_orm.ORMExecuteState.all_mappers` accessors to
+        :class:`_orm.ORMExecuteState` event object, so that handlers can respond to
+        the target mapper and/or mapped class or classes involved in an ORM
+        statement execution.
+
+    .. change::
+        :tags: bug, engine, postgresql, oracle
+
+        Adjusted the "setinputsizes" logic relied upon by the cx_Oracle, asyncpg
+        and pg8000 dialects to support a :class:`.TypeDecorator` that includes
+        an override the :meth:`.TypeDecorator.get_dbapi_type()` method.
+
+
+    .. change::
+        :tags: postgresql, performance
+
+        Enhanced the performance of the asyncpg dialect by caching the asyncpg
+        PreparedStatement objects on a per-connection basis. For a test case that
+        makes use of the same statement on a set of pooled connections this appears
+        to grant a 10-20% speed improvement.  The cache size is adjustable and may
+        also be disabled.
+
+        .. seealso::
+
+            :ref:`asyncpg_prepared_statement_cache`
+
+    .. change::
+        :tags: feature, mysql
+        :tickets: 5747
+
+        Added support for the aiomysql driver when using the asyncio SQLAlchemy
+        extension.
+
+        .. seealso::
+
+          :ref:`aiomysql`
+
+    .. change::
+        :tags: bug, reflection
+        :tickets: 5684
+
+        Fixed bug where the now-deprecated ``autoload`` parameter was being called
+        internally within the reflection routines when a related table were
+        reflected.
+
+
+    .. change::
+        :tags: platform, performance
+        :tickets: 5681
+
+        Adjusted some elements related to internal class production at import time
+        which added significant latency to the time spent to import the library vs.
+        that of 1.3.   The time is now about 20-30% slower than 1.3 instead of
+        200%.
+
+
+    .. change::
+        :tags: changed, schema
+        :tickets: 5775
+
+        Altered the behavior of the :class:`_schema.Identity` construct such that
+        when applied to a :class:`_schema.Column`, it will automatically imply that
+        the value of :paramref:`_sql.Column.nullable` should default to ``False``,
+        in a similar manner as when the :paramref:`_sql.Column.primary_key`
+        parameter is set to ``True``.   This matches the default behavior of all
+        supporting databases where ``IDENTITY`` implies ``NOT NULL``.  The
+        PostgreSQL backend is the only one that supports adding ``NULL`` to an
+        ``IDENTITY`` column, which is here supported by passing a ``True`` value
+        for the :paramref:`_sql.Column.nullable` parameter at the same time.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5698
+
+        Fixed a small regression where the query for "show
+        standard_conforming_strings" upon initialization would be emitted even if
+        the server version info were detected as less than version 8.2, previously
+        it would only occur for server version 8.2 or greater. The query fails on
+        Amazon Redshift which reports a PG server version older than this value.
+
+
+    .. change::
+        :tags: bug, sql, postgresql, mysql, sqlite
+        :tickets: 5169
+
+        An informative error message is now raised for a selected set of DML
+        methods (currently all part of :class:`_dml.Insert` constructs) if they are
+        called a second time, which would implicitly cancel out the previous
+        setting.  The methods altered include:
+        :class:`_sqlite.Insert.on_conflict_do_update`,
+        :class:`_sqlite.Insert.on_conflict_do_nothing` (SQLite),
+        :class:`_postgresql.Insert.on_conflict_do_update`,
+        :class:`_postgresql.Insert.on_conflict_do_nothing` (PostgreSQL),
+        :class:`_mysql.Insert.on_duplicate_key_update` (MySQL)
+
+    .. change::
+        :tags: pool, tests, usecase
+        :tickets: 5582
+
+        Improve documentation and add test for sub-second pool timeouts.
+        Pull request courtesy Jordan Pittier.
+
+    .. change::
+        :tags: bug, general
+
+        Fixed a SQLite source file that had non-ascii characters inside of its
+        docstring without a source encoding, introduced within the "INSERT..ON
+        CONFLICT" feature, which would cause failures under Python 2.
+
+    .. change::
+        :tags: sqlite, usecase
+        :tickets: 4010
+
+        Implemented INSERT... ON CONFLICT clause for SQLite. Pull request courtesy
+        Ramon Williams.
+
+        .. seealso::
+
+            :ref:`sqlite_on_conflict_insert`
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 5811
+
+        Implemented "connection-binding" for :class:`.AsyncSession`, the ability to
+        pass an :class:`.AsyncConnection` to create an :class:`.AsyncSession`.
+        Previously, this use case was not implemented and would use the associated
+        engine when the connection were passed.  This fixes the issue where the
+        "join a session to an external transaction" use case would not work
+        correctly for the :class:`.AsyncSession`.  Additionally, added methods
+        :meth:`.AsyncConnection.in_transaction`,
+        :meth:`.AsyncConnection.in_nested_transaction`,
+        :meth:`.AsyncConnection.get_transaction`,
+        :meth:`.AsyncConnection.get_nested_transaction` and
+        :attr:`.AsyncConnection.info` attribute.
+
+    .. change::
+        :tags: usecase, asyncio
+
+        The :class:`.AsyncEngine`, :class:`.AsyncConnection` and
+        :class:`.AsyncTransaction` objects may be compared using Python ``==`` or
+        ``!=``, which will compare the two given objects based on the "sync" object
+        they are proxying towards. This is useful as there are cases particularly
+        for :class:`.AsyncTransaction` where multiple instances of
+        :class:`.AsyncTransaction` can be proxying towards the same sync
+        :class:`_engine.Transaction`, and are actually equivalent.   The
+        :meth:`.AsyncConnection.get_transaction` method will currently return a new
+        proxying :class:`.AsyncTransaction` each time as the
+        :class:`.AsyncTransaction` is not otherwise statefully associated with its
+        originating :class:`.AsyncConnection`.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5884
+
+        Oracle two-phase transactions at a rudimentary level are now no longer
+        deprecated. After receiving support from cx_Oracle devs we can provide for
+        basic xid + begin/prepare support with some limitations, which will work
+        more fully in an upcoming release of cx_Oracle. Two phase "recovery" is not
+        currently supported.
+
+    .. change::
+        :tags: asyncio
+
+        The SQLAlchemy async mode now detects and raises an informative
+        error when an non asyncio compatible :term:`DBAPI` is used.
+        Using a standard ``DBAPI`` with async SQLAlchemy will cause
+        it to block like any sync call, interrupting the executing asyncio
+        loop.
+
+    .. change::
+        :tags: usecase, orm, asyncio
+        :tickets: 5796, 5797, 5802
+
+        Added :meth:`_asyncio.AsyncSession.scalar`,
+        :meth:`_asyncio.AsyncSession.get` as well as support for
+        :meth:`_orm.sessionmaker.begin` to work as an async context manager with
+        :class:`_asyncio.AsyncSession`.  Also added
+        :meth:`_asyncio.AsyncSession.in_transaction` accessor.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5785
+
+        Fixed issue in new :class:`_sql.Values` construct where passing tuples of
+        objects would fall back to per-value type detection rather than making use
+        of the :class:`_schema.Column` objects passed directly to
+        :class:`_sql.Values` that tells SQLAlchemy what the expected type is. This
+        would lead to issues for objects such as enumerations and numpy strings
+        that are not actually necessary since the expected type is given.
+
+    .. change::
+        :tags: bug, engine
+
+        Added the "future" keyword to the list of words that are known by the
+        :func:`_sa.engine_from_config` function, so that the values "true" and
+        "false" may be configured as "boolean" values when using a key such
+        as ``sqlalchemy.future = true`` or ``sqlalchemy.future = false``.
+
+
+    .. change::
+        :tags: usecase, schema
+        :tickets: 5712
+
+        The :meth:`_events.DDLEvents.column_reflect` event may now be applied to a
+        :class:`_schema.MetaData` object where it will take effect for the
+        :class:`_schema.Table` objects local to that collection.
+
+        .. seealso::
+
+            :meth:`_events.DDLEvents.column_reflect`
+
+            :ref:`mapper_automated_reflection_schemes` - in the ORM mapping documentation
+
+            :ref:`automap_intercepting_columns` - in the :ref:`automap_toplevel` documentation
+
+
+
+
+    .. change::
+        :tags: feature, engine
+
+        Dialect-specific constructs such as
+        :meth:`_postgresql.Insert.on_conflict_do_update` can now stringify in-place
+        without the need to specify an explicit dialect object.  The constructs,
+        when called upon for ``str()``, ``print()``, etc. now have internal
+        direction to call upon their appropriate dialect rather than the
+        "default"dialect which doesn't know how to stringify these.   The approach
+        is also adapted to generic schema-level create/drop such as
+        :class:`_schema.AddConstraint`, which will adapt its stringify dialect to
+        one indicated by the element within it, such as the
+        :class:`_postgresql.ExcludeConstraint` object.
+
+
+    .. change::
+        :tags: feature, engine
+        :tickets: 5911
+
+        Added new execution option
+        :paramref:`_engine.Connection.execution_options.logging_token`. This option
+        will add an additional per-message token to log messages generated by the
+        :class:`_engine.Connection` as it executes statements. This token is not
+        part of the logger name itself (that part can be affected using the
+        existing :paramref:`_sa.create_engine.logging_name` parameter), so is
+        appropriate for ad-hoc connection use without the side effect of creating
+        many new loggers. The option can be set at the level of
+        :class:`_engine.Connection` or :class:`_engine.Engine`.
+
+        .. seealso::
+
+          :ref:`dbengine_logging_tokens`
+
+    .. change::
+        :tags: bug, pool
+        :tickets: 5708
+
+        Fixed regression where a connection pool event specified with a keyword,
+        most notably ``insert=True``, would be lost when the event were set up.
+        This would prevent startup events that need to fire before dialect-level
+        events from working correctly.
+
+
+    .. change::
+        :tags: usecase, pool
+        :tickets: 5708, 5497
+
+        The internal mechanics of the engine connection routine has been altered
+        such that it's now guaranteed that a user-defined event handler for the
+        :meth:`_pool.PoolEvents.connect` handler, when established using
+        ``insert=True``, will allow an event handler to run that is definitely
+        invoked **before** any dialect-specific initialization starts up, most
+        notably when it does things like detect default schema name.
+        Previously, this would occur in most cases but not unconditionally.
+        A new example is added to the schema documentation illustrating how to
+        establish the "default schema name" within an on-connect event.
+
+    .. change::
+        :tags: usecase, postgresql
+
+        Added a read/write ``.autocommit`` attribute to the DBAPI-adaptation layer
+        for the asyncpg dialect.   This so that when working with DBAPI-specific
+        schemes that need to use "autocommit" directly with the DBAPI connection,
+        the same ``.autocommit`` attribute which works with both psycopg2 as well
+        as pg8000 is available.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 5716
+
+        The Oracle dialect now uses
+        ``select sys_context( 'userenv', 'current_schema' ) from dual`` to get
+        the default schema name, rather than ``SELECT USER FROM DUAL``, to
+        accommodate for changes to the session-local schema name under Oracle.
+
+    .. change::
+        :tags: schema, feature
+        :tickets: 5659
+
+        Added :meth:`_types.TypeEngine.as_generic` to map dialect-specific types,
+        such as :class:`sqlalchemy.dialects.mysql.INTEGER`, with the "best match"
+        generic SQLAlchemy type, in this case :class:`_types.Integer`.  Pull
+        request courtesy Andrew Hannigan.
+
+        .. seealso::
+
+          :ref:`metadata_reflection_dbagnostic_types` - example usage
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5717
+
+        Fixed issue where a :class:`.RemovedIn20Warning` would erroneously emit
+        when the ``.bind`` attribute were accessed internally on objects,
+        particularly when stringifying a SQL construct.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5781
+
+        Fixed 1.4 regression where the use of :meth:`_orm.Query.having` in
+        conjunction with queries with internally adapted SQL elements (common in
+        inheritance scenarios) would fail due to an incorrect function call. Pull
+        request courtesy esoh.
+
+
+    .. change::
+        :tags: bug, pool, pypy
+        :tickets: 5842
+
+        Fixed issue where connection pool would not return connections to the pool
+        or otherwise be finalized upon garbage collection under pypy if the checked
+        out connection fell out of scope without being closed.   This is a long
+        standing issue due to pypy's difference in GC behavior that does not call
+        weakref finalizers if they are relative to another object that is also
+        being garbage collected.  A strong reference to the related record is now
+        maintained so that the weakref has a strong-referenced "base" to trigger
+        off of.
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 5699
+
+        Use python ``re.search()`` instead of ``re.match()`` as the operation
+        used by the :meth:`Column.regexp_match` method when using sqlite.
+        This matches the behavior of regular expressions on other databases
+        as well as that of well-known SQLite plugins.
+
+    .. change::
+        :tags: changed, postgresql
+
+        Fixed issue where the psycopg2 dialect would silently pass the
+        ``use_native_unicode=False`` flag without actually having any effect under
+        Python 3, as the psycopg2 DBAPI uses Unicode unconditionally under Python
+        3.  This usage now raises an :class:`_exc.ArgumentError` when used under
+        Python 3. Added test support for Python 2.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5722
+        :versions: 1.4.0b2
+
+        Established support for :class:`_schema.Column` objects as well as ORM
+        instrumented attributes as keys in the ``set_`` dictionary passed to the
+        :meth:`_postgresql.Insert.on_conflict_do_update` and
+        :meth:`_sqlite.Insert.on_conflict_do_update` methods, which match to the
+        :class:`_schema.Column` objects in the ``.c`` collection of the target
+        :class:`_schema.Table`. Previously,  only string column names were
+        expected; a column expression would be assumed to be an out-of-table
+        expression that would render fully along with a warning.
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3566
+
+        Implemented support for "table valued functions" along with additional
+        syntaxes supported by PostgreSQL, one of the most commonly requested
+        features. Table valued functions are SQL functions that return lists of
+        values or rows, and are prevalent in PostgreSQL in the area of JSON
+        functions, where the "table value" is commonly referred towards as the
+        "record" datatype. Table valued functions are also supported by Oracle and
+        SQL Server.
+
+        Features added include:
+
+        * the :meth:`_functions.FunctionElement.table_valued` modifier that creates a table-like
+          selectable object from a SQL function
+        * A :class:`_sql.TableValuedAlias` construct that renders a SQL function
+          as a named table
+        * Support for PostgreSQL's special "derived column" syntax that includes
+          column names and sometimes datatypes, such as for the
+          ``json_to_recordset`` function, using the
+          :meth:`_sql.TableValuedAlias.render_derived` method.
+        * Support for PostgreSQL's "WITH ORDINALITY" construct using the
+          :paramref:`_functions.FunctionElement.table_valued.with_ordinality` parameter
+        * Support for selection FROM a SQL function as column-valued scalar, a
+          syntax supported by PostgreSQL and Oracle, via the
+          :meth:`_functions.FunctionElement.column_valued` method
+        * A way to SELECT a single column from a table-valued expression without
+          using a FROM clause via the :meth:`_functions.FunctionElement.scalar_table_valued`
+          method.
+
+        .. seealso::
+
+          :ref:`tutorial_functions_table_valued` - in the :ref:`unified_tutorial`
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 5827
+
+        Fixed bug in asyncio connection pool where ``asyncio.TimeoutError`` would
+        be raised rather than :class:`.exc.TimeoutError`.  Also repaired the
+        :paramref:`_sa.create_engine.pool_timeout` parameter set to zero when using
+        the async engine, which previously would ignore the timeout and block
+        rather than timing out immediately as is the behavior with regular
+        :class:`.QueuePool`.
+
+    .. change::
+        :tags: bug, postgresql, asyncio
+        :tickets: 5824
+
+        Fixed bug in asyncpg dialect where a failure during a "commit" or less
+        likely a "rollback" should cancel the entire transaction; it's no longer
+        possible to emit rollback. Previously the connection would continue to
+        await a rollback that could not succeed as asyncpg would reject it.
+
+    .. change::
+        :tags: bug, orm
+
+        Fixed an issue where the API to create a custom executable SQL construct
+        using the ``sqlalchemy.ext.compiles`` extension according to the
+        documentation that's been up for many years would no longer function if
+        only ``Executable, ClauseElement`` were used as the base classes,
+        additional classes were needed if wanting to use
+        :meth:`_orm.Session.execute`. This has been resolved so that those extra
+        classes aren't needed.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 5867
+
+        Fixed ORM unit of work regression where an errant "assert primary_key"
+        statement interferes with primary key generation sequences that don't
+        actually consider the columns in the table to use a real primary key
+        constraint, instead using :paramref:`_orm.mapper.primary_key` to establish
+        certain columns as "primary".
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5722
+        :versions: 1.4.0b2
+
+        Properly render ``cycle=False`` and ``order=False`` as ``NO CYCLE`` and
+        ``NO ORDER`` in :class:`_sql.Sequence` and :class:`_sql.Identity`
+        objects.
+
+    .. change::
+        :tags: schema, usecase
+        :tickets: 2843
+
+        Added parameters :paramref:`_ddl.CreateTable.if_not_exists`,
+        :paramref:`_ddl.CreateIndex.if_not_exists`,
+        :paramref:`_ddl.DropTable.if_exists` and
+        :paramref:`_ddl.DropIndex.if_exists` to the :class:`_ddl.CreateTable`,
+        :class:`_ddl.DropTable`, :class:`_ddl.CreateIndex` and
+        :class:`_ddl.DropIndex` constructs which result in "IF NOT EXISTS" / "IF
+        EXISTS" DDL being added to the CREATE/DROP. These phrases are not accepted
+        by all databases and the operation will fail on a database that does not
+        support it as there is no similarly compatible fallback within the scope of
+        a single DDL statement.  Pull request courtesy Ramon Williams.
+
+    .. change::
+        :tags: bug, pool, asyncio
+        :tickets: 5823
+
+        When using an asyncio engine, the connection pool will now detach and
+        discard a pooled connection that is was not explicitly closed/returned to
+        the pool when its tracking object is garbage collected, emitting a warning
+        that the connection was not properly closed.   As this operation occurs
+        during Python gc finalizers, it's not safe to run any IO operations upon
+        the connection including transaction rollback or connection close as this
+        will often be outside of the event loop.
+
+        The ``AsyncAdaptedQueue`` used by default on async dpapis
+        should instantiate a queue only when it's first used
+        to avoid binding it to a possibly wrong event loop.
 
 .. changelog::
     :version: 1.4.0b1

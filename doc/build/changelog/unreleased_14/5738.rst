@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 5722
-    :versions: 1.4.0b2
-
-    Properly render ``cycle=False`` and ``order=False`` as ``NO CYCLE`` and
-    ``NO ORDER`` in :class:`_sql.Sequence` and :class:`_sql.Identity`
-    objects.
