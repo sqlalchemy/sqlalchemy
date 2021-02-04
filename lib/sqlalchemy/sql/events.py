@@ -209,6 +209,12 @@ class DDLEvents(event.Events):
 
         """
 
+    def _sa_event_column_added_to_pk_constraint(self, const, col):
+        """internal event hook used for primary key naming convention
+        updates.
+
+        """
+
     def column_reflect(self, inspector, table, column_info):
         """Called for each unit of 'column info' retrieved when
         a :class:`_schema.Table` is being reflected.

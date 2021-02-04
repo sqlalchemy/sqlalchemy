@@ -1777,6 +1777,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
         table._columns.replace(self)
 
+        self.table = table
+
         if self.primary_key:
             table.primary_key._replace(self)
         elif self.key in table.primary_key:
@@ -1785,8 +1787,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 "non-primary-key column on table '%s'"
                 % (self.key, table.fullname)
             )
-
-        self.table = table
 
         if self.index:
             if isinstance(self.index, util.string_types):
@@ -3838,7 +3838,6 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         are already present.
 
         """
-
         # set the primary key flag on new columns.
         # note any existing PK cols on the table also have their
         # flag still set.
@@ -3853,6 +3852,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
     def _replace(self, col):
         PrimaryKeyConstraint._autoincrement_column._reset(self)
         self.columns.replace(col)
+
+        self.dispatch._sa_event_column_added_to_pk_constraint(self, col)
 
     @property
     def columns_autoinc_first(self):
