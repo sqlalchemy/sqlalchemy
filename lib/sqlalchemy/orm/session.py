@@ -1693,7 +1693,7 @@ class Session(_SessionClassMethods):
 
         This clears all items and ends any transaction in progress.
 
-        If this session were created with ``autocommit=False``, a new
+        If this Session was created with ``autocommit=False``, a new
         transaction will be begun when the :class:`.Session` is next asked
         to procure a database connection.
 
