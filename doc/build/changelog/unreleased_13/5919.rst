@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 5919
+
+    Repaired / implemented support for primary key constraint naming
+    conventions that use column names/keys/etc as part of the convention. In
+    particular, this includes that the :class:`.PrimaryKeyConstraint` object
+    that's automatically associated with a :class:`.schema.Table` will update
+    its name as new primary key :class:`_schema.Column` objects are added to
+    the table and then to the constraint. Internal failure modes related to
+    this constraint construction process including no columns present, no name
+    present or blank name present are now accommodated.

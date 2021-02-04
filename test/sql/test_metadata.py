@@ -4689,6 +4689,73 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             AddConstraint(const[0]), "ALTER TABLE foo ADD UNIQUE (id)"
         )
 
+    @testing.combinations(
+        ("nopk",),
+        ("column",),
+        ("constraint",),
+        ("explicit_name",),
+        argnames="pktype",
+    )
+    @testing.combinations(
+        ("pk_%(table_name)s", "pk_t1"),
+        ("pk_%(column_0_name)s", "pk_x"),
+        ("pk_%(column_0_N_name)s", "pk_x_y"),
+        ("pk_%(column_0_N_label)s", "pk_t1_x_t1_y"),
+        ("%(column_0_name)s", "x"),
+        ("%(column_0N_name)s", "xy"),
+        argnames="conv, expected_name",
+    )
+    def test_pk_conventions(self, conv, expected_name, pktype):
+        m1 = MetaData(naming_convention={"pk": conv})
+
+        if pktype == "column":
+            t1 = Table(
+                "t1",
+                m1,
+                Column("x", Integer, primary_key=True),
+                Column("y", Integer, primary_key=True),
+            )
+        elif pktype == "constraint":
+            t1 = Table(
+                "t1",
+                m1,
+                Column("x", Integer),
+                Column("y", Integer),
+                PrimaryKeyConstraint("x", "y"),
+            )
+        elif pktype == "nopk":
+            t1 = Table(
+                "t1",
+                m1,
+                Column("x", Integer, nullable=False),
+                Column("y", Integer, nullable=False),
+            )
+            expected_name = None
+        elif pktype == "explicit_name":
+            t1 = Table(
+                "t1",
+                m1,
+                Column("x", Integer, primary_key=True),
+                Column("y", Integer, primary_key=True),
+                PrimaryKeyConstraint("x", "y", name="myname"),
+            )
+            expected_name = "myname"
+
+        if expected_name:
+            eq_(t1.primary_key.name, expected_name)
+
+        if pktype == "nopk":
+            self.assert_compile(
+                schema.CreateTable(t1),
+                "CREATE TABLE t1 (x INTEGER NOT NULL, y INTEGER NOT NULL)",
+            )
+        else:
+            self.assert_compile(
+                schema.CreateTable(t1),
+                "CREATE TABLE t1 (x INTEGER NOT NULL, y INTEGER NOT NULL, "
+                "CONSTRAINT %s PRIMARY KEY (x, y))" % expected_name,
+            )
+
     def test_uq_name(self):
         u1 = self._fixture(
             naming_convention={"uq": "uq_%(table_name)s_%(column_0_name)s"}
