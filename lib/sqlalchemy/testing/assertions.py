@@ -394,6 +394,7 @@ class AssertsCompiledSQL(object):
         schema_translate_map=None,
         render_schema_translate=False,
         default_schema_name=None,
+        from_linting=False,
     ):
         if use_default_dialect:
             dialect = default.DefaultDialect()
@@ -437,6 +438,9 @@ class AssertsCompiledSQL(object):
 
         if render_schema_translate:
             kw["render_schema_translate"] = True
+
+        if from_linting or getattr(self, "assert_from_linting", False):
+            kw["linting"] = sql.FROM_LINTING
 
         from sqlalchemy import orm
 

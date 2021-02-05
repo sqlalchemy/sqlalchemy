@@ -1,6 +1,7 @@
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import sql
+from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -57,6 +58,108 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         froms, start = find_unmatching_froms(query, self.b)
         assert start == self.b
         assert froms == {self.a}
+
+    @testing.combinations(("lateral",), ("cartesian",), ("join",))
+    def test_lateral_subqueries(self, control):
+        """
+        ::
+
+            test=> create table a (id integer);
+            CREATE TABLE
+            test=> create table b (id integer);
+            CREATE TABLE
+            test=> insert into a(id) values (1), (2), (3);
+            INSERT 0 3
+            test=> insert into b(id) values (1), (2), (3);
+            INSERT 0 3
+
+            test=> select * from (select id from a) as a1,
+            lateral (select id from b where id=a1.id) as b1;
+            id | id
+            ----+----
+            1 |  1
+            2 |  2
+            3 |  3
+            (3 rows)
+
+        """
+        p1 = select(self.a).subquery()
+
+        p2 = select(self.b).where(self.b.c.col_b == p1.c.col_a).subquery()
+
+        if control == "lateral":
+            p2 = p2.lateral()
+
+        query = select(p1, p2)
+
+        if control == "join":
+            query = query.join_from(p1, p2, p1.c.col_a == p2.c.col_b)
+
+        froms, start = find_unmatching_froms(query, p1)
+
+        if control == "cartesian":
+            assert start is p1
+            assert froms == {p2}
+        else:
+            assert start is None
+            assert froms is None
+
+        froms, start = find_unmatching_froms(query, p2)
+
+        if control == "cartesian":
+            assert start is p2
+            assert froms == {p1}
+        else:
+            assert start is None
+            assert froms is None
+
+    def test_lateral_subqueries_w_joins(self):
+        p1 = select(self.a).subquery()
+        p2 = (
+            select(self.b)
+            .where(self.b.c.col_b == p1.c.col_a)
+            .subquery()
+            .lateral()
+        )
+        p3 = (
+            select(self.c)
+            .where(self.c.c.col_c == p1.c.col_a)
+            .subquery()
+            .lateral()
+        )
+
+        query = select(p1, p2, p3).join_from(p1, p2, true()).join(p3, true())
+
+        for p in (p1, p2, p3):
+            froms, start = find_unmatching_froms(query, p)
+            assert start is None
+            assert froms is None
+
+    def test_lateral_subqueries_ok_do_we_still_find_cartesians(self):
+        p1 = select(self.a).subquery()
+
+        p3 = select(self.a).subquery()
+
+        p2 = select(self.b).where(self.b.c.col_b == p3.c.col_a).subquery()
+
+        p2 = p2.lateral()
+
+        query = select(p1, p2, p3)
+
+        froms, start = find_unmatching_froms(query, p1)
+
+        assert start is p1
+        assert froms == {p2, p3}
+
+        froms, start = find_unmatching_froms(query, p2)
+
+        assert start is p2
+        assert froms == {p1}
+
+        froms, start = find_unmatching_froms(query, p3)
+
+        assert start is p3
+        assert froms == {p1}
 
     def test_count_non_eq_comparison_operators(self):
         query = select(self.a).where(self.a.c.col_a > self.b.c.col_b)

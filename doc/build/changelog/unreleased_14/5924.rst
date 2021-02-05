@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5924
+
+    Fixed bug where the "cartesian product" assertion was not correctly
+    accommodating for joins between tables that relied upon the use of LATERAL
+    to connect from a subquery to another subquery in the enclosing context.
