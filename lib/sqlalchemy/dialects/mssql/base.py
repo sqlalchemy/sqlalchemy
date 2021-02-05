@@ -17,7 +17,7 @@ External Dialects
 In addition to the above DBAPI layers with native SQLAlchemy support, there
 are third-party dialects for other DBAPI layers that are compatible
 with SQL Server. See the "External Dialects" list on the
-:ref:`dialect_toplevel` page. 
+:ref:`dialect_toplevel` page.
 
 .. _mssql_identity:
 
@@ -2750,7 +2750,7 @@ class MSDialect(default.DefaultDialect):
         # We also run an sp_columns to check for identity columns:
         cursor = connection.execute(
             sql.text(
-                "sp_columns @table_name = :table_name, "
+                "EXEC sp_columns @table_name = :table_name, "
                 "@table_owner = :table_owner",
             ),
             {"table_name": tablename, "table_owner": owner},

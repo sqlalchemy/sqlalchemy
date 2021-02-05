@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mssql, reflection
+    :tickets: 5921
+
+    Fixed issue regarding SQL Server reflection for older SQL Server 2005
+    version, a call to sp_columns would not proceed correctly without being
+    prefixed with the EXEC keyword. This method is not used in current 1.4
+    series.
+
