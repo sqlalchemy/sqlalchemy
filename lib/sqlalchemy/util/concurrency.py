@@ -32,7 +32,7 @@ if not have_greenlet:
             )
 
     def await_only(thing):  # noqa F811
-        return thing
+        _not_implemented()
 
     def await_fallback(thing):  # noqa F81
         return thing

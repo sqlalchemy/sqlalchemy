@@ -51,6 +51,13 @@ class TestBase(object):
         assert val, msg
 
     @config.fixture()
+    def connection_no_trans(self):
+        eng = getattr(self, "bind", None) or config.db
+
+        with eng.connect() as conn:
+            yield conn
+
+    @config.fixture()
     def connection(self):
         global _connection_fixture_connection
 

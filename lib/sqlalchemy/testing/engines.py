@@ -266,7 +266,13 @@ def reconnecting_engine(url=None, options=None):
     return engine
 
 
-def testing_engine(url=None, options=None, future=None, asyncio=False):
+def testing_engine(
+    url=None,
+    options=None,
+    future=None,
+    asyncio=False,
+    transfer_staticpool=False,
+):
     """Produce an engine configured by --options with optional overrides."""
 
     if asyncio:
@@ -299,6 +305,12 @@ def testing_engine(url=None, options=None, future=None, asyncio=False):
         default_opt.update(options)
 
     engine = create_engine(url, **options)
+
+    if transfer_staticpool:
+        from sqlalchemy.pool import StaticPool
+
+        if config.db is not None and isinstance(config.db.pool, StaticPool):
+            engine.pool._transfer_from(config.db.pool)
 
     if scope == "global":
         if asyncio:

@@ -889,6 +889,7 @@ class DefaultRequirements(SuiteRequirements):
         return fails_on_everything_except(
             "mysql",
             "mariadb",
+            "sqlite+aiosqlite",
             "sqlite+pysqlite",
             "sqlite+pysqlcipher",
             "sybase",
@@ -925,6 +926,7 @@ class DefaultRequirements(SuiteRequirements):
             "mysql",
             "mariadb",
             "sqlite+pysqlite",
+            "sqlite+aiosqlite",
             "sqlite+pysqlcipher",
             "mssql",
         )

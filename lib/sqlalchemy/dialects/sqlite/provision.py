@@ -11,13 +11,22 @@ from ...testing.provision import stop_test_class_outside_fixtures
 from ...testing.provision import temp_table_keyword_args
 
 
+# likely needs a generate_driver_url() def here for the --dbdriver part to
+# work
+
+_drivernames = set()
+
+
 @follower_url_from_main.for_db("sqlite")
 def _sqlite_follower_url_from_main(url, ident):
     url = sa_url.make_url(url)
     if not url.database or url.database == ":memory:":
         return url
     else:
-        return sa_url.make_url("sqlite:///%s.db" % ident)
+        _drivernames.add(url.get_driver_name())
+        return sa_url.make_url(
+            "sqlite+%s:///%s.db" % (url.get_driver_name(), ident)
+        )
 
 
 @post_configure_engine.for_db("sqlite")
@@ -35,12 +44,13 @@ def _sqlite_post_configure_engine(url, engine, follower_ident):
             # expected to be already present, so for now it just stays
             # in a given checkout directory.
             dbapi_connection.execute(
-                'ATTACH DATABASE "test_schema.db" AS test_schema'
+                'ATTACH DATABASE "%s_test_schema.db" AS test_schema'
+                % (engine.driver,)
             )
         else:
             dbapi_connection.execute(
-                'ATTACH DATABASE "%s_test_schema.db" AS test_schema'
-                % follower_ident
+                'ATTACH DATABASE "%s_%s_test_schema.db" AS test_schema'
+                % (follower_ident, engine.driver)
             )
 
 
@@ -51,7 +61,10 @@ def _sqlite_create_db(cfg, eng, ident):
 
 @drop_db.for_db("sqlite")
 def _sqlite_drop_db(cfg, eng, ident):
-    for path in ["%s.db" % ident, "%s_test_schema.db" % ident]:
+    for path in [
+        "%s.db" % ident,
+        "%s_%s_test_schema.db" % (ident, eng.driver),
+    ]:
         if os.path.exists(path):
             log.info("deleting SQLite database file: %s" % path)
             os.remove(path)
@@ -71,9 +84,9 @@ def stop_test_class_outside_fixtures(config, db, cls):
 
         # some sqlite file tests are not cleaning up well yet, so do this
         # just to make things simple for now
-        for file in files:
-            if file:
-                os.remove(file)
+        for file_ in files:
+            if file_ and os.path.exists(file_):
+                os.remove(file_)
 
 
 @temp_table_keyword_args.for_db("sqlite")
@@ -89,7 +102,19 @@ def _reap_sqlite_dbs(url, idents):
     for ident in idents:
         # we don't have a config so we can't call _sqlite_drop_db due to the
         # decorator
-        for path in ["%s.db" % ident, "%s_test_schema.db" % ident]:
+        for path in (
+            [
+                "%s.db" % ident,
+            ]
+            + [
+                "%s_test_schema.db" % (drivername,)
+                for drivername in _drivernames
+            ]
+            + [
+                "%s_%s_test_schema.db" % (ident, drivername)
+                for drivername in _drivernames
+            ]
+        ):
             if os.path.exists(path):
                 log.info("deleting SQLite database file: %s" % path)
                 os.remove(path)

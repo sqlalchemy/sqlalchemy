@@ -180,8 +180,8 @@ class AutocommitIsolationTest(fixtures.TablesTest):
         with conn.begin():
             conn.execute(self.tables.some_table.delete())
 
-    def test_autocommit_on(self):
-        conn = config.db.connect()
+    def test_autocommit_on(self, connection_no_trans):
+        conn = connection_no_trans
         c2 = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(c2, True)
 
@@ -189,12 +189,14 @@ class AutocommitIsolationTest(fixtures.TablesTest):
 
         self._test_conn_autocommits(conn, False)
 
-    def test_autocommit_off(self):
-        conn = config.db.connect()
+    def test_autocommit_off(self, connection_no_trans):
+        conn = connection_no_trans
         self._test_conn_autocommits(conn, False)
 
-    def test_turn_autocommit_off_via_default_iso_level(self):
-        conn = config.db.connect()
+    def test_turn_autocommit_off_via_default_iso_level(
+        self, connection_no_trans
+    ):
+        conn = connection_no_trans
         conn = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(conn, True)
 

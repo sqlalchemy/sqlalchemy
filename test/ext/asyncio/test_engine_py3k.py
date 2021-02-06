@@ -16,6 +16,7 @@ from sqlalchemy import union_all
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
+from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import engines
@@ -38,7 +39,7 @@ class EngineFixture(fixtures.TablesTest):
 
     @testing.fixture
     def async_engine(self):
-        return engines.testing_engine(asyncio=True)
+        return engines.testing_engine(asyncio=True, transfer_staticpool=True)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -80,7 +81,9 @@ class AsyncEngineTest(EngineFixture):
     @async_test
     async def test_engine_eq_ne(self, async_engine):
         e2 = _async_engine.AsyncEngine(async_engine.sync_engine)
-        e3 = testing.engines.testing_engine(asyncio=True)
+        e3 = testing.engines.testing_engine(
+            asyncio=True, transfer_staticpool=True
+        )
 
         eq_(async_engine, e2)
         ne_(async_engine, e3)
@@ -197,6 +200,7 @@ class AsyncEngineTest(EngineFixture):
             is_false(conn.in_transaction())
             is_false(conn.in_nested_transaction())
 
+    @testing.requires.queue_pool
     @async_test
     async def test_invalidate(self, async_engine):
         conn = await async_engine.connect()
@@ -254,6 +258,9 @@ class AsyncEngineTest(EngineFixture):
 
         eq_(isolation_level, "SERIALIZABLE")
 
+        await conn.close()
+
+    @testing.requires.queue_pool
     @async_test
     async def test_dispose(self, async_engine):
         c1 = await async_engine.connect()
@@ -263,12 +270,16 @@ class AsyncEngineTest(EngineFixture):
         await c2.close()
 
         p1 = async_engine.pool
-        eq_(async_engine.pool.checkedin(), 2)
+
+        if isinstance(p1, AsyncAdaptedQueuePool):
+            eq_(async_engine.pool.checkedin(), 2)
 
         await async_engine.dispose()
-        eq_(async_engine.pool.checkedin(), 0)
+        if isinstance(p1, AsyncAdaptedQueuePool):
+            eq_(async_engine.pool.checkedin(), 0)
         is_not(p1, async_engine.pool)
 
+    @testing.requires.independent_connections
     @async_test
     async def test_init_once_concurrency(self, async_engine):
         c1 = async_engine.connect()
@@ -362,6 +373,7 @@ class AsyncEngineTest(EngineFixture):
             ):
                 await trans.rollback(),
 
+    @testing.requires.queue_pool
     @async_test
     async def test_pool_exhausted_some_timeout(self, async_engine):
         engine = create_async_engine(
@@ -374,6 +386,7 @@ class AsyncEngineTest(EngineFixture):
             with expect_raises(exc.TimeoutError):
                 await engine.connect()
 
+    @testing.requires.queue_pool
     @async_test
     async def test_pool_exhausted_no_timeout(self, async_engine):
         engine = create_async_engine(

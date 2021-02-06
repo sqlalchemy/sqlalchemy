@@ -329,7 +329,7 @@ class PoolDialectTest(PoolTestBase):
         self._do_test(pool.NullPool, ["R", "CL", "R", "CL"])
 
     def test_static_pool(self):
-        self._do_test(pool.StaticPool, ["R", "R"])
+        self._do_test(pool.StaticPool, ["R", "CL", "R"])
 
 
 class PoolEventsTest(PoolTestBase):
@@ -1959,6 +1959,21 @@ class StaticPoolTest(PoolTestBase):
         p = pool.StaticPool(creator)
         p2 = p.recreate()
         assert p._creator is p2._creator
+
+    def test_connect(self):
+        dbapi = MockDBAPI()
+
+        def creator():
+            return dbapi.connect("foo.db")
+
+        p = pool.StaticPool(creator)
+
+        c1 = p.connect()
+        conn = c1.connection
+        c1.close()
+
+        c2 = p.connect()
+        is_(conn, c2.connection)
 
 
 class CreatorCompatibilityTest(PoolTestBase):

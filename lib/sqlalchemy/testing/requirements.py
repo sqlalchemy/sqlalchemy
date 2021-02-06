@@ -18,6 +18,7 @@ to provide specific inclusion/exclusions.
 import platform
 import sys
 
+from sqlalchemy.pool.impl import QueuePool
 from . import exclusions
 from .. import util
 
@@ -115,6 +116,15 @@ class SuiteRequirements(Requirements):
             lambda: self.on_update_cascade.enabled
             or self.deferrable_fks.enabled
         )
+
+    @property
+    def queue_pool(self):
+        """target database is using QueuePool"""
+
+        def go(config):
+            return isinstance(config.db.pool, QueuePool)
+
+        return exclusions.only_if(go)
 
     @property
     def self_referential_foreign_keys(self):

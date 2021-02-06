@@ -395,15 +395,11 @@ class StaticPool(Pool):
     """A Pool of exactly one connection, used for all requests.
 
     Reconnect-related functions such as ``recycle`` and connection
-    invalidation (which is also used to support auto-reconnect) are not
-    currently supported by this Pool implementation but may be implemented
-    in a future release.
+    invalidation (which is also used to support auto-reconnect) are only
+    partially supported right now and may not yield good results.
+
 
     """
-
-    @util.memoized_property
-    def _conn(self):
-        return self._creator()
 
     @util.memoized_property
     def connection(self):
@@ -413,9 +409,12 @@ class StaticPool(Pool):
         return "StaticPool"
 
     def dispose(self):
-        if "_conn" in self.__dict__:
-            self._conn.close()
-            self._conn = None
+        if (
+            "connection" in self.__dict__
+            and self.connection.connection is not None
+        ):
+            self.connection.close()
+            del self.__dict__["connection"]
 
     def recreate(self):
         self.logger.info("Pool recreating")
@@ -430,14 +429,26 @@ class StaticPool(Pool):
             dialect=self._dialect,
         )
 
+    def _transfer_from(self, other_static_pool):
+        # used by the test suite to make a new engine / pool without
+        # losing the state of an existing SQLite :memory: connection
+        self._invoke_creator = (
+            lambda crec: other_static_pool.connection.connection
+        )
+
     def _create_connection(self):
-        return self._conn
+        raise NotImplementedError()
 
     def _do_return_conn(self, conn):
         pass
 
     def _do_get(self):
-        return self.connection
+        rec = self.connection
+        if rec._is_hard_or_soft_invalidated():
+            del self.__dict__["connection"]
+            rec = self.connection
+
+        return rec
 
 
 class AssertionPool(Pool):

@@ -227,6 +227,8 @@ class ServerSideCursorsTest(
     __backend__ = True
 
     def _is_server_side(self, cursor):
+        # TODO: this is a huge issue as it prevents these tests from being
+        # usable by third party dialects.
         if self.engine.dialect.driver == "psycopg2":
             return bool(cursor.name)
         elif self.engine.dialect.driver == "pymysql":
@@ -239,7 +241,7 @@ class ServerSideCursorsTest(
             return isinstance(cursor, sscursor)
         elif self.engine.dialect.driver == "mariadbconnector":
             return not cursor.buffered
-        elif self.engine.dialect.driver == "asyncpg":
+        elif self.engine.dialect.driver in ("asyncpg", "aiosqlite"):
             return cursor.server_side
         else:
             return False
@@ -279,7 +281,14 @@ class ServerSideCursorsTest(
             False,
         ),
         ("for_update_expr", True, select(1).with_for_update(), True),
-        ("for_update_string", True, "SELECT 1 FOR UPDATE", True),
+        # TODO: need a real requirement for this, or dont use this test
+        (
+            "for_update_string",
+            True,
+            "SELECT 1 FOR UPDATE",
+            True,
+            testing.skip_if("sqlite"),
+        ),
         ("text_no_ss", False, text("select 42"), False),
         (
             "text_ss_option",
