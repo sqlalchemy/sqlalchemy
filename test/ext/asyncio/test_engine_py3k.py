@@ -1,6 +1,7 @@
 import asyncio
 
 from sqlalchemy import Column
+from sqlalchemy import create_engine
 from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
@@ -662,9 +663,18 @@ class AsyncResultTest(EngineFixture):
 
 
 class TextSyncDBAPI(fixtures.TestBase):
+    def test_sync_dbapi_raises(self):
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "The asyncio extension requires an async driver to be used.",
+        ):
+            create_async_engine("sqlite:///:memory:")
+
     @testing.fixture
     def async_engine(self):
-        return create_async_engine("sqlite:///:memory:")
+        engine = create_engine("sqlite:///:memory:", future=True)
+        engine.dialect.is_async = True
+        return _async_engine.AsyncEngine(engine)
 
     @async_test
     @combinations(

@@ -527,6 +527,11 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
             await self.conn.close()
 
     def __init__(self, sync_engine: Engine):
+        if not sync_engine.dialect.is_async:
+            raise exc.InvalidRequestError(
+                "The asyncio extension requires an async driver to be used. "
+                f"The loaded {sync_engine.dialect.driver!r} is not async."
+            )
         self.sync_engine = self._proxied = sync_engine
 
     def begin(self):
