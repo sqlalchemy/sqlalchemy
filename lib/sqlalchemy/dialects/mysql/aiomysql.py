@@ -41,6 +41,13 @@ from ...util.concurrency import await_only
 
 class AsyncAdapt_aiomysql_cursor:
     server_side = False
+    __slots__ = (
+        "_adapt_connection",
+        "_connection",
+        "await_",
+        "_cursor",
+        "_rows",
+    )
 
     def __init__(self, adapt_connection):
         self._adapt_connection = adapt_connection
@@ -123,7 +130,7 @@ class AsyncAdapt_aiomysql_cursor:
 
 
 class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
-
+    __slots__ = ()
     server_side = True
 
     def __init__(self, adapt_connection):
@@ -154,6 +161,7 @@ class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
 
 class AsyncAdapt_aiomysql_connection:
     await_ = staticmethod(await_only)
+    __slots__ = ("dbapi", "_connection")
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
