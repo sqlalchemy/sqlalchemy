@@ -6,7 +6,9 @@ for asynchronous ORM use.
 import asyncio
 
 from sqlalchemy import Column
+from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +17,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -24,7 +27,13 @@ class A(Base):
 
     id = Column(Integer, primary_key=True)
     data = Column(String)
+    create_date = Column(DateTime, server_default=func.now())
     bs = relationship("B")
+
+    # required in order to access columns with server defaults
+    # or SQL expression defaults, subsequent to a flush, without
+    # triggering an expired load
+    __mapper_args__ = {"eager_defaults": True}
 
 
 class B(Base):
@@ -46,7 +55,13 @@ async def async_main():
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
-    async with AsyncSession(engine) as session:
+    # expire_on_commit=False will prevent attributes from being expired
+    # after commit.
+    async_session = sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
+
+    async with async_session() as session:
         async with session.begin():
             session.add_all(
                 [
@@ -66,6 +81,7 @@ async def async_main():
         # result is a buffered Result object.
         for a1 in result.scalars():
             print(a1)
+            print(f"created at: {a1.create_date}")
             for b1 in a1.bs:
                 print(b1)
 
