@@ -7,6 +7,7 @@ from sqlalchemy import lateral
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import table
+from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.engine import default
@@ -20,6 +21,8 @@ from sqlalchemy.testing import fixtures
 
 class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = default.DefaultDialect(supports_native_boolean=True)
+
+    assert_from_linting = True
 
     run_setup_bind = None
 
@@ -233,6 +236,65 @@ class LateralTest(fixtures.TablesTest, AssertsCompiledSQL):
             "FROM books "
             "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true",
         )
+
+    @testing.combinations((True,), (False,))
+    def test_join_lateral_subquery_twolevel(self, use_twolevel):
+        people, books, bookcases = self.tables("people", "books", "bookcases")
+
+        p1 = select(
+            books.c.book_id, books.c.bookcase_id, books.c.book_owner_id
+        ).subquery()
+        p2 = (
+            select(bookcases.c.bookcase_id, bookcases.c.bookcase_owner_id)
+            .where(bookcases.c.bookcase_id == p1.c.bookcase_id)
+            .subquery()
+            .lateral()
+        )
+        p3 = (
+            select(people.c.people_id)
+            .where(p1.c.book_owner_id == people.c.people_id)
+            .subquery()
+            .lateral()
+        )
+
+        onelevel = (
+            select(p1.c.book_id, p2.c.bookcase_id)
+            .select_from(p1)
+            .join(p2, true())
+        )
+
+        if use_twolevel:
+            twolevel = onelevel.add_columns(p3.c.people_id).join(p3, true())
+
+            self.assert_compile(
+                twolevel,
+                "SELECT anon_1.book_id, anon_2.bookcase_id, anon_3.people_id "
+                "FROM (SELECT books.book_id AS book_id, books.bookcase_id AS "
+                "bookcase_id, books.book_owner_id AS book_owner_id "
+                "FROM books) "
+                "AS anon_1 JOIN LATERAL (SELECT bookcases.bookcase_id AS "
+                "bookcase_id, "
+                "bookcases.bookcase_owner_id AS bookcase_owner_id "
+                "FROM bookcases "
+                "WHERE bookcases.bookcase_id = anon_1.bookcase_id) "
+                "AS anon_2 ON true JOIN LATERAL "
+                "(SELECT people.people_id AS people_id FROM people "
+                "WHERE anon_1.book_owner_id = people.people_id) AS anon_3 "
+                "ON true",
+            )
+        else:
+            self.assert_compile(
+                onelevel,
+                "SELECT anon_1.book_id, anon_2.bookcase_id FROM "
+                "(SELECT books.book_id AS book_id, books.bookcase_id "
+                "AS bookcase_id, books.book_owner_id AS book_owner_id "
+                "FROM books) AS anon_1 JOIN LATERAL "
+                "(SELECT bookcases.bookcase_id AS bookcase_id, "
+                "bookcases.bookcase_owner_id AS bookcase_owner_id "
+                "FROM bookcases "
+                "WHERE bookcases.bookcase_id = anon_1.bookcase_id) AS anon_2 "
+                "ON true",
+            )
 
     def test_join_lateral_w_select_implicit_subquery(self):
         table1 = self.tables.people

@@ -1996,14 +1996,24 @@ class SQLCompiler(Compiled):
         override_operator=None,
         eager_grouping=False,
         from_linter=None,
+        lateral_from_linter=None,
         **kw
     ):
         if from_linter and operators.is_comparison(binary.operator):
-            from_linter.edges.update(
-                itertools.product(
-                    binary.left._from_objects, binary.right._from_objects
+            if lateral_from_linter is not None:
+                enclosing_lateral = kw["enclosing_lateral"]
+                lateral_from_linter.edges.update(
+                    itertools.product(
+                        binary.left._from_objects + [enclosing_lateral],
+                        binary.right._from_objects + [enclosing_lateral],
+                    )
                 )
-            )
+            else:
+                from_linter.edges.update(
+                    itertools.product(
+                        binary.left._from_objects, binary.right._from_objects
+                    )
+                )
 
         # don't allow "? = ?" to render
         if (
@@ -2027,7 +2037,11 @@ class SQLCompiler(Compiled):
                 )
             else:
                 return self._generate_generic_binary(
-                    binary, opstring, from_linter=from_linter, **kw
+                    binary,
+                    opstring,
+                    from_linter=from_linter,
+                    lateral_from_linter=lateral_from_linter,
+                    **kw
                 )
 
     def visit_function_as_comparison_op_binary(self, element, operator, **kw):
@@ -2570,6 +2584,24 @@ class SQLCompiler(Compiled):
         from_linter=None,
         **kwargs
     ):
+
+        if lateral:
+            if "enclosing_lateral" not in kwargs:
+                # if lateral is set and enclosing_lateral is not
+                # present, we assume we are being called directly
+                # from visit_lateral() and we need to set enclosing_lateral.
+                assert alias._is_lateral
+                kwargs["enclosing_lateral"] = alias
+
+            # for lateral objects, we track a second from_linter that is...
+            # lateral!  to the level above us.
+            if (
+                from_linter
+                and "lateral_from_linter" not in kwargs
+                and "enclosing_lateral" in kwargs
+            ):
+                kwargs["lateral_from_linter"] = from_linter
+
         if enclosing_alias is not None and enclosing_alias.element is alias:
             inner = alias.element._compiler_dispatch(
                 self,
