@@ -17,7 +17,7 @@ External Dialects
 In addition to the above DBAPI layers with native SQLAlchemy support, there
 are third-party dialects for other DBAPI layers that are compatible
 with SQL Server. See the "External Dialects" list on the
-:ref:`dialect_toplevel` page. 
+:ref:`dialect_toplevel` page.
 
 .. _mssql_identity:
 
@@ -1560,7 +1560,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                     self.cursor,
                     self._opt_encode(
                         "SET IDENTITY_INSERT %s ON"
-                        % self.dialect.identifier_preparer.format_table(tbl)
+                        % self.identifier_preparer.format_table(tbl)
                     ),
                     (),
                     self,
@@ -1606,7 +1606,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor,
                 self._opt_encode(
                     "SET IDENTITY_INSERT %s OFF"
-                    % self.dialect.identifier_preparer.format_table(
+                    % self.identifier_preparer.format_table(
                         self.compiled.statement.table
                     )
                 ),
@@ -1630,7 +1630,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute(
                     self._opt_encode(
                         "SET IDENTITY_INSERT %s OFF"
-                        % self.dialect.identifier_preparer.format_table(
+                        % self.identifier_preparer.format_table(
                             self.compiled.statement.table
                         )
                     )
@@ -1650,7 +1650,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar(
             (
                 "SELECT NEXT VALUE FOR %s"
-                % self.dialect.identifier_preparer.format_sequence(seq)
+                % self.identifier_preparer.format_sequence(seq)
             ),
             type_,
         )

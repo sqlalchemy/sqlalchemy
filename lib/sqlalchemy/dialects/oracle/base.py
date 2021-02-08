@@ -1012,9 +1012,7 @@ class OracleCompiler(compiler.SQLCompiler):
         return self.process(vc.column, **kw) + "(+)"
 
     def visit_sequence(self, seq, **kw):
-        return (
-            self.dialect.identifier_preparer.format_sequence(seq) + ".nextval"
-        )
+        return self.preparer.format_sequence(seq) + ".nextval"
 
     def get_render_as_alias_suffix(self, alias_name_text):
         """Oracle doesn't like ``FROM table AS alias``"""
@@ -1441,7 +1439,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
     def fire_sequence(self, seq, type_):
         return self._execute_scalar(
             "SELECT "
-            + self.dialect.identifier_preparer.format_sequence(seq)
+            + self.identifier_preparer.format_sequence(seq)
             + ".nextval FROM DUAL",
             type_,
         )

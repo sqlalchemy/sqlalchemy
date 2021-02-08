@@ -262,7 +262,6 @@ def drop_all_schema_objects(cfg, eng):
                     )
 
     util.drop_all_tables(eng, inspector)
-
     if config.requirements.schemas.enabled_for_config(cfg):
         util.drop_all_tables(eng, inspector, schema=cfg.test_schema)
         util.drop_all_tables(eng, inspector, schema=cfg.test_schema_2)
@@ -273,6 +272,16 @@ def drop_all_schema_objects(cfg, eng):
         with eng.begin() as conn:
             for seq in inspector.get_sequence_names():
                 conn.execute(ddl.DropSequence(schema.Sequence(seq)))
+            if config.requirements.schemas.enabled_for_config(cfg):
+                for schema_name in [cfg.test_schema, cfg.test_schema_2]:
+                    for seq in inspector.get_sequence_names(
+                        schema=schema_name
+                    ):
+                        conn.execute(
+                            ddl.DropSequence(
+                                schema.Sequence(seq, schema=schema_name)
+                            )
+                        )
 
 
 @register.init
