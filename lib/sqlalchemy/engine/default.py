@@ -1141,6 +1141,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return "unknown"
 
     @util.memoized_property
+    def identifier_preparer(self):
+        if self.compiled:
+            return self.compiled.preparer
+        elif "schema_translate_map" in self.execution_options:
+            return self.dialect.identifier_preparer._with_schema_translate(
+                self.execution_options["schema_translate_map"]
+            )
+        else:
+            return self.dialect.identifier_preparer
+
+    @util.memoized_property
     def engine(self):
         return self.root_connection.engine
 
@@ -1196,6 +1207,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             and not self.dialect.supports_unicode_statements
         ):
             stmt = self.dialect._encoder(stmt)[0]
+
+        if "schema_translate_map" in self.execution_options:
+            schema_translate_map = self.execution_options.get(
+                "schema_translate_map", {}
+            )
+
+            rst = self.identifier_preparer._render_schema_translates
+            stmt = rst(stmt, schema_translate_map)
 
         if not parameters:
             if self.dialect.positional:
