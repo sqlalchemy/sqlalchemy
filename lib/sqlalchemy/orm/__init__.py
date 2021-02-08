@@ -13,73 +13,73 @@ documentation for an overview of how this module is used.
 
 """
 
-from . import exc  # noqa
-from . import mapper as mapperlib  # noqa
+from . import exc
+from . import mapper as mapperlib
 from . import strategy_options
-from .attributes import AttributeEvent  # noqa
-from .attributes import InstrumentedAttribute  # noqa
-from .attributes import QueryableAttribute  # noqa
-from .context import QueryContext  # noqa
-from .decl_api import as_declarative  # noqa
-from .decl_api import declarative_base  # noqa
-from .decl_api import DeclarativeMeta  # noqa
-from .decl_api import declared_attr  # noqa
-from .decl_api import has_inherited_table  # noqa
-from .decl_api import registry  # noqa
-from .decl_api import synonym_for  # noqa
-from .descriptor_props import CompositeProperty  # noqa
-from .descriptor_props import SynonymProperty  # noqa
-from .identity import IdentityMap  # noqa
-from .instrumentation import ClassManager  # noqa
-from .interfaces import EXT_CONTINUE  # noqa
-from .interfaces import EXT_SKIP  # noqa
-from .interfaces import EXT_STOP  # noqa
-from .interfaces import InspectionAttr  # noqa
-from .interfaces import InspectionAttrInfo  # noqa
-from .interfaces import MANYTOMANY  # noqa
-from .interfaces import MANYTOONE  # noqa
-from .interfaces import MapperProperty  # noqa
-from .interfaces import NOT_EXTENSION  # noqa
-from .interfaces import ONETOMANY  # noqa
-from .interfaces import PropComparator  # noqa
-from .loading import merge_frozen_result  # noqa
-from .loading import merge_result  # noqa
-from .mapper import class_mapper  # noqa
-from .mapper import configure_mappers  # noqa
-from .mapper import Mapper  # noqa
-from .mapper import reconstructor  # noqa
-from .mapper import validates  # noqa
-from .properties import ColumnProperty  # noqa
-from .query import AliasOption  # noqa
-from .query import FromStatement  # noqa
-from .query import Query  # noqa
-from .relationships import foreign  # noqa
-from .relationships import RelationshipProperty  # noqa
-from .relationships import remote  # noqa
-from .scoping import scoped_session  # noqa
-from .session import close_all_sessions  # noqa
-from .session import make_transient  # noqa
-from .session import make_transient_to_detached  # noqa
-from .session import object_session  # noqa
-from .session import ORMExecuteState  # noqa
-from .session import Session  # noqa
-from .session import sessionmaker  # noqa
-from .session import SessionTransaction  # noqa
-from .state import AttributeState  # noqa
-from .state import InstanceState  # noqa
-from .strategy_options import Load  # noqa
-from .unitofwork import UOWTransaction  # noqa
-from .util import aliased  # noqa
-from .util import Bundle  # noqa
-from .util import CascadeOptions  # noqa
-from .util import join  # noqa
-from .util import LoaderCriteriaOption  # noqa
-from .util import object_mapper  # noqa
-from .util import outerjoin  # noqa
-from .util import polymorphic_union  # noqa
-from .util import was_deleted  # noqa
-from .util import with_parent  # noqa
-from .util import with_polymorphic  # noqa
+from .attributes import AttributeEvent
+from .attributes import InstrumentedAttribute
+from .attributes import QueryableAttribute
+from .context import QueryContext
+from .decl_api import as_declarative
+from .decl_api import declarative_base
+from .decl_api import DeclarativeMeta
+from .decl_api import declared_attr
+from .decl_api import has_inherited_table
+from .decl_api import registry
+from .decl_api import synonym_for
+from .descriptor_props import CompositeProperty
+from .descriptor_props import SynonymProperty
+from .identity import IdentityMap
+from .instrumentation import ClassManager
+from .interfaces import EXT_CONTINUE
+from .interfaces import EXT_SKIP
+from .interfaces import EXT_STOP
+from .interfaces import InspectionAttr
+from .interfaces import InspectionAttrInfo
+from .interfaces import MANYTOMANY
+from .interfaces import MANYTOONE
+from .interfaces import MapperProperty
+from .interfaces import NOT_EXTENSION
+from .interfaces import ONETOMANY
+from .interfaces import PropComparator
+from .loading import merge_frozen_result
+from .loading import merge_result
+from .mapper import class_mapper
+from .mapper import configure_mappers
+from .mapper import Mapper
+from .mapper import reconstructor
+from .mapper import validates
+from .properties import ColumnProperty
+from .query import AliasOption
+from .query import FromStatement
+from .query import Query
+from .relationships import foreign
+from .relationships import RelationshipProperty
+from .relationships import remote
+from .scoping import scoped_session
+from .session import close_all_sessions
+from .session import make_transient
+from .session import make_transient_to_detached
+from .session import object_session
+from .session import ORMExecuteState
+from .session import Session
+from .session import sessionmaker
+from .session import SessionTransaction
+from .state import AttributeState
+from .state import InstanceState
+from .strategy_options import Load
+from .unitofwork import UOWTransaction
+from .util import aliased
+from .util import Bundle
+from .util import CascadeOptions
+from .util import join
+from .util import LoaderCriteriaOption
+from .util import object_mapper
+from .util import outerjoin
+from .util import polymorphic_union
+from .util import was_deleted
+from .util import with_parent
+from .util import with_polymorphic
 from .. import sql as _sql
 from .. import util as _sa_util
 from ..util.langhelpers import public_factory
@@ -298,21 +298,21 @@ def eagerload(*args, **kwargs):
 contains_alias = public_factory(AliasOption, ".orm.contains_alias")
 
 if True:
-    from .events import AttributeEvents  # noqa
-    from .events import MapperEvents  # noqa
-    from .events import InstanceEvents  # noqa
-    from .events import InstrumentationEvents  # noqa
-    from .events import QueryEvents  # noqa
-    from .events import SessionEvents  # noqa
+    from .events import AttributeEvents
+    from .events import MapperEvents
+    from .events import InstanceEvents
+    from .events import InstrumentationEvents
+    from .events import QueryEvents
+    from .events import SessionEvents
 
 
 def __go(lcls):
     global __all__
     global AppenderQuery
-    from .. import util as sa_util  # noqa
-    from . import dynamic  # noqa
-    from . import events  # noqa
-    from . import loading  # noqa
+    from .. import util as sa_util
+    from . import dynamic
+    from . import events
+    from . import loading
     import inspect as _inspect
 
     from .dynamic import AppenderQuery

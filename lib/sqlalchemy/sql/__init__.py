@@ -5,92 +5,92 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .base import Executable  # noqa
-from .compiler import COLLECT_CARTESIAN_PRODUCTS  # noqa
-from .compiler import FROM_LINTING  # noqa
-from .compiler import NO_LINTING  # noqa
-from .compiler import WARN_LINTING  # noqa
-from .expression import Alias  # noqa
-from .expression import alias  # noqa
-from .expression import all_  # noqa
-from .expression import and_  # noqa
-from .expression import any_  # noqa
-from .expression import asc  # noqa
-from .expression import between  # noqa
-from .expression import bindparam  # noqa
-from .expression import case  # noqa
-from .expression import cast  # noqa
-from .expression import ClauseElement  # noqa
-from .expression import collate  # noqa
-from .expression import column  # noqa
-from .expression import ColumnCollection  # noqa
-from .expression import ColumnElement  # noqa
-from .expression import CompoundSelect  # noqa
-from .expression import cte  # noqa
-from .expression import Delete  # noqa
-from .expression import delete  # noqa
-from .expression import desc  # noqa
-from .expression import distinct  # noqa
-from .expression import except_  # noqa
-from .expression import except_all  # noqa
-from .expression import exists  # noqa
-from .expression import extract  # noqa
-from .expression import false  # noqa
-from .expression import False_  # noqa
-from .expression import FromClause  # noqa
-from .expression import func  # noqa
-from .expression import funcfilter  # noqa
-from .expression import Insert  # noqa
-from .expression import insert  # noqa
-from .expression import intersect  # noqa
-from .expression import intersect_all  # noqa
-from .expression import Join  # noqa
-from .expression import join  # noqa
-from .expression import label  # noqa
-from .expression import LABEL_STYLE_DEFAULT  # noqa
-from .expression import LABEL_STYLE_DISAMBIGUATE_ONLY  # noqa
-from .expression import LABEL_STYLE_NONE  # noqa
-from .expression import LABEL_STYLE_TABLENAME_PLUS_COL  # noqa
-from .expression import lambda_stmt  # noqa
-from .expression import LambdaElement  # noqa
-from .expression import lateral  # noqa
-from .expression import literal  # noqa
-from .expression import literal_column  # noqa
-from .expression import modifier  # noqa
-from .expression import not_  # noqa
-from .expression import null  # noqa
-from .expression import nulls_first  # noqa
-from .expression import nulls_last  # noqa
-from .expression import nullsfirst  # noqa
-from .expression import nullslast  # noqa
-from .expression import or_  # noqa
-from .expression import outerjoin  # noqa
-from .expression import outparam  # noqa
-from .expression import over  # noqa
-from .expression import quoted_name  # noqa
-from .expression import Select  # noqa
-from .expression import select  # noqa
-from .expression import Selectable  # noqa
-from .expression import StatementLambdaElement  # noqa
-from .expression import Subquery  # noqa
-from .expression import subquery  # noqa
-from .expression import table  # noqa
-from .expression import TableClause  # noqa
-from .expression import TableSample  # noqa
-from .expression import tablesample  # noqa
-from .expression import text  # noqa
-from .expression import true  # noqa
-from .expression import True_  # noqa
-from .expression import tuple_  # noqa
-from .expression import type_coerce  # noqa
-from .expression import union  # noqa
-from .expression import union_all  # noqa
-from .expression import Update  # noqa
-from .expression import update  # noqa
-from .expression import Values  # noqa
-from .expression import values  # noqa
-from .expression import within_group  # noqa
-from .visitors import ClauseVisitor  # noqa
+from .base import Executable
+from .compiler import COLLECT_CARTESIAN_PRODUCTS
+from .compiler import FROM_LINTING
+from .compiler import NO_LINTING
+from .compiler import WARN_LINTING
+from .expression import Alias
+from .expression import alias
+from .expression import all_
+from .expression import and_
+from .expression import any_
+from .expression import asc
+from .expression import between
+from .expression import bindparam
+from .expression import case
+from .expression import cast
+from .expression import ClauseElement
+from .expression import collate
+from .expression import column
+from .expression import ColumnCollection
+from .expression import ColumnElement
+from .expression import CompoundSelect
+from .expression import cte
+from .expression import Delete
+from .expression import delete
+from .expression import desc
+from .expression import distinct
+from .expression import except_
+from .expression import except_all
+from .expression import exists
+from .expression import extract
+from .expression import false
+from .expression import False_
+from .expression import FromClause
+from .expression import func
+from .expression import funcfilter
+from .expression import Insert
+from .expression import insert
+from .expression import intersect
+from .expression import intersect_all
+from .expression import Join
+from .expression import join
+from .expression import label
+from .expression import LABEL_STYLE_DEFAULT
+from .expression import LABEL_STYLE_DISAMBIGUATE_ONLY
+from .expression import LABEL_STYLE_NONE
+from .expression import LABEL_STYLE_TABLENAME_PLUS_COL
+from .expression import lambda_stmt
+from .expression import LambdaElement
+from .expression import lateral
+from .expression import literal
+from .expression import literal_column
+from .expression import modifier
+from .expression import not_
+from .expression import null
+from .expression import nulls_first
+from .expression import nulls_last
+from .expression import nullsfirst
+from .expression import nullslast
+from .expression import or_
+from .expression import outerjoin
+from .expression import outparam
+from .expression import over
+from .expression import quoted_name
+from .expression import Select
+from .expression import select
+from .expression import Selectable
+from .expression import StatementLambdaElement
+from .expression import Subquery
+from .expression import subquery
+from .expression import table
+from .expression import TableClause
+from .expression import TableSample
+from .expression import tablesample
+from .expression import text
+from .expression import true
+from .expression import True_
+from .expression import tuple_
+from .expression import type_coerce
+from .expression import union
+from .expression import union_all
+from .expression import Update
+from .expression import update
+from .expression import Values
+from .expression import values
+from .expression import within_group
+from .visitors import ClauseVisitor
 
 
 def __go(lcls):
@@ -106,17 +106,17 @@ def __go(lcls):
     )
 
     from .annotation import _prepare_annotations
-    from .annotation import Annotated  # noqa
+    from .annotation import Annotated
     from .elements import AnnotatedColumnElement
-    from .elements import ClauseList  # noqa
-    from .selectable import AnnotatedFromClause  # noqa
+    from .elements import ClauseList
+    from .selectable import AnnotatedFromClause
 
     # from .traversals import _preconfigure_traversals
 
     from . import base
     from . import coercions
     from . import elements
-    from . import events  # noqa
+    from . import events
     from . import lambdas
     from . import selectable
     from . import schema
@@ -144,7 +144,7 @@ def __go(lcls):
 
     _sa_util.preloaded.import_prefix("sqlalchemy.sql")
 
-    from . import naming  # noqa
+    from . import naming
 
 
 __go(locals())

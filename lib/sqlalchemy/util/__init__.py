@@ -6,165 +6,165 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from collections import defaultdict  # noqa
-from contextlib import contextmanager  # noqa
-from functools import partial  # noqa
-from functools import update_wrapper  # noqa
+from collections import defaultdict
+from contextlib import contextmanager
+from functools import partial
+from functools import update_wrapper
 
-from ._collections import coerce_generator_arg  # noqa
-from ._collections import coerce_to_immutabledict  # noqa
-from ._collections import collections_abc  # noqa
-from ._collections import column_dict  # noqa
-from ._collections import column_set  # noqa
-from ._collections import EMPTY_DICT  # noqa
-from ._collections import EMPTY_SET  # noqa
-from ._collections import FacadeDict  # noqa
-from ._collections import flatten_iterator  # noqa
-from ._collections import has_dupes  # noqa
-from ._collections import has_intersection  # noqa
-from ._collections import IdentitySet  # noqa
-from ._collections import ImmutableContainer  # noqa
-from ._collections import immutabledict  # noqa
-from ._collections import ImmutableProperties  # noqa
-from ._collections import LRUCache  # noqa
-from ._collections import ordered_column_set  # noqa
-from ._collections import OrderedDict  # noqa
-from ._collections import OrderedIdentitySet  # noqa
-from ._collections import OrderedProperties  # noqa
-from ._collections import OrderedSet  # noqa
-from ._collections import PopulateDict  # noqa
-from ._collections import Properties  # noqa
-from ._collections import ScopedRegistry  # noqa
-from ._collections import sort_dictionary  # noqa
-from ._collections import ThreadLocalRegistry  # noqa
-from ._collections import to_column_set  # noqa
-from ._collections import to_list  # noqa
-from ._collections import to_set  # noqa
-from ._collections import unique_list  # noqa
-from ._collections import UniqueAppender  # noqa
-from ._collections import update_copy  # noqa
-from ._collections import WeakPopulateDict  # noqa
-from ._collections import WeakSequence  # noqa
-from ._preloaded import preload_module  # noqa
-from ._preloaded import preloaded  # noqa
-from .compat import ABC  # noqa
-from .compat import arm  # noqa
-from .compat import b  # noqa
-from .compat import b64decode  # noqa
-from .compat import b64encode  # noqa
-from .compat import binary_type  # noqa
-from .compat import byte_buffer  # noqa
-from .compat import callable  # noqa
-from .compat import cmp  # noqa
-from .compat import cpython  # noqa
-from .compat import dataclass_fields  # noqa
-from .compat import decode_backslashreplace  # noqa
-from .compat import dottedgetter  # noqa
-from .compat import has_refcount_gc  # noqa
-from .compat import inspect_getfullargspec  # noqa
-from .compat import int_types  # noqa
-from .compat import iterbytes  # noqa
-from .compat import itertools_filter  # noqa
-from .compat import itertools_filterfalse  # noqa
-from .compat import local_dataclass_fields  # noqa
-from .compat import namedtuple  # noqa
-from .compat import next  # noqa
-from .compat import nullcontext  # noqa
-from .compat import osx  # noqa
-from .compat import parse_qsl  # noqa
-from .compat import perf_counter  # noqa
-from .compat import pickle  # noqa
-from .compat import print_  # noqa
-from .compat import py2k  # noqa
-from .compat import py37  # noqa
-from .compat import py3k  # noqa
-from .compat import pypy  # noqa
-from .compat import quote_plus  # noqa
-from .compat import raise_  # noqa
-from .compat import raise_from_cause  # noqa
-from .compat import reduce  # noqa
-from .compat import reraise  # noqa
-from .compat import string_types  # noqa
-from .compat import StringIO  # noqa
-from .compat import text_type  # noqa
-from .compat import threading  # noqa
-from .compat import timezone  # noqa
-from .compat import TYPE_CHECKING  # noqa
-from .compat import u  # noqa
-from .compat import ue  # noqa
-from .compat import unquote  # noqa
-from .compat import unquote_plus  # noqa
-from .compat import win32  # noqa
-from .compat import with_metaclass  # noqa
-from .compat import zip_longest  # noqa
-from .concurrency import asyncio  # noqa
-from .concurrency import await_fallback  # noqa
-from .concurrency import await_only  # noqa
-from .concurrency import greenlet_spawn  # noqa
-from .deprecations import deprecated  # noqa
-from .deprecations import deprecated_20  # noqa
-from .deprecations import deprecated_20_cls  # noqa
-from .deprecations import deprecated_cls  # noqa
-from .deprecations import deprecated_params  # noqa
-from .deprecations import inject_docstring_text  # noqa
-from .deprecations import moved_20  # noqa
-from .deprecations import SQLALCHEMY_WARN_20  # noqa
-from .deprecations import warn_deprecated  # noqa
-from .deprecations import warn_deprecated_20  # noqa
-from .langhelpers import add_parameter_text  # noqa
-from .langhelpers import as_interface  # noqa
-from .langhelpers import asbool  # noqa
-from .langhelpers import asint  # noqa
-from .langhelpers import assert_arg_type  # noqa
-from .langhelpers import attrsetter  # noqa
-from .langhelpers import bool_or_str  # noqa
-from .langhelpers import chop_traceback  # noqa
-from .langhelpers import class_hierarchy  # noqa
-from .langhelpers import classproperty  # noqa
-from .langhelpers import clsname_as_plain_name  # noqa
-from .langhelpers import coerce_kw_type  # noqa
-from .langhelpers import constructor_copy  # noqa
-from .langhelpers import constructor_key  # noqa
-from .langhelpers import counter  # noqa
-from .langhelpers import create_proxy_methods  # noqa
-from .langhelpers import decode_slice  # noqa
-from .langhelpers import decorator  # noqa
-from .langhelpers import dictlike_iteritems  # noqa
-from .langhelpers import duck_type_collection  # noqa
-from .langhelpers import ellipses_string  # noqa
-from .langhelpers import EnsureKWArgType  # noqa
-from .langhelpers import format_argspec_init  # noqa
-from .langhelpers import format_argspec_plus  # noqa
-from .langhelpers import generic_repr  # noqa
-from .langhelpers import get_callable_argspec  # noqa
-from .langhelpers import get_cls_kwargs  # noqa
-from .langhelpers import get_func_kwargs  # noqa
-from .langhelpers import getargspec_init  # noqa
-from .langhelpers import has_compiled_ext  # noqa
-from .langhelpers import HasMemoized  # noqa
-from .langhelpers import hybridmethod  # noqa
-from .langhelpers import hybridproperty  # noqa
-from .langhelpers import iterate_attributes  # noqa
-from .langhelpers import map_bits  # noqa
-from .langhelpers import md5_hex  # noqa
-from .langhelpers import memoized_instancemethod  # noqa
-from .langhelpers import memoized_property  # noqa
-from .langhelpers import MemoizedSlots  # noqa
-from .langhelpers import method_is_overridden  # noqa
-from .langhelpers import methods_equivalent  # noqa
-from .langhelpers import monkeypatch_proxied_specials  # noqa
-from .langhelpers import NoneType  # noqa
-from .langhelpers import only_once  # noqa
-from .langhelpers import PluginLoader  # noqa
-from .langhelpers import portable_instancemethod  # noqa
-from .langhelpers import quoted_token_parser  # noqa
-from .langhelpers import safe_reraise  # noqa
-from .langhelpers import set_creation_order  # noqa
-from .langhelpers import string_or_unprintable  # noqa
-from .langhelpers import symbol  # noqa
-from .langhelpers import unbound_method_to_callable  # noqa
-from .langhelpers import walk_subclasses  # noqa
-from .langhelpers import warn  # noqa
-from .langhelpers import warn_exception  # noqa
-from .langhelpers import warn_limited  # noqa
-from .langhelpers import wrap_callable  # noqa
+from ._collections import coerce_generator_arg
+from ._collections import coerce_to_immutabledict
+from ._collections import collections_abc
+from ._collections import column_dict
+from ._collections import column_set
+from ._collections import EMPTY_DICT
+from ._collections import EMPTY_SET
+from ._collections import FacadeDict
+from ._collections import flatten_iterator
+from ._collections import has_dupes
+from ._collections import has_intersection
+from ._collections import IdentitySet
+from ._collections import ImmutableContainer
+from ._collections import immutabledict
+from ._collections import ImmutableProperties
+from ._collections import LRUCache
+from ._collections import ordered_column_set
+from ._collections import OrderedDict
+from ._collections import OrderedIdentitySet
+from ._collections import OrderedProperties
+from ._collections import OrderedSet
+from ._collections import PopulateDict
+from ._collections import Properties
+from ._collections import ScopedRegistry
+from ._collections import sort_dictionary
+from ._collections import ThreadLocalRegistry
+from ._collections import to_column_set
+from ._collections import to_list
+from ._collections import to_set
+from ._collections import unique_list
+from ._collections import UniqueAppender
+from ._collections import update_copy
+from ._collections import WeakPopulateDict
+from ._collections import WeakSequence
+from ._preloaded import preload_module
+from ._preloaded import preloaded
+from .compat import ABC
+from .compat import arm
+from .compat import b
+from .compat import b64decode
+from .compat import b64encode
+from .compat import binary_type
+from .compat import byte_buffer
+from .compat import callable
+from .compat import cmp
+from .compat import cpython
+from .compat import dataclass_fields
+from .compat import decode_backslashreplace
+from .compat import dottedgetter
+from .compat import has_refcount_gc
+from .compat import inspect_getfullargspec
+from .compat import int_types
+from .compat import iterbytes
+from .compat import itertools_filter
+from .compat import itertools_filterfalse
+from .compat import local_dataclass_fields
+from .compat import namedtuple
+from .compat import next
+from .compat import nullcontext
+from .compat import osx
+from .compat import parse_qsl
+from .compat import perf_counter
+from .compat import pickle
+from .compat import print_
+from .compat import py2k
+from .compat import py37
+from .compat import py3k
+from .compat import pypy
+from .compat import quote_plus
+from .compat import raise_
+from .compat import raise_from_cause
+from .compat import reduce
+from .compat import reraise
+from .compat import string_types
+from .compat import StringIO
+from .compat import text_type
+from .compat import threading
+from .compat import timezone
+from .compat import TYPE_CHECKING
+from .compat import u
+from .compat import ue
+from .compat import unquote
+from .compat import unquote_plus
+from .compat import win32
+from .compat import with_metaclass
+from .compat import zip_longest
+from .concurrency import asyncio
+from .concurrency import await_fallback
+from .concurrency import await_only
+from .concurrency import greenlet_spawn
+from .deprecations import deprecated
+from .deprecations import deprecated_20
+from .deprecations import deprecated_20_cls
+from .deprecations import deprecated_cls
+from .deprecations import deprecated_params
+from .deprecations import inject_docstring_text
+from .deprecations import moved_20
+from .deprecations import SQLALCHEMY_WARN_20
+from .deprecations import warn_deprecated
+from .deprecations import warn_deprecated_20
+from .langhelpers import add_parameter_text
+from .langhelpers import as_interface
+from .langhelpers import asbool
+from .langhelpers import asint
+from .langhelpers import assert_arg_type
+from .langhelpers import attrsetter
+from .langhelpers import bool_or_str
+from .langhelpers import chop_traceback
+from .langhelpers import class_hierarchy
+from .langhelpers import classproperty
+from .langhelpers import clsname_as_plain_name
+from .langhelpers import coerce_kw_type
+from .langhelpers import constructor_copy
+from .langhelpers import constructor_key
+from .langhelpers import counter
+from .langhelpers import create_proxy_methods
+from .langhelpers import decode_slice
+from .langhelpers import decorator
+from .langhelpers import dictlike_iteritems
+from .langhelpers import duck_type_collection
+from .langhelpers import ellipses_string
+from .langhelpers import EnsureKWArgType
+from .langhelpers import format_argspec_init
+from .langhelpers import format_argspec_plus
+from .langhelpers import generic_repr
+from .langhelpers import get_callable_argspec
+from .langhelpers import get_cls_kwargs
+from .langhelpers import get_func_kwargs
+from .langhelpers import getargspec_init
+from .langhelpers import has_compiled_ext
+from .langhelpers import HasMemoized
+from .langhelpers import hybridmethod
+from .langhelpers import hybridproperty
+from .langhelpers import iterate_attributes
+from .langhelpers import map_bits
+from .langhelpers import md5_hex
+from .langhelpers import memoized_instancemethod
+from .langhelpers import memoized_property
+from .langhelpers import MemoizedSlots
+from .langhelpers import method_is_overridden
+from .langhelpers import methods_equivalent
+from .langhelpers import monkeypatch_proxied_specials
+from .langhelpers import NoneType
+from .langhelpers import only_once
+from .langhelpers import PluginLoader
+from .langhelpers import portable_instancemethod
+from .langhelpers import quoted_token_parser
+from .langhelpers import safe_reraise
+from .langhelpers import set_creation_order
+from .langhelpers import string_or_unprintable
+from .langhelpers import symbol
+from .langhelpers import unbound_method_to_callable
+from .langhelpers import walk_subclasses
+from .langhelpers import warn
+from .langhelpers import warn_exception
+from .langhelpers import warn_limited
+from .langhelpers import wrap_callable
