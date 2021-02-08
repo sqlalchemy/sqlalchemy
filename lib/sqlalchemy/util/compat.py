@@ -186,6 +186,8 @@ if py3k:
             # as the __traceback__ object creates a cycle
             del exception, replace_context, from_, with_traceback
 
+    from typing import TYPE_CHECKING
+
     def u(s):
         return s
 
@@ -299,6 +301,7 @@ else:
         "        raise exception\n"
     )
 
+    TYPE_CHECKING = False
 
 if py35:
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5929
+
+    Fixed bug where the "schema_translate_map" feature failed to be taken into
+    account for the use case of direct execution of
+    :class:`_schema.DefaultGenerator` objects such as sequences, which included
+    the case where they were "pre-executed" in order to generate primary key
+    values when implicit_returning was disabled.

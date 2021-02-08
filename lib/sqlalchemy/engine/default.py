@@ -1057,6 +1057,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self
 
     @util.memoized_property
+    def identifier_preparer(self):
+        if self.compiled:
+            return self.compiled.preparer
+        elif "schema_translate_map" in self.execution_options:
+            return self.dialect.identifier_preparer._with_schema_translate(
+                self.execution_options["schema_translate_map"]
+            )
+        else:
+            return self.dialect.identifier_preparer
+
+    @util.memoized_property
     def engine(self):
         return self.root_connection.engine
 

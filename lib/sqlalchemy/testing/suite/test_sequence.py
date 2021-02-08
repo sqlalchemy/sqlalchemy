@@ -39,6 +39,34 @@ class SequenceTest(fixtures.TablesTest):
             Column("data", String(50)),
         )
 
+        Table(
+            "seq_no_returning",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Sequence("noret_id_seq"),
+                primary_key=True,
+            ),
+            Column("data", String(50)),
+            implicit_returning=False,
+        )
+
+        if testing.requires.schemas.enabled:
+            Table(
+                "seq_no_returning_sch",
+                metadata,
+                Column(
+                    "id",
+                    Integer,
+                    Sequence("noret_sch_id_seq", schema=config.test_schema),
+                    primary_key=True,
+                ),
+                Column("data", String(50)),
+                implicit_returning=False,
+                schema=config.test_schema,
+            )
+
     def test_insert_roundtrip(self):
         config.db.execute(self.tables.seq_pk.insert(), data="some data")
         self._assert_round_trip(self.tables.seq_pk, config.db)
@@ -61,6 +89,46 @@ class SequenceTest(fixtures.TablesTest):
     def _assert_round_trip(self, table, conn):
         row = conn.execute(table.select()).first()
         eq_(row, (1, "some data"))
+
+    def test_insert_roundtrip_no_implicit_returning(self, connection):
+        connection.execute(
+            self.tables.seq_no_returning.insert(), dict(data="some data")
+        )
+        self._assert_round_trip(self.tables.seq_no_returning, connection)
+
+    @testing.combinations((True,), (False,), argnames="implicit_returning")
+    @testing.requires.schemas
+    def test_insert_roundtrip_translate(self, connection, implicit_returning):
+
+        seq_no_returning = Table(
+            "seq_no_returning_sch",
+            MetaData(),
+            Column(
+                "id",
+                Integer,
+                Sequence("noret_sch_id_seq", schema="alt_schema"),
+                primary_key=True,
+            ),
+            Column("data", String(50)),
+            implicit_returning=implicit_returning,
+            schema="alt_schema",
+        )
+
+        connection = connection.execution_options(
+            schema_translate_map={"alt_schema": config.test_schema}
+        )
+        connection.execute(seq_no_returning.insert(), dict(data="some data"))
+        self._assert_round_trip(seq_no_returning, connection)
+
+    @testing.requires.schemas
+    def test_nextval_direct_schema_translate(self, connection):
+        seq = Sequence("noret_sch_id_seq", schema="alt_schema")
+        connection = connection.execution_options(
+            schema_translate_map={"alt_schema": config.test_schema}
+        )
+
+        r = connection.execute(seq)
+        eq_(r, testing.db.dialect.default_sequence_base)
 
 
 class SequenceCompilerTest(testing.AssertsCompiledSQL, fixtures.TestBase):

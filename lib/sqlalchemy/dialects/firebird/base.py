@@ -612,7 +612,7 @@ class FBExecutionContext(default.DefaultExecutionContext):
 
         return self._execute_scalar(
             "SELECT gen_id(%s, 1) FROM rdb$database"
-            % self.dialect.identifier_preparer.format_sequence(seq),
+            % self.identifier_preparer.format_sequence(seq),
             type_,
         )
 

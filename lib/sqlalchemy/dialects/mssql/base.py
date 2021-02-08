@@ -1495,7 +1495,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                     self.cursor,
                     self._opt_encode(
                         "SET IDENTITY_INSERT %s ON"
-                        % self.dialect.identifier_preparer.format_table(tbl)
+                        % self.identifier_preparer.format_table(tbl)
                     ),
                     (),
                     self,
@@ -1531,7 +1531,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor,
                 self._opt_encode(
                     "SET IDENTITY_INSERT %s OFF"
-                    % self.dialect.identifier_preparer.format_table(
+                    % self.identifier_preparer.format_table(
                         self.compiled.statement.table
                     )
                 ),
@@ -1548,7 +1548,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self.cursor.execute(
                     self._opt_encode(
                         "SET IDENTITY_INSERT %s OFF"
-                        % self.dialect.identifier_preparer.format_table(
+                        % self.identifier_preparer.format_table(
                             self.compiled.statement.table
                         )
                     )

@@ -901,8 +901,12 @@ from ...types import BLOB
 from ...types import BOOLEAN
 from ...types import DATE
 from ...types import VARBINARY
+from ...util import compat
 from ...util import topological
 
+
+if compat.TYPE_CHECKING:
+    from typing import Any
 
 RESERVED_WORDS = set(
     [
@@ -3053,6 +3057,7 @@ class MySQLDialect(default.DefaultDialect):
         return parser.parse(sql, charset)
 
     def _detect_charset(self, connection):
+        # type: (Any) -> str
         raise NotImplementedError()
 
     def _detect_casing(self, connection):

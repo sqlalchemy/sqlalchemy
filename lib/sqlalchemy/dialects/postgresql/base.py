@@ -2487,7 +2487,7 @@ class PGExecutionContext(default.DefaultExecutionContext):
         return self._execute_scalar(
             (
                 "select nextval('%s')"
-                % self.dialect.identifier_preparer.format_sequence(seq)
+                % self.identifier_preparer.format_sequence(seq)
             ),
             type_,
         )
