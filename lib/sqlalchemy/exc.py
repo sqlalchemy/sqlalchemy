@@ -287,7 +287,7 @@ class NoReferenceError(InvalidRequestError):
 
 class AwaitRequired(InvalidRequestError):
     """Error raised by the async greenlet spawn if no async operation
-    was awaited when it required one
+    was awaited when it required one.
 
     """
 
