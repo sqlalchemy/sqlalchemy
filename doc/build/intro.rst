@@ -53,26 +53,29 @@ is command oriented whereas the ORM is state oriented.
 Documentation Overview
 ======================
 
-The documentation is separated into four sections: :ref:`unified_tutorial`,
-:ref:`orm_toplevel`,
-:ref:`core_toplevel`, and :ref:`dialect_toplevel`.
+The documentation is separated into four sections:
 
-In :ref:`unified_tutorial`, this all-new tutorial for the 1.4/2.0 series
-of SQLAlchemy introduces the entire library holistically, starting
-from a description of Core and working more and more towards ORM-specific
-concepts.    New users, as well as users coming from :term:`1.x style`,
-who wish to work in :term:`2.0 style` should start here.
+* :ref:`unified_tutorial` - this all-new tutorial for the 1.4/2.0 series of
+  SQLAlchemy introduces the entire library holistically, starting from a
+  description of Core and working more and more towards ORM-specific concepts.
+  New users, as well as users coming from :term:`1.x style`, who wish to work
+  in :term:`2.0 style` should start here.
 
-In :ref:`orm_toplevel`, reference documentation for the ORM is presented; this
-section also includes the now-legacy :ref:`ormtutorial_toplevel`.
+* :ref:`orm_toplevel` - In this section, reference documentation for the ORM is
+  presented; this section also includes the now-legacy
+  :ref:`ormtutorial_toplevel`.
 
-In :ref:`core_toplevel`, reference documentation for everything else within
-Core is presented; section also includes the legacy :ref:`sqlexpression_toplevel`.
-SQLAlchemy engine, connection, and pooling services are also described in
-:ref:`core_toplevel`.
+* :ref:`core_toplevel` - Here, reference documentation for
+  everything else within Core is presented; section also includes the legacy
+  :ref:`sqlexpression_toplevel`. SQLAlchemy engine, connection, and pooling
+  services are also described here.
 
-In :ref:`dialect_toplevel`, reference documentation for all provided
-database and DBAPI backends is provided.
+* :ref:`dialect_toplevel` - Provides reference documentation
+  for all :term:`dialect` implementations, including :term:`DBAPI` specifics.
+
+
+
+
 
 Code Examples
 =============
