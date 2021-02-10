@@ -1421,9 +1421,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def _setup_dml_or_text_result(self):
         if self.isinsert:
             if self.compiled.postfetch_lastrowid:
-                self._setup_ins_pk_from_lastrowid()
-            elif not self._is_implicit_returning:
-                self._setup_ins_pk_from_empty()
+                self.inserted_primary_key_rows = (
+                    self._setup_ins_pk_from_lastrowid()
+                )
+            # else if not self._is_implicit_returning,
+            # the default inserted_primary_key_rows accessor will
+            # return an "empty" primary key collection when accessed.
 
         strategy = self.cursor_fetch_strategy
         if self._is_server_side and strategy is _cursor._DEFAULT_FETCH:
@@ -1449,7 +1452,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
                 self.returned_default_rows = rows
 
-                self._setup_ins_pk_from_implicit_returning(result, rows)
+                self.inserted_primary_key_rows = (
+                    self._setup_ins_pk_from_implicit_returning(result, rows)
+                )
 
                 # test that it has a cursor metadata that is accurate. the
                 # first row will have been fetched and current assumptions
@@ -1483,33 +1488,34 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             result._soft_close()
         return result
 
+    @util.memoized_property
+    def inserted_primary_key_rows(self):
+        # if no specific "get primary key" strategy was set up
+        # during execution, return a "default" primary key based
+        # on what's in the compiled_parameters and nothing else.
+        return self._setup_ins_pk_from_empty()
+
     def _setup_ins_pk_from_lastrowid(self):
 
         getter = self.compiled._inserted_primary_key_from_lastrowid_getter
 
         lastrowid = self.get_lastrowid()
-        self.inserted_primary_key_rows = [
-            getter(lastrowid, self.compiled_parameters[0])
-        ]
+        return [getter(lastrowid, self.compiled_parameters[0])]
 
     def _setup_ins_pk_from_empty(self):
-
         getter = self.compiled._inserted_primary_key_from_lastrowid_getter
 
-        self.inserted_primary_key_rows = [
-            getter(None, param) for param in self.compiled_parameters
-        ]
+        return [getter(None, param) for param in self.compiled_parameters]
 
     def _setup_ins_pk_from_implicit_returning(self, result, rows):
 
         if not rows:
-            self.inserted_primary_key_rows = []
-            return
+            return []
 
         getter = self.compiled._inserted_primary_key_from_returning_getter
         compiled_params = self.compiled_parameters
 
-        self.inserted_primary_key_rows = [
+        return [
             getter(row, param) for row, param in zip(rows, compiled_params)
         ]
 
