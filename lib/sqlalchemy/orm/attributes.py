@@ -212,7 +212,7 @@ class QueryableAttribute(
         """
 
         return self.comparator.__clause_element__()._annotate(
-            {"orm_key": self.key, "entity_namespace": self._entity_namespace}
+            {"proxy_key": self.key, "entity_namespace": self._entity_namespace}
         )
 
     @property

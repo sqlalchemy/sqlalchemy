@@ -1928,6 +1928,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 if name_is_truncatable
                 else (name or self.name),
                 self.type,
+                # this may actually be ._proxy_key when the key is incoming
                 key=key if key else name if name else self.key,
                 primary_key=self.primary_key,
                 nullable=self.nullable,

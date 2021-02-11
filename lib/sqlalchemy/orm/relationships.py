@@ -2693,11 +2693,11 @@ class JoinCondition(object):
         """
 
         self.primaryjoin = _deep_deannotate(
-            self.primaryjoin, values=("parententity", "orm_key")
+            self.primaryjoin, values=("parententity", "proxy_key")
         )
         if self.secondaryjoin is not None:
             self.secondaryjoin = _deep_deannotate(
-                self.secondaryjoin, values=("parententity", "orm_key")
+                self.secondaryjoin, values=("parententity", "proxy_key")
             )
 
     def _determine_joins(self):

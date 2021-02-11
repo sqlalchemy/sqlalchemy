@@ -4078,51 +4078,42 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def _column_naming_convention(cls, label_style):
-        names = set()
-        pa = []
-
         if label_style is LABEL_STYLE_NONE:
 
             def go(c, col_name=None):
-                return col_name or c._proxy_key
+                return c._proxy_key
 
         elif label_style is LABEL_STYLE_TABLENAME_PLUS_COL:
+            names = set()
+            pa = []  # late-constructed as needed, python 2 has no "nonlocal"
 
             def go(c, col_name=None):
                 # we use key_label since this name is intended for targeting
                 # within the ColumnCollection only, it's not related to SQL
                 # rendering which always uses column name for SQL label names
 
-                if col_name:
-                    name = c._gen_label(col_name)
-                else:
-                    name = c._key_label
+                name = c._key_label
 
                 if name in names:
                     if not pa:
                         pa.append(prefix_anon_map())
 
-                    name = c._label_anon_label % pa[0]
+                    name = c._label_anon_key_label % pa[0]
                 else:
                     names.add(name)
 
                 return name
 
         else:
+            names = set()
+            pa = []  # late-constructed as needed, python 2 has no "nonlocal"
 
             def go(c, col_name=None):
-                # we use key_label since this name is intended for targeting
-                # within the ColumnCollection only, it's not related to SQL
-                # rendering which always uses column name for SQL label names
-                if col_name:
-                    name = col_name
-                else:
-                    name = c._proxy_key
+                name = c._proxy_key
                 if name in names:
                     if not pa:
                         pa.append(prefix_anon_map())
-
-                    name = c.anon_label % pa[0]
+                    name = c.anon_key_label % pa[0]
                 else:
                     names.add(name)
 
@@ -5617,6 +5608,14 @@ class Select(
         return self
 
     def _generate_columns_plus_names(self, anon_for_dupe_key):
+        """Generate column names as rendered in a SELECT statement by
+        the compiler.
+
+        This is distinct from other name generators that are intended for
+        population of .c collections and similar, which may have slightly
+        different rules.
+
+        """
         cols = self._exported_columns_iterator()
 
         # when use_labels is on:
@@ -5732,19 +5731,17 @@ class Select(
                 if key is not None and key in keys_seen:
                     if pa is None:
                         pa = prefix_anon_map()
-                    key = c._label_anon_label % pa
+                    key = c._label_anon_key_label % pa
                 keys_seen.add(key)
             elif disambiguate_only:
-                key = c.key
+                key = c._proxy_key
                 if key is not None and key in keys_seen:
                     if pa is None:
                         pa = prefix_anon_map()
-                    key = c.anon_label % pa
+                    key = c.anon_key_label % pa
                 keys_seen.add(key)
             else:
-                # one of the above label styles is set for subqueries
-                # as of #5221 so this codepath is likely not called now.
-                key = None
+                key = c._proxy_key
             prox.append(
                 c._make_proxy(
                     subquery, key=key, name=name, name_is_truncatable=True

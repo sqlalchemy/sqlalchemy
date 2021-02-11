@@ -894,7 +894,9 @@ class ColumnElement(
 
     @util.memoized_property
     def _proxy_key(self):
-        if self.key:
+        if self._annotations and "proxy_key" in self._annotations:
+            return self._annotations["proxy_key"]
+        elif self.key:
             return self.key
         else:
             try:
@@ -987,7 +989,22 @@ class ColumnElement(
         expressions and function calls.
 
         """
-        return self._anon_label(getattr(self, "name", None))
+        name = getattr(self, "name", None)
+        return self._anon_label(name)
+
+    @util.memoized_property
+    def anon_key_label(self):
+        """Provides a constant 'anonymous key label' for this ColumnElement.
+
+        Compare to ``anon_label``, except that the "key" of the column,
+        if available, is used to generate the label.
+
+        This is used when a deduplicating key is placed into the columns
+        collection of a selectable.
+
+        """
+        name = getattr(self, "key", None) or getattr(self, "name", None)
+        return self._anon_label(name)
 
     @util.memoized_property
     def _dedupe_anon_label(self):
@@ -997,6 +1014,10 @@ class ColumnElement(
     @util.memoized_property
     def _label_anon_label(self):
         return self._anon_label(getattr(self, "_label", None))
+
+    @util.memoized_property
+    def _label_anon_key_label(self):
+        return self._anon_label(getattr(self, "_key_label", None))
 
     @util.memoized_property
     def _dedupe_label_anon_label(self):
@@ -3720,9 +3741,6 @@ class Grouping(GroupedElement, ColumnElement):
     def _key_label(self):
         return self._label
 
-    def _gen_label(self, name):
-        return name
-
     @property
     def _label(self):
         return getattr(self.element, "_label", None) or self.anon_label
@@ -4345,8 +4363,9 @@ class NamedColumn(ColumnElement):
 
     @HasMemoized.memoized_attribute
     def _key_label(self):
-        if self.key != self.name:
-            return self._gen_label(self.key)
+        proxy_key = self._proxy_key
+        if proxy_key != self.name:
+            return self._gen_label(proxy_key)
         else:
             return self._label
 
@@ -4859,7 +4878,8 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
 class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
-        self.__dict__.pop("comparator", None)
+        for attr in ("comparator", "_proxy_key", "_key_label"):
+            self.__dict__.pop(attr, None)
         for attr in ("name", "key", "table"):
             if self.__dict__.get(attr, False) is None:
                 self.__dict__.pop(attr)

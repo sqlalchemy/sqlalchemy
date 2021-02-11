@@ -359,7 +359,7 @@ class ColumnProperty(StrategizedProperty):
                 "entity_namespace": pe,
                 "parententity": pe,
                 "parentmapper": pe,
-                "orm_key": self.prop.key,
+                "proxy_key": self.prop.key,
             }
 
             col = column

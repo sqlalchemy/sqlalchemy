@@ -25,6 +25,7 @@ from sqlalchemy import LABEL_STYLE_NONE
 from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy import literal
 from sqlalchemy import literal_column
+from sqlalchemy import MetaData
 from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -71,6 +72,7 @@ from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing.assertions import is_not_none
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -141,19 +143,44 @@ class OnlyReturnTuplesTest(QueryTest):
 class RowTupleTest(QueryTest):
     run_setup_mappers = None
 
-    def test_custom_names(self):
+    @testing.combinations((True,), (False,), argnames="legacy")
+    @testing.combinations((True,), (False,), argnames="use_subquery")
+    @testing.combinations((True,), (False,), argnames="set_column_key")
+    def test_custom_names(self, legacy, use_subquery, set_column_key):
+        """Test labeling as used with ORM attributes named differently from
+        the column.
+
+        Compare to the tests in RowLabelingTest which tests this also,
+        this test is more oriented towards legacy Query use.
+
+        """
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users, properties={"uname": users.c.name})
+        if set_column_key:
+            uwkey = Table(
+                "users",
+                MetaData(),
+                Column("id", Integer, primary_key=True),
+                Column("name", String, key="uname"),
+            )
+            mapper(User, uwkey)
+        else:
+            mapper(User, users, properties={"uname": users.c.name})
 
-        row = (
-            fixture_session()
-            .query(User.id, User.uname)
-            .filter(User.id == 7)
-            .first()
-        )
+        s = fixture_session()
+        if legacy:
+            q = s.query(User.id, User.uname).filter(User.id == 7)
+            if use_subquery:
+                q = s.query(q.subquery())
+            row = q.first()
+        else:
+            q = select(User.id, User.uname).filter(User.id == 7)
+            if use_subquery:
+                q = select(q.subquery())
+            row = s.execute(q).first()
 
         eq_(row.id, 7)
+
         eq_(row.uname, "jack")
 
     @testing.combinations(
@@ -494,7 +521,7 @@ class RowTupleTest(QueryTest):
 class RowLabelingTest(QueryTest):
     @testing.fixture
     def assert_row_keys(self):
-        def go(stmt, expected, coreorm_exec):
+        def go(stmt, expected, coreorm_exec, selected_columns=None):
 
             if coreorm_exec == "core":
                 with testing.db.connect() as conn:
@@ -506,18 +533,25 @@ class RowLabelingTest(QueryTest):
 
             eq_(row.keys(), expected)
 
+            if selected_columns is None:
+                selected_columns = expected
+
             # we are disambiguating in exported_columns even if
             # LABEL_STYLE_NONE, this seems weird also
             if (
                 stmt._label_style is not LABEL_STYLE_NONE
                 and coreorm_exec == "core"
             ):
-                eq_(stmt.exported_columns.keys(), list(expected))
+                eq_(stmt.exported_columns.keys(), list(selected_columns))
 
             if (
                 stmt._label_style is not LABEL_STYLE_NONE
                 and coreorm_exec == "orm"
             ):
+
+                for k in expected:
+                    is_not_none(getattr(row, k))
+
                 try:
                     column_descriptions = stmt.column_descriptions
                 except (NotImplementedError, AttributeError):
@@ -529,7 +563,7 @@ class RowLabelingTest(QueryTest):
                             for entity in column_descriptions
                             if entity["name"] is not None
                         ],
-                        list(expected),
+                        list(selected_columns),
                     )
 
         return go
@@ -710,6 +744,109 @@ class RowLabelingTest(QueryTest):
         s = fixture_session()
         row = s.query(u1, u2).join(u2, u1.c.id == u2.c.id).first()
         eq_(row.keys(), ["id", "name", "id", "name"])
+
+    @testing.fixture
+    def uname_fixture(self):
+        class Foo(object):
+            pass
+
+        if False:
+            m = MetaData()
+            users = Table(
+                "users",
+                m,
+                Column("id", Integer, primary_key=True),
+                Column("name", String, key="uname"),
+            )
+            mapper(Foo, users, properties={"uname": users.c.uname})
+        else:
+            users = self.tables.users
+            mapper(Foo, users, properties={"uname": users.c.name})
+
+        return Foo
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name"), ("id", "uname")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("id", "name"), ("id", "uname")),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ("users_id", "users_name"),
+            ("users_id", "users_uname"),
+        ),
+        argnames="label_style,expected_core,expected_orm",
+    )
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_exec")
+    def test_renamed_properties_columns(
+        self,
+        label_style,
+        expected_core,
+        expected_orm,
+        uname_fixture,
+        assert_row_keys,
+        coreorm_exec,
+    ):
+        Foo = uname_fixture
+
+        stmt = select(Foo.id, Foo.uname).set_label_style(label_style)
+
+        if coreorm_exec == "core":
+            assert_row_keys(
+                stmt,
+                expected_core,
+                coreorm_exec,
+                selected_columns=expected_orm,
+            )
+        else:
+            assert_row_keys(stmt, expected_orm, coreorm_exec)
+
+    @testing.combinations(
+        (
+            LABEL_STYLE_NONE,
+            ("id", "name", "id", "name"),
+            ("id", "uname", "id", "uname"),
+        ),
+        (
+            LABEL_STYLE_DISAMBIGUATE_ONLY,
+            ("id", "name", "id_1", "name_1"),
+            ("id", "uname", "id_1", "uname_1"),
+        ),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ("u1_id", "u1_name", "u2_id", "u2_name"),
+            ("u1_id", "u1_uname", "u2_id", "u2_uname"),
+        ),
+        argnames="label_style,expected_core,expected_orm",
+    )
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_exec")
+    # @testing.combinations(("orm",), argnames="coreorm_exec")
+    def test_renamed_properties_subq(
+        self,
+        label_style,
+        expected_core,
+        expected_orm,
+        uname_fixture,
+        assert_row_keys,
+        coreorm_exec,
+    ):
+        Foo = uname_fixture
+
+        u1 = select(Foo.id, Foo.uname).subquery("u1")
+        u2 = select(Foo.id, Foo.uname).subquery("u2")
+
+        stmt = (
+            select(u1, u2)
+            .join_from(u1, u2, u1.c.id == u2.c.id)
+            .set_label_style(label_style)
+        )
+        if coreorm_exec == "core":
+            assert_row_keys(
+                stmt,
+                expected_core,
+                coreorm_exec,
+                selected_columns=expected_orm,
+            )
+        else:
+            assert_row_keys(stmt, expected_orm, coreorm_exec)
 
     def test_entity_anon_aliased(self, assert_row_keys):
         User = self.classes.User

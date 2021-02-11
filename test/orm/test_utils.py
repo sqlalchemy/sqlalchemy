@@ -243,7 +243,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "entity_namespace": point_mapper,
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
-                "orm_key": "x_alone",
+                "proxy_key": "x_alone",
             },
         )
         eq_(
@@ -252,7 +252,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "entity_namespace": point_mapper,
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
-                "orm_key": "x",
+                "proxy_key": "x",
             },
         )
 

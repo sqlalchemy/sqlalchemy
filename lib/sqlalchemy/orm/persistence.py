@@ -2018,7 +2018,7 @@ class BulkUDCompileState(CompileState):
                     elif "entity_namespace" in k._annotations:
                         k_anno = k._annotations
                         attr = _entity_namespace_key(
-                            k_anno["entity_namespace"], k_anno["orm_key"]
+                            k_anno["entity_namespace"], k_anno["proxy_key"]
                         )
                         values.extend(attr._bulk_update_tuples(v))
                     else:

@@ -771,7 +771,7 @@ class AliasedInsp(
             "compile_state_plugin": "orm",
         }
         if key:
-            d["orm_key"] = key
+            d["proxy_key"] = key
         return (
             self._adapter.traverse(elem)
             ._annotate(d)

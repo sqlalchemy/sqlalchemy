@@ -413,7 +413,7 @@ class CompositeProperty(DescriptorProperty):
                 {
                     "parententity": self._parententity,
                     "parentmapper": self._parententity,
-                    "orm_key": self.prop.key,
+                    "proxy_key": self.prop.key,
                 }
             )
             return CompositeProperty.CompositeBundle(self.prop, clauses)

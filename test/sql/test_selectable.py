@@ -3067,11 +3067,11 @@ class WithLabelsTest(fixtures.TestBase):
         )
         eq_(
             list(sel.selected_columns.keys()),
-            ["t_x_id", "t_x_b_1"],
+            ["t_x_id", "t_x_id_1"],
         )
         eq_(
             list(sel.subquery().c.keys()),
-            ["t_x_id", "t_x_b_1"],
+            ["t_x_id", "t_x_id_1"],
         )
         self._assert_result_keys(sel, ["t_a", "t_x_b"])
         self._assert_subq_result_keys(sel, ["t_a", "t_x_b"])
@@ -3095,11 +3095,11 @@ class WithLabelsTest(fixtures.TestBase):
         )
         eq_(
             list(sel.selected_columns.keys()),
-            ["t_x_a", "t_x_id_1"],
+            ["t_x_a", "t_x_a_1"],
         )
 
         # deduping for different cols but same label
-        eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_id_1"])
+        eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_a_1"])
 
         # if we turn off deduping entirely
         # eq_(list(sel.subquery().c.keys()), ["t_x_a", "t_x_a"])
@@ -3115,7 +3115,7 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_keys_overlap_names_dont_nolabel(self):
         sel = self._keys_overlap_names_dont()
-        eq_(sel.selected_columns.keys(), ["x", "b_1"])
+        eq_(sel.selected_columns.keys(), ["x", "x_1"])
         self._assert_result_keys(sel, ["a", "b"])
 
     def test_keys_overlap_names_dont_label(self):

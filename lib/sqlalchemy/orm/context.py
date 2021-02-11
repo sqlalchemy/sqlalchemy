@@ -2619,12 +2619,12 @@ class _ORMColumnEntity(_ColumnEntity):
 
         _entity = parententity
 
-        # an AliasedClass won't have orm_key in the annotations for
+        # an AliasedClass won't have proxy_key in the annotations for
         # a column if it was acquired using the class' adapter directly,
         # such as using AliasedInsp._adapt_element().  this occurs
         # within internal loaders.
 
-        orm_key = annotations.get("orm_key", None)
+        orm_key = annotations.get("proxy_key", None)
         if orm_key:
             self.expr = getattr(_entity.entity, orm_key)
         else:

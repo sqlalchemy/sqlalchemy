@@ -6,7 +6,9 @@
     style would not be preserved in the keys used by result rows; this has been
     applied to all combinations of Core/ORM columns / session vs. connection
     etc. so that the linkage from statement to result row is the same in all
-    cases.
+    cases.   As part of this change, the labeling of column expressions
+    in rows has been improved to retain the original name of the ORM
+    attribute even if used in a subquery.
 
 
 

@@ -659,8 +659,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT sum(lala(mytable.myid)) AS bar FROM mytable",
         )
 
+    def test_use_labels_keyed(self):
         self.assert_compile(
-            select(keyed), "SELECT keyed.x, keyed.y" ", keyed.z FROM keyed"
+            select(keyed), "SELECT keyed.x, keyed.y, keyed.z FROM keyed"
         )
 
         self.assert_compile(
