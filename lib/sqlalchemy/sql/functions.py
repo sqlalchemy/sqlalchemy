@@ -595,7 +595,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         """
         return self.select().execute()
 
-    def _bind_param(self, operator, obj, type_=None):
+    def _bind_param(self, operator, obj, type_=None, **kw):
         return BindParameter(
             None,
             obj,
@@ -603,6 +603,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             _compared_to_type=self.type,
             unique=True,
             type_=type_,
+            **kw
         )
 
     def self_group(self, against=None):
@@ -887,7 +888,7 @@ class Function(FunctionElement):
             )
             return kw["bind"]
 
-    def _bind_param(self, operator, obj, type_=None):
+    def _bind_param(self, operator, obj, type_=None, **kw):
         return BindParameter(
             self.name,
             obj,
@@ -895,6 +896,7 @@ class Function(FunctionElement):
             _compared_to_type=self.type,
             type_=type_,
             unique=True,
+            **kw
         )
 
 
