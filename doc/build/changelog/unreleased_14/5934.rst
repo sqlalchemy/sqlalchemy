@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 5934
+
+    Fixed 1.4 regression where the :meth:`_functions.Function.in_` method was
+    not covered by tests and failed to function properly in all cases.
