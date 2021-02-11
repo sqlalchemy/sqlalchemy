@@ -3720,6 +3720,9 @@ class Grouping(GroupedElement, ColumnElement):
     def _key_label(self):
         return self._label
 
+    def _gen_label(self, name):
+        return name
+
     @property
     def _label(self):
         return getattr(self.element, "_label", None) or self.anon_label

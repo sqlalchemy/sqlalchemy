@@ -2776,13 +2776,11 @@ class SelectBase(
         representing the columns that
         this SELECT statement or similar construct returns in its result set.
 
-        This collection differs from the
-        :attr:`_expression.FromClause.columns` collection
-        of a :class:`_expression.FromClause`
-        in that the columns within this collection
-        cannot be directly nested inside another SELECT statement; a subquery
-        must be applied first which provides for the necessary parenthesization
-        required by SQL.
+        This collection differs from the :attr:`_expression.FromClause.columns`
+        collection of a :class:`_expression.FromClause` in that the columns
+        within this collection cannot be directly nested inside another SELECT
+        statement; a subquery must be applied first which provides for the
+        necessary parenthesization required by SQL.
 
         .. versionadded:: 1.4
 
@@ -4077,6 +4075,60 @@ class SelectState(util.MemoizedSlots, CompileState):
     @classmethod
     def from_statement(cls, statement, from_statement):
         cls._plugin_not_implemented()
+
+    @classmethod
+    def _column_naming_convention(cls, label_style):
+        names = set()
+        pa = []
+
+        if label_style is LABEL_STYLE_NONE:
+
+            def go(c, col_name=None):
+                return col_name or c._proxy_key
+
+        elif label_style is LABEL_STYLE_TABLENAME_PLUS_COL:
+
+            def go(c, col_name=None):
+                # we use key_label since this name is intended for targeting
+                # within the ColumnCollection only, it's not related to SQL
+                # rendering which always uses column name for SQL label names
+
+                if col_name:
+                    name = c._gen_label(col_name)
+                else:
+                    name = c._key_label
+
+                if name in names:
+                    if not pa:
+                        pa.append(prefix_anon_map())
+
+                    name = c._label_anon_label % pa[0]
+                else:
+                    names.add(name)
+
+                return name
+
+        else:
+
+            def go(c, col_name=None):
+                # we use key_label since this name is intended for targeting
+                # within the ColumnCollection only, it's not related to SQL
+                # rendering which always uses column name for SQL label names
+                if col_name:
+                    name = col_name
+                else:
+                    name = c._proxy_key
+                if name in names:
+                    if not pa:
+                        pa.append(prefix_anon_map())
+
+                    name = c.anon_label % pa[0]
+                else:
+                    names.add(name)
+
+                return name
+
+        return go
 
     def _get_froms(self, statement):
         seen = set()
@@ -5519,63 +5571,41 @@ class Select(
         representing the columns that
         this SELECT statement or similar construct returns in its result set.
 
-        This collection differs from the
-        :attr:`_expression.FromClause.columns` collection
-        of a :class:`_expression.FromClause`
-        in that the columns within this collection
-        cannot be directly nested inside another SELECT statement; a subquery
-        must be applied first which provides for the necessary parenthesization
-        required by SQL.
+        This collection differs from the :attr:`_expression.FromClause.columns`
+        collection of a :class:`_expression.FromClause` in that the columns
+        within this collection cannot be directly nested inside another SELECT
+        statement; a subquery must be applied first which provides for the
+        necessary parenthesization required by SQL.
 
         For a :func:`_expression.select` construct, the collection here is
-        exactly what would be rendered inside the  "SELECT" statement, and the
-        :class:`_expression.ColumnElement`
-        objects are  directly present as they were
-        given, e.g.::
+        exactly what would be rendered inside the "SELECT" statement, and the
+        :class:`_expression.ColumnElement` objects are directly present as they
+        were given, e.g.::
 
             col1 = column('q', Integer)
             col2 = column('p', Integer)
             stmt = select(col1, col2)
 
         Above, ``stmt.selected_columns`` would be a collection that contains
-        the ``col1`` and ``col2`` objects directly.    For a statement that is
+        the ``col1`` and ``col2`` objects directly. For a statement that is
         against a :class:`_schema.Table` or other
-        :class:`_expression.FromClause`, the collection
-        will use the :class:`_expression.ColumnElement`
-        objects that are in the
+        :class:`_expression.FromClause`, the collection will use the
+        :class:`_expression.ColumnElement` objects that are in the
         :attr:`_expression.FromClause.c` collection of the from element.
 
         .. versionadded:: 1.4
 
         """
-        names = set()
-        pa = None
-        collection = []
 
-        for c in self._exported_columns_iterator():
-            # we use key_label since this name is intended for targeting
-            # within the ColumnCollection only, it's not related to SQL
-            # rendering which always uses column name for SQL label names
-            if self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL:
-                name = c._key_label
-            else:
-                name = c._proxy_key
-            if name in names:
-                if pa is None:
-                    pa = prefix_anon_map()
+        # compare to SelectState._generate_columns_plus_names, which
+        # generates the actual names used in the SELECT string.  that
+        # method is more complex because it also renders columns that are
+        # fully ambiguous, e.g. same column more than once.
+        conv = SelectState._column_naming_convention(self._label_style)
 
-                if self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL:
-                    name = c._label_anon_label % pa
-                else:
-                    name = c.anon_label % pa
-            else:
-                names.add(name)
-            collection.append((name, c))
-
-        return ColumnCollection(collection).as_immutable()
-
-    # def _exported_columns_iterator(self):
-    #    return _select_iterables(self._raw_columns)
+        return ColumnCollection(
+            [(conv(c), c) for c in self._exported_columns_iterator()]
+        ).as_immutable()
 
     def _exported_columns_iterator(self):
         meth = SelectState.get_plugin_class(self).exported_columns_iterator
@@ -6170,19 +6200,16 @@ class TextualSelect(SelectBase):
         representing the columns that
         this SELECT statement or similar construct returns in its result set.
 
-        This collection differs from the
-        :attr:`_expression.FromClause.columns` collection
-        of a :class:`_expression.FromClause`
-        in that the columns within this collection
-        cannot be directly nested inside another SELECT statement; a subquery
-        must be applied first which provides for the necessary parenthesization
-        required by SQL.
+        This collection differs from the :attr:`_expression.FromClause.columns`
+        collection of a :class:`_expression.FromClause` in that the columns
+        within this collection cannot be directly nested inside another SELECT
+        statement; a subquery must be applied first which provides for the
+        necessary parenthesization required by SQL.
 
-        For a :class:`_expression.TextualSelect` construct,
-        the collection contains the
-        :class:`_expression.ColumnElement`
-        objects that were passed to the constructor,
-        typically via the :meth:`_expression.TextClause.columns` method.
+        For a :class:`_expression.TextualSelect` construct, the collection
+        contains the :class:`_expression.ColumnElement` objects that were
+        passed to the constructor, typically via the
+        :meth:`_expression.TextClause.columns` method.
 
         .. versionadded:: 1.4
 

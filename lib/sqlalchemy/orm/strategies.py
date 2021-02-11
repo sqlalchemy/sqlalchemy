@@ -1593,7 +1593,7 @@ class SubqueryLoader(PostLoader):
         # much of this we need.    in particular I can't get a test to
         # fail if the "set_base_alias" is missing and not sure why that is.
         orig_compile_state = compile_state_cls._create_entities_collection(
-            orig_query
+            orig_query, legacy=False
         )
 
         (

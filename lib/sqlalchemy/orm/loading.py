@@ -252,7 +252,9 @@ def merge_result(query, iterator, load=True):
     else:
         frozen_result = None
 
-    ctx = querycontext.ORMSelectCompileState._create_entities_collection(query)
+    ctx = querycontext.ORMSelectCompileState._create_entities_collection(
+        query, True
+    )
 
     autoflush = session.autoflush
     try:

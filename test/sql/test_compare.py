@@ -61,6 +61,7 @@ from sqlalchemy.sql.lambdas import LambdaOptions
 from sqlalchemy.sql.selectable import _OffsetLimitParam
 from sqlalchemy.sql.selectable import AliasedReturnsRows
 from sqlalchemy.sql.selectable import FromGrouping
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.selectable import Selectable
@@ -400,6 +401,7 @@ class CoreFixtures(object):
             select(table_a.c.b, table_a.c.a).set_label_style(
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
+            select(table_a.c.b, table_a.c.a).set_label_style(LABEL_STYLE_NONE),
             select(table_a.c.a).where(table_a.c.b == 5),
             select(table_a.c.a)
             .where(table_a.c.b == 5)

@@ -20,6 +20,9 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import LABEL_STYLE_DISAMBIGUATE_ONLY
+from sqlalchemy import LABEL_STYLE_NONE
+from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import null
@@ -57,7 +60,6 @@ from sqlalchemy.orm.util import join
 from sqlalchemy.orm.util import with_parent
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators
-from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
@@ -487,6 +489,264 @@ class RowTupleTest(QueryTest):
         )
         row = q.first()
         eq_(row, (User(id=7), [7]))
+
+
+class RowLabelingTest(QueryTest):
+    @testing.fixture
+    def assert_row_keys(self):
+        def go(stmt, expected, coreorm_exec):
+
+            if coreorm_exec == "core":
+                with testing.db.connect() as conn:
+                    row = conn.execute(stmt).first()
+            else:
+                s = fixture_session()
+
+                row = s.execute(stmt).first()
+
+            eq_(row.keys(), expected)
+
+            # we are disambiguating in exported_columns even if
+            # LABEL_STYLE_NONE, this seems weird also
+            if (
+                stmt._label_style is not LABEL_STYLE_NONE
+                and coreorm_exec == "core"
+            ):
+                eq_(stmt.exported_columns.keys(), list(expected))
+
+            if (
+                stmt._label_style is not LABEL_STYLE_NONE
+                and coreorm_exec == "orm"
+            ):
+                try:
+                    column_descriptions = stmt.column_descriptions
+                except (NotImplementedError, AttributeError):
+                    pass
+                else:
+                    eq_(
+                        [
+                            entity["name"]
+                            for entity in column_descriptions
+                            if entity["name"] is not None
+                        ],
+                        list(expected),
+                    )
+
+        return go
+
+    def test_entity(self, assert_row_keys):
+        User = self.classes.User
+        stmt = select(User)
+
+        assert_row_keys(stmt, ("User",), "orm")
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("id", "name")),
+        (LABEL_STYLE_TABLENAME_PLUS_COL, ("users_id", "users_name")),
+        argnames="label_style,expected",
+    )
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_exec")
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_cols")
+    def test_explicit_cols(
+        self,
+        assert_row_keys,
+        label_style,
+        expected,
+        coreorm_cols,
+        coreorm_exec,
+    ):
+        User = self.classes.User
+        users = self.tables.users
+
+        if coreorm_cols == "core":
+            stmt = select(users.c.id, users.c.name).set_label_style(
+                label_style
+            )
+        else:
+            stmt = select(User.id, User.name).set_label_style(label_style)
+
+        assert_row_keys(stmt, expected, coreorm_exec)
+
+    def test_explicit_cols_legacy(self):
+        User = self.classes.User
+
+        s = fixture_session()
+        q = s.query(User.id, User.name)
+        row = q.first()
+
+        eq_(row.keys(), ("id", "name"))
+
+        eq_(
+            [entity["name"] for entity in q.column_descriptions],
+            ["id", "name"],
+        )
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name", "id", "name")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("id", "name", "id_1", "name_1")),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ("u1_id", "u1_name", "u2_id", "u2_name"),
+        ),
+        argnames="label_style,expected",
+    )
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_exec")
+    @testing.combinations(("core",), ("orm",), argnames="coreorm_cols")
+    def test_explicit_ambiguous_cols_subq(
+        self,
+        assert_row_keys,
+        label_style,
+        expected,
+        coreorm_cols,
+        coreorm_exec,
+    ):
+        User = self.classes.User
+        users = self.tables.users
+
+        if coreorm_cols == "core":
+            u1 = select(users.c.id, users.c.name).subquery("u1")
+            u2 = select(users.c.id, users.c.name).subquery("u2")
+        elif coreorm_cols == "orm":
+            u1 = select(User.id, User.name).subquery("u1")
+            u2 = select(User.id, User.name).subquery("u2")
+
+        stmt = (
+            select(u1, u2)
+            .join_from(u1, u2, u1.c.id == u2.c.id)
+            .set_label_style(label_style)
+        )
+        assert_row_keys(stmt, expected, coreorm_exec)
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name", "User", "id", "name", "a1")),
+        (
+            LABEL_STYLE_DISAMBIGUATE_ONLY,
+            ("id", "name", "User", "id_1", "name_1", "a1"),
+        ),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ("u1_id", "u1_name", "User", "u2_id", "u2_name", "a1"),
+        ),
+        argnames="label_style,expected",
+    )
+    def test_explicit_ambiguous_cols_w_entities(
+        self,
+        assert_row_keys,
+        label_style,
+        expected,
+    ):
+        User = self.classes.User
+        u1 = select(User.id, User.name).subquery("u1")
+        u2 = select(User.id, User.name).subquery("u2")
+
+        a1 = aliased(User, name="a1")
+        stmt = (
+            select(u1, User, u2, a1)
+            .join_from(u1, u2, u1.c.id == u2.c.id)
+            .join(User, User.id == u1.c.id)
+            .join(a1, a1.id == u1.c.id)
+            .set_label_style(label_style)
+        )
+        assert_row_keys(stmt, expected, "orm")
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name", "id", "name")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("id", "name", "id_1", "name_1")),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ("u1_id", "u1_name", "u2_id", "u2_name"),
+        ),
+        argnames="label_style,expected",
+    )
+    def test_explicit_ambiguous_cols_subq_fromstatement(
+        self, assert_row_keys, label_style, expected
+    ):
+        User = self.classes.User
+
+        u1 = select(User.id, User.name).subquery("u1")
+        u2 = select(User.id, User.name).subquery("u2")
+
+        stmt = (
+            select(u1, u2)
+            .join_from(u1, u2, u1.c.id == u2.c.id)
+            .set_label_style(label_style)
+        )
+
+        stmt = select(u1, u2).from_statement(stmt)
+
+        assert_row_keys(stmt, expected, "orm")
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("id", "name", "id", "name")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("id", "name", "id", "name")),
+        (LABEL_STYLE_TABLENAME_PLUS_COL, ("id", "name", "id", "name")),
+        argnames="label_style,expected",
+    )
+    def test_explicit_ambiguous_cols_subq_fromstatement_legacy(
+        self, label_style, expected
+    ):
+        User = self.classes.User
+
+        u1 = select(User.id, User.name).subquery("u1")
+        u2 = select(User.id, User.name).subquery("u2")
+
+        stmt = (
+            select(u1, u2)
+            .join_from(u1, u2, u1.c.id == u2.c.id)
+            .set_label_style(label_style)
+        )
+
+        s = fixture_session()
+        row = s.query(u1, u2).from_statement(stmt).first()
+        eq_(row.keys(), expected)
+
+    def test_explicit_ambiguous_orm_cols_legacy(self):
+        User = self.classes.User
+
+        u1 = select(User.id, User.name).subquery("u1")
+        u2 = select(User.id, User.name).subquery("u2")
+
+        s = fixture_session()
+        row = s.query(u1, u2).join(u2, u1.c.id == u2.c.id).first()
+        eq_(row.keys(), ["id", "name", "id", "name"])
+
+    def test_entity_anon_aliased(self, assert_row_keys):
+        User = self.classes.User
+
+        u1 = aliased(User)
+        stmt = select(u1)
+
+        assert_row_keys(stmt, (), "orm")
+
+    def test_entity_name_aliased(self, assert_row_keys):
+        User = self.classes.User
+
+        u1 = aliased(User, name="u1")
+        stmt = select(u1)
+
+        assert_row_keys(stmt, ("u1",), "orm")
+
+    @testing.combinations(
+        (LABEL_STYLE_NONE, ("u1", "u2")),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ("u1", "u2")),
+        (LABEL_STYLE_TABLENAME_PLUS_COL, ("u1", "u2")),
+        argnames="label_style,expected",
+    )
+    def test_multi_entity_name_aliased(
+        self, assert_row_keys, label_style, expected
+    ):
+        User = self.classes.User
+
+        u1 = aliased(User, name="u1")
+        u2 = aliased(User, name="u2")
+        stmt = (
+            select(u1, u2)
+            .join_from(u1, u2, u1.id == u2.id)
+            .set_label_style(label_style)
+        )
+
+        assert_row_keys(stmt, expected, "orm")
 
 
 class GetTest(QueryTest):

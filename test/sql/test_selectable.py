@@ -32,6 +32,7 @@ from sqlalchemy.sql import annotation
 from sqlalchemy.sql import base
 from sqlalchemy.sql import column
 from sqlalchemy.sql import elements
+from sqlalchemy.sql import LABEL_STYLE_DISAMBIGUATE_ONLY
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
@@ -2916,6 +2917,7 @@ class ReprTest(fixtures.TestBase):
 class WithLabelsTest(fixtures.TestBase):
     def _assert_result_keys(self, s, keys):
         compiled = s.compile()
+
         eq_(set(compiled._create_result_map()), set(keys))
 
     def _assert_subq_result_keys(self, s, keys):
@@ -2934,10 +2936,13 @@ class WithLabelsTest(fixtures.TestBase):
 
         self._assert_subq_result_keys(sel, ["x", "x_1"])
 
+        eq_(sel.selected_columns.keys(), ["x", "x"])
+
     def test_names_overlap_label(self):
         sel = self._names_overlap().set_label_style(
             LABEL_STYLE_TABLENAME_PLUS_COL
         )
+        eq_(sel.selected_columns.keys(), ["t1_x", "t2_x"])
         eq_(list(sel.selected_columns.keys()), ["t1_x", "t2_x"])
         eq_(list(sel.subquery().c.keys()), ["t1_x", "t2_x"])
         self._assert_result_keys(sel, ["t1_x", "t2_x"])
@@ -2951,6 +2956,7 @@ class WithLabelsTest(fixtures.TestBase):
     def test_names_overlap_keys_dont_nolabel(self):
         sel = self._names_overlap_keys_dont()
 
+        eq_(sel.selected_columns.keys(), ["a", "b"])
         eq_(list(sel.selected_columns.keys()), ["a", "b"])
         eq_(list(sel.subquery().c.keys()), ["a", "b"])
         self._assert_result_keys(sel, ["x"])
@@ -2959,9 +2965,40 @@ class WithLabelsTest(fixtures.TestBase):
         sel = self._names_overlap_keys_dont().set_label_style(
             LABEL_STYLE_TABLENAME_PLUS_COL
         )
+        eq_(sel.selected_columns.keys(), ["t1_a", "t2_b"])
         eq_(list(sel.selected_columns.keys()), ["t1_a", "t2_b"])
         eq_(list(sel.subquery().c.keys()), ["t1_a", "t2_b"])
         self._assert_result_keys(sel, ["t1_x", "t2_x"])
+
+    def _columns_repeated(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), Column("y", Integer))
+        return select(t1.c.x, t1.c.y, t1.c.x).set_label_style(LABEL_STYLE_NONE)
+
+    def test_element_repeated_nolabels(self):
+        sel = self._columns_repeated().set_label_style(LABEL_STYLE_NONE)
+        eq_(sel.selected_columns.keys(), ["x", "y", "x"])
+        eq_(list(sel.selected_columns.keys()), ["x", "y", "x"])
+        eq_(list(sel.subquery().c.keys()), ["x", "y", "x_1"])
+        self._assert_result_keys(sel, ["x", "y"])
+
+    def test_element_repeated_disambiguate(self):
+        sel = self._columns_repeated().set_label_style(
+            LABEL_STYLE_DISAMBIGUATE_ONLY
+        )
+        eq_(sel.selected_columns.keys(), ["x", "y", "x_1"])
+        eq_(list(sel.selected_columns.keys()), ["x", "y", "x_1"])
+        eq_(list(sel.subquery().c.keys()), ["x", "y", "x_1"])
+        self._assert_result_keys(sel, ["x", "y", "x__1"])
+
+    def test_element_repeated_labels(self):
+        sel = self._columns_repeated().set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
+        eq_(sel.selected_columns.keys(), ["t1_x", "t1_y", "t1_x_1"])
+        eq_(list(sel.selected_columns.keys()), ["t1_x", "t1_y", "t1_x_1"])
+        eq_(list(sel.subquery().c.keys()), ["t1_x", "t1_y", "t1_x_1"])
+        self._assert_result_keys(sel, ["t1_x__1", "t1_x", "t1_y"])
 
     def _labels_overlap(self):
         m = MetaData()
@@ -2971,6 +3008,7 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_labels_overlap_nolabel(self):
         sel = self._labels_overlap()
+        eq_(sel.selected_columns.keys(), ["x_id", "id"])
         eq_(list(sel.selected_columns.keys()), ["x_id", "id"])
         eq_(list(sel.subquery().c.keys()), ["x_id", "id"])
         self._assert_result_keys(sel, ["x_id", "id"])
@@ -3077,6 +3115,7 @@ class WithLabelsTest(fixtures.TestBase):
 
     def test_keys_overlap_names_dont_nolabel(self):
         sel = self._keys_overlap_names_dont()
+        eq_(sel.selected_columns.keys(), ["x", "b_1"])
         self._assert_result_keys(sel, ["a", "b"])
 
     def test_keys_overlap_names_dont_label(self):

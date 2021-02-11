@@ -11,6 +11,7 @@ from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -29,7 +30,10 @@ from ..sql.test_compare import CacheKeyFixture
 
 
 def stmt_20(*elements):
-    return tuple(elem._statement_20() for elem in elements)
+    return tuple(
+        elem._statement_20() if isinstance(elem, Query) else elem
+        for elem in elements
+    )
 
 
 class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
@@ -294,6 +298,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 fixture_session()
                 .query(User)
                 .from_statement(text("select * from user")),
+                select(User).from_statement(text("select * from user")),
                 fixture_session()
                 .query(User)
                 .options(selectinload(User.addresses))
