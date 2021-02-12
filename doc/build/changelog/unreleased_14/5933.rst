@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5933
+
+    Fixed issue in new 1.4/2.0 style ORM queries where a statement-level label
+    style would not be preserved in the keys used by result rows; this has been
+    applied to all combinations of Core/ORM columns / session vs. connection
+    etc. so that the linkage from statement to result row is the same in all
+    cases.
+
+
+

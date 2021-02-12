@@ -30,6 +30,7 @@ from .base import _assertions
 from .context import _column_descriptions
 from .context import _legacy_determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
+from .context import LABEL_STYLE_LEGACY_ORM
 from .context import ORMCompileState
 from .context import ORMFromStatementCompileState
 from .context import QueryContext
@@ -59,7 +60,6 @@ from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import HasHints
 from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
-from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
@@ -119,7 +119,7 @@ class Query(
     _from_obj = ()
     _setup_joins = ()
     _legacy_setup_joins = ()
-    _label_style = LABEL_STYLE_NONE
+    _label_style = LABEL_STYLE_LEGACY_ORM
 
     _compile_options = ORMCompileState.default_compile_options
 
@@ -2825,7 +2825,7 @@ class Query(
 
         """
 
-        return _column_descriptions(self)
+        return _column_descriptions(self, legacy=True)
 
     def instances(self, result_proxy, context=None):
         """Return an ORM result given a :class:`_engine.CursorResult` and
@@ -3198,6 +3198,10 @@ class FromStatement(SelectStatementGrouping, Executable):
         ("_raw_columns", InternalTraversal.dp_clauseelement_list),
         ("element", InternalTraversal.dp_clauseelement),
     ] + Executable._executable_traverse_internals
+
+    _cache_key_traversal = _traverse_internals + [
+        ("_compile_options", InternalTraversal.dp_has_cache_key)
+    ]
 
     def __init__(self, entities, element):
         self._raw_columns = [

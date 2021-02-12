@@ -42,6 +42,9 @@ _path_registry = PathRegistry.root
 _EMPTY_DICT = util.immutabledict()
 
 
+LABEL_STYLE_LEGACY_ORM = util.symbol("LABEL_STYLE_LEGACY_ORM")
+
+
 class QueryContext(object):
     __slots__ = (
         "compile_state",
@@ -173,6 +176,21 @@ class ORMCompileState(CompileState):
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
+
+    @classmethod
+    def _column_naming_convention(cls, label_style, legacy):
+
+        if legacy:
+
+            def name(col, col_name=None):
+                if col_name:
+                    return col_name
+                else:
+                    return getattr(col, "key")
+
+            return name
+        else:
+            return SelectState._column_naming_convention(label_style)
 
     @classmethod
     def create_for_statement(cls, statement_container, compiler, **kw):
@@ -345,6 +363,25 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.compile_options = statement_container._compile_options
 
+        if (
+            self.use_legacy_query_style
+            and isinstance(statement, expression.SelectBase)
+            and not statement._is_textual
+            and statement._label_style is LABEL_STYLE_NONE
+        ):
+            self.statement = statement.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
+        else:
+            self.statement = statement
+
+        self._label_convention = self._column_naming_convention(
+            statement._label_style
+            if not statement._is_textual
+            else LABEL_STYLE_NONE,
+            self.use_legacy_query_style,
+        )
+
         _QueryEntity.to_compile_state(self, statement_container._raw_columns)
 
         self.current_path = statement_container._compile_options._current_path
@@ -370,16 +407,6 @@ class ORMFromStatementCompileState(ORMCompileState):
         self.create_eager_joins = []
         self._fallback_from_clauses = []
 
-        if (
-            isinstance(statement, expression.SelectBase)
-            and not statement._is_textual
-            and statement._label_style is util.symbol("LABEL_STYLE_NONE")
-        ):
-            self.statement = statement.set_label_style(
-                LABEL_STYLE_TABLENAME_PLUS_COL
-            )
-        else:
-            self.statement = statement
         self.order_by = None
 
         if isinstance(self.statement, expression.TextClause):
@@ -499,19 +526,26 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self.compile_options = select_statement._compile_options
 
-        _QueryEntity.to_compile_state(self, select_statement._raw_columns)
-
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
         # rather than LABEL_STYLE_NONE, and if we can use disambiguate style
         # for new style ORM selects too.
-        if self.select_statement._label_style is LABEL_STYLE_NONE:
-            if self.use_legacy_query_style and not self.for_statement:
+        if (
+            self.use_legacy_query_style
+            and self.select_statement._label_style is LABEL_STYLE_LEGACY_ORM
+        ):
+            if not self.for_statement:
                 self.label_style = LABEL_STYLE_TABLENAME_PLUS_COL
             else:
                 self.label_style = LABEL_STYLE_DISAMBIGUATE_ONLY
         else:
             self.label_style = self.select_statement._label_style
+
+        self._label_convention = self._column_naming_convention(
+            statement._label_style, self.use_legacy_query_style
+        )
+
+        _QueryEntity.to_compile_state(self, select_statement._raw_columns)
 
         self.current_path = select_statement._compile_options._current_path
 
@@ -685,7 +719,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 )
 
     @classmethod
-    def _create_entities_collection(cls, query):
+    def _create_entities_collection(cls, query, legacy):
         """Creates a partial ORMSelectCompileState that includes
         the full collection of _MapperEntity and other _QueryEntity objects.
 
@@ -709,6 +743,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 compile_options._with_polymorphic_adapt_map
             )
             self._setup_with_polymorphics()
+
+        self._label_convention = self._column_naming_convention(
+            query._label_style, legacy
+        )
 
         # entities will also set up polymorphic adapters for mappers
         # that have with_polymorphic configured
@@ -1979,10 +2017,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 self._where_criteria += (crit,)
 
 
-def _column_descriptions(query_or_select_stmt, compile_state=None):
+def _column_descriptions(
+    query_or_select_stmt, compile_state=None, legacy=False
+):
     if compile_state is None:
         compile_state = ORMSelectCompileState._create_entities_collection(
-            query_or_select_stmt
+            query_or_select_stmt, legacy=legacy
         )
     ctx = compile_state
     return [
@@ -2518,7 +2558,8 @@ class _RawColumnEntity(_ColumnEntity):
 
     def __init__(self, compile_state, column, parent_bundle=None):
         self.expr = column
-        self._label_name = getattr(column, "key", None)
+
+        self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
             parent_bundle._entities.append(self)
@@ -2582,12 +2623,16 @@ class _ORMColumnEntity(_ColumnEntity):
         # a column if it was acquired using the class' adapter directly,
         # such as using AliasedInsp._adapt_element().  this occurs
         # within internal loaders.
-        self._label_name = _label_name = annotations.get("orm_key", None)
-        if _label_name:
-            self.expr = getattr(_entity.entity, _label_name)
+
+        orm_key = annotations.get("orm_key", None)
+        if orm_key:
+            self.expr = getattr(_entity.entity, orm_key)
         else:
-            self._label_name = getattr(column, "key", None)
             self.expr = column
+
+        self._label_name = compile_state._label_convention(
+            column, col_name=orm_key
+        )
 
         _entity._post_inspect
         self.entity_zero = self.entity_zero_or_selectable = ezero = _entity
