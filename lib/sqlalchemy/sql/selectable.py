@@ -4870,7 +4870,11 @@ class Select(
           constructs as given, as well as ORM-mapped classes.
 
         """
-        if (args and hasattr(args[0], '__iter__')) or kw:
+        if (
+            args
+            and hasattr(args[0], "__iter__")
+            and not hasattr(args[0], "strip")
+        ) or kw:
             return cls.create_legacy_select(*args, **kw)
         else:
             return cls._create_future_select(*args)
