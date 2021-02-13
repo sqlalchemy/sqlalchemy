@@ -20,8 +20,8 @@ Migrating to SQLAlchemy 2.0
     disciplines.
 
     SQLAlchemy started with Python 2.3 which had no context managers, no
-    function decorators, Unicode as a second class feature, and and a variety
-    of other shortcomings that would be unknown today.  The biggest changes in
+    function decorators, Unicode as a second class feature, and a variety of
+    other shortcomings that would be unknown today.  The biggest changes in
     SQLAlchemy 2.0 are targeting the residual assumptions left over from this
     early period in SQLAlchemy's development as well as the leftover artifacts
     resulting from the incremental  introduction of key API features such as
