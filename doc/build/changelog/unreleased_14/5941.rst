@@ -1,0 +1,22 @@
+.. change::
+    :tags: bug, engine, postgresql
+    :tickets: 5941
+
+    Continued with the improvement made as part of :ticket:`5653` to further
+    support bound parameter names, including those generated against column
+    names, for names that include colons, parenthesis, and question marks, as
+    well as improved test support, so that bound parameter names even if they
+    are auto-derived from column names should have no problem including for
+    parenthesis in psycopg2's "pyformat" style.
+
+    As part of this change, the format used by the asyncpg DBAPI adapter (which
+    is local to SQLAlchemy's asyncpg diaelct) has been changed from using
+    "qmark" paramstyle to "format", as there is a standard and internally
+    supported SQL string escaping style for names that use percent signs with
+    "format" style (i.e. to double percent signs), as opposed to names that use
+    question marks with "qmark" style (where an escaping system is not defined
+    by pep-249 or Python).
+
+    .. seealso::
+
+      :ref:`change_5941`

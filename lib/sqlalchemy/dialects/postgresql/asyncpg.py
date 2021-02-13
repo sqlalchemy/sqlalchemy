@@ -100,7 +100,6 @@ To disable the prepared statement cache, use a value of zero::
 
 import collections
 import decimal
-import itertools
 import json as _py_json
 import re
 import time
@@ -357,12 +356,12 @@ class AsyncAdapt_asyncpg_cursor:
     def _handle_exception(self, error):
         self._adapt_connection._handle_exception(error)
 
-    def _parameters(self):
+    def _parameter_placeholders(self, params):
         if not self._inputsizes:
-            return ("$%d" % idx for idx in itertools.count(1))
+            return tuple("$%d" % idx for idx, _ in enumerate(params, 1))
         else:
 
-            return (
+            return tuple(
                 "$%d::%s" % (idx, typ) if typ else "$%d" % idx
                 for idx, typ in enumerate(
                     (_pg_types.get(typ) for typ in self._inputsizes), 1
@@ -374,11 +373,10 @@ class AsyncAdapt_asyncpg_cursor:
         if not self._adapt_connection._started:
             await self._adapt_connection._start_transaction()
 
-        params = self._parameters()
-
-        # TODO: would be nice to support the dollar numeric thing
-        # directly, this is much easier for now
-        operation = re.sub(r"\?", lambda m: next(params), operation)
+        if parameters is not None:
+            operation = operation % self._parameter_placeholders(parameters)
+        else:
+            parameters = ()
 
         try:
             prepared_stmt, attributes = await self._adapt_connection._prepare(
@@ -409,7 +407,7 @@ class AsyncAdapt_asyncpg_cursor:
         except Exception as error:
             self._handle_exception(error)
 
-    def execute(self, operation, parameters=()):
+    def execute(self, operation, parameters=None):
         try:
             self._adapt_connection.await_(
                 self._prepare_and_execute(operation, parameters)
@@ -429,8 +427,10 @@ class AsyncAdapt_asyncpg_cursor:
         if not adapt_connection._started:
             adapt_connection.await_(adapt_connection._start_transaction())
 
-        params = self._parameters()
-        operation = re.sub(r"\?", lambda m: next(params), operation)
+        operation = operation % self._parameter_placeholders(
+            seq_of_parameters[0]
+        )
+
         try:
             return adapt_connection.await_(
                 self._connection.executemany(operation, seq_of_parameters)
@@ -706,7 +706,7 @@ class AsyncAdaptFallback_asyncpg_connection(AsyncAdapt_asyncpg_connection):
 class AsyncAdapt_asyncpg_dbapi:
     def __init__(self, asyncpg):
         self.asyncpg = asyncpg
-        self.paramstyle = "qmark"
+        self.paramstyle = "format"
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
@@ -837,7 +837,7 @@ class PGDialect_asyncpg(PGDialect):
 
     supports_unicode_binds = True
 
-    default_paramstyle = "qmark"
+    default_paramstyle = "format"
     supports_sane_multi_rowcount = False
     execution_ctx_cls = PGExecutionContext_asyncpg
     statement_compiler = PGCompiler_asyncpg

@@ -166,6 +166,11 @@ BIND_TEMPLATES = {
     "named": ":%(name)s",
 }
 
+BIND_TRANSLATE = {
+    "pyformat": re.compile(r"[%\(\)]"),
+    "named": re.compile(r"[\:]"),
+}
+_BIND_TRANSLATE_CHARS = {"%": "P", "(": "A", ")": "Z", ":": "C"}
 
 OPERATORS = {
     # binary
@@ -765,6 +770,7 @@ class SQLCompiler(Compiled):
             self.positiontup = []
             self._numeric_binds = dialect.paramstyle == "numeric"
         self.bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
+        self._bind_translate = BIND_TRANSLATE.get(dialect.paramstyle, None)
 
         self.ctes = None
 
@@ -2417,11 +2423,23 @@ class SQLCompiler(Compiled):
         escaped_from=None,
         **kw
     ):
+
         if self.positional:
             if positional_names is not None:
                 positional_names.append(name)
             else:
                 self.positiontup.append(name)
+        elif not post_compile and not escaped_from:
+            tr_reg = self._bind_translate
+            if tr_reg.search(name):
+                # i'd rather use translate() here but I can't get it to work
+                # in all cases under Python 2, not worth it right now
+                new_name = tr_reg.sub(
+                    lambda m: _BIND_TRANSLATE_CHARS[m.group(0)],
+                    name,
+                )
+                escaped_from = name
+                name = new_name
 
         if escaped_from:
             if not self.escaped_bind_names:

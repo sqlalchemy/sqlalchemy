@@ -2577,6 +2577,27 @@ The psycopg2 dialect relies upon many features of psycopg2 released
 in the past few years.  To simplify the dialect, version 2.7, released
 in March, 2017 is now the minimum version required.
 
+.. _change_5941:
+
+psycopg2 dialect no longer has limitations regarding bound parameter names
+--------------------------------------------------------------------------
+
+SQLAlchemy 1.3 was not able to accommodate bound parameter names that included
+percent signs or parenthesis under the psycopg2 dialect, which meant that
+column names which included these characters were also problematic as
+INSERT and other DML statements would generate parameter names that matched
+that of the column, unless the :paramref:`_schema.Column.key` parameter
+were used to provide an alternate name that would be used to generate
+the parameter, or otherwise the parameter style of the dialect had to be
+changed.  As of SQLAlchemy 1.4.0beta3 all naming limitations have been removed
+and parameters are fully escaped in all scenarios.
+
+
+:ticket:`5941`
+
+:ticket:`5653`
+
+
 .. _change_5401:
 
 psycopg2 dialect features "execute_values" with RETURNING for INSERT statements by default
