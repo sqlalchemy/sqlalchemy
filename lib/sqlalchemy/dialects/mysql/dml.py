@@ -2,6 +2,7 @@ from ... import exc
 from ... import util
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
+from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
@@ -145,6 +146,17 @@ class OnDuplicateClause(ClauseElement):
             self._parameter_ordering = [key for key, value in update]
             update = dict(update)
 
-        if not update or not isinstance(update, dict):
-            raise ValueError("update parameter must be a non-empty dictionary")
+        if isinstance(update, dict):
+            if not update:
+                raise ValueError(
+                    "update parameter dictionary must not be empty"
+                )
+        elif isinstance(update, ColumnCollection):
+            update = dict(update)
+        else:
+            raise ValueError(
+                "update parameter must be a non-empty dictionary "
+                "or a ColumnCollection such as the `.c.` collection "
+                "of a Table object"
+            )
         self.update = update

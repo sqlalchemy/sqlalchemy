@@ -176,14 +176,21 @@ class OnConflictTest(fixtures.TablesTest):
             [(1, "name1")],
         )
 
-    def test_on_conflict_do_update_one(self, connection):
+    @testing.combinations(
+        ("with_dict", True),
+        ("issue_5939", False),
+        id_="ia",
+        argnames="with_dict",
+    )
+    def test_on_conflict_do_update_one(self, connection, with_dict):
         users = self.tables.users
 
         connection.execute(users.insert(), dict(id=1, name="name1"))
 
         i = insert(users)
         i = i.on_conflict_do_update(
-            index_elements=[users.c.id], set_=dict(name=i.excluded.name)
+            index_elements=[users.c.id],
+            set_=dict(name=i.excluded.name) if with_dict else i.excluded,
         )
         result = connection.execute(i, dict(id=1, name="name1"))
 

@@ -12,6 +12,7 @@ from ...sql import roles
 from ...sql import schema
 from ...sql.base import _exclusive_against
 from ...sql.base import _generative
+from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
@@ -243,8 +244,17 @@ class OnConflictDoUpdate(OnConflictClause):
                 "but not both, must be specified unless DO NOTHING"
             )
 
-        if not isinstance(set_, dict) or not set_:
-            raise ValueError("set parameter must be a non-empty dictionary")
+        if isinstance(set_, dict):
+            if not set_:
+                raise ValueError("set parameter dictionary must not be empty")
+        elif isinstance(set_, ColumnCollection):
+            set_ = dict(set_)
+        else:
+            raise ValueError(
+                "set parameter must be a non-empty dictionary "
+                "or a ColumnCollection such as the `.c.` collection "
+                "of a Table object"
+            )
         self.update_values_to_set = [
             (coercions.expect(roles.DMLColumnRole, key), value)
             for key, value in set_.items()

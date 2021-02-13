@@ -163,7 +163,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         return ScalarFunctionColumn(self, name, type_)
 
     def table_valued(self, *expr, **kw):
-        """Return a :class:`_sql.TableValuedAlias` representation of this
+        r"""Return a :class:`_sql.TableValuedAlias` representation of this
         :class:`_functions.FunctionElement` with table-valued expressions added.
 
         e.g.::

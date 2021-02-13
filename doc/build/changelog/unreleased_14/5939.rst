@@ -1,0 +1,7 @@
+.. change::
+    :tags: sql, usecase, postgresql, sqlite
+    :tickets: 5939
+
+    Enhance ``set_`` keyword of :class:`.OnConflictDoUpdate` to accept a
+    :class:`.ColumnCollection`, such as the ``.c.`` collection from a
+    :class:`Selectable`, or the ``.excluded`` contextual object.
