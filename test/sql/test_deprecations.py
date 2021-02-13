@@ -437,15 +437,6 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt = select([column("q")])
         self.assert_compile(stmt, "SELECT q")
 
-    def test_select_iterable_argument(self):
-
-        with testing.expect_deprecated_20(
-            r"The legacy calling style of select\(\) is deprecated "
-            "and will be removed in SQLAlchemy 2.0"
-        ):
-            stmt = select(iter([column("q")]))
-        self.assert_compile(stmt, "SELECT q")
-
     def test_select_immutable_column_collection_argument(self):
         t1 = table("t1", column("q"))
 

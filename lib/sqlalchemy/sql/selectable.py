@@ -39,6 +39,7 @@ from .base import Generative
 from .base import HasCompileState
 from .base import HasMemoized
 from .base import Immutable
+from .base import ImmutableColumnCollection
 from .base import prefix_anon_map
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
@@ -4871,9 +4872,7 @@ class Select(
 
         """
         if (
-            args
-            and hasattr(args[0], "__iter__")
-            and not hasattr(args[0], "strip")
+            args and isinstance(args[0], (list, ImmutableColumnCollection))
         ) or kw:
             return cls.create_legacy_select(*args, **kw)
         else:
