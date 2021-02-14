@@ -85,12 +85,17 @@ default_strategy = "plain"
 def create_engine(*args, **kwargs):
     """Create a new :class:`_engine.Engine` instance.
 
-    The standard calling form is to send the URL as the
+    The standard calling form is to send the :ref:`URL <database_urls>` as the
     first positional argument, usually a string
     that indicates database dialect and connection arguments::
 
-
         engine = create_engine("postgresql://scott:tiger@localhost/test")
+
+    .. note::
+
+        Please review :ref:`database_urls` for general guidelines in composing
+        URL strings.  In particular, special characters, such as those often
+        part of passwords, must be URL encoded to be properly parsed.
 
     Additional keyword arguments may then follow it which
     establish various options on the resulting :class:`_engine.Engine`
