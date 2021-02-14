@@ -2179,6 +2179,11 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
             compiler._annotations.get("synchronize_session", None) == "fetch"
             and compiler.dialect.full_returning
         ):
+            if new_stmt._returning:
+                raise sa_exc.InvalidRequestError(
+                    "Can't use synchronize_session='fetch' "
+                    "with explicit returning()"
+                )
             new_stmt = new_stmt.returning(*mapper.primary_key)
 
         UpdateDMLState.__init__(self, new_stmt, compiler, **kw)

@@ -581,6 +581,10 @@ ORM-enabled delete, :term:`2.0 style`::
 
     session.execute(stmt)
 
+.. _orm_expression_update_delete_sync:
+
+Selecting a Synchronization Strategy
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 With both the 1.x and 2.0 form of ORM-enabled updates and deletes, the following
 values for ``synchronize_session`` are supported:
@@ -594,10 +598,12 @@ values for ``synchronize_session`` are supported:
   can lead to confusing results.
 
 * ``'fetch'`` - Retrieves the primary key identity of affected rows by either
-  performing a SELECT before the UPDATE or DELETE, or by using RETURNING
-  if the database supports it, so that in-memory objects which are affected
-  by the operation can be refreshed with new values (updates) or expunged
-  from the :class:`_orm.Session` (deletes)
+  performing a SELECT before the UPDATE or DELETE, or by using RETURNING if the
+  database supports it, so that in-memory objects which are affected by the
+  operation can be refreshed with new values (updates) or expunged from the
+  :class:`_orm.Session` (deletes). Note that this synchronization strategy is
+  not available if the given :func:`_dml.update` or :func:`_dml.delete`
+  construct specifies columns for :meth:`_dml.UpdateBase.returning` explicitly.
 
 * ``'evaluate'`` - Evaluate the WHERE criteria given in the UPDATE or DELETE
   statement in Python, to locate matching objects within the
@@ -669,7 +675,78 @@ values for ``synchronize_session`` are supported:
     * In order to intercept ORM-enabled UPDATE and DELETE operations with event
       handlers, use the :meth:`_orm.SessionEvents.do_orm_execute` event.
 
+.. _orm_dml_returning_objects:
 
+Selecting ORM Objects Inline with UPDATE.. RETURNING or INSERT..RETURNING
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. deepalchemy:: The feature of linking ORM objects to RETURNING is a new and
+   experimental feature.
+
+.. versionadded:: 1.4.0b3
+
+The :term:`DML` constructs :func:`_dml.insert`, :func:`_dml.update`, and
+:func:`_dml.delete` feature a method :meth:`_dml.UpdateBase.returning` which on
+database backends that support RETURNING (PostgreSQL, SQL Server, some MariaDB
+versions) may be used to return database rows generated or matched by
+the statement as though they were SELECTed. The ORM-enabled UPDATE and DELETE
+statements may be combined with this feature, so that they return rows
+corresponding to all the rows which were matched by the criteria::
+
+    from sqlalchemy import update
+
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
+        returning(User.id)
+
+    for row in session.execute(stmt):
+        print(f"id: {row.id}")
+
+The above example returns the ``User.id`` attribute for each row matched.
+Provided that each row contains at least a primary key value, we may opt to
+receive these rows as ORM objects, allowing ORM objects to be loaded from the
+database corresponding atomically to an UPDATE statement against those rows. To
+achieve this, we may combine the :class:`_dml.Update` construct which returns
+``User`` rows with a :func:`_sql.select` that's adapted to run this UPDATE
+statement in an ORM context using the :meth:`_sql.Select.from_statement`
+method::
+
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
+        returning(User)
+
+    orm_stmt = select(User).from_statement(stmt).execution_options(populate_existing=True)
+
+    for user in session.execute(orm_stmt).scalars():
+        print("updated user: %s" % user)
+
+Above, we produce an :func:`_dml.update` construct that includes
+:meth:`_dml.Update.returning` given the full ``User`` entity, which will
+produce complete rows from the database table as it UPDATEs them; any arbitrary
+set of columns to load may be specified as long as the full primary key is
+included. Next, these rows are adapted to an ORM load by producing a
+:func:`_sql.select` for the desired entity, then adapting it to the UPDATE
+statement by passing the :class:`_dml.Update` construct to the
+:meth:`_sql.Select.from_statement` method; this special ORM method, introduced
+at :ref:`orm_queryguide_selecting_text`, produces an ORM-specific adapter that
+allows the given statement to act as though it were the SELECT of rows that is
+first described.   No SELECT is actually emitted in the database, only the
+UPDATE..RETURNING we've constructed.
+
+Finally, we make use of :ref:`orm_queryguide_populate_existing` on the
+construct so that all the data returned by the UPDATE, including the columns
+we've updated, are populated into the returned objects, replacing any
+values which were there already.  This has the same effect as if we had
+used the ``synchronize_session='fetch'`` strategy described previously
+at :ref:`orm_expression_update_delete_sync`.
+
+The above approach can be used with INSERTs as well (and technically
+DELETEs too, though this makes less sense as the returned ORM objects
+by definition don't exist in the database anymore), as both of these
+constructs support RETURNING as well.
+
+.. seealso::
+
+  :ref:`orm_queryguide_selecting_text` - introduces the
+  :meth:`_sql.Select.from_statement` method.
 
 .. _session_committing:
 

@@ -57,10 +57,12 @@ from ..sql.base import _generative
 from ..sql.base import Executable
 from ..sql.selectable import _SelectFromElements
 from ..sql.selectable import ForUpdateArg
+from ..sql.selectable import GroupedElement
 from ..sql.selectable import HasHints
 from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import SelectBase
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
 from ..util import collections_abc
@@ -3178,7 +3180,7 @@ class Query(
         return context
 
 
-class FromStatement(SelectStatementGrouping, Executable):
+class FromStatement(GroupedElement, SelectBase, Executable):
     """Core construct that represents a load of ORM objects from a finished
     select or text construct.
 
@@ -3210,7 +3212,19 @@ class FromStatement(SelectStatementGrouping, Executable):
             )
             for ent in util.to_list(entities)
         ]
-        super(FromStatement, self).__init__(element)
+        self.element = element
+
+    def get_label_style(self):
+        return self._label_style
+
+    def set_label_style(self, label_style):
+        return SelectStatementGrouping(
+            self.element.set_label_style(label_style)
+        )
+
+    @property
+    def _label_style(self):
+        return self.element._label_style
 
     def _compiler_dispatch(self, compiler, **kw):
 
@@ -3240,6 +3254,14 @@ class FromStatement(SelectStatementGrouping, Executable):
             yield elem
         for elem in super(FromStatement, self).get_children(**kw):
             yield elem
+
+    @property
+    def _returning(self):
+        return self.element._returning if self.element.is_dml else None
+
+    @property
+    def _inline(self):
+        return self.element._inline if self.element.is_dml else None
 
 
 class AliasOption(interfaces.LoaderOption):

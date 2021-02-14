@@ -1526,7 +1526,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
         """Activate IDENTITY_INSERT if needed."""
 
         if self.isinsert:
-            tbl = self.compiled.statement.table
+            tbl = self.compiled.compile_state.dml_table
             id_column = tbl._autoincrement_column
             insert_has_identity = (id_column is not None) and (
                 not isinstance(id_column.default, Sequence)
@@ -1607,7 +1607,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 self._opt_encode(
                     "SET IDENTITY_INSERT %s OFF"
                     % self.identifier_preparer.format_table(
-                        self.compiled.statement.table
+                        self.compiled.compile_state.dml_table
                     )
                 ),
                 (),
@@ -1631,7 +1631,7 @@ class MSExecutionContext(default.DefaultExecutionContext):
                     self._opt_encode(
                         "SET IDENTITY_INSERT %s OFF"
                         % self.identifier_preparer.format_table(
-                            self.compiled.statement.table
+                            self.compiled.compile_state.dml_table
                         )
                     )
                 )

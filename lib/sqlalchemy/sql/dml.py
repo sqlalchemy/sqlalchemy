@@ -47,6 +47,10 @@ class DMLState(CompileState):
     def __init__(self, statement, compiler, **kw):
         raise NotImplementedError()
 
+    @property
+    def dml_table(self):
+        return self.statement.table
+
     def _make_extra_froms(self, statement):
         froms = []
 
@@ -407,7 +411,9 @@ class UpdateBase(
             raise exc.InvalidRequestError(
                 "return_defaults() is already configured on this statement"
             )
-        self._returning += cols
+        self._returning += tuple(
+            coercions.expect(roles.ColumnsClauseRole, c) for c in cols
+        )
 
     def _exported_columns_iterator(self):
         """Return the RETURNING columns as a sequence for this statement.
