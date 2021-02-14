@@ -357,6 +357,9 @@ class ORMFromStatementCompileState(ORMCompileState):
         self.statement_container = self.select_statement = statement_container
         self.requested_statement = statement = statement_container.element
 
+        if statement.is_dml:
+            self.dml_table = statement.table
+
         self._entities = []
         self._polymorphic_adapters = {}
         self._no_yield_pers = set()
@@ -367,6 +370,7 @@ class ORMFromStatementCompileState(ORMCompileState):
             self.use_legacy_query_style
             and isinstance(statement, expression.SelectBase)
             and not statement._is_textual
+            and not statement.is_dml
             and statement._label_style is LABEL_STYLE_NONE
         ):
             self.statement = statement.set_label_style(
@@ -377,7 +381,7 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self._label_convention = self._column_naming_convention(
             statement._label_style
-            if not statement._is_textual
+            if not statement._is_textual and not statement.is_dml
             else LABEL_STYLE_NONE,
             self.use_legacy_query_style,
         )
@@ -409,7 +413,9 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.order_by = None
 
-        if isinstance(self.statement, expression.TextClause):
+        if isinstance(
+            self.statement, (expression.TextClause, expression.UpdateBase)
+        ):
             # setup for all entities. Currently, this is not useful
             # for eager loaders, as the eager loaders that work are able
             # to do their work entirely in row_processor.
@@ -790,12 +796,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         query = util.preloaded.orm_query
 
         from_statement = coercions.expect(
-            roles.SelectStatementRole,
+            roles.ReturnsRowsRole,
             from_statement,
             apply_propagate_attrs=statement,
         )
 
         stmt = query.FromStatement(statement._raw_columns, from_statement)
+
         stmt.__dict__.update(
             _with_options=statement._with_options,
             _with_context_options=statement._with_context_options,

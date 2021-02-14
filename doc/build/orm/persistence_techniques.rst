@@ -681,6 +681,11 @@ Bulk Operations
    bulk inserts, it's better to use the Core :class:`_sql.Insert` construct
    directly.   Please read all caveats at :ref:`bulk_operations_caveats`.
 
+.. note:: Bulk INSERT and UPDATE should not be confused with the
+   more common feature known as :ref:`orm_expression_update_delete`.   This
+   feature allows a single UPDATE or DELETE statement with arbitrary WHERE
+   criteria to be emitted.
+
 .. versionadded:: 1.0.0
 
 Bulk INSERT/per-row UPDATE operations on the :class:`.Session` include

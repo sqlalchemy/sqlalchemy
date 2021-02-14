@@ -6,6 +6,7 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import lambda_stmt
 from sqlalchemy import or_
@@ -28,6 +29,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -902,6 +904,58 @@ class UpdateDeleteTest(fixtures.MappedTest):
                     [{"age_int_1": 10, "age_int_2": 29}],
                 ),
             )
+
+    @testing.requires.full_returning
+    def test_update_explicit_returning(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        john, jack, jill, jane = sess.query(User).order_by(User.id).all()
+
+        with self.sql_execution_asserter() as asserter:
+            stmt = (
+                update(User)
+                .filter(User.age > 29)
+                .values({"age": User.age - 10})
+                .returning(User.id)
+            )
+
+            rows = sess.execute(stmt).all()
+            eq_(rows, [(2,), (4,)])
+
+            # these are simple values, these are now evaluated even with
+            # the "fetch" strategy, new in 1.4, so there is no expiry
+            eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
+
+        asserter.assert_(
+            CompiledSQL(
+                "UPDATE users SET age_int=(users.age_int - %(age_int_1)s) "
+                "WHERE users.age_int > %(age_int_2)s RETURNING users.id",
+                [{"age_int_1": 10, "age_int_2": 29}],
+                dialect="postgresql",
+            ),
+        )
+
+    @testing.requires.full_returning
+    def test_no_fetch_w_explicit_returning(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        stmt = (
+            update(User)
+            .filter(User.age > 29)
+            .values({"age": User.age - 10})
+            .execution_options(synchronize_session="fetch")
+            .returning(User.id)
+        )
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Can't use synchronize_session='fetch' "
+            r"with explicit returning\(\)",
+        ):
+            sess.execute(stmt)
 
     def test_delete_fetch_returning(self):
         User = self.classes.User
@@ -2019,3 +2073,94 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
                 ("support", "n2", "d"),
             ],
         )
+
+
+class LoadFromReturningTest(fixtures.MappedTest):
+    __backend__ = True
+    __requires__ = ("full_returning",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(32)),
+            Column("age_int", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class User(cls.Comparable):
+            pass
+
+        class Address(cls.Comparable):
+            pass
+
+    @classmethod
+    def insert_data(cls, connection):
+        users = cls.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                dict(id=1, name="john", age_int=25),
+                dict(id=2, name="jack", age_int=47),
+                dict(id=3, name="jill", age_int=29),
+                dict(id=4, name="jane", age_int=37),
+            ],
+        )
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        users = cls.tables.users
+
+        mapper(
+            User,
+            users,
+            properties={
+                "age": users.c.age_int,
+            },
+        )
+
+    def test_load_from_update(self, connection):
+        User = self.classes.User
+
+        stmt = (
+            update(User)
+            .where(User.name.in_(["jack", "jill"]))
+            .values(age=User.age + 5)
+            .returning(User)
+        )
+
+        stmt = select(User).from_statement(stmt)
+
+        with Session(connection) as sess:
+            rows = sess.execute(stmt).scalars().all()
+
+            eq_(
+                rows,
+                [User(name="jack", age=52), User(name="jill", age=34)],
+            )
+
+    def test_load_from_insert(self, connection):
+        User = self.classes.User
+
+        stmt = (
+            insert(User)
+            .values({User.id: 5, User.age: 25, User.name: "spongebob"})
+            .returning(User)
+        )
+
+        stmt = select(User).from_statement(stmt)
+
+        with Session(connection) as sess:
+            rows = sess.execute(stmt).scalars().all()
+
+            eq_(
+                rows,
+                [User(name="spongebob", age=25)],
+            )

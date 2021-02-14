@@ -365,6 +365,12 @@ is that in the former case, no subquery is produced in the resulting SQL.
 This can in some scenarios be advantageous from a performance or complexity
 perspective.
 
+.. seealso::
+
+  :ref:`orm_dml_returning_objects` - The :meth:`_sql.Select.from_statement`
+  method also works with :term:`DML` statements that support RETURNING.
+
+
 .. _orm_queryguide_joins:
 
 Joins
