@@ -37,7 +37,7 @@ extensions = [
     "changelog",
     "sphinx_paramlinks",
 ]
-needs_extensions = {"zzzeeksphinx": "1.2.0"}
+needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
 # Add any paths that contain templates here, relative to this directory.
 # not sure why abspath() is needed here, some users
