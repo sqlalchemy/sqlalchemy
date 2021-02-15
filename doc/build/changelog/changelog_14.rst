@@ -15,7 +15,92 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.0b3
-    :include_notes_from: unreleased_14
+    :released: February 15, 2021
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5933
+
+        Fixed issue in new 1.4/2.0 style ORM queries where a statement-level label
+        style would not be preserved in the keys used by result rows; this has been
+        applied to all combinations of Core/ORM columns / session vs. connection
+        etc. so that the linkage from statement to result row is the same in all
+        cases.   As part of this change, the labeling of column expressions
+        in rows has been improved to retain the original name of the ORM
+        attribute even if used in a subquery.
+
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5924
+
+        Fixed bug where the "cartesian product" assertion was not correctly
+        accommodating for joins between tables that relied upon the use of LATERAL
+        to connect from a subquery to another subquery in the enclosing context.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5934
+
+        Fixed 1.4 regression where the :meth:`_functions.Function.in_` method was
+        not covered by tests and failed to function properly in all cases.
+
+    .. change::
+        :tags: bug, engine, postgresql
+        :tickets: 5941
+
+        Continued with the improvement made as part of :ticket:`5653` to further
+        support bound parameter names, including those generated against column
+        names, for names that include colons, parenthesis, and question marks, as
+        well as improved test support, so that bound parameter names even if they
+        are auto-derived from column names should have no problem including for
+        parenthesis in psycopg2's "pyformat" style.
+
+        As part of this change, the format used by the asyncpg DBAPI adapter (which
+        is local to SQLAlchemy's asyncpg dialect) has been changed from using
+        "qmark" paramstyle to "format", as there is a standard and internally
+        supported SQL string escaping style for names that use percent signs with
+        "format" style (i.e. to double percent signs), as opposed to names that use
+        question marks with "qmark" style (where an escaping system is not defined
+        by pep-249 or Python).
+
+        .. seealso::
+
+          :ref:`change_5941`
+
+    .. change::
+        :tags: sql, usecase, postgresql, sqlite
+        :tickets: 5939
+
+        Enhance ``set_`` keyword of :class:`.OnConflictDoUpdate` to accept a
+        :class:`.ColumnCollection`, such as the ``.c.`` collection from a
+        :class:`Selectable`, or the ``.excluded`` contextual object.
+
+    .. change::
+        :tags: feature, orm
+
+        The ORM used in :term:`2.0 style` can now return ORM objects from the rows
+        returned by an UPDATE..RETURNING or INSERT..RETURNING statement, by
+        supplying the construct to :meth:`_sql.Select.from_statement` in an ORM
+        context.
+
+        .. seealso::
+
+          :ref:`orm_dml_returning_objects`
+
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 5935
+
+        Fixed regression where use of an arbitrary iterable with the
+        :func:`_sql.select` function was not working, outside of plain lists. The
+        forwards/backwards compatibility logic here now checks for a wider range of
+        incoming "iterable" types including that a ``.c`` collection from a
+        selectable can be passed directly. Pull request compliments of Oliver Rice.
 
 .. changelog::
     :version: 1.4.0b2

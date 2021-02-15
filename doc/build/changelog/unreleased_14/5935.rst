@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 5935
-
-    Fixed regression where use of an arbitrary iterable with the
-    :func:`_sql.select` function was not working, outside of plain lists. The
-    forwards/backwards compatibility logic here now checks for a wider range of
-    incoming "iterable" types including that a ``.c`` collection from a
-    selectable can be passed directly. Pull request compliments of Oliver Rice.
