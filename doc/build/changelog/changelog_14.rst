@@ -14,7 +14,7 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.0
+    :version: 1.4.0b3
     :include_notes_from: unreleased_14
 
 .. changelog::
