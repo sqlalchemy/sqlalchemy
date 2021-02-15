@@ -1870,7 +1870,7 @@ Parameter Ordered Updates
 Another MySQL-only behavior is that the order of parameters in the SET clause
 of an UPDATE actually impacts the evaluation of each expression.   For this use
 case, the :meth:`_sql.Update.ordered_values` method accepts a sequence of
-tuples so that this order may be controlled [1]_::
+tuples so that this order may be controlled [2]_::
 
   >>> update_stmt = (
   ...     update(some_table).
@@ -1883,7 +1883,7 @@ tuples so that this order may be controlled [1]_::
   {opensql}UPDATE some_table SET y=:y, x=(some_table.y + :y_1)
 
 
-.. [1] While Python dictionaries are
+.. [2] While Python dictionaries are
    `guaranteed to be insert ordered
    <https://mail.python.org/pipermail/python-dev/2017-December/151283.html>`_
    as of Python 3.7, the
