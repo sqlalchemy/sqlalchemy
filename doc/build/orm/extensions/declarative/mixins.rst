@@ -348,7 +348,7 @@ attribute of each ``StringAttribute`` instance.
 argument ``strings``, a list of strings::
 
     ta = TypeA(strings=['foo', 'bar'])
-    tb = TypeA(strings=['bat', 'bar'])
+    tb = TypeB(strings=['bat', 'bar'])
 
 This list will generate a collection
 of ``StringAttribute`` objects, which are persisted into a table that's
