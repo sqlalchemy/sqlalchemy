@@ -167,7 +167,7 @@ class MapperProperty(
         """
 
     def cascade_iterator(
-        self, type_, state, visited_instances=None, halt_on=None
+        self, type_, state, dict_, visited_states, halt_on=None
     ):
         """Iterate through instances related to the given instance for
         a particular 'cascade', starting with this MapperProperty.

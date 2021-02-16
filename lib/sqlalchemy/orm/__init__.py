@@ -18,6 +18,7 @@ from . import mapper as mapperlib
 from . import strategy_options
 from .attributes import AttributeEvent
 from .attributes import InstrumentedAttribute
+from .attributes import Mapped
 from .attributes import QueryableAttribute
 from .context import QueryContext
 from .decl_api import as_declarative

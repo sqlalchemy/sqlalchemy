@@ -83,6 +83,7 @@ SQLAlchemy Documentation
       :doc:`AsyncIO Support <orm/extensions/asyncio>`
 
     * **Configuration Extensions:**
+      :doc:`Mypy integration <orm/extensions/mypy>` |
       :doc:`Association Proxy <orm/extensions/associationproxy>` |
       :doc:`Hybrid Attributes <orm/extensions/hybrid>` |
       :doc:`Automap <orm/extensions/automap>` |

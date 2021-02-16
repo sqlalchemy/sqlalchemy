@@ -1138,7 +1138,7 @@ class CreateEnginePlugin(object):
     """  # noqa: E501
 
     def __init__(self, url, kwargs):
-        # type: (URL, dict[str: Any])
+        # type: (URL, dict[str, Any]) -> None
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call
