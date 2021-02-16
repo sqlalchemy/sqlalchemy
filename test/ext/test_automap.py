@@ -57,6 +57,16 @@ class AutomapTest(fixtures.MappedTest):
         u1 = User(name="u1", addresses_collection=set([a1]))
         assert a1.user is u1
 
+    def test_prepare_w_only(self):
+        Base = automap_base()
+
+        Base.prepare(
+            testing.db,
+            reflection_options={"only": ["users"], "resolve_fks": False},
+        )
+        assert hasattr(Base.classes, "users")
+        assert not hasattr(Base.classes, "addresses")
+
     def test_exception_prepare_not_called(self):
         Base = automap_base(metadata=self.tables_test_metadata)
 
@@ -137,6 +147,22 @@ class AutomapTest(fixtures.MappedTest):
                 schema=None,
                 extend_existing=True,
                 autoload_replace=False,
+            )
+
+    def test_prepare_w_dialect_kwargs(self):
+        Base = automap_base(metadata=self.tables_test_metadata)
+        engine_mock = Mock()
+        with patch.object(Base.metadata, "reflect") as reflect_mock:
+            Base.prepare(
+                autoload_with=engine_mock,
+                reflection_options={"oracle_resolve_synonyms": True},
+            )
+            reflect_mock.assert_called_once_with(
+                engine_mock,
+                schema=None,
+                extend_existing=True,
+                autoload_replace=False,
+                oracle_resolve_synonyms=True,
             )
 
     def test_naming_schemes(self):

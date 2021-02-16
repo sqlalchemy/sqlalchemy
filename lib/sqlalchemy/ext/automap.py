@@ -779,6 +779,7 @@ class AutomapBase(object):
         name_for_scalar_relationship=None,
         name_for_collection_relationship=None,
         generate_relationship=None,
+        reflection_options=util.EMPTY_DICT,
     ):
         """Extract mapped classes and relationships from the
         :class:`_schema.MetaData` and
@@ -830,6 +831,13 @@ class AutomapBase(object):
 
          .. versionadded:: 1.1
 
+        :param reflection_options: When present, this dictionary of options
+         will be passed to :meth:`_schema.MetaData.reflect`
+         to supply general reflection-specific options like ``only`` and/or
+         dialect-specific options like ``oracle_resolve_synonyms``.
+
+         .. versionadded:: 1.4
+
         """
         glbls = globals()
         if classname_for_table is None:
@@ -854,12 +862,14 @@ class AutomapBase(object):
             autoload_with = engine
 
         if reflect:
-            cls.metadata.reflect(
-                autoload_with,
+            opts = dict(
                 schema=schema,
                 extend_existing=True,
                 autoload_replace=False,
             )
+            if reflection_options:
+                opts.update(reflection_options)
+            cls.metadata.reflect(autoload_with, **opts)
 
         with _CONFIGURE_MUTEX:
             table_to_map_config = dict(
