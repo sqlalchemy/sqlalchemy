@@ -900,7 +900,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         # apparently you can't copy a ColumnCollectionConstraint until
         # after it has been bound to a table...
-        cons_copy = cons.copy()
+        cons_copy = cons._copy()
         tbl.append_constraint(cons_copy)
         self.assert_compile(
             schema.AddConstraint(cons_copy),
