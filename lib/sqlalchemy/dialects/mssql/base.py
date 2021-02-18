@@ -2894,16 +2894,22 @@ class MSDialect(default.DefaultDialect):
     @reflection.cache
     @_db_plus_owner
     def get_indexes(self, connection, tablename, dbname, owner, schema, **kw):
+        filter_definition = (
+            "ind.filter_definition"
+            if self.server_version_info >= MS_2008_VERSION
+            else "NULL as filter_definition"
+        )
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind.index_id, ind.is_unique, ind.name, "
-                "ind.filter_definition "
+                "%s "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
                 "where tab.name = :tabname "
                 "and sch.name=:schname "
                 "and ind.is_primary_key=0 and ind.type != 0"
+                % filter_definition
             )
             .bindparams(
                 sql.bindparam("tabname", tablename, ischema.CoerceUnicode()),
