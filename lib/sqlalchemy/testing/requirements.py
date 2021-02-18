@@ -1258,7 +1258,7 @@ class SuiteRequirements(Requirements):
     @property
     def cextensions(self):
         return exclusions.skip_if(
-            lambda: not self._has_cextensions(), "C extensions not installed"
+            lambda: not util.has_compiled_ext(), "C extensions not installed"
         )
 
     def _has_sqlite(self):
@@ -1266,14 +1266,6 @@ class SuiteRequirements(Requirements):
 
         try:
             create_engine("sqlite://")
-            return True
-        except ImportError:
-            return False
-
-    def _has_cextensions(self):
-        try:
-            from sqlalchemy import cresultproxy, cprocessors  # noqa
-
             return True
         except ImportError:
             return False

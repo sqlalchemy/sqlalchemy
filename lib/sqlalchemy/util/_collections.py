@@ -363,7 +363,6 @@ else:
 class OrderedSet(set):
     def __init__(self, d=None):
         set.__init__(self)
-        self._list = []
         if d is not None:
             self._list = unique_list(d)
             set.update(self, self._list)
@@ -521,7 +520,10 @@ class IdentitySet(object):
             return True
 
     def issubset(self, iterable):
-        other = self.__class__(iterable)
+        if isinstance(iterable, self.__class__):
+            other = iterable
+        else:
+            other = self.__class__(iterable)
 
         if len(self) > len(other):
             return False
@@ -542,7 +544,10 @@ class IdentitySet(object):
         return len(self) < len(other) and self.issubset(other)
 
     def issuperset(self, iterable):
-        other = self.__class__(iterable)
+        if isinstance(iterable, self.__class__):
+            other = iterable
+        else:
+            other = self.__class__(iterable)
 
         if len(self) < len(other):
             return False
@@ -587,7 +592,10 @@ class IdentitySet(object):
     def difference(self, iterable):
         result = self.__class__()
         members = self._members
-        other = {id(obj) for obj in iterable}
+        if isinstance(iterable, self.__class__):
+            other = set(iterable._members.keys())
+        else:
+            other = {id(obj) for obj in iterable}
         result._members.update(
             ((k, v) for k, v in members.items() if k not in other)
         )
@@ -610,7 +618,10 @@ class IdentitySet(object):
     def intersection(self, iterable):
         result = self.__class__()
         members = self._members
-        other = {id(obj) for obj in iterable}
+        if isinstance(iterable, self.__class__):
+            other = set(iterable._members.keys())
+        else:
+            other = {id(obj) for obj in iterable}
         result._members.update(
             (k, v) for k, v in members.items() if k in other
         )
@@ -633,7 +644,10 @@ class IdentitySet(object):
     def symmetric_difference(self, iterable):
         result = self.__class__()
         members = self._members
-        other = {id(obj): obj for obj in iterable}
+        if isinstance(iterable, self.__class__):
+            other = iterable._members
+        else:
+            other = {id(obj): obj for obj in iterable}
         result._members.update(
             ((k, v) for k, v in members.items() if k not in other)
         )
