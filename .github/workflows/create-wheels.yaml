@@ -95,25 +95,12 @@ jobs:
           pip install pytest pytest-xdist ${{ matrix.extra-requires }}
           pytest -n2 -q test --nomemory --notimingintensive
 
-      - name: Get wheel name
-        id: wheel-name
-        shell: bash
-        # creates output from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
-        run: |
-          echo ::set-output name=wheel::`ls dist`
-
-      - name: Upload wheel to release
-        # upload the generated wheel to the github release.
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload wheels to release
+        # upload the generated wheels to the github release
+        uses: AButler/upload-release-assets@v2.0
         with:
-          # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
-          # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/${{ steps.wheel-name.outputs.wheel }}
-          asset_name: ${{ steps.wheel-name.outputs.wheel }}
-          asset_content_type: application/zip # application/octet-stream
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          files: 'dist/*.whl'
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
@@ -187,16 +174,47 @@ jobs:
         run: |
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
-        # This should run before setting up python, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
-        # See https://github.com/RalfG/python-wheels-manylinux-build/issues/26#issuecomment-720736647
-      - name: Create wheel for manylinux
+      - name: Create wheel for manylinux1 and manylinux2010 for py3
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.1-manylinux2010_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
         # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
         with:
-          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
+          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
+          python-versions: ${{ matrix.python-version }}
+          build-requirements: "setuptools>=44 wheel>=0.34"
+          # Create the wheel using --no-use-pep517 since locally we have pyproject
+          # This flag should be removed once sqlalchemy supports pep517
+          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
+          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+
+      - name: Create wheel for manylinux2014 for py3
+        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
+        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
+        # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
+        # change the tag of this image to change the image used
+        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2014_x86_64
+        # this action generates 2 wheels in dist/. linux and manylinux2014
+        with:
+          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
+          python-versions: ${{ matrix.python-version }}
+          build-requirements: "setuptools>=44 wheel>=0.34"
+          # Create the wheel using --no-use-pep517 since locally we have pyproject
+          # This flag should be removed once sqlalchemy supports pep517
+          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
+          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
+
+      - name: Create wheel for manylinux py2
+        if: ${{ matrix.python-version == 'cp27-cp27m' || matrix.python-version == 'cp27-cp27mu' }}
+        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
+        # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
+        # change the tag of this image to change the image used
+        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux1_x86_64
+        # this action generates 2 wheels in dist/. linux and manylinux1
+        with:
+          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
           python-versions: ${{ matrix.python-version }}
           build-requirements: "setuptools>=44 wheel>=0.34"
           # Create the wheel using --no-use-pep517 since locally we have pyproject
@@ -229,41 +247,12 @@ jobs:
             echo Not compatible. Skipping install.
           fi
 
-      - name: Get wheel names
-        id: wheel-name
-        shell: bash
-        # the wheel creation step generates 3 wheels: linux, manylinux1 and manylinux2010
-        # Pypi accepts only the manylinux versions
-        run: |
-          cd dist
-          echo ::set-output name=wheel1::`ls *manylinux1*`
-          echo ::set-output name=wheel2010::`ls *manylinux2010*`
-
-      - name: Upload wheel manylinux1 to release
-        # upload the generated manylinux1 wheel to the github release. Only a single file per step can be uploaded at the moment
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload wheels to release
+        # upload the generated wheels to the github release
+        uses: AButler/upload-release-assets@v2.0
         with:
-          # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
-          # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/${{ steps.wheel-name.outputs.wheel1 }}
-          asset_name: ${{ steps.wheel-name.outputs.wheel1 }}
-          asset_content_type: application/zip # application/octet-stream
-
-      - name: Upload wheel manylinux2010 to release
-        # upload the generated manylinux2010 wheel to the github release. Only a single file per step can be uploaded at the moment
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
-          # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/${{ steps.wheel-name.outputs.wheel2010 }}
-          asset_name: ${{ steps.wheel-name.outputs.wheel2010 }}
-          asset_content_type: application/zip # application/octet-stream
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          files: 'dist/*manylinux*'
 
       - name: Set up Python for twine
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
@@ -334,13 +323,11 @@ jobs:
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
-        # This should run before setting up python, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
-        # See https://github.com/RalfG/python-wheels-manylinux-build/issues/26#issuecomment-720736647
       - name: Create wheel for manylinux2014
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.1-manylinux2014_aarch64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2014_aarch64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
@@ -366,27 +353,12 @@ jobs:
             pip install pytest pytest-xdist ${{ matrix.extra-requires }} &&
             pytest -n2 -q test --nomemory --notimingintensive"
 
-      - name: Get wheel names
-        id: wheel-name
-        shell: bash
-        # the wheel creation step generates 2 wheels: linux and manylinux2014
-        # Pypi accepts only the manylinux versions
-        run: |
-          cd dist
-          echo ::set-output name=wheel2014::`ls *manylinux2014*`
-
-      - name: Upload wheel manylinux2014 to release
-        # upload the generated manylinux2014 wheel to the github release. Only a single file per step can be uploaded at the moment
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload wheels to release
+        # upload the generated wheels to the github release
+        uses: AButler/upload-release-assets@v2.0
         with:
-          # this is a release to the event is called release: https://help.github.com/en/actions/reference/events-that-trigger-workflows#release-event-release
-          # the release event has the structure of this response https://developer.github.com/v3/repos/releases/#create-a-release
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: dist/${{ steps.wheel-name.outputs.wheel2014 }}
-          asset_name: ${{ steps.wheel-name.outputs.wheel2014 }}
-          asset_content_type: application/zip # application/octet-stream
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          files: 'dist/*manylinux*'
 
       - name: Set up Python for twine
         # Setup python after creating the wheel, otherwise LD_LIBRARY_PATH gets set and it will break wheel generation
