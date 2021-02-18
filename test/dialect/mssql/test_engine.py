@@ -163,7 +163,7 @@ class ParseConnectTest(fixtures.TestBase):
         dialect = pyodbc.dialect()
         u = url.make_url(
             "mssql+pyodbc://@server_name/db_name?"
-            "driver=ODBC+Driver+17+for+SQL+Server;"
+            "driver=ODBC+Driver+17+for+SQL+Server&"
             "authentication=ActiveDirectoryIntegrated"
         )
         connection = dialect.create_connect_args(u)
