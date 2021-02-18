@@ -1229,9 +1229,12 @@ class Join(roles.DMLTableRole, FromClause):
         return bool(constraints)
 
     @classmethod
+    @util.preload_module("sqlalchemy.sql.util")
     def _joincond_scan_left_right(
         cls, a, a_subset, b, consider_as_foreign_keys
     ):
+        sql_util = util.preloaded.sql_util
+
         a = coercions.expect(roles.FromClauseRole, a)
         b = coercions.expect(roles.FromClauseRole, b)
 
@@ -1251,7 +1254,8 @@ class Join(roles.DMLTableRole, FromClause):
                 try:
                     col = fk.get_referent(left)
                 except exc.NoReferenceError as nrte:
-                    if nrte.table_name == left.name:
+                    table_names = {t.name for t in sql_util.find_tables(left)}
+                    if nrte.table_name in table_names:
                         raise
                     else:
                         continue
@@ -1270,7 +1274,8 @@ class Join(roles.DMLTableRole, FromClause):
                     try:
                         col = fk.get_referent(b)
                     except exc.NoReferenceError as nrte:
-                        if nrte.table_name == b.name:
+                        table_names = {t.name for t in sql_util.find_tables(b)}
+                        if nrte.table_name in table_names:
                             raise
                         else:
                             continue
