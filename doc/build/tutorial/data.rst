@@ -1887,7 +1887,7 @@ tuples so that this order may be controlled [2]_::
    `guaranteed to be insert ordered
    <https://mail.python.org/pipermail/python-dev/2017-December/151283.html>`_
    as of Python 3.7, the
-   :meth:`_sql.Update.ordered_values` method stilll provides an additional
+   :meth:`_sql.Update.ordered_values` method still provides an additional
    measure of clarity of intent when it is essential that the SET clause
    of a MySQL UPDATE statement proceed in a specific way.
 
