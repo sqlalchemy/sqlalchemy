@@ -1334,6 +1334,55 @@ class JoinConditionTest(fixtures.TestBase, AssertsCompiledSQL):
         assert sql_util.join_condition(t1, t2).compare(t1.c.x == t2.c.id)
         assert sql_util.join_condition(t2, t1).compare(t1.c.x == t2.c.id)
 
+    def test_join_cond_no_such_unrelated_table_dont_compare_names(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("y", Integer, ForeignKey("t22.id")),
+            Column("x", Integer, ForeignKey("t2.id")),
+            Column("q", Integer, ForeignKey("t22.id")),
+        )
+        t2 = Table(
+            "t2",
+            m,
+            Column("id", Integer),
+            Column("t3id", ForeignKey("t3.id")),
+            Column("z", ForeignKey("t33.id")),
+        )
+        t3 = Table(
+            "t3", m, Column("id", Integer), Column("q", ForeignKey("t4.id"))
+        )
+
+        j1 = t1.join(t2)
+
+        assert sql_util.join_condition(j1, t3).compare(t2.c.t3id == t3.c.id)
+
+    def test_join_cond_no_such_unrelated_column_dont_compare_names(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("x", Integer, ForeignKey("t2.id")),
+        )
+        t2 = Table(
+            "t2",
+            m,
+            Column("id", Integer),
+            Column("t3id", ForeignKey("t3.id")),
+            Column("q", ForeignKey("t5.q")),
+        )
+        t3 = Table(
+            "t3", m, Column("id", Integer), Column("t4id", ForeignKey("t4.id"))
+        )
+        t4 = Table("t4", m, Column("id", Integer))
+        Table("t5", m, Column("id", Integer))
+        j1 = t1.join(t2)
+
+        j2 = t3.join(t4)
+
+        assert sql_util.join_condition(j1, j2).compare(t2.c.t3id == t3.c.id)
+
     def test_join_cond_no_such_related_table(self):
         m1 = MetaData()
         m2 = MetaData()
