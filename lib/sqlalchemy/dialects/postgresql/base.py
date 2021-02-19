@@ -124,7 +124,7 @@ Server side cursors are enabled on a per-statement basis by using the
 option::
 
     with engine.connect() as conn:
-        result = conn.execution_options(stream_resuls=True).execute(text("select * from table"))
+        result = conn.execution_options(stream_results=True).execute(text("select * from table"))
 
 Note that some kinds of SQL statements may not be supported with
 server side cursors; generally, only SQL statements that return rows should be
