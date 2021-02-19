@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 5953
+
+    Deprecated all schema-level ``.copy()`` methods and renamed to
+    ``_copy()``.

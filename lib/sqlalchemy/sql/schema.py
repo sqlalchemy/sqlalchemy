@@ -1077,7 +1077,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         args = []
         for c in self.columns:
-            args.append(c.copy(schema=schema))
+            args.append(c._copy(schema=schema))
         table = Table(
             name,
             metadata,
@@ -1098,7 +1098,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                         schema if referred_schema == self.schema else None
                     )
                 table.append_constraint(
-                    c.copy(schema=fk_constraint_schema, target_table=table)
+                    c._copy(schema=fk_constraint_schema, target_table=table)
                 )
             elif not c._type_bound:
                 # skip unique constraints that would be generated
@@ -1107,7 +1107,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     continue
 
                 table.append_constraint(
-                    c.copy(schema=schema, target_table=table)
+                    c._copy(schema=schema, target_table=table)
                 )
         for index in self.indexes:
             # skip indexes that would be generated
@@ -1841,7 +1841,15 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         else:
             event.listen(self, "after_parent_attach", fn)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.Column.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, **kw):
+        return self._copy(**kw)
+
+    def _copy(self, **kw):
         """Create a copy of this ``Column``, uninitialized.
 
         This is used in :meth:`_schema.Table.to_metadata`.
@@ -1850,8 +1858,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
         # Constraint objects plus non-constraint-bound ForeignKey objects
         args = [
-            c.copy(**kw) for c in self.constraints if not c._type_bound
-        ] + [c.copy(**kw) for c in self.foreign_keys if not c.constraint]
+            c._copy(**kw) for c in self.constraints if not c._type_bound
+        ] + [c._copy(**kw) for c in self.foreign_keys if not c.constraint]
 
         # ticket #5276
         column_kwargs = {}
@@ -1869,7 +1877,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         server_onupdate = self.server_onupdate
         if isinstance(server_default, (Computed, Identity)):
             server_default = server_onupdate = None
-            args.append(self.server_default.copy(**kw))
+            args.append(self.server_default._copy(**kw))
 
         type_ = self.type
         if isinstance(type_, SchemaEventTarget):
@@ -2122,7 +2130,15 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     def __repr__(self):
         return "ForeignKey(%r)" % self._get_colspec()
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.ForeignKey.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, schema=None):
+        return self._copy(schema)
+
+    def _copy(self, schema=None):
         """Produce a copy of this :class:`_schema.ForeignKey` object.
 
         The new :class:`_schema.ForeignKey` will not be bound
@@ -3128,7 +3144,15 @@ class Constraint(DialectKWArgs, SchemaItem):
         self.parent = parent
         parent.constraints.add(self)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.Constraint.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, **kw):
+        return self._copy(**kw)
+
+    def _copy(self, **kw):
         raise NotImplementedError()
 
 
@@ -3276,7 +3300,15 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
     def __contains__(self, x):
         return x in self.columns
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.ColumnCollectionConstraint.copy` method "
+        "is deprecated and will be removed in a future release.",
+    )
     def copy(self, target_table=None, **kw):
+        return self._copy(target_table, **kw)
+
+    def _copy(self, target_table=None, **kw):
         # ticket #5276
         constraint_kwargs = {}
         for dialect_name in self.dialect_options:
@@ -3398,7 +3430,15 @@ class CheckConstraint(ColumnCollectionConstraint):
     def is_column_level(self):
         return not isinstance(self.parent, Table)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.CheckConstraint.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, target_table=None, **kw):
+        return self._copy(target_table, **kw)
+
+    def _copy(self, target_table=None, **kw):
         if target_table is not None:
             # note that target_table is None for the copy process of
             # a column-bound CheckConstraint, so this path is not reached
@@ -3683,7 +3723,15 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
         self._validate_dest_table(table)
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.ForeignKeyConstraint.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, schema=None, target_table=None, **kw):
+        return self._copy(target_table, **kw)
+
+    def _copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(
             [x.parent.key for x in self.elements],
             [
@@ -4874,7 +4922,15 @@ class Computed(FetchedValue, SchemaItem):
     def _as_for_update(self, for_update):
         return self
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.Computed.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, target_table=None, **kw):
+        return self._copy(target_table, **kw)
+
+    def _copy(self, target_table=None, **kw):
         sqltext = _copy_expression(
             self.sqltext,
             self.column.table if self.column is not None else None,
@@ -5010,7 +5066,15 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
     def _as_for_update(self, for_update):
         return self
 
+    @util.deprecated(
+        "1.4",
+        "The :meth:`_schema.Identity.copy` method is deprecated "
+        "and will be removed in a future release.",
+    )
     def copy(self, **kw):
+        return self._copy(**kw)
+
+    def _copy(self, **kw):
         i = Identity(
             always=self.always,
             on_null=self.on_null,

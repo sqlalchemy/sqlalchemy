@@ -241,7 +241,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             )
         ]
 
-    def copy(self, target_table=None, **kw):
+    def _copy(self, target_table=None, **kw):
         elements = [
             (
                 schema._copy_expression(expr, self.parent, target_table),

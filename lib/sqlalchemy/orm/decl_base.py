@@ -600,7 +600,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     "__table__" in dict_
                     and (obj.name or name) in dict_["__table__"].c
                 ):
-                    column_copies[obj] = copy_ = obj.copy()
+                    column_copies[obj] = copy_ = obj._copy()
                     copy_._creation_order = obj._creation_order
                     setattr(cls, name, copy_)
                     dict_[name] = copy_

@@ -93,7 +93,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             ),
             Column("bar", Integer(), info={"foo": "bar"}),
         ]:
-            c2 = col.copy()
+            c2 = col._copy()
             for attr in (
                 "name",
                 "type",
@@ -118,13 +118,13 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
                 self.widget = kw.pop("widget", None)
                 super(MyColumn, self).__init__(*args, **kw)
 
-            def copy(self, *arg, **kw):
-                c = super(MyColumn, self).copy(*arg, **kw)
+            def _copy(self, *arg, **kw):
+                c = super(MyColumn, self)._copy(*arg, **kw)
                 c.widget = self.widget
                 return c
 
         c1 = MyColumn("foo", Integer, widget="x")
-        c2 = c1.copy()
+        c2 = c1._copy()
         assert isinstance(c2, MyColumn)
         eq_(c2.widget, "x")
 
@@ -137,7 +137,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         c1 = Column("foo", String())
         m = MetaData()
         for i in range(3):
-            cx = c1.copy()
+            cx = c1._copy()
             # as of 0.7, these events no longer copy.  its expected
             # that listeners will be re-established from the
             # natural construction of things.
@@ -239,8 +239,8 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         fk2 = ForeignKeyConstraint((c1,), (c2,), **kw)
 
         t1.append_constraint(fk2)
-        fk1c = fk1.copy()
-        fk2c = fk2.copy()
+        fk1c = fk1._copy()
+        fk2c = fk2._copy()
 
         for k in kw:
             eq_(getattr(fk1c, k), kw[k])
@@ -257,7 +257,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             deferrable=True,
             _create_rule=r,
         )
-        c2 = c.copy()
+        c2 = c._copy()
         eq_(c2.name, "name")
         eq_(str(c2.sqltext), "foo bar")
         eq_(c2.initially, True)
@@ -2269,7 +2269,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
         type_ = self.WrapEnum("a", "b", "c", name="foo")
         y = Column("y", type_)
-        y_copy = y.copy()
+        y_copy = y._copy()
         t1 = Table("x", m, y_copy)
 
         is_true(y_copy.type._create_events)
@@ -2287,7 +2287,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
         type_ = self.WrapEnum("a", "b", "c", name="foo", native_enum=False)
         y = Column("y", type_)
-        y_copy = y.copy()
+        y_copy = y._copy()
         t1 = Table("x", m, y_copy)
 
         is_true(y_copy.type._create_events)
@@ -2307,7 +2307,7 @@ class SchemaTypeTest(fixtures.TestBase):
             create_constraint=False,
         )
         y = Column("y", type_)
-        y_copy = y.copy()
+        y_copy = y._copy()
         Table("x", m, y_copy)
 
         is_false(y_copy.type.create_constraint)
@@ -2317,7 +2317,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
         type_ = self.WrapBoolean()
         y = Column("y", type_)
-        y_copy = y.copy()
+        y_copy = y._copy()
         Table("x", m, y_copy)
 
         is_true(y_copy.type._create_events)
@@ -2327,7 +2327,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
         type_ = self.WrapBoolean(create_constraint=False)
         y = Column("y", type_)
-        y_copy = y.copy()
+        y_copy = y._copy()
         Table("x", m, y_copy)
 
         is_false(y_copy.type.create_constraint)
@@ -2946,7 +2946,7 @@ class ConstraintTest(fixtures.TestBase):
 
     def test_copy_doesnt_reference(self):
         t1, t2, t3 = self._single_fixture()
-        a2 = t2.c.a.copy()
+        a2 = t2.c.a._copy()
         assert not a2.references(t1.c.a)
         assert not a2.references(t1.c.b)
 
@@ -3432,7 +3432,7 @@ class ConstraintTest(fixtures.TestBase):
         m = MetaData()
         t = Table("tbl", m, Column("a", Integer), Column("b", Integer))
         ck = CheckConstraint(t.c.a > 5)
-        ck2 = ck.copy()
+        ck2 = ck._copy()
         assert ck in t.constraints
         assert ck2 not in t.constraints
 
