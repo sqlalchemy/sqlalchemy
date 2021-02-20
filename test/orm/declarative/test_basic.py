@@ -61,9 +61,20 @@ class DeclarativeTestBase(
 ):
     __dialect__ = "default"
 
+    base_style = "dynamic"
+
     def setup_test(self):
         global Base
-        Base = declarative_base(testing.db)
+
+        if self.base_style == "dynamic":
+            Base = declarative_base(testing.db)
+        elif self.base_style == "explicit":
+            mapper_registry = registry(_bind=testing.db)
+
+            class Base(with_metaclass(DeclarativeMeta)):
+                __abstract__ = True
+                registry = mapper_registry
+                metadata = mapper_registry.metadata
 
     def teardown_test(self):
         close_all_sessions()
@@ -71,6 +82,9 @@ class DeclarativeTestBase(
         Base.metadata.drop_all(testing.db)
 
 
+@testing.combinations(
+    ("dynamic",), ("explicit",), argnames="base_style", id_="s"
+)
 class DeclarativeTest(DeclarativeTestBase):
     def test_basic(self):
         class User(Base, fixtures.ComparableEntity):
@@ -2266,6 +2280,7 @@ class DeclarativeTest(DeclarativeTestBase):
         eq_(UserType._set_random_keyword_used_here, True)
 
 
+# TODO: this should be using @combinations
 def _produce_test(inline, stringbased):
     class ExplicitJoinTest(fixtures.MappedTest):
         @classmethod

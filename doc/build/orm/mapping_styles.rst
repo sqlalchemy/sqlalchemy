@@ -102,6 +102,30 @@ Documentation for Declarative mapping continues at :ref:`declarative_config_topl
 
     :ref:`declarative_config_toplevel`
 
+.. _orm_explicit_declarative_base:
+
+Creating an Explicit Base Non-Dynamically (for use with mypy, similar)
+----------------------------------------------------------------------
+
+Tools like mypy are not necessarily compatible with the dynamically
+generated ``Base`` delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
+To build a declarative base in a non-dynamic fashion, the
+:class:`_orm.DeclarativeMeta` class may be used directly as follows::
+
+    from sqlalchemy.orm import registry
+    from sqlalchemy.orm.decl_api import DeclarativeMeta
+
+    mapper_registry = registry()
+
+    class Base(metaclass=DeclarativeMeta):
+        __abstract__ = True
+        registry = mapper_registry
+        metadata = mapper_registry.metadata
+
+The above ``Base`` is equivalent to one created using the
+:meth:`_orm.registry.generate_base` method and will be fully understood by
+type analysis tools without the use of plugins.
+
 
 .. _orm_declarative_decorator:
 
