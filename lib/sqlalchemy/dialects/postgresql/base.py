@@ -1196,7 +1196,41 @@ PGMacAddr = MACADDR
 
 class MONEY(sqltypes.TypeEngine):
 
-    """Provide the PostgreSQL MONEY type.
+    r"""Provide the PostgreSQL MONEY type.
+
+    Depending on driver, result rows using this type may return a
+    string value which includes currency symbols.
+
+    For this reason, it may be preferable to provide conversion to a
+    numerically-based currency datatype using :class:`_types.TypeDecorator`::
+
+        import re
+        import decimal
+        from sqlalchemy import TypeDecorator
+
+        class NumericMoney(TypeDecorator):
+            impl = MONEY
+
+            def process_result_value(self, value: Any, dialect: Any) -> None:
+                if value is not None:
+                    # adjust this for the currency and numeric
+                    m = re.match(r"\$([\d.]+)", value)
+                    if m:
+                        value = decimal.Decimal(m.group(1))
+                return value
+
+    Alternatively, the conversion may be applied as a CAST using
+    the :meth:`_types.TypeDecorator.column_expression` method as follows::
+
+        import decimal
+        from sqlalchemy import cast
+        from sqlalchemy import TypeDecorator
+
+        class NumericMoney(TypeDecorator):
+            impl = MONEY
+
+            def column_expression(self, column: Any):
+                return cast(column, Numeric())
 
     .. versionadded:: 1.2
 
