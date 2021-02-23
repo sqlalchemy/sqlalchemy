@@ -357,7 +357,8 @@ composed against ORM entities, we will want to execute it using the
 :meth:`_orm.Session.execute` method on the :class:`_orm.Session`; using
 this approach, we continue to get :class:`_engine.Row` objects from the
 result, however these rows are now capable of including
-complete entities, such as instances of the ``User`` class, as column values:
+complete entities, such as instances of the ``User`` class, as individual
+elements within each row:
 
 .. sourcecode:: pycon+sql
 
@@ -428,9 +429,9 @@ in the same way as if we had used ``user_table`` directly::
 When executing a statement like the above using the ORM :meth:`_orm.Session.execute`
 method, there is an important difference when we select from a full entity
 such as ``User``, as opposed to ``user_table``, which is that the **entity
-itself is returned as a single column within each row**.  That is, when we fetch rows from
+itself is returned as a single element within each row**.  That is, when we fetch rows from
 the above statement, as there is only the ``User`` entity in the list of
-things to fetch, we get back :class:`_engine.Row` objects that have only one column, which contain
+things to fetch, we get back :class:`_engine.Row` objects that have only one element, which contain
 instances of the ``User`` class::
 
     >>> row = session.execute(select(User)).first()
@@ -441,23 +442,24 @@ instances of the ``User`` class::
     >>> row
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
 
-The above :class:`_engine.Row` has just one column, representing the ``User`` entity::
+The above :class:`_engine.Row` has just one element, representing the ``User`` entity::
 
     >>> row[0]
     User(id=1, name='spongebob', fullname='Spongebob Squarepants')
 
-Alternatively, we can select individual columns from an ORM entity, by
-using the class-bound
-attributes; when these are passed to a construct such as :func:`_sql.select`,
-they are resolved into the
-:class:`_schema.Column` or other SQL expression represented by each attribute::
+Alternatively, we can select individual columns of an ORM entity as distinct
+elements within result rows, by using the class-bound attributes; when these
+are passed to a construct such as :func:`_sql.select`, they are resolved into
+the :class:`_schema.Column` or other SQL expression represented by each
+attribute::
 
     >>> print(select(User.name, User.fullname))
     {opensql}SELECT user_account.name, user_account.fullname
     FROM user_account
 
 When we invoke *this* statement using :meth:`_orm.Session.execute`, we now
-receive rows that have individual columns per value::
+receive rows that have individual elements per value, each corresponding
+to a separate column or other SQL expression::
 
     >>> row = session.execute(select(User.name, User.fullname)).first()
     {opensql}SELECT user_account.name, user_account.fullname
@@ -467,8 +469,8 @@ receive rows that have individual columns per value::
     ('spongebob', 'Spongebob Squarepants')
 
 The approaches can also be mixed, as below where we SELECT the ``name``
-attribute of the ``User`` entity as the first column, and combine it with full
-``Address`` entities in the second column::
+attribute of the ``User`` entity as the first element of the row, and combine
+it with full ``Address`` entities in the second element::
 
     >>> session.execute(
     ...     select(User.name, Address).

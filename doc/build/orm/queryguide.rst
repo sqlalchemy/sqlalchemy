@@ -158,17 +158,18 @@ that selects from the mapped :class:`_schema.Table` to which ``User`` is mapped:
     [...] (){stop}
 
 When selecting from ORM entities, the entity itself is returned in the result
-as a single column value; for example above, the :class:`_engine.Result`
-returns :class:`_engine.Row` objects that have just a single column, that column
-holding onto a ``User`` object::
+as a row with a single element, as opposed to a series of individual columns;
+for example above, the :class:`_engine.Result` returns :class:`_engine.Row`
+objects that have just a single element per row, that element holding onto a
+``User`` object::
 
     >>> result.fetchone()
     (User(id=1, name='spongebob', fullname='Spongebob Squarepants'),)
 
-When selecting a list of single-column ORM entities, it is typical to skip
-the generation of :class:`_engine.Row` objects and instead receive
-ORM entities directly, which is achieved using the :meth:`_engine.Result.scalars`
-method::
+When selecting a list of single-element rows containing ORM entities, it is
+typical to skip the generation of :class:`_engine.Row` objects and instead
+receive ORM entities directly, which is achieved using the
+:meth:`_engine.Result.scalars` method::
 
     >>> result.scalars().all()
     [User(id=2, name='sandy', fullname='Sandy Cheeks'),
