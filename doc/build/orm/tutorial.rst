@@ -492,7 +492,7 @@ The level of reloading is configurable as is described in :doc:`/orm/session`.
 
    As our ``User`` object moved from being outside the :class:`.Session`, to
    inside the :class:`.Session` without a primary key, to actually being
-   inserted, it moved between three out of four
+   inserted, it moved between three out of five
    available "object states" - **transient**, **pending**, and **persistent**.
    Being aware of these states and what they mean is always a good idea -
    be sure to read :ref:`session_object_states` for a quick overview.
@@ -2232,3 +2232,4 @@ Mapper Reference: :ref:`mapper_config_toplevel`
 Relationship Reference: :ref:`relationship_config_toplevel`
 
 Session Reference: :doc:`/orm/session`
+
