@@ -34,63 +34,55 @@ _no_tuple = ()
 _no_kw = util.immutabledict()
 
 
-def py_fallback():
-    # TODO: pass the Connection in so that there can be a standard
-    # method for warning on parameter format
-    def _distill_params(connection, multiparams, params):  # noqa
-        r"""Given arguments from the calling form \*multiparams, \**params,
-        return a list of bind parameter structures, usually a list of
-        dictionaries.
+def _distill_params(connection, multiparams, params):
+    r"""Given arguments from the calling form \*multiparams, \**params,
+    return a list of bind parameter structures, usually a list of
+    dictionaries.
 
-        In the case of 'raw' execution which accepts positional parameters,
-        it may be a list of tuples or lists.
+    In the case of 'raw' execution which accepts positional parameters,
+    it may be a list of tuples or lists.
 
-        """
+    """
 
-        # C version will fail if this assertion is not true.
-        # assert isinstance(multiparams, tuple)
-
-        if not multiparams:
-            if params:
-                connection._warn_for_legacy_exec_format()
-                return [params]
+    if not multiparams:
+        if params:
+            connection._warn_for_legacy_exec_format()
+            return [params]
+        else:
+            return []
+    elif len(multiparams) == 1:
+        zero = multiparams[0]
+        if isinstance(zero, (list, tuple)):
+            if (
+                not zero
+                or hasattr(zero[0], "__iter__")
+                and not hasattr(zero[0], "strip")
+            ):
+                # execute(stmt, [{}, {}, {}, ...])
+                # execute(stmt, [(), (), (), ...])
+                return zero
             else:
-                return []
-        elif len(multiparams) == 1:
-            zero = multiparams[0]
-            if isinstance(zero, (list, tuple)):
-                if (
-                    not zero
-                    or hasattr(zero[0], "__iter__")
-                    and not hasattr(zero[0], "strip")
-                ):
-                    # execute(stmt, [{}, {}, {}, ...])
-                    # execute(stmt, [(), (), (), ...])
-                    return zero
-                else:
-                    # this is used by exec_driver_sql only, so a deprecation
-                    # warning would already be coming from passing a plain
-                    # textual statement with positional parameters to
-                    # execute().
-                    # execute(stmt, ("value", "value"))
-                    return [zero]
-            elif hasattr(zero, "keys"):
-                # execute(stmt, {"key":"value"})
+                # this is used by exec_driver_sql only, so a deprecation
+                # warning would already be coming from passing a plain
+                # textual statement with positional parameters to
+                # execute().
+                # execute(stmt, ("value", "value"))
                 return [zero]
-            else:
-                connection._warn_for_legacy_exec_format()
-                # execute(stmt, "value")
-                return [[zero]]
+        elif hasattr(zero, "keys"):
+            # execute(stmt, {"key":"value"})
+            return [zero]
         else:
             connection._warn_for_legacy_exec_format()
-            if hasattr(multiparams[0], "__iter__") and not hasattr(
-                multiparams[0], "strip"
-            ):
-                return multiparams
-            else:
-                return [multiparams]
-
-    return locals()
+            # execute(stmt, "value")
+            return [[zero]]
+    else:
+        connection._warn_for_legacy_exec_format()
+        if hasattr(multiparams[0], "__iter__") and not hasattr(
+            multiparams[0], "strip"
+        ):
+            return multiparams
+        else:
+            return [multiparams]
 
 
 def _distill_cursor_params(connection, multiparams, params):
@@ -161,9 +153,3 @@ def _distill_params_20(params):
         return (params,), _no_kw
     else:
         raise exc.ArgumentError("mapping or sequence expected for parameters")
-
-
-try:
-    from sqlalchemy.cutils import _distill_params  # noqa
-except ImportError:
-    globals().update(py_fallback())

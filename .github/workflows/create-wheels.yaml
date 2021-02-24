@@ -87,7 +87,7 @@ jobs:
         # for python 2.7 visual studio 9 is missing
         if: matrix.os != 'windows-latest' || matrix.python-version != '2.7'
         run: |
-          python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
+          python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
 
       - name: Test created wheel
         # the mock reconnect test seems to fail on the ci in windows
@@ -240,7 +240,7 @@ jobs:
           then
             pip install greenlet "importlib-metadata;python_version<'3.8'"
             pip install -f dist --no-index sqlalchemy
-            python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils'
+            python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
             pip install pytest pytest-xdist ${{ matrix.extra-requires }}
             pytest -n2 -q test --nomemory --notimingintensive
           else
@@ -349,7 +349,7 @@ jobs:
             python --version &&
             pip install greenlet \"importlib-metadata;python_version<'3.8'\" &&
             pip install -f dist --no-index sqlalchemy &&
-            python -c 'from sqlalchemy import cprocessors, cresultproxy, cutils' &&
+            python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()' &&
             pip install pytest pytest-xdist ${{ matrix.extra-requires }} &&
             pytest -n2 -q test --nomemory --notimingintensive"
 

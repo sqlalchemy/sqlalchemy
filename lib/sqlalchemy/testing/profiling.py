@@ -22,6 +22,7 @@ import sys
 
 from . import config
 from .util import gc_collect
+from ..util import has_compiled_ext
 
 
 try:
@@ -109,7 +110,7 @@ class ProfileStatsFile(object):
             if config.db.dialect.convert_unicode
             else "dbapiunicode"
         )
-        _has_cext = config.requirements._has_cextensions()
+        _has_cext = has_compiled_ext()
         platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
         return "_".join(platform_tokens)
 

@@ -140,6 +140,7 @@ from .langhelpers import get_callable_argspec  # noqa
 from .langhelpers import get_cls_kwargs  # noqa
 from .langhelpers import get_func_kwargs  # noqa
 from .langhelpers import getargspec_init  # noqa
+from .langhelpers import has_compiled_ext  # noqa
 from .langhelpers import HasMemoized  # noqa
 from .langhelpers import hybridmethod  # noqa
 from .langhelpers import hybridproperty  # noqa

@@ -188,21 +188,4 @@ class PyDistillArgsTest(_DistillArgsTest):
     def setup_test_class(cls):
         from sqlalchemy.engine import util
 
-        cls.module = type(
-            "util",
-            (object,),
-            dict(
-                (k, staticmethod(v))
-                for k, v in list(util.py_fallback().items())
-            ),
-        )
-
-
-class CDistillArgsTest(_DistillArgsTest):
-    __requires__ = ("cextensions",)
-
-    @classmethod
-    def setup_test_class(cls):
-        from sqlalchemy import cutils as util
-
         cls.module = util

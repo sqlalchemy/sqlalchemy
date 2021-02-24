@@ -1879,3 +1879,14 @@ def repr_tuple_names(names):
         return ", ".join(res)
     else:
         return "%s, ..., %s" % (", ".join(res[0:3]), res[-1])
+
+
+def has_compiled_ext():
+    try:
+        from sqlalchemy import cimmutabledict  # noqa F401
+        from sqlalchemy import cprocessors  # noqa F401
+        from sqlalchemy import cresultproxy  # noqa F401
+
+        return True
+    except ImportError:
+        return False
