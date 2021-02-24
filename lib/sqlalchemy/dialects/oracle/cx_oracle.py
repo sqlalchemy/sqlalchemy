@@ -93,6 +93,35 @@ The parameters accepted by the cx_oracle dialect are as follows:
 
 * ``encoding_errors`` - see :ref:`cx_oracle_unicode_encoding_errors` for detail.
 
+.. _cx_oracle_sessionpool:
+
+Using cx_Oracle SessionPool
+---------------------------
+
+The cx_Oracle library provides its own connectivity services that may be
+used in place of SQLAlchemy's pooling functionality.    This can be achieved
+by using the :paramref:`_sa.create_engine.creator` parameter to provide a
+function that returns a new connection, along with setting
+:paramref:`_sa.create_engine.pool_class` to ``NullPool`` to disable
+SQLAlchemy's pooling::
+
+    import cx_Oracle
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    pool = cx_Oracle.SessionPool(
+        user="scott", password="tiger", dsn="oracle1120",
+        min=2, max=5, increment=1, threaded=True
+    )
+
+    engine = create_engine("oracle://", creator=pool.acquire, poolclass=NullPool)
+
+The above engine may then be used normally where cx_Oracle's pool handles
+connection pooling::
+
+    with engine.connect() as conn:
+        print(conn.scalar("select 1 FROM dual"))
+
 
 .. _cx_oracle_unicode:
 
