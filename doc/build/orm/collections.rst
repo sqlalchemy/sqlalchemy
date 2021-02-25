@@ -32,10 +32,15 @@ loading of child items both at load time as well as deletion time.
 Dynamic Relationship Loaders
 ----------------------------
 
-A key feature to enable management of a large collection is the so-called
-"dynamic" relationship.  This is an optional form of
-:func:`_orm.relationship` which returns a
-:class:`_orm.AppenderQuery` object in place of a collection
+.. note:: This is a legacy feature.  Using the :func:`_orm.with_parent`
+   filter in conjunction with :func:`_sql.select` is the :term:`2.0 style`
+   method of use.  For relationships that shouldn't load, set
+   :paramref:`_orm.relationship.lazy` to ``noload``.
+
+A :func:`_orm.relationship` which corresponds to a large collection can be
+configured so that it returns a legacy :class:`_orm.Query` object when
+accessed, which allows filtering of the relationship on criteria. The class is
+a special class :class:`_orm.AppenderQuery` returned in place of a collection
 when accessed. Filtering criterion may be applied as well as limits and
 offsets, either explicitly or via array slices::
 
