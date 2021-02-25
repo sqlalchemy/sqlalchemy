@@ -53,9 +53,18 @@ name must be URL encoded which means using plus signs for spaces::
 Other keywords interpreted by the Pyodbc dialect to be passed to
 ``pyodbc.connect()`` in both the DSN and hostname cases include:
 ``odbc_autotranslate``, ``ansi``, ``unicode_results``, ``autocommit``,
-``authentication`` (e.g., ``authentication=ActiveDirectoryIntegrated``).
+``authentication``.
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
+Multiple additional keyword arguments must be separated by an 
+ampersand (``&``), not a semicolon:
+
+    engine = create_engine(
+        "mssql+pyodbc://scott:tiger@myhost:port/databasename"
+        "?driver=ODBC+Driver+17+for+SQL+Server"
+        "&authentication=ActiveDirectoryIntegrated"
+    )
+
 
 Pass through exact Pyodbc string
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
