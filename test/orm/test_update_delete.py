@@ -922,7 +922,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             )
 
             rows = sess.execute(stmt).all()
-            eq_(rows, [(2,), (4,)])
+            eq_(set(rows), {(2,), (4,)})
 
             # these are simple values, these are now evaluated even with
             # the "fetch" strategy, new in 1.4, so there is no expiry
