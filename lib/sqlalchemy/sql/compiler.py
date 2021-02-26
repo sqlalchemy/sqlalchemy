@@ -550,6 +550,12 @@ class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
     def process(self, type_, **kw):
         return type_._compiler_dispatch(self, **kw)
 
+    def visit_unsupported_compilation(self, element, err, **kw):
+        util.raise_(
+            exc.UnsupportedCompilationError(self, element),
+            replace_context=err,
+        )
+
 
 # this was a Visitable, but to allow accurate detection of
 # column elements this is actually a column element

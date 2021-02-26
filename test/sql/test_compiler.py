@@ -88,6 +88,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
@@ -4270,6 +4271,19 @@ class UnsupportedTest(fixtures.TestBase):
             r"the class level",
             go,
         )
+
+    def test_unsupported_type(self):
+        class MyType(types.TypeEngine):
+            __visit_name__ = "mytype"
+
+        t = Table("t", MetaData(), Column("q", MyType()))
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"\(in table 't', column 'q'\): Compiler .*SQLiteTypeCompiler.* "
+            r"can't render element of type MyType\(\)",
+        ):
+            schema.CreateTable(t).compile(dialect=sqlite.dialect())
 
     def test_unsupported_operator(self):
         from sqlalchemy.sql.expression import BinaryExpression
