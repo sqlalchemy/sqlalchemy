@@ -20,12 +20,14 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.orm.decl_api import declarative_base
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -954,6 +956,108 @@ class O2OSingleParentNoFlushTest(fixtures.MappedTest):
         a2 = Address(email_address="asdf")
         sess.add(a2)
         u1.address = a2
+
+
+class M2OwNoUseGetCascadeTest(
+    testing.AssertsExecutionResults, fixtures.TestBase
+):
+    @testing.fixture
+    def fixture(self, metadata):
+        Base = declarative_base(metadata=metadata)
+
+        def go(lazy="select", cascade="save-update"):
+            class A(Base):
+                __tablename__ = "a"
+
+                id = Column(Integer, primary_key=True)
+                email = Column(String(50), unique=True)
+
+                bs = relationship(
+                    "B",
+                    back_populates="user",
+                    primaryjoin="A.email == B.email",
+                )
+
+            class B(Base):
+                __tablename__ = "b"
+                id = Column(Integer, primary_key=True)
+                email = Column(String(50), ForeignKey("a.email"))
+
+                user = relationship(
+                    "A",
+                    lazy=lazy,
+                    cascade=cascade,
+                    single_parent=True,
+                    back_populates="bs",
+                    primaryjoin="A.email == B.email",
+                )
+
+            Base.metadata.create_all(testing.db)
+            return A, B
+
+        yield go
+        Base.registry.dispose()
+
+    def test_cascade_deletes_user(self, fixture):
+        A, B = fixture(cascade="all, delete-orphan")
+
+        sess = fixture_session()
+
+        a1 = A(email="x")
+        b1 = B(user=a1)
+        sess.add_all([a1, b1])
+        sess.commit()
+
+        b1 = sess.execute(select(B)).scalars().first()
+
+        sess.delete(b1)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            # looking for other bs'
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.email AS b_email "
+                "FROM b WHERE :param_1 = b.email",
+                lambda ctx: [{"param_1": "x"}],
+            ),
+            CompiledSQL(
+                "DELETE FROM b WHERE b.id = :id", lambda ctx: [{"id": 1}]
+            ),
+            CompiledSQL(
+                "DELETE FROM a WHERE a.id = :id", lambda ctx: [{"id": 1}]
+            ),
+        )
+
+    @testing.combinations(("select",), ("raise",), argnames="lazy")
+    def test_ignores_user(self, fixture, lazy):
+        A, B = fixture()
+
+        sess = fixture_session()
+
+        a1 = A(email="x")
+        b1 = B(user=a1)
+        sess.add_all([a1, b1])
+        sess.commit()
+
+        b1 = sess.execute(select(B)).scalars().first()
+
+        sess.delete(b1)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            # we would like it to be able to skip this SELECT but this is not
+            # implemented right now
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.email AS a_email FROM a "
+                "WHERE a.email = :param_1",
+                [{"param_1": "x"}],
+            ),
+            CompiledSQL(
+                "DELETE FROM b WHERE b.id = :id", lambda ctx: [{"id": 1}]
+            ),
+        )
 
 
 class NoSaveCascadeFlushTest(_fixtures.FixtureTest):

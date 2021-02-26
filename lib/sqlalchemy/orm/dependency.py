@@ -229,6 +229,11 @@ class DependencyProcessor(object):
         if not isdelete or self.passive_deletes:
             passive = attributes.PASSIVE_NO_INITIALIZE
         elif self.direction is MANYTOONE:
+            # here, we were hoping to optimize having to fetch many-to-one
+            # for history and ignore it, if there's no further cascades
+            # to take place.  however there are too many less common conditions
+            # that still take place and tests in test_relationships /
+            # test_cascade etc. will still fail.
             passive = attributes.PASSIVE_NO_FETCH_RELATED
         else:
             passive = attributes.PASSIVE_OFF

@@ -775,6 +775,56 @@ class RudimentaryFlushTest(UOWTest):
             self._assert_uow_size(sess, 6)
 
 
+class RaiseLoadIgnoredTest(
+    fixtures.DeclarativeMappedTest,
+    testing.AssertsExecutionResults,
+):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+
+            bs = relationship("B", back_populates="user", lazy="raise")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            user = relationship("A", back_populates="bs", lazy="raise")
+
+    def test_delete_head(self):
+        A, B = self.classes("A", "B")
+
+        sess = fixture_session()
+
+        sess.add(A(bs=[B(), B()]))
+        sess.commit()
+
+        a1 = sess.execute(select(A)).scalars().first()
+
+        sess.delete(a1)
+
+        self.assert_sql_execution(
+            testing.db,
+            sess.flush,
+            # for the flush process, lazy="raise" is ignored
+            CompiledSQL(
+                "SELECT b.id AS b_id, b.a_id AS b_a_id FROM b "
+                "WHERE :param_1 = b.a_id",
+                [{"param_1": 1}],
+            ),
+            CompiledSQL(
+                "UPDATE b SET a_id=:a_id WHERE b.id = :b_id",
+                [{"a_id": None, "b_id": 1}, {"a_id": None, "b_id": 2}],
+            ),
+            CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
+        )
+
+
 class SingleCycleTest(UOWTest):
     def teardown_test(self):
         engines.testing_reaper.rollback_all()
