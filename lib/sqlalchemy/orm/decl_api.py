@@ -657,10 +657,22 @@ class registry(object):
                 __tablename__ = "my_table"
                 id = Column(Integer, primary_key=True)
 
+        The above dynamically generated class is equivalent to the
+        non-dynamic example below::
+
+            from sqlalchemy.orm import registry
+            from sqlalchemy.orm.decl_api import DeclarativeMeta
+
+            mapper_registry = registry()
+
+            class Base(metaclass=DeclarativeMeta):
+                __abstract__ = True
+                registry = mapper_registry
+                metadata = mapper_registry.metadata
+
         The :meth:`_orm.registry.generate_base` method provides the
         implementation for the :func:`_orm.declarative_base` function, which
         creates the :class:`_orm.registry` and base class all at once.
-
 
         See the section :ref:`orm_declarative_mapping` for background and
         examples.

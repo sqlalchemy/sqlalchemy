@@ -22,6 +22,7 @@ from .attributes import QueryableAttribute  # noqa
 from .context import QueryContext  # noqa
 from .decl_api import as_declarative  # noqa
 from .decl_api import declarative_base  # noqa
+from .decl_api import DeclarativeMeta  # noqa
 from .decl_api import declared_attr  # noqa
 from .decl_api import has_inherited_table  # noqa
 from .decl_api import registry  # noqa
