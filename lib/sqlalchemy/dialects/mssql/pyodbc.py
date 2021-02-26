@@ -57,7 +57,7 @@ Other keywords interpreted by the Pyodbc dialect to be passed to
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
 Multiple additional keyword arguments must be separated by an 
-ampersand (``&``), not a semicolon:
+ampersand (``&``), not a semicolon::
 
     engine = create_engine(
         "mssql+pyodbc://scott:tiger@myhost:port/databasename"
