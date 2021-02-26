@@ -11,6 +11,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -205,15 +206,41 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
+    def test_query_class_custom_method(self):
+        class MyClass(Query):
+            def my_filter(self, arg):
+                return self.filter(Address.email_address == arg)
+
+        User, Address = self._user_address_fixture(
+            addresses_args=dict(query_class=MyClass)
+        )
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        u = q.filter(User.id == 7).first()
+
+        assert isinstance(u.addresses, MyClass)
+
+        self.assert_compile(
+            u.addresses.my_filter("x").statement,
+            "SELECT addresses.id, addresses.user_id, addresses.email_address "
+            "FROM "
+            "addresses WHERE :param_1 = addresses.user_id AND "
+            "addresses.email_address = :email_address_1",
+            use_default_dialect=True,
+        )
+
     def test_detached_raise(self):
         User, Address = self._user_address_fixture()
         sess = fixture_session()
         u = sess.query(User).get(8)
         sess.expunge(u)
-
-        q = u.addresses.filter_by(email_address="e")
-
-        assert_raises(orm_exc.DetachedInstanceError, q.first)
+        assert_raises(
+            orm_exc.DetachedInstanceError,
+            u.addresses.filter_by,
+            email_address="e",
+        )
 
     def test_no_uselist_false(self):
         User, Address = self._user_address_fixture(

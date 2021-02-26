@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5981
+
+    Fixed regression where the :paramref:`_orm.relationship.query_class`
+    parameter stopped being functional for "dynamic" relationships.  The
+    ``AppenderQuery`` remains dependent on the legacy :class:`_orm.Query`
+    class; users are encouraged to migrate from the use of "dynamic"
+    relationships to using :func:`_orm.with_parent` instead.
+

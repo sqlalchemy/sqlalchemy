@@ -831,8 +831,8 @@ class RelationshipProperty(StrategizedProperty):
 
         :param query_class:
           A :class:`_query.Query`
-          subclass that will be used as the base of the
-          "appender query" returned by a "dynamic" relationship, that
+          subclass that will be used internally by the
+          ``AppenderQuery`` returned by a "dynamic" relationship, that
           is, a relationship that specifies ``lazy="dynamic"`` or was
           otherwise constructed using the :func:`_orm.dynamic_loader`
           function.
