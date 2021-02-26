@@ -1,0 +1,8 @@
+.. change::
+    :tags: ext, usecase
+    :tickets: 5942
+
+    Add new parameter
+    :paramref:`_automap.AutomapBase.prepare.reflection_options`
+    to allow passing of :meth:`_schema.MetaData.reflect` options like ``only``
+    or dialect-specific reflection options like ``oracle_resolve_synonyms``.
