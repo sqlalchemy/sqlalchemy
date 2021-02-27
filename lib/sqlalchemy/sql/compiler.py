@@ -2550,12 +2550,23 @@ class SQLCompiler(Compiled):
                     kwargs["positional_names"] = self.cte_positional[cte] = []
 
                 assert kwargs.get("subquery", False) is False
-                text += " AS %s\n(%s)" % (
-                    self._generate_prefixes(cte, cte._prefixes, **kwargs),
-                    cte.element._compiler_dispatch(
+
+                if not self.stack:
+                    # toplevel, this is a stringify of the
+                    # cte directly.  just compile the inner
+                    # the way alias() does.
+                    return cte.element._compiler_dispatch(
+                        self, asfrom=asfrom, **kwargs
+                    )
+                else:
+                    prefixes = self._generate_prefixes(
+                        cte, cte._prefixes, **kwargs
+                    )
+                    inner = cte.element._compiler_dispatch(
                         self, asfrom=True, **kwargs
-                    ),
-                )
+                    )
+
+                    text += " AS %s\n(%s)" % (prefixes, inner)
 
                 if cte._suffixes:
                     text += " " + self._generate_prefixes(
