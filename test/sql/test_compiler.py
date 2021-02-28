@@ -4323,6 +4323,17 @@ class StringifySpecialTest(fixtures.TestBase):
             "SELECT anon_1.myid FROM anon_1",
         )
 
+    @testing.combinations(("cte",), ("alias",), ("subquery",))
+    def test_grouped_selectables_print_alone(self, modifier):
+        stmt = select(table1).where(table1.c.myid == 10)
+
+        grouped = getattr(stmt, modifier)()
+        eq_ignore_whitespace(
+            str(grouped),
+            "SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable WHERE mytable.myid = :myid_1",
+        )
+
     def test_next_sequence_value(self):
         # using descriptive text that is intentionally not compatible
         # with any particular backend, since all backends have different
