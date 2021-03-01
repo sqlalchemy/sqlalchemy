@@ -664,6 +664,21 @@ using table reflection given a :class:`_schema.Table` object.  However it does
 **not** affect the operations present on the :class:`_reflection.Inspector` object,
 as the schema name is passed to these methods explicitly.
 
+.. tip::
+
+  To use the schema translation feature with the ORM :class:`_orm.Session`,
+  set this option at the level of the :class:`_engine.Engine`, then pass that engine
+  to the :class:`_orm.Session`.  The :class:`_orm.Session` uses a new
+  :class:`_engine.Connection` for each transaction::
+
+      schema_engine = engine.execution_options(schema_translate_map = { ... } )
+
+      session = Session(schema_engine)
+
+      ...
+
+
+
 .. versionadded:: 1.1
 
 .. _engine_disposal:
