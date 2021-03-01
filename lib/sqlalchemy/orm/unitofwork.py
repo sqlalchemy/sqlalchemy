@@ -254,7 +254,9 @@ class UOWTransaction(object):
                 history = impl.get_history(
                     state,
                     state.dict,
-                    attributes.PASSIVE_OFF | attributes.LOAD_AGAINST_COMMITTED,
+                    attributes.PASSIVE_OFF
+                    | attributes.LOAD_AGAINST_COMMITTED
+                    | attributes.NO_RAISE,
                 )
                 if history and impl.uses_objects:
                     state_history = history.as_state()
@@ -266,7 +268,11 @@ class UOWTransaction(object):
             # TODO: store the history as (state, object) tuples
             # so we don't have to keep converting here
             history = impl.get_history(
-                state, state.dict, passive | attributes.LOAD_AGAINST_COMMITTED
+                state,
+                state.dict,
+                passive
+                | attributes.LOAD_AGAINST_COMMITTED
+                | attributes.NO_RAISE,
             )
             if history and impl.uses_objects:
                 state_history = history.as_state()

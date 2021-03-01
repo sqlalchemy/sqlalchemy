@@ -337,6 +337,14 @@ The :func:`.raiseload` option applies only to relationship attributes.  For
 column-oriented attributes, the :func:`.defer` option supports the
 :paramref:`.orm.defer.raiseload` option which works in the same way.
 
+.. versionchanged:: 1.4.0 The "raiseload" strategies **do not take place**
+  within the unit of work flush process, as of SQLAlchemy 1.4.0. This means
+  that if the unit of work needs to load a particular attribute in order to
+  complete its work, it will perform the load. It's not always easy to prevent
+  a particular relationship load from occurring within the UOW process
+  particularly with less common kinds of relationships. The lazy="raise" case
+  is more intended for explicit attribute access within the application space.
+
 .. seealso::
 
     :ref:`wildcard_loader_strategies`
