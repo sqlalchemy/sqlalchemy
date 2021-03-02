@@ -779,7 +779,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             0,
         )
 
-    def test_aaa_m2o_emits_warning(self):
+    def test_aaa_m2o_no_longer_emits_warning(self):
         myothertable, MyClass, MyOtherClass, mytable = (
             self.tables.myothertable,
             self.classes.MyClass,
@@ -797,7 +797,7 @@ class PassiveDeletesTest(fixtures.MappedTest):
             },
         )
         mapper(MyClass, mytable)
-        assert_raises(sa.exc.SAWarning, sa.orm.configure_mappers)
+        sa.orm.configure_mappers()
 
 
 class BatchDeleteIgnoresRowcountTest(fixtures.DeclarativeMappedTest):

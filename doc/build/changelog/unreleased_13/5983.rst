@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 5983
+
+    Removed very old warning that states that passive_deletes is not intended
+    for many-to-one relationships. While it is likely that in many cases
+    placing this parameter on a many-to-one relationship is not what was
+    intended, there are use cases where delete cascade may want to be
+    disallowed following from such a relationship.
+
+
