@@ -2269,13 +2269,6 @@ class RelationshipProperty(StrategizedProperty):
                 code="bbf0",
             )
 
-        if self.direction is MANYTOONE and self.passive_deletes:
-            util.warn(
-                "On %s, 'passive_deletes' is normally configured "
-                "on one-to-many, one-to-one, many-to-many "
-                "relationships only." % self
-            )
-
         if self.passive_deletes == "all" and (
             "delete" in cascade or "delete-orphan" in cascade
         ):
