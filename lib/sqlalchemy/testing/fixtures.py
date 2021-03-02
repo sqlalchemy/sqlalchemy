@@ -466,7 +466,7 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
 
     def _setup_each_mappers(self):
         if self.run_setup_mappers == "each":
-            self.mapper = self._generate_mapper()
+            self.__class__.mapper = self._generate_mapper()
             self._with_register_classes(self.setup_mappers)
 
     def _setup_each_classes(self):

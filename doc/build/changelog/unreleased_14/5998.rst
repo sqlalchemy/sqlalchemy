@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, asyncio
+    :tickets: 5998
+
+    The API for :meth:`_asyncio.AsyncSession.delete` is now an awaitable;
+    this method cascades along relationships which must be loaded in a
+    similar manner as the :meth:`_asyncio.AsyncSession.merge` method.
+

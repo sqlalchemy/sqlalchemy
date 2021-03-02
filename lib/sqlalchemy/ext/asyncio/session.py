@@ -28,7 +28,6 @@ T = TypeVar("T")
         "__iter__",
         "add",
         "add_all",
-        "delete",
         "expire",
         "expire_all",
         "expunge",
@@ -222,6 +221,18 @@ class AsyncSession:
             **kw
         )
         return _result.AsyncResult(result)
+
+    async def delete(self, instance):
+        """Mark an instance as deleted.
+
+        The database delete operation occurs upon ``flush()``.
+
+        As this operation may need to cascade along unloaded relationships,
+        it is awaitable to allow for those queries to take place.
+
+
+        """
+        return await greenlet_spawn(self.sync_session.delete, instance)
 
     async def merge(self, instance, load=True):
         """Copy the state of a given instance into a corresponding instance
