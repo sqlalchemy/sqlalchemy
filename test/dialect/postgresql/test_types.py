@@ -1317,12 +1317,31 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         is_(expr.type.__class__, types.ARRAY)
         is_(expr.type.item_type.__class__, Integer)
 
-    def test_array_agg_specific(self):
+    @testing.combinations(
+        ("original", False, False),
+        ("just_enum", True, False),
+        ("just_order_by", False, True),
+        ("issue_5989", True, True),
+        id_="iaa",
+        argnames="with_enum, using_aggregate_order_by",
+    )
+    def test_array_agg_specific(self, with_enum, using_aggregate_order_by):
+        from sqlalchemy.dialects.postgresql import aggregate_order_by
         from sqlalchemy.dialects.postgresql import array_agg
+        from sqlalchemy.dialects.postgresql import ENUM
 
-        expr = array_agg(column("q", Integer))
+        element_type = ENUM if with_enum else Integer
+        expr = (
+            array_agg(
+                aggregate_order_by(
+                    column("q", element_type), column("idx", Integer)
+                )
+            )
+            if using_aggregate_order_by
+            else array_agg(column("q", element_type))
+        )
         is_(expr.type.__class__, postgresql.ARRAY)
-        is_(expr.type.item_type.__class__, Integer)
+        is_(expr.type.item_type.__class__, element_type)
 
 
 class ArrayRoundTripTest(object):

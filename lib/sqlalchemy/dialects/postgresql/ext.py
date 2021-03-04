@@ -52,6 +52,7 @@ class aggregate_order_by(expression.ColumnElement):
 
     def __init__(self, target, *order_by):
         self.target = elements._literal_as_binds(target)
+        self.type = self.target.type
 
         _lob = len(order_by)
         if _lob == 0:
