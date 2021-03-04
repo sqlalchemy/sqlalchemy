@@ -57,6 +57,7 @@ class aggregate_order_by(expression.ColumnElement):
 
     def __init__(self, target, *order_by):
         self.target = coercions.expect(roles.ExpressionElementRole, target)
+        self.type = self.target.type
 
         _lob = len(order_by)
         if _lob == 0:
