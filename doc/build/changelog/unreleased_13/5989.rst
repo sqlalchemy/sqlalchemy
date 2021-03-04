@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, orm, postgresql
+    :tickets: 5989
+
+    Fixed issue where using :class:`_ext.aggregate_order_by` would return
+    ARRAY(NullType) under certain conditions.
