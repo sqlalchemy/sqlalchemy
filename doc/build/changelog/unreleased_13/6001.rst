@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6001
+
+    Fixed issue where the :class:`_mutable.MutableComposite` construct could be
+    placed into an invalid state when the parent object was already loaded, and
+    then covered by a subsequent query, due to the composite properties'
+    refresh handler replacing the object with a new one not handled by the
+    mutable extension.
+
