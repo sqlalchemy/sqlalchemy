@@ -184,6 +184,8 @@ class CompositeProperty(DescriptorProperty):
         """
         self._setup_arguments_on_columns()
 
+    _COMPOSITE_FGET = object()
+
     def _create_descriptor(self):
         """Create the Python descriptor that will serve as
         the access point on instances of the mapped class.
@@ -211,7 +213,9 @@ class CompositeProperty(DescriptorProperty):
                     state.key is not None or not _none_set.issuperset(values)
                 ):
                     dict_[self.key] = self.composite_class(*values)
-                    state.manager.dispatch.refresh(state, None, [self.key])
+                    state.manager.dispatch.refresh(
+                        state, self._COMPOSITE_FGET, [self.key]
+                    )
 
             return dict_.get(self.key, None)
 
@@ -285,16 +289,32 @@ class CompositeProperty(DescriptorProperty):
     def _setup_event_handlers(self):
         """Establish events that populate/expire the composite attribute."""
 
-        def load_handler(state, *args):
-            _load_refresh_handler(state, args, is_refresh=False)
+        def load_handler(state, context):
+            _load_refresh_handler(state, context, None, is_refresh=False)
 
-        def refresh_handler(state, *args):
-            _load_refresh_handler(state, args, is_refresh=True)
+        def refresh_handler(state, context, to_load):
+            # note this corresponds to sqlalchemy.ext.mutable load_attrs()
 
-        def _load_refresh_handler(state, args, is_refresh):
+            if not to_load or (
+                {self.key}.union(self._attribute_keys)
+            ).intersection(to_load):
+                _load_refresh_handler(state, context, to_load, is_refresh=True)
+
+        def _load_refresh_handler(state, context, to_load, is_refresh):
             dict_ = state.dict
 
-            if not is_refresh and self.key in dict_:
+            # if context indicates we are coming from the
+            # fget() handler, this already set the value; skip the
+            # handler here. (other handlers like mutablecomposite will still
+            # want to catch it)
+            # there's an insufficiency here in that the fget() handler
+            # really should not be using the refresh event and there should
+            # be some other event that mutablecomposite can subscribe
+            # towards for this.
+
+            if (
+                not is_refresh or context is self._COMPOSITE_FGET
+            ) and self.key in dict_:
                 return
 
             # if column elements aren't loaded, skip.
