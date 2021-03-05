@@ -106,7 +106,9 @@ class Pool(log.Identified):
              logging.
 
         :param reset_on_return: Determine steps to take on
-          connections as they are returned to the pool.
+          connections as they are returned to the pool, which were
+          not otherwise handled by a :class:`_engine.Connection`.
+
           reset_on_return can have any of these values:
 
           * ``"rollback"`` - call rollback() on the connection,
@@ -124,21 +126,18 @@ class Pool(log.Identified):
             any data changes present on the transaction
             are committed unconditionally.
           * ``None`` - don't do anything on the connection.
-            This setting should generally only be made on a database
-            that has no transaction support at all,
-            namely MySQL MyISAM; when used on this backend, performance
-            can be improved as the "rollback" call is still expensive on
-            MySQL.   It is **strongly recommended** that this setting not be
-            used for transaction-supporting databases in conjunction with
-            a persistent pool such as :class:`.QueuePool`, as it opens
-            the possibility for connections still in a transaction to be
-            idle in the pool.   The setting may be appropriate in the
-            case of :class:`.NullPool` or special circumstances where
-            the connection pool in use is not being used to maintain connection
-            lifecycle.
+            This setting is only appropriate if the database / DBAPI
+            works in pure "autocommit" mode at all times, or if the
+            application uses the :class:`_engine.Engine` with consistent
+            connectivity patterns.   See the section
+            :ref:`pool_reset_on_return` for more details.
 
           * ``False`` - same as None, this is here for
             backwards compatibility.
+
+         .. seealso::
+
+            :ref:`pool_reset_on_return`
 
         :param events: a list of 2-tuples, each of the form
          ``(callable, target)`` which will be passed to :func:`.event.listen`
@@ -429,7 +428,7 @@ class _ConnectionRecord(object):
         rec.fairy_ref = ref = weakref.ref(
             fairy,
             lambda ref: _finalize_fairy
-            and _finalize_fairy(None, rec, pool, ref, echo),
+            and _finalize_fairy(None, rec, pool, ref, echo, True),
         )
         _strong_ref_connection_records[ref] = rec
         if echo:
@@ -612,6 +611,7 @@ def _finalize_fairy(
     pool,
     ref,  # this is None when called directly, not by the gc
     echo,
+    reset=True,
     fairy=None,
 ):
     """Cleanup for a :class:`._ConnectionFairy` whether or not it's already
@@ -647,7 +647,11 @@ def _finalize_fairy(
     if connection is not None:
         if connection_record and echo:
             pool.logger.debug(
-                "Connection %r being returned to pool", connection
+                "Connection %r being returned to pool%s",
+                connection,
+                ", transaction state was already reset by caller"
+                if not reset
+                else "",
             )
 
         try:
@@ -655,7 +659,7 @@ def _finalize_fairy(
                 connection, connection_record, echo
             )
             assert fairy.connection is connection
-            if can_manipulate_connection:
+            if reset and can_manipulate_connection:
                 fairy._reset(pool)
 
             if detach:
@@ -736,24 +740,6 @@ class _ConnectionFairy(object):
 
     This is currently an internal accessor which is subject to change.
 
-    """
-
-    _reset_agent = None
-    """Refer to an object with a ``.commit()`` and ``.rollback()`` method;
-    if non-None, the "reset-on-return" feature will call upon this object
-    rather than directly against the dialect-level do_rollback() and
-    do_commit() methods.
-
-    In practice, a :class:`_engine.Connection` assigns a :class:`.Transaction`
-    object
-    to this variable when one is in scope so that the :class:`.Transaction`
-    takes the job of committing or rolling back on return if
-    :meth:`_engine.Connection.close` is called while the :class:`.Transaction`
-    still exists.
-
-    This is essentially an "event handler" of sorts but is simplified as an
-    instance variable both for performance/simplicity as well as that there
-    can only be one "reset agent" at a time.
     """
 
     @classmethod
@@ -856,13 +842,14 @@ class _ConnectionFairy(object):
     def _checkout_existing(self):
         return _ConnectionFairy._checkout(self._pool, fairy=self)
 
-    def _checkin(self):
+    def _checkin(self, reset=True):
         _finalize_fairy(
             self.connection,
             self._connection_record,
             self._pool,
             None,
             self._echo,
+            reset=reset,
             fairy=self,
         )
         self.connection = None
@@ -876,41 +863,16 @@ class _ConnectionFairy(object):
         if pool._reset_on_return is reset_rollback:
             if self._echo:
                 pool.logger.debug(
-                    "Connection %s rollback-on-return%s",
-                    self.connection,
-                    ", via agent" if self._reset_agent else "",
+                    "Connection %s rollback-on-return", self.connection
                 )
-            if self._reset_agent:
-                if not self._reset_agent.is_active:
-                    util.warn(
-                        "Reset agent is not active.  "
-                        "This should not occur unless there was already "
-                        "a connectivity error in progress."
-                    )
-                    pool._dialect.do_rollback(self)
-                else:
-                    self._reset_agent.rollback()
-            else:
-                pool._dialect.do_rollback(self)
+            pool._dialect.do_rollback(self)
         elif pool._reset_on_return is reset_commit:
             if self._echo:
                 pool.logger.debug(
-                    "Connection %s commit-on-return%s",
+                    "Connection %s commit-on-return",
                     self.connection,
-                    ", via agent" if self._reset_agent else "",
                 )
-            if self._reset_agent:
-                if not self._reset_agent.is_active:
-                    util.warn(
-                        "Reset agent is not active.  "
-                        "This should not occur unless there was already "
-                        "a connectivity error in progress."
-                    )
-                    pool._dialect.do_commit(self)
-                else:
-                    self._reset_agent.commit()
-            else:
-                pool._dialect.do_commit(self)
+            pool._dialect.do_commit(self)
 
     @property
     def _logger(self):
@@ -1032,3 +994,8 @@ class _ConnectionFairy(object):
         self._counter -= 1
         if self._counter == 0:
             self._checkin()
+
+    def _close_no_reset(self):
+        self._counter -= 1
+        if self._counter == 0:
+            self._checkin(reset=False)

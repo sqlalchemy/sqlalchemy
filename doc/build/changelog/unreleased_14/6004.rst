@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, regression, engine
+    :tickets: 6004
+
+    Fixed a regression where the "reset agent" of the connection pool wasn't
+    really being utilized by the :class:`_engine.Connection` when it were
+    closed, and also leading to a double-rollback scenario that was somewhat
+    wasteful.   The newer architecture of the engine has been updated so that
+    the connection pool "reset-on-return" logic will be skipped when the
+    :class:`_engine.Connection` explicitly closes out the transaction before
+    returning the pool to the connection.

@@ -40,6 +40,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from .test_transaction import ResetFixture
 
 
 def _string_deprecation_expect():
@@ -424,7 +425,7 @@ class CreateEngineTest(fixtures.TestBase):
             )
 
 
-class TransactionTest(fixtures.TablesTest):
+class TransactionTest(ResetFixture, fixtures.TablesTest):
     __backend__ = True
 
     @classmethod
@@ -475,33 +476,43 @@ class TransactionTest(fixtures.TablesTest):
         with testing.db.connect() as conn:
             eq_(conn.execute(users.select()).fetchall(), [(1, "user1")])
 
-    def test_begin_begin_rollback_rollback(self):
-        with testing.db.connect() as connection:
+    def test_begin_begin_rollback_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
             trans = connection.begin()
             with testing.expect_deprecated_20(
                 r"Calling .begin\(\) when a transaction is already "
                 "begun, creating a 'sub' transaction"
             ):
                 trans2 = connection.begin()
-            assert connection.connection._reset_agent is trans
             trans2.rollback()
-            assert connection.connection._reset_agent is None
             trans.rollback()
-            assert connection.connection._reset_agent is None
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
 
-    def test_begin_begin_commit_commit(self):
-        with testing.db.connect() as connection:
+    def test_begin_begin_commit_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
             trans = connection.begin()
             with testing.expect_deprecated_20(
                 r"Calling .begin\(\) when a transaction is already "
                 "begun, creating a 'sub' transaction"
             ):
                 trans2 = connection.begin()
-            assert connection.connection._reset_agent is trans
             trans2.commit()
-            assert connection.connection._reset_agent is trans
             trans.commit()
-            assert connection.connection._reset_agent is None
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
 
     def test_branch_nested_rollback(self, local_connection):
         connection = local_connection
