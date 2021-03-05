@@ -708,19 +708,28 @@ Core from "many choices"::
   with conn.begin():
       conn.execute(stmt)
 
-to "one choice", which is to procure a :class:`_engine.Connection` and then
-to explicitly demarcate the transaction, the operation is a write operation::
+to "one choice", where by "one choice" we mean "explicit connection with
+explicit transaction"; there are still a few ways to demarcate
+transaction blocks depending on need.  The "one choice" is to procure a
+:class:`_engine.Connection` and then to explicitly demarcate the transaction,
+in the case that the operation is a write operation::
 
-  # one choice!
+  # one choice - work with explicit connection, explicit transaction
+  # (there remain a few variants on how to demarcate the transaction)
 
+  # "begin once" - one transaction only per checkout
   with engine.begin() as conn:
       result = conn.execute(stmt)
 
-  # OK one and a half choices (the commit() is 1.4 / 2.0 using future engine):
-
+  # "commit as you go" - zero or more commits per checkout
   with engine.connect() as conn:
       result = conn.execute(stmt)
       conn.commit()
+
+  # "commit as you go" but with a transaction block instead of autobegin
+  with engine.connect() as conn:
+      with conn.begin():
+          result = conn.execute(stmt)
 
 
 execute() method more strict, execution options are more prominent
