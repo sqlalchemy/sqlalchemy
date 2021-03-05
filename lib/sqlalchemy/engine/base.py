@@ -826,6 +826,12 @@ class Connection(Connectable):
             and self._nested_transaction.is_active
         )
 
+    def _is_autocommit(self):
+        return (
+            self._execution_options.get("isolation_level", None)
+            == "AUTOCOMMIT"
+        )
+
     def get_transaction(self):
         """Return the current root transaction in progress, if any.
 
@@ -876,7 +882,13 @@ class Connection(Connectable):
 
         if self._still_open_and_dbapi_connection_is_valid:
             if self._echo:
-                self._log_info("ROLLBACK")
+                if self._is_autocommit():
+                    self._log_info(
+                        "ROLLBACK using DBAPI connection.rollback(), "
+                        "DBAPI should ignore due to autocommit mode"
+                    )
+                else:
+                    self._log_info("ROLLBACK")
             try:
                 self.engine.dialect.do_rollback(self.connection)
             except BaseException as e:
@@ -889,11 +901,7 @@ class Connection(Connectable):
         # if a connection has this set as the isolation level, we can skip
         # the "autocommit" warning as the operation will do "autocommit"
         # in any case
-        if (
-            autocommit
-            and self._execution_options.get("isolation_level", None)
-            != "AUTOCOMMIT"
-        ):
+        if autocommit and not self._is_autocommit():
             util.warn_deprecated_20(
                 "The current statement is being autocommitted using "
                 "implicit autocommit, which will be removed in "
@@ -906,7 +914,13 @@ class Connection(Connectable):
             self.dispatch.commit(self)
 
         if self._echo:
-            self._log_info("COMMIT")
+            if self._is_autocommit():
+                self._log_info(
+                    "COMMIT using DBAPI connection.commit(), "
+                    "DBAPI should ignore due to autocommit mode"
+                )
+            else:
+                self._log_info("COMMIT")
         try:
             self.engine.dialect.do_commit(self.connection)
         except BaseException as e:
@@ -1056,7 +1070,15 @@ class Connection(Connectable):
 
         if self._dbapi_connection is not None:
             conn = self._dbapi_connection
+
+            # this will do a reset-on-return every time, even if we
+            # called rollback() already. it might be worth optimizing
+            # this for the case that we are able to close without issue
             conn.close()
+
+            # this is in fact never true outside of a bunch of
+            # artificial scenarios created by the test suite and its
+            # fixtures.  the reset_agent should no longer be necessary.
             if conn._reset_agent is self._transaction:
                 conn._reset_agent = None
 

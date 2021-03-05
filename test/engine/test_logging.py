@@ -586,6 +586,91 @@ class LoggingNameTest(fixtures.TestBase):
         self._assert_no_name_in_execute(eng)
 
 
+class TransactionContextLoggingTest(fixtures.TestBase):
+    @testing.fixture()
+    def assert_buf(self, logging_engine):
+        buf = logging.handlers.BufferingHandler(100)
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.addHandler(buf)
+
+        def go(expected):
+            assert buf.buffer
+
+            buflines = [rec.msg % rec.args for rec in buf.buffer]
+
+            eq_(buflines, expected)
+            buf.flush()
+
+        yield go
+        for log in [
+            logging.getLogger("sqlalchemy.engine"),
+        ]:
+            log.removeHandler(buf)
+
+    @testing.fixture()
+    def logging_engine(self, testing_engine):
+        kw = {"echo": True, "future": True}
+        e = testing_engine(options=kw)
+        e.connect().close()
+        return e
+
+    def test_begin_once_block(self, logging_engine, assert_buf):
+        with logging_engine.begin():
+            pass
+
+        assert_buf(["BEGIN (implicit)", "COMMIT"])
+
+    def test_commit_as_you_go_block_commit(self, logging_engine, assert_buf):
+        with logging_engine.connect() as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(["BEGIN (implicit)", "COMMIT"])
+
+    def test_commit_as_you_go_block_rollback(self, logging_engine, assert_buf):
+        with logging_engine.connect() as conn:
+            conn.begin()
+            conn.rollback()
+
+        assert_buf(["BEGIN (implicit)", "ROLLBACK"])
+
+    def test_commit_as_you_go_block_commit_autocommit(
+        self, logging_engine, assert_buf
+    ):
+        with logging_engine.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(
+            [
+                "BEGIN (implicit)",
+                "COMMIT using DBAPI connection.commit(), DBAPI "
+                "should ignore due to autocommit mode",
+            ]
+        )
+
+    def test_commit_as_you_go_block_rollback_autocommit(
+        self, logging_engine, assert_buf
+    ):
+        with logging_engine.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as conn:
+            conn.begin()
+            conn.rollback()
+
+        assert_buf(
+            [
+                "BEGIN (implicit)",
+                "ROLLBACK using DBAPI connection.rollback(), DBAPI "
+                "should ignore due to autocommit mode",
+            ]
+        )
+
+
 class LoggingTokenTest(fixtures.TestBase):
     def setup_test(self):
         self.buf = logging.handlers.BufferingHandler(100)
