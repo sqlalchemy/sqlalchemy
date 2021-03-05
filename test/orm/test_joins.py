@@ -13,6 +13,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
@@ -1066,7 +1067,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON addresses_1.id = dingalings.address_id",
         )
 
-    def test_pure_expression_error(self):
+    def test_pure_expression(self):
+        # this was actually false-passing due to the assertions
+        # fixture not following the regular codepath for Query
         addresses, users = self.tables.addresses, self.tables.users
 
         sess = fixture_session()
@@ -3063,3 +3066,74 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "generate_series(:generate_series_1, anon_1.bookcase_shelves) "
             "AS anon_2 ON true",
         )
+
+
+class JoinRawTablesWLegacyTest(QueryTest, AssertsCompiledSQL):
+    """test issue 6003 where creating a legacy query with only Core elements
+    fails to accommodate for the ORM context thus producing a query
+    that ignores the "legacy" joins
+
+    """
+
+    __dialect__ = "default"
+
+    @testing.combinations(
+        (
+            lambda sess, User, Address: sess.query(User).join(Address),
+            "SELECT users.id AS users_id, users.name AS users_name FROM "
+            "users JOIN addresses ON users.id = addresses.user_id",
+        ),
+        (
+            lambda sess, user_table, address_table: sess.query(
+                user_table
+            ).join(address_table),
+            "SELECT users.id AS users_id, users.name AS users_name FROM "
+            "users JOIN addresses ON users.id = addresses.user_id",
+        ),
+        (
+            lambda sess, User, Address, Order: sess.query(User)
+            .outerjoin(Order)
+            .join(Address),
+            "SELECT users.id AS users_id, users.name AS users_name FROM "
+            "users LEFT OUTER JOIN orders ON users.id = orders.user_id "
+            "JOIN addresses ON addresses.id = orders.address_id",
+        ),
+        (
+            lambda sess, user_table, address_table, order_table: sess.query(
+                user_table
+            )
+            .outerjoin(order_table)
+            .join(address_table),
+            "SELECT users.id AS users_id, users.name AS users_name FROM "
+            "users LEFT OUTER JOIN orders ON users.id = orders.user_id "
+            "JOIN addresses ON addresses.id = orders.address_id",
+        ),
+    )
+    def test_join_render(self, spec, expected):
+        User, Address, Order = self.classes("User", "Address", "Order")
+        user_table, address_table, order_table = self.tables(
+            "users", "addresses", "orders"
+        )
+
+        sess = fixture_session()
+
+        q = testing.resolve_lambda(spec, **locals())
+
+        self.assert_compile(q, expected)
+
+        self.assert_compile(
+            q.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).statement,
+            expected,
+        )
+
+    def test_core_round_trip(self):
+        user_table, address_table = self.tables("users", "addresses")
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(user_table)
+            .join(address_table)
+            .where(address_table.c.email_address.startswith("ed"))
+        )
+        eq_(q.all(), [(8, "ed"), (8, "ed"), (8, "ed")])

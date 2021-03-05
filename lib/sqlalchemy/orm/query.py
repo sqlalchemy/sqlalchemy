@@ -440,6 +440,15 @@ class Query(
             )
             stmt.__dict__.pop("session", None)
 
+        # ensure the ORM context is used to compile the statement, even
+        # if it has no ORM entities.  This is so ORM-only things like
+        # _legacy_joins are picked up that wouldn't be picked up by the
+        # Core statement context
+        if "compile_state_plugin" not in stmt._propagate_attrs:
+            stmt._propagate_attrs = stmt._propagate_attrs.union(
+                {"compile_state_plugin": "orm", "plugin_subject": None}
+            )
+
         return stmt
 
     def subquery(
@@ -2304,6 +2313,7 @@ class Query(
                 "is deprecated and will be removed in SQLAlchemy 2.0. "
                 "Please use individual join() calls per relationship."
             )
+
         self._legacy_setup_joins += joins_to_add
 
         self.__dict__.pop("_last_joined_entity", None)
