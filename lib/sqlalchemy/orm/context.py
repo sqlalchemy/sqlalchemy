@@ -127,6 +127,11 @@ class QueryContext(object):
             )
 
 
+_result_disable_adapt_to_context = util.immutabledict(
+    {"_result_disable_adapt_to_context": True}
+)
+
+
 class ORMCompileState(CompileState):
     # note this is a dictionary, but the
     # default_compile_options._with_polymorphic_adapt_map is a tuple
@@ -233,6 +238,17 @@ class ORMCompileState(CompileState):
             execution_options,
             statement._execution_options,
         )
+
+        # add _result_disable_adapt_to_context=True to execution options.
+        # this will disable the ResultSetMetadata._adapt_to_context()
+        # step which we don't need, as we have result processors cached
+        # against the original SELECT statement before caching.
+        if not execution_options:
+            execution_options = _result_disable_adapt_to_context
+        else:
+            execution_options = execution_options.union(
+                _result_disable_adapt_to_context
+            )
 
         if "yield_per" in execution_options or load_options._yield_per:
             execution_options = execution_options.union(
@@ -343,7 +359,6 @@ class ORMFromStatementCompileState(ORMCompileState):
     def create_for_statement(cls, statement_container, compiler, **kw):
 
         if compiler is not None:
-            compiler._rewrites_selected_columns = True
             toplevel = not compiler.stack
         else:
             toplevel = True
@@ -475,7 +490,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         if compiler is not None:
             toplevel = not compiler.stack
-            compiler._rewrites_selected_columns = True
             self.global_attributes = compiler._global_attributes
         else:
             toplevel = True
@@ -2160,7 +2174,7 @@ class _QueryEntity(object):
 
     @classmethod
     def to_compile_state(cls, compile_state, entities):
-        for entity in entities:
+        for idx, entity in enumerate(entities):
             if entity._is_lambda_element:
                 if entity._is_sequence:
                     cls.to_compile_state(compile_state, entity._resolved)
@@ -2174,7 +2188,7 @@ class _QueryEntity(object):
                         _MapperEntity(compile_state, entity)
                     else:
                         _ColumnEntity._for_columns(
-                            compile_state, entity._select_iterable
+                            compile_state, entity._select_iterable, idx
                         )
                 else:
                     if entity._annotations.get("bundle", False):
@@ -2183,10 +2197,12 @@ class _QueryEntity(object):
                         # this is legacy only - test_composites.py
                         # test_query_cols_legacy
                         _ColumnEntity._for_columns(
-                            compile_state, entity._select_iterable
+                            compile_state, entity._select_iterable, idx
                         )
                     else:
-                        _ColumnEntity._for_columns(compile_state, [entity])
+                        _ColumnEntity._for_columns(
+                            compile_state, [entity], idx
+                        )
             elif entity.is_bundle:
                 _BundleEntity(compile_state, entity)
 
@@ -2411,7 +2427,7 @@ class _BundleEntity(_QueryEntity):
                     _BundleEntity(compile_state, expr, parent_bundle=self)
                 else:
                     _ORMColumnEntity._for_columns(
-                        compile_state, [expr], parent_bundle=self
+                        compile_state, [expr], None, parent_bundle=self
                     )
 
         self.supports_single_entity = self.bundle.single_entity
@@ -2470,10 +2486,17 @@ class _BundleEntity(_QueryEntity):
 
 
 class _ColumnEntity(_QueryEntity):
-    __slots__ = ("_fetch_column", "_row_processor")
+    __slots__ = (
+        "_fetch_column",
+        "_row_processor",
+        "raw_column_index",
+        "translate_raw_column",
+    )
 
     @classmethod
-    def _for_columns(cls, compile_state, columns, parent_bundle=None):
+    def _for_columns(
+        cls, compile_state, columns, raw_column_index, parent_bundle=None
+    ):
         for column in columns:
             annotations = column._annotations
             if "parententity" in annotations:
@@ -2489,6 +2512,7 @@ class _ColumnEntity(_QueryEntity):
                         compile_state,
                         column,
                         _entity,
+                        raw_column_index,
                         parent_bundle=parent_bundle,
                     )
                 else:
@@ -2496,11 +2520,15 @@ class _ColumnEntity(_QueryEntity):
                         compile_state,
                         column,
                         _entity,
+                        raw_column_index,
                         parent_bundle=parent_bundle,
                     )
             else:
                 _RawColumnEntity(
-                    compile_state, column, parent_bundle=parent_bundle
+                    compile_state,
+                    column,
+                    raw_column_index,
+                    parent_bundle=parent_bundle,
                 )
 
     @property
@@ -2517,7 +2545,15 @@ class _ColumnEntity(_QueryEntity):
         # the resulting callable is entirely cacheable so just return
         # it if we already made one
         if self._row_processor is not None:
-            return self._row_processor
+            getter, label_name, extra_entities = self._row_processor
+            if self.translate_raw_column:
+                extra_entities += (
+                    result.context.invoked_statement._raw_columns[
+                        self.raw_column_index
+                    ],
+                )
+
+            return getter, label_name, extra_entities
 
         # retrieve the column that would have been set up in
         # setup_compile_state, to avoid doing redundant work
@@ -2547,7 +2583,16 @@ class _ColumnEntity(_QueryEntity):
 
         ret = getter, self._label_name, self._extra_entities
         self._row_processor = ret
-        return ret
+
+        if self.translate_raw_column:
+            extra_entities = self._extra_entities + (
+                result.context.invoked_statement._raw_columns[
+                    self.raw_column_index
+                ],
+            )
+            return getter, self._label_name, extra_entities
+        else:
+            return ret
 
 
 class _RawColumnEntity(_ColumnEntity):
@@ -2563,9 +2608,12 @@ class _RawColumnEntity(_ColumnEntity):
         "_extra_entities",
     )
 
-    def __init__(self, compile_state, column, parent_bundle=None):
+    def __init__(
+        self, compile_state, column, raw_column_index, parent_bundle=None
+    ):
         self.expr = column
-
+        self.raw_column_index = raw_column_index
+        self.translate_raw_column = raw_column_index is not None
         self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
@@ -2619,9 +2667,9 @@ class _ORMColumnEntity(_ColumnEntity):
         compile_state,
         column,
         parententity,
+        raw_column_index,
         parent_bundle=None,
     ):
-
         annotations = column._annotations
 
         _entity = parententity
@@ -2634,9 +2682,17 @@ class _ORMColumnEntity(_ColumnEntity):
         orm_key = annotations.get("proxy_key", None)
         if orm_key:
             self.expr = getattr(_entity.entity, orm_key)
+            self.translate_raw_column = False
         else:
+            # if orm_key is not present, that means this is an ad-hoc
+            # SQL ColumnElement, like a CASE() or other expression.
+            # include this column position from the invoked statement
+            # in the ORM-level ResultSetMetaData on each execute, so that
+            # it can be targeted by identity after caching
             self.expr = column
+            self.translate_raw_column = raw_column_index is not None
 
+        self.raw_column_index = raw_column_index
         self._label_name = compile_state._label_convention(
             column, col_name=orm_key
         )
@@ -2715,6 +2771,8 @@ class _ORMColumnEntity(_ColumnEntity):
 
 
 class _IdentityTokenEntity(_ORMColumnEntity):
+    translate_raw_column = False
+
     def setup_compile_state(self, compile_state):
         pass
 

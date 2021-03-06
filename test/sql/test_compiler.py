@@ -1720,6 +1720,23 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
+            select(distinct(table1.c.myid)).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ),
+            "SELECT DISTINCT mytable.myid FROM mytable",
+        )
+
+        # the bug fixed here as part of #6008 is the same bug that's
+        # in 1.3 as well, producing
+        # "SELECT anon_2.anon_1 FROM (SELECT distinct mytable.myid
+        # FROM mytable) AS anon_2"
+        self.assert_compile(
+            select(select(distinct(table1.c.myid)).subquery()),
+            "SELECT anon_2.anon_1 FROM (SELECT "
+            "DISTINCT mytable.myid AS anon_1 FROM mytable) AS anon_2",
+        )
+
+        self.assert_compile(
             select(table1.c.myid).distinct(),
             "SELECT DISTINCT mytable.myid FROM mytable",
         )

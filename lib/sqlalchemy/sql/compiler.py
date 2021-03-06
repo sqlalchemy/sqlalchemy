@@ -406,35 +406,6 @@ class Compiled(object):
 
     """
 
-    _rewrites_selected_columns = False
-    """if True, indicates the compile_state object rewrites an incoming
-    ReturnsRows (like a Select) so that the columns we compile against in the
-    result set are not what were expressed on the outside.   this is a hint to
-    the execution context to not link the statement.selected_columns to the
-    columns mapped in the result object.
-
-    That is, when this flag is False::
-
-        stmt = some_statement()
-
-        result = conn.execute(stmt)
-        row = result.first()
-
-        # selected_columns are in a 1-1 relationship with the
-        # columns in the result, and are targetable in mapping
-        for col in stmt.selected_columns:
-            assert col in row._mapping
-
-    When True::
-
-        # selected columns are not what are in the rows.  the context
-        # rewrote the statement for some other set of selected_columns.
-        for col in stmt.selected_columns:
-            assert col not in row._mapping
-
-
-    """
-
     cache_key = None
     _gen_time = None
 
@@ -1858,7 +1829,15 @@ class SQLCompiler(Compiled):
         )
         return getattr(self, attrname, None)
 
-    def visit_unary(self, unary, **kw):
+    def visit_unary(
+        self, unary, add_to_result_map=None, result_map_targets=(), **kw
+    ):
+
+        if add_to_result_map is not None:
+            result_map_targets += (unary,)
+            kw["add_to_result_map"] = add_to_result_map
+            kw["result_map_targets"] = result_map_targets
+
         if unary.operator:
             if unary.modifier:
                 raise exc.CompileError(
@@ -2870,6 +2849,7 @@ class SQLCompiler(Compiled):
             and (
                 not isinstance(column, elements.UnaryExpression)
                 or column.wraps_column_expression
+                or asfrom
             )
             and (
                 not hasattr(column, "name")

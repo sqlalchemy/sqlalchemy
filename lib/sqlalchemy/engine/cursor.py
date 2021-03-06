@@ -1290,7 +1290,9 @@ class BaseCursorResult(object):
                 compiled
                 and compiled._result_columns
                 and context.cache_hit is context.dialect.CACHE_HIT
-                and not compiled._rewrites_selected_columns
+                and not context.execution_options.get(
+                    "_result_disable_adapt_to_context", False
+                )
                 and compiled.statement is not context.invoked_statement
             ):
                 metadata = metadata._adapt_to_context(context)

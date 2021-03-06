@@ -3537,6 +3537,8 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         # test a different unary operator
         # TODO: there is no test in Core that asserts what is happening
         # here as far as the label generation for the ORDER BY
+        # NOTE: this very old test was in fact producing invalid SQL
+        # until #6008 was fixed
         self.assert_compile(
             fixture_session()
             .query(A)
@@ -3547,7 +3549,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             "AS anon_1_anon_2, b_1.id AS b_1_id, b_1.a_id AS "
             "b_1_a_id, b_1.value AS b_1_value FROM (SELECT a.id "
             "AS a_id, NOT (SELECT sum(b.value) AS sum_1 FROM b "
-            "WHERE b.a_id = a.id) FROM a ORDER BY NOT (SELECT "
+            "WHERE b.a_id = a.id) AS anon_2 FROM a ORDER BY NOT (SELECT "
             "sum(b.value) AS sum_1 FROM b WHERE b.a_id = a.id) "
             "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN b AS b_1 "
             "ON anon_1.a_id = b_1.a_id ORDER BY anon_1.anon_2",

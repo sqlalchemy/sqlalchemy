@@ -19,6 +19,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.base import CacheableOptions
+from sqlalchemy.sql.expression import case
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -599,3 +600,65 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         for i in range(5):
             fn = random.choice([go1, go2])
             self.assert_sql_count(testing.db, fn, 2)
+
+    @testing.combinations((True,), (False,), argnames="use_core")
+    @testing.combinations((True,), (False,), argnames="arbitrary_element")
+    @testing.combinations((True,), (False,), argnames="exercise_caching")
+    def test_column_targeting_core_execute(
+        self,
+        plain_fixture,
+        connection,
+        use_core,
+        arbitrary_element,
+        exercise_caching,
+    ):
+        """test that CursorResultSet will do a column rewrite for any core
+        execute even if the ORM compiled the statement.
+
+        This translates the current stmt.selected_columns to the cached
+        ResultSetMetaData._keymap.      The ORM skips this because loading.py
+        has also cached the selected_columns that are used.   But for
+        an outside-facing Core execute, this has to remain turned on.
+
+        Additionally, we want targeting of SQL expressions to work with both
+        Core and ORM statement executions. So the ORM still has to do some
+        translation here for these elements to be supported.
+
+        """
+        User, Address = plain_fixture
+        user_table = inspect(User).persist_selectable
+
+        def go():
+
+            my_thing = case((User.id > 9, 1), else_=2)
+
+            # include entities in the statement so that we test that
+            # the column indexing from
+            # ORM select()._raw_columns -> Core select()._raw_columns is
+            # translated appropriately
+            stmt = (
+                select(User, Address.email_address, my_thing, User.name)
+                .join(Address)
+                .where(User.name == "ed")
+            )
+
+            if arbitrary_element:
+                target, exp = (my_thing, 2)
+            elif use_core:
+                target, exp = (user_table.c.name, "ed")
+            else:
+                target, exp = (User.name, "ed")
+
+            if use_core:
+                row = connection.execute(stmt).first()
+
+            else:
+                row = Session(connection).execute(stmt).first()
+
+            eq_(row._mapping[target], exp)
+
+        if exercise_caching:
+            for i in range(3):
+                go()
+        else:
+            go()
