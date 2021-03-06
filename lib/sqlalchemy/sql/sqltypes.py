@@ -22,7 +22,7 @@ from . import type_api
 from .base import _bind_or_error
 from .base import NO_ARG
 from .base import SchemaEventTarget
-from .elements import _defer_name
+from .elements import _NONE_NAME
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
@@ -1659,7 +1659,7 @@ class Enum(Emulated, String, SchemaType):
 
         e = schema.CheckConstraint(
             type_coerce(column, self).in_(self.enums),
-            name=_defer_name(self.name),
+            name=_NONE_NAME if self.name is None else self.name,
             _create_rule=util.portable_instancemethod(
                 self._should_create_constraint,
                 {"variant_mapping": variant_mapping},
@@ -1868,7 +1868,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 
         e = schema.CheckConstraint(
             type_coerce(column, self).in_([0, 1]),
-            name=_defer_name(self.name),
+            name=_NONE_NAME if self.name is None else self.name,
             _create_rule=util.portable_instancemethod(
                 self._should_create_constraint,
                 {"variant_mapping": variant_mapping},
