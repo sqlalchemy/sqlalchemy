@@ -38,7 +38,6 @@ from sqlalchemy.schema import AddConstraint
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.schema import DefaultClause
 from sqlalchemy.schema import DropIndex
-from sqlalchemy.sql import elements
 from sqlalchemy.sql import naming
 from sqlalchemy.sql.elements import _NONE_NAME
 from sqlalchemy.sql.elements import literal_column
@@ -4774,20 +4773,11 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="default",
         )
 
-    def test_uq_defer_name_no_convention(self):
-        u1 = self._fixture(naming_convention={})
-        uq = UniqueConstraint(u1.c.data, name=naming._defer_name("myname"))
-        self.assert_compile(
-            schema.AddConstraint(uq),
-            'ALTER TABLE "user" ADD CONSTRAINT myname UNIQUE (data)',
-            dialect="default",
-        )
-
     def test_uq_defer_name_convention(self):
         u1 = self._fixture(
             naming_convention={"uq": "uq_%(table_name)s_%(column_0_name)s"}
         )
-        uq = UniqueConstraint(u1.c.data, name=naming._defer_name("myname"))
+        uq = UniqueConstraint(u1.c.data, name=naming._NONE_NAME)
         self.assert_compile(
             schema.AddConstraint(uq),
             'ALTER TABLE "user" ADD CONSTRAINT uq_user_data UNIQUE (data)',
@@ -4987,7 +4977,7 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
         u1 = self._fixture(
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
-        ck = CheckConstraint(u1.c.data == "x", name=elements._defer_name(None))
+        ck = CheckConstraint(u1.c.data == "x", name=naming._NONE_NAME)
 
         assert_raises_message(
             exc.InvalidRequestError,
@@ -5097,15 +5087,21 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Boolean(name="foo")))
-        # constraint is not hit
-        eq_(
-            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
-                0
-            ].name,
-            "foo",
+        u1 = Table(
+            "user",
+            m1,
+            Column("x", Boolean(name="foo")),
         )
-        # but is hit at compile time
+
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x BOOLEAN, "
+            "CONSTRAINT ck_user_foo CHECK (x IN (0, 1))"
+            ")",
+        )
+
+        # test no side effects from first compile
         self.assert_compile(
             schema.CreateTable(u1),
             'CREATE TABLE "user" ('
@@ -5141,14 +5137,21 @@ class NamingConventionTest(fixtures.TestBase, AssertsCompiledSQL):
             naming_convention={"ck": "ck_%(table_name)s_%(constraint_name)s"}
         )
 
-        u1 = Table("user", m1, Column("x", Enum("a", "b", name="foo")))
-        eq_(
-            [c for c in u1.constraints if isinstance(c, CheckConstraint)][
-                0
-            ].name,
-            "foo",
+        u1 = Table(
+            "user",
+            m1,
+            Column("x", Enum("a", "b", name="foo")),
         )
-        # but is hit at compile time
+
+        self.assert_compile(
+            schema.CreateTable(u1),
+            'CREATE TABLE "user" ('
+            "x VARCHAR(1), "
+            "CONSTRAINT ck_user_foo CHECK (x IN ('a', 'b'))"
+            ")",
+        )
+
+        # test no side effects from first compile
         self.assert_compile(
             schema.CreateTable(u1),
             'CREATE TABLE "user" ('

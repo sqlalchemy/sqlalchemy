@@ -4498,33 +4498,9 @@ class conv(_truncated_label):
     __slots__ = ()
 
 
-class _defer_name(_truncated_label):
-    """Mark a name as 'deferred' for the purposes of automated name
-    generation.
+_NONE_NAME = util.symbol("NONE_NAME")
+"""indicate a 'deferred' name that was ultimately the value None."""
 
-    """
-
-    __slots__ = ()
-
-    def __new__(cls, value):
-        if value is None:
-            return _NONE_NAME
-        elif isinstance(value, conv):
-            return value
-        else:
-            return super(_defer_name, cls).__new__(cls, value)
-
-    def __reduce__(self):
-        return self.__class__, (util.text_type(self),)
-
-
-class _defer_none_name(_defer_name):
-    """Indicate a 'deferred' name that was ultimately the value None."""
-
-    __slots__ = ()
-
-
-_NONE_NAME = _defer_none_name("_unnamed_")
 
 # for backwards compatibility in case
 # someone is re-implementing the

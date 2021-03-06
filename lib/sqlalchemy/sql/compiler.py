@@ -3743,16 +3743,13 @@ class IdentifierPreparer(object):
 
     @util.dependencies("sqlalchemy.sql.naming")
     def format_constraint(self, naming, constraint):
-        if isinstance(constraint.name, elements._defer_name):
+        if constraint.name is elements._NONE_NAME:
             name = naming._constraint_name_for_table(
                 constraint, constraint.table
             )
 
             if name is None:
-                if isinstance(constraint.name, elements._defer_none_name):
-                    return None
-                else:
-                    name = constraint.name
+                return None
         else:
             name = constraint.name
 
