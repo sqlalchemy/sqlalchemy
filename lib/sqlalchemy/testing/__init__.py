@@ -6,72 +6,72 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 
-from . import config  # noqa
-from . import mock  # noqa
-from .assertions import assert_raises  # noqa
-from .assertions import assert_raises_context_ok  # noqa
-from .assertions import assert_raises_message  # noqa
-from .assertions import assert_raises_message_context_ok  # noqa
-from .assertions import AssertsCompiledSQL  # noqa
-from .assertions import AssertsExecutionResults  # noqa
-from .assertions import ComparesTables  # noqa
-from .assertions import emits_warning  # noqa
-from .assertions import emits_warning_on  # noqa
-from .assertions import eq_  # noqa
-from .assertions import eq_ignore_whitespace  # noqa
-from .assertions import eq_regex  # noqa
-from .assertions import expect_deprecated  # noqa
-from .assertions import expect_deprecated_20  # noqa
-from .assertions import expect_raises  # noqa
-from .assertions import expect_raises_message  # noqa
-from .assertions import expect_warnings  # noqa
-from .assertions import in_  # noqa
-from .assertions import is_  # noqa
-from .assertions import is_false  # noqa
-from .assertions import is_instance_of  # noqa
-from .assertions import is_none  # noqa
-from .assertions import is_not  # noqa
-from .assertions import is_not_  # noqa
-from .assertions import is_not_none  # noqa
-from .assertions import is_true  # noqa
-from .assertions import le_  # noqa
-from .assertions import ne_  # noqa
-from .assertions import not_in  # noqa
-from .assertions import not_in_  # noqa
-from .assertions import startswith_  # noqa
-from .assertions import uses_deprecated  # noqa
-from .config import async_test  # noqa
-from .config import combinations  # noqa
-from .config import db  # noqa
-from .config import fixture  # noqa
-from .config import requirements as requires  # noqa
-from .exclusions import _is_excluded  # noqa
-from .exclusions import _server_version  # noqa
-from .exclusions import against as _against  # noqa
-from .exclusions import db_spec  # noqa
-from .exclusions import exclude  # noqa
-from .exclusions import fails  # noqa
-from .exclusions import fails_if  # noqa
-from .exclusions import fails_on  # noqa
-from .exclusions import fails_on_everything_except  # noqa
-from .exclusions import future  # noqa
-from .exclusions import only_if  # noqa
-from .exclusions import only_on  # noqa
-from .exclusions import skip  # noqa
-from .exclusions import skip_if  # noqa
-from .schema import eq_type_affinity  # noqa
-from .util import adict  # noqa
-from .util import fail  # noqa
-from .util import flag_combinations  # noqa
-from .util import force_drop_names  # noqa
-from .util import lambda_combinations  # noqa
-from .util import metadata_fixture  # noqa
-from .util import provide_metadata  # noqa
-from .util import resolve_lambda  # noqa
-from .util import rowset  # noqa
-from .util import run_as_contextmanager  # noqa
-from .util import teardown_events  # noqa
-from .warnings import assert_warnings  # noqa
+from . import config
+from . import mock
+from .assertions import assert_raises
+from .assertions import assert_raises_context_ok
+from .assertions import assert_raises_message
+from .assertions import assert_raises_message_context_ok
+from .assertions import AssertsCompiledSQL
+from .assertions import AssertsExecutionResults
+from .assertions import ComparesTables
+from .assertions import emits_warning
+from .assertions import emits_warning_on
+from .assertions import eq_
+from .assertions import eq_ignore_whitespace
+from .assertions import eq_regex
+from .assertions import expect_deprecated
+from .assertions import expect_deprecated_20
+from .assertions import expect_raises
+from .assertions import expect_raises_message
+from .assertions import expect_warnings
+from .assertions import in_
+from .assertions import is_
+from .assertions import is_false
+from .assertions import is_instance_of
+from .assertions import is_none
+from .assertions import is_not
+from .assertions import is_not_
+from .assertions import is_not_none
+from .assertions import is_true
+from .assertions import le_
+from .assertions import ne_
+from .assertions import not_in
+from .assertions import not_in_
+from .assertions import startswith_
+from .assertions import uses_deprecated
+from .config import async_test
+from .config import combinations
+from .config import db
+from .config import fixture
+from .config import requirements as requires
+from .exclusions import _is_excluded
+from .exclusions import _server_version
+from .exclusions import against as _against
+from .exclusions import db_spec
+from .exclusions import exclude
+from .exclusions import fails
+from .exclusions import fails_if
+from .exclusions import fails_on
+from .exclusions import fails_on_everything_except
+from .exclusions import future
+from .exclusions import only_if
+from .exclusions import only_on
+from .exclusions import skip
+from .exclusions import skip_if
+from .schema import eq_type_affinity
+from .util import adict
+from .util import fail
+from .util import flag_combinations
+from .util import force_drop_names
+from .util import lambda_combinations
+from .util import metadata_fixture
+from .util import provide_metadata
+from .util import resolve_lambda
+from .util import rowset
+from .util import run_as_contextmanager
+from .util import teardown_events
+from .warnings import assert_warnings
 
 
 def against(*queries):

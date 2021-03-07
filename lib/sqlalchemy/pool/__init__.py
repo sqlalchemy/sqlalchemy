@@ -17,10 +17,10 @@ regular DB-API connect() methods to be transparently managed by a
 SQLAlchemy connection pool.
 """
 
-from . import events  # noqa
-from .base import _ConnectionFairy  # noqa
-from .base import _ConnectionRecord  # noqa
-from .base import _finalize_fairy  # noqa
+from . import events
+from .base import _ConnectionFairy
+from .base import _ConnectionRecord
+from .base import _finalize_fairy
 from .base import Pool
 from .base import reset_commit
 from .base import reset_none

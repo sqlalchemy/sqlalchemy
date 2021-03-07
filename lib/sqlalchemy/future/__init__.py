@@ -8,10 +8,10 @@
 """Future 2.0 API features.
 
 """
-from .engine import Connection  # noqa
-from .engine import create_engine  # noqa
-from .engine import Engine  # noqa
-from ..sql.selectable import Select  # noqa
+from .engine import Connection
+from .engine import create_engine
+from .engine import Engine
+from ..sql.selectable import Select
 from ..util.langhelpers import public_factory
 
 

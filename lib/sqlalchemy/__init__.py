@@ -5,129 +5,129 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import util as _util  # noqa
-from .engine import create_engine  # noqa
-from .engine import create_mock_engine  # noqa
-from .engine import engine_from_config  # noqa
-from .inspection import inspect  # noqa
-from .schema import BLANK_SCHEMA  # noqa
-from .schema import CheckConstraint  # noqa
-from .schema import Column  # noqa
-from .schema import ColumnDefault  # noqa
-from .schema import Computed  # noqa
-from .schema import Constraint  # noqa
-from .schema import DDL  # noqa
-from .schema import DefaultClause  # noqa
-from .schema import FetchedValue  # noqa
-from .schema import ForeignKey  # noqa
-from .schema import ForeignKeyConstraint  # noqa
-from .schema import Identity  # noqa
-from .schema import Index  # noqa
-from .schema import MetaData  # noqa
-from .schema import PrimaryKeyConstraint  # noqa
-from .schema import Sequence  # noqa
-from .schema import Table  # noqa
-from .schema import ThreadLocalMetaData  # noqa
-from .schema import UniqueConstraint  # noqa
-from .sql import alias  # noqa
-from .sql import all_  # noqa
-from .sql import and_  # noqa
-from .sql import any_  # noqa
-from .sql import asc  # noqa
-from .sql import between  # noqa
-from .sql import bindparam  # noqa
-from .sql import case  # noqa
-from .sql import cast  # noqa
-from .sql import collate  # noqa
-from .sql import column  # noqa
-from .sql import delete  # noqa
-from .sql import desc  # noqa
-from .sql import distinct  # noqa
-from .sql import except_  # noqa
-from .sql import except_all  # noqa
-from .sql import exists  # noqa
-from .sql import extract  # noqa
-from .sql import false  # noqa
-from .sql import func  # noqa
-from .sql import funcfilter  # noqa
-from .sql import insert  # noqa
-from .sql import intersect  # noqa
-from .sql import intersect_all  # noqa
-from .sql import join  # noqa
-from .sql import LABEL_STYLE_DEFAULT  # noqa
-from .sql import LABEL_STYLE_DISAMBIGUATE_ONLY  # noqa
-from .sql import LABEL_STYLE_NONE  # noqa
-from .sql import LABEL_STYLE_TABLENAME_PLUS_COL  # noqa
-from .sql import lambda_stmt  # noqa
-from .sql import lateral  # noqa
-from .sql import literal  # noqa
-from .sql import literal_column  # noqa
-from .sql import modifier  # noqa
-from .sql import not_  # noqa
-from .sql import null  # noqa
-from .sql import nulls_first  # noqa
-from .sql import nulls_last  # noqa
-from .sql import nullsfirst  # noqa
-from .sql import nullslast  # noqa
-from .sql import or_  # noqa
-from .sql import outerjoin  # noqa
-from .sql import outparam  # noqa
-from .sql import over  # noqa
-from .sql import select  # noqa
-from .sql import subquery  # noqa
-from .sql import table  # noqa
-from .sql import tablesample  # noqa
-from .sql import text  # noqa
-from .sql import true  # noqa
-from .sql import tuple_  # noqa
-from .sql import type_coerce  # noqa
-from .sql import union  # noqa
-from .sql import union_all  # noqa
-from .sql import update  # noqa
-from .sql import values  # noqa
-from .sql import within_group  # noqa
-from .types import ARRAY  # noqa
-from .types import BIGINT  # noqa
-from .types import BigInteger  # noqa
-from .types import BINARY  # noqa
-from .types import BLOB  # noqa
-from .types import BOOLEAN  # noqa
-from .types import Boolean  # noqa
-from .types import CHAR  # noqa
-from .types import CLOB  # noqa
-from .types import DATE  # noqa
-from .types import Date  # noqa
-from .types import DATETIME  # noqa
-from .types import DateTime  # noqa
-from .types import DECIMAL  # noqa
-from .types import Enum  # noqa
-from .types import FLOAT  # noqa
-from .types import Float  # noqa
-from .types import INT  # noqa
-from .types import INTEGER  # noqa
-from .types import Integer  # noqa
-from .types import Interval  # noqa
-from .types import JSON  # noqa
-from .types import LargeBinary  # noqa
-from .types import NCHAR  # noqa
-from .types import NUMERIC  # noqa
-from .types import Numeric  # noqa
-from .types import NVARCHAR  # noqa
-from .types import PickleType  # noqa
-from .types import REAL  # noqa
-from .types import SMALLINT  # noqa
-from .types import SmallInteger  # noqa
-from .types import String  # noqa
-from .types import TEXT  # noqa
-from .types import Text  # noqa
-from .types import TIME  # noqa
-from .types import Time  # noqa
-from .types import TIMESTAMP  # noqa
-from .types import TypeDecorator  # noqa
-from .types import Unicode  # noqa
-from .types import UnicodeText  # noqa
-from .types import VARBINARY  # noqa
-from .types import VARCHAR  # noqa
+from . import util as _util
+from .engine import create_engine
+from .engine import create_mock_engine
+from .engine import engine_from_config
+from .inspection import inspect
+from .schema import BLANK_SCHEMA
+from .schema import CheckConstraint
+from .schema import Column
+from .schema import ColumnDefault
+from .schema import Computed
+from .schema import Constraint
+from .schema import DDL
+from .schema import DefaultClause
+from .schema import FetchedValue
+from .schema import ForeignKey
+from .schema import ForeignKeyConstraint
+from .schema import Identity
+from .schema import Index
+from .schema import MetaData
+from .schema import PrimaryKeyConstraint
+from .schema import Sequence
+from .schema import Table
+from .schema import ThreadLocalMetaData
+from .schema import UniqueConstraint
+from .sql import alias
+from .sql import all_
+from .sql import and_
+from .sql import any_
+from .sql import asc
+from .sql import between
+from .sql import bindparam
+from .sql import case
+from .sql import cast
+from .sql import collate
+from .sql import column
+from .sql import delete
+from .sql import desc
+from .sql import distinct
+from .sql import except_
+from .sql import except_all
+from .sql import exists
+from .sql import extract
+from .sql import false
+from .sql import func
+from .sql import funcfilter
+from .sql import insert
+from .sql import intersect
+from .sql import intersect_all
+from .sql import join
+from .sql import LABEL_STYLE_DEFAULT
+from .sql import LABEL_STYLE_DISAMBIGUATE_ONLY
+from .sql import LABEL_STYLE_NONE
+from .sql import LABEL_STYLE_TABLENAME_PLUS_COL
+from .sql import lambda_stmt
+from .sql import lateral
+from .sql import literal
+from .sql import literal_column
+from .sql import modifier
+from .sql import not_
+from .sql import null
+from .sql import nulls_first
+from .sql import nulls_last
+from .sql import nullsfirst
+from .sql import nullslast
+from .sql import or_
+from .sql import outerjoin
+from .sql import outparam
+from .sql import over
+from .sql import select
+from .sql import subquery
+from .sql import table
+from .sql import tablesample
+from .sql import text
+from .sql import true
+from .sql import tuple_
+from .sql import type_coerce
+from .sql import union
+from .sql import union_all
+from .sql import update
+from .sql import values
+from .sql import within_group
+from .types import ARRAY
+from .types import BIGINT
+from .types import BigInteger
+from .types import BINARY
+from .types import BLOB
+from .types import BOOLEAN
+from .types import Boolean
+from .types import CHAR
+from .types import CLOB
+from .types import DATE
+from .types import Date
+from .types import DATETIME
+from .types import DateTime
+from .types import DECIMAL
+from .types import Enum
+from .types import FLOAT
+from .types import Float
+from .types import INT
+from .types import INTEGER
+from .types import Integer
+from .types import Interval
+from .types import JSON
+from .types import LargeBinary
+from .types import NCHAR
+from .types import NUMERIC
+from .types import Numeric
+from .types import NVARCHAR
+from .types import PickleType
+from .types import REAL
+from .types import SMALLINT
+from .types import SmallInteger
+from .types import String
+from .types import TEXT
+from .types import Text
+from .types import TIME
+from .types import Time
+from .types import TIMESTAMP
+from .types import TypeDecorator
+from .types import Unicode
+from .types import UnicodeText
+from .types import VARBINARY
+from .types import VARCHAR
 
 
 __version__ = "1.4.0"
@@ -136,7 +136,7 @@ __version__ = "1.4.0"
 def __go(lcls):
     global __all__
 
-    from . import events  # noqa
+    from . import events
     from . import util as _sa_util
 
     import inspect as _inspect
