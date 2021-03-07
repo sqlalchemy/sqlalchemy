@@ -13,8 +13,7 @@
 import re
 
 from . import events  # noqa
-from .elements import _defer_name
-from .elements import _defer_none_name
+from .elements import _NONE_NAME
 from .elements import conv
 from .schema import CheckConstraint
 from .schema import Column
@@ -57,7 +56,7 @@ class ConventionDict(object):
                 return getattr(col, attrname)
 
     def _key_constraint_name(self):
-        if isinstance(self._const_name, (type(None), _defer_none_name)):
+        if self._const_name in (None, _NONE_NAME):
             raise exc.InvalidRequestError(
                 "Naming convention including "
                 "%(constraint_name)s token requires that "
@@ -160,14 +159,14 @@ def _constraint_name_for_table(const, table):
         and (
             const.name is None
             or "constraint_name" in convention
-            or isinstance(const.name, _defer_name)
+            or const.name is _NONE_NAME
         )
     ):
         return conv(
             convention
             % ConventionDict(const, table, metadata.naming_convention)
         )
-    elif isinstance(convention, _defer_none_name):
+    elif convention is _NONE_NAME:
         return None
 
 
@@ -203,7 +202,7 @@ def _constraint_name(const, table):
         )
 
     elif isinstance(table, Table):
-        if isinstance(const.name, (conv, _defer_name)):
+        if isinstance(const.name, conv) or const.name is _NONE_NAME:
             return
 
         newname = _constraint_name_for_table(const, table)

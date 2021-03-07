@@ -4882,16 +4882,13 @@ class IdentifierPreparer(object):
     def format_constraint(self, constraint, _alembic_quote=True):
         naming = util.preloaded.sql_naming
 
-        if isinstance(constraint.name, elements._defer_name):
+        if constraint.name is elements._NONE_NAME:
             name = naming._constraint_name_for_table(
                 constraint, constraint.table
             )
 
             if name is None:
-                if isinstance(constraint.name, elements._defer_none_name):
-                    return None
-                else:
-                    name = constraint.name
+                return None
         else:
             name = constraint.name
 
