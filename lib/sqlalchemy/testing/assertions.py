@@ -445,11 +445,9 @@ class AssertsCompiledSQL(object):
         from sqlalchemy import orm
 
         if isinstance(clause, orm.Query):
-            compile_state = clause._compile_state()
-            compile_state.statement._label_style = (
-                LABEL_STYLE_TABLENAME_PLUS_COL
-            )
-            clause = compile_state.statement
+            stmt = clause._statement_20()
+            stmt._label_style = LABEL_STYLE_TABLENAME_PLUS_COL
+            clause = stmt
 
         if compile_kwargs:
             kw["compile_kwargs"] = compile_kwargs
