@@ -1067,20 +1067,19 @@ class Connection(Connectable):
 
         if self._transaction:
             self._transaction.close()
+            skip_reset = True
+        else:
+            skip_reset = False
 
         if self._dbapi_connection is not None:
             conn = self._dbapi_connection
 
-            # this will do a reset-on-return every time, even if we
-            # called rollback() already. it might be worth optimizing
-            # this for the case that we are able to close without issue
-            conn.close()
-
-            # this is in fact never true outside of a bunch of
-            # artificial scenarios created by the test suite and its
-            # fixtures.  the reset_agent should no longer be necessary.
-            if conn._reset_agent is self._transaction:
-                conn._reset_agent = None
+            # as we just closed the transaction, close the connection
+            # pool connection without doing an additional reset
+            if skip_reset:
+                conn._close_no_reset()
+            else:
+                conn.close()
 
             # There is a slight chance that conn.close() may have
             # triggered an invalidation here in which case
@@ -2309,35 +2308,13 @@ class RootTransaction(Transaction):
 
         self.is_active = True
 
-        # the SingletonThreadPool used with sqlite memory can share the same
-        # DBAPI connection / fairy among multiple Connection objects.  while
-        # this is not ideal, it is a still-supported use case which at the
-        # moment occurs in the test suite due to how some of pytest fixtures
-        # work out
-        if connection._dbapi_connection._reset_agent is None:
-            connection._dbapi_connection._reset_agent = self
-
     def _deactivate_from_connection(self):
         if self.is_active:
             assert self.connection._transaction is self
             self.is_active = False
 
-            if (
-                self.connection._dbapi_connection is not None
-                and self.connection._dbapi_connection._reset_agent is self
-            ):
-                self.connection._dbapi_connection._reset_agent = None
-
         elif self.connection._transaction is not self:
             util.warn("transaction already deassociated from connection")
-
-        # we have tests that want to make sure the pool handles this
-        # correctly.  TODO: how to disable internal assertions cleanly?
-        # else:
-        #    if self.connection._dbapi_connection is not None:
-        #        assert (
-        #            self.connection._dbapi_connection._reset_agent is not self
-        #        )
 
     def _do_deactivate(self):
         # called from a MarkerTransaction to cancel this root transaction.

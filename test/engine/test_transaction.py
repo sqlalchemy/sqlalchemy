@@ -477,174 +477,6 @@ class TransactionTest(fixtures.TablesTest):
             eq_(result.fetchall(), [])
 
 
-class ResetAgentTest(fixtures.TestBase):
-    __backend__ = True
-
-    def test_begin_close(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-        assert not trans.is_active
-
-    def test_begin_rollback(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
-
-    def test_begin_commit(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-            trans.commit()
-            assert connection.connection._reset_agent is None
-
-    def test_trans_close(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-            trans.close()
-            assert connection.connection._reset_agent is None
-
-    def test_trans_reset_agent_broken_ensure(self):
-        eng = testing_engine()
-        conn = eng.connect()
-        trans = conn.begin()
-        assert conn.connection._reset_agent is trans
-        trans.is_active = False
-
-        with expect_warnings("Reset agent is not active"):
-            conn.close()
-
-    def test_trans_commit_reset_agent_broken_ensure_pool(self):
-        eng = testing_engine(options={"pool_reset_on_return": "commit"})
-        conn = eng.connect()
-        trans = conn.begin()
-        assert conn.connection._reset_agent is trans
-        trans.is_active = False
-
-        with expect_warnings("Reset agent is not active"):
-            conn.close()
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_close_one(self):
-        with testing.db.connect() as connection:
-            t1 = connection.begin()
-            assert connection.connection._reset_agent is t1
-            t2 = connection.begin_nested()
-            assert connection.connection._reset_agent is t1
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-            t2.close()
-            assert connection._nested_transaction is None
-            assert connection._transaction is t1
-            assert connection.connection._reset_agent is t1
-            t1.close()
-            assert connection.connection._reset_agent is None
-        assert not t1.is_active
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_close_two(self):
-        with testing.db.connect() as connection:
-            t1 = connection.begin()
-            assert connection.connection._reset_agent is t1
-            t2 = connection.begin_nested()
-            assert connection.connection._reset_agent is t1
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-
-            assert connection.connection._reset_agent is t1
-            t1.close()
-
-            assert connection._nested_transaction is None
-            assert connection._transaction is None
-
-            assert connection.connection._reset_agent is None
-        assert not t1.is_active
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_rollback(self):
-        with testing.db.connect() as connection:
-            t1 = connection.begin()
-            assert connection.connection._reset_agent is t1
-            t2 = connection.begin_nested()
-            assert connection.connection._reset_agent is t1
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-            t2.close()
-            assert connection._nested_transaction is None
-            assert connection._transaction is t1
-            assert connection.connection._reset_agent is t1
-            t1.rollback()
-            assert connection._transaction is None
-            assert connection.connection._reset_agent is None
-        assert not t2.is_active
-        assert not t1.is_active
-
-    @testing.requires.savepoints
-    def test_begin_nested_close(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin_nested()
-            assert (
-                connection.connection._reset_agent is connection._transaction
-            )
-        assert not trans.is_active
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_close(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-        assert not trans2.is_active
-        assert not trans.is_active
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_commit(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-            trans2.rollback()
-            assert connection.connection._reset_agent is trans
-            trans.commit()
-            assert connection.connection._reset_agent is None
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_rollback(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-            trans2.rollback()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_commit(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
-            trans.commit()
-            assert connection.connection._reset_agent is None
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_rollback(self):
-        with testing.db.connect() as connection:
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
-
-
 class AutoRollbackTest(fixtures.TestBase):
     __backend__ = True
 
@@ -1071,164 +903,414 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         )
 
 
-class FutureResetAgentTest(fixtures.FutureEngineMixin, fixtures.TestBase):
-    """Still some debate over if the "reset agent" should apply to the
-    future connection or not.
+class ResetFixture(object):
+    @testing.fixture()
+    def reset_agent(self, testing_engine):
+        engine = testing_engine()
+        engine.connect().close()
+
+        harness = mock.Mock(
+            do_rollback=mock.Mock(side_effect=testing.db.dialect.do_rollback),
+            do_commit=mock.Mock(side_effect=testing.db.dialect.do_commit),
+            engine=engine,
+        )
+        event.listen(engine, "rollback", harness.rollback)
+        event.listen(engine, "commit", harness.commit)
+        event.listen(engine, "rollback_savepoint", harness.rollback_savepoint)
+        event.listen(engine, "rollback_twophase", harness.rollback_twophase)
+        event.listen(engine, "commit_twophase", harness.commit_twophase)
+
+        with mock.patch.object(
+            engine.dialect, "do_rollback", harness.do_rollback
+        ), mock.patch.object(engine.dialect, "do_commit", harness.do_commit):
+            yield harness
+
+        event.remove(engine, "rollback", harness.rollback)
+        event.remove(engine, "commit", harness.commit)
+        event.remove(engine, "rollback_savepoint", harness.rollback_savepoint)
+        event.remove(engine, "rollback_twophase", harness.rollback_twophase)
+        event.remove(engine, "commit_twophase", harness.commit_twophase)
 
 
-    """
+class ResetAgentTest(ResetFixture, fixtures.TestBase):
+    # many of these tests illustate rollback-on-return being redundant
+    # vs. what the transaction just did, however this is to ensure
+    # even if statements were invoked on the DBAPI connection directly,
+    # the state is cleared.    options to optimize this with clear
+    # docs etc. should be added.
 
     __backend__ = True
 
-    def test_begin_close(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary)
+    def test_begin_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
             trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-
         assert not trans.is_active
-        eq_(canary.mock_calls, [mock.call(connection)])
-
-    def test_begin_rollback(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary)
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
-        assert not trans.is_active
-        eq_(canary.mock_calls, [mock.call(connection)])
-
-    def test_begin_commit(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin()
-            assert connection.connection._reset_agent is trans
-            trans.commit()
-            assert connection.connection._reset_agent is None
-        assert not trans.is_active
-        eq_(canary.mock_calls, [mock.call.commit(connection)])
-
-    @testing.requires.savepoints
-    def test_begin_nested_close(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin_nested()
-            assert (
-                connection.connection._reset_agent is connection._transaction
-            )
-        # it's a savepoint, but root made sure it closed
-        assert not trans.is_active
-        eq_(canary.mock_calls, [mock.call.rollback(connection)])
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_close(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-        assert not trans2.is_active
-        assert not trans.is_active
-        eq_(canary.mock_calls, [mock.call.rollback(connection)])
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_commit(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(
-                connection, "rollback_savepoint", canary.rollback_savepoint
-            )
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-            trans2.rollback()  # this is not a connection level event
-            assert connection.connection._reset_agent is trans
-            trans.commit()
-            assert connection.connection._reset_agent is None
         eq_(
-            canary.mock_calls,
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    def test_begin_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.rollback()
+        eq_(
+            reset_agent.mock_calls,
             [
-                mock.call.rollback_savepoint(connection, mock.ANY, None),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    def test_begin_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.commit()
+        eq_(
+            reset_agent.mock_calls,
+            [
                 mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    def test_trans_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.close()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
             ],
         )
 
     @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_rollback(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            assert connection.connection._reset_agent is trans
-            trans2.rollback()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
-        eq_(canary.mock_calls, [mock.call.rollback(connection)])
+    def test_begin_nested_trans_close_one(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+            t2.close()
+            assert connection._nested_transaction is None
+            assert connection._transaction is t1
+            t1.close()
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
 
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(
-                connection, "rollback_twophase", canary.rollback_twophase
-            )
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
+    @testing.requires.savepoints
+    def test_begin_nested_trans_close_two(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+
+            t1.close()
+
+            assert connection._nested_transaction is None
+            assert connection._transaction is None
+
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+            t2.close()
+            assert connection._nested_transaction is None
+            assert connection._transaction is t1
+            t1.rollback()
+            assert connection._transaction is None
+        assert not t2.is_active
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_nested()
         assert not trans.is_active
         eq_(
-            canary.mock_calls,
-            [mock.call.rollback_twophase(connection, mock.ANY, False)],
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+            ],
         )
 
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_commit(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(connection, "commit", canary.commit)
-            event.listen(connection, "commit_twophase", canary.commit_twophase)
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
+    @testing.requires.savepoints
+    def test_begin_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+        assert not trans2.is_active
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()
             trans.commit()
-            assert connection.connection._reset_agent is None
         eq_(
-            canary.mock_calls,
-            [mock.call.commit_twophase(connection, mock.ANY, False)],
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()
+            trans.rollback()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
         )
 
     @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_rollback(self):
-        canary = mock.Mock()
-        with testing.db.connect() as connection:
-            event.listen(connection, "rollback", canary.rollback)
-            event.listen(
-                connection, "rollback_twophase", canary.rollback_twophase
-            )
-            event.listen(connection, "commit", canary.commit)
-            trans = connection.begin_twophase()
-            assert connection.connection._reset_agent is trans
-            trans.rollback()
-            assert connection.connection._reset_agent is None
+    def test_reset_via_agent_begin_twophase(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()  # noqa
+
+        # pg8000 rolls back via the rollback_twophase
         eq_(
-            canary.mock_calls,
-            [mock.call.rollback_twophase(connection, mock.ANY, False)],
+            reset_agent.mock_calls[0],
+            mock.call.rollback_twophase(connection, mock.ANY, mock.ANY),
         )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.commit()
+        eq_(
+            reset_agent.mock_calls[0],
+            mock.call.commit_twophase(connection, mock.ANY, mock.ANY),
+        )
+
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.rollback()
+        eq_(
+            reset_agent.mock_calls[0:2],
+            [
+                mock.call.rollback_twophase(connection, mock.ANY, mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
+
+
+class FutureResetAgentTest(
+    ResetFixture, fixtures.FutureEngineMixin, fixtures.TestBase
+):
+
+    __backend__ = True
+
+    def test_reset_agent_no_conn_transaction(self, reset_agent):
+        with reset_agent.engine.connect():
+            pass
+
+        eq_(reset_agent.mock_calls, [mock.call.do_rollback(mock.ANY)])
+
+    def test_begin_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    def test_begin_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.rollback()
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    def test_begin_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.commit()
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_nested()
+        # it's a savepoint, but root made sure it closed
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+        assert not trans2.is_active
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()  # this is not a connection level event
+            trans.commit()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, None),
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()
+            trans.rollback()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),  # this is the reset on return
+            ],
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+        assert not trans.is_active
+        # pg8000 uses the rollback_twophase as the full rollback.
+        eq_(
+            reset_agent.mock_calls[0],
+            mock.call.rollback_twophase(connection, mock.ANY, False),
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.commit()
+
+        # again pg8000 vs. other PG drivers have different API
+        eq_(
+            reset_agent.mock_calls[0],
+            mock.call.commit_twophase(connection, mock.ANY, False),
+        )
+
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.rollback()
+
+        # pg8000 vs. the other postgresql drivers have different
+        # twophase implementations.  the base postgresql driver emits
+        # "ROLLBACK PREPARED" explicitly then calls do_rollback().
+        # pg8000 has a dedicated API method.  so we get either one or
+        # two do_rollback() at the end, just need at least one.
+        eq_(
+            reset_agent.mock_calls[0:2],
+            [
+                mock.call.rollback_twophase(connection, mock.ANY, False),
+                mock.call.do_rollback(mock.ANY),
+                # mock.call.do_rollback(mock.ANY),
+            ],
+        )
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
 
 
 class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):

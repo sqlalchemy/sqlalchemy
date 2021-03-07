@@ -101,9 +101,9 @@ by any additional options::
 
     mypool = pool.QueuePool(getconn, max_overflow=10, pool_size=5)
 
-DBAPI connections can then be procured from the pool using the :meth:`_pool.Pool.connect`
-function.  The return value of this method is a DBAPI connection that's contained
-within a transparent proxy::
+DBAPI connections can then be procured from the pool using the
+:meth:`_pool.Pool.connect` function. The return value of this method is a DBAPI
+connection that's contained within a transparent proxy::
 
     # get a connection
     conn = mypool.connect()
@@ -120,23 +120,52 @@ pool::
     # it to the pool.
     conn.close()
 
-The proxy also returns its contained DBAPI connection to the pool
-when it is garbage collected,
-though it's not deterministic in Python that this occurs immediately (though
-it is typical with cPython).
+The proxy also returns its contained DBAPI connection to the pool when it is
+garbage collected, though it's not deterministic in Python that this occurs
+immediately (though it is typical with cPython). This usage is not recommended
+however and in particular is not supported with asyncio DBAPI drivers.
 
-The ``close()`` step also performs the important step of calling the
-``rollback()`` method of the DBAPI connection.   This is so that any
-existing transaction on the connection is removed, not only ensuring
-that no existing state remains on next usage, but also so that table
-and row locks are released as well as that any isolated data snapshots
-are removed.   This behavior can be disabled using the ``reset_on_return``
-option of :class:`_pool.Pool`.
+.. _pool_reset_on_return:
 
-A particular pre-created :class:`_pool.Pool` can be shared with one or more
-engines by passing it to the ``pool`` argument of :func:`_sa.create_engine`::
+Reset On Return
+---------------
 
-    e = create_engine('postgresql://', pool=mypool)
+The pool also includes the a "reset on return" feature which will call the
+``rollback()`` method of the DBAPI connection when the connection is returned
+to the pool. This is so that any existing
+transaction on the connection is removed, not only ensuring that no existing
+state remains on next usage, but also so that table and row locks are released
+as well as that any isolated data snapshots are removed.   This ``rollback()``
+occurs in most cases even when using an :class:`_engine.Engine` object,
+except in the case when the :class:`_engine.Connection` can guarantee
+that a ``rollback()`` has been called immediately before the connection
+is returned to the pool.
+
+For most DBAPIs, the call to ``rollback()`` is very inexpensive and if the
+DBAPI has already completed a transaction, the method should be a no-op.
+However, for DBAPIs that incur performance issues with ``rollback()`` even if
+there's no state on the connection, this behavior can be disabled using the
+``reset_on_return`` option of :class:`_pool.Pool`.   The behavior is safe
+to disable under the following conditions:
+
+* If the database does not support transactions at all, such as using
+  MySQL with the MyISAM engine, or the DBAPI is used in autocommit
+  mode only, the behavior can be disabled.
+* If the pool itself doesn't maintain a connection after it's checked in,
+  such as when using :class:`.NullPool`, the behavior can be disabled.
+* Otherwise, it must be ensured that:
+  * the application ensures that all :class:`_engine.Connection`
+    objects are explicitly closed out using a context manager (i.e. ``with``
+    block) or a ``try/finally`` style block
+  * connections are never allowed to be garbage collected before being explicitly
+    closed.
+  * the DBAPI connection itself, e.g. ``connection.connection``, is not used
+    directly, or the application ensures that ``.rollback()`` is called
+    on this connection before releasing it back to the connection pool.
+
+The "reset on return" step may be logged using the ``logging.DEBUG``
+log level along with the ``sqlalchemy.pool`` logger, or by setting
+``echo_pool='debug'`` with :func:`_sa.create_engine`.
 
 Pool Events
 -----------
