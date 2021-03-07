@@ -8,9 +8,9 @@
 r"""
 .. dialect:: oracle
     :name: Oracle
-
-    Oracle version 8 through current (11g at the time of this writing) are
-    supported.
+    :full_support: 11.2, 18c
+    :normal_support: 11+
+    :best_effort: 8+
 
 
 Auto Increment Behavior

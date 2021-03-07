@@ -9,6 +9,9 @@ r"""
 
 .. dialect:: mysql
     :name: MySQL / MariaDB
+    :full_support: 5.6, 5.7, 8.0 / 10.4, 10.5
+    :normal_support: 5.6+ / 10+
+    :best_effort: 5.0.2+ / 5.0.2+
 
 Supported Versions and Features
 -------------------------------

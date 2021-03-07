@@ -1496,3 +1496,4 @@ Glossary
         .. seealso::
 
             :ref:`session_object_states`
+
