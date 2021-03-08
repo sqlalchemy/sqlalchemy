@@ -285,7 +285,7 @@ level constraints will handle the task of actually modifying the data in the
 database, the ORM will still be able to appropriately track the state of
 locally present objects that may be affected.
 
-There is then an additional option on :func:`_orm.relationship` which which
+There is then an additional option on :func:`_orm.relationship` which
 indicates the degree to which the ORM should try to run DELETE/UPDATE
 operations on related rows itself, vs. how much it should rely upon expecting
 the database-side FOREIGN KEY constraint cascade to handle the task; this is
