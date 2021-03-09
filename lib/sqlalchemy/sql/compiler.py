@@ -2055,17 +2055,19 @@ class SQLCompiler(Compiled):
     def visit_custom_op_binary(self, element, operator, **kw):
         kw["eager_grouping"] = operator.eager_grouping
         return self._generate_generic_binary(
-            element, " " + operator.opstring + " ", **kw
+            element,
+            " " + self.escape_literal_column(operator.opstring) + " ",
+            **kw
         )
 
     def visit_custom_op_unary_operator(self, element, operator, **kw):
         return self._generate_generic_unary_operator(
-            element, operator.opstring + " ", **kw
+            element, self.escape_literal_column(operator.opstring) + " ", **kw
         )
 
     def visit_custom_op_unary_modifier(self, element, operator, **kw):
         return self._generate_generic_unary_modifier(
-            element, " " + operator.opstring, **kw
+            element, " " + self.escape_literal_column(operator.opstring), **kw
         )
 
     def _generate_generic_binary(

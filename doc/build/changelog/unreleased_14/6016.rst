@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6016
+
+    Fixed bug where the "percent escaping" feature that occurs with dialects
+    that use the "format" or "pyformat" bound parameter styles was not enabled
+    for the :meth:`.Operations.op` and :meth:`.Operations.custom_op` methods,
+    for custom operators that use percent signs. The percent sign will now be
+    automatically doubled based on the paramstyle as necessary.
+
+

@@ -34,6 +34,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import resolve_lambda
 
 
 class QueryTest(fixtures.TablesTest):
@@ -173,7 +174,34 @@ class QueryTest(fixtures.TablesTest):
             select(tuple_(users.c.user_id, users.c.user_name)),
         )
 
-    def test_like_ops(self, connection):
+    @testing.combinations(
+        (
+            lambda users: select(users.c.user_id).where(
+                users.c.user_name.startswith("apple")
+            ),
+            [(1,)],
+        ),
+        (
+            lambda users: select(users.c.user_id).where(
+                users.c.user_name.contains("i % t")
+            ),
+            [(5,)],
+        ),
+        (
+            lambda users: select(users.c.user_id).where(
+                users.c.user_name.endswith("anas")
+            ),
+            [(3,)],
+        ),
+        (
+            lambda users: select(users.c.user_id).where(
+                users.c.user_name.contains("i % t", escape="&")
+            ),
+            [(5,)],
+        ),
+        argnames="expr,result",
+    )
+    def test_like_ops(self, connection, expr, result):
         users = self.tables.users
         connection.execute(
             users.insert(),
@@ -186,33 +214,8 @@ class QueryTest(fixtures.TablesTest):
             ],
         )
 
-        for expr, result in (
-            (
-                select(users.c.user_id).where(
-                    users.c.user_name.startswith("apple")
-                ),
-                [(1,)],
-            ),
-            (
-                select(users.c.user_id).where(
-                    users.c.user_name.contains("i % t")
-                ),
-                [(5,)],
-            ),
-            (
-                select(users.c.user_id).where(
-                    users.c.user_name.endswith("anas")
-                ),
-                [(3,)],
-            ),
-            (
-                select(users.c.user_id).where(
-                    users.c.user_name.contains("i % t", escape="&")
-                ),
-                [(5,)],
-            ),
-        ):
-            eq_(connection.execute(expr).fetchall(), result)
+        expr = resolve_lambda(expr, users=users)
+        eq_(connection.execute(expr).fetchall(), result)
 
     @testing.requires.mod_operator_as_percent_sign
     @testing.emits_warning(".*now automatically escapes.*")
