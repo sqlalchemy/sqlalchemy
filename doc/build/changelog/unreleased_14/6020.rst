@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 6020
+
+    The ``sqlalchemy.ext.mutable`` extension now tracks the "parents"
+    collection using the :class:`.InstanceState` associated with objects,
+    rather than the object itself. The latter approach required that the object
+    be hashable so that it can be inside of a ``WeakKeyDictionary``, which goes
+    against the behavioral contract of the ORM overall which is that ORM mapped
+    objects do not need to provide any particular kind of ``__hash__()`` method
+    and that unhashable objects are supported.

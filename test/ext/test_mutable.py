@@ -6,6 +6,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.ext.mutable import MutableDict
@@ -50,6 +51,10 @@ class FooWithEq(object):
 
     def __eq__(self, other):
         return self.id == other.id
+
+
+class FooWNoHash(fixtures.BasicEntity):
+    __hash__ = None
 
 
 class Point(MutableComposite):
@@ -848,6 +853,60 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 2]))
 
 
+class _MutableNoHashFixture(object):
+    @testing.fixture(autouse=True, scope="class")
+    def set_class(self):
+        global Foo
+
+        _replace_foo = Foo
+        Foo = FooWNoHash
+
+        yield
+        Foo = _replace_foo
+
+    def test_ensure_not_hashable(self):
+        d = {}
+        obj = Foo()
+        with testing.expect_raises(TypeError):
+            d[obj] = True
+
+
+class MutableListNoHashTest(
+    _MutableNoHashFixture, _MutableListTestBase, fixtures.MappedTest
+):
+    @classmethod
+    def define_tables(cls, metadata):
+        MutableList = cls._type_fixture()
+
+        mutable_pickle = MutableList.as_mutable(PickleType)
+        Table(
+            "foo",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", mutable_pickle),
+        )
+
+
+class MutableDictNoHashTest(
+    _MutableNoHashFixture, _MutableDictTestBase, fixtures.MappedTest
+):
+    @classmethod
+    def define_tables(cls, metadata):
+        MutableDict = cls._type_fixture()
+
+        mutable_pickle = MutableDict.as_mutable(PickleType)
+        Table(
+            "foo",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("data", mutable_pickle),
+        )
+
+
 class MutableColumnDefaultTest(_MutableDictTestFixture, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -1396,7 +1455,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
         # by the mutable composite, and tracking would be lost
         sess.refresh(f1, ["unrelated_data"])
 
-        is_(list(f1.data._parents.keys())[0], f1)
+        is_(list(f1.data._parents.keys())[0], f1._sa_instance_state)
 
         f1.data.y = 9
 
@@ -1409,7 +1468,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
         sess.refresh(f1, ["unrelated_data", "y"])
 
-        is_(list(f1.data._parents.keys())[0], f1)
+        is_(list(f1.data._parents.keys())[0], f1._sa_instance_state)
 
         f1.data.y = 15
         sess.commit()
