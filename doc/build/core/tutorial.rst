@@ -785,7 +785,7 @@ objects is at :class:`.ColumnOperators`.
 
 * :meth:`IN <.ColumnOperators.in_>`::
 
-    statement.where(users.c..name.in_(['ed', 'wendy', 'jack']))
+    statement.where(users.c.name.in_(['ed', 'wendy', 'jack']))
 
     # works with Select objects too:
     statement.where.filter(users.c.name.in_(
