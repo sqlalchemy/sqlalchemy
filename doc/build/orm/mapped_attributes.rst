@@ -256,6 +256,8 @@ to "mirror" another attribute that is mapped.
 In the most basic sense, the synonym is an easy way to make a certain
 attribute available by an additional name::
 
+    from sqlalchemy.orm import synonym
+    
     class MyClass(Base):
         __tablename__ = 'my_table'
 
