@@ -86,10 +86,10 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
 from sqlalchemy.testing.schema import Column
+from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
-from sqlalchemy.util import OrderedDict
 from sqlalchemy.util import u
 
 
@@ -1579,27 +1579,15 @@ class UnicodeTest(fixtures.TestBase):
 class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     __backend__ = True
 
-    class SomeEnum(object):
-        # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
-        __members__ = OrderedDict()
-
-        def __init__(self, name, value, alias=None):
-            self.name = name
-            self.value = value
-            self.__members__[name] = self
-            setattr(self.__class__, name, self)
-            if alias:
-                self.__members__[alias] = self
-                setattr(self.__class__, alias, self)
-
-    class SomeOtherEnum(SomeEnum):
-        __members__ = OrderedDict()
+    SomeEnum = pep435_enum("SomeEnum")
 
     one = SomeEnum("one", 1)
     two = SomeEnum("two", 2)
     three = SomeEnum("three", 3, "four")
     a_member = SomeEnum("AMember", "a")
     b_member = SomeEnum("BMember", "b")
+
+    SomeOtherEnum = pep435_enum("SomeOtherEnum")
 
     other_one = SomeOtherEnum("one", 1)
     other_two = SomeOtherEnum("two", 2)

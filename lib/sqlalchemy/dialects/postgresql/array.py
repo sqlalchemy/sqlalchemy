@@ -331,12 +331,6 @@ class ARRAY(sqltypes.ARRAY):
             )
 
     @util.memoized_property
-    def _require_cast(self):
-        return self._against_native_enum or isinstance(
-            self.item_type, sqltypes.JSON
-        )
-
-    @util.memoized_property
     def _against_native_enum(self):
         return (
             isinstance(self.item_type, sqltypes.Enum)
@@ -344,10 +338,7 @@ class ARRAY(sqltypes.ARRAY):
         )
 
     def bind_expression(self, bindvalue):
-        if self._require_cast:
-            return expression.cast(bindvalue, self)
-        else:
-            return bindvalue
+        return bindvalue
 
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(

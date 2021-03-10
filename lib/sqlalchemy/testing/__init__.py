@@ -42,6 +42,7 @@ from .assertions import startswith_
 from .assertions import uses_deprecated
 from .config import async_test
 from .config import combinations
+from .config import combinations_list
 from .config import db
 from .config import fixture
 from .config import requirements as requires

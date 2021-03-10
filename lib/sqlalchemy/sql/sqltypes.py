@@ -2675,6 +2675,8 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
 
     __visit_name__ = "ARRAY"
 
+    _is_array = True
+
     zero_indexes = False
     """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""

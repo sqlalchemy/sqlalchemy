@@ -89,6 +89,11 @@ def combinations(*comb, **kw):
     return _fixture_functions.combinations(*comb, **kw)
 
 
+def combinations_list(arg_iterable, **kw):
+    "As combination, but takes a single iterable"
+    return combinations(*arg_iterable, **kw)
+
+
 def fixture(*arg, **kw):
     return _fixture_functions.fixture(*arg, **kw)
 

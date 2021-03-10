@@ -578,7 +578,9 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
         "i": lambda obj: obj,
         "r": repr,
         "s": str,
-        "n": operator.attrgetter("__name__"),
+        "n": lambda obj: obj.__name__
+        if hasattr(obj, "__name__")
+        else type(obj).__name__,
     }
 
     def combinations(self, *arg_sets, **kw):
