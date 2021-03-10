@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, types, postgresql
+    :tickets: 6023
+
+    Adjusted the psycopg2 dialect to emit an explicit PostgreSQL-style cast for
+    bound parameters that contain ARRAY elements. This allows the full range of
+    datatypes to function correctly within arrays. The asyncpg dialect already
+    generated these internal casts in the final statement. This also includes
+    support for array slice updates as well as the PostgreSQL-specific
+    :meth:`_postgresql.ARRAY.contains` method.

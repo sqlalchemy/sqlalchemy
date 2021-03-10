@@ -5,10 +5,13 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import sys
+
 from . import config
 from . import exclusions
 from .. import event
 from .. import schema
+from ..util import OrderedDict
 
 
 __all__ = ["Table", "Column"]
@@ -114,3 +117,41 @@ def _truncate_name(dialect, name):
         )
     else:
         return name
+
+
+def pep435_enum(name):
+    # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
+    __members__ = OrderedDict()
+
+    def __init__(self, name, value, alias=None):
+        self.name = name
+        self.value = value
+        self.__members__[name] = self
+        value_to_member[value] = self
+        setattr(self.__class__, name, self)
+        if alias:
+            self.__members__[alias] = self
+            setattr(self.__class__, alias, self)
+
+    value_to_member = {}
+
+    @classmethod
+    def get(cls, value):
+        return value_to_member[value]
+
+    someenum = type(
+        name,
+        (object,),
+        {"__members__": __members__, "__init__": __init__, "get": get},
+    )
+
+    # getframe() trick for pickling I don't understand courtesy
+    # Python namedtuple()
+    try:
+        module = sys._getframe(1).f_globals.get("__name__", "__main__")
+    except (AttributeError, ValueError):
+        pass
+    if module is not None:
+        someenum.__module__ = module
+
+    return someenum

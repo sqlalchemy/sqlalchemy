@@ -1,5 +1,4 @@
 # coding: utf-8
-
 from sqlalchemy import and_
 from sqlalchemy import cast
 from sqlalchemy import Column
@@ -31,6 +30,8 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import TSRANGE
+from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
@@ -1311,13 +1312,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            c.contains([1]), "x @> %(x_1)s", checkparams={"x_1": [1]}
+            c.contains([1]),
+            "x @> %(x_1)s::INTEGER[]",
+            checkparams={"x_1": [1]},
+            dialect=PGDialect_psycopg2(),
         )
         self.assert_compile(
-            c.contained_by([2]), "x <@ %(x_1)s", checkparams={"x_1": [2]}
+            c.contained_by([2]),
+            "x <@ %(x_1)s::INTEGER[]",
+            checkparams={"x_1": [2]},
+            dialect=PGDialect_psycopg2(),
         )
         self.assert_compile(
-            c.overlap([3]), "x && %(x_1)s", checkparams={"x_1": [3]}
+            c.contained_by([2]),
+            "x <@ %(x_1)s",
+            checkparams={"x_1": [2]},
+            dialect=PGDialect(),
+        )
+        self.assert_compile(
+            c.overlap([3]),
+            "x && %(x_1)s::INTEGER[]",
+            checkparams={"x_1": [3]},
+            dialect=PGDialect_psycopg2(),
         )
         self.assert_compile(
             postgresql.Any(4, c),
@@ -1365,7 +1381,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 7},
         )
 
-    def _test_array_zero_indexes(self, zero_indexes):
+    @testing.combinations((True,), (False,))
+    def test_array_zero_indexes(self, zero_indexes):
         c = Column("x", postgresql.ARRAY(Integer, zero_indexes=zero_indexes))
 
         add_one = 1 if zero_indexes else 0
@@ -1402,12 +1419,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "param_1": 3 + add_one,
             },
         )
-
-    def test_array_zero_indexes_true(self):
-        self._test_array_zero_indexes(True)
-
-    def test_array_zero_indexes_false(self):
-        self._test_array_zero_indexes(False)
 
     def test_array_literal_type(self):
         isinstance(postgresql.array([1, 2]).type, postgresql.ARRAY)
@@ -1536,6 +1547,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "%(param_2)s, %(param_3)s])",
         )
 
+    def test_update_array(self):
+        m = MetaData()
+        t = Table("t", m, Column("data", postgresql.ARRAY(Integer)))
+        self.assert_compile(
+            t.update().values({t.c.data: [1, 3, 4]}),
+            "UPDATE t SET data=%(data)s::INTEGER[]",
+            checkparams={"data": [1, 3, 4]},
+        )
+
     def test_update_array_element(self):
         m = MetaData()
         t = Table("t", m, Column("data", postgresql.ARRAY(Integer)))
@@ -1548,10 +1568,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_update_array_slice(self):
         m = MetaData()
         t = Table("t", m, Column("data", postgresql.ARRAY(Integer)))
+
+        # psycopg2-specific, has a cast
         self.assert_compile(
-            t.update().values({t.c.data[2:5]: 2}),
-            "UPDATE t SET data[%(data_1)s:%(data_2)s]=%(param_1)s",
-            checkparams={"param_1": 2, "data_2": 5, "data_1": 2},
+            t.update().values({t.c.data[2:5]: [2, 3, 4]}),
+            "UPDATE t SET data[%(data_1)s:%(data_2)s]="
+            "%(param_1)s::INTEGER[]",
+            checkparams={"param_1": [2, 3, 4], "data_2": 5, "data_1": 2},
+            dialect=PGDialect_psycopg2(),
+        )
+
+        # default dialect does not, as DBAPIs may be doing this for us
+        self.assert_compile(
+            t.update().values({t.c.data[2:5]: [2, 3, 4]}),
+            "UPDATE t SET data[%s:%s]=" "%s",
+            checkparams={"param_1": [2, 3, 4], "data_2": 5, "data_1": 2},
+            dialect=PGDialect(paramstyle="format"),
         )
 
     def test_from_only(self):

@@ -60,8 +60,14 @@ from sqlalchemy.testing.assertions import ComparesTables
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
+
+try:
+    import enum
+except ImportError:
+    enum = None
 
 
 tztable = notztable = metadata = table = None
@@ -1344,6 +1350,12 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         is_(expr.type.item_type.__class__, element_type)
 
 
+AnEnum = pep435_enum("AnEnum")
+AnEnum("Foo", 1)
+AnEnum("Bar", 2)
+AnEnum("Baz", 3)
+
+
 class ArrayRoundTripTest(object):
 
     __only_on__ = "postgresql"
@@ -1743,6 +1755,258 @@ class ArrayRoundTripTest(object):
         t.drop(testing.db)
         eq_(inspect(testing.db).get_enums(), [])
 
+    def _type_combinations(exclude_json=False):
+        def str_values(x):
+            return ["one", "two: %s" % x, "three", "four", "five"]
+
+        def unicode_values(x):
+            return [
+                util.u("réveillé"),
+                util.u("drôle"),
+                util.u("S’il %s" % x),
+                util.u("🐍 %s" % x),
+                util.u("« S’il vous"),
+            ]
+
+        def json_values(x):
+            return [
+                1,
+                {"a": x},
+                {"b": [1, 2, 3]},
+                ["d", "e", "f"],
+                {"struct": True, "none": None},
+            ]
+
+        def binary_values(x):
+            return [v.encode("utf-8") for v in unicode_values(x)]
+
+        def enum_values(x):
+            return [
+                AnEnum.Foo,
+                AnEnum.Baz,
+                AnEnum.get(x),
+                AnEnum.Baz,
+                AnEnum.Foo,
+            ]
+
+        class inet_str(str):
+            def __eq__(self, other):
+                return str(self) == str(other)
+
+            def __ne__(self, other):
+                return str(self) != str(other)
+
+        class money_str(str):
+            def __eq__(self, other):
+                comp = re.sub(r"[^\d\.]", "", other)
+                return float(self) == float(comp)
+
+            def __ne__(self, other):
+                return not self.__eq__(other)
+
+        elements = [
+            (sqltypes.Integer, lambda x: [1, x, 3, 4, 5]),
+            (sqltypes.Text, str_values),
+            (sqltypes.String, str_values),
+            (sqltypes.Unicode, unicode_values),
+            (postgresql.JSONB, json_values),
+            (sqltypes.Boolean, lambda x: [False] + [True] * x),
+            (
+                sqltypes.LargeBinary,
+                binary_values,
+            ),
+            (
+                postgresql.BYTEA,
+                binary_values,
+            ),
+            (
+                postgresql.INET,
+                lambda x: [
+                    inet_str("1.1.1.1"),
+                    inet_str("{0}.{0}.{0}.{0}".format(x)),
+                    inet_str("192.168.1.1"),
+                    inet_str("10.1.2.25"),
+                    inet_str("192.168.22.5"),
+                ],
+            ),
+            (
+                postgresql.CIDR,
+                lambda x: [
+                    inet_str("10.0.0.0/8"),
+                    inet_str("%s.0.0.0/8" % x),
+                    inet_str("192.168.1.0/24"),
+                    inet_str("192.168.0.0/16"),
+                    inet_str("192.168.1.25/32"),
+                ],
+            ),
+            (
+                sqltypes.Date,
+                lambda x: [
+                    datetime.date(2020, 5, x),
+                    datetime.date(2020, 7, 12),
+                    datetime.date(2018, 12, 15),
+                    datetime.date(2009, 1, 5),
+                    datetime.date(2021, 3, 18),
+                ],
+            ),
+            (
+                sqltypes.DateTime,
+                lambda x: [
+                    datetime.datetime(2020, 5, x, 2, 15, 0),
+                    datetime.datetime(2020, 7, 12, 15, 30, x),
+                    datetime.datetime(2018, 12, 15, 3, x, 25),
+                    datetime.datetime(2009, 1, 5, 12, 45, x),
+                    datetime.datetime(2021, 3, 18, 17, 1, 0),
+                ],
+            ),
+            (
+                sqltypes.Numeric,
+                lambda x: [
+                    decimal.Decimal("45.10"),
+                    decimal.Decimal(x),
+                    decimal.Decimal(".03242"),
+                    decimal.Decimal("532.3532"),
+                    decimal.Decimal("95503.23"),
+                ],
+            ),
+            (
+                postgresql.MONEY,
+                lambda x: [
+                    money_str("2"),
+                    money_str("%s" % (5 + x)),
+                    money_str("50.25"),
+                    money_str("18.99"),
+                    money_str("15.%s" % x),
+                ],
+                testing.skip_if(
+                    "postgresql+psycopg2", "this is a psycopg2 bug"
+                ),
+            ),
+            (
+                postgresql.HSTORE,
+                lambda x: [
+                    {"a": "1"},
+                    {"b": "%s" % x},
+                    {"c": "3"},
+                    {"c": "c2"},
+                    {"d": "e"},
+                ],
+                testing.requires.hstore,
+            ),
+            (sqltypes.Enum(AnEnum, native_enum=True), enum_values),
+            (
+                sqltypes.Enum(
+                    AnEnum, native_enum=False, create_constraint=False
+                ),
+                enum_values,
+            ),
+        ]
+
+        if not exclude_json:
+            elements.extend(
+                [
+                    (sqltypes.JSON, json_values),
+                    (postgresql.JSON, json_values),
+                ]
+            )
+
+        return testing.combinations(*elements, argnames="type_,gen", id_="na")
+
+    @classmethod
+    def _cls_type_combinations(cls, **kw):
+        return ArrayRoundTripTest.__dict__["_type_combinations"](**kw)
+
+    @testing.fixture
+    def metadata(self):
+        m = MetaData()
+        yield m
+
+        m.drop_all(testing.db)
+
+    @testing.fixture
+    def type_specific_fixture(self, metadata, connection, type_):
+        meta = MetaData()
+        table = Table(
+            "foo",
+            meta,
+            Column("id", Integer),
+            Column("bar", self.ARRAY(type_)),
+        )
+
+        meta.create_all(connection)
+
+        def go(gen):
+            connection.execute(
+                table.insert(),
+                [{"id": 1, "bar": gen(1)}, {"id": 2, "bar": gen(2)}],
+            )
+            return table
+
+        return go
+
+    @_type_combinations()
+    def test_type_specific_value_select(
+        self, type_specific_fixture, connection, type_, gen
+    ):
+        table = type_specific_fixture(gen)
+
+        rows = connection.execute(
+            select([table.c.bar]).order_by(table.c.id)
+        ).fetchall()
+
+        eq_(rows, [(gen(1),), (gen(2),)])
+
+    @_type_combinations()
+    def test_type_specific_value_update(
+        self, type_specific_fixture, connection, type_, gen
+    ):
+        table = type_specific_fixture(gen)
+
+        new_gen = gen(3)
+        connection.execute(
+            table.update().where(table.c.id == 2).values(bar=new_gen)
+        )
+
+        eq_(
+            new_gen,
+            connection.scalar(select([table.c.bar]).where(table.c.id == 2)),
+        )
+
+    @_type_combinations()
+    def test_type_specific_slice_update(
+        self, type_specific_fixture, connection, type_, gen
+    ):
+        table = type_specific_fixture(gen)
+
+        new_gen = gen(3)
+
+        connection.execute(
+            table.update()
+            .where(table.c.id == 2)
+            .values({table.c.bar[1:3]: new_gen[1:4]})
+        )
+
+        rows = connection.execute(
+            select([table.c.bar]).order_by(table.c.id)
+        ).fetchall()
+
+        sliced_gen = gen(2)
+        sliced_gen[0:3] = new_gen[1:4]
+
+        eq_(rows, [(gen(1),), (sliced_gen,)])
+
+    @_type_combinations(exclude_json=True)
+    def test_type_specific_value_delete(
+        self, type_specific_fixture, connection, type_, gen
+    ):
+        table = type_specific_fixture(gen)
+
+        new_gen = gen(2)
+
+        connection.execute(table.delete().where(table.c.bar == new_gen))
+
+        eq_(connection.scalar(select([func.count(table.c.id)])), 1)
+
 
 class CoreArrayRoundTripTest(
     ArrayRoundTripTest, fixtures.TablesTest, AssertsExecutionResults
@@ -1755,6 +2019,23 @@ class PGArrayRoundTripTest(
     ArrayRoundTripTest, fixtures.TablesTest, AssertsExecutionResults
 ):
     ARRAY = postgresql.ARRAY
+
+    @ArrayRoundTripTest._cls_type_combinations(exclude_json=True)
+    def test_type_specific_contains(
+        self, type_specific_fixture, connection, type_, gen
+    ):
+        table = type_specific_fixture(gen)
+
+        connection.execute(
+            table.insert(),
+            [{"id": 1, "bar": gen(1)}, {"id": 2, "bar": gen(2)}],
+        )
+
+        id_, value = connection.execute(
+            select([table]).where(table.c.bar.contains(gen(1)))
+        ).first()
+        eq_(id_, 1)
+        eq_(value, gen(1))
 
     @testing.combinations((set,), (list,), (lambda elem: (x for x in elem),))
     def test_undim_array_contains_typed_exec(self, struct):

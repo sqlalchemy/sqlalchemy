@@ -731,6 +731,12 @@ def _get_stmt_parameters_params(
                     elements.BindParameter(None, v, type_=k.type), **kw
                 )
             else:
+                if v._is_bind_parameter and v.type._isnull:
+                    # either unique parameter, or other bound parameters that
+                    # were passed in directly
+                    # set type to that of the column unconditionally
+                    v = v._with_binary_element_type(k.type)
+
                 v = compiler.process(v.self_group(), **kw)
 
             values.append((k, v))
