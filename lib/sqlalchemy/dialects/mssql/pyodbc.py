@@ -99,7 +99,7 @@ call. The following code snippet allows this::
     
     SQL_COPT_SS_ACCESS_TOKEN = 1256  # As defined in msodbcsql.h
     
-    def inject_azure_credential(credential, engine, token_url='https://database.windows.net'):
+    def inject_azure_credential(credential, engine, token_url='https://database.windows.net/'):
         @event.listens_for(engine, 'do_connect')
         def do_connect(dialect, conn_rec, cargs, cparams):
             token = credential.get_token(token_url).token.encode('utf-16-le')
