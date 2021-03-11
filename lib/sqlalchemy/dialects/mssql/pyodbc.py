@@ -79,6 +79,49 @@ illustrated below using ``urllib.parse.quote_plus``::
     params = urllib.parse.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
 
     engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+    
+Connecting to Azure SQL instances with Managed Identities
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Microsoft's Azure SQL allows the use of managed identities to connect to
+databases. This requires creating a credential object using the `azure-identity`
+library. More information about the authentication step can be found in 
+`Microsoft's documentation
+<https://docs.microsoft.com/en-us/azure/developer/python/azure-sdk-authenticate?tabs=bash>`_.
+
+After getting an engine, the credentials need to be sent to ``pyodbc.connect``
+each time a connection is requested. One way to do this is to set up an event
+listener on the engine that adds the credential token to the dialect's connect
+call. The following code snippet allows this:
+
+    import struct
+    from sqlalchemy import event
+    
+    SQL_COPT_SS_ACCESS_TOKEN = 1256  # As defined in msodbcsql.h
+    
+    def inject_azure_credential(credential, engine, token_url='https://database.windows.net'):
+        @event.listens_for(engine, 'do_connect')
+        def do_connect(dialect, conn_rec, cargs, cparams):
+            token = credential.get_token(token_url).token.encode('utf-16-le')
+            token_struct = struct.pack(f'=I{len(token)}s', len(token), token)
+            attrs_before = cparams.setdefault('attrs_before', {})
+            attrs_before[SQL_COPT_SS_ACCESS_TOKEN] = bytes(token_struct)
+            return dialect.connect(*cargs, **cparams)
+            
+This can then be used as follows:
+
+    creds = identity.DefaultAzureCredential()  # Or any other azure credentials.
+    odbc_str = 'DRIVER={ODBC Driver 17 for SQL Server};DATABASE=myDb;server=my-server.database.windows.net'
+    connection_url = sqlalchemy.engine.url.URL('mssql+pyodbc', query={'odbc_connect': odbc_str})
+    engine = sqlalchemy.create_engine(connection_url)
+    inject_azure_credential(creds, engine)
+    engine.execute('select 1').fetchall()
+
+Note that 
+``sqlalchemy.create_engine(url, connect_args={'attrs_before': {SQL_COPT_SS_ACCESS_TOKEN: token_struct}})``
+will fail eventually because the token expires 15 minutes after creation. 
+The Azure credentials object will cache the token and automatically refresh it 
+if necessary when ``get_token`` is called.
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
