@@ -92,7 +92,7 @@ library. More information about the authentication step can be found in
 After getting an engine, the credentials need to be sent to ``pyodbc.connect``
 each time a connection is requested. One way to do this is to set up an event
 listener on the engine that adds the credential token to the dialect's connect
-call. The following code snippet allows this:
+call. The following code snippet allows this::
 
     import struct
     from sqlalchemy import event
@@ -108,7 +108,7 @@ call. The following code snippet allows this:
             attrs_before[SQL_COPT_SS_ACCESS_TOKEN] = bytes(token_struct)
             return dialect.connect(*cargs, **cparams)
             
-This can then be used as follows:
+This can then be used as follows::
 
     creds = identity.DefaultAzureCredential()  # Or any other azure credentials.
     odbc_str = 'DRIVER={ODBC Driver 17 for SQL Server};DATABASE=myDb;server=my-server.database.windows.net'
