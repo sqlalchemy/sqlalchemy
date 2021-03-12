@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 r"""
 .. dialect:: mssql+pyodbc
     :name: PyODBC
@@ -70,58 +69,63 @@ Pass through exact Pyodbc string
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A PyODBC connection string can also be sent in pyodbc's format directly, as
-specified in `ConnectionStrings
-<https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_ into the driver
-using the parameter ``odbc_connect``.  The delimeters must be URL encoded, as
-illustrated below using ``urllib.parse.quote_plus``::
+specified in `the PyODBC documentation
+<https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-databases>`_, 
+using the parameter ``odbc_connect``.  A :class:`_sa.engine.URL` object
+can help make this easier::
 
-    import urllib
-    params = urllib.parse.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
+    from sqlalchemy.engine import URL
+    connection_string = "DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 
-    engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+    engine = create_engine(connection_url)
     
-Connecting to Azure SQL instances with Managed Identities
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Connecting to databases with access tokens
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Microsoft's Azure SQL allows the use of managed identities to connect to
-databases. This requires creating a credential object using the `azure-identity`
-library. More information about the authentication step can be found in 
-`Microsoft's documentation
+Some database servers are set up to only accept access tokens for login. For
+example, SQL Server allows the use of Azure Active Directory tokens to connect 
+to databases. This requires creating a credential object using the 
+`azure-identity` library. More information about the authentication step can be 
+found in `Microsoft's documentation
 <https://docs.microsoft.com/en-us/azure/developer/python/azure-sdk-authenticate?tabs=bash>`_.
 
 After getting an engine, the credentials need to be sent to ``pyodbc.connect``
 each time a connection is requested. One way to do this is to set up an event
 listener on the engine that adds the credential token to the dialect's connect
-call. The following code snippet allows this::
+call. This is discussed more generally in :ref:`engines_dynamic_tokens`. For
+SQL Server in particular, this is passed as an ODBC connection attribute with
+a data structure `described by Microsoft
+<https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory#authenticating-with-an-access-token>`_.
+
+The following code snippet will create an engine that connects to an Azure SQL
+database using Azure credentials::
 
     import struct
-    from sqlalchemy import event
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.engine.url import URL
+    from azure import identity
     
-    SQL_COPT_SS_ACCESS_TOKEN = 1256  # As defined in msodbcsql.h
+    SQL_COPT_SS_ACCESS_TOKEN = 1256  # Connection option for access tokens, as defined in msodbcsql.h
+    TOKEN_URL = "https://database.windows.net/"  # The token URL for any Azure SQL database
     
-    def inject_azure_credential(credential, engine, token_url='https://database.windows.net/'):
-        @event.listens_for(engine, 'do_connect')
-        def do_connect(dialect, conn_rec, cargs, cparams):
-            token = credential.get_token(token_url).token.encode('utf-16-le')
-            token_struct = struct.pack(f'=I{len(token)}s', len(token), token)
-            attrs_before = cparams.setdefault('attrs_before', {})
-            attrs_before[SQL_COPT_SS_ACCESS_TOKEN] = bytes(token_struct)
-            return dialect.connect(*cargs, **cparams)
-            
-This can then be used as follows::
-
-    creds = identity.DefaultAzureCredential()  # Or any other azure credentials.
-    odbc_str = 'DRIVER={ODBC Driver 17 for SQL Server};DATABASE=myDb;server=my-server.database.windows.net'
-    connection_url = sqlalchemy.engine.url.URL('mssql+pyodbc', query={'odbc_connect': odbc_str})
-    engine = sqlalchemy.create_engine(connection_url)
-    inject_azure_credential(creds, engine)
-    engine.execute('select 1').fetchall()
-
-Note that 
-``sqlalchemy.create_engine(url, connect_args={'attrs_before': {SQL_COPT_SS_ACCESS_TOKEN: token_struct}})``
-will fail eventually because the token expires 15 minutes after creation. 
-The Azure credentials object will cache the token and automatically refresh it 
-if necessary when ``get_token`` is called.
+    connection_string = "DRIVER={ODBC Driver 17 for SQL Server};DATABASE=myDb;server=my-server.database.windows.net"
+    engine = create_engine(URL.create("mssql+pyodbc", query={"odbc_connect": connection_string}))
+    
+    azure_credentials = identity.DefaultAzureCredential()
+    
+    @event.listens_for(engine, "do_connect")
+    def provide_token(dialect, conn_rec, cargs, cparams):
+        raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
+        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), token)
+        cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
+        
+.. note::
+    Because `Microsoft requires
+    <https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory#authenticating-with-an-access-token>`_
+    that a connection string when using an access token must not contain 
+    ``UID``, ``PWD``, ``Authentication`` or ``Trusted_Connection`` keywords,
+    a the connection string must be provided directly via ``odbc_connect``.
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
@@ -203,6 +207,7 @@ driver in order to use this flag::
 
 
 """  # noqa
+
 
 import datetime
 import decimal
