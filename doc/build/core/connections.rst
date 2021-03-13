@@ -549,7 +549,7 @@ option::
 
 The size of the buffer may also be set to a fixed size using the
 :meth:`_engine.Result.yield_per` method.  Calling this method with a number
-pf rows will cause all result-fetching methods to work from
+of rows will cause all result-fetching methods to work from
 buffers of the given size, only fetching new rows when the buffer is empty::
 
     with engine.connect() as conn:
