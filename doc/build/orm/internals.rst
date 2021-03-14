@@ -60,6 +60,8 @@ sections, are listed here.
 
 .. autodata:: MANYTOMANY
 
+.. autoclass:: Mapped
+
 .. autoclass:: MapperProperty
     :members:
 

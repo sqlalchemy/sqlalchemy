@@ -224,9 +224,13 @@ Glossary
 
     descriptor
     descriptors
-        In Python, a descriptor is an object attribute with “binding behavior”, one whose attribute access has been overridden by methods in the `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
-        Those methods are __get__(), __set__(), and __delete__(). If any of those methods are defined
-        for an object, it is said to be a descriptor.
+
+        In Python, a descriptor is an object attribute with “binding behavior”,
+        one whose attribute access has been overridden by methods in the
+        `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
+        Those methods are ``__get__()``, ``__set__()``, and ``__delete__()``.
+        If any of those methods are defined for an object, it is said to be a
+        descriptor.
 
         In SQLAlchemy, descriptors are used heavily in order to provide attribute behavior
         on mapped classes.   When a class is mapped as such::

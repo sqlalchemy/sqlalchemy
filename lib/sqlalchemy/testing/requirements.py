@@ -1173,6 +1173,18 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def sqlalchemy2_stubs(self):
+        def check(config):
+            try:
+                __import__("sqlalchemy-stubs.ext.mypy")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.only_if(check)
+
+    @property
     def python2(self):
         return exclusions.skip_if(
             lambda: sys.version_info >= (3,),

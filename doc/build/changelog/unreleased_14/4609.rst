@@ -1,0 +1,13 @@
+.. change::
+    :tags: feature, mypy
+    :tickets: 4609
+
+    Rudimentary and experimental support for Mypy has been added in the form of
+    a new plugin, which itself depends on new typing stubs for SQLAlchemy. The
+    plugin allows declarative mappings in their standard form to both be
+    compatible with Mypy as well as to provide typing support for mapped
+    classes and instances.
+
+    .. seealso::
+
+        :ref:`mypy_toplevel`

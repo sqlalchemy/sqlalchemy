@@ -20,6 +20,7 @@ behavior.   In particular the "Horizontal Sharding", "Hybrid Attributes", and
     automap
     baked
     declarative/index
+    mypy
     mutable
     orderinglist
     horizontal_shard

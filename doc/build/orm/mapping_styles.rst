@@ -107,10 +107,16 @@ Documentation for Declarative mapping continues at :ref:`declarative_config_topl
 Creating an Explicit Base Non-Dynamically (for use with mypy, similar)
 ----------------------------------------------------------------------
 
-Tools like mypy are not necessarily compatible with the dynamically
-generated ``Base`` delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
-To build a declarative base in a non-dynamic fashion, the
-:class:`_orm.DeclarativeMeta` class may be used directly as follows::
+SQLAlchemy includes a :ref:`Mypy plugin <mypy_toplevel>` that automatically
+accommodates for the dynamically generated ``Base`` class
+delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
+This plugin works along with a new set of typing stubs published at
+`sqlalchemy2-stubs <https://pypi.org/project/sqlalhcemy-2-stubs>`_.
+
+When this plugin is not in use, or when using other :pep:`484` tools which
+may not know how to interpret this class, the declarative base class may
+be produced in a fully explicit fashion using the
+:class:`_orm.DeclarativeMeta` directly as follows::
 
     from sqlalchemy.orm import registry
     from sqlalchemy.orm.decl_api import DeclarativeMeta
@@ -119,12 +125,20 @@ To build a declarative base in a non-dynamic fashion, the
 
     class Base(metaclass=DeclarativeMeta):
         __abstract__ = True
+
+        # these are supplied by the sqlalchemy2-stubs, so may be omitted
+        # when they are installed
         registry = mapper_registry
         metadata = mapper_registry.metadata
 
 The above ``Base`` is equivalent to one created using the
 :meth:`_orm.registry.generate_base` method and will be fully understood by
 type analysis tools without the use of plugins.
+
+.. seealso::
+
+    :ref:`mypy_toplevel` - background on the Mypy plugin which applies the
+    above structure automatically when running Mypy.
 
 
 .. _orm_declarative_decorator:
@@ -295,7 +309,7 @@ An example of a mapping using ``@dataclass`` using
         nickname: Optional[str] = None
         addresses: List[Address] = field(default_factory=list)
 
-        __mapper_args__ = {
+        __mapper_args__ = {   # type: ignore
             "properties" : {
                 "addresses": relationship("Address")
             }
@@ -427,15 +441,6 @@ A mapping using ``@attr.s``, in conjunction with imperative table::
         addresses = attr.ib()
 
     # other classes...
-
-.. sidebar:: Using MyPy with SQLAlchemy models
-
-    If you are using PEP 484 static type checkers for Python, a `MyPy
-    <http://mypy-lang.org/>`_ plugin is included with `type stubs for
-    SQLAlchemy <https://github.com/dropbox/sqlalchemy-stubs>`_.  The plugin is
-    tailored towards SQLAlchemy declarative models.   SQLAlchemy hopes to include
-    more comprehensive PEP 484 support in future releases.
-
 
 ``@dataclass`` and attrs_ mappings may also be used with classical mappings, i.e.
 with the :meth:`_orm.registry.map_imperatively` function.  See the section
