@@ -2211,14 +2211,43 @@ class Transaction(object):
             assert not self.is_active
 
     def rollback(self):
-        """Roll back this :class:`.Transaction`."""
+        """Roll back this :class:`.Transaction`.
+
+        The implementation of this may vary based on the type of transaction in
+        use:
+
+        * For a simple database transaction (e.g. :class:`.RootTransaction`),
+          it corresponds to a ROLLBACK.
+
+        * For a :class:`.NestedTransaction`, it corresponds to a
+          "ROLLBACK TO SAVEPOINT" operation.
+
+        * For a :class:`.TwoPhaseTransaction`, DBAPI-specific methods for two
+          phase transactions may be used.
+
+
+        """
         try:
             self._do_rollback()
         finally:
             assert not self.is_active
 
     def commit(self):
-        """Commit this :class:`.Transaction`."""
+        """Commit this :class:`.Transaction`.
+
+        The implementation of this may vary based on the type of transaction in
+        use:
+
+        * For a simple database transaction (e.g. :class:`.RootTransaction`),
+          it corresponds to a COMMIT.
+
+        * For a :class:`.NestedTransaction`, it corresponds to a
+          "RELEASE SAVEPOINT" operation.
+
+        * For a :class:`.TwoPhaseTransaction`, DBAPI-specific methods for two
+          phase transactions may be used.
+
+        """
 
         try:
             self._do_commit()
@@ -2296,6 +2325,18 @@ class MarkerTransaction(Transaction):
 
 
 class RootTransaction(Transaction):
+    """Represent the "root" transaction on a :class:`_engine.Connection`.
+
+    This corresponds to the current "BEGIN/COMMIT/ROLLBACK" that's occurring
+    for the :class:`_engine.Connection`.
+
+    The :class:`_engine.RootTransaction` object is accessible via the
+    :attr:`_engine.Connection.get_transaction` method of
+    :class:`_engine.Connection`.
+
+
+    """
+
     _is_root = True
 
     __slots__ = ("connection", "is_active")
@@ -2400,10 +2441,32 @@ class RootTransaction(Transaction):
 class NestedTransaction(Transaction):
     """Represent a 'nested', or SAVEPOINT transaction.
 
-    A new :class:`.NestedTransaction` object may be procured
-    using the :meth:`_engine.Connection.begin_nested` method.
+    The :class:`.NestedTransaction` object is created by calling the
+    :meth:`_engine.Connection.begin_nested` method of
+    :class:`_engine.Connection`.
 
-    The interface is the same as that of :class:`.Transaction`.
+    When using :class:`.NestedTransaction`, the semantics of "begin" /
+    "commit" / "rollback" are as follows:
+
+    * the "begin" operation corresponds to the "BEGIN SAVEPOINT" command, where
+      the savepoint is given an explicit name that is part of the state
+      of this object.
+
+    * The :meth:`.NestedTransaction.commit` method corresponds to a
+      "RELEASE SAVEPOINT" operation, using the savepoint identifier associated
+      with this :class:`.NestedTransaction`.
+
+    * The :meth:`.NestedTransaction.rollback` method corresponds to a
+      "ROLLBACK TO SAVEPOINT" operation, using the savepoint identifier
+      associated with this :class:`.NestedTransaction`.
+
+    The rationale for mimicking the semantics of an outer transaction in
+    terms of savepoints so that code may deal with a "savepoint" transaction
+    and an "outer" transaction in an agnostic way.
+
+    .. seealso::
+
+        :ref:`session_begin_nested` - ORM version of the SAVEPOINT API.
 
     """
 

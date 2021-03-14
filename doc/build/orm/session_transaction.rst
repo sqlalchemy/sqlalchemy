@@ -171,6 +171,12 @@ session is expired, thus causing all subsequent attribute/instance access to
 reference the full state of the :class:`~sqlalchemy.orm.session.Session` right
 before :meth:`~.Session.begin_nested` was called.
 
+.. seealso::
+
+    :class:`_engine.NestedTransaction` - the :class:`.NestedTransaction` class is the
+    Core-level construct that is used by the :class:`_orm.Session` internally
+    to produce SAVEPOINT blocks.
+
 .. _orm_session_vs_engine:
 
 Session-level vs. Engine level transaction control

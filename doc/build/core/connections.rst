@@ -1804,12 +1804,18 @@ Connection / Engine API
 
 .. autoclass:: NestedTransaction
     :members:
+    :inherited-members:
+
+.. autoclass:: RootTransaction
+    :members:
+    :inherited-members:
 
 .. autoclass:: Transaction
     :members:
 
 .. autoclass:: TwoPhaseTransaction
     :members:
+    :inherited-members:
 
 
 Result Set  API
