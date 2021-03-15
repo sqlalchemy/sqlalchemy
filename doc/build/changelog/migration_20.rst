@@ -844,9 +844,12 @@ used by code that already knows what columns are present within it.
 Already part of 1.4, the previous ``KeyedTuple`` class that was used when
 selecting rows from the :class:`_query.Query` object has been replaced by the
 :class:`.Row` class, which is the base of the same :class:`.Row` that comes
-back with Core statement results (in 1.4 when not using the
-:paramref:`_sa.create_engine.future` flag with an :class:`_engine.Engine`,
-it is the :class:`.LegacyRow` class).
+back with Core statement results when using the
+:paramref:`_sa.create_engine.future` flag with :class:`_engine.Engine` (when
+the :paramref:`_sa.create_engine.future` flag is not set, Core result sets use
+the :class:`.LegacyRow` subclass, which maintains backwards-compatible
+behaviors for the ``__contains__()`` method; ORM exclusively uses the
+:class:`.Row` class directly).
 
 This :class:`.Row` behaves like a named tuple, in that it acts as a sequence
 but also supports attribute name access, e.g. ``row.some_column``.  However,
