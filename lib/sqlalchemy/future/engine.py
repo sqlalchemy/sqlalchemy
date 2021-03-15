@@ -24,13 +24,20 @@ def create_engine(*arg, **kw):
 class Connection(_LegacyConnection):
     """Provides high-level functionality for a wrapped DB-API connection.
 
+    The :class:`_future.Connection` object is procured by calling
+    the :meth:`_future.Engine.connect` method of the :class:`_future.Engine`
+    object, and provides services for execution of SQL statements as well
+    as transaction control.
+
     **This is the SQLAlchemy 2.0 version** of the :class:`_engine.Connection`
     class.   The API and behavior of this object is largely the same, with the
     following differences in behavior:
 
-    * The result object returned for results is the :class:`_engine.Result`
-      object.  This object has a slightly different API and behavior than the
-      prior :class:`_engine.CursorResult` object.
+    * The result object returned for results is the
+      :class:`_engine.CursorResult`
+      object, which is a subclass of the :class:`_engine.Result`.
+      This object has a slightly different API and behavior than the
+      :class:`_engine.LegacyCursorResult` returned for 1.x style usage.
 
     * The object has :meth:`_future.Connection.commit` and
       :meth:`_future.Connection.rollback` methods which commit or roll back
@@ -61,7 +68,9 @@ class Connection(_LegacyConnection):
       any special instructions for the SAVEPOINT (this will typically have the
       effect that one desires).
 
-    * There are no "nested" connections or transactions.
+    * The :class:`_future.Connection` object does not support "branching",
+      which was a pattern by which a sub "connection" would be used that
+      refers to this connection as a parent.
 
 
 

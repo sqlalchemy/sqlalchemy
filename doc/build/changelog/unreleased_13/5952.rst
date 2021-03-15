@@ -1,11 +1,12 @@
 .. change::
     :tags: bug, orm
     :tickets: 5952
+    :versions: 1.4.0
 
     Fixed issue where the process of joining two tables could fail if one of
     the tables had an unrelated, unresolvable foreign key constraint which
     would raise :class:`_exc.NoReferenceError` within the join process, which
     nonetheless could be bypassed to allow the join to complete. The logic
-    which tested the exception for signficance within the process would make
+    which tested the exception for significance within the process would make
     assumptions about the construct which would fail.
 

@@ -1,6 +1,8 @@
 .. change::
-    :tags: bug, orm, postgresql
+    :tags: bug, postgresql
     :tickets: 5989
+    :versions: 1.4.0
 
-    Fixed issue where using :class:`_ext.aggregate_order_by` would return
-    ARRAY(NullType) under certain conditions.
+    Fixed issue where using :class:`_postgresql.aggregate_order_by` would
+    return ARRAY(NullType) under certain conditions, interfering with
+    the ability of the result object to return data correctly.

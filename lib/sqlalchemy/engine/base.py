@@ -31,11 +31,14 @@ _EMPTY_EXECUTION_OPTS = util.immutabledict()
 class Connection(Connectable):
     """Provides high-level functionality for a wrapped DB-API connection.
 
-    Provides execution support for string-based SQL statements as well as
-    :class:`_expression.ClauseElement`, :class:`.Compiled` and
-    :class:`.DefaultGenerator`
-    objects. Provides a :meth:`begin` method to return :class:`.Transaction`
-    objects.
+    **This is the SQLAlchemy 1.x.x version** of the :class:`_engine.Connection`
+    class.   For the :term:`2.0 style` version, which features some API
+    differences, see :class:`_future.Connection`.
+
+    The :class:`_engine.Connection` object is procured by calling
+    the :meth:`_engine.Engine.connect` method of the :class:`_engine.Engine`
+    object, and provides services for execution of SQL statements as well
+    as transaction control.
 
     The Connection object is **not** thread-safe.  While a Connection can be
     shared among threads using properly synchronized access, it is still
@@ -2580,6 +2583,10 @@ class Engine(Connectable, log.Identified):
     Connects a :class:`~sqlalchemy.pool.Pool` and
     :class:`~sqlalchemy.engine.interfaces.Dialect` together to provide a
     source of database connectivity and behavior.
+
+    This is the **SQLAlchemy 1.x version** of :class:`_engine.Engine`.  For
+    the :term:`2.0 style` version, which includes  some API differences,
+    see :class:`_future.Engine`.
 
     An :class:`_engine.Engine` object is instantiated publicly using the
     :func:`~sqlalchemy.create_engine` function.

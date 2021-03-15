@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 5983
+    :versions: 1.4.0
 
     Removed very old warning that states that passive_deletes is not intended
     for many-to-one relationships. While it is likely that in many cases

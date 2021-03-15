@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, engine
     :tickets: 5929
+    :versions: 1.4.0
 
     Fixed bug where the "schema_translate_map" feature failed to be taken into
     account for the use case of direct execution of

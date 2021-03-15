@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, schema
     :tickets: 5919
+    :versions: 1.4.0
 
     Repaired / implemented support for primary key constraint naming
     conventions that use column names/keys/etc as part of the convention. In
