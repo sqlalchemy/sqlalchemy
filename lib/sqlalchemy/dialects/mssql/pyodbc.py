@@ -125,7 +125,7 @@ database using Azure credentials::
     <https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory#authenticating-with-an-access-token>`_
     that a connection string when using an access token must not contain 
     ``UID``, ``PWD``, ``Authentication`` or ``Trusted_Connection`` keywords,
-    a the connection string must be provided directly via ``odbc_connect``.
+    the connection string must be provided directly via ``odbc_connect``.
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
