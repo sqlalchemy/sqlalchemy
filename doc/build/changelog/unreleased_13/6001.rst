@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, orm
     :tickets: 6001
+    :versions: 1.4.0
 
     Fixed issue where the :class:`_mutable.MutableComposite` construct could be
     placed into an invalid state when the parent object was already loaded, and
