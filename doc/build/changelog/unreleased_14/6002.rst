@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 6002
-
-    Improved engine logging to note ROLLBACK and COMMIT which is logged while
-    the DBAPI driver is in AUTOCOMMIT mode. These ROLLBACK/COMMIT are library
-    level and do not have any effect when AUTOCOMMIT is in effect, however it's
-    still worthwhile to log as these indicate where SQLAlchemy sees the
-    "transaction" demarcation.

@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, regression, sql
-    :tickets: 5979
-
-    Fixed regression where the "unsupported compilation error" for unknown
-    datatypes would fail to raise correctly.

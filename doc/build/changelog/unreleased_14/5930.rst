@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mssql
-    :tickets: 5919
-
-    Fix a reflection error for MSSQL 2005 introduced by the reflection of
-    filtered indexes.

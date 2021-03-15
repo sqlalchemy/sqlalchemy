@@ -15,10 +15,211 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.0
-    :include_notes_from: unreleased_14
+    :released: March 15, 2021
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 5919
+
+        Fix a reflection error for MSSQL 2005 introduced by the reflection of
+        filtered indexes.
+
+    .. change::
+        :tags: feature, mypy
+        :tickets: 4609
+
+        Rudimentary and experimental support for Mypy has been added in the form of
+        a new plugin, which itself depends on new typing stubs for SQLAlchemy. The
+        plugin allows declarative mappings in their standard form to both be
+        compatible with Mypy as well as to provide typing support for mapped
+        classes and instances.
+
+        .. seealso::
+
+            :ref:`mypy_toplevel`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6016
+
+        Fixed bug where the "percent escaping" feature that occurs with dialects
+        that use the "format" or "pyformat" bound parameter styles was not enabled
+        for the :meth:`_sql.Operators.op` and :class:`_sql.custom_op` constructs,
+        for custom operators that use percent signs. The percent sign will now be
+        automatically doubled based on the paramstyle as necessary.
+
+
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 5979
+
+        Fixed regression where the "unsupported compilation error" for unknown
+        datatypes would fail to raise correctly.
+
+    .. change::
+        :tags: ext, usecase
+        :tickets: 5942
+
+        Add new parameter
+        :paramref:`_automap.AutomapBase.prepare.reflection_options`
+        to allow passing of :meth:`_schema.MetaData.reflect` options like ``only``
+        or dialect-specific reflection options like ``oracle_resolve_synonyms``.
+
+    .. change::
+        :tags: change, sql
+
+        Altered the compilation for the :class:`.CTE` construct so that a string is
+        returned representing the inner SELECT statement if the :class:`.CTE` is
+        stringified directly, outside of the context of an enclosing SELECT; This
+        is the same behavior of :meth:`_sql.FromClause.alias` and
+        :meth:`_sql.Select.subquery`. Previously, a blank string would be
+        returned as the CTE is normally placed above a SELECT after that SELECT has
+        been generated, which is generally misleading when debugging.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5981
+
+        Fixed regression where the :paramref:`_orm.relationship.query_class`
+        parameter stopped being functional for "dynamic" relationships.  The
+        ``AppenderQuery`` remains dependent on the legacy :class:`_orm.Query`
+        class; users are encouraged to migrate from the use of "dynamic"
+        relationships to using :func:`_orm.with_parent` instead.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6003
+
+        Fixed regression where :meth:`_orm.Query.join` would produce no effect if
+        the query itself as well as the join target were against a
+        :class:`_schema.Table` object, rather than a mapped class. This was part of
+        a more systemic issue where the legacy ORM query compiler would not be
+        correctly used from a :class:`_orm.Query` if the statement produced had not
+        ORM entities present within it.
+
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6008
+
+        Fixed regression where usage of the standalone :func:`_sql.distinct()` used
+        in the form of being directly SELECTed would fail to be locatable in the
+        result set by column identity, which is how the ORM locates columns. While
+        standalone :func:`_sql.distinct()` is not oriented towards being directly
+        SELECTed (use :meth:`_sql.select.distinct` for a regular
+        ``SELECT DISTINCT..``) , it was usable to a limited extent in this way
+        previously (but wouldn't work in subqueries, for example). The column
+        targeting for unary expressions such as "DISTINCT <col>" has been improved
+        so that this case works again, and an additional improvement has been made
+        so that usage of this form in a subquery at least generates valid SQL which
+        was not the case previously.
+
+        The change additionally enhances the ability to target elements in
+        ``row._mapping`` based on SQL expression objects in ORM-enabled
+        SELECT statements, including whether the statement was invoked by
+        ``connection.execute()`` or ``session.execute()``.
+
+    .. change::
+        :tags: bug, orm, asyncio
+        :tickets: 5998
+
+        The API for :meth:`_asyncio.AsyncSession.delete` is now an awaitable;
+        this method cascades along relationships which must be loaded in a
+        similar manner as the :meth:`_asyncio.AsyncSession.merge` method.
+
+
+    .. change::
+        :tags: usecase, postgresql, mysql, asyncio
+        :tickets: 5967
+
+        Added an ``asyncio.Lock()`` within SQLAlchemy's emulated DBAPI cursor,
+        local to the connection, for the asyncpg and aiomysql dialects for the
+        scope of the ``cursor.execute()`` and ``cursor.executemany()`` methods. The
+        rationale is to prevent failures and corruption for the case where the
+        connection is used in multiple awaitables at once.
+
+        While this use case can also occur with threaded code and non-asyncio
+        dialects, we anticipate this kind of use will be more common under asyncio,
+        as the asyncio API is encouraging of such use. It's definitely better to
+        use a distinct connection per concurrent awaitable however as concurrency
+        will not be achieved otherwise.
+
+        For the asyncpg dialect, this is so that the space between
+        the call to ``prepare()`` and ``fetch()`` is prevented from allowing
+        concurrent executions on the connection from causing interface error
+        exceptions, as well as preventing race conditions when starting a new
+        transaction. Other PostgreSQL DBAPIs are threadsafe at the connection level
+        so this intends to provide a similar behavior, outside the realm of server
+        side cursors.
+
+        For the aiomysql dialect, the mutex will provide safety such that
+        the statement execution and the result set fetch, which are two distinct
+        steps at the connection level, won't get corrupted by concurrent
+        executions on the same connection.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6002
+
+        Improved engine logging to note ROLLBACK and COMMIT which is logged while
+        the DBAPI driver is in AUTOCOMMIT mode. These ROLLBACK/COMMIT are library
+        level and do not have any effect when AUTOCOMMIT is in effect, however it's
+        still worthwhile to log as these indicate where SQLAlchemy sees the
+        "transaction" demarcation.
+
+    .. change::
+        :tags: bug, regression, engine
+        :tickets: 6004
+
+        Fixed a regression where the "reset agent" of the connection pool wasn't
+        really being utilized by the :class:`_engine.Connection` when it were
+        closed, and also leading to a double-rollback scenario that was somewhat
+        wasteful.   The newer architecture of the engine has been updated so that
+        the connection pool "reset-on-return" logic will be skipped when the
+        :class:`_engine.Connection` explicitly closes out the transaction before
+        returning the pool to the connection.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 5953
+
+        Deprecated all schema-level ``.copy()`` methods and renamed to
+        ``_copy()``.  These are not standard Python "copy()" methods as they
+        typically rely upon being instantiated within particular contexts
+        which are passed to the method as optional keyword arguments.   The
+        :meth:`_schema.Table.tometadata` method is the public API that provides
+        copying for :class:`_schema.Table` objects.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 6020
+
+        The ``sqlalchemy.ext.mutable`` extension now tracks the "parents"
+        collection using the :class:`.InstanceState` associated with objects,
+        rather than the object itself. The latter approach required that the object
+        be hashable so that it can be inside of a ``WeakKeyDictionary``, which goes
+        against the behavioral contract of the ORM overall which is that ORM mapped
+        objects do not need to provide any particular kind of ``__hash__()`` method
+        and that unhashable objects are supported.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 5984
+
+        The unit of work process now turns off all "lazy='raise'" behavior
+        altogether when a flush is proceeding.  While there are areas where the UOW
+        is sometimes loading things that aren't ultimately needed, the lazy="raise"
+        strategy is not helpful here as the user often does not have much control
+        or visibility into the flush process.
+
 
 .. changelog::
     :version: 1.4.0b3
+    :released: March 15, 2021
     :released: February 15, 2021
 
     .. change::
@@ -108,6 +309,7 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.0b2
+    :released: March 15, 2021
     :released: February 3, 2021
 
     .. change::
@@ -862,6 +1064,7 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.0b1
+    :released: March 15, 2021
     :released: November 2, 2020
 
     .. change::
