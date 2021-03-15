@@ -4,7 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
 r"""
 .. dialect:: mssql+pyodbc
     :name: PyODBC
@@ -56,7 +55,7 @@ Other keywords interpreted by the Pyodbc dialect to be passed to
 ``authentication``.
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
-Multiple additional keyword arguments must be separated by an 
+Multiple additional keyword arguments must be separated by an
 ampersand (``&``), not a semicolon::
 
     engine = create_engine(
@@ -70,15 +69,76 @@ Pass through exact Pyodbc string
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A PyODBC connection string can also be sent in pyodbc's format directly, as
-specified in `ConnectionStrings
-<https://code.google.com/p/pyodbc/wiki/ConnectionStrings>`_ into the driver
-using the parameter ``odbc_connect``.  The delimeters must be URL encoded, as
-illustrated below using ``urllib.parse.quote_plus``::
+specified in `the PyODBC documentation
+<https://github.com/mkleehammer/pyodbc/wiki/Connecting-to-databases>`_,
+using the parameter ``odbc_connect``.  A :class:`_sa.engine.URL` object
+can help make this easier::
 
-    import urllib
-    params = urllib.parse.quote_plus("DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password")
+    from sqlalchemy.engine import URL
+    connection_string = "DRIVER={SQL Server Native Client 10.0};SERVER=dagger;DATABASE=test;UID=user;PWD=password"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": connection_string})
 
-    engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
+    engine = create_engine(connection_url)
+
+.. _mssql_pyodbc_access_tokens:
+
+Connecting to databases with access tokens
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some database servers are set up to only accept access tokens for login. For
+example, SQL Server allows the use of Azure Active Directory tokens to connect
+to databases. This requires creating a credential object using the
+``azure-identity`` library. More information about the authentication step can be
+found in `Microsoft's documentation
+<https://docs.microsoft.com/en-us/azure/developer/python/azure-sdk-authenticate?tabs=bash>`_.
+
+After getting an engine, the credentials need to be sent to ``pyodbc.connect``
+each time a connection is requested. One way to do this is to set up an event
+listener on the engine that adds the credential token to the dialect's connect
+call. This is discussed more generally in :ref:`engines_dynamic_tokens`. For
+SQL Server in particular, this is passed as an ODBC connection attribute with
+a data structure `described by Microsoft
+<https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory#authenticating-with-an-access-token>`_.
+
+The following code snippet will create an engine that connects to an Azure SQL
+database using Azure credentials::
+
+    import struct
+    from sqlalchemy import create_engine, event
+    from sqlalchemy.engine.url import URL
+    from azure import identity
+
+    SQL_COPT_SS_ACCESS_TOKEN = 1256  # Connection option for access tokens, as defined in msodbcsql.h
+    TOKEN_URL = "https://database.windows.net/"  # The token URL for any Azure SQL database
+
+    connection_string = "mssql+pyodbc://@my-server.database.windows.net/myDb?driver=ODBC+Driver+17+for+SQL+Server"
+
+    engine = create_engine(connection_string)
+
+    azure_credentials = identity.DefaultAzureCredential()
+
+    @event.listens_for(engine, "do_connect")
+    def provide_token(dialect, conn_rec, cargs, cparams):
+        # remove the "Trusted_Connection" parameter that SQLAlchemy adds
+        cargs[0] = cargs[0].replace(";Trusted_Connection=Yes", "")
+
+        # create token credential
+        raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
+        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), token)
+
+        # apply it to keyword arguments
+        cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
+
+.. tip::
+
+    The ``Trusted_Connection`` token is currently added by the SQLAlchemy
+    pyodbc dialect when no username or password is present.  This needs
+    to be removed per Microsoft's
+    `documentation for Azure access tokens
+    <https://docs.microsoft.com/en-us/sql/connect/odbc/using-azure-active-directory#authenticating-with-an-access-token>`_,
+    stating that a connection string when using an access token must not contain
+    ``UID``, ``PWD``, ``Authentication`` or ``Trusted_Connection`` parameters.
+
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
@@ -160,6 +220,7 @@ driver in order to use this flag::
 
 
 """  # noqa
+
 
 import datetime
 import decimal
