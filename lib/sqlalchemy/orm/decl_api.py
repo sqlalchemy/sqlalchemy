@@ -25,6 +25,7 @@ from .decl_base import _DeferredMapperConfig
 from .decl_base import _del_attribute
 from .decl_base import _mapper
 from .descriptor_props import SynonymProperty as _orm_synonym
+from .. import exc
 from .. import inspection
 from .. import util
 from ..sql.schema import MetaData
@@ -56,8 +57,22 @@ def has_inherited_table(cls):
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_, **kw):
+        # early-consume registry from the initial declarative base,
+        # assign privately to not conflict with subclass attributes named
+        # "registry"
+        reg = getattr(cls, "_sa_registry", None)
+        if reg is None:
+            reg = dict_.get("registry", None)
+            if not isinstance(reg, registry):
+                raise exc.InvalidRequestError(
+                    "Declarative base class has no 'registry' attribute, "
+                    "or registry is not a sqlalchemy.orm.registry() object"
+                )
+            else:
+                cls._sa_registry = reg
+
         if not cls.__dict__.get("__abstract__", False):
-            _as_declarative(cls.registry, cls, cls.__dict__)
+            _as_declarative(reg, cls, dict_)
         type.__init__(cls, classname, bases, dict_)
 
     def __setattr__(cls, key, value):

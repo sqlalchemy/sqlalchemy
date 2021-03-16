@@ -1024,6 +1024,36 @@ class DeclarativeTest(DeclarativeTestBase):
             set([Child.name_upper.property.columns[0]]),
         )
 
+    def test_class_has_registry_attr(self):
+        existing_registry = Base.registry
+
+        class A(Base):
+            __tablename__ = "a"
+
+            registry = {"foo": "bar"}
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+        class SubA(A):
+            pass
+
+        is_(Base.registry, existing_registry)
+        is_(inspect(A).registry, existing_registry)
+        eq_(A.registry, {"foo": "bar"})
+
+        is_(inspect(SubA).registry, existing_registry)
+        eq_(SubA.registry, {"foo": "bar"})
+
+    def test_class_does_not_have_registry_attr(self):
+        with assertions.expect_raises_message(
+            exc.InvalidRequestError,
+            r"Declarative base class has no 'registry' attribute, or "
+            r"registry is not a sqlalchemy.orm.registry\(\) object",
+        ):
+
+            class Base(with_metaclass(DeclarativeMeta)):
+                metadata = sa.MetaData()
+
     def test_shared_class_registry(self):
         reg = {}
         Base1 = declarative_base(testing.db, class_registry=reg)
