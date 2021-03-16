@@ -516,7 +516,7 @@ The regular expression syntaxes and flags are **not backend agnostic**.
 A future feature will allow multiple regular expression syntaxes to be
 specified at once to switch between different backends on the fly.
 
-For SQLite, Python's ``re.match()`` function with no additional arguments
+For SQLite, Python's ``re.search()`` function with no additional arguments
 is established as the implementation.
 
 .. seealso::
