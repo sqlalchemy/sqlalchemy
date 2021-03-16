@@ -684,7 +684,14 @@ class AliasedInsp(
             equivalents=mapper._equivalent_columns,
             adapt_on_names=adapt_on_names,
             anonymize_labels=True,
+            # make sure the adapter doesn't try to grab other tables that
+            # are not even the thing we are mapping, such as embedded
+            # selectables in subqueries or CTEs.  See issue #6060
+            adapt_from_selectables=[
+                m.selectable for m in self.with_polymorphic_mappers
+            ],
         )
+
         if inspected.is_aliased_class:
             self._adapter = inspected._adapter.wrap(self._adapter)
 

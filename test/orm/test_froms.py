@@ -12,11 +12,13 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -1113,9 +1115,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         def go():
-            ulist_alias = aliased(User, alias=query.alias("ulist"))
+            ulist = query.alias("ulist")
+            ulist_alias = aliased(User, alias=ulist)
             result = (
-                q.options(contains_eager("addresses"))
+                q.options(contains_eager("addresses", alias=ulist))
                 .select_entity_from(ulist_alias)
                 .all()
             )
@@ -3894,3 +3897,135 @@ class LabelCollideTest(fixtures.MappedTest):
         # all three columns are loaded independently without
         # overlap, no additional SQL to load all attributes
         self.assert_sql_count(testing.db, go, 0)
+
+
+class CorrelateORMTest(fixtures.TestBase, testing.AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def mapping(self):
+        Base = declarative_base()
+
+        def go(include_property, correlate_style, include_from):
+            class Address(Base):
+                __tablename__ = "addresses"
+
+                id = Column(Integer, primary_key=True)
+                user_id = Column(
+                    Integer, ForeignKey("users.id"), nullable=False
+                )
+                city = Column(Text)
+
+            class User(Base):
+                __tablename__ = "users"
+
+                id = Column(Integer, primary_key=True)
+                name = Column(Text)
+
+            stmt = select(func.count(Address.id)).where(
+                Address.user_id == User.id
+            )
+            if include_from:
+                stmt = stmt.select_from(Address)
+
+            if include_property:
+                if correlate_style == "correlate":
+                    User.total_addresses = column_property(
+                        stmt.correlate(User).scalar_subquery()
+                    )
+                elif correlate_style == "correlate_except":
+                    User.total_addresses = column_property(
+                        stmt.correlate_except(Address).scalar_subquery()
+                    )
+                elif correlate_style is None:
+                    User.total_addresses = column_property(
+                        stmt.scalar_subquery()
+                    )
+                total_addresses = None
+            else:
+
+                def total_addresses(cls):
+                    stmt = select(func.count(Address.id)).where(
+                        Address.user_id == cls.id
+                    )
+
+                    if correlate_style == "correlate":
+                        stmt = stmt.correlate(cls)
+                    elif correlate_style == "correlate_except":
+                        stmt = stmt.correlate_except(Address)
+
+                    stmt = stmt.scalar_subquery()
+
+                    return stmt
+
+            return User, Address, total_addresses
+
+        yield go
+        Base.registry.dispose()
+
+    def _combinations(fn):
+
+        return testing.combinations(
+            (True,), (False,), argnames="include_property"
+        )(
+            testing.combinations(
+                ("correlate",),
+                ("correlate_except",),
+                (None,),
+                argnames="correlate_style",
+            )(
+                testing.combinations(
+                    (True,), (False), argnames="include_from"
+                )(fn)
+            )
+        )
+
+    @_combinations
+    def test_correlate_to_cte_legacy(
+        self, mapping, include_property, correlate_style, include_from
+    ):
+        User, Address, total_addresses = mapping(
+            include_property, correlate_style, include_from
+        )
+        session = fixture_session()
+
+        filtered_users = (
+            session.query(User.id, User.name)
+            .join(Address)
+            .filter(Address.city == "somewhere")
+            .cte("filtered_users")
+        )
+
+        filtered_users_alias = aliased(User, filtered_users)
+
+        paginated_users = (
+            session.query(filtered_users_alias.id, filtered_users_alias.name)
+            .order_by(func.lower(filtered_users_alias.name).asc())
+            .limit(25)
+            .cte("paginated_users")
+        )
+
+        paginated_users_alias = aliased(User, paginated_users)
+
+        if total_addresses:
+            q = session.query(
+                paginated_users_alias, total_addresses(paginated_users_alias)
+            )
+        else:
+            q = session.query(paginated_users_alias)
+        self.assert_compile(
+            q,
+            "WITH filtered_users AS "
+            "(SELECT users.id AS id, users.name AS name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.city = :city_1), "
+            "paginated_users AS (SELECT filtered_users.id AS id, "
+            "filtered_users.name AS name FROM filtered_users "
+            "ORDER BY lower(filtered_users.name) ASC LIMIT :param_1) "
+            "SELECT "
+            "paginated_users.id AS paginated_users_id, "
+            "paginated_users.name AS paginated_users_name, "
+            "(SELECT count(addresses.id) AS count_1 FROM addresses "
+            "WHERE addresses.user_id = paginated_users.id) AS anon_1 "
+            "FROM paginated_users",
+        )
