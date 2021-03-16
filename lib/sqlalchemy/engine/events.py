@@ -796,6 +796,17 @@ class DialectEvents(event.Events):
         the flag ``use_setinputsizes=True``.  Dialects which use this
         include cx_Oracle, pg8000, asyncpg, and pyodbc dialects.
 
+        .. note::
+
+            For use with pyodbc, the ``use_setinputsizes`` flag
+            must be passed to the dialect, e.g.::
+
+                create_engine("mssql+pyodbc://...", use_setinputsizes=True)
+
+            .. seealso::
+
+                  :ref:`mssql_pyodbc_setinputsizes`
+
         .. versionadded:: 1.2.9
 
         .. seealso::

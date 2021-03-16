@@ -56,7 +56,7 @@ Other keywords interpreted by the Pyodbc dialect to be passed to
 ``authentication``.
 Note that in order for the dialect to recognize these keywords
 (including the ``driver`` keyword above) they must be all lowercase.
-Multiple additional keyword arguments must be separated by an 
+Multiple additional keyword arguments must be separated by an
 ampersand (``&``), not a semicolon::
 
     engine = create_engine(
@@ -158,6 +158,23 @@ driver in order to use this flag::
     `fast executemany <https://github.com/mkleehammer/pyodbc/wiki/Features-beyond-the-DB-API#fast_executemany>`_
     - on github
 
+.. _mssql_pyodbc_setinputsizes:
+
+Setinputsizes Support
+-----------------------
+
+The pyodbc ``cursor.setinputsizes()`` method can be used if necessary.  To
+enable this hook, pass ``use_setinputsizes=True`` to :func:`_sa.create_engine`::
+
+    engine = create_engine("mssql+pyodbc://...", use_setinputsizes=True)
+
+The behavior of the hook can then be customized, as may be necessary
+particularly if fast_executemany is in use, via the
+:meth:`.DialectEvents.do_setinputsizes` hook. See that method for usage
+examples.
+
+.. versionchanged:: 1.4.1  The pyodbc dialects will not use setinputsizes
+   unless ``use_setinputsizes=True`` is passed.
 
 """  # noqa
 

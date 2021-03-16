@@ -24,16 +24,19 @@ class PyODBCConnector(Connector):
     supports_native_decimal = True
     default_paramstyle = "named"
 
-    use_setinputsizes = True
+    use_setinputsizes = False
 
     # for non-DSN connections, this *may* be used to
     # hold the desired driver name
     pyodbc_driver_name = None
 
-    def __init__(self, supports_unicode_binds=None, **kw):
+    def __init__(
+        self, supports_unicode_binds=None, use_setinputsizes=False, **kw
+    ):
         super(PyODBCConnector, self).__init__(**kw)
         if supports_unicode_binds is not None:
             self.supports_unicode_binds = supports_unicode_binds
+        self.use_setinputsizes = use_setinputsizes
 
     @classmethod
     def dbapi(cls):
@@ -163,6 +166,10 @@ class PyODBCConnector(Connector):
         # for the subsequent values if you don't pass a tuple which fails
         # for types such as pyodbc.SQL_WLONGVARCHAR, which is the datatype
         # that ticket #5649 is targeting.
+
+        # NOTE: as of #6058, this won't be called if the use_setinputsizes flag
+        # is False, or if no types were specified in list_of_tuples
+
         cursor.setinputsizes(
             [
                 (dbtype, None, None)

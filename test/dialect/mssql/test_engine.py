@@ -1,9 +1,13 @@
 # -*- encoding: utf-8
 
+from decimal import Decimal
+
 from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import Integer
+from sqlalchemy import Numeric
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -11,14 +15,17 @@ from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql import pymssql
 from sqlalchemy.dialects.mssql import pyodbc
 from sqlalchemy.engine import url
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import Mock
 
 
@@ -388,6 +395,147 @@ class FastExecutemanyTest(fixtures.TestBase):
             )
 
             conn.execute(t.insert(), {"id": 200, "data": "data_200"})
+
+    @testing.fixture
+    def fe_engine(self, testing_engine):
+        def go(use_fastexecutemany, apply_setinputsizes_flag):
+            engine = testing_engine(
+                options={
+                    "fast_executemany": use_fastexecutemany,
+                    "use_setinputsizes": apply_setinputsizes_flag,
+                }
+            )
+            return engine
+
+        return go
+
+    @testing.combinations(
+        (
+            "setinputsizeshook",
+            True,
+        ),
+        (
+            "nosetinputsizeshook",
+            False,
+        ),
+        argnames="include_setinputsizes",
+        id_="ia",
+    )
+    @testing.combinations(
+        (
+            "setinputsizesflag",
+            True,
+        ),
+        (
+            "nosetinputsizesflag",
+            False,
+        ),
+        argnames="apply_setinputsizes_flag",
+        id_="ia",
+    )
+    @testing.combinations(
+        (
+            "fastexecutemany",
+            True,
+        ),
+        (
+            "nofastexecutemany",
+            False,
+        ),
+        argnames="use_fastexecutemany",
+        id_="ia",
+    )
+    def test_insert_floats(
+        self,
+        metadata,
+        fe_engine,
+        include_setinputsizes,
+        use_fastexecutemany,
+        apply_setinputsizes_flag,
+    ):
+        expect_failure = (
+            apply_setinputsizes_flag
+            and not include_setinputsizes
+            and use_fastexecutemany
+        )
+
+        engine = fe_engine(use_fastexecutemany, apply_setinputsizes_flag)
+
+        observations = Table(
+            "Observations",
+            metadata,
+            Column("id", Integer, nullable=False, primary_key=True),
+            Column("obs1", Numeric(19, 15), nullable=True),
+            Column("obs2", Numeric(19, 15), nullable=True),
+            schema="test_schema",
+        )
+        with engine.begin() as conn:
+            metadata.create_all(conn)
+
+        records = [
+            {
+                "id": 1,
+                "obs1": Decimal("60.1722066045792"),
+                "obs2": Decimal("24.929289808227466"),
+            },
+            {
+                "id": 2,
+                "obs1": Decimal("60.16325715615476"),
+                "obs2": Decimal("24.93886459535008"),
+            },
+            {
+                "id": 3,
+                "obs1": Decimal("60.16445165123469"),
+                "obs2": Decimal("24.949856300109516"),
+            },
+        ]
+
+        if include_setinputsizes:
+            canary = mock.Mock()
+
+            @event.listens_for(engine, "do_setinputsizes")
+            def do_setinputsizes(
+                inputsizes, cursor, statement, parameters, context
+            ):
+                canary(list(inputsizes.values()))
+
+                for key in inputsizes:
+                    if isinstance(key.type, Numeric):
+                        inputsizes[key] = (
+                            engine.dialect.dbapi.SQL_DECIMAL,
+                            19,
+                            15,
+                        )
+
+        with engine.begin() as conn:
+
+            if expect_failure:
+                with expect_raises(DBAPIError):
+                    conn.execute(observations.insert(), records)
+            else:
+                conn.execute(observations.insert(), records)
+
+                eq_(
+                    conn.execute(
+                        select(observations).order_by(observations.c.id)
+                    )
+                    .mappings()
+                    .all(),
+                    records,
+                )
+
+        if include_setinputsizes:
+            if apply_setinputsizes_flag:
+                eq_(
+                    canary.mock_calls,
+                    [
+                        # float for int?  this seems wrong
+                        mock.call([float, float, float]),
+                        mock.call([]),
+                    ],
+                )
+            else:
+                eq_(canary.mock_calls, [])
 
 
 class VersionDetectionTest(fixtures.TestBase):
