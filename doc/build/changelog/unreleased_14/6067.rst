@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6067
+
+    Fixed regression in :meth:`_orm.Session.identity_key`, including that the
+    method and related methods were not covered by any unit test as well as
+    that the method contained a typo preventing it from functioning correctly.
+

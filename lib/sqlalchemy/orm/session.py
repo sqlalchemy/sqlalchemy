@@ -81,7 +81,7 @@ class _SessionClassMethods(object):
         This is an alias of :func:`.util.identity_key`.
 
         """
-        return util.perload.orm_util.identity_key(*args, **kwargs)
+        return util.preloaded.orm_util.identity_key(*args, **kwargs)
 
     @classmethod
     def object_session(cls, instance):

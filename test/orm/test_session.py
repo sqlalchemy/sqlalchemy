@@ -244,12 +244,13 @@ class SessionUtilTest(_fixtures.FixtureTest):
         assert u1 not in s1
         assert u2 not in s2
 
-    def test_object_session_raises(self):
+    @testing.combinations((object_session,), (Session.object_session,))
+    def test_object_session_raises(self, objsession):
         User = self.classes.User
 
-        assert_raises(orm_exc.UnmappedInstanceError, object_session, object())
+        assert_raises(orm_exc.UnmappedInstanceError, objsession, object())
 
-        assert_raises(orm_exc.UnmappedInstanceError, object_session, User())
+        assert_raises(orm_exc.UnmappedInstanceError, objsession, User())
 
     def test_make_transient(self):
         users, User = self.tables.users, self.classes.User
