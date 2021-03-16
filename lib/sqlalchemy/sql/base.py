@@ -1126,6 +1126,12 @@ class ColumnCollection(object):
     def keys(self):
         return [k for (k, col) in self._collection]
 
+    def values(self):
+        return [col for (k, col) in self._collection]
+
+    def items(self):
+        return list(self._collection)
+
     def __bool__(self):
         return bool(self._collection)
 

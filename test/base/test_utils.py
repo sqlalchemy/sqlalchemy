@@ -464,10 +464,38 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         cc = self._column_collection(
             columns=[("c1", c1), ("foo", c2), ("c3", c3)]
         )
-        eq_(cc.keys(), ["c1", "foo", "c3"])
+        keys = cc.keys()
+        eq_(keys, ["c1", "foo", "c3"])
+        ne_(id(keys), id(cc.keys()))
 
         ci = cc.as_immutable()
         eq_(ci.keys(), ["c1", "foo", "c3"])
+
+    def test_values(self):
+        c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")
+        c2.key = "foo"
+        cc = self._column_collection(
+            columns=[("c1", c1), ("foo", c2), ("c3", c3)]
+        )
+        val = cc.values()
+        eq_(val, [c1, c2, c3])
+        ne_(id(val), id(cc.values()))
+
+        ci = cc.as_immutable()
+        eq_(ci.values(), [c1, c2, c3])
+
+    def test_items(self):
+        c1, c2, c3 = sql.column("c1"), sql.column("c2"), sql.column("c3")
+        c2.key = "foo"
+        cc = self._column_collection(
+            columns=[("c1", c1), ("foo", c2), ("c3", c3)]
+        )
+        items = cc.items()
+        eq_(items, [("c1", c1), ("foo", c2), ("c3", c3)])
+        ne_(id(items), id(cc.items()))
+
+        ci = cc.as_immutable()
+        eq_(ci.items(), [("c1", c1), ("foo", c2), ("c3", c3)])
 
     def test_key_index_error(self):
         cc = self._column_collection(

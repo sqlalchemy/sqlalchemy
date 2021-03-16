@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, regression
+    :tickets: 6068
+
+    Added back ``items`` and ``values`` to ``ColumnCollection`` class.
+    The regression was introduced while adding support for duplicate
+    columns in from clauses and selectable in ticket #4753.
+
