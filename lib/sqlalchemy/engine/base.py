@@ -2078,7 +2078,8 @@ class Connection(Connectable):
         "1.4",
         "The :meth:`_engine.Connection.run_callable` "
         "method is deprecated and will "
-        "be removed in a future release.  Use a context manager instead.",
+        "be removed in a future release.  Invoke the callable function "
+        "directly, passing the Connection.",
     )
     def run_callable(self, callable_, *args, **kwargs):
         r"""Given a callable object or function, execute it, passing
