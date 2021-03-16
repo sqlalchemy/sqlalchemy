@@ -450,6 +450,7 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
+from ...sql import elements
 from ...util import collections_abc
 
 
@@ -597,7 +598,20 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    pass
+    def visit_bindparam(self, bindparam, skip_bind_expression=False, **kw):
+
+        text = super(PGCompiler_psycopg2, self).visit_bindparam(
+            bindparam, skip_bind_expression=skip_bind_expression, **kw
+        )
+        # note that if the type has a bind_expression(), we will get a
+        # double compile here
+        if not skip_bind_expression and bindparam.type._is_array:
+            text += "::%s" % (
+                elements.TypeClause(bindparam.type)._compiler_dispatch(
+                    self, skip_bind_expression=skip_bind_expression, **kw
+                ),
+            )
+        return text
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
