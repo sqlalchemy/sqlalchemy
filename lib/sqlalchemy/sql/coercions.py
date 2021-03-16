@@ -109,7 +109,14 @@ def _expression_collection_was_a_list(attrname, fnname, args):
         return args
 
 
-def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
+def expect(
+    role,
+    element,
+    apply_propagate_attrs=None,
+    argname=None,
+    post_inspect=False,
+    **kw
+):
     if (
         role.allows_lambda
         # note callable() will not invoke a __getattr__() method, whereas
@@ -157,7 +164,8 @@ def expect(role, element, apply_propagate_attrs=None, argname=None, **kw):
                 if impl._use_inspection:
                     insp = inspection.inspect(element, raiseerr=False)
                     if insp is not None:
-                        insp._post_inspect
+                        if post_inspect:
+                            insp._post_inspect
                         try:
                             resolved = insp.__clause_element__()
                         except AttributeError:

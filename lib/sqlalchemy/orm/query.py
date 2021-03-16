@@ -179,7 +179,10 @@ class Query(
     def _set_entities(self, entities):
         self._raw_columns = [
             coercions.expect(
-                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+                roles.ColumnsClauseRole,
+                ent,
+                apply_propagate_attrs=self,
+                post_inspect=True,
             )
             for ent in util.to_list(entities)
         ]
@@ -1415,7 +1418,10 @@ class Query(
 
         self._raw_columns.extend(
             coercions.expect(
-                roles.ColumnsClauseRole, c, apply_propagate_attrs=self
+                roles.ColumnsClauseRole,
+                c,
+                apply_propagate_attrs=self,
+                post_inspect=True,
             )
             for c in column
         )
@@ -3217,7 +3223,10 @@ class FromStatement(GroupedElement, SelectBase, Executable):
     def __init__(self, entities, element):
         self._raw_columns = [
             coercions.expect(
-                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+                roles.ColumnsClauseRole,
+                ent,
+                apply_propagate_attrs=self,
+                post_inspect=True,
             )
             for ent in util.to_list(entities)
         ]

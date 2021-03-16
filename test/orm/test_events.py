@@ -999,8 +999,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         event.listen(mapper, "before_configured", m1)
         event.listen(mapper, "after_configured", m2)
 
-        s = fixture_session()
-        s.query(User)
+        inspect(User)._post_inspect
 
         eq_(m1.mock_calls, [call()])
         eq_(m2.mock_calls, [call()])
@@ -1132,8 +1131,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         # fails by default because Mammal needs to be configured, and cannot
         # be:
         def probe():
-            s = fixture_session()
-            s.query(User)
+            inspect(User)._post_inspect
 
         if create_dependency:
             assert_raises(sa.exc.InvalidRequestError, probe)
