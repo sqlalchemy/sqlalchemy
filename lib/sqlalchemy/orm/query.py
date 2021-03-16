@@ -1296,7 +1296,6 @@ class Query(
     def _from_self(self, *entities):
         fromclause = (
             self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            .enable_eagerloads(False)
             .correlate(None)
             .subquery()
             ._anonymous_fromclause()
@@ -3006,7 +3005,7 @@ class Query(
 
         """
         col = sql.func.count(sql.literal_column("*"))
-        return self._from_self(col).scalar()
+        return self._from_self(col).enable_eagerloads(False).scalar()
 
     def delete(self, synchronize_session="evaluate"):
         r"""Perform a DELETE with an arbitrary WHERE clause.

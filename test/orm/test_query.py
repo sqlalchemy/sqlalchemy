@@ -3976,6 +3976,19 @@ class CountTest(QueryTest):
             2,
         )
 
+    def test_loader_options_ignored(self):
+        """test the count()-specific legacy behavior that loader
+        options are effectively ignored, as they previously were applied
+        before the count() function would be.
+
+        """
+
+        User = self.classes.User
+
+        s = fixture_session()
+
+        eq_(s.query(User).options(joinedload(User.addresses)).count(), 4)
+
     def test_count_char(self):
         User = self.classes.User
         s = fixture_session()
