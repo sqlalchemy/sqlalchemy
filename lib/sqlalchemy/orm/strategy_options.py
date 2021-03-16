@@ -89,6 +89,8 @@ class Load(Generative, LoaderOption):
 
     def __init__(self, entity):
         insp = inspect(entity)
+        insp._post_inspect
+
         self.path = insp._path_registry
         # note that this .context is shared among all descendant
         # Load objects

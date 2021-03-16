@@ -21,6 +21,8 @@ from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import dynamic_loader
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import reconstructor
 from sqlalchemy.orm import registry
@@ -2998,3 +3000,136 @@ class RegistryConfigDisposeTest(fixtures.TestBase):
                 "pass cascade=True to clear these also",
             ):
                 reg3.dispose()
+
+
+class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.combinations((True,), (False,))
+    def test_no_mapper_configure_w_selects_etc(self, use_legacy_query):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        am = self.mapper(Address, addresses)
+
+        um = self.mapper(
+            User,
+            users,
+            properties={
+                "address_count": column_property(
+                    select(Address)
+                    .where(Address.id == users.c.id)
+                    .correlate_except(Address)
+                    .scalar_subquery()
+                )
+            },
+        )
+
+        is_false(am.configured)
+        is_false(um.configured)
+
+        if use_legacy_query:
+            stmt = Session().query(User).filter(User.name == "ed")
+            self.assert_compile(
+                stmt,
+                "SELECT (SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address FROM addresses "
+                "WHERE addresses.id = users.id) AS anon_1, "
+                "users.id AS users_id, users.name AS users_name "
+                "FROM users WHERE users.name = :name_1",
+            )
+        else:
+            stmt = select(User).where(User.name == "ed")
+
+            self.assert_compile(
+                stmt,
+                "SELECT (SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address FROM addresses "
+                "WHERE addresses.id = users.id) AS anon_1, "
+                "users.id, users.name "
+                "FROM users WHERE users.name = :name_1",
+            )
+
+        is_true(am.configured)
+        is_true(um.configured)
+
+    @testing.combinations((True,), (False,))
+    def test_load_options(self, use_bound):
+        User = self.classes.User
+
+        users = self.tables.users
+
+        um = mapper(User, users)
+
+        if use_bound:
+            stmt = select(User).options(
+                Load(User).load_only("name"),
+            )
+
+            is_true(um.configured)
+        else:
+            stmt = select(User).options(
+                load_only("name"),
+            )
+            is_false(um.configured)
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, " "users.name " "FROM users",
+        )
+        is_true(um.configured)
+
+    @testing.combinations((True,), (False,))
+    def test_backrefs(self, use_legacy_query):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        am = mapper(Address, addresses)
+
+        if use_legacy_query:
+            s = Session()
+
+            # legacy, Query still forces configure
+            stmt = s.query(Address).join(Address.user)
+
+            is_true(am.configured)
+
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id AS addresses_id, "
+                "addresses.user_id AS addresses_user_id, "
+                "addresses.email_address AS addresses_email_address "
+                "FROM addresses JOIN users ON users.id = addresses.user_id",
+            )
+        else:
+            # new queries, they can't, because they are used in mapper
+            # config also.  backrefs that aren't explicit on the class
+            # are the only thing we can't do. we would need __getattr__
+            # to intercept this error.
+            with expect_raises_message(
+                AttributeError, "type object 'Address' has no attribute 'user'"
+            ):
+                stmt = select(Address).join(Address.user)
+
+            is_false(am.configured)
+
+            configure_mappers()
+
+            is_true(am.configured)
+
+            stmt = select(Address).join(Address.user)
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id, addresses.user_id, "
+                "addresses.email_address FROM addresses JOIN users "
+                "ON users.id = addresses.user_id",
+            )
