@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6052
+
+    Fixed regression where calling upon :meth:`_orm.Query.count` in conjunction
+    with a loader option such as :func:`_orm.joinedload` would fail to ignore
+    the loader option. This is a behavior that has always been very specific to
+    the :meth:`_orm.Query.count` method; an error is normally raised if a given
+    :class:`_orm.Query` has options that don't apply to what it is returning.
