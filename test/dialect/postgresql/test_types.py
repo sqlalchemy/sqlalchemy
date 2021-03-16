@@ -62,11 +62,6 @@ from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.suite import test_types as suite
 from sqlalchemy.testing.util import round_decimal
 
-try:
-    import enum
-except ImportError:
-    enum = None
-
 
 class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
     __only_on__ = "postgresql"
