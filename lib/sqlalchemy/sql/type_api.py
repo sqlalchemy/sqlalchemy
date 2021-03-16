@@ -633,7 +633,8 @@ class TypeEngine(Traversible):
         try:
             return dialect._type_memos[self]["impl"]
         except KeyError:
-            return self._dialect_info(dialect)["impl"]
+            pass
+        return self._dialect_info(dialect)["impl"]
 
     def _unwrapped_dialect_impl(self, dialect):
         """Return the 'unwrapped' dialect impl for this type.

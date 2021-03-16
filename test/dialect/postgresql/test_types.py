@@ -1443,7 +1443,6 @@ class ArrayRoundTripTest(object):
 
     __only_on__ = "postgresql"
     __backend__ = True
-    __unsupported_on__ = ("postgresql+pg8000",)
 
     ARRAY = postgresql.ARRAY
 
@@ -1962,14 +1961,8 @@ class ArrayRoundTripTest(object):
             (sqltypes.Unicode, unicode_values),
             (postgresql.JSONB, json_values),
             (sqltypes.Boolean, lambda x: [False] + [True] * x),
-            (
-                sqltypes.LargeBinary,
-                binary_values,
-            ),
-            (
-                postgresql.BYTEA,
-                binary_values,
-            ),
+            (sqltypes.LargeBinary, binary_values),
+            (postgresql.BYTEA, binary_values),
             (
                 postgresql.INET,
                 lambda x: [
@@ -2047,6 +2040,7 @@ class ArrayRoundTripTest(object):
             (postgresql.ENUM(AnEnum), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=True), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=False), enum_values),
+            (postgresql.ENUM(AnEnum, native_enum=True), enum_values),
         ]
 
         if not exclude_json:
@@ -2056,6 +2050,22 @@ class ArrayRoundTripTest(object):
                     (postgresql.JSON, json_values),
                 ]
             )
+
+        _pg8000_skip_types = {
+            postgresql.HSTORE,  # return not parsed returned as string
+        }
+        for i in range(len(elements)):
+            elem = elements[i]
+            if (
+                elem[0] in _pg8000_skip_types
+                or type(elem[0]) in _pg8000_skip_types
+            ):
+                elem += (
+                    testing.skip_if(
+                        "postgresql+pg8000", "type not supported by pg8000"
+                    ),
+                )
+                elements[i] = elem
 
         return testing.combinations_list(
             elements, argnames="type_,gen", id_="na"
