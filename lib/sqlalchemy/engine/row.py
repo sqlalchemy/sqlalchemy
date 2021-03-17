@@ -220,6 +220,27 @@ class Row(BaseRow, collections_abc.Sequence):
             self._data,
         )
 
+    def _special_name_accessor(name):
+        """Handle ambiguous names such as "count" and "index" """
+
+        @property
+        def go(self):
+            if self._parent._has_key(name):
+                return self.__getattr__(name)
+            else:
+
+                def meth(*arg, **kw):
+                    return getattr(collections_abc.Sequence, name)(
+                        self, *arg, **kw
+                    )
+
+                return meth
+
+        return go
+
+    count = _special_name_accessor("count")
+    index = _special_name_accessor("index")
+
     def __contains__(self, key):
         return key in self._data
 

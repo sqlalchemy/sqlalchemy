@@ -28,6 +28,8 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
+from sqlalchemy.engine.result import SimpleResultMetaData
+from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
 from sqlalchemy.sql import expression
@@ -1323,6 +1325,47 @@ class CursorResultTest(fixtures.TablesTest):
             ["value"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
+
+    @testing.combinations((Row,), (LegacyRow,))
+    def test_row_special_names(self, row_cls):
+        metadata = SimpleResultMetaData(["key", "count", "index"])
+        row = row_cls(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            Row._default_key_style,
+            ["kv", "cv", "iv"],
+        )
+        is_true(isinstance(row, collections_abc.Sequence))
+
+        eq_(row.key, "kv")
+        eq_(row.count, "cv")
+        eq_(row.index, "iv")
+
+        if isinstance(row, LegacyRow):
+            eq_(row["count"], "cv")
+            eq_(row["index"], "iv")
+
+        eq_(row._mapping["count"], "cv")
+        eq_(row._mapping["index"], "iv")
+
+        metadata = SimpleResultMetaData(["key", "q", "p"])
+
+        row = row_cls(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            Row._default_key_style,
+            ["kv", "cv", "iv"],
+        )
+        is_true(isinstance(row, collections_abc.Sequence))
+
+        eq_(row.key, "kv")
+        eq_(row.q, "cv")
+        eq_(row.p, "iv")
+        eq_(row.index("cv"), 1)
+        eq_(row.count("cv"), 1)
+        eq_(row.count("x"), 0)
 
     def test_row_is_hashable(self):
 
