@@ -22,6 +22,7 @@ import itertools
 import operator
 import types
 
+from sqlalchemy.sql import visitors
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
@@ -197,7 +198,12 @@ class Query(
         elif "bundle" in ent._annotations:
             return ent._annotations["bundle"]
         else:
-            return ent
+            # label, other SQL expression
+            for element in visitors.iterate(ent):
+                if "parententity" in element._annotations:
+                    return element._annotations["parententity"]
+            else:
+                return None
 
     def _only_full_mapper_zero(self, methname):
         if (
