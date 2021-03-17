@@ -15,7 +15,125 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.1
-    :include_notes_from: unreleased_14
+    :released: March 17, 2021
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6066
+
+        Fixed regression where producing a Core expression construct such as
+        :func:`_sql.select` using ORM entities would eagerly configure the mappers,
+        in an effort to maintain compatibility with the :class:`_orm.Query` object
+        which necessarily does this to support many backref-related legacy cases.
+        However, core :func:`_sql.select` constructs are also used in mapper
+        configurations and such, and to that degree this eager configuration is
+        more of an inconvenience, so eager configure has been disabled for the
+        :func:`_sql.select` and other Core constructs in the absence of ORM loading
+        types of functions such as :class:`_orm.Load`.
+
+        The change maintains the behavior of :class:`_orm.Query` so that backwards
+        compatibility is maintained. However, when using a :func:`_sql.select` in
+        conjunction with ORM entities, a "backref" that isn't explicitly placed on
+        one of the classes until mapper configure time won't be available unless
+        :func:`_orm.configure_mappers` or the newer :func:`_orm.registry.configure`
+        has been called elsewhere. Prefer using
+        :paramref:`_orm.relationship.back_populates` for more explicit relationship
+        configuration which does not have the eager configure requirement.
+
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 6058
+
+        Fixed regression where a new setinputsizes() API that's available for
+        pyodbc was enabled, which is apparently incompatible with pyodbc's
+        fast_executemany() mode in the absence of more accurate typing information,
+        which as of yet is not fully implemented or tested. The pyodbc dialect and
+        connector has been modified so that setinputsizes() is not used at all
+        unless the parameter ``use_setinputsizes`` is passed to the dialect, e.g.
+        via :func:`_sa.create_engine`, at which point its behavior can be
+        customized using the :meth:`.DialectEvents.do_setinputsizes` hook.
+
+        .. seealso::
+
+          :ref:`mssql_pyodbc_setinputsizes`
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6055
+
+        Fixed a critical regression in the relationship lazy loader where the SQL
+        criteria used to fetch a related many-to-one object could go stale in
+        relation to other memoized structures within the loader if the mapper had
+        configuration changes, such as can occur when mappers are late configured
+        or configured on demand, producing a comparison to None and returning no
+        object. Huge thanks to Alan Hamlett for their help tracking this down late
+        into the night.
+
+
+
+    .. change::
+        :tags: bug, regression
+        :tickets: 6068
+
+        Added back ``items`` and ``values`` to ``ColumnCollection`` class.
+        The regression was introduced while adding support for duplicate
+        columns in from clauses and selectable in ticket #4753.
+
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6074
+
+        The Python ``namedtuple()`` has the behavior such that the names ``count``
+        and ``index`` will be served as tuple values if the named tuple includes
+        those names; if they are absent, then their behavior as methods of
+        ``collections.abc.Sequence`` is maintained. Therefore the
+        :class:`_result.Row` and :class:`_result.LegacyRow` classes have been fixed
+        so that they work in this same way, maintaining the expected behavior for
+        database rows that have columns named "index" or "count".
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6076
+
+        Fixed regression where the :meth:`_orm.Query.exists` method would fail to
+        create an expression if the entity list of the :class:`_orm.Query` were
+        an arbitrary SQL column expression.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6052
+
+        Fixed regression where calling upon :meth:`_orm.Query.count` in conjunction
+        with a loader option such as :func:`_orm.joinedload` would fail to ignore
+        the loader option. This is a behavior that has always been very specific to
+        the :meth:`_orm.Query.count` method; an error is normally raised if a given
+        :class:`_orm.Query` has options that don't apply to what it is returning.
+
+    .. change::
+        :tags: bug, orm, declarative, regression
+        :tickets: 6054
+
+        Fixed bug where user-mapped classes that contained an attribute named
+        "registry" would cause conflicts with the new registry-based mapping system
+        when using :class:`.DeclarativeMeta`. While the attribute remains
+        something that can be set explicitly on a declarative base to be
+        consumed by the metaclass, once located it is placed under a private
+        class variable so it does not conflict with future subclasses that use
+        the same name for other purposes.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6067
+
+        Fixed regression in :meth:`_orm.Session.identity_key`, including that the
+        method and related methods were not covered by any unit test as well as
+        that the method contained a typo preventing it from functioning correctly.
+
 
 .. changelog::
     :version: 1.4.0
