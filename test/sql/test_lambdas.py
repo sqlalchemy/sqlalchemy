@@ -23,6 +23,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Integer
@@ -178,6 +179,29 @@ class LambdaElementTest(
 
         s5 = go(oldc1, oldc2)
         self.assert_compile(s5, "SELECT x WHERE y > :y_1")
+
+    def test_maintain_required_bindparam(self):
+        """test that the "required" flag doesn't go away for bound
+        parameters"""
+
+        def go():
+            col_expr = column("x")
+            stmt = lambdas.lambda_stmt(lambda: select(col_expr))
+            stmt += lambda stmt: stmt.where(col_expr == bindparam(None))
+
+            return stmt
+
+        s1 = go()
+
+        with expect_raises_message(
+            exc.InvalidRequestError, "A value is required for bind parameter"
+        ):
+            s1.compile().construct_params({})
+        s2 = go()
+        with expect_raises_message(
+            exc.InvalidRequestError, "A value is required for bind parameter"
+        ):
+            s2.compile().construct_params({})
 
     def test_stmt_lambda_w_additional_hascachekey_variants(self):
         def go(col_expr, q):

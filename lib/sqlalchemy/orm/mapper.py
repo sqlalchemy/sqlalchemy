@@ -2569,8 +2569,11 @@ class Mapper(
 
         """
         params = [
-            (primary_key, sql.bindparam(None, type_=primary_key.type))
-            for primary_key in self.primary_key
+            (
+                primary_key,
+                sql.bindparam("pk_%d" % idx, type_=primary_key.type),
+            )
+            for idx, primary_key in enumerate(self.primary_key, 1)
         ]
         return (
             sql.and_(*[k == v for (k, v) in params]),

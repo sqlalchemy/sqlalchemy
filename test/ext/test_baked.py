@@ -348,7 +348,18 @@ class LikeQueryTest(BakedTest):
             u1 = bq(sess).get(7)
             eq_(u1.name, "jack")
             sess.close()
-        eq_(len(bq._bakery), 4)
+
+        # this went from 4 to 3 as a result of #6055.  by giving a name
+        # to the bind param in mapper._get_clause, while the baked cache
+        # here grows by one element, the SQL compiled_cache no longer
+        # changes because the keys of the bindparam() objects are passed
+        # explicitly as params to the execute() call as a result of
+        #  _load_on_pk_identity() (either the one in baked or the one in
+        # loading.py), which then puts them
+        # in column_keys which makes them part of the cache key.  These
+        # were previously anon names, now they are explicit so they
+        # stay across resets
+        eq_(len(bq._bakery), 3)
 
 
 class ResultPostCriteriaTest(BakedTest):

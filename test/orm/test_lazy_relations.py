@@ -734,6 +734,33 @@ class LazyTest(_fixtures.FixtureTest):
                 self.assert_sql_count(testing.db, go, 0)
                 sa.orm.clear_mappers()
 
+    def test_use_get_lambda_key_wont_go_stale(self):
+        """test [ticket:6055]"""
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        um = mapper(User, users)
+        am = mapper(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+
+        is_true(am.relationships.user._lazy_strategy.use_get)
+
+        with fixture_session() as sess:
+            a1 = sess.get(Address, 2)
+
+            eq_(a1.user.id, 8)
+
+        um._reset_memoizations()
+
+        with fixture_session() as sess:
+            a1 = sess.get(Address, 2)
+
+            eq_(a1.user.id, 8)
+
     def test_uses_get_compatible_types(self):
         """test the use_get optimization with compatible
         but non-identical types"""

@@ -1170,7 +1170,9 @@ class PyWrapper(ColumnOperators):
         to_evaluate = object.__getattribute__(self, "_to_evaluate")
         if param is None:
             name = object.__getattribute__(self, "_name")
-            self._param = param = elements.BindParameter(name, unique=True)
+            self._param = param = elements.BindParameter(
+                name, required=False, unique=True
+            )
             self._has_param = True
             param.type = type_api._resolve_value_to_type(to_evaluate)
         return param._with_value(to_evaluate, maintain_key=True)

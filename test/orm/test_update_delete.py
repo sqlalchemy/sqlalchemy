@@ -322,8 +322,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
                     CompiledSQL(
                         "SELECT users.age_int AS users_age_int, "
                         "users.name AS users_name FROM users "
-                        "WHERE users.id = :param_1",
-                        [{"param_1": 4}],
+                        "WHERE users.id = :pk_1",
+                        [{"pk_1": 4}],
                     ),
                     CompiledSQL(
                         "UPDATE users "
@@ -339,8 +339,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
                     # key
                     CompiledSQL(
                         "SELECT users.name AS users_name FROM users "
-                        "WHERE users.id = :param_1",
-                        [{"param_1": 4}],
+                        "WHERE users.id = :pk_1",
+                        [{"pk_1": 4}],
                     ),
                     CompiledSQL(
                         "UPDATE users SET "
@@ -368,15 +368,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT users.age_int AS users_age_int, "
                 "users.id AS users_id, users.name AS users_name FROM users "
-                "WHERE users.id = :param_1",
-                [{"param_1": 1}],
+                "WHERE users.id = :pk_1",
+                [{"pk_1": 1}],
             ),
             # refresh jill
             CompiledSQL(
                 "SELECT users.age_int AS users_age_int, "
                 "users.id AS users_id, users.name AS users_name FROM users "
-                "WHERE users.id = :param_1",
-                [{"param_1": 3}],
+                "WHERE users.id = :pk_1",
+                [{"pk_1": 3}],
             ),
         ]
 
@@ -386,8 +386,8 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 CompiledSQL(
                     "SELECT users.age_int AS users_age_int, "
                     "users.name AS users_name FROM users "
-                    "WHERE users.id = :param_1",
-                    [{"param_1": 4}],
+                    "WHERE users.id = :pk_1",
+                    [{"pk_1": 4}],
                 )
             )
         asserter.assert_(*to_assert)
@@ -443,15 +443,15 @@ class UpdateDeleteTest(fixtures.MappedTest):
             CompiledSQL(
                 "SELECT users.age_int AS users_age_int, "
                 "users.id AS users_id, users.name AS users_name FROM users "
-                "WHERE users.id = :param_1",
-                [{"param_1": 1}],
+                "WHERE users.id = :pk_1",
+                [{"pk_1": 1}],
             ),
             # refresh jill
             CompiledSQL(
                 "SELECT users.age_int AS users_age_int, "
                 "users.id AS users_id, users.name AS users_name FROM users "
-                "WHERE users.id = :param_1",
-                [{"param_1": 3}],
+                "WHERE users.id = :pk_1",
+                [{"pk_1": 3}],
             ),
         )
 

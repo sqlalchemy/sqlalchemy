@@ -359,8 +359,8 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c1id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
                     "SELECT addresses.id AS addresses_id, "
@@ -368,13 +368,13 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c2id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c2id},
                 ),
                 CompiledSQL(
                     "SELECT users.id AS users_id, users.name AS users_name "
-                    "FROM users WHERE users.id = :param_1",
-                    lambda ctx: {"param_1": pid},
+                    "FROM users WHERE users.id = :pk_1",
+                    lambda ctx: {"pk_1": pid},
                 ),
                 CompiledSQL(
                     "DELETE FROM addresses WHERE addresses.id = :id",
@@ -433,8 +433,8 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c1id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
                     "SELECT addresses.id AS addresses_id, "
@@ -442,8 +442,8 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c2id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c2id},
                 ),
             ),
             CompiledSQL(
@@ -497,8 +497,8 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c1id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
                     "SELECT addresses.id AS addresses_id, "
@@ -506,8 +506,8 @@ class RudimentaryFlushTest(UOWTest):
                     "addresses_user_id, addresses.email_address AS "
                     "addresses_email_address FROM addresses "
                     "WHERE addresses.id = "
-                    ":param_1",
-                    lambda ctx: {"param_1": c2id},
+                    ":pk_1",
+                    lambda ctx: {"pk_1": c2id},
                 ),
             ),
             CompiledSQL(
@@ -1265,22 +1265,22 @@ class SingleCycleTest(UOWTest):
                     "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
                     "nodes_parent_id, "
                     "nodes.data AS nodes_data FROM nodes "
-                    "WHERE nodes.id = :param_1",
-                    lambda ctx: {"param_1": pid},
+                    "WHERE nodes.id = :pk_1",
+                    lambda ctx: {"pk_1": pid},
                 ),
                 CompiledSQL(
                     "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
                     "nodes_parent_id, "
                     "nodes.data AS nodes_data FROM nodes "
-                    "WHERE nodes.id = :param_1",
-                    lambda ctx: {"param_1": c1id},
+                    "WHERE nodes.id = :pk_1",
+                    lambda ctx: {"pk_1": c1id},
                 ),
                 CompiledSQL(
                     "SELECT nodes.id AS nodes_id, nodes.parent_id AS "
                     "nodes_parent_id, "
                     "nodes.data AS nodes_data FROM nodes "
-                    "WHERE nodes.id = :param_1",
-                    lambda ctx: {"param_1": c2id},
+                    "WHERE nodes.id = :pk_1",
+                    lambda ctx: {"pk_1": c2id},
                 ),
                 AllOf(
                     CompiledSQL(
@@ -2394,13 +2394,13 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 1}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 1}],
                 ),
                 CompiledSQL(
                     "SELECT test.foo AS test_foo FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 2}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 2}],
                 ),
             )
 
@@ -2457,13 +2457,13 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     ),
                     CompiledSQL(
                         "SELECT test.foo AS test_foo FROM test "
-                        "WHERE test.id = :param_1",
-                        [{"param_1": 1}],
+                        "WHERE test.id = :pk_1",
+                        [{"pk_1": 1}],
                     ),
                     CompiledSQL(
                         "SELECT test.foo AS test_foo FROM test "
-                        "WHERE test.id = :param_1",
-                        [{"param_1": 2}],
+                        "WHERE test.id = :pk_1",
+                        [{"pk_1": 2}],
                     ),
                 ],
             ),
@@ -2544,13 +2544,13 @@ class EagerDefaultsTest(fixtures.MappedTest):
                     ),
                     CompiledSQL(
                         "SELECT test2.bar AS test2_bar FROM test2 "
-                        "WHERE test2.id = :param_1",
-                        [{"param_1": 1}],
+                        "WHERE test2.id = :pk_1",
+                        [{"pk_1": 1}],
                     ),
                     CompiledSQL(
                         "SELECT test2.bar AS test2_bar FROM test2 "
-                        "WHERE test2.id = :param_1",
-                        [{"param_1": 3}],
+                        "WHERE test2.id = :pk_1",
+                        [{"pk_1": 3}],
                     ),
                 ],
             ),
@@ -2642,18 +2642,18 @@ class EagerDefaultsTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :param_1",
-                    [{"param_1": 1}],
+                    "WHERE test2.id = :pk_1",
+                    [{"pk_1": 1}],
                 ),
                 CompiledSQL(
                     "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :param_1",
-                    [{"param_1": 3}],
+                    "WHERE test2.id = :pk_1",
+                    [{"pk_1": 3}],
                 ),
                 CompiledSQL(
                     "SELECT test2.bar AS test2_bar FROM test2 "
-                    "WHERE test2.id = :param_1",
-                    [{"param_1": 4}],
+                    "WHERE test2.id = :pk_1",
+                    [{"pk_1": 4}],
                 ),
             )
 

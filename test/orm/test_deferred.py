@@ -76,8 +76,8 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 ),
                 (
                     "SELECT orders.description AS orders_description "
-                    "FROM orders WHERE orders.id = :param_1",
-                    {"param_1": 3},
+                    "FROM orders WHERE orders.id = :pk_1",
+                    {"pk_1": 3},
                 ),
             ],
         )
@@ -256,8 +256,8 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                     "orders.address_id AS orders_address_id, "
                     "orders.description AS orders_description, "
                     "orders.isopen AS orders_isopen "
-                    "FROM orders WHERE orders.id = :param_1",
-                    {"param_1": 3},
+                    "FROM orders WHERE orders.id = :pk_1",
+                    {"pk_1": 3},
                 ),
             ],
         )
@@ -386,8 +386,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 ),
                 (
                     "SELECT orders.user_id AS orders_user_id "
-                    "FROM orders WHERE orders.id = :param_1",
-                    {"param_1": 1},
+                    "FROM orders WHERE orders.id = :pk_1",
+                    {"pk_1": 1},
                 ),
             ],
         )
