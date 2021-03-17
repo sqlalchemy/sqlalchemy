@@ -3925,6 +3925,36 @@ class ExistsTest(QueryTest, AssertsCompiledSQL):
             ") AS anon_1",
         )
 
+    def test_exists_col_expression(self):
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(User.id)
+        self.assert_compile(
+            sess.query(q1.exists()),
+            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+        )
+
+    def test_exists_labeled_col_expression(self):
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(User.id.label("foo"))
+        self.assert_compile(
+            sess.query(q1.exists()),
+            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+        )
+
+    def test_exists_arbitrary_col_expression(self):
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(func.foo(User.id))
+        self.assert_compile(
+            sess.query(q1.exists()),
+            "SELECT EXISTS (" "SELECT 1 FROM users" ") AS anon_1",
+        )
+
     def test_exists_col_warning(self):
         User = self.classes.User
         Address = self.classes.Address

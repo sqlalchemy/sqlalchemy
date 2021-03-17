@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6076
+
+    Fixed regression where the :meth:`_orm.Query.exists` method would fail to
+    create an expression if the entity list of the :class:`_orm.Query` were
+    an arbitrary SQL column expression.
+
