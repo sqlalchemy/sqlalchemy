@@ -111,7 +111,7 @@ SQLAlchemy includes a :ref:`Mypy plugin <mypy_toplevel>` that automatically
 accommodates for the dynamically generated ``Base`` class
 delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
 This plugin works along with a new set of typing stubs published at
-`sqlalchemy2-stubs <https://pypi.org/project/sqlalhcemy-2-stubs>`_.
+`sqlalchemy2-stubs <https://pypi.org/project/sqlalchemy2-stubs>`_.
 
 When this plugin is not in use, or when using other :pep:`484` tools which
 may not know how to interpret this class, the declarative base class may
