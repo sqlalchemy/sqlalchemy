@@ -447,11 +447,13 @@ def create_engine(url, **kwargs):
 
             :paramref:`_pool.Pool.reset_on_return`
 
-    :param pool_timeout=30.0: number of seconds to wait before giving
+    :param pool_timeout=30: number of seconds to wait before giving
         up on getting a connection from the pool. This is only used
         with :class:`~sqlalchemy.pool.QueuePool`. This can be a float but is
         subject to the limitations of Python time functions which may not be
         reliable in the tens of milliseconds.
+
+        .. note: don't use 30.0 above, it seems to break with the :param tag
 
     :param pool_use_lifo=False: use LIFO (last-in-first-out) when retrieving
         connections from :class:`.QueuePool` instead of FIFO
