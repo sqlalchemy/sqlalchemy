@@ -1,0 +1,6 @@
+.. change::
+    :tags: postgresql, usecase
+    :tickets: 6982
+
+    Rename the column name used by a reflection query that used
+    a reserved word in some postgresql compatible databases.

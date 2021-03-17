@@ -3591,7 +3591,7 @@ class PGDialect(default.DefaultDialect):
                 ) as identity_options\
                 """
         else:
-            identity = "NULL as identity"
+            identity = "NULL as identity_options"
 
         SQL_COLS = """
             SELECT a.attname,
