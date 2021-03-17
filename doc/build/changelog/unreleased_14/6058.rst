@@ -1,5 +1,5 @@
-.. change:
-    :tags: bug, mssql
+.. change::
+    :tags: bug, mssql, regression
     :tickets: 6058
 
     Fixed regression where a new setinputsizes() API that's available for

@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, orm
+    :tags: bug, orm, regression
     :tickets: 6076
 
     Fixed regression where the :meth:`_orm.Query.exists` method would fail to
