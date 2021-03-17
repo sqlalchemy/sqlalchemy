@@ -4,11 +4,13 @@ from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Table
+from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
@@ -444,27 +446,36 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
 class IdentityKeyTest(_fixtures.FixtureTest):
     run_inserts = None
 
-    def test_identity_key_1(self):
+    def _cases():
+        return testing.combinations(
+            (orm_util,),
+            (Session,),
+        )
+
+    @_cases()
+    def test_identity_key_1(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
 
-        key = orm_util.identity_key(User, [1])
+        key = ormutil.identity_key(User, [1])
         eq_(key, (User, (1,), None))
-        key = orm_util.identity_key(User, ident=[1])
+        key = ormutil.identity_key(User, ident=[1])
         eq_(key, (User, (1,), None))
 
-    def test_identity_key_scalar(self):
+    @_cases()
+    def test_identity_key_scalar(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
 
-        key = orm_util.identity_key(User, 1)
+        key = ormutil.identity_key(User, 1)
         eq_(key, (User, (1,), None))
-        key = orm_util.identity_key(User, ident=1)
+        key = ormutil.identity_key(User, ident=1)
         eq_(key, (User, (1,), None))
 
-    def test_identity_key_2(self):
+    @_cases()
+    def test_identity_key_2(self, ormutil):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
@@ -472,16 +483,17 @@ class IdentityKeyTest(_fixtures.FixtureTest):
         u = User(name="u1")
         s.add(u)
         s.flush()
-        key = orm_util.identity_key(instance=u)
+        key = ormutil.identity_key(instance=u)
         eq_(key, (User, (u.id,), None))
 
-    def test_identity_key_3(self):
+    @_cases()
+    def test_identity_key_3(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
         mapper(User, users)
 
         row = {users.c.id: 1, users.c.name: "Frank"}
-        key = orm_util.identity_key(User, row=row)
+        key = ormutil.identity_key(User, row=row)
         eq_(key, (User, (1,), None))
 
     def test_identity_key_token(self):
