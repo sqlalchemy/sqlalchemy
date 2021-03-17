@@ -1064,7 +1064,7 @@ rows. A large portion of PostgreSQL's JSON functions for example such as
 ``json_each()``, ``json_to_record()``, ``json_populate_recordset()`` use such
 forms. These classes of SQL function calling forms in SQLAlchemy are available
 using the :meth:`_functions.FunctionElement.table_valued` method in conjunction
-with :class:`_function.Function` objects generated from the :data:`_sql.func`
+with :class:`_functions.Function` objects generated from the :data:`_sql.func`
 namespace.
 
 Examples from PostgreSQL's reference documentation follow below:
