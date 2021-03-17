@@ -672,6 +672,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             and self.entity._get_clause[0].compare(
                 self._lazywhere,
                 use_proxies=True,
+                compare_keys=False,
                 equivalents=self.mapper._equivalent_columns,
             )
         )
@@ -2535,6 +2536,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 self.omit_join = self.parent._get_clause[0].compare(
                     lazyloader._rev_lazywhere,
                     use_proxies=True,
+                    compare_keys=False,
                     equivalents=self.parent._equivalent_columns,
                 )
 

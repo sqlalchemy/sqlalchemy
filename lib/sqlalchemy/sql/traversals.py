@@ -1370,12 +1370,19 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             return COMPARE_FAILED
 
     def compare_bindparam(self, left, right, **kw):
+        compare_keys = kw.pop("compare_keys", True)
         compare_values = kw.pop("compare_values", True)
+
         if compare_values:
-            return []
+            omit = []
         else:
             # this means, "skip these, we already compared"
-            return ["callable", "value"]
+            omit = ["callable", "value"]
+
+        if not compare_keys:
+            omit.append("key")
+
+        return omit
 
 
 class ColIdentityComparatorStrategy(TraversalComparatorStrategy):

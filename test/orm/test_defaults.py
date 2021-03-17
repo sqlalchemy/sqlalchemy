@@ -311,13 +311,13 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                     ),
                     CompiledSQL(
                         "SELECT test.bar AS test_bar FROM test "
-                        "WHERE test.id = :param_1",
-                        [{"param_1": 1}],
+                        "WHERE test.id = :pk_1",
+                        [{"pk_1": 1}],
                     ),
                     CompiledSQL(
                         "SELECT test.bar AS test_bar FROM test "
-                        "WHERE test.id = :param_1",
-                        [{"param_1": 2}],
+                        "WHERE test.id = :pk_1",
+                        [{"pk_1": 2}],
                     ),
                 ],
             )
@@ -385,13 +385,13 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 1}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 1}],
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 2}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 2}],
                 ),
             )
         else:
@@ -402,13 +402,13 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 1}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 1}],
                 ),
                 CompiledSQL(
                     "SELECT test.bar AS test_bar FROM test "
-                    "WHERE test.id = :param_1",
-                    [{"param_1": 2}],
+                    "WHERE test.id = :pk_1",
+                    [{"pk_1": 2}],
                 ),
             )
 

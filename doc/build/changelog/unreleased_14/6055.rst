@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6055
+
+    Fixed a critical regression in the relationship lazy loader where the SQL
+    criteria used to fetch a related many-to-one object could go stale in
+    relation to other memoized structures within the loader if the mapper had
+    configuration changes, such as can occur when mappers are late configured
+    or configured on demand, producing a comparison to None and returning no
+    object. Huge thanks to Alan Hamlett for their help tracking this down late
+    into the night.
+
+

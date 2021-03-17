@@ -1413,8 +1413,8 @@ class ServerVersioningTest(fixtures.MappedTest):
                 CompiledSQL(
                     "SELECT version_table.version_id "
                     "AS version_table_version_id "
-                    "FROM version_table WHERE version_table.id = :param_1",
-                    lambda ctx: [{"param_1": 1}],
+                    "FROM version_table WHERE version_table.id = :pk_1",
+                    lambda ctx: [{"pk_1": 1}],
                 )
             )
         self.assert_sql_execution(testing.db, sess.flush, *statements)
@@ -1458,8 +1458,8 @@ class ServerVersioningTest(fixtures.MappedTest):
                 CompiledSQL(
                     "SELECT version_table.version_id "
                     "AS version_table_version_id "
-                    "FROM version_table WHERE version_table.id = :param_1",
-                    lambda ctx: [{"param_1": 1}],
+                    "FROM version_table WHERE version_table.id = :pk_1",
+                    lambda ctx: [{"pk_1": 1}],
                 )
             )
         with conditional_sane_rowcount_warnings(
@@ -1567,20 +1567,20 @@ class ServerVersioningTest(fixtures.MappedTest):
                     CompiledSQL(
                         "SELECT version_table.version_id "
                         "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :param_1",
-                        lambda ctx: [{"param_1": 1}],
+                        "FROM version_table WHERE version_table.id = :pk_1",
+                        lambda ctx: [{"pk_1": 1}],
                     ),
                     CompiledSQL(
                         "SELECT version_table.version_id "
                         "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :param_1",
-                        lambda ctx: [{"param_1": 2}],
+                        "FROM version_table WHERE version_table.id = :pk_1",
+                        lambda ctx: [{"pk_1": 2}],
                     ),
                     CompiledSQL(
                         "SELECT version_table.version_id "
                         "AS version_table_version_id "
-                        "FROM version_table WHERE version_table.id = :param_1",
-                        lambda ctx: [{"param_1": 3}],
+                        "FROM version_table WHERE version_table.id = :pk_1",
+                        lambda ctx: [{"pk_1": 3}],
                     ),
                 ]
             )

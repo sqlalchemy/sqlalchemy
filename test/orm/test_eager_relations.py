@@ -6254,8 +6254,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
                 "SELECT child2.id AS child2_id, base.id AS base_id, "
                 "base.type AS base_type "
                 "FROM base JOIN child2 ON base.id = child2.id "
-                "WHERE base.id = :param_1",
-                {"param_1": 4},
+                "WHERE base.id = :pk_1",
+                {"pk_1": 4},
             ),
         )
 
@@ -6292,8 +6292,8 @@ class SecondaryOptionsTest(fixtures.MappedTest):
                 "SELECT child2.id AS child2_id, base.id AS base_id, "
                 "base.type AS base_type "
                 "FROM base JOIN child2 ON base.id = child2.id "
-                "WHERE base.id = :param_1",
-                {"param_1": 4},
+                "WHERE base.id = :pk_1",
+                {"pk_1": 4},
             ),
         )
 
@@ -6337,7 +6337,7 @@ class SecondaryOptionsTest(fixtures.MappedTest):
                 "related_1.id AS related_1_id FROM base JOIN child2 "
                 "ON base.id = child2.id "
                 "LEFT OUTER JOIN related AS related_1 "
-                "ON base.id = related_1.id WHERE base.id = :param_1",
-                {"param_1": 4},
+                "ON base.id = related_1.id WHERE base.id = :pk_1",
+                {"pk_1": 4},
             ),
         )

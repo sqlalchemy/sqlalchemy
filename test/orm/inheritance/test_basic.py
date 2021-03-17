@@ -1616,8 +1616,8 @@ class PassiveDeletesTest(fixtures.MappedTest):
         asserter.assert_(
             CompiledSQL(
                 "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :param_1",
-                [{"param_1": 1}],
+                "FROM a WHERE a.id = :pk_1",
+                [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
         )
@@ -1658,8 +1658,8 @@ class PassiveDeletesTest(fixtures.MappedTest):
         asserter.assert_(
             CompiledSQL(
                 "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :param_1",
-                [{"param_1": 1}],
+                "FROM a WHERE a.id = :pk_1",
+                [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
         )
@@ -1696,8 +1696,8 @@ class PassiveDeletesTest(fixtures.MappedTest):
         asserter.assert_(
             CompiledSQL(
                 "SELECT a.id AS a_id, a.type AS a_type "
-                "FROM a WHERE a.id = :param_1",
-                [{"param_1": 1}],
+                "FROM a WHERE a.id = :pk_1",
+                [{"pk_1": 1}],
             ),
             CompiledSQL("DELETE FROM a WHERE a.id = :id", [{"id": 1}]),
         )
@@ -2549,8 +2549,8 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 "base.data AS base_data, base.type AS base_type, "
                 "sub.sub AS sub_sub, sub.subcounter2 AS sub_subcounter2 "
                 "FROM base LEFT OUTER JOIN sub ON base.id = sub.id "
-                "WHERE base.id = :param_1",
-                {"param_1": sjb_id},
+                "WHERE base.id = :pk_1",
+                {"pk_1": sjb_id},
             ),
         )
 
@@ -2804,8 +2804,8 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 "SELECT base.counter AS base_counter, "
                 "sub.subcounter AS sub_subcounter, "
                 "sub.subcounter2 AS sub_subcounter2 FROM base JOIN sub "
-                "ON base.id = sub.id WHERE base.id = :param_1",
-                lambda ctx: {"param_1": s1.id},
+                "ON base.id = sub.id WHERE base.id = :pk_1",
+                lambda ctx: {"pk_1": s1.id},
             ),
         )
 

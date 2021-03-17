@@ -1852,13 +1852,13 @@ class DeferredMergeTest(fixtures.MappedTest):
             [
                 (
                     "SELECT book.summary AS book_summary "
-                    "FROM book WHERE book.id = :param_1",
-                    {"param_1": 1},
+                    "FROM book WHERE book.id = :pk_1",
+                    {"pk_1": 1},
                 ),
                 (
                     "SELECT book.excerpt AS book_excerpt "
-                    "FROM book WHERE book.id = :param_1",
-                    {"param_1": 1},
+                    "FROM book WHERE book.id = :pk_1",
+                    {"pk_1": 1},
                 ),
             ],
         )
@@ -1898,13 +1898,13 @@ class DeferredMergeTest(fixtures.MappedTest):
             [
                 (
                     "SELECT book.summary AS book_summary "
-                    "FROM book WHERE book.id = :param_1",
-                    {"param_1": 1},
+                    "FROM book WHERE book.id = :pk_1",
+                    {"pk_1": 1},
                 ),
                 (
                     "SELECT book.excerpt AS book_excerpt "
-                    "FROM book WHERE book.id = :param_1",
-                    {"param_1": 1},
+                    "FROM book WHERE book.id = :pk_1",
+                    {"pk_1": 1},
                 ),
             ],
         )

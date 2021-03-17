@@ -436,6 +436,14 @@ def load_on_pk_identity(
                 lambda q: q.where(
                     sql_util._deep_annotate(_get_clause, {"_orm_adapt": True})
                 ),
+                # this track_on will allow the lambda to refresh if
+                # _get_clause goes stale due to reconfigured mapper.
+                # however, it's not needed as the lambda otherwise tracks
+                # on the SQL cache key of the expression.  the main thing
+                # is that the bindparam.key stays the same if the cache key
+                # stays the same, as we are referring to the .key explicitly
+                # in the params.
+                # track_on=[id(_get_clause)]
             )
         else:
             q._where_criteria = (

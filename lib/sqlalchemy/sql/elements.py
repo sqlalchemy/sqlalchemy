@@ -1400,14 +1400,14 @@ class BindParameter(roles.InElementRole, ColumnElement):
         else:
             self.type = type_
 
-    def _with_value(self, value, maintain_key=False):
+    def _with_value(self, value, maintain_key=False, required=NO_ARG):
         """Return a copy of this :class:`.BindParameter` with the given value
         set.
         """
         cloned = self._clone(maintain_key=maintain_key)
         cloned.value = value
         cloned.callable = None
-        cloned.required = False
+        cloned.required = required if required is not NO_ARG else self.required
         if cloned.type is type_api.NULLTYPE:
             cloned.type = type_api._resolve_value_to_type(value)
         return cloned
@@ -1826,7 +1826,7 @@ class TextClause(
                     replace_context=err,
                 )
             else:
-                new_params[key] = existing._with_value(value)
+                new_params[key] = existing._with_value(value, required=False)
 
     @util.preload_module("sqlalchemy.sql.selectable")
     def columns(self, *cols, **types):

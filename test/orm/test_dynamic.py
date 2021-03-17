@@ -738,8 +738,8 @@ class UOWTest(
             sess.flush,
             CompiledSQL(
                 "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users WHERE users.id = :param_1",
-                lambda ctx: [{"param_1": u1_id}],
+                "FROM users WHERE users.id = :pk_1",
+                lambda ctx: [{"pk_1": u1_id}],
             ),
             CompiledSQL(
                 "INSERT INTO addresses (user_id, email_address) "
@@ -772,8 +772,8 @@ class UOWTest(
             CompiledSQL(
                 "SELECT addresses.id AS addresses_id, addresses.email_address "
                 "AS addresses_email_address FROM addresses "
-                "WHERE addresses.id = :param_1",
-                lambda ctx: [{"param_1": a2_id}],
+                "WHERE addresses.id = :pk_1",
+                lambda ctx: [{"pk_1": a2_id}],
             ),
             CompiledSQL(
                 "UPDATE addresses SET user_id=:user_id WHERE addresses.id = "
@@ -782,8 +782,8 @@ class UOWTest(
             ),
             CompiledSQL(
                 "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users WHERE users.id = :param_1",
-                lambda ctx: [{"param_1": u1_id}],
+                "FROM users WHERE users.id = :pk_1",
+                lambda ctx: [{"pk_1": u1_id}],
             ),
         )
 
