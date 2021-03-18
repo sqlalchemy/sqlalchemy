@@ -693,7 +693,7 @@ def _infer_type_from_decl_column(
             # x = Column(String(50))
             callee = column_arg.callee
             break
-        elif isinstance(column_arg, nodes.NameExpr):
+        elif isinstance(column_arg, (nodes.NameExpr, nodes.MemberExpr)):
             if isinstance(column_arg.node, TypeInfo):
                 # x = Column(String)
                 callee = column_arg
