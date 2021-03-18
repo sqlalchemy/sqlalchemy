@@ -228,6 +228,15 @@ def polymorphic_union(
 
         m = {}
         for c in table.c:
+            if c.key == typecolname:
+                raise sa_exc.InvalidRequestError(
+                    "Polymorphic union can't use '%s' as the discriminator "
+                    "column due to mapped column %r; please apply the "
+                    "'typecolname' "
+                    "argument; this is available on "
+                    "ConcreteBase as '_concrete_discriminator_name'"
+                    % (typecolname, c)
+                )
             colnames.add(c.key)
             m[c.key] = c
             types[c.key] = c.type
