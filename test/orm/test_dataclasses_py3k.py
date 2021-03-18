@@ -521,7 +521,7 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
         eq_(dataclasses.astuple(widget), (None, "Bar", True))
 
 
-class PropagationBlockTest(fixtures.TestBase):
+class PropagationFromMixinTest(fixtures.TestBase):
     __requires__ = ("dataclasses",)
 
     run_setup_classes = "each"
@@ -554,6 +554,25 @@ class PropagationBlockTest(fixtures.TestBase):
 
             timestamp: int = dataclasses.field(
                 init=False,
+                metadata={"sa": Column(Integer, nullable=False)},
+            )
+
+        run_test(CommonMixin)
+
+    def test_propagate_w_field_mixin_col_and_default(self, run_test):
+        @dataclasses.dataclass
+        class CommonMixin:
+            __sa_dataclass_metadata_key__ = "sa"
+
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            timestamp: int = dataclasses.field(
+                init=False,
+                default=12,
                 metadata={"sa": Column(Integer, nullable=False)},
             )
 
@@ -596,6 +615,102 @@ class PropagationBlockTest(fixtures.TestBase):
             )
             eq_(BaseType.__table__.kwargs, {"mysql_engine": "InnoDB"})
             assert Single.__table__ is BaseType.__table__
+            eq_(Joined.__table__.name, "joined")
+            eq_(list(Joined.__table__.c.keys()), ["id"])
+            eq_(Joined.__table__.kwargs, {"mysql_engine": "InnoDB"})
+
+        yield go
+
+        clear_mappers()
+
+
+class PropagationFromAbstractTest(fixtures.TestBase):
+    __requires__ = ("dataclasses",)
+
+    run_setup_classes = "each"
+    run_setup_mappers = "each"
+
+    def test_propagate_w_plain_mixin_col(self, run_test):
+        @dataclasses.dataclass
+        class BaseType:
+            __sa_dataclass_metadata_key__ = "sa"
+
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            discriminator: str = Column("type", String(50))
+            __mapper_args__ = dict(polymorphic_on=discriminator)
+            id: int = Column(Integer, primary_key=True)
+            value: int = Column(Integer())
+
+            timestamp: int = Column(Integer)
+
+        run_test(BaseType)
+
+    def test_propagate_w_field_mixin_col(self, run_test):
+        @dataclasses.dataclass
+        class BaseType:
+            __sa_dataclass_metadata_key__ = "sa"
+
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            discriminator: str = Column("type", String(50))
+            __mapper_args__ = dict(polymorphic_on=discriminator)
+            id: int = Column(Integer, primary_key=True)
+            value: int = Column(Integer())
+
+            timestamp: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, nullable=False)},
+            )
+
+        run_test(BaseType)
+
+    def test_propagate_w_field_mixin_col_and_default(self, run_test):
+        @dataclasses.dataclass
+        class BaseType:
+            __sa_dataclass_metadata_key__ = "sa"
+
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            discriminator: str = Column("type", String(50))
+            __mapper_args__ = dict(polymorphic_on=discriminator)
+            id: int = Column(Integer, primary_key=True)
+            value: int = Column(Integer())
+
+            timestamp: int = dataclasses.field(
+                init=False,
+                default=None,
+                metadata={"sa": Column(Integer, nullable=False)},
+            )
+
+        run_test(BaseType)
+
+    @testing.fixture()
+    def run_test(self):
+        def go(BaseType):
+            declarative = registry().mapped
+
+            @declarative
+            @dataclasses.dataclass
+            class Single(BaseType):
+
+                __tablename__ = "single"
+                __mapper_args__ = dict(polymorphic_identity="type1")
+
+            @declarative
+            @dataclasses.dataclass
+            class Joined(Single):
+                __tablename__ = "joined"
+                __mapper_args__ = dict(polymorphic_identity="type2")
+                id = Column(Integer, ForeignKey("single.id"), primary_key=True)
+
+            eq_(Single.__table__.name, "single")
+            eq_(
+                list(Single.__table__.c.keys()),
+                ["type", "id", "value", "timestamp"],
+            )
+            eq_(Single.__table__.kwargs, {"mysql_engine": "InnoDB"})
+
             eq_(Joined.__table__.name, "joined")
             eq_(list(Joined.__table__.c.keys()), ["id"])
             eq_(Joined.__table__.kwargs, {"mysql_engine": "InnoDB"})
