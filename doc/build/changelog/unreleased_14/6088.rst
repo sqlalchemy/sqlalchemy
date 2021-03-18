@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 6088
+
+    Fixed regression where the :attr:`_orm.Query.selectable` accessor, which is
+    a synonym for :meth:`_orm.Query.__clause_element__`, got removed, it's now
+    restored.

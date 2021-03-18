@@ -104,6 +104,35 @@ class MiscTest(QueryTest):
         assert q2.session is s2
         assert q1.session is s1
 
+    @testing.combinations(
+        (lambda s, User: s.query(User)),
+        (lambda s, User: s.query(User).filter_by(name="x")),
+        (lambda s, User: s.query(User.id, User.name).filter_by(name="x")),
+        (
+            lambda s, User: s.query(func.count(User.id)).filter(
+                User.name == "x"
+            )
+        ),
+    )
+    def test_rudimentary_statement_accessors(self, test_case):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        q1 = testing.resolve_lambda(test_case, s=s, User=User)
+
+        is_true(
+            q1.statement.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).compare(q1.__clause_element__())
+        )
+
+        is_true(
+            q1.statement.set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            ).compare(q1.selectable)
+        )
+
 
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):

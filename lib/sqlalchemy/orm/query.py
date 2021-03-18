@@ -595,6 +595,18 @@ class Query(
 
         return self.enable_eagerloads(False).statement.scalar_subquery()
 
+    @property
+    def selectable(self):
+        """Return the :class:`_expression.Select` object emitted by this
+        :class:`_query.Query`.
+
+        Used for :func:`_sa.inspect` compatibility, this is equivalent to::
+
+            query.enable_eagerloads(False).with_labels().statement
+
+        """
+        return self.__clause_element__()
+
     def __clause_element__(self):
         return (
             self.enable_eagerloads(False)
