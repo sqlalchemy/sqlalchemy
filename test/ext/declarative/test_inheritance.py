@@ -1,5 +1,7 @@
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext import declarative as decl
@@ -18,6 +20,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -27,6 +30,8 @@ Base = None
 
 
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
+    __dialect__ = "default"
+
     def setup_test(self):
         global Base
         Base = decl.declarative_base(testing.db)
@@ -414,6 +419,139 @@ class ConcreteInhTest(
             }
 
         self._roundtrip(Employee, Manager, Engineer, Boss)
+
+    def test_concrete_extension_warn_for_overlap(self):
+        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+            __tablename__ = "employee"
+
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "concrete": True,
+            }
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            "Polymorphic union can't use 'type' as the discriminator "
+            "column due to mapped column "
+            r"Column\('type', String\(length=50\), table=<manager>\); "
+            "please "
+            "apply the 'typecolname' argument; this is available on "
+            "ConcreteBase as '_concrete_discriminator_name'",
+        ):
+            configure_mappers()
+
+    def test_concrete_extension_warn_concrete_disc_resolves_overlap(self):
+        class Employee(ConcreteBase, Base, fixtures.ComparableEntity):
+            _concrete_discriminator_name = "_type"
+
+            __tablename__ = "employee"
+
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "concrete": True,
+            }
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        configure_mappers()
+        self.assert_compile(
+            select(Employee),
+            "SELECT pjoin.employee_id, pjoin.name, pjoin._type, pjoin.type "
+            "FROM (SELECT employee.employee_id AS employee_id, "
+            "employee.name AS name, CAST(NULL AS VARCHAR(50)) AS type, "
+            "'employee' AS _type FROM employee UNION ALL "
+            "SELECT manager.employee_id AS employee_id, "
+            "CAST(NULL AS VARCHAR(50)) AS name, manager.type AS type, "
+            "'manager' AS _type FROM manager) AS pjoin",
+        )
+
+    def test_abs_concrete_extension_warn_for_overlap(self):
+        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            name = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "concrete": True,
+            }
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            "Polymorphic union can't use 'type' as the discriminator "
+            "column due to mapped column "
+            r"Column\('type', String\(length=50\), table=<manager>\); "
+            "please "
+            "apply the 'typecolname' argument; this is available on "
+            "ConcreteBase as '_concrete_discriminator_name'",
+        ):
+            configure_mappers()
+
+    def test_abs_concrete_extension_warn_concrete_disc_resolves_overlap(self):
+        class Employee(AbstractConcreteBase, Base, fixtures.ComparableEntity):
+            _concrete_discriminator_name = "_type"
+
+            name = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "employee",
+                "concrete": True,
+            }
+
+        class Manager(Employee):
+            __tablename__ = "manager"
+            employee_id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "manager",
+                "concrete": True,
+            }
+
+        configure_mappers()
+        self.assert_compile(
+            select(Employee),
+            "SELECT pjoin.name, pjoin.employee_id, pjoin.type, pjoin._type "
+            "FROM (SELECT manager.name AS name, manager.employee_id AS "
+            "employee_id, manager.type AS type, 'manager' AS _type "
+            "FROM manager) AS pjoin",
+        )
 
     def test_has_inherited_table_doesnt_consider_base(self):
         class A(Base):

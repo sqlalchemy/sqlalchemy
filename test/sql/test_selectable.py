@@ -49,6 +49,7 @@ from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.assertions import expect_raises_message
 
 
 metadata = MetaData()
@@ -207,6 +208,36 @@ class SelectableTest(
             "WHERE anon_2.anon_1 > :param_1",
             checkparams={"param_1": 5},
         )
+
+    @testing.combinations((True,), (False,))
+    def test_broken_select_same_named_explicit_cols(self, use_anon):
+        # this is issue #6090.  the query is "wrong" and we dont know how
+        # to render this right now.
+        stmt = select(
+            table1.c.col1,
+            table1.c.col2,
+            literal_column("col2").label(None if use_anon else "col2"),
+        ).select_from(table1)
+
+        if use_anon:
+            self.assert_compile(
+                select(stmt.subquery()),
+                "SELECT anon_1.col1, anon_1.col2, anon_1.col2_1 FROM "
+                "(SELECT table1.col1 AS col1, table1.col2 AS col2, "
+                "col2 AS col2_1 FROM table1) AS anon_1",
+            )
+        else:
+            # the keys here are not critical as they are not what was
+            # requested anyway, maybe should raise here also.
+            eq_(stmt.selected_columns.keys(), ["col1", "col2", "col2_1"])
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Label name col2 is being renamed to an anonymous "
+                "label due to "
+                "disambiguation which is not supported right now.  Please use "
+                "unique names for explicit labels.",
+            ):
+                select(stmt.subquery()).compile()
 
     def test_select_label_grouped_still_corresponds(self):
         label = select(table1.c.col1).label("foo")

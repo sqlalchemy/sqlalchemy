@@ -4330,12 +4330,21 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
             disallow_is_literal=True,
             name_is_truncatable=isinstance(name, _truncated_label),
         )
-        # TODO: want to remove this assertion at some point.  all
-        # _make_proxy() implementations will give us back the key that
-        # is our "name" in the first place.  based on this we can
-        # safely return our "self.key" as the key here, to support a new
-        # case where the key and name are separate.
-        assert key == self.name
+
+        # there was a note here to remove this assertion, which was here
+        # to determine if we later could support a use case where
+        # the key and name of a label are separate.  But I don't know what
+        # that case was.  For now, this is an unexpected case that occurs
+        # when a label name conflicts with other columns and select()
+        # is attempting to disambiguate an explicit label, which is not what
+        # the user would want.   See issue #6090.
+        if key != self.name:
+            raise exc.InvalidRequestError(
+                "Label name %s is being renamed to an anonymous label due "
+                "to disambiguation "
+                "which is not supported right now.  Please use unique names "
+                "for explicit labels." % (self.name)
+            )
 
         e._propagate_attrs = selectable._propagate_attrs
         e._proxies.append(self)

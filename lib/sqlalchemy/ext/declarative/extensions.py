@@ -15,7 +15,6 @@ from ...orm import relationships
 from ...orm.base import _mapper_or_none
 from ...orm.clsregistry import _resolver
 from ...orm.decl_base import _DeferredMapperConfig
-from ...orm.decl_base import _get_immediate_cls_attr
 from ...orm.util import polymorphic_union
 from ...schema import Table
 from ...util import OrderedDict
@@ -86,6 +85,13 @@ class ConcreteBase(object):
        attribute to :class:`_declarative.ConcreteBase` so that the
        virtual discriminator column name can be customized.
 
+    .. versionchanged:: 1.4.2 The ``_concrete_discriminator_name`` attribute
+       need only be placed on the basemost class to take correct effect for
+       all subclasses.   An explicit error message is now raised if the
+       mapped column names conflict with the discriminator name, whereas
+       in the 1.3.x series there would be some warnings and then a non-useful
+       query would be generated.
+
     .. seealso::
 
         :class:`.AbstractConcreteBase`
@@ -112,8 +118,7 @@ class ConcreteBase(object):
             return
 
         discriminator_name = (
-            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
-            or "type"
+            getattr(cls, "_concrete_discriminator_name", None) or "type"
         )
 
         mappers = list(m.self_and_descendants)
@@ -264,8 +269,7 @@ class AbstractConcreteBase(ConcreteBase):
                 mappers.append(mn)
 
         discriminator_name = (
-            _get_immediate_cls_attr(cls, "_concrete_discriminator_name")
-            or "type"
+            getattr(cls, "_concrete_discriminator_name", None) or "type"
         )
         pjoin = cls._create_polymorphic_union(mappers, discriminator_name)
 
