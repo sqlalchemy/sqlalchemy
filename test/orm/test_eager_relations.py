@@ -488,6 +488,37 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_aliased_stmt_includes_unnamed_fn(self):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, lazy="joined")},
+        )
+        mapper(Address, addresses)
+
+        s = fixture_session()
+
+        # issue #6086
+        # statement wrapped in a subquery by limit() and group_by()
+        # func.count() is unlabeled (in 1.3 the _ColumnEntity would label it,
+        # in the ORM layer,  hence there was no problem here).
+        # the _ColumnEntity needs to adapt func.count(User.id) to the anon
+        # count_1 label on the outside, corresponding_column can do it.
+        # but ClauseAdapter has to treat the FunctionElement as a ColumnElement
+        # whereas previously it was treating it as a FromClause (and
+        # FunctionElement should really not even be a FromClause but there's
+        # legacy baggage on that)
+        q = (
+            s.query(User, func.count(User.id))
+            .order_by(User.id)
+            .group_by(User.id)
+            .limit(1)
+        )
+
+        eq_(q.first(), (User(id=7), 1))
+
     def test_options_pathing(self):
         (
             users,

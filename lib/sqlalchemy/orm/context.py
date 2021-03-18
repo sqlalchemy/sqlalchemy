@@ -2707,7 +2707,9 @@ class _ORMColumnEntity(_ColumnEntity):
             compile_state._entities.append(self)
 
         compile_state._has_orm_entities = True
+
         self.column = column
+
         self._fetch_column = self._row_processor = None
 
         self._extra_entities = (self.expr, self.column)

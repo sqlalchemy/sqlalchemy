@@ -843,8 +843,13 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
             newcol = self.selectable.exported_columns.get(col.name)
         return newcol
 
+    @util.preload_module("sqlalchemy.sql.functions")
     def replace(self, col):
-        if isinstance(col, FromClause):
+        functions = util.preloaded.sql_functions
+
+        if isinstance(col, FromClause) and not isinstance(
+            col, functions.FunctionElement
+        ):
             if self.selectable.is_derived_from(col):
                 return self.selectable
             elif isinstance(col, Alias) and isinstance(

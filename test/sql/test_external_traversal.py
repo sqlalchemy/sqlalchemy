@@ -1338,6 +1338,40 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1 FROM table1 AS t1alias",
         )
 
+    def test_adapt_select_w_unlabeled_fn(self):
+
+        expr = func.count(t1.c.col1)
+        stmt = select(t1, expr)
+
+        self.assert_compile(
+            stmt,
+            "SELECT table1.col1, table1.col2, table1.col3, "
+            "count(table1.col1) AS count_1 FROM table1",
+        )
+
+        stmt2 = select(stmt.subquery())
+
+        self.assert_compile(
+            stmt2,
+            "SELECT anon_1.col1, anon_1.col2, anon_1.col3, anon_1.count_1 "
+            "FROM (SELECT table1.col1 AS col1, table1.col2 AS col2, "
+            "table1.col3 AS col3, count(table1.col1) AS count_1 "
+            "FROM table1) AS anon_1",
+        )
+
+        is_(
+            stmt2.selected_columns[3],
+            stmt2.selected_columns.corresponding_column(expr),
+        )
+
+        is_(
+            sql_util.ClauseAdapter(stmt2).replace(expr),
+            stmt2.selected_columns[3],
+        )
+
+        column_adapter = sql_util.ColumnAdapter(stmt2)
+        is_(column_adapter.columns[expr], stmt2.selected_columns[3])
+
     def test_correlate_except_on_clone(self):
         # test [ticket:4537]'s issue
 
