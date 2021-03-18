@@ -13,6 +13,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
@@ -348,6 +350,43 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         result = connection.execute(t.insert())
         eq_(result.inserted_primary_key, (1,))
 
+    @testing.requires.sequences_as_server_defaults
+    @testing.provide_metadata
+    def test_shared_sequence(self, connection):
+        # test case for #6071
+        common_seq = Sequence("common_sequence", metadata=self.metadata)
+        Table(
+            "table_1",
+            self.metadata,
+            Column(
+                "id",
+                Integer,
+                common_seq,
+                server_default=common_seq.next_value(),
+                primary_key=True,
+            ),
+        )
+        Table(
+            "table_2",
+            self.metadata,
+            Column(
+                "id",
+                Integer,
+                common_seq,
+                server_default=common_seq.next_value(),
+                primary_key=True,
+            ),
+        )
+
+        self.metadata.create_all(connection)
+        is_true(self._has_sequence(connection, "common_sequence"))
+        is_true(testing.db.dialect.has_table(connection, "table_1"))
+        is_true(testing.db.dialect.has_table(connection, "table_2"))
+        self.metadata.drop_all(connection)
+        is_false(self._has_sequence(connection, "common_sequence"))
+        is_false(testing.db.dialect.has_table(connection, "table_1"))
+        is_false(testing.db.dialect.has_table(connection, "table_2"))
+
 
 class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):
     __requires__ = ("sequences",)
@@ -525,16 +564,26 @@ class SequenceAsServerDefaultTest(
         asserter.assert_(
             AllOf(
                 CompiledSQL("DROP TABLE t_seq_test_2", {}),
+                CompiledSQL("DROP TABLE t_seq_test", {}),
+            ),
+            AllOf(
+                # dropped as part of metadata level
+                CompiledSQL("DROP SEQUENCE t_seq", {}),
+                CompiledSQL("DROP SEQUENCE t_seq_2", {}),
+            ),
+        )
+
+    def test_drop_ordering_single_table(self):
+        with self.sql_execution_asserter(testing.db) as asserter:
+            for table in self.tables_test_metadata.tables.values():
+                table.drop(testing.db, checkfirst=False)
+
+        asserter.assert_(
+            AllOf(
+                CompiledSQL("DROP TABLE t_seq_test_2", {}),
                 EachOf(
                     CompiledSQL("DROP TABLE t_seq_test", {}),
-                    CompiledSQL(
-                        "DROP SEQUENCE t_seq",  # dropped as part of t_seq_test
-                        {},
-                    ),
+                    CompiledSQL("DROP SEQUENCE t_seq", {}),
                 ),
-            ),
-            CompiledSQL(
-                "DROP SEQUENCE t_seq_2",  # dropped as part of metadata level
-                {},
-            ),
+            )
         )
