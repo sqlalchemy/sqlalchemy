@@ -15,6 +15,7 @@ from sqlalchemy.orm import instrumentation
 from . import clsregistry
 from . import exc as orm_exc
 from . import mapper as mapperlib
+from .attributes import InstrumentedAttribute
 from .attributes import QueryableAttribute
 from .base import _is_mapped_class
 from .base import InspectionAttr
@@ -366,18 +367,24 @@ class _ClassScanMapperConfig(_MapperConfig):
                 elif ret is not absent:
                     return True
 
+                all_field = all_datacls_fields.get(key, absent)
+
                 ret = getattr(cls, key, obj)
 
                 if ret is obj:
                     return False
-                elif ret is not absent:
+
+                # for dataclasses, this could be the
+                # 'default' of the field.  so filter more specifically
+                # for an already-mapped InstrumentedAttribute
+                if ret is not absent and isinstance(
+                    ret, InstrumentedAttribute
+                ):
                     return True
 
-                ret = all_datacls_fields.get(key, absent)
-
-                if ret is obj:
+                if all_field is obj:
                     return False
-                elif ret is not absent:
+                elif all_field is not absent:
                     return True
 
                 # can't find another attribute
@@ -401,15 +408,18 @@ class _ClassScanMapperConfig(_MapperConfig):
                     yield name, obj
 
         else:
+            field_names = set()
 
             def local_attributes_for_class():
-                for name, obj in vars(cls).items():
-                    yield name, obj
                 for field in util.local_dataclass_fields(cls):
                     if sa_dataclass_metadata_key in field.metadata:
+                        field_names.add(field.name)
                         yield field.name, field.metadata[
                             sa_dataclass_metadata_key
                         ]
+                for name, obj in vars(cls).items():
+                    if name not in field_names:
+                        yield name, obj
 
         return local_attributes_for_class
 
