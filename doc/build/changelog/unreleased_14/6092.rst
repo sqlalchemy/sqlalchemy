@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 6092
-
-    Fixed regression where the :meth:`_orm.Query.filter_by` method would fail
-    to locate the correct source entity if the :meth:`_orm.Query.join` method
-    had been used targeting an entity without any kind of ON clause.
-

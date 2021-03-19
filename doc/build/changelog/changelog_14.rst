@@ -15,7 +15,125 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.2
-    :include_notes_from: unreleased_14
+    :released: March 19, 2021
+
+    .. change::
+        :tags: bug, orm, dataclasses
+        :tickets: 6093
+
+        Fixed issue in new ORM dataclasses functionality where dataclass fields on
+        an abstract base or mixin that contained column or other mapping constructs
+        would not be mapped if they also included a "default" key within the
+        dataclasses.field() object.
+
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6088
+
+        Fixed regression where the :attr:`_orm.Query.selectable` accessor, which is
+        a synonym for :meth:`_orm.Query.__clause_element__`, got removed, it's now
+        restored.
+
+    .. change::
+        :tags: bug, engine, regression
+
+        Restored top level import for ``sqlalchemy.engine.reflection``. This
+        ensures that the base :class:`_reflection.Inspector` class is properly
+        registered so that :func:`_sa.inspect` works for third party dialects that
+        don't otherwise import this package.
+
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6086
+
+        Fixed regression where use of an unnamed SQL expression such as a SQL
+        function would raise a column targeting error if the query itself were
+        using joinedload for an entity and was also being wrapped in a subquery by
+        the joinedload eager loading process.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6092
+
+        Fixed regression where the :meth:`_orm.Query.filter_by` method would fail
+        to locate the correct source entity if the :meth:`_orm.Query.join` method
+        had been used targeting an entity without any kind of ON clause.
+
+
+    .. change::
+        :tags: postgresql, usecase
+        :tickets: 6982
+
+        Rename the column name used by a reflection query that used
+        a reserved word in some postgresql compatible databases.
+
+    .. change::
+        :tags: usecase, orm, dataclasses
+        :tickets: 6100
+
+        Added support for the :class:`_orm.declared_attr` object to work in the
+        context of dataclass fields.
+
+        .. seealso::
+
+            :ref:`orm_declarative_dataclasses_mixin`
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6101
+
+        Fixed issue where using a ``func`` that includes dotted packagenames would
+        fail to be cacheable by the SQL caching system due to a Python list of
+        names that needed to be a tuple.
+
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6095
+
+        Fixed regression where the SQL compilation of a :class:`.Function` would
+        not work correctly if the object had been "annotated", which is an internal
+        memoization process used mostly by the ORM. In particular it could affect
+        ORM lazy loads which make greater use of this feature in 1.4.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6097
+
+        Fixed regression in the :func:`_sql.case` construct, where the "dictionary"
+        form of argument specification failed to work correctly if it were passed
+        positionally, rather than as a "whens" keyword argument.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6090
+
+        Fixed regression where the :class:`.ConcreteBase` would fail to map at all
+        when a mapped column name overlapped with the discriminator column name,
+        producing an assertion error. The use case here did not function correctly
+        in 1.3 as the polymorphic union would produce a query that ignored the
+        discriminator column entirely, while emitting duplicate column warnings. As
+        1.4's architecture cannot easily reproduce this essentially broken behavior
+        of 1.3 at the ``select()`` level right now, the use case now raises an
+        informative error message instructing the user to use the
+        ``.ConcreteBase._concrete_discriminator_name`` attribute to resolve the
+        conflict. To assist with this configuration,
+        ``.ConcreteBase._concrete_discriminator_name`` may be placed on the base
+        class only where it will be automatically used by subclasses; previously
+        this was not the case.
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: sqlalchemy/sqlalchemy2-stubs/2
+
+        Fixed issue in MyPy extension which crashed on detecting the type of a
+        :class:`.Column` if the type were given with a module prefix like
+        ``sa.Integer()``.
+
 
 .. changelog::
     :version: 1.4.1

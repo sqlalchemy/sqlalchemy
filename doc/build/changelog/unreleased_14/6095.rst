@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, regression, orm
-    :tickets: 6095
-
-    Fixed regression where the SQL compilation of a :class:`.Function` would
-    not work correctly if the object had been "annotated", which is an internal
-    memoization process used mostly by the ORM. In particular it could affect
-    ORM lazy loads which make greater use of this feature in 1.4.

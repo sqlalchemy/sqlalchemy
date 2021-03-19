@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, dataclasses
-    :tickets: 6093
-
-    Fixed issue in new ORM dataclasses functionality where dataclass fields on
-    an abstract base or mixin that contained column or other mapping constructs
-    would not be mapped if they also included a "default" key within the
-    dataclasses.field() object.
-

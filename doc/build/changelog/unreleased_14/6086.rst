@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, regression, orm
-    :tickets: 6086
-
-    Fixed regression where use of an unnamed SQL expression such as a SQL
-    function would raise a column targeting error if the query itself were
-    using joinedload for an entity and was also being wrapped in a subquery by
-    the joinedload eager loading process.
-
