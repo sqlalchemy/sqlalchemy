@@ -154,6 +154,7 @@ will resolve them at class construction time::
         __tablename__='test'
         id =  Column(Integer, primary_key=True)
 
+.. _orm_declarative_mixins_relationships:
 
 Mixing in Relationships
 ~~~~~~~~~~~~~~~~~~~~~~~

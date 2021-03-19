@@ -356,11 +356,16 @@ class _ClassScanMapperConfig(_MapperConfig):
             absent = object()
 
             def attribute_is_overridden(key, obj):
+                if _is_declarative_props(obj):
+                    obj = obj.fget
+
                 # this function likely has some failure modes still if
                 # someone is doing a deep mixing of the same attribute
                 # name as plain Python attribute vs. dataclass field.
 
                 ret = local_datacls_fields.get(key, absent)
+                if _is_declarative_props(ret):
+                    ret = ret.fget
 
                 if ret is obj:
                     return False
@@ -414,9 +419,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                 for field in util.local_dataclass_fields(cls):
                     if sa_dataclass_metadata_key in field.metadata:
                         field_names.add(field.name)
-                        yield field.name, field.metadata[
-                            sa_dataclass_metadata_key
-                        ]
+                        yield field.name, _as_dc_declaredattr(
+                            field.metadata, sa_dataclass_metadata_key
+                        )
                 for name, obj in vars(cls).items():
                     if name not in field_names:
                         yield name, obj
@@ -507,7 +512,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                             "Mapper properties (i.e. deferred,"
                             "column_property(), relationship(), etc.) must "
                             "be declared as @declared_attr callables "
-                            "on declarative mixin classes."
+                            "on declarative mixin classes.  For dataclass "
+                            "field() objects, use a lambda:"
                         )
                     elif _is_declarative_props(obj):
                         if obj._cascading:
@@ -530,8 +536,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                             ] = ret = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
-                            # access attribute using normal class access
-                            ret = getattr(cls, name)
+                            if obj._is_dataclass:
+                                ret = obj.fget()
+                            else:
+
+                                # access attribute using normal class access
+                                ret = getattr(cls, name)
 
                             # correct for proxies created from hybrid_property
                             # or similar.  note there is no known case that
@@ -567,6 +577,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # assert that the dataclass-enabled resolver agrees
                     # with what we are seeing
                     assert not attribute_is_overridden(name, obj)
+
+                    if _is_declarative_props(obj):
+                        obj = obj.fget()
+
                     dict_[name] = obj
 
         if inherited_table_args and not tablename:
@@ -604,7 +618,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                     raise exc.InvalidRequestError(
                         "Columns with foreign keys to other columns "
                         "must be declared as @declared_attr callables "
-                        "on declarative mixin classes. "
+                        "on declarative mixin classes.  For dataclass "
+                        "field() objects, use a lambda:."
                     )
                 elif name not in dict_ and not (
                     "__table__" in dict_
@@ -955,6 +970,21 @@ class _ClassScanMapperConfig(_MapperConfig):
             "__mapper__",
             mapper_cls(self.cls, self.local_table, **self.mapper_args),
         )
+
+
+@util.preload_module("sqlalchemy.orm.decl_api")
+def _as_dc_declaredattr(field_metadata, sa_dataclass_metadata_key):
+    # wrap lambdas inside dataclass fields inside an ad-hoc declared_attr.
+    # we can't write it because field.metadata is immutable :( so we have
+    # to go through extra trouble to compare these
+    decl_api = util.preloaded.orm_decl_api
+    obj = field_metadata[sa_dataclass_metadata_key]
+    if callable(obj) and not isinstance(obj, decl_api.declared_attr):
+        return decl_api.declared_attr(obj, _is_dataclass=True)
+    elif isinstance(obj, decl_api.declared_attr):
+        obj._is_dataclass = True
+        return obj
+    return obj
 
 
 class _DeferredMapperConfig(_ClassScanMapperConfig):

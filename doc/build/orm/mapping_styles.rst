@@ -406,6 +406,72 @@ association::
             default=None, metadata={"sa": Column(String(50))}
         )
 
+.. _orm_declarative_dataclasses_mixin:
+
+Using Declarative Mixins with Dataclasses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the section :ref:`orm_mixins_toplevel`, Declarative Mixin classes
+are introduced.  One requirement of declarative mixins is that certain
+constructs that can't be easily duplicated must be given as callables,
+using the :class:`_orm.declared_attr` decorator, such as in the
+example at :ref:`orm_declarative_mixins_relationships`::
+
+    class RefTargetMixin(object):
+        @declared_attr
+        def target_id(cls):
+            return Column('target_id', ForeignKey('target.id'))
+
+        @declared_attr
+        def target(cls):
+            return relationship("Target")
+
+This form is supported within the Dataclasses ``field()`` object by using
+a lambda to indicate the SQLAlchemy construct inside the ``field()``.
+Using :func:`_orm.declared_attr` to surround the lambda is optional.
+If we wanted to produce our ``User`` class above where the ORM fields
+came from a mixin that is itself a dataclass, the form would be::
+
+    @dataclass
+    class UserMixin:
+        __tablename__ = "user"
+
+        __sa_dataclass_metadata_key__ = "sa"
+
+        id: int = field(
+            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+        )
+
+        addresses: List[Address] = field(
+            default_factory=list, metadata={"sa": lambda: relationship("Address")}
+        )
+
+    @dataclass
+    class AddressMixin:
+        __tablename__ = "address"
+        __sa_dataclass_metadata_key__ = "sa"
+        id: int = field(
+            init=False, metadata={"sa": Column(Integer, primary_key=True)}
+        )
+        user_id: int = field(
+            init=False, metadata={"sa": lambda: Column(ForeignKey("user.id"))}
+        )
+        email_address: str = field(
+            default=None, metadata={"sa": Column(String(50))}
+        )
+
+    @mapper_registry.mapped
+    class User(UserMixin):
+        pass
+
+    @mapper_registry.mapped
+    class Address(AddressMixin):
+      pass
+
+.. versionadded:: 1.4.2  Added support for "declared attr" style mixin attributes,
+   namely :func:`_orm.relationship` constructs as well as :class:`_schema.Column`
+   objects with foreign key declarations, to be used within "Dataclasses
+   with Declarative Table" style mappings.
 
 .. _orm_declarative_attrs_imperative_table:
 
