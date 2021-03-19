@@ -6,8 +6,10 @@ import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
+from sqlalchemy import Date
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import orm
 from sqlalchemy import select
@@ -25,6 +27,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -760,6 +763,43 @@ class LazyTest(_fixtures.FixtureTest):
             a1 = sess.get(Address, 2)
 
             eq_(a1.user.id, 8)
+
+    @testing.only_on("sqlite")
+    def test_annotated_fn_criteria(self, registry, connection):
+        """this test is a secondary test for the compilation of functions
+        that are annotated.
+
+        """
+
+        @registry.mapped
+        class A(object):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            _date = Column(Date, default=func.current_date())
+            b_id = Column(Integer, ForeignKey("b.id"))
+            b = relationship("B")
+
+        @registry.mapped
+        class B(object):
+            __tablename__ = "b"
+
+            id = Column(Integer, primary_key=True)
+            a_s = relationship(
+                "A",
+                primaryjoin="and_(B.id == A.b_id, "
+                "A._date >= func.current_date())",
+                viewonly=True,
+            )
+
+        registry.metadata.create_all(connection)
+        with Session(connection) as sess:
+            b1 = B(id=1)
+            a1 = A(b=b1)
+            sess.add_all([a1, b1])
+            sess.commit()
+
+            is_(sess.get(B, 1).a_s[0], a1)
 
     def test_uses_get_compatible_types(self):
         """test the use_get optimization with compatible

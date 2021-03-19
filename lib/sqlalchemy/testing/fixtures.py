@@ -72,6 +72,12 @@ class TestBase(object):
         conn.close()
 
     @config.fixture()
+    def registry(self, metadata):
+        reg = registry(metadata=metadata)
+        yield reg
+        reg.dispose()
+
+    @config.fixture()
     def future_connection(self, future_engine, connection):
         # integrate the future_engine and connection fixtures so
         # that users of the "connection" fixture will get at the
