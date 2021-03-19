@@ -3,6 +3,7 @@ from typing import Optional
 
 from sqlalchemy import Boolean
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -519,6 +520,243 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
             {"name": "Bar", "magic": True, "widget_id": None},
         )
         eq_(dataclasses.astuple(widget), (None, "Bar", True))
+
+
+class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
+    __requires__ = ("dataclasses",)
+
+    run_setup_classes = "each"
+    run_setup_mappers = "each"
+
+    @classmethod
+    def setup_classes(cls):
+        declarative = cls.DeclarativeBasic.registry.mapped
+
+        @dataclasses.dataclass
+        class WidgetDC:
+
+            __sa_dataclass_metadata_key__ = "sa"
+
+            widget_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+
+            # fk on mixin
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": lambda: Column(
+                        Integer,
+                        ForeignKey("accounts.account_id"),
+                        nullable=False,
+                    )
+                },
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class Widget(WidgetDC):
+            __tablename__ = "widgets"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            type = Column(String(30), nullable=False)
+
+            name: Optional[str] = dataclasses.field(
+                default=None,
+                metadata={"sa": Column(String(30), nullable=False)},
+            )
+            __mapper_args__ = dict(
+                polymorphic_on="type",
+                polymorphic_identity="normal",
+            )
+
+        @dataclasses.dataclass
+        class AccountDC:
+
+            __sa_dataclass_metadata_key__ = "sa"
+
+            # relationship on mixin
+            widgets: List[Widget] = dataclasses.field(
+                default_factory=list,
+                metadata={"sa": lambda: relationship("Widget")},
+            )
+
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+            widget_count: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": Column("widget_count", Integer, nullable=False)
+                },
+            )
+
+        @declarative
+        class Account(AccountDC):
+            __tablename__ = "accounts"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            def __post_init__(self):
+                self.widget_count = len(self.widgets)
+
+            def add_widget(self, widget: Widget):
+                self.widgets.append(widget)
+                self.widget_count += 1
+
+        @declarative
+        @dataclasses.dataclass
+        class User:
+            __tablename__ = "user"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            user_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+
+            # fk w declared attr on mapped class
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": lambda: Column(
+                        Integer,
+                        ForeignKey("accounts.account_id"),
+                        nullable=False,
+                    )
+                },
+            )
+
+        cls.classes["Account"] = Account
+        cls.classes["Widget"] = Widget
+        cls.classes["User"] = User
+
+    def test_setup(self):
+        Account, Widget, User = self.classes("Account", "Widget", "User")
+
+        assert "account_id" in Widget.__table__.c
+        assert list(Widget.__table__.c.account_id.foreign_keys)[0].references(
+            Account.__table__
+        )
+        assert inspect(Account).relationships.widgets.mapper is inspect(Widget)
+
+        assert "account_id" in User.__table__.c
+        assert list(User.__table__.c.account_id.foreign_keys)[0].references(
+            Account.__table__
+        )
+
+
+class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
+    __requires__ = ("dataclasses",)
+
+    @classmethod
+    def setup_classes(cls):
+        declarative = cls.DeclarativeBasic.registry.mapped
+
+        @dataclasses.dataclass
+        class WidgetDC:
+
+            __sa_dataclass_metadata_key__ = "sa"
+
+            widget_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+
+            # fk on mixin
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": declared_attr(
+                        lambda: Column(
+                            Integer,
+                            ForeignKey("accounts.account_id"),
+                            nullable=False,
+                        )
+                    )
+                },
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class Widget(WidgetDC):
+            __tablename__ = "widgets"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            type = Column(String(30), nullable=False)
+
+            name: Optional[str] = dataclasses.field(
+                default=None,
+                metadata={"sa": Column(String(30), nullable=False)},
+            )
+            __mapper_args__ = dict(
+                polymorphic_on="type",
+                polymorphic_identity="normal",
+            )
+
+        @dataclasses.dataclass
+        class AccountDC:
+
+            __sa_dataclass_metadata_key__ = "sa"
+
+            # relationship on mixin
+            widgets: List[Widget] = dataclasses.field(
+                default_factory=list,
+                metadata={"sa": declared_attr(lambda: relationship("Widget"))},
+            )
+
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+            widget_count: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": Column("widget_count", Integer, nullable=False)
+                },
+            )
+
+        @declarative
+        class Account(AccountDC):
+            __tablename__ = "accounts"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            def __post_init__(self):
+                self.widget_count = len(self.widgets)
+
+            def add_widget(self, widget: Widget):
+                self.widgets.append(widget)
+                self.widget_count += 1
+
+        @declarative
+        @dataclasses.dataclass
+        class User:
+            __tablename__ = "user"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            user_id: int = dataclasses.field(
+                init=False,
+                metadata={"sa": Column(Integer, primary_key=True)},
+            )
+
+            # fk w declared attr on mapped class
+            account_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": declared_attr(
+                        lambda: Column(
+                            Integer,
+                            ForeignKey("accounts.account_id"),
+                            nullable=False,
+                        )
+                    )
+                },
+            )
+
+        cls.classes["Account"] = Account
+        cls.classes["Widget"] = Widget
+        cls.classes["User"] = User
 
 
 class PropagationFromMixinTest(fixtures.TestBase):

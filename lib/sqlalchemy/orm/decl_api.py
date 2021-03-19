@@ -126,27 +126,34 @@ class declared_attr(interfaces._MappedAttribute, property):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 
-    @declared_attr turns the attribute into a scalar-like
-    property that can be invoked from the uninstantiated class.
-    Declarative treats attributes specifically marked with
-    @declared_attr as returning a construct that is specific
-    to mapping or declarative table configuration.  The name
-    of the attribute is that of what the non-dynamic version
-    of the attribute would be.
+    :class:`_orm.declared_attr` is typically applied as a decorator to a class
+    level method, turning the attribute into a scalar-like property that can be
+    invoked from the uninstantiated class. The Declarative mapping process
+    looks for these :class:`_orm.declared_attr` callables as it scans classe,
+    and assumes any attribute marked with :class:`_orm.declared_attr` will be a
+    callable that will produce an object specific to the Declarative mapping or
+    table configuration.
 
-    @declared_attr is more often than not applicable to mixins,
-    to define relationships that are to be applied to different
-    implementors of the class::
+    :class:`_orm.declared_attr` is usually applicable to mixins, to define
+    relationships that are to be applied to different implementors of the
+    class. It is also used to define :class:`_schema.Column` objects that
+    include the :class:`_schema.ForeignKey` construct, as these cannot be
+    easily reused across different mappings.  The example below illustrates
+    both::
 
         class ProvidesUser(object):
             "A mixin that adds a 'user' relationship to classes."
 
             @declared_attr
+            def user_id(self):
+                return Column(ForeignKey("user_account.id"))
+
+            @declared_attr
             def user(self):
                 return relationship("User")
 
-    It also can be applied to mapped classes, such as to provide
-    a "polymorphic" scheme for inheritance::
+    :class:`_orm.declared_attr` can also be applied to mapped classes, such as
+    to provide a "polymorphic" scheme for inheritance::
 
         class Employee(Base):
             id = Column(Integer, primary_key=True)
@@ -166,12 +173,43 @@ class declared_attr(interfaces._MappedAttribute, property):
                 else:
                     return {"polymorphic_identity":cls.__name__}
 
-    """
+    To use :class:`_orm.declared_attr` inside of a Python dataclass
+    as discussed at :ref:`orm_declarative_dataclasses_declarative_table`,
+    it may be placed directly inside the field metadata using a lambda::
 
-    def __init__(self, fget, cascading=False):
+        @dataclass
+        class AddressMixin:
+            __sa_dataclass_metadata_key__ = "sa"
+
+            user_id: int = field(
+                init=False, metadata={"sa": declared_attr(lambda: Column(ForeignKey("user.id")))}
+            )
+            user: User = field(
+                init=False, metadata={"sa": declared_attr(lambda: relationship(User))}
+            )
+
+    :class:`_orm.declared_attr` also may be omitted from this form using a
+    lambda directly, as in::
+
+        user: User = field(
+            init=False, metadata={"sa": lambda: relationship(User)}
+        )
+
+    .. seealso::
+
+        :ref:`orm_mixins_toplevel` - illustrates how to use Declarative Mixins
+        which is the primary use case for :class:`_orm.declared_attr`
+
+        :ref:`orm_declarative_dataclasses_mixin` - illustrates special forms
+        for use with Python dataclasses
+
+    """  # noqa E501
+
+    def __init__(self, fget, cascading=False, _is_dataclass=False):
         super(declared_attr, self).__init__(fget)
         self.__doc__ = fget.__doc__
         self._cascading = cascading
+        self._is_dataclass = _is_dataclass
 
     def __get__(desc, self, cls):
         # the declared_attr needs to make use of a cache that exists
