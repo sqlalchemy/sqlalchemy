@@ -256,6 +256,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         fn = func.coalesce("x", "y")._annotate({"foo": "bar"})
         self.assert_compile(fn, "coalesce(:coalesce_1, :coalesce_2)")
 
+    def test_annotation_dialect_specific(self):
+        fn = func.current_date()
+        self.assert_compile(fn, "CURRENT_DATE", dialect="sqlite")
+
+        fn = fn._annotate({"foo": "bar"})
+        self.assert_compile(fn, "CURRENT_DATE", dialect="sqlite")
+
     def test_custom_default_namespace(self):
         class myfunc(GenericFunction):
             pass

@@ -1720,7 +1720,7 @@ class SQLCompiler(Compiled):
         if disp:
             text = disp(func, **kwargs)
         else:
-            name = FUNCTIONS.get(func.__class__, None)
+            name = FUNCTIONS.get(func._deannotate().__class__, None)
             if name:
                 if func._has_args:
                     name += "%(expr)s"
