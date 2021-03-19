@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 6097
+
+    Fixed regression in the :func:`_sql.case` construct, where the "dictionary"
+    form of argument specification failed to work correctly if it were passed
+    positionally, rather than as a "whens" keyword argument.

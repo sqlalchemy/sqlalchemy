@@ -2618,7 +2618,7 @@ class Case(ColumnElement):
         acts somewhat analogously to an "if/then" construct in other
         languages.  It returns an instance of :class:`.Case`.
 
-        :func:`.case` in its usual form is passed a list of "when"
+        :func:`.case` in its usual form is passed a series of "when"
         constructs, that is, a list of conditions and results as tuples::
 
             from sqlalchemy import case
@@ -2653,7 +2653,7 @@ class Case(ColumnElement):
             stmt = select(users_table).\
                         where(
                             case(
-                                {"wendy": "W", "jack": "J"},
+                                whens={"wendy": "W", "jack": "J"},
                                 value=users_table.c.name,
                                 else_='E'
                             )

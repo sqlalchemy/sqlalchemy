@@ -98,7 +98,7 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
 
 
 def _expression_collection_was_a_list(attrname, fnname, args):
-    if args and isinstance(args[0], (list, set)) and len(args) == 1:
+    if args and isinstance(args[0], (list, set, dict)) and len(args) == 1:
         util.warn_deprecated_20(
             'The "%s" argument to %s() is now passed as a series of '
             "positional "

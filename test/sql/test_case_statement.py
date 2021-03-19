@@ -154,6 +154,53 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END",
         )
 
+    @testing.combinations(
+        (
+            (lambda t: ({"x": "y"}, t.c.col1, None)),
+            "CASE test.col1 WHEN :param_1 THEN :param_2 END",
+        ),
+        (
+            (lambda t: ({"x": "y", "p": "q"}, t.c.col1, None)),
+            "CASE test.col1 WHEN :param_1 THEN :param_2 "
+            "WHEN :param_3 THEN :param_4 END",
+        ),
+        (
+            (lambda t: ({t.c.col1 == 7: "x"}, None, 10)),
+            "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END",
+        ),
+        (
+            (lambda t: ({t.c.col1 == 7: "x", t.c.col1 == 10: "y"}, None, 10)),
+            "CASE WHEN (test.col1 = :col1_1) THEN :param_1 "
+            "WHEN (test.col1 = :col1_2) THEN :param_2 ELSE :param_3 END",
+        ),
+        argnames="test_case, expected",
+    )
+    @testing.combinations(("positional",), ("kwarg",), argnames="argstyle")
+    def test_when_dicts(self, argstyle, test_case, expected):
+        t = table("test", column("col1"))
+
+        whens, value, else_ = testing.resolve_lambda(test_case, t=t)
+
+        def _case_args(whens, value=None, else_=None):
+            kw = {}
+            if value is not None:
+                kw["value"] = value
+            if else_ is not None:
+                kw["else_"] = else_
+
+            if argstyle == "kwarg":
+                return case(whens=whens, **kw)
+            elif argstyle == "positional":
+                return case(whens, **kw)
+
+            # note: 1.3 also does not allow this form
+            # case([whens], **kw)
+
+        self.assert_compile(
+            _case_args(whens=whens, value=value, else_=else_),
+            expected,
+        )
+
     def test_text_doesnt_explode(self, connection):
 
         for s in [
