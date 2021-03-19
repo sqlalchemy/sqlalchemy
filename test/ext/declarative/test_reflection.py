@@ -25,6 +25,8 @@ class DeclarativeReflectionBase(fixtures.TablesTest):
     def setup_test(self):
         global Base, registry
 
+        _DeferredMapperConfig._configs.clear()
+
         registry = decl.registry()
         Base = registry.generate_base()
 
