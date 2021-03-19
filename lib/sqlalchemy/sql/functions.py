@@ -790,7 +790,7 @@ class _FunctionGenerator(object):
                 return func(*c, **o)
 
         return Function(
-            self.__names[-1], packagenames=self.__names[0:-1], *c, **o
+            self.__names[-1], packagenames=tuple(self.__names[0:-1]), *c, **o
         )
 
 

@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 6101
+
+    Fixed issue where using a ``func`` that includes dotted packagenames would
+    fail to be cacheable by the SQL caching system due to a Python list of
+    names that needed to be a tuple.
+

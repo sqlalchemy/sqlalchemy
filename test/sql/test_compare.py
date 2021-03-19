@@ -269,6 +269,12 @@ class CoreFixtures(object):
         ),
         lambda: (_OffsetLimitParam("x"), _OffsetLimitParam("y")),
         lambda: (func.foo(), func.foo(5), func.bar()),
+        lambda: (
+            func.package1.foo(5),
+            func.package2.foo(5),
+            func.packge1.bar(5),
+            func.foo(),
+        ),
         lambda: (func.current_date(), func.current_time()),
         lambda: (
             func.next_value(Sequence("q")),
