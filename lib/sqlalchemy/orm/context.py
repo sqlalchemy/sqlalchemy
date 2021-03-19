@@ -2136,7 +2136,7 @@ def _legacy_determine_last_joined_entity(setup_joins, entity_zero):
     if right is not None and "parententity" in right._annotations:
         right = right._annotations["parententity"].entity
 
-    if onclause is not None and right is not None:
+    if right is not None:
         last_entity = right
         insp = inspect(last_entity)
         if insp.is_clause_element or insp.is_aliased_class or insp.is_mapper:

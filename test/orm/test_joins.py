@@ -1,3 +1,5 @@
+import itertools
+
 import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import desc
@@ -232,22 +234,78 @@ class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_filter_by_from_full_join(self):
+    @testing.combinations_list(
+        set(
+            itertools.product(
+                [
+                    "relationship",
+                    "relationship_only",
+                    "string_relationship",
+                    "string_relationship_only",
+                    "none",
+                    "explicit",
+                    "table_none",
+                    "table_explicit",
+                ],
+                [True, False],
+            )
+        ).difference(
+            [
+                ("string_relationship", False),
+                ("string_relationship_only", False),
+            ]
+        ),
+        argnames="onclause_type, use_legacy",
+    )
+    def test_filter_by_from_join(self, onclause_type, use_legacy):
         User, Address = self.classes("User", "Address")
+        (address_table,) = self.tables("addresses")
+        (user_table,) = self.tables("users")
 
-        sess = fixture_session()
+        if use_legacy:
+            sess = fixture_session()
+            q = sess.query(User)
+        else:
+            q = select(User).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
-        q = (
-            sess.query(User)
-            .join(Address, User.addresses)
-            .filter_by(email_address="foo")
-        )
+        if onclause_type == "relationship":
+            q = q.join(Address, User.addresses)
+        elif onclause_type == "string_relationship":
+            q = q.join(Address, "addresses")
+        elif onclause_type == "relationship_only":
+            q = q.join(User.addresses)
+        elif onclause_type == "string_relationship_only":
+            q = q.join("addresses")
+        elif onclause_type == "none":
+            q = q.join(Address)
+        elif onclause_type == "explicit":
+            q = q.join(Address, User.id == Address.user_id)
+        elif onclause_type == "table_none":
+            q = q.join(address_table)
+        elif onclause_type == "table_explicit":
+            q = q.join(
+                address_table, user_table.c.id == address_table.c.user_id
+            )
+        else:
+            assert False
+
+        q2 = q.filter_by(email_address="foo")
+
         self.assert_compile(
-            q,
+            q2,
             "SELECT users.id AS users_id, users.name AS users_name "
             "FROM users JOIN addresses ON users.id = addresses.user_id "
             "WHERE addresses.email_address = :email_address_1",
         )
+
+        if use_legacy:
+            q2 = q.reset_joinpoint().filter_by(name="user")
+            self.assert_compile(
+                q2,
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "WHERE users.name = :name_1",
+            )
 
     def test_invalid_kwarg_join(self):
         User = self.classes.User
