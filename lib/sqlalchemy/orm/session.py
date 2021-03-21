@@ -39,7 +39,16 @@ from ..sql import visitors
 from ..sql.base import CompileState
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
-__all__ = ["Session", "SessionTransaction", "sessionmaker"]
+__all__ = [
+    "Session",
+    "SessionTransaction",
+    "sessionmaker",
+    "ORMExecuteState",
+    "close_all_sessions",
+    "make_transient",
+    "make_transient_to_detached",
+    "object_session",
+]
 
 _sessions = weakref.WeakValueDictionary()
 """Weak-referencing dictionary of :class:`.Session` objects.
