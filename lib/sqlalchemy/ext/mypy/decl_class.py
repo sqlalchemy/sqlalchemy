@@ -201,7 +201,9 @@ def _scan_declarative_decorator_stmt(
 
                     left_hand_explicit_type = UnionType(
                         [
-                            _extract_python_type_from_typeengine(sym.node),
+                            _extract_python_type_from_typeengine(
+                                api, sym.node, []
+                            ),
                             NoneType(),
                         ]
                     )
@@ -692,11 +694,13 @@ def _infer_type_from_decl_column(
         if isinstance(column_arg, nodes.CallExpr):
             # x = Column(String(50))
             callee = column_arg.callee
+            type_args = column_arg.args
             break
         elif isinstance(column_arg, (nodes.NameExpr, nodes.MemberExpr)):
             if isinstance(column_arg.node, TypeInfo):
                 # x = Column(String)
                 callee = column_arg
+                type_args = ()
                 break
             else:
                 # x = Column(some_name, String), go to next argument
@@ -710,9 +714,11 @@ def _infer_type_from_decl_column(
     if callee is None:
         return None
 
-    if names._mro_has_id(callee.node.mro, names.TYPEENGINE):
+    if isinstance(callee.node, TypeInfo) and names._mro_has_id(
+        callee.node.mro, names.TYPEENGINE
+    ):
         python_type_for_type = _extract_python_type_from_typeengine(
-            callee.node
+            api, callee.node, type_args
         )
 
         if left_hand_explicit_type is not None:
@@ -977,13 +983,25 @@ def _apply_placeholder_attr_to_class(
     cls.info.names[attrname] = SymbolTableNode(MDEF, var)
 
 
-def _extract_python_type_from_typeengine(node: TypeInfo) -> Instance:
-    for mr in node.mro:
-        if (
-            mr.bases
-            and mr.bases[-1].type.fullname
-            == "sqlalchemy.sql.type_api.TypeEngine"
+def _extract_python_type_from_typeengine(
+    api: SemanticAnalyzerPluginInterface, node: TypeInfo, type_args
+) -> Instance:
+    if node.fullname == "sqlalchemy.sql.sqltypes.Enum" and type_args:
+        first_arg = type_args[0]
+        if isinstance(first_arg, NameExpr) and isinstance(
+            first_arg.node, TypeInfo
         ):
-            return mr.bases[-1].args[-1]
-    else:
-        assert False, "could not extract Python type from node: %s" % node
+            for base_ in first_arg.node.mro:
+                if base_.fullname == "enum.Enum":
+                    return Instance(first_arg.node, [])
+            # TODO: support other pep-435 types here
+        else:
+            n = api.lookup_fully_qualified("builtins.str")
+            return Instance(n.node, [])
+
+    for mr in node.mro:
+        if mr.bases:
+            for base_ in mr.bases:
+                if base_.type.fullname == "sqlalchemy.sql.type_api.TypeEngine":
+                    return base_.args[-1]
+    assert False, "could not extract Python type from node: %s" % node

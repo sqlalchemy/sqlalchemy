@@ -1324,15 +1324,15 @@ class Enum(Emulated, String, SchemaType):
         by that backend.
 
         :param \*enums: either exactly one PEP-435 compliant enumerated type
-           or one or more string or unicode enumeration labels. If unicode
-           labels are present, the `convert_unicode` flag is auto-enabled.
+           or one or more string labels.
 
            .. versionadded:: 1.1 a PEP-435 style enumerated class may be
               passed.
 
         :param convert_unicode: Enable unicode-aware bind parameter and
-           result-set processing for this Enum's data. This is set
-           automatically based on the presence of unicode label strings.
+           result-set processing for this Enum's data under Python 2 only.
+           Under Python 2, this is set automatically based on the presence of
+           unicode label strings.  This flag will be removed in SQLAlchemy 2.0.
 
         :param create_constraint: defaults to False.  When creating a
            non-native enumerated type, also build a CHECK constraint on the
