@@ -48,7 +48,7 @@ new ORM declarative system that unifies classical and declarative mapping,
 support for Python dataclasses, and asyncio support for Core and ORM.
 
 The steps to achieve 2.0 migration are in the following subsections; overall,
-the general strategy is that once an application runs on 1.4 in with all
+the general strategy is that once an application runs on 1.4 with all
 warning flags turned on and does not emit any 2.0-deprecation warnings, it is
 now cross-compatible with SQLAlchemy 2.0.
 
@@ -570,7 +570,7 @@ or :class:`_engine.Connection` is required.   The :class:`_engine.Engine`
 may still be used directly as the source of connectivity for a
 :meth:`_schema.MetaData.create_all` operation or autoload operation.
 For executing statements, only the :class:`_engine.Connection` object
-has an :meth:`_engine.Connection.execute` method (in addition to
+has a :meth:`_engine.Connection.execute` method (in addition to
 the ORM-level :meth:`_orm.Session.execute` method)::
 
 
@@ -899,7 +899,7 @@ select() no longer accepts varied constructor arguments, columns are passed posi
 The :func:`_sql.select` construct as well as the related method :meth:`_sql.FromClause.select`
 will no longer accept keyword arguments to build up elements such as the
 WHERE clause, FROM list and ORDER BY.   The list of columns may now be
-sent positionally, rather as a list.  Additionally, the :func:`_sql.case` construct
+sent positionally, rather than as a list.  Additionally, the :func:`_sql.case` construct
 now accepts its WHEN criteria positionally, rather than as a list::
 
     # select_from / order_by keywords no longer supported
@@ -1642,7 +1642,7 @@ Most users aren't familiar with this flag, however it allows for automatic
 aliasing of elements along a join, which then applies automatic aliasing
 to filter conditions.  The original use case was to assist in long chains
 of self-referential joins, as in the example shown above.  However,
-the automatic adaption of the filter criteria that is enormously
+the automatic adaption of the filter criteria is enormously
 complicated internally and almost never used in real world applications.  The
 pattern also leads to issues such as if filter criteria need to be added
 at each link in the chain; the pattern then must use the ``from_joinpoint``
@@ -1687,7 +1687,7 @@ returning the main entity object, and not the extra column, use the
     stmt = select(User, Address.email_address).join(User.addresses).\
         distinct().order_by(Address.email_address)
 
-    result = session.execute(stmt).scalars(User).all()
+    result = session.execute(stmt).columns(User).all()
 
 **Discussion**
 
