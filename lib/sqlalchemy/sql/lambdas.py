@@ -25,6 +25,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..util import collections_abc
+from ..util import compat
 
 _closure_per_cache_key = util.LRUCache(1000)
 
@@ -1064,7 +1065,7 @@ class AnalyzedFunction(object):
         code += "        return %s\n" % ", ".join("i%d" % i for i in argrange)
         code += "    return closure.__closure__"
         vars_ = {"o%d" % i: cell_values[i] for i in argrange}
-        exec(code, vars_, vars_)
+        compat.exec_(code, vars_, vars_)
         closure = vars_["make_cells"]()
 
         func = type(f)(
