@@ -489,7 +489,7 @@ the reflection process does it in reverse.
 
 As an example of reflection, we will create a new :class:`_schema.Table`
 object which represents the ``some_table`` object we created manually in
-the earler sections of this document.  There are again some varieties of
+the earlier sections of this document.  There are again some varieties of
 how this is performed, however the most basic is to construct a
 :class:`_schema.Table` object, given the name of the table and a
 :class:`_schema.MetaData` collection to which it will belong, then
