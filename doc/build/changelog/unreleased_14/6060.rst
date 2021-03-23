@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6060
+
+    Fixed bug where ORM queries using a correlated subquery in conjunction with
+    :func:`_orm.column_property` would fail to correlate correctly to an
+    enclosing subquery or to a CTE when :meth:`_sql.Select.correlate_except`
+    were used in the property to control correlation, in cases where the
+    subquery contained the same selectables as ones within the correlated
+    subquery that were intended to not be correlated.

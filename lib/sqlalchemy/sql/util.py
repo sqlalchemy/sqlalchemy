@@ -813,6 +813,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         exclude_fn=None,
         adapt_on_names=False,
         anonymize_labels=False,
+        adapt_from_selectables=None,
     ):
         self.__traverse_options__ = {
             "stop_on": [selectable],
@@ -823,6 +824,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         self.exclude_fn = exclude_fn
         self.equivalents = util.column_dict(equivalents or {})
         self.adapt_on_names = adapt_on_names
+        self.adapt_from_selectables = adapt_from_selectables
 
     def _corresponding_column(
         self, col, require_embedded, _seen=util.EMPTY_SET
@@ -850,6 +852,13 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if isinstance(col, FromClause) and not isinstance(
             col, functions.FunctionElement
         ):
+            if self.adapt_from_selectables:
+                for adp in self.adapt_from_selectables:
+                    if adp.is_derived_from(col):
+                        break
+                else:
+                    return None
+
             if self.selectable.is_derived_from(col):
                 return self.selectable
             elif isinstance(col, Alias) and isinstance(
@@ -874,6 +883,13 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
 
         if "adapt_column" in col._annotations:
             col = col._annotations["adapt_column"]
+
+        if self.adapt_from_selectables and col not in self.equivalents:
+            for adp in self.adapt_from_selectables:
+                if adp.c.corresponding_column(col, False) is not None:
+                    break
+            else:
+                return None
 
         if self.include_fn and not self.include_fn(col):
             return None
@@ -924,6 +940,7 @@ class ColumnAdapter(ClauseAdapter):
         adapt_on_names=False,
         allow_label_resolve=True,
         anonymize_labels=False,
+        adapt_from_selectables=None,
     ):
         ClauseAdapter.__init__(
             self,
@@ -933,6 +950,7 @@ class ColumnAdapter(ClauseAdapter):
             exclude_fn=exclude_fn,
             adapt_on_names=adapt_on_names,
             anonymize_labels=anonymize_labels,
+            adapt_from_selectables=adapt_from_selectables,
         )
 
         self.columns = util.WeakPopulateDict(self._locate_col)
