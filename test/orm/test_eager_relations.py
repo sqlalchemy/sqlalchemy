@@ -109,7 +109,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     )
                 ],
                 sess.query(User)
-                .options(joinedload("addresses"))
+                .options(joinedload(User.addresses))
                 .filter(User.id == 7)
                 .all(),
             )
@@ -322,8 +322,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = fixture_session()
         q = (
             sess.query(User)
-            .join("addresses")
-            .options(joinedload("addresses"))
+            .join(User.addresses)
+            .options(joinedload(User.addresses))
             .order_by("email_address")
         )
 
@@ -340,7 +340,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         q = (
             sess.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by("email_address")
         )
 
@@ -573,7 +573,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         for opt, count in [
             ((joinedload(User.orders, Order.items),), 10),
-            ((joinedload("orders.items"),), 10),
             (
                 (
                     joinedload(User.orders),
@@ -700,8 +699,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(
                 self.static.item_keyword_result[0:2],
                 (
-                    q.options(joinedload("keywords"))
-                    .join("keywords")
+                    q.options(joinedload(Item.keywords))
+                    .join(Item.keywords)
                     .filter(keywords.c.name == "red")
                 )
                 .order_by(Item.id)
@@ -1404,17 +1403,19 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(u1.addresses[0].user, u1)
 
-        self.assert_sql_execution(
-            testing.db,
-            go,
-            CompiledSQL(
-                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
-                "addresses_user_id, addresses.email_address AS "
-                "addresses_email_address FROM addresses WHERE :param_1 = "
-                "addresses.user_id",
-                {"param_1": 8},
-            ),
-        )
+        with testing.expect_warnings(raise_on_any_unexpected=True):
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, "
+                    "addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE :param_1 = "
+                    "addresses.user_id",
+                    {"param_1": 8},
+                ),
+            )
 
     def test_useget_cancels_eager_propagated_present(self):
         """test that a one to many lazyload cancels the unnecessary
@@ -1453,17 +1454,19 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(u1.addresses[0].user, u1)
 
-        self.assert_sql_execution(
-            testing.db,
-            go,
-            CompiledSQL(
-                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
-                "addresses_user_id, addresses.email_address AS "
-                "addresses_email_address FROM addresses WHERE :param_1 = "
-                "addresses.user_id",
-                {"param_1": 8},
-            ),
-        )
+        with testing.expect_warnings(raise_on_any_unexpected=True):
+            self.assert_sql_execution(
+                testing.db,
+                go,
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, "
+                    "addresses.user_id AS "
+                    "addresses_user_id, addresses.email_address AS "
+                    "addresses_email_address FROM addresses WHERE :param_1 = "
+                    "addresses.user_id",
+                    {"param_1": 8},
+                ),
+            )
 
     def test_manytoone_limit(self):
         """test that the subquery wrapping only occurs with
@@ -1558,7 +1561,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User)
-            .options(joinedload("orders").joinedload("address"))
+            .options(joinedload(User.orders).joinedload(Order.address))
             .limit(10),
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
@@ -1580,8 +1583,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(User).options(
-                joinedload("orders").joinedload("items"),
-                joinedload("orders").joinedload("address"),
+                joinedload(User.orders).joinedload(Order.items),
+                joinedload(User.orders).joinedload(Order.address),
             ),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "items_1.id AS items_1_id, "
@@ -1606,8 +1609,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User)
             .options(
-                joinedload("orders"),
-                joinedload("orders.address", innerjoin=True),
+                joinedload(User.orders),
+                joinedload(User.orders, Order.address, innerjoin=True),
             )
             .limit(10),
             "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
@@ -1630,8 +1633,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             sess.query(User)
             .options(
-                joinedload("orders", innerjoin=True),
-                joinedload("orders.address", innerjoin=True),
+                joinedload(User.orders, innerjoin=True),
+                joinedload(User.orders, Order.address, innerjoin=True),
             )
             .limit(10),
             "SELECT anon_1.users_id AS anon_1_users_id, "
@@ -1771,7 +1774,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             o1 = (
                 sess.query(Order)
-                .options(lazyload("address"))
+                .options(lazyload(Order.address))
                 .filter(Order.id == 5)
                 .one()
             )
@@ -2317,8 +2320,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = fixture_session()
         q = sess.query(User).options(
-            joinedload("orders", innerjoin=False).joinedload(
-                "items", innerjoin=True
+            joinedload(User.orders, innerjoin=False).joinedload(
+                Order.items, innerjoin=True
             )
         )
 
@@ -2392,7 +2395,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = fixture_session()
         q = sess.query(User).options(
-            joinedload("orders"), joinedload("addresses", innerjoin="unnested")
+            joinedload(User.orders),
+            joinedload(User.addresses, innerjoin="unnested"),
         )
 
         self.assert_compile(
@@ -2433,7 +2437,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         sess = fixture_session()
         q = sess.query(User).options(
-            joinedload("orders"), joinedload("addresses", innerjoin=True)
+            joinedload(User.orders), joinedload(User.addresses, innerjoin=True)
         )
 
         self.assert_compile(
@@ -2513,7 +2517,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             .join(User.orders)
             .join(Order.items)
             .options(
-                joinedload("orders").joinedload("items").joinedload("keywords")
+                joinedload(User.orders)
+                .joinedload(Order.items)
+                .joinedload(Item.keywords)
             )
         )
 
@@ -2814,9 +2820,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess = fixture_session()
 
         if use_load:
-            opt = Load(User).defaultload("orders").lazyload("*")
+            opt = Load(User).defaultload(User.orders).lazyload("*")
         else:
-            opt = defaultload("orders").lazyload("*")
+            opt = defaultload(User.orders).lazyload("*")
 
         q = sess.query(User).filter(User.id == 7).options(opt)
 
@@ -3180,15 +3186,15 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
     def test_nested_innerjoin_propagation_multiple_paths_two(self):
         # test #3447
-        A = self.classes.A
+        A, B, C1 = (self.classes.A, self.classes.B, self.classes.C1)
 
         s = fixture_session()
 
         q = s.query(A).options(
-            joinedload("bs"),
-            joinedload("bs.c2s", innerjoin=True),
-            joinedload("bs.c1s", innerjoin=True),
-            joinedload("bs.c1s.d1s"),
+            joinedload(A.bs),
+            joinedload(A.bs, B.c2s, innerjoin=True),
+            joinedload(A.bs, B.c1s, innerjoin=True),
+            joinedload(A.bs, B.c1s, C1.d1s),
         )
         self.assert_compile(
             q,
@@ -3208,17 +3214,23 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self._assert_result(q)
 
     def test_multiple_splice_points(self):
-        A = self.classes.A
+        A, B, C1, C2, D1 = (
+            self.classes.A,
+            self.classes.B,
+            self.classes.C1,
+            self.classes.C2,
+            self.classes.D1,
+        )
 
         s = fixture_session()
 
         q = s.query(A).options(
-            joinedload("bs", innerjoin=False),
-            joinedload("bs.c1s", innerjoin=True),
-            joinedload("bs.c2s", innerjoin=True),
-            joinedload("bs.c1s.d1s", innerjoin=False),
-            joinedload("bs.c2s.d2s"),
-            joinedload("bs.c1s.d1s.e1s", innerjoin=True),
+            joinedload(A.bs, innerjoin=False),
+            joinedload(A.bs, B.c1s, innerjoin=True),
+            joinedload(A.bs, B.c2s, innerjoin=True),
+            joinedload(A.bs, B.c1s, C1.d1s, innerjoin=False),
+            joinedload(A.bs, B.c2s, C2.d2s),
+            joinedload(A.bs, B.c1s, C1.d1s, D1.e1s, innerjoin=True),
         )
 
         self.assert_compile(
@@ -3260,7 +3272,7 @@ class InnerJoinSplicingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         s = fixture_session()
 
-        q = s.query(A).options(joinedload("bs_np", innerjoin=False))
+        q = s.query(A).options(joinedload(A.bs_np, innerjoin=False))
         self.assert_compile(
             q,
             "SELECT a.id AS a_id, b_1.id AS b_1_id, b_1.a_id AS b_1_a_id, "
@@ -3372,13 +3384,13 @@ class InnerJoinSplicingWSecondaryTest(
         self.assert_sql_count(testing.db, go, 1)
 
     def test_joined_across(self):
-        A = self.classes.A
+        A, B, C = self.classes("A", "B", "C")
 
         s = fixture_session()
         q = s.query(A).options(
-            joinedload("b")
-            .joinedload("c", innerjoin=True)
-            .joinedload("ds", innerjoin=True)
+            joinedload(A.b)
+            .joinedload(B.c, innerjoin=True)
+            .joinedload(C.ds, innerjoin=True)
         )
         self.assert_compile(
             q,
@@ -3438,7 +3450,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(A.summation)
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3461,7 +3473,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(A.summation.desc())
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3486,7 +3498,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(A.summation)
             .limit(50),
             "SELECT anon_1.anon_2 AS anon_1_anon_2, anon_1.a_id "
@@ -3515,7 +3527,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.anon_2 "
@@ -3542,7 +3554,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.foo "
@@ -3573,7 +3585,7 @@ class SubqueryAliasingTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         self.assert_compile(
             fixture_session()
             .query(A)
-            .options(joinedload("bs"))
+            .options(joinedload(A.bs))
             .order_by(~cp)
             .limit(50),
             "SELECT anon_1.a_id AS anon_1_a_id, anon_1.anon_2 "
@@ -3698,7 +3710,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            joinedload("addresses").joinedload("dingaling")
+            joinedload(User.addresses).joinedload(Address.dingaling)
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -3717,7 +3729,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         o1 = Order()
         u1.orders.append(o1)
         sess.query(User).options(
-            joinedload("orders").joinedload("items")
+            joinedload(User.orders).joinedload(Order.items)
         ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -3731,11 +3743,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=8)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            joinedload("addresses").joinedload("dingaling")
+            joinedload(User.addresses).joinedload(Address.dingaling)
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -3745,11 +3757,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=7)
-            .options(joinedload("orders"))
+            .options(joinedload(User.orders))
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            joinedload("orders").joinedload("items")
+            joinedload(User.orders).joinedload(Order.items)
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -3899,7 +3911,7 @@ class AddEntityTest(_fixtures.FixtureTest):
         def go():
             ret = (
                 sess.query(User, oalias)
-                .options(joinedload("addresses"))
+                .options(joinedload(User.addresses))
                 .join(oalias, "orders")
                 .order_by(User.id, oalias.id)
                 .all()
@@ -3913,7 +3925,7 @@ class AddEntityTest(_fixtures.FixtureTest):
         def go():
             ret = (
                 sess.query(User, oalias)
-                .options(joinedload("addresses"), joinedload(oalias.items))
+                .options(joinedload(User.addresses), joinedload(oalias.items))
                 .join(oalias, "orders")
                 .order_by(User.id, oalias.id)
                 .all()
@@ -4174,7 +4186,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"))
+                .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
@@ -4187,7 +4199,10 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"), undefer("children.data"))
+                .options(
+                    undefer(Node.data),
+                    defaultload(Node.children).undefer(Node.data),
+                )
                 .first(),
             )
 
@@ -4226,7 +4241,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(joinedload("children.children"))
+                .options(joinedload(Node.children, Node.children))
                 .first()
             )
             eq_(
@@ -4252,7 +4267,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
 
         def go():
             sess.query(Node).order_by(Node.id).filter_by(data="n1").options(
-                joinedload("children.children")
+                joinedload(Node.children, Node.children)
             ).first()
 
         # test that the query isn't wrapping the initial query for eager
@@ -4409,9 +4424,9 @@ class MixedSelfReferentialEagerTest(fixtures.MappedTest):
             eq_(
                 session.query(B)
                 .options(
-                    joinedload("parent_b1"),
-                    joinedload("parent_b2"),
-                    joinedload("parent_z"),
+                    joinedload(B.parent_b1),
+                    joinedload(B.parent_b2),
+                    joinedload(B.parent_z),
                 )
                 .filter(B.id.in_([2, 8, 11]))
                 .order_by(B.id)
@@ -5129,7 +5144,7 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             eq_(
                 sess.query(User)
                 .order_by(User.name)
-                .options(joinedload("stuff"))
+                .options(joinedload(User.stuff))
                 .all(),
                 [
                     User(name="user1", stuff=[Stuff(id=2)]),
@@ -5156,7 +5171,7 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             eq_(
                 sess.query(User)
                 .order_by(User.name)
-                .options(joinedload("stuff"))
+                .options(joinedload(User.stuff))
                 .first(),
                 User(name="user1", stuff=[Stuff(id=2)]),
             )
@@ -5169,7 +5184,7 @@ class CorrelatedSubqueryTest(fixtures.MappedTest):
             eq_(
                 sess.query(User)
                 .filter(User.id == 2)
-                .options(joinedload("stuff"))
+                .options(joinedload(User.stuff))
                 .one(),
                 User(name="user2", stuff=[Stuff(id=4)]),
             )
@@ -5413,7 +5428,7 @@ class EnsureColumnsAddedTest(
 
         self.assert_compile(
             s.query(Parent)
-            .options(load_only("data"), joinedload(Parent.o2mchild))
+            .options(load_only(Parent.data), joinedload(Parent.o2mchild))
             .limit(10),
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
@@ -5433,7 +5448,7 @@ class EnsureColumnsAddedTest(
 
         self.assert_compile(
             s.query(Parent)
-            .options(load_only("data"), joinedload(Parent.m2mchild))
+            .options(load_only(Parent.data), joinedload(Parent.m2mchild))
             .limit(10),
             "SELECT anon_1.parent_id AS anon_1_parent_id, "
             "anon_1.parent_data AS anon_1_parent_data, "
@@ -5455,7 +5470,7 @@ class EnsureColumnsAddedTest(
 
         self.assert_compile(
             s.query(Parent).options(
-                load_only("data"), joinedload(Parent.o2mchild)
+                load_only(Parent.data), joinedload(Parent.o2mchild)
             ),
             "SELECT parent.id AS parent_id, parent.data AS parent_data, "
             "parent.arb AS parent_arb, o2mchild_1.id AS o2mchild_1_id, "
@@ -5471,7 +5486,7 @@ class EnsureColumnsAddedTest(
 
         self.assert_compile(
             s.query(Parent).options(
-                load_only("data"), joinedload(Parent.m2mchild)
+                load_only(Parent.data), joinedload(Parent.m2mchild)
             ),
             "SELECT parent.id AS parent_id, parent.data AS parent_data, "
             "parent.arb AS parent_arb, m2mchild_1.id AS m2mchild_1_id "
@@ -5643,13 +5658,13 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         # these paths don't work out correctly?
         lz_test = (
             s.query(LDA)
-            .join("ld")
-            .options(contains_eager("ld"))
+            .join(LDA.ld)
+            .options(contains_eager(LDA.ld))
             .join("a", (l_ac, "ld"), (u_ac, "user"))
             .options(
-                contains_eager("a")
-                .contains_eager("ld", alias=l_ac)
-                .contains_eager("user", alias=u_ac)
+                contains_eager(LDA.a)
+                .contains_eager(A.ld, alias=l_ac)
+                .contains_eager(LD.user, alias=u_ac)
             )
             .first()
         )
@@ -5728,32 +5743,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
                     b.cs
 
         self.assert_sql_count(testing.db, go, expected)
-
-    def test_string_options_aliased_whatever(self):
-        A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(joinedload("bs").joinedload("cs"))
-        )
-        self._run_tests(q, 1)
-
-    def test_string_options_unaliased_whatever(self):
-        A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(joinedload("bs").joinedload("cs"))
-        )
-        self._run_tests(q, 1)
 
     def test_lazyload_aliased_abs_bcs_one(self):
         A, B, C = self.classes("A", "B", "C")
@@ -6034,7 +6023,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
     def test_deep_options_2(self):
         """test (joined|subquery)load_all() options"""
 
-        User = self.classes.User
+        User, Order, Item = self.classes("User", "Order", "Item")
 
         sess = fixture_session()
 
@@ -6042,9 +6031,9 @@ class DeepOptionsTest(_fixtures.FixtureTest):
             sess.query(User)
             .order_by(User.id)
             .options(
-                sa.orm.joinedload("orders")
-                .joinedload("items")
-                .joinedload("keywords")
+                sa.orm.joinedload(User.orders)
+                .joinedload(Order.items)
+                .joinedload(Item.keywords)
             )
         ).all()
 
@@ -6057,34 +6046,14 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         result = (
             sess.query(User).options(
-                sa.orm.subqueryload("orders")
-                .subqueryload("items")
-                .subqueryload("keywords")
+                sa.orm.subqueryload(User.orders)
+                .subqueryload(Order.items)
+                .subqueryload(Item.keywords)
             )
         ).all()
 
         def go():
             result[0].orders[1].items[0].keywords[1]
-
-        self.sql_count_(0, go)
-
-    def test_deep_options_3(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        # same thing, with separate options calls
-        q2 = (
-            sess.query(User)
-            .order_by(User.id)
-            .options(sa.orm.joinedload("orders"))
-            .options(sa.orm.joinedload("orders.items"))
-            .options(sa.orm.joinedload("orders.items.keywords"))
-        )
-        u = q2.all()
-
-        def go():
-            u[0].orders[1].items[0].keywords[1]
 
         self.sql_count_(0, go)
 
@@ -6114,7 +6083,11 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         q3 = (
             sess.query(User)
             .order_by(User.id)
-            .options(sa.orm.joinedload("orders.items.keywords"))
+            .options(
+                sa.orm.defaultload(User.orders)
+                .defaultload(Order.items)
+                .joinedload(Item.keywords)
+            )
         )
         u = q3.all()
 
