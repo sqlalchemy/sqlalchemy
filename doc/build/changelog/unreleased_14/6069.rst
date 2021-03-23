@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6069
+
+    Fixed a bug where python 2.7.5 (default on CentOS 7) wasn't able to import
+    sqlalchemy, because on this version of Python ``exec "statement"`` and
+    ``exec("statement")`` do not behave the same way. Switching back to the
+    statement based ``exec`` solved ths.
+    
