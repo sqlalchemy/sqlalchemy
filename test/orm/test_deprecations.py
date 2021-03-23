@@ -42,6 +42,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import collection
@@ -5055,6 +5056,27 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
                 "LIKE :description_1 ORDER BY people.person_id",
                 use_default_dialect=True,
             )
+
+    def test_with_poly_loader_criteria_warning(self):
+        Person, Manager = (
+            self.classes.Person,
+            self.classes.Manager,
+        )
+
+        sess = fixture_session()
+
+        with testing.expect_deprecated_20(w_polymorphic_dep):
+            q = (
+                sess.query(Person)
+                .with_polymorphic(Manager)
+                .options(with_loader_criteria(Person, Person.person_id == 1))
+            )
+
+        with testing.expect_warnings(
+            r"The with_loader_criteria\(\) function may not work "
+            r"correctly with the legacy Query.with_polymorphic\(\)"
+        ):
+            str(q)
 
 
 class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):

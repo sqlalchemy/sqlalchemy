@@ -786,6 +786,14 @@ class Query(
     ):
         """Load columns for inheriting classes.
 
+        This is a legacy method which is replaced by the
+        :func:`_orm.with_polymorphic` function.
+
+        .. warning:: The :meth:`_orm.Query.with_polymorphic` method does
+           **not** support 1.4/2.0 style features including
+           :func:`_orm.with_loader_criteria`.  Please migrate code
+           to use :func:`_orm.with_polymorphic`.
+
         :meth:`_query.Query.with_polymorphic` applies transformations
         to the "main" mapped class represented by this :class:`_query.Query`.
         The "main" mapped class here means the :class:`_query.Query`
@@ -796,8 +804,9 @@ class Query(
         purposes of load-time efficiency as well as the ability to use
         these columns at query time.
 
-        See the documentation section :ref:`with_polymorphic` for
-        details on how this method is used.
+        .. seealso::
+
+            :ref:`with_polymorphic` - illustrates current patterns
 
         """
 
