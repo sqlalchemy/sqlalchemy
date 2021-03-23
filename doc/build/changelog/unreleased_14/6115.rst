@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6115
+
+    Fixed issue where a "removed in 2.0" warning were generated internally by
+    the relationship loader mechanics.
+

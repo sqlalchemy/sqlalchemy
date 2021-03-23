@@ -992,7 +992,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         compile_context.compile_options._current_path[
                             rev.parent
                         ]
-                    ).lazyload(rev.key).process_compile_state(compile_context)
+                    ).lazyload(rev).process_compile_state(compile_context)
 
         stmt = stmt.add_criteria(
             lambda stmt: stmt._add_context_option(

@@ -34,6 +34,10 @@ from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 
 
+def _deprecated_strings():
+    return testing.expect_deprecated_20("Using strings to indicate")
+
+
 class QueryTest(_fixtures.FixtureTest):
     run_setup_mappers = "once"
     run_inserts = "once"
@@ -150,23 +154,28 @@ class LoadTest(PathTest, QueryTest):
         Address = self.classes.Address
 
         result = Load(User)
-        eq_(
-            result._generate_path(
-                inspect(User)._path_registry, "addresses", None, "relationship"
-            ),
-            self._make_path_registry([User, "addresses", Address]),
-        )
+        with _deprecated_strings():
+            eq_(
+                result._generate_path(
+                    inspect(User)._path_registry,
+                    "addresses",
+                    None,
+                    "relationship",
+                ),
+                self._make_path_registry([User, "addresses", Address]),
+            )
 
     def test_gen_path_string_column(self):
         User = self.classes.User
 
         result = Load(User)
-        eq_(
-            result._generate_path(
-                inspect(User)._path_registry, "name", None, "column"
-            ),
-            self._make_path_registry([User, "name"]),
-        )
+        with _deprecated_strings():
+            eq_(
+                result._generate_path(
+                    inspect(User)._path_registry, "name", None, "column"
+                ),
+                self._make_path_registry([User, "name"]),
+            )
 
     def test_gen_path_invalid_from_col(self):
         User = self.classes.User
@@ -207,13 +216,14 @@ class LoadTest(PathTest, QueryTest):
         sess = fixture_session()
         q = sess.query(OrderWProp).options(defer("some_attr"))
 
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            r"Expected attribute \"some_attr\" on mapped class "
-            "OrderWProp->orders to be a mapped attribute; instead "
-            "got .*property.* object.",
-            q._compile_state,
-        )
+        with _deprecated_strings():
+            assert_raises_message(
+                sa.exc.ArgumentError,
+                r"Expected attribute \"some_attr\" on mapped class "
+                "OrderWProp->orders to be a mapped attribute; instead "
+                "got .*property.* object.",
+                q._compile_state,
+            )
 
     def test_gen_path_attr_entity_invalid_noraiseerr(self):
         User = self.classes.User
@@ -236,7 +246,7 @@ class LoadTest(PathTest, QueryTest):
         User = self.classes.User
 
         l1 = Load(User)
-        l2 = l1.joinedload("addresses")
+        l2 = l1.joinedload(User.addresses)
         to_bind = list(l2.context.values())[0]
         eq_(
             l1.context,
@@ -247,7 +257,7 @@ class LoadTest(PathTest, QueryTest):
         User = self.classes.User
 
         l1 = Load(User)
-        l2 = l1.defer("name")
+        l2 = l1.defer(User.name)
         l3 = list(l2.context.values())[0]
         eq_(l1.context, {("loader", self._make_path([User, "name"])): l3})
 
@@ -1565,18 +1575,21 @@ class LocalOptsTest(PathTest, QueryTest):
         eq_(attr[key].local_opts, expected)
 
     def test_single_opt_only(self):
+        User = self.classes.User
+
         opt = strategy_options._UnboundLoad().some_col_opt_only(
-            "name", {"foo": "bar"}
+            User.name, {"foo": "bar"}
         )
         self._assert_attrs([opt], {"foo": "bar"})
 
     def test_unbound_multiple_opt_only(self):
+        User = self.classes.User
         opts = [
             strategy_options._UnboundLoad().some_col_opt_only(
-                "name", {"foo": "bar"}
+                User.name, {"foo": "bar"}
             ),
             strategy_options._UnboundLoad().some_col_opt_only(
-                "name", {"bat": "hoho"}
+                User.name, {"bat": "hoho"}
             ),
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
@@ -1585,8 +1598,8 @@ class LocalOptsTest(PathTest, QueryTest):
         User = self.classes.User
         opts = [
             Load(User)
-            .some_col_opt_only("name", {"foo": "bar"})
-            .some_col_opt_only("name", {"bat": "hoho"})
+            .some_col_opt_only(User.name, {"foo": "bar"})
+            .some_col_opt_only(User.name, {"bat": "hoho"})
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
@@ -1594,29 +1607,31 @@ class LocalOptsTest(PathTest, QueryTest):
         User = self.classes.User
         opts = [
             Load(User)
-            .some_col_opt_only("name", {"foo": "bar"})
-            .some_col_opt_strategy("name", {"bat": "hoho"})
+            .some_col_opt_only(User.name, {"foo": "bar"})
+            .some_col_opt_strategy(User.name, {"bat": "hoho"})
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
     def test_unbound_strat_opt_recvs_from_optonly(self):
+        User = self.classes.User
         opts = [
             strategy_options._UnboundLoad().some_col_opt_only(
-                "name", {"foo": "bar"}
+                User.name, {"foo": "bar"}
             ),
             strategy_options._UnboundLoad().some_col_opt_strategy(
-                "name", {"bat": "hoho"}
+                User.name, {"bat": "hoho"}
             ),
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
     def test_unbound_opt_only_adds_to_strat(self):
+        User = self.classes.User
         opts = [
             strategy_options._UnboundLoad().some_col_opt_strategy(
-                "name", {"bat": "hoho"}
+                User.name, {"bat": "hoho"}
             ),
             strategy_options._UnboundLoad().some_col_opt_only(
-                "name", {"foo": "bar"}
+                User.name, {"foo": "bar"}
             ),
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
@@ -1625,8 +1640,8 @@ class LocalOptsTest(PathTest, QueryTest):
         User = self.classes.User
         opts = [
             Load(User)
-            .some_col_opt_strategy("name", {"bat": "hoho"})
-            .some_col_opt_only("name", {"foo": "bar"})
+            .some_col_opt_strategy(User.name, {"bat": "hoho"})
+            .some_col_opt_only(User.name, {"foo": "bar"})
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
@@ -1937,7 +1952,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         result = (
             sess.query(User)
             .order_by(User.id)
-            .options(sa.orm.joinedload("addresses"))
+            .options(sa.orm.joinedload(User.addresses))
         ).all()
 
         def go():
@@ -1966,7 +1981,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         sess = fixture_session()
         u = (
             sess.query(User)
-            .options(sa.orm.joinedload("addresses"))
+            .options(sa.orm.joinedload(User.addresses))
             .filter_by(id=8)
         ).one()
 
@@ -2003,7 +2018,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         sess = fixture_session()
         u = (
             sess.query(User)
-            .options(sa.orm.lazyload("addresses"))
+            .options(sa.orm.lazyload(User.addresses))
             .filter_by(id=8)
         ).one()
 
@@ -2184,7 +2199,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         result = (
             sess.query(User)
             .order_by(User.id)
-            .options(sa.orm.lazyload("addresses"))
+            .options(sa.orm.lazyload(User.addresses))
         ).all()
 
         def go():

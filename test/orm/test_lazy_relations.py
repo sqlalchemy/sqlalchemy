@@ -1516,7 +1516,7 @@ class RefersToSelfLazyLoadInterferenceTest(fixtures.MappedTest):
 
         # If the bug is here, the next line throws an exception
         session.query(B).options(
-            sa.orm.joinedload("parent").joinedload("zc")
+            sa.orm.joinedload(B.parent).joinedload(B.zc)
         ).all()
 
 

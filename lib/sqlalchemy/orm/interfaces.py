@@ -83,6 +83,7 @@ class ORMFromClauseRole(roles.StrictFromClauseRole):
     _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 
 
+@inspection._self_inspects
 class MapperProperty(
     HasCacheKey, _MappedAttribute, InspectionAttr, util.MemoizedSlots
 ):

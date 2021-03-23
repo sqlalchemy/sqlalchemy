@@ -274,6 +274,29 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "ORDER BY addresses_1.id",
             )
 
+    def test_dotted_options(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with testing.expect_deprecated_20(
+            "Using strings to indicate column or relationship "
+            "paths in loader options"
+        ):
+            q2 = (
+                sess.query(User)
+                .order_by(User.id)
+                .options(sa.orm.joinedload("orders"))
+                .options(sa.orm.joinedload("orders.items"))
+                .options(sa.orm.joinedload("orders.items.keywords"))
+            )
+            u = q2.all()
+
+        def go():
+            u[0].orders[1].items[0].keywords[1]
+
+        self.sql_count_(0, go)
+
     def test_str_col_loader_opt(self):
         User = self.classes.User
 
@@ -979,6 +1002,133 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def _from_self_deprecated(self):
         return testing.expect_deprecated_20(r"The Query.from_self\(\) method")
+
+
+class SelfReferentialEagerTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "nodes",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("parent_id", Integer, ForeignKey("nodes.id")),
+            Column("data", String(30)),
+        )
+
+    def test_eager_loading_with_deferred(self):
+        nodes = self.tables.nodes
+
+        class Node(fixtures.ComparableEntity):
+            def append(self, node):
+                self.children.append(node)
+
+        mapper(
+            Node,
+            nodes,
+            properties={
+                "children": relationship(
+                    Node, lazy="joined", join_depth=3, order_by=nodes.c.id
+                ),
+                "data": deferred(nodes.c.data),
+            },
+        )
+        sess = fixture_session()
+        n1 = Node(data="n1")
+        n1.append(Node(data="n11"))
+        n1.append(Node(data="n12"))
+        sess.add(n1)
+        sess.flush()
+        sess.expunge_all()
+
+        def go():
+            with assertions.expect_deprecated_20(
+                "Using strings to indicate column or relationship paths"
+            ):
+                eq_(
+                    Node(
+                        data="n1",
+                        children=[Node(data="n11"), Node(data="n12")],
+                    ),
+                    sess.query(Node)
+                    .options(undefer("data"), undefer("children.data"))
+                    .first(),
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+
+class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
+    """test for [ticket:3963]"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            cs = relationship("C")
+
+        class C(Base):
+            __tablename__ = "c"
+            id = Column(Integer, primary_key=True)
+            b_id = Column(ForeignKey("b.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, C = cls.classes("A", "B", "C")
+        s = Session(connection)
+        s.add(A(id=1, bs=[B(cs=[C()])]))
+        s.add(A(id=2))
+        s.commit()
+
+    def _run_tests(self, query, expected):
+        def go():
+            for a, _ in query:
+                for b in a.bs:
+                    b.cs
+
+        self.assert_sql_count(testing.db, go, expected)
+
+    def test_string_options_aliased_whatever(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = fixture_session()
+        aa = aliased(A)
+        q = (
+            s.query(aa, A)
+            .filter(aa.id == 1)
+            .filter(A.id == 2)
+            .filter(aa.id != A.id)
+            .options(joinedload("bs").joinedload("cs"))
+        )
+        with assertions.expect_deprecated_20(
+            "Using strings to indicate column or relationship paths"
+        ):
+            self._run_tests(q, 1)
+
+    def test_string_options_unaliased_whatever(self):
+        A, B, C = self.classes("A", "B", "C")
+        s = fixture_session()
+        aa = aliased(A)
+        q = (
+            s.query(A, aa)
+            .filter(aa.id == 2)
+            .filter(A.id == 1)
+            .filter(aa.id != A.id)
+            .options(joinedload("bs").joinedload("cs"))
+        )
+        with assertions.expect_deprecated_20(
+            "Using strings to indicate column or relationship paths"
+        ):
+            self._run_tests(q, 1)
 
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):

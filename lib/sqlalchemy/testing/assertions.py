@@ -135,7 +135,12 @@ def uses_deprecated(*messages):
 
 @contextlib.contextmanager
 def _expect_warnings(
-    exc_cls, messages, regex=True, assert_=True, py2konly=False
+    exc_cls,
+    messages,
+    regex=True,
+    assert_=True,
+    py2konly=False,
+    raise_on_any_unexpected=False,
 ):
 
     if regex:
@@ -145,7 +150,13 @@ def _expect_warnings(
 
     seen = set(filters)
 
-    real_warn = warnings.warn
+    if raise_on_any_unexpected:
+
+        def real_warn(msg, *arg, **kw):
+            raise AssertionError("Got unexpected warning: %r" % msg)
+
+    else:
+        real_warn = warnings.warn
 
     def our_warn(msg, *arg, **kw):
         if isinstance(msg, exc_cls):
@@ -159,7 +170,7 @@ def _expect_warnings(
         if not exception or not issubclass(exception, exc_cls):
             return real_warn(msg, *arg, **kw)
 
-        if not filters:
+        if not filters and not raise_on_any_unexpected:
             return
 
         for filter_ in filters:
