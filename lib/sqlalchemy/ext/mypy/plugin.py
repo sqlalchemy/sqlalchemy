@@ -30,6 +30,7 @@ from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
 from mypy.plugin import Optional
 from mypy.plugin import Plugin
+from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.types import Instance
 
 from . import decl_class
@@ -69,13 +70,18 @@ class CustomPlugin(Plugin):
     ) -> Optional[Callable[[ClassDefContext], None]]:
 
         sym = self.lookup_fully_qualified(fullname)
-
         if (
             sym is not None
             and names._type_id_for_named_node(sym.node)
             is names.MAPPED_DECORATOR
         ):
             return _cls_decorator_hook
+        elif sym is not None and names._type_id_for_named_node(sym.node) in (
+            names.AS_DECLARATIVE,
+            names.AS_DECLARATIVE_BASE,
+        ):
+            return _base_cls_decorator_hook
+
         return None
 
     def get_customize_class_mro_hook(
@@ -116,39 +122,47 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         # set the ".fullname" attribute of a class decorator
         # that is a MemberExpr.   This causes the logic in
         # semanal.py->apply_class_plugin_hooks to invoke the
-        # get_class_decorator_hook for our "registry.map_class()" method.
+        # get_class_decorator_hook for our "registry.map_class()"
+        # and "registry.as_declarative_base()" methods.
         # this seems like a bug in mypy that these decorators are otherwise
         # skipped.
         if (
+            isinstance(decorator, nodes.CallExpr)
+            and isinstance(decorator.callee, nodes.MemberExpr)
+            and decorator.callee.name == "as_declarative_base"
+        ):
+            target = decorator.callee
+        elif (
             isinstance(decorator, nodes.MemberExpr)
             and decorator.name == "mapped"
         ):
+            target = decorator
+        else:
+            continue
 
-            sym = ctx.api.lookup(
-                decorator.expr.name, decorator, suppress_errors=True
-            )
-            if sym:
-                if sym.node.type and hasattr(sym.node.type, "type"):
-                    decorator.fullname = (
-                        f"{sym.node.type.type.fullname}.{decorator.name}"
-                    )
-                else:
-                    # if the registry is in the same file as where the
-                    # decorator is used, it might not have semantic
-                    # symbols applied and we can't get a fully qualified
-                    # name or an inferred type, so we are actually going to
-                    # flag an error in this case that they need to annotate
-                    # it.  The "registry" is declared just
-                    # once (or few times), so they have to just not use
-                    # type inference for its assignment in this one case.
-                    util.fail(
-                        ctx.api,
-                        "Class decorator called mapped(), but we can't "
-                        "tell if it's from an ORM registry.  Please "
-                        "annotate the registry assignment, e.g. "
-                        "my_registry: registry = registry()",
-                        sym.node,
-                    )
+        sym = ctx.api.lookup(target.expr.name, target, suppress_errors=True)
+        if sym:
+            if sym.node.type and hasattr(sym.node.type, "type"):
+                target.fullname = (
+                    f"{sym.node.type.type.fullname}.{target.name}"
+                )
+            else:
+                # if the registry is in the same file as where the
+                # decorator is used, it might not have semantic
+                # symbols applied and we can't get a fully qualified
+                # name or an inferred type, so we are actually going to
+                # flag an error in this case that they need to annotate
+                # it.  The "registry" is declared just
+                # once (or few times), so they have to just not use
+                # type inference for its assignment in this one case.
+                util.fail(
+                    ctx.api,
+                    "Class decorator called %s(), but we can't "
+                    "tell if it's from an ORM registry.  Please "
+                    "annotate the registry assignment, e.g. "
+                    "my_registry: registry = registry()" % target.name,
+                    sym.node,
+                )
 
 
 def _cls_metadata_hook(ctx: ClassDefContext) -> None:
@@ -167,14 +181,10 @@ def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
-def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
-    """Generate a declarative Base class when the declarative_base() function
-    is encountered."""
-
-    cls = ClassDef(ctx.name, Block([]))
-    cls.fullname = ctx.api.qualified_name(ctx.name)
-
-    declarative_meta_sym: SymbolTableNode = ctx.api.modules[
+def _make_declarative_meta(
+    api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
+):
+    declarative_meta_sym: SymbolTableNode = api.modules[
         "sqlalchemy.orm.decl_api"
     ].names["DeclarativeMeta"]
     declarative_meta_typeinfo: TypeInfo = declarative_meta_sym.node
@@ -184,13 +194,35 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
     declarative_meta_name.node = declarative_meta_typeinfo
 
-    cls.metaclass = declarative_meta_name
+    target_cls.metaclass = declarative_meta_name
 
     declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
 
-    info = TypeInfo(SymbolTable(), cls, ctx.api.cur_mod_id)
+    info = target_cls.info
     info.declared_metaclass = info.metaclass_type = declarative_meta_instance
+
+
+def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
+
+    cls = ctx.cls
+
+    _make_declarative_meta(ctx.api, cls)
+
+    decl_class._scan_declarative_assignments_and_apply_types(
+        cls, ctx.api, is_mixin_scan=True
+    )
+
+
+def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
+    """Generate a declarative Base class when the declarative_base() function
+    is encountered."""
+
+    cls = ClassDef(ctx.name, Block([]))
+    cls.fullname = ctx.api.qualified_name(ctx.name)
+
+    info = TypeInfo(SymbolTable(), cls, ctx.api.cur_mod_id)
     cls.info = info
+    _make_declarative_meta(ctx.api, cls)
 
     cls_arg = util._get_callexpr_kwarg(ctx.call, "cls")
     if cls_arg is not None:
@@ -209,6 +241,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         util.fail(
             ctx.api, "Not able to calculate MRO for declarative base", ctx.call
         )
+        obj = ctx.api.builtin_type("builtins.object")
         info.bases = [obj]
         info.fallback_to_any = True
 

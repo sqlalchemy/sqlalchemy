@@ -34,7 +34,8 @@ SYNONYM_PROPERTY = util.symbol("SYNONYM_PROPERTY")
 COMPOSITE_PROPERTY = util.symbol("COMPOSITE_PROPERTY")
 DECLARED_ATTR = util.symbol("DECLARED_ATTR")
 MAPPER_PROPERTY = util.symbol("MAPPER_PROPERTY")
-
+AS_DECLARATIVE = util.symbol("AS_DECLARATIVE")
+AS_DECLARATIVE_BASE = util.symbol("AS_DECLARATIVE_BASE")
 
 _lookup = {
     "Column": (
@@ -109,6 +110,21 @@ _lookup = {
         {
             "sqlalchemy.orm.decl_api.registry.mapped",
             "sqlalchemy.orm.registry.mapped",
+        },
+    ),
+    "as_declarative": (
+        AS_DECLARATIVE,
+        {
+            "sqlalchemy.ext.declarative.as_declarative",
+            "sqlalchemy.orm.decl_api.as_declarative",
+            "sqlalchemy.orm.as_declarative",
+        },
+    ),
+    "as_declarative_base": (
+        AS_DECLARATIVE_BASE,
+        {
+            "sqlalchemy.orm.decl_api.registry.as_declarative_base",
+            "sqlalchemy.orm.registry.as_declarative_base",
         },
     ),
     "declared_attr": (
