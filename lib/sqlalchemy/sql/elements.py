@@ -3777,8 +3777,7 @@ class Over(ColumnElement):
     This is a special operator against a so-called
     "window" function, as well as any aggregate function,
     which produces results relative to the result set
-    itself.  It's supported only by certain database
-    backends.
+    itself.  Most modern SQL backends now support window functions.
 
     """
 

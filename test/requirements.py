@@ -751,7 +751,14 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def window_functions(self):
         return only_if(
-            ["postgresql>=8.4", "mssql", "oracle", "sqlite>=3.25.0"],
+            [
+                "postgresql>=8.4",
+                "mssql",
+                "oracle",
+                "sqlite>=3.25.0",
+                "mysql>=8",
+                "mariadb>=10.2",
+            ],
             "Backend does not support window functions",
         )
 
