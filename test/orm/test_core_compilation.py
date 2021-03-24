@@ -1,3 +1,4 @@
+from sqlalchemy import bindparam
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
@@ -24,6 +25,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.util import resolve_lambda
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
 
@@ -256,6 +258,52 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 "description_2": "d2",
             },
         )
+
+    @testing.combinations(
+        (
+            lambda User: select(User).where(User.id == bindparam("foo")),
+            "SELECT users.id, users.name FROM users WHERE users.id = :foo",
+            {"foo": "bar"},
+            {"foo": "bar"},
+        ),
+        (
+            lambda User, Address: select(User)
+            .join_from(User, Address)
+            .where(User.id == bindparam("foo")),
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id WHERE users.id = :foo",
+            {"foo": "bar"},
+            {"foo": "bar"},
+        ),
+        (
+            lambda User, Address: select(User)
+            .join_from(User, Address, User.addresses)
+            .where(User.id == bindparam("foo")),
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id WHERE users.id = :foo",
+            {"foo": "bar"},
+            {"foo": "bar"},
+        ),
+        (
+            lambda User, Address: select(User)
+            .join(User.addresses)
+            .where(User.id == bindparam("foo")),
+            "SELECT users.id, users.name FROM users JOIN addresses "
+            "ON users.id = addresses.user_id WHERE users.id = :foo",
+            {"foo": "bar"},
+            {"foo": "bar"},
+        ),
+    )
+    def test_params_with_join(
+        self, test_case, expected, bindparams, expected_params
+    ):
+        User, Address = self.classes("User", "Address")
+
+        stmt = resolve_lambda(test_case, **locals())
+
+        stmt = stmt.params(**bindparams)
+
+        self.assert_compile(stmt, expected, checkparams=expected_params)
 
 
 class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):

@@ -85,6 +85,10 @@ class QueryableAttribute(
 
     is_attribute = True
 
+    # PropComparator has a __visit_name__ to participate within
+    # traversals.   Disambiguate the attribute vs. a comparator.
+    __visit_name__ = "orm_instrumented_attribute"
+
     def __init__(
         self,
         class_,

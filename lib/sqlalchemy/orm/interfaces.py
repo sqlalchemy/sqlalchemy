@@ -393,6 +393,8 @@ class PropComparator(operators.ColumnOperators):
 
     __slots__ = "prop", "property", "_parententity", "_adapt_to_entity"
 
+    __visit_name__ = "orm_prop_comparator"
+
     def __init__(
         self,
         prop,  # type: MapperProperty
