@@ -574,6 +574,13 @@ class _ConnectionRecord(object):
             self.__connect()
         return self.connection
 
+    def _is_hard_or_soft_invalidated(self):
+        return (
+            self.connection is None
+            or self.__pool._invalidate_time > self.starttime
+            or (self._soft_invalidate_time > self.starttime)
+        )
+
     def __close(self):
         self.finalize_callback.clear()
         if self.__pool.dispatch.close:

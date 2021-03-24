@@ -41,50 +41,58 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     run_inserts = None
     __backend__ = True
 
-    def test_no_close_transaction_on_flush(self):
+    @testing.fixture
+    def conn(self):
+        with testing.db.connect() as conn:
+            yield conn
+
+    @testing.fixture
+    def future_conn(self):
+
+        engine = Engine._future_facade(testing.db)
+        with engine.connect() as conn:
+            yield conn
+
+    def test_no_close_transaction_on_flush(self, conn):
         User, users = self.classes.User, self.tables.users
 
-        with testing.db.connect() as c:
-            mapper(User, users)
-            s = Session(bind=c)
-            s.begin()
-            tran = s._legacy_transaction()
-            s.add(User(name="first"))
-            s.flush()
-            c.exec_driver_sql("select * from users")
-            u = User(name="two")
-            s.add(u)
-            s.flush()
-            u = User(name="third")
-            s.add(u)
-            s.flush()
-            assert s._legacy_transaction() is tran
-            tran.close()
+        c = conn
+        mapper(User, users)
+        s = Session(bind=c)
+        s.begin()
+        tran = s._legacy_transaction()
+        s.add(User(name="first"))
+        s.flush()
+        c.exec_driver_sql("select * from users")
+        u = User(name="two")
+        s.add(u)
+        s.flush()
+        u = User(name="third")
+        s.add(u)
+        s.flush()
+        assert s._legacy_transaction() is tran
+        tran.close()
 
-    @engines.close_open_connections
-    def test_subtransaction_on_external_subtrans(self):
+    def test_subtransaction_on_external_subtrans(self, conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
 
-        with testing.db.connect() as conn:
-            trans = conn.begin()
-            sess = Session(bind=conn, autocommit=False, autoflush=True)
-            sess.begin(subtransactions=True)
-            u = User(name="ed")
-            sess.add(u)
-            sess.flush()
-            sess.commit()  # commit does nothing
-            trans.rollback()  # rolls back
-            assert len(sess.query(User).all()) == 0
-            sess.close()
+        trans = conn.begin()
+        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess.begin(subtransactions=True)
+        u = User(name="ed")
+        sess.add(u)
+        sess.flush()
+        sess.commit()  # commit does nothing
+        trans.rollback()  # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
 
-    @engines.close_open_connections
-    def test_subtransaction_on_external_no_begin(self):
+    def test_subtransaction_on_external_no_begin(self, conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        conn = testing.db.connect()
         trans = conn.begin()
         sess = Session(bind=conn, autocommit=False, autoflush=True)
         u = User(name="ed")
@@ -96,40 +104,31 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @engines.close_open_connections
-    def test_external_nested_transaction(self):
+    def test_external_nested_transaction(self, conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        try:
-            conn = testing.db.connect()
-            trans = conn.begin()
-            sess = Session(bind=conn, autocommit=False, autoflush=True)
-            u1 = User(name="u1")
-            sess.add(u1)
-            sess.flush()
+        trans = conn.begin()
+        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        u1 = User(name="u1")
+        sess.add(u1)
+        sess.flush()
 
-            savepoint = sess.begin_nested()
-            u2 = User(name="u2")
-            sess.add(u2)
-            sess.flush()
-            savepoint.rollback()
+        savepoint = sess.begin_nested()
+        u2 = User(name="u2")
+        sess.add(u2)
+        sess.flush()
+        savepoint.rollback()
 
-            trans.commit()
-            assert len(sess.query(User).all()) == 1
-        except Exception:
-            conn.close()
-            raise
+        trans.commit()
+        assert len(sess.query(User).all()) == 1
 
-    @engines.close_open_connections
-    def test_subtransaction_on_external_commit_future(self):
+    def test_subtransaction_on_external_commit_future(self, future_conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
 
-        engine = Engine._future_facade(testing.db)
-
-        conn = engine.connect()
+        conn = future_conn
         conn.begin()
 
         sess = Session(bind=conn, autocommit=False, autoflush=True)
@@ -141,15 +140,12 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert len(sess.query(User).all()) == 0
         sess.close()
 
-    @engines.close_open_connections
-    def test_subtransaction_on_external_rollback_future(self):
+    def test_subtransaction_on_external_rollback_future(self, future_conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
 
-        engine = Engine._future_facade(testing.db)
-
-        conn = engine.connect()
+        conn = future_conn
         conn.begin()
 
         sess = Session(bind=conn, autocommit=False, autoflush=True)
@@ -162,29 +158,26 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    @engines.close_open_connections
-    def test_savepoint_on_external_future(self):
+    def test_savepoint_on_external_future(self, future_conn):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
 
-        engine = Engine._future_facade(testing.db)
+        conn = future_conn
+        conn.begin()
+        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        u1 = User(name="u1")
+        sess.add(u1)
+        sess.flush()
 
-        with engine.connect() as conn:
-            conn.begin()
-            sess = Session(bind=conn, autocommit=False, autoflush=True)
-            u1 = User(name="u1")
-            sess.add(u1)
-            sess.flush()
+        sess.begin_nested()
+        u2 = User(name="u2")
+        sess.add(u2)
+        sess.flush()
+        sess.rollback()
 
-            sess.begin_nested()
-            u2 = User(name="u2")
-            sess.add(u2)
-            sess.flush()
-            sess.rollback()
-
-            conn.commit()
-            assert len(sess.query(User).all()) == 1
+        conn.commit()
+        assert len(sess.query(User).all()) == 1
 
     @testing.requires.savepoints
     def test_nested_accounting_new_items_removed(self):
@@ -1214,18 +1207,18 @@ class SubtransactionRecipeTest(FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         mapper(User, users)
-        conn = testing.db.connect()
-        trans = conn.begin()
-        sess = Session(conn, future=self.future)
+        with testing.db.connect() as conn:
+            trans = conn.begin()
+            sess = Session(conn, future=self.future)
 
-        with subtransaction_recipe(sess):
-            u = User(name="ed")
-            sess.add(u)
-            sess.flush()
-            # commit does nothing
-        trans.rollback()  # rolls back
-        assert len(sess.query(User).all()) == 0
-        sess.close()
+            with subtransaction_recipe(sess):
+                u = User(name="ed")
+                sess.add(u)
+                sess.flush()
+                # commit does nothing
+            trans.rollback()  # rolls back
+            assert len(sess.query(User).all()) == 0
+            sess.close()
 
     def test_recipe_commit_one(self, subtransaction_recipe):
         User, users = self.classes.User, self.tables.users

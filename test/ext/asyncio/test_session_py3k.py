@@ -25,7 +25,7 @@ class AsyncFixture(_fixtures.FixtureTest):
 
     @testing.fixture
     def async_engine(self):
-        return engines.testing_engine(asyncio=True)
+        return engines.testing_engine(asyncio=True, transfer_staticpool=True)
 
     @testing.fixture
     def async_session(self, async_engine):

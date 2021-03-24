@@ -774,7 +774,7 @@ class AttachedDBTest(fixtures.TestBase):
 
     def _fixture(self):
         meta = self.metadata
-        self.conn = self.engine.connect()
+        # self.conn = self.engine.connect()
         Table("created", meta, Column("foo", Integer), Column("bar", String))
         Table("local_only", meta, Column("q", Integer), Column("p", Integer))
 

@@ -82,6 +82,13 @@ class AsyncAdapt_aiomysql_cursor:
         return self._cursor.lastrowid
 
     def close(self):
+        # note we aren't actually closing the cursor here,
+        # we are just letting GC do it.   to allow this to be async
+        # we would need the Result to change how it does "Safe close cursor".
+        # MySQL "cursors" don't actually have state to be "closed" besides
+        # exhausting rows, which we already have done for sync cursor.
+        # another option would be to emulate aiosqlite dialect and assign
+        # cursor only if we are doing server side cursor operation.
         self._rows[:] = []
 
     def execute(self, operation, parameters=None):

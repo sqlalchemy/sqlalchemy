@@ -26,6 +26,10 @@ from .base import TIMESTAMP
 from .base import VARCHAR
 from .dml import Insert
 from .dml import insert
+from ...util import compat
+
+if compat.py3k:
+    from . import aiosqlite  # noqa
 
 # default dialect
 base.dialect = dialect = pysqlite.dialect

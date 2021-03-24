@@ -1,0 +1,10 @@
+.. change::
+    :tags: sqlite, feature, asyncio
+    :tickets: 5920
+
+    Added support for the aiosqlite database driver for use with the
+    SQLAlchemy asyncio extension.
+
+    .. seealso::
+
+      :ref:`aiosqlite`

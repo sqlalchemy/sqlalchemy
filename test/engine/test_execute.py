@@ -2719,7 +2719,7 @@ class HandleErrorTest(fixtures.TestBase):
             ):
                 assert_raises(MySpecialException, conn.get_isolation_level)
 
-    @testing.only_on("sqlite")
+    @testing.only_on("sqlite+pysqlite")
     def test_cursor_close_resultset_failed_connectionless(self):
         engine = engines.testing_engine()
 
@@ -2755,7 +2755,7 @@ class HandleErrorTest(fixtures.TestBase):
         # connection is closed
         assert the_conn[0].closed
 
-    @testing.only_on("sqlite")
+    @testing.only_on("sqlite+pysqlite")
     def test_cursor_close_resultset_failed_explicit(self):
         engine = engines.testing_engine()
 

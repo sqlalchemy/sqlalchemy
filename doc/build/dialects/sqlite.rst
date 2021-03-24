@@ -35,10 +35,19 @@ SQLite DML Constructs
 .. autoclass:: sqlalchemy.dialects.sqlite.Insert
   :members:
 
+.. _pysqlite:
+
 Pysqlite
 --------
 
 .. automodule:: sqlalchemy.dialects.sqlite.pysqlite
+
+.. _aiosqlite:
+
+Aiosqlite
+---------
+
+.. automodule:: sqlalchemy.dialects.sqlite.aiosqlite
 
 Pysqlcipher
 -----------
