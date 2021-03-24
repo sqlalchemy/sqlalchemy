@@ -74,6 +74,8 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "sqlite"
 
+    __backend__ = True
+
     def test_boolean(self, connection, metadata):
         """Test that the boolean only treats 1 as True"""
 
@@ -288,6 +290,7 @@ class JSONTest(fixtures.TestBase):
 
     __requires__ = ("json_type",)
     __only_on__ = "sqlite"
+    __backend__ = True
 
     @testing.requires.reflects_json_type
     def test_reflection(self, connection, metadata):
@@ -445,6 +448,7 @@ class TimeTest(fixtures.TestBase, AssertsCompiledSQL):
 class DefaultsTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = "sqlite"
+    __backend__ = True
 
     def test_default_reflection(self, connection, metadata):
 
@@ -579,6 +583,7 @@ class DialectTest(
 ):
 
     __only_on__ = "sqlite"
+    __backend__ = True
 
     def test_3_7_16_warning(self):
         with expect_warnings(
@@ -771,10 +776,11 @@ class DialectTest(
 
 class AttachedDBTest(fixtures.TestBase):
     __only_on__ = "sqlite"
+    __backend__ = True
 
     def _fixture(self):
         meta = self.metadata
-        # self.conn = self.engine.connect()
+
         Table("created", meta, Column("foo", Integer), Column("bar", String))
         Table("local_only", meta, Column("q", Integer), Column("p", Integer))
 
@@ -1331,6 +1337,7 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
     """Tests inserts and autoincrement."""
 
     __only_on__ = "sqlite"
+    __backend__ = True
 
     # empty insert was added as of sqlite 3.3.8.
 
@@ -1499,6 +1506,7 @@ class MatchTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __only_on__ = "sqlite"
     __skip_if__ = (full_text_search_missing,)
+    __backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -1686,6 +1694,7 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class ReflectHeadlessFKsTest(fixtures.TestBase):
     __only_on__ = "sqlite"
+    __backend__ = True
 
     def setup_test(self):
         exec_sql(testing.db, "CREATE TABLE a (id INTEGER PRIMARY KEY)")
@@ -1709,6 +1718,7 @@ class ReflectHeadlessFKsTest(fixtures.TestBase):
 
 class KeywordInDatabaseNameTest(fixtures.TestBase):
     __only_on__ = "sqlite"
+    __backend__ = True
 
     @testing.fixture
     def db_fixture(self, connection):
@@ -1732,6 +1742,7 @@ class KeywordInDatabaseNameTest(fixtures.TestBase):
 
 class ConstraintReflectionTest(fixtures.TestBase):
     __only_on__ = "sqlite"
+    __backend__ = True
 
     @classmethod
     def setup_test_class(cls):
@@ -2364,6 +2375,7 @@ class SavepointTest(fixtures.TablesTest):
     """test that savepoints work when we use the correct event setup"""
 
     __only_on__ = "sqlite"
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2435,6 +2447,7 @@ class FutureSavepointTest(fixtures.FutureEngineMixin, SavepointTest):
 class TypeReflectionTest(fixtures.TestBase):
 
     __only_on__ = "sqlite"
+    __backend__ = True
 
     def _fixed_lookup_fixture(self):
         return [
@@ -2662,6 +2675,7 @@ class RegexpTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 class OnConflictTest(fixtures.TablesTest):
 
     __only_on__ = ("sqlite >= 3.24.0",)
+    __backend__ = True
 
     @classmethod
     def define_tables(cls, metadata):
