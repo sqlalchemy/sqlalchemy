@@ -86,7 +86,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert um.attrs.addresses.primaryjoin.compare(
             users.c.id == addresses.c.user_id
         )
-        assert um.attrs.addresses.order_by[0].compare(Address.id)
+        assert um.attrs.addresses.order_by[0].compare(Address.id.expression)
 
         configure_mappers()
 
