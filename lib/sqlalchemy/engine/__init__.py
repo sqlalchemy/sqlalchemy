@@ -32,6 +32,7 @@ from .cursor import BufferedRowResultProxy
 from .cursor import CursorResult
 from .cursor import FullyBufferedResultProxy
 from .cursor import LegacyCursorResult
+from .cursor import ResultProxy
 from .interfaces import Compiled
 from .interfaces import Connectable
 from .interfaces import CreateEnginePlugin
