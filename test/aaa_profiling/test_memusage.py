@@ -341,7 +341,7 @@ class MemUsageTest(EnsureZeroed):
 class MemUsageWBackendTest(EnsureZeroed):
 
     __tags__ = ("memory_intensive",)
-    __requires__ = "cpython", "memory_process_intensive"
+    __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion

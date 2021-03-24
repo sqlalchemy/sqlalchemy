@@ -783,7 +783,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     "__table__",
                     table_cls(
                         tablename,
-                        manager.registry.metadata,
+                        self._metadata_for_cls(manager),
                         *(tuple(declared_columns) + tuple(args)),
                         **table_kw
                     ),
@@ -799,6 +799,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                             "specifying __table__" % c.key
                         )
         self.local_table = table
+
+    def _metadata_for_cls(self, manager):
+        if hasattr(self.cls, "metadata"):
+            return self.cls.metadata
+        else:
+            return manager.registry.metadata
 
     def _setup_inheritance(self, mapper_kw):
         table = self.local_table
