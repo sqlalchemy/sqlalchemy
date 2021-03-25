@@ -1002,7 +1002,7 @@ class SchemaDropper(DDLBase):
         seq_coll = [
             s
             for s in metadata._sequences.values()
-            if s.column is None and self._can_drop_sequence(s)
+            if self._can_drop_sequence(s)
         ]
 
         event_collection = [t for (t, fks) in collection if t is not None]
@@ -1018,14 +1018,17 @@ class SchemaDropper(DDLBase):
         for table, fkcs in collection:
             if table is not None:
                 self.traverse_single(
-                    table, drop_ok=True, _is_metadata_operation=True
+                    table,
+                    drop_ok=True,
+                    _is_metadata_operation=True,
+                    _ignore_sequences=seq_coll,
                 )
             else:
                 for fkc in fkcs:
                     self.traverse_single(fkc)
 
         for seq in seq_coll:
-            self.traverse_single(seq, drop_ok=True)
+            self.traverse_single(seq, drop_ok=seq.column is None)
 
         metadata.dispatch.after_drop(
             metadata,
@@ -1073,7 +1076,13 @@ class SchemaDropper(DDLBase):
 
         self.connection.execute(DropIndex(index))
 
-    def visit_table(self, table, drop_ok=False, _is_metadata_operation=False):
+    def visit_table(
+        self,
+        table,
+        drop_ok=False,
+        _is_metadata_operation=False,
+        _ignore_sequences=[],
+    ):
         if not drop_ok and not self._can_drop_table(table):
             return
 
@@ -1093,7 +1102,10 @@ class SchemaDropper(DDLBase):
         # latest/core/defaults.html#associating-a-sequence-as-the-server-side-
         # default), so have to be dropped after the table is dropped.
         for column in table.columns:
-            if column.default is not None:
+            if (
+                column.default is not None
+                and column.default not in _ignore_sequences
+            ):
                 self.traverse_single(column.default)
 
         table.dispatch.after_drop(

@@ -459,8 +459,9 @@ class DefaultRequirements(SuiteRequirements):
     def sequences_as_server_defaults(self):
         """Target database must support SEQUENCE as a server side default."""
 
-        return only_on(
-            "postgresql", "doesn't support sequences as a server side default."
+        return self.sequences + only_on(
+            ["postgresql", "mariadb", "oracle >= 18"],
+            "doesn't support sequences as a server side default.",
         )
 
     @property

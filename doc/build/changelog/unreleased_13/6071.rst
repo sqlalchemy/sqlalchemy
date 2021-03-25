@@ -1,0 +1,5 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 6071
+
+    Allow dropping a schema with a sequence shared by more than one table.
