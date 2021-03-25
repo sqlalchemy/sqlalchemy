@@ -1811,30 +1811,34 @@ class IdentityReflectionTest(fixtures.TablesTest):
     __backend__ = True
     __requires__ = ("identity_columns",)
 
+    _names = ("t1", "T2", "MiXeDCaSe!")
+
     @classmethod
     def define_tables(cls, metadata):
-        Table(
-            "t1",
-            metadata,
-            Column(
-                "id1",
-                Integer,
-                Identity(
-                    always=True,
-                    start=2,
-                    increment=3,
-                    minvalue=-2,
-                    maxvalue=42,
-                    cycle=True,
-                    cache=4,
+        for name in cls._names:
+            Table(
+                name,
+                metadata,
+                Column(
+                    "id1",
+                    Integer,
+                    Identity(
+                        always=True,
+                        start=2,
+                        increment=3,
+                        minvalue=-2,
+                        maxvalue=42,
+                        cycle=True,
+                        cache=4,
+                    ),
                 ),
-            ),
-            Column("id2", Integer, Identity()),
-            Column("id3", BigInteger, Identity()),
-            Column("id4", SmallInteger, Identity()),
-        )
+                Column("id2", Integer, Identity()),
+                Column("id3", BigInteger, Identity()),
+                Column("id4", SmallInteger, Identity()),
+            )
 
-    def test_reflect_identity(self, connection):
+    @testing.combinations(*_names, argnames="name")
+    def test_reflect_identity(self, connection, name):
         insp = inspect(connection)
         default = dict(
             always=False,
@@ -1844,7 +1848,7 @@ class IdentityReflectionTest(fixtures.TablesTest):
             cycle=False,
             cache=1,
         )
-        cols = insp.get_columns("t1")
+        cols = insp.get_columns(name)
         for col in cols:
             if col["name"] == "id1":
                 is_true("identity" in col)

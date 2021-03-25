@@ -3582,12 +3582,11 @@ class PGDialect(default.DefaultDialect):
                     'cycle', s.seqcycle)
                 FROM pg_catalog.pg_sequence s
                 JOIN pg_catalog.pg_class c on s.seqrelid = c."oid"
-                JOIN pg_catalog.pg_namespace n on n.oid = c.relnamespace
                 WHERE c.relkind = 'S'
                 AND a.attidentity != ''
-                AND n.nspname || '.' || c.relname =
-                pg_catalog.pg_get_serial_sequence(
-                    a.attrelid::regclass::text, a.attname)
+                AND s.seqrelid = pg_catalog.pg_get_serial_sequence(
+                    a.attrelid::regclass::text, a.attname
+                )::regclass::oid
                 ) as identity_options\
                 """
         else:
