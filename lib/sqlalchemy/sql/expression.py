@@ -66,6 +66,7 @@ __all__ = [
     "lambda_stmt",
     "literal",
     "literal_column",
+    "match",
     "not_",
     "null",
     "nulls_first",
@@ -122,6 +123,7 @@ from .elements import Grouping
 from .elements import Label
 from .elements import literal
 from .elements import literal_column
+from .elements import match
 from .elements import not_
 from .elements import Null
 from .elements import outparam
