@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6109
-
-    Fixed bug in Mypy plugin where the Python type detection
-    for the :class:`_types.Boolean` column type would produce
-    an exception; additionally implemented support for :class:`_types.Enum`,
-    including detection of a string-based enum vs. use of Python ``enum.Enum``.

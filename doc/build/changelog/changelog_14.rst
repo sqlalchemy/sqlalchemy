@@ -15,7 +15,123 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.3
-    :include_notes_from: unreleased_14
+    :released: March 25, 2021
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6069
+
+        Fixed a bug where python 2.7.5 (default on CentOS 7) wasn't able to import
+        sqlalchemy, because on this version of Python ``exec "statement"`` and
+        ``exec("statement")`` do not behave the same way.  The compatibility
+        ``exec_()`` function was used instead.
+
+    .. change::
+        :tags: sqlite, feature, asyncio
+        :tickets: 5920
+
+        Added support for the aiosqlite database driver for use with the
+        SQLAlchemy asyncio extension.
+
+        .. seealso::
+
+          :ref:`aiosqlite`
+
+    .. change::
+        :tags: bug, regression, orm, declarative
+        :tickets: 6128
+
+        Fixed regression where the ``.metadata`` attribute on a per class level
+        would not be honored, breaking the use case of per-class-hierarchy
+        :class:`.schema.MetaData` for abstract declarative classes and mixins.
+
+
+        .. seealso::
+
+          :ref:`declarative_metadata`
+
+    .. change::
+        :tags: bug, mypy
+
+        Added support for the Mypy extension to correctly interpret a declarative
+        base class that's generated using the :func:`_orm.as_declarative` function
+        as well as the :meth:`_orm.registry.as_declarative_base` method.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6109
+
+        Fixed bug in Mypy plugin where the Python type detection
+        for the :class:`_types.Boolean` column type would produce
+        an exception; additionally implemented support for :class:`_types.Enum`,
+        including detection of a string-based enum vs. use of Python ``enum.Enum``.
+
+    .. change::
+        :tags: bug, reflection, postgresql
+        :tickets: 6129
+
+        Fixed reflection of identity columns in tables with mixed case names
+        in PostgreSQL.
+
+    .. change::
+        :tags: bug, sqlite, regression
+        :tickets: 5848
+
+        Repaired the ``pysqlcipher`` dialect to connect correctly which had
+        regressed in 1.4, and added test + CI support to maintain the driver
+        in working condition.  The dialect now imports the ``sqlcipher3`` module
+        for Python 3 by default before falling back to ``pysqlcipher3`` which
+        is documented as now being unmaintained.
+
+        .. seealso::
+
+          :ref:`pysqlcipher`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6060
+
+        Fixed bug where ORM queries using a correlated subquery in conjunction with
+        :func:`_orm.column_property` would fail to correlate correctly to an
+        enclosing subquery or to a CTE when :meth:`_sql.Select.correlate_except`
+        were used in the property to control correlation, in cases where the
+        subquery contained the same selectables as ones within the correlated
+        subquery that were intended to not be correlated.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6131
+
+        Fixed bug where combinations of the new "relationship with criteria"
+        feature could fail in conjunction with features that make use of the new
+        "lambda SQL" feature, including loader strategies such as selectinload and
+        lazyload, for more complicated scenarios such as polymorphic loading.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6124
+
+        Repaired support so that the :meth:`_sql.ClauseElement.params` method can
+        work correctly with a :class:`_sql.Select` object that includes joins
+        across ORM relationship structures, which is a new feature in 1.4.
+
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6119
+
+        Restored the :class:`_engine.ResultProxy` name back to the
+        ``sqlalchemy.engine`` namespace. This name refers to the
+        :class:`_engine.LegacyCursorResult` object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6115
+
+        Fixed issue where a "removed in 2.0" warning were generated internally by
+        the relationship loader mechanics.
+
 
 .. changelog::
     :version: 1.4.2

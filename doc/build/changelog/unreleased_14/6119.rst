@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine, regression
-    :tickets: 6119
-
-    Restored the :class:`_engine.ResultProxy` name back to the
-    ``sqlalchemy.engine`` namespace. This name refers to the
-    :class:`_engine.LegacyCursorResult` object.

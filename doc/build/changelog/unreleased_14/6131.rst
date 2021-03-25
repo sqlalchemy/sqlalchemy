@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 6131
-
-    Fixed bug where combinations of the new "relationship with criteria"
-    feature could fail in conjunction with features that make use of the new
-    "lambda SQL" feature, including loader strategies such as selectinload and
-    lazyload, for more complicated scenarios such as polymorphic loading.

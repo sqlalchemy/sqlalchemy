@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, reflection, postgresql
-    :tickets: 6129
-
-    Fixed reflection of identity columns in tables with mixed case names
-    in PostgreSQL.
