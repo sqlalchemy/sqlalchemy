@@ -49,6 +49,9 @@ Aiosqlite
 
 .. automodule:: sqlalchemy.dialects.sqlite.aiosqlite
 
+
+.. _pysqlcipher:
+
 Pysqlcipher
 -----------
 

@@ -18,9 +18,9 @@ to provide specific inclusion/exclusions.
 import platform
 import sys
 
-from sqlalchemy.pool.impl import QueuePool
 from . import exclusions
 from .. import util
+from ..pool import QueuePool
 
 
 class Requirements(object):

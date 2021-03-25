@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sqlite, regression
+    :tickets: 5848
+
+    Repaired the ``pysqlcipher`` dialect to connect correctly which had
+    regressed in 1.4, and added test + CI support to maintain the driver
+    in working condition.  The dialect now imports the ``sqlcipher3`` module
+    for Python 3 by default before falling back to ``pysqlcipher3`` which
+    is documented as now being unmaintained.
+
+    .. seealso::
+
+      :ref:`pysqlcipher`
+

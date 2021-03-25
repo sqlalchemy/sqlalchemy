@@ -746,6 +746,67 @@ class Dialect(object):
 
         """
 
+    def on_connect_url(self, url):
+        """return a callable which sets up a newly created DBAPI connection.
+
+        This method is a new hook that supersedes the
+        :meth:`_engine.Dialect.on_connect` method when implemented by a
+        dialect.   When not implemented by a dialect, it invokes the
+        :meth:`_engine.Dialect.on_connect` method directly to maintain
+        compatibility with existing dialects.   There is no deprecation
+        for :meth:`_engine.Dialect.on_connect` expected.
+
+        The callable should accept a single argument "conn" which is the
+        DBAPI connection itself.  The inner callable has no
+        return value.
+
+        E.g.::
+
+            class MyDialect(default.DefaultDialect):
+                # ...
+
+                def on_connect_url(self, url):
+                    def do_on_connect(connection):
+                        connection.execute("SET SPECIAL FLAGS etc")
+
+                    return do_on_connect
+
+        This is used to set dialect-wide per-connection options such as
+        isolation modes, Unicode modes, etc.
+
+        This method differs from :meth:`_engine.Dialect.on_connect` in that
+        it is passed the :class:`_engine.URL` object that's relevant to the
+        connect args.  Normally the only way to get this is from the
+        :meth:`_engine.Dialect.on_connect` hook is to look on the
+        :class:`_engine.Engine` itself, however this URL object may have been
+        replaced by plugins.
+
+        .. note::
+
+            The default implementation of
+            :meth:`_engine.Dialect.on_connect_url` is to invoke the
+            :meth:`_engine.Dialect.on_connect` method. Therefore if a dialect
+            implements this method, the :meth:`_engine.Dialect.on_connect`
+            method **will not be called** unless the overriding dialect calls
+            it directly from here.
+
+        .. versionadded:: 1.4.3 added :meth:`_engine.Dialect.on_connect_url`
+           which normally calls into :meth:`_engine.Dialect.on_connect`.
+
+        :param url: a :class:`_engine.URL` object representing the
+         :class:`_engine.URL` that was passed to the
+         :meth:`_engine.Dialect.create_connect_args` method.
+
+        :return: a callable that accepts a single DBAPI connection as an
+         argument, or None.
+
+        .. seealso::
+
+            :meth:`_engine.Dialect.on_connect`
+
+        """
+        return self.on_connect()
+
     def on_connect(self):
         """return a callable which sets up a newly created DBAPI connection.
 
@@ -776,6 +837,12 @@ class Dialect(object):
            for the first connection of a dialect.  The on_connect hook is still
            called before the :meth:`_engine.Dialect.initialize` method however.
 
+        .. versionchanged:: 1.4.3 the on_connect hook is invoked from a new
+           method on_connect_url that passes the URL that was used to create
+           the connect args.   Dialects can implement on_connect_url instead
+           of on_connect if they need the URL object that was used for the
+           connection in order to get additional context.
+
         If None is returned, no event listener is generated.
 
         :return: a callable that accepts a single DBAPI connection as an
@@ -785,6 +852,10 @@ class Dialect(object):
 
             :meth:`.Dialect.connect` - allows the DBAPI ``connect()`` sequence
             itself to be controlled.
+
+            :meth:`.Dialect.on_connect_url` - supersedes
+            :meth:`.Dialect.on_connect` to also receive the
+            :class:`_engine.URL` object in context.
 
         """
         return None
