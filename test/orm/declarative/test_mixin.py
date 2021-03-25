@@ -243,6 +243,104 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         eq_(Manager.__table__.name, "manager")
 
+    def test_same_base_multiple_metadata(self):
+        m1 = MetaData()
+        m2 = MetaData()
+
+        class B1(Base):
+            __abstract__ = True
+            metadata = m1
+
+        class B2(Base):
+            __abstract__ = True
+            metadata = m2
+
+            def fullname(self):
+                return self.name + " " + self.surname
+
+        class User(B1):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            surname = Column(String)
+
+        class AD(B1):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+
+        class OtherUser(B2):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            username = Column(String)
+
+        class BUser(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            login = Column(String)
+
+        eq_(set(m1.tables), {"user", "address"})
+        eq_(set(m2.tables), {"user"})
+        eq_(set(Base.registry.metadata.tables), {"user"})
+
+        eq_(Base.registry.metadata.tables["user"].c.keys(), ["id", "login"])
+        eq_(m1.tables["user"].c.keys(), ["id", "name", "surname"])
+        eq_(m2.tables["user"].c.keys(), ["id", "username"])
+
+    def test_same_registry_multiple_metadata(self):
+        m1 = MetaData()
+        m2 = MetaData()
+
+        reg = registry()
+
+        class B1(object):
+            metadata = m1
+
+        class B2(object):
+            metadata = m2
+
+            def fullname(self):
+                return self.name + " " + self.surname
+
+        @reg.mapped
+        class User(B1):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            surname = Column(String)
+
+        @reg.mapped
+        class AD(B1):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+
+        @reg.mapped
+        class OtherUser(B2):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            username = Column(String)
+
+        @reg.mapped
+        class BUser(object):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            login = Column(String)
+
+        eq_(set(m1.tables), {"user", "address"})
+        eq_(set(m2.tables), {"user"})
+        eq_(set(reg.metadata.tables), {"user"})
+
+        eq_(reg.metadata.tables["user"].c.keys(), ["id", "login"])
+        eq_(m1.tables["user"].c.keys(), ["id", "name", "surname"])
+        eq_(m2.tables["user"].c.keys(), ["id", "username"])
+
     def test_not_allowed(self):
         class MyMixin:
             foo = Column(Integer, ForeignKey("bar.id"))

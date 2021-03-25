@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, regression, orm, declarative
+    :tickets: 6128
+
+    Fixed regression where the ``.metadata`` attribute on a per class level
+    would not be honored, breaking the use case of per-class-hierarchy
+    :class:`.schema.MetaData` for abstract declarative classes and mixins.
+
+
+    .. seealso::
+
+      :ref:`declarative_metadata`

@@ -1458,6 +1458,13 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def no_asyncio(self):
+        def go(config):
+            return config.db.dialect.is_async
+
+        return skip_if(go)
+
+    @property
     def no_mssql_freetds(self):
         return self.mssql_freetds.not_()
 
