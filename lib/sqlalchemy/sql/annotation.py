@@ -199,8 +199,8 @@ class Annotated(object):
     def _constructor(self):
         return self.__element._constructor
 
-    def _clone(self):
-        clone = self.__element._clone()
+    def _clone(self, **kw):
+        clone = self.__element._clone(**kw)
         if clone is self.__element:
             # detect immutable, don't change anything
             return self

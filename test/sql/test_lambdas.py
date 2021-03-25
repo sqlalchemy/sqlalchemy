@@ -1453,6 +1453,17 @@ class LambdaElementTest(
         is_(expr1._generate_cache_key().bindparams[0], expr1._resolved.right)
         is_(expr2._generate_cache_key().bindparams[0], expr2._resolved.right)
 
+    def test_cache_key_bindparam_matches_annotations(self):
+        t1 = table("t1", column("q"), column("p"))
+
+        def go():
+            expr = sql_util._deep_annotate((t1.c.q == 5), {"foo": "bar"})
+            stmt = coercions.expect(roles.WhereHavingRole, lambda: expr)
+            return stmt
+
+        self.assert_compile(go(), "t1.q = :q_1", checkparams={"q_1": 5})
+        self.assert_compile(go(), "t1.q = :q_1", checkparams={"q_1": 5})
+
     def test_cache_key_instance_variable_issue_incorrect(self):
         t1 = table("t1", column("q"), column("p"))
 

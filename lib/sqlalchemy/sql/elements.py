@@ -1493,7 +1493,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.__dict__.update(state)
 
     def __repr__(self):
-        return "BindParameter(%r, %r, type_=%r)" % (
+        return "%s(%r, %r, type_=%r)" % (
+            self.__class__.__name__,
             self.key,
             self.value,
             self.type,
