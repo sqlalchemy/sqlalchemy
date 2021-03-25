@@ -513,7 +513,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         q = (
             s.query(User, func.count(User.id))
             .order_by(User.id)
-            .group_by(User.id)
+            .group_by(User.id, User.name)
             .limit(1)
         )
 
