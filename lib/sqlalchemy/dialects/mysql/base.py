@@ -1588,7 +1588,14 @@ class MySQLCompiler(compiler.SQLCompiler):
         )
 
     def visit_match_op_binary(self, binary, operator, **kw):
-        return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (
+        boolean_mode = kw.pop('boolean_mode', True)
+
+        if boolean_mode:
+            template = "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)"
+        else:
+            template = "MATCH (%s) AGAINST (%s)"
+
+        return template % (
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
