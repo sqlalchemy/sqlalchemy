@@ -1001,6 +1001,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             return result
 
         for value in "ed@wood.com", "ed@lala.com":
+            s.close()
             with self.sql_execution_asserter() as asserter:
 
                 result = go(value)
@@ -1043,6 +1044,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             return result
 
         for value in "ed@wood.com", "ed@lala.com":
+            s.close()
             with self.sql_execution_asserter() as asserter:
                 result = go(value)
 
@@ -1079,7 +1081,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         s = Session(testing.db, future=True)
 
         def go(value):
-
+            s.close()
             stmt = (
                 select(User)
                 .options(
@@ -1152,6 +1154,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
         s = Session(testing.db, future=True)
 
         def go(value):
+            s.close()
             stmt = (
                 select(User)
                 .options(
