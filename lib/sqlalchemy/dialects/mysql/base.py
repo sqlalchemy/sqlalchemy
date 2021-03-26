@@ -934,6 +934,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import text
 from sqlalchemy.sql import visitors
 from . import reflection as _reflection
+from .expression_enum import MatchExpressionModifier
 from .enumerated import ENUM
 from .enumerated import SET
 from .json import JSON
@@ -1588,17 +1589,25 @@ class MySQLCompiler(compiler.SQLCompiler):
         )
 
     def visit_match_op_binary(self, binary, operator, **kw):
-        boolean_mode = kw.pop('boolean_mode', True)
+        modifier = kw.pop('modifier', MatchExpressionModifier.in_boolean_mode)
 
-        if boolean_mode:
-            template = "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)"
-        else:
-            template = "MATCH (%s) AGAINST (%s)"
+        match_clause = self.process(binary.left, **kw)
+        against_clause = self.process(binary.right, **kw)
 
-        return template % (
-            self.process(binary.left, **kw),
-            self.process(binary.right, **kw),
-        )
+        if modifier:
+            if not isinstance(modifier, MatchExpressionModifier):
+                raise exc.CompileError(
+                    "The `modifier` keyword argument must be a member of "
+                    "`sqlalchemy.mysql.expression_enum."
+                    "MatchExpressionModifier` enum or `None`"
+                )
+
+            against_clause = ' '.join((
+                against_clause,
+                modifier.value,
+            ))
+
+        return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
 
     def get_from_hint_text(self, table, text):
         return text
