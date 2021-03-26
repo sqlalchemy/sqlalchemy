@@ -23,6 +23,7 @@ from .attributes import QueryableAttribute
 from .context import QueryContext
 from .decl_api import as_declarative
 from .decl_api import declarative_base
+from .decl_api import declarative_mixin
 from .decl_api import DeclarativeMeta
 from .decl_api import declared_attr
 from .decl_api import has_inherited_table

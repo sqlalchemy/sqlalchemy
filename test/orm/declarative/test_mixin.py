@@ -13,6 +13,7 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_mixin
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
@@ -89,6 +90,39 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         @mapper_registry.mapped
         class MyModel(MyMixin):
+
+            __tablename__ = "test"
+            name = Column(String(100), nullable=False, index=True)
+
+        Base.metadata.create_all(testing.db)
+        session = fixture_session()
+        session.add(MyModel(name="testing"))
+        session.flush()
+        session.expunge_all()
+        obj = session.query(MyModel).one()
+        eq_(obj.id, 1)
+        eq_(obj.name, "testing")
+        eq_(obj.foo(), "bar1")
+
+    def test_declarative_mixin_decorator(self):
+
+        # note we are also making sure an "old style class" in Python 2,
+        # as we are now illustrating in all the docs for mixins, doesn't cause
+        # a problem....
+        @declarative_mixin
+        class MyMixin:
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+            def foo(self):
+                return "bar" + str(self.id)
+
+        # ...as long as the mapped class itself is "new style", which will
+        # normally be the case for users using declarative_base
+        @mapper_registry.mapped
+        class MyModel(MyMixin, object):
 
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)

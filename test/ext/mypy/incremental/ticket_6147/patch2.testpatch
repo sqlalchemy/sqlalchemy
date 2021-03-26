@@ -1,0 +1,38 @@
+--- a/base.py	2021-04-03 16:36:30.201594994 -0400
++++ b/base.py	2021-04-03 16:38:26.404475025 -0400
+@@ -1,3 +1,15 @@
++from sqlalchemy import Column
++from sqlalchemy import Integer
++from sqlalchemy import String
+ from sqlalchemy.orm import declarative_base
++from sqlalchemy.orm import declarative_mixin
++from sqlalchemy.orm import Mapped
+
+ Base = declarative_base()
++
++
++@declarative_mixin
++class Mixin:
++    mixed = Column(String)
++
++    b_int: Mapped[int] = Column(Integer)
+--- a/one.py	2021-04-03 16:37:17.906956282 -0400
++++ b/one.py	2021-04-03 16:38:33.469528528 -0400
+@@ -1,13 +1,15 @@
+ from sqlalchemy import Column
+ from sqlalchemy import Integer
++
+ from .base import Base
++from .base import Mixin
+
+
+-class One(Base):
++class One(Mixin, Base):
+     __tablename__ = "one"
+     id = Column(Integer, primary_key=True)
+
+
+-o1 = One(id=5)
++o1 = One(id=5, mixed="mixed", b_int=5)
+
+ One.id.in_([1, 2])

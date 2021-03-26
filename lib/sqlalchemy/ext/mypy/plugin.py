@@ -55,6 +55,7 @@ class CustomPlugin(Plugin):
         # subclasses.   but then you can just check it here from the "base"
         # and get the same effect.
         sym = self.lookup_fully_qualified(fullname)
+
         if (
             sym
             and isinstance(sym.node, TypeInfo)
@@ -70,17 +71,18 @@ class CustomPlugin(Plugin):
     ) -> Optional[Callable[[ClassDefContext], None]]:
 
         sym = self.lookup_fully_qualified(fullname)
-        if (
-            sym is not None
-            and names._type_id_for_named_node(sym.node)
-            is names.MAPPED_DECORATOR
-        ):
-            return _cls_decorator_hook
-        elif sym is not None and names._type_id_for_named_node(sym.node) in (
-            names.AS_DECLARATIVE,
-            names.AS_DECLARATIVE_BASE,
-        ):
-            return _base_cls_decorator_hook
+
+        if sym is not None:
+            type_id = names._type_id_for_named_node(sym.node)
+            if type_id is names.MAPPED_DECORATOR:
+                return _cls_decorator_hook
+            elif type_id in (
+                names.AS_DECLARATIVE,
+                names.AS_DECLARATIVE_BASE,
+            ):
+                return _base_cls_decorator_hook
+            elif type_id is names.DECLARATIVE_MIXIN:
+                return _declarative_mixin_hook
 
         return None
 
@@ -190,6 +192,13 @@ def _cls_metadata_hook(ctx: ClassDefContext) -> None:
 def _base_cls_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+
+
+def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
+    decl_class._scan_declarative_assignments_and_apply_types(
+        ctx.cls, ctx.api, is_mixin_scan=True
+    )
 
 
 def _cls_decorator_hook(ctx: ClassDefContext) -> None:

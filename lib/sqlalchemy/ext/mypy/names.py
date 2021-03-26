@@ -36,6 +36,7 @@ DECLARED_ATTR = util.symbol("DECLARED_ATTR")
 MAPPER_PROPERTY = util.symbol("MAPPER_PROPERTY")
 AS_DECLARATIVE = util.symbol("AS_DECLARATIVE")
 AS_DECLARATIVE_BASE = util.symbol("AS_DECLARATIVE_BASE")
+DECLARATIVE_MIXIN = util.symbol("DECLARATIVE_MIXIN")
 
 _lookup = {
     "Column": (
@@ -132,6 +133,13 @@ _lookup = {
         {
             "sqlalchemy.orm.decl_api.declared_attr",
             "sqlalchemy.orm.declared_attr",
+        },
+    ),
+    "declarative_mixin": (
+        DECLARATIVE_MIXIN,
+        {
+            "sqlalchemy.orm.decl_api.declarative_mixin",
+            "sqlalchemy.orm.declarative_mixin",
         },
     ),
 }

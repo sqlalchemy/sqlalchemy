@@ -321,6 +321,48 @@ class _stateful_declared_attr(declared_attr):
         return declared_attr(fn, **self.kw)
 
 
+def declarative_mixin(cls):
+    """Mark a class as providing the feature of "declarative mixin".
+
+    E.g.::
+
+        from sqlalchemy.orm import declared_attr
+        from sqlalchemy.orm import declarative_mixin
+
+        @declarative_mixin
+        class MyMixin:
+
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+            __table_args__ = {'mysql_engine': 'InnoDB'}
+            __mapper_args__= {'always_refresh': True}
+
+            id =  Column(Integer, primary_key=True)
+
+        class MyModel(MyMixin, Base):
+            name = Column(String(1000))
+
+    The :func:`_orm.declarative_mixin` decorator currently does not modify
+    the given class in any way; it's current purpose is strictly to assist
+    the :ref:`Mypy plugin <mypy_toplevel>` in being able to identify
+    SQLAlchemy declarative mixin classes when no other context is present.
+
+    .. versionadded:: 1.4.6
+
+    .. seealso::
+
+        :ref:`orm_mixins_toplevel`
+
+        :ref:`mypy_declarative_mixins` - in the
+        :ref:`Mypy plugin documentation <mypy_toplevel>`
+
+    """  # noqa: E501
+
+    return cls
+
+
 def declarative_base(
     bind=None,
     metadata=None,

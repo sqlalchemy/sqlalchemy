@@ -9,6 +9,8 @@ Class Mapping API
 
 .. autofunction:: declarative_base
 
+.. autofunction:: declarative_mixin
+
 .. autofunction:: as_declarative
 
 .. autoclass:: declared_attr
