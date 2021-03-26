@@ -138,11 +138,19 @@ class ScopedSessionTest(fixtures.MappedTest):
         sess.add("add")
         sess.delete("delete")
 
+        sess.get("Cls", 5)
+
         eq_(sess.bind, "the bind")
 
         eq_(
             mock_session.mock_calls,
-            [mock.call.add("add", True), mock.call.delete("delete")],
+            [
+                mock.call.add("add", True),
+                mock.call.delete("delete"),
+                mock.call.get(
+                    "Cls", 5, mock.ANY, mock.ANY, mock.ANY, mock.ANY
+                ),
+            ],
         )
 
         with mock.patch(
