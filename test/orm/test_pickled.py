@@ -250,6 +250,49 @@ class PickleTest(fixtures.MappedTest):
         sess.add(u2)
         assert u2.addresses
 
+    def test_lazyload_extra_criteria_not_supported(self):
+        users, addresses = (self.tables.users, self.tables.addresses)
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address)},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+        u1 = User(
+            name="ed",
+            addresses=[
+                Address(email_address="ed@bar.com"),
+                Address(email_address="ed@wood.com"),
+            ],
+        )
+
+        sess.add(u1)
+        sess.commit()
+        sess.close()
+
+        u1 = (
+            sess.query(User)
+            .options(
+                lazyload(
+                    User.addresses.and_(Address.email_address == "ed@bar.com")
+                )
+            )
+            .first()
+        )
+        with testing.expect_warnings(
+            r"Can't reliably serialize a lazyload\(\) option"
+        ):
+            u2 = pickle.loads(pickle.dumps(u1))
+
+        eq_(len(u1.addresses), 1)
+
+        sess = fixture_session()
+        sess.add(u2)
+        eq_(len(u2.addresses), 2)
+
     def test_invalidated_flag_pickle(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 

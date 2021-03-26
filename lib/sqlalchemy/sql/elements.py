@@ -235,7 +235,7 @@ class ClauseElement(
         self._propagate_attrs = util.immutabledict(values)
         return self
 
-    def _clone(self):
+    def _clone(self, **kw):
         """Create a shallow copy of this ClauseElement.
 
         This method may be used by a generative API.  Its also used as
@@ -360,7 +360,9 @@ class ClauseElement(
             if unique:
                 bind._convert_to_unique()
 
-        return cloned_traverse(self, {}, {"bindparam": visit_bindparam})
+        return cloned_traverse(
+            self, {"maintain_key": True}, {"bindparam": visit_bindparam}
+        )
 
     def compare(self, other, **kw):
         r"""Compare this :class:`_expression.ClauseElement` to
@@ -1432,8 +1434,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
         c.type = type_
         return c
 
-    def _clone(self, maintain_key=False):
-        c = ClauseElement._clone(self)
+    def _clone(self, maintain_key=False, **kw):
+        c = ClauseElement._clone(self, **kw)
         if not maintain_key and self.unique:
             c.key = _anonymous_label.safe_construct(
                 id(c), c._orig_key or "param"

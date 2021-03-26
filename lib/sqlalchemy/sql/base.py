@@ -46,7 +46,7 @@ class Immutable(object):
     def params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
-    def _clone(self):
+    def _clone(self, **kw):
         return self
 
     def _copy_internals(self, **kw):
@@ -128,7 +128,7 @@ def _exclusive_against(*names, **kw):
 
 
 def _clone(element, **kw):
-    return element._clone()
+    return element._clone(**kw)
 
 
 def _expand_cloned(elements):
@@ -747,7 +747,7 @@ class ExecutableOption(HasCopyInternals, HasCacheKey):
 
     __visit_name__ = "executable_option"
 
-    def _clone(self):
+    def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = dict(self.__dict__)

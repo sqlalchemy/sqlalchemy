@@ -25,11 +25,17 @@ from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import inspect
 from .. import util
+from ..sql import and_
 from ..sql import coercions
 from ..sql import roles
 from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
+
+if util.TYPE_CHECKING:
+    from .context import QueryContext
+    from typing import Sequence
+    from ..sql.elements import ColumnElement
 
 
 class Load(Generative, LoaderOption):
@@ -107,6 +113,31 @@ class Load(Generative, LoaderOption):
         load._of_type = None
         load._extra_criteria = ()
         return load
+
+    def _generate_extra_criteria(self, context):
+        # type: (QueryContext) -> Sequence[ColumnElement]
+        """Apply the current bound parameters in a QueryContext to the
+        "extra_criteria" stored with this Load object.
+
+        Load objects are typically pulled from the cached version of
+        the statement from a QueryContext.  The statement currently being
+        executed will have new values (and keys) for bound parameters in the
+        extra criteria which need to be applied by loader strategies when
+        they handle this criteria for a result set.
+
+        """
+
+        assert (
+            self._extra_criteria
+        ), "this should only be called if _extra_criteria is present"
+
+        orig_query = context.compile_state.select_statement
+        current_query = context.query
+
+        k1 = orig_query._generate_cache_key()
+        k2 = current_query._generate_cache_key()
+
+        return k2._apply_params_to_element(k1, and_(*self._extra_criteria))
 
     @property
     def _context_cache_key(self):
@@ -488,6 +519,10 @@ class Load(Generative, LoaderOption):
 
     def __getstate__(self):
         d = self.__dict__.copy()
+
+        # can't pickle this right now; warning is raised by strategies
+        d["_extra_criteria"] = ()
+
         if d["context"] is not None:
             d["context"] = PathRegistry.serialize_context_dict(
                 d["context"], ("loader",)
@@ -623,6 +658,10 @@ class _UnboundLoad(Load):
 
     def __getstate__(self):
         d = self.__dict__.copy()
+
+        # can't pickle this right now; warning is raised by strategies
+        d["_extra_criteria"] = ()
+
         d["path"] = self._serialize_path(self.path, filter_aliased_class=True)
         return d
 

@@ -378,6 +378,14 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         _anon_map = prefix_anon_map()
         return {b.key % _anon_map: b.effective_value for b in self.bindparams}
 
+    def _apply_params_to_element(self, original_cache_key, target_element):
+        translate = {
+            k.key: v.value
+            for k, v in zip(original_cache_key.bindparams, self.bindparams)
+        }
+
+        return target_element.params(translate)
+
 
 def _clone(element, **kw):
     return element._clone()

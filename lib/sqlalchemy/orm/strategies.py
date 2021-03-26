@@ -781,7 +781,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             "'%s' is not available due to lazy='%s'" % (self, lazy)
         )
 
-    def _load_for_state(self, state, passive, loadopt=None):
+    def _load_for_state(self, state, passive, loadopt=None, extra_criteria=()):
 
         if not state.key and (
             (
@@ -872,7 +872,12 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 return attributes.PASSIVE_NO_RESULT
 
         return self._emit_lazyload(
-            session, state, primary_key_identity, passive, loadopt
+            session,
+            state,
+            primary_key_identity,
+            passive,
+            loadopt,
+            extra_criteria,
         )
 
     def _get_ident_for_use_get(self, session, state, passive):
@@ -899,7 +904,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
     @util.preload_module("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
-        self, session, state, primary_key_identity, passive, loadopt
+        self,
+        session,
+        state,
+        primary_key_identity,
+        passive,
+        loadopt,
+        extra_criteria,
     ):
         strategy_options = util.preloaded.orm_strategy_options
 
@@ -939,7 +950,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         use_get = self.use_get
 
         if state.load_options or (loadopt and loadopt._extra_criteria):
-
             effective_path = state.load_path[self.parent_property]
 
             opts = list(state.load_options)
@@ -947,9 +957,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             if loadopt and loadopt._extra_criteria:
                 use_get = False
                 opts += (
-                    orm_util.LoaderCriteriaOption(
-                        self.entity, sql.and_(*loadopt._extra_criteria)
-                    ),
+                    orm_util.LoaderCriteriaOption(self.entity, extra_criteria),
                 )
 
             stmt += lambda stmt: stmt.options(*opts)
@@ -1072,7 +1080,18 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             # class-level lazyloader installed.
             set_lazy_callable = (
                 InstanceState._instance_level_callable_processor
-            )(mapper.class_manager, LoadLazyAttribute(key, self, loadopt), key)
+            )(
+                mapper.class_manager,
+                LoadLazyAttribute(
+                    key,
+                    self,
+                    loadopt,
+                    loadopt._generate_extra_criteria(context)
+                    if loadopt._extra_criteria
+                    else None,
+                ),
+                key,
+            )
 
             populators["new"].append((self.key, set_lazy_callable))
         elif context.populate_existing or mapper.always_refresh:
@@ -1092,12 +1111,42 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
 
 
 class LoadLazyAttribute(object):
-    """serializable loader object used by LazyLoader"""
+    """semi-serializable loader object used by LazyLoader
 
-    def __init__(self, key, initiating_strategy, loadopt):
+    Historically, this object would be carried along with instances that
+    needed to run lazyloaders, so it had to be serializable to support
+    cached instances.
+
+    this is no longer a general requirement, and the case where this object
+    is used is exactly the case where we can't really serialize easily,
+    which is when extra criteria in the loader option is present.
+
+    We can't reliably serialize that as it refers to mapped entities and
+    AliasedClass objects that are local to the current process, which would
+    need to be matched up on deserialize e.g. the sqlalchemy.ext.serializer
+    approach.
+
+    """
+
+    def __init__(self, key, initiating_strategy, loadopt, extra_criteria):
         self.key = key
         self.strategy_key = initiating_strategy.strategy_key
         self.loadopt = loadopt
+        self.extra_criteria = extra_criteria
+
+    def __getstate__(self):
+        if self.extra_criteria is not None:
+            util.warn(
+                "Can't reliably serialize a lazyload() option that "
+                "contains additional criteria; please use eager loading "
+                "for this case"
+            )
+        return {
+            "key": self.key,
+            "strategy_key": self.strategy_key,
+            "loadopt": self.loadopt,
+            "extra_criteria": (),
+        }
 
     def __call__(self, state, passive=attributes.PASSIVE_OFF):
         key = self.key
@@ -1105,7 +1154,12 @@ class LoadLazyAttribute(object):
         prop = instance_mapper._props[key]
         strategy = prop._strategies[self.strategy_key]
 
-        return strategy._load_for_state(state, passive, loadopt=self.loadopt)
+        return strategy._load_for_state(
+            state,
+            passive,
+            loadopt=self.loadopt,
+            extra_criteria=self.extra_criteria,
+        )
 
 
 class PostLoader(AbstractRelationshipLoader):
@@ -1416,6 +1470,7 @@ class SubqueryLoader(PostLoader):
 
     def _setup_options(
         self,
+        context,
         q,
         subq_path,
         rewritten_path,
@@ -1423,13 +1478,14 @@ class SubqueryLoader(PostLoader):
         effective_entity,
         loadopt,
     ):
-
         opts = orig_query._with_options
 
         if loadopt and loadopt._extra_criteria:
+
             opts += (
                 orm_util.LoaderCriteriaOption(
-                    self.entity, sql.and_(*loadopt._extra_criteria)
+                    self.entity,
+                    loadopt._generate_extra_criteria(context),
                 ),
             )
 
@@ -1641,7 +1697,13 @@ class SubqueryLoader(PostLoader):
         )
 
         q = self._setup_options(
-            q, subq_path, rewritten_path, orig_query, effective_entity, loadopt
+            context,
+            q,
+            subq_path,
+            rewritten_path,
+            orig_query,
+            effective_entity,
+            loadopt,
         )
         q = self._setup_outermost_orderby(q)
 
@@ -2832,10 +2894,12 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         effective_path = path[self.parent_property]
 
         options = orig_query._with_options
+
         if loadopt and loadopt._extra_criteria:
             options += (
                 orm_util.LoaderCriteriaOption(
-                    effective_entity, sql.and_(*loadopt._extra_criteria)
+                    effective_entity,
+                    loadopt._generate_extra_criteria(context),
                 ),
             )
 

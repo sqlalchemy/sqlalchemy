@@ -262,7 +262,7 @@ def _deep_annotate(element, annotations, exclude=None):
             and hasattr(elem, "proxy_set")
             and elem.proxy_set.intersection(exclude)
         ):
-            newelem = elem._clone()
+            newelem = elem._clone(**kw)
         elif annotations != elem._annotations:
             newelem = elem._annotate(annotations)
         else:
