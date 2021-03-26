@@ -1,24 +1,27 @@
 from ...sql.elements import ClauseElementBatch
 
 
-def match(*clauselist, against, **kwargs):
+def match(*clauselist, against, modifier=None, **kwargs):
     """Produce a ``MATCH (X, Y) AGAINST ('TEXT')`` clause.
 
     E.g.::
 
-        from sqlalchemy import match
+        from sqlalchemy.mysql.dialects.mysql.expression import match
+
+        from sqlalchemy.mysql.dialects.mysql.expression_enum \
+            import MatchExpressionModifier
 
         match_columns_where = match(
             users_table.c.firstname,
             users_table.c.lastname,
             against="John Connor",
+            modifier=MatchExpressionModifier.in_boolean_mode,
         )
 
         match_columns_order = match(
             users_table.c.firstname,
             users_table.c.lastname,
             against="John Connor",
-            boolean_mode=False,
         )
 
         stmt = select(users_table)\
@@ -45,7 +48,10 @@ def match(*clauselist, against, **kwargs):
      scalar expression to be coerced into a column expression,
      serving as the ``MATCH`` side of expression.
 
-    :param against: str.
+    :param modifier: ``None`` or member of
+     :class:`.expression_enum.MatchExpressionModifier`.
+
+    :
 
      .. versionadded:: 1.4.4
 
@@ -56,4 +62,4 @@ def match(*clauselist, against, **kwargs):
     """
 
     clause_batch = ClauseElementBatch(*clauselist, group=False)
-    return clause_batch.match(against, **kwargs)
+    return clause_batch.match(against, modifier=modifier, **kwargs)
