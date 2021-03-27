@@ -134,6 +134,19 @@ class Load(Generative, LoaderOption):
         orig_query = context.compile_state.select_statement
         current_query = context.query
 
+        # NOTE: while it seems like we should not do the "apply" operation
+        # here if orig_query is current_query, skipping it in the "optimized"
+        # case causes the query to be different from a cache key perspective,
+        # because we are creating a copy of the criteria which is no longer
+        # the same identity of the _extra_criteria in the loader option
+        # itself.  cache key logic produces a different key for
+        # (A, copy_of_A) vs. (A, A), because in the latter case it shortens
+        # the second part of the key to just indicate on identity.
+
+        # if orig_query is current_query:
+        # not cached yet.   just do the and_()
+        #    return and_(*self._extra_criteria)
+
         k1 = orig_query._generate_cache_key()
         k2 = current_query._generate_cache_key()
 

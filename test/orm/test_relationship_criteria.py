@@ -1043,7 +1043,12 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             result = s.execute(stmt)
             return result
 
-        for value in "ed@wood.com", "ed@lala.com":
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
             s.close()
             with self.sql_execution_asserter() as asserter:
                 result = go(value)
