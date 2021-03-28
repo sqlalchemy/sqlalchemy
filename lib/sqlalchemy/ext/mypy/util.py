@@ -18,6 +18,22 @@ def fail(api: SemanticAnalyzerPluginInterface, msg: str, ctx: Context):
     return api.fail(msg, ctx)
 
 
+def add_global(
+    ctx: SemanticAnalyzerPluginInterface,
+    module: str,
+    symbol_name: str,
+    asname: str,
+):
+    module_globals = ctx.api.modules[ctx.api.cur_mod_id].names
+
+    if asname not in module_globals:
+        lookup_sym: SymbolTableNode = ctx.api.modules[module].names[
+            symbol_name
+        ]
+
+        module_globals[asname] = lookup_sym
+
+
 def _get_callexpr_kwarg(callexpr: CallExpr, name: str) -> Optional[NameExpr]:
     try:
         arg_idx = callexpr.arg_names.index(name)

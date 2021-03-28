@@ -1236,6 +1236,18 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def patch_library(self):
+        def check_lib():
+            try:
+                __import__("patch")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.only_if(check_lib, "patch library needed")
+
+    @property
     def non_broken_pickle(self):
         from sqlalchemy.util import pickle
 

@@ -229,7 +229,7 @@ def _scan_declarative_decorator_stmt(
 
         left_hand_explicit_type = AnyType(TypeOfAny.special_form)
 
-    descriptor = api.modules["sqlalchemy.orm.attributes"].names["Mapped"]
+    descriptor = api.lookup("__sa_Mapped", cls)
 
     left_node = NameExpr(stmt.var.name)
     left_node.node = stmt.var
@@ -254,8 +254,7 @@ def _scan_declarative_decorator_stmt(
     # <attr> : Mapped[<typ>] =
     # _sa_Mapped._empty_constructor(lambda: <function body>)
     # the function body is maintained so it gets type checked internally
-    api.add_symbol_table_node("_sa_Mapped", descriptor)
-    column_descriptor = nodes.NameExpr("_sa_Mapped")
+    column_descriptor = nodes.NameExpr("__sa_Mapped")
     column_descriptor.fullname = "sqlalchemy.orm.Mapped"
     mm = nodes.MemberExpr(column_descriptor, "_empty_constructor")
 
@@ -753,7 +752,7 @@ def _infer_type_from_left_and_inferred_right(
 
     """
     if not is_subtype(left_hand_explicit_type, python_type_for_type):
-        descriptor = api.modules["sqlalchemy.orm.attributes"].names["Mapped"]
+        descriptor = api.lookup("__sa_Mapped", node)
 
         effective_type = Instance(descriptor.node, [python_type_for_type])
 
@@ -794,8 +793,7 @@ def _infer_type_from_left_hand_type_only(
         )
         util.fail(api, msg.format(node.name), node)
 
-        descriptor = api.modules["sqlalchemy.orm.attributes"].names["Mapped"]
-
+        descriptor = api.lookup("__sa_Mapped", node)
         return Instance(descriptor.node, [AnyType(TypeOfAny.special_form)])
 
     else:
@@ -816,8 +814,7 @@ def _re_apply_declarative_assignments(
         name: typ for name, typ in cls_metadata.mapped_attr_names
     }
 
-    descriptor = api.modules["sqlalchemy.orm.attributes"].names["Mapped"]
-
+    descriptor = api.lookup("__sa_Mapped", cls)
     for stmt in cls.defs.body:
         # for a re-apply, all of our statements are AssignmentStmt;
         # @declared_attr calls will have been converted and this
@@ -859,8 +856,7 @@ def _apply_type_to_mapped_statement(
             attrname : Mapped[Optional[int]] = <meaningless temp node>
 
     """
-    descriptor = api.modules["sqlalchemy.orm.attributes"].names["Mapped"]
-
+    descriptor = api.lookup("__sa_Mapped", stmt)
     left_node = lvalue.node
 
     inst = Instance(descriptor.node, [python_type_for_type])
