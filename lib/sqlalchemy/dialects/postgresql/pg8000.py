@@ -328,7 +328,12 @@ class PGDialect_pg8000(PGDialect):
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
-        return "connection is closed" in str(e)
+        if isinstance(e, self.dbapi.InterfaceError):
+            # pg8000 returns InterfaceError with message set to
+            # "network error on read", "network error on write", or
+            # "network error on flush" in case of connection issues.
+            return str(e).startswith("network error")
+        return False
 
     def set_isolation_level(self, connection, level):
         level = level.replace("_", " ")
