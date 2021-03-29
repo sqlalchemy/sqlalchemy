@@ -1624,7 +1624,7 @@ class BaseCursorResult(object):
         try:
             return self.context.rowcount
         except BaseException as e:
-            self.cursor_strategy.handle_exception(self, e)
+            self.cursor_strategy.handle_exception(self, self.cursor, e)
 
     @property
     def lastrowid(self):
@@ -1645,7 +1645,7 @@ class BaseCursorResult(object):
         try:
             return self.context.get_lastrowid()
         except BaseException as e:
-            self.cursor_strategy.handle_exception(self, e)
+            self.cursor_strategy.handle_exception(self, self.cursor, e)
 
     @property
     def returns_rows(self):

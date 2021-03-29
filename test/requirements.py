@@ -928,15 +928,15 @@ class DefaultRequirements(SuiteRequirements):
         cursor object.
 
         """
-        return skip_if(
-            "mssql+pymssql", "crashes on pymssql"
-        ) + fails_on_everything_except(
-            "mysql",
-            "mariadb",
-            "sqlite+pysqlite",
-            "sqlite+aiosqlite",
-            "sqlite+pysqlcipher",
-            "mssql",
+        return skip_if("mssql+pymssql", "crashes on pymssql") + only_on(
+            [
+                "mysql",
+                "mariadb",
+                "sqlite+pysqlite",
+                "sqlite+aiosqlite",
+                "sqlite+pysqlcipher",
+                "mssql",
+            ]
         )
 
     @property

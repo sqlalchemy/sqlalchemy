@@ -37,6 +37,7 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
         )
         assert not r.is_insert
         assert not r.returns_rows
+        assert r.rowcount == 1
 
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
@@ -48,6 +49,7 @@ class SimpleUpdateDeleteTest(fixtures.TablesTest):
         r = connection.execute(t.delete().where(t.c.id == 2))
         assert not r.is_insert
         assert not r.returns_rows
+        assert r.rowcount == 1
         eq_(
             connection.execute(t.select().order_by(t.c.id)).fetchall(),
             [(1, "d1"), (3, "d3")],
