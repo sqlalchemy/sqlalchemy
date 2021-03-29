@@ -1092,7 +1092,7 @@ class SchemaType(SchemaEventTarget):
                 util.portable_instancemethod(self._on_metadata_drop),
             )
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _variant_mapping_for_set_table(self, column):
@@ -2857,11 +2857,11 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     def compare_values(self, x, y):
         return x == y
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         """Support SchemaEventTarget"""
 
         if isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent(column)
+            self.item_type._set_parent(column, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""
