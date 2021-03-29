@@ -20,6 +20,8 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.assertions import expect_deprecated_20
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -98,21 +100,127 @@ class TransactionTest(fixtures.TablesTest):
         result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
-    def test_deactivated_warning_ctxmanager(self, local_connection):
+    def test_rollback_end_ctx_manager_autocommit(self, local_connection):
+        m1 = mock.Mock()
+
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with local_connection.begin() as trans:
+            assert local_connection.in_transaction()
+            trans.rollback()
+            assert not local_connection.in_transaction()
+
+            # would be subject to autocommit
+            local_connection.execute(select(1))
+
+            assert not local_connection.in_transaction()
+
+    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
+    def test_ctxmanager_rolls_back(self, local_connection, roll_back_in_block):
+        m1 = mock.Mock()
+
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with expect_raises_message(Exception, "test"):
+            with local_connection.begin() as trans:
+                if roll_back_in_block:
+                    trans.rollback()
+
+                if 1 == 1:
+                    raise Exception("test")
+
+        assert not trans.is_active
+        assert not local_connection.in_transaction()
+        assert trans._deactivated_from_connection
+
+        eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
+
+    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
+    def test_ctxmanager_rolls_back_legacy_marker(
+        self, local_connection, roll_back_in_block
+    ):
+        m1 = mock.Mock()
+
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with expect_deprecated_20(
+            r"Calling .begin\(\) when a transaction is already begun"
+        ):
+            with local_connection.begin() as trans:
+                with expect_raises_message(Exception, "test"):
+                    with local_connection.begin() as marker_trans:
+                        if roll_back_in_block:
+                            marker_trans.rollback()
+                        if 1 == 1:
+                            raise Exception("test")
+
+                    assert not marker_trans.is_active
+                    assert marker_trans._deactivated_from_connection
+
+                assert not trans._deactivated_from_connection
+                assert not trans.is_active
+                assert not local_connection.in_transaction()
+
+        eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
+
+    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
+    @testing.requires.savepoints
+    def test_ctxmanager_rolls_back_savepoint(
+        self, local_connection, roll_back_in_block
+    ):
+        m1 = mock.Mock()
+
+        event.listen(
+            local_connection, "rollback_savepoint", m1.rollback_savepoint
+        )
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with local_connection.begin() as trans:
+            with expect_raises_message(Exception, "test"):
+                with local_connection.begin_nested() as nested_trans:
+                    if roll_back_in_block:
+                        nested_trans.rollback()
+                    if 1 == 1:
+                        raise Exception("test")
+
+                assert not nested_trans.is_active
+                assert nested_trans._deactivated_from_connection
+
+            assert trans.is_active
+            assert local_connection.in_transaction()
+            assert not trans._deactivated_from_connection
+
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.rollback_savepoint(
+                    local_connection, mock.ANY, mock.ANY
+                ),
+                mock.call.commit(local_connection),
+            ],
+        )
+
+    def test_deactivated_warning_straight(self, local_connection):
         with expect_warnings(
             "transaction already deassociated from connection"
         ):
-            with local_connection.begin() as trans:
-                trans.rollback()
+            trans = local_connection.begin()
+            trans.rollback()
+            trans.rollback()
 
     @testing.requires.savepoints
-    def test_deactivated_savepoint_warning_ctxmanager(self, local_connection):
+    def test_deactivated_savepoint_warning_straight(self, local_connection):
         with expect_warnings(
             "nested transaction already deassociated from connection"
         ):
             with local_connection.begin():
-                with local_connection.begin_nested() as savepoint:
-                    savepoint.rollback()
+                savepoint = local_connection.begin_nested()
+                savepoint.rollback()
+                savepoint.rollback()
 
     def test_commit_fails_flat(self, local_connection):
         connection = local_connection
@@ -1335,6 +1443,11 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             test_needs_acid=True,
         )
 
+    @testing.fixture
+    def local_connection(self):
+        with testing.db.connect() as conn:
+            yield conn
+
     def test_autobegin_rollback(self):
         users = self.tables.users
         with testing.db.connect() as conn:
@@ -1518,6 +1631,44 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         with testing.db.begin() as conn:
             assert conn.in_transaction()
             conn.rollback()
+            assert not conn.in_transaction()
+
+    def test_rollback_end_ctx_manager_autobegin(self, local_connection):
+        m1 = mock.Mock()
+
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with local_connection.begin() as trans:
+            assert local_connection.in_transaction()
+            trans.rollback()
+            assert not local_connection.in_transaction()
+
+            # autobegin
+            local_connection.execute(select(1))
+
+            assert local_connection.in_transaction()
+
+    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
+    def test_ctxmanager_rolls_back(self, local_connection, roll_back_in_block):
+        m1 = mock.Mock()
+
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+
+        with expect_raises_message(Exception, "test"):
+            with local_connection.begin() as trans:
+                if roll_back_in_block:
+                    trans.rollback()
+
+                if 1 == 1:
+                    raise Exception("test")
+
+        assert not trans.is_active
+        assert not local_connection.in_transaction()
+        assert trans._deactivated_from_connection
+
+        eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
 
     def test_explicit_begin(self):
         users = self.tables.users

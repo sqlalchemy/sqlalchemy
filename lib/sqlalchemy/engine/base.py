@@ -2185,6 +2185,14 @@ class Transaction(object):
         """
         raise NotImplementedError()
 
+    @property
+    def _deactivated_from_connection(self):
+        """True if this transaction is totally deactivated from the connection
+        and therefore can no longer affect its state.
+
+        """
+        raise NotImplementedError()
+
     def _do_close(self):
         raise NotImplementedError()
 
@@ -2269,7 +2277,10 @@ class Transaction(object):
                 with util.safe_reraise():
                     self.rollback()
         else:
-            self.rollback()
+            if self._deactivated_from_connection:
+                self.close()
+            else:
+                self.rollback()
 
 
 class MarkerTransaction(Transaction):
@@ -2304,6 +2315,10 @@ class MarkerTransaction(Transaction):
         else:
             self._transaction = connection._transaction
         self._is_active = True
+
+    @property
+    def _deactivated_from_connection(self):
+        return not self.is_active
 
     @property
     def is_active(self):
@@ -2360,6 +2375,10 @@ class RootTransaction(Transaction):
 
         elif self.connection._transaction is not self:
             util.warn("transaction already deassociated from connection")
+
+    @property
+    def _deactivated_from_connection(self):
+        return self.connection._transaction is not self
 
     def _do_deactivate(self):
         # called from a MarkerTransaction to cancel this root transaction.
@@ -2484,13 +2503,17 @@ class NestedTransaction(Transaction):
         self._previous_nested = connection._nested_transaction
         connection._nested_transaction = self
 
-    def _deactivate_from_connection(self):
+    def _deactivate_from_connection(self, warn=True):
         if self.connection._nested_transaction is self:
             self.connection._nested_transaction = self._previous_nested
-        else:
+        elif warn:
             util.warn(
                 "nested transaction already deassociated from connection"
             )
+
+    @property
+    def _deactivated_from_connection(self):
+        return self.connection._nested_transaction is not self
 
     def _cancel(self):
         # called by RootTransaction when the outer transaction is
@@ -2501,23 +2524,28 @@ class NestedTransaction(Transaction):
         if self._previous_nested:
             self._previous_nested._cancel()
 
-    def _close_impl(self, deactivate_from_connection):
+    def _close_impl(self, deactivate_from_connection, warn_already_deactive):
         try:
             if self.is_active and self.connection._transaction.is_active:
                 self.connection._rollback_to_savepoint_impl(self._savepoint)
         finally:
             self.is_active = False
+
             if deactivate_from_connection:
-                self._deactivate_from_connection()
+                self._deactivate_from_connection(warn=warn_already_deactive)
+
+        assert not self.is_active
+        if deactivate_from_connection:
+            assert self.connection._nested_transaction is not self
 
     def _do_deactivate(self):
-        self._close_impl(False)
+        self._close_impl(False, False)
 
     def _do_close(self):
-        self._close_impl(True)
+        self._close_impl(True, False)
 
     def _do_rollback(self):
-        self._close_impl(True)
+        self._close_impl(True, True)
 
     def _do_commit(self):
         if self.is_active:
