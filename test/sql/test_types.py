@@ -79,6 +79,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1659,7 +1660,24 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "stdlib_enum_table",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("someenum", Enum(cls.SomeEnum, create_constraint=True)),
+            Column(
+                "someenum",
+                Enum(cls.SomeEnum, create_constraint=True, omit_aliases=False),
+            ),
+        )
+        Table(
+            "stdlib_enum_table_no_alias",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "someenum",
+                Enum(
+                    cls.SomeEnum,
+                    create_constraint=True,
+                    omit_aliases=True,
+                    name="someenum_no_alias",
+                ),
+            ),
         )
 
         Table(
@@ -1677,7 +1695,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_python_type(self):
-        eq_(types.Enum(self.SomeEnum).python_type, self.SomeEnum)
+        eq_(types.Enum(self.SomeOtherEnum).python_type, self.SomeOtherEnum)
 
     def test_pickle_types(self):
         global SomeEnum
@@ -1685,7 +1703,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         for loads, dumps in picklers():
             column_types = [
                 Column("Enu", Enum("x", "y", "z", name="somename")),
-                Column("En2", Enum(self.SomeEnum)),
+                Column("En2", Enum(self.SomeEnum, omit_aliases=False)),
             ]
             for column_type in column_types:
                 meta = MetaData()
@@ -1694,8 +1712,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 loads(dumps(meta))
 
     def test_validators_pep435(self):
-        type_ = Enum(self.SomeEnum)
-        validate_type = Enum(self.SomeEnum, validate_strings=True)
+        type_ = Enum(self.SomeEnum, omit_aliases=False)
+        validate_type = Enum(
+            self.SomeEnum, validate_strings=True, omit_aliases=False
+        )
 
         bind_processor = type_.bind_processor(testing.db.dialect)
         bind_processor_validates = validate_type.bind_processor(
@@ -2086,7 +2106,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             self.a_member,
             self.b_member,
         )
-        typ = Enum(self.SomeEnum)
+        typ = Enum(self.SomeEnum, omit_aliases=False)
 
         is_(typ.sort_key_function.__func__, typ._db_value_for_elem.__func__)
 
@@ -2106,7 +2126,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         def sort_enum_key_value(value):
             return str(value.value)
 
-        typ = Enum(self.SomeEnum, sort_key_function=sort_enum_key_value)
+        typ = Enum(
+            self.SomeEnum,
+            sort_key_function=sort_enum_key_value,
+            omit_aliases=False,
+        )
         is_(typ.sort_key_function, sort_enum_key_value)
 
         eq_(
@@ -2115,7 +2139,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_pep435_no_sort_key(self):
-        typ = Enum(self.SomeEnum, sort_key_function=None)
+        typ = Enum(self.SomeEnum, sort_key_function=None, omit_aliases=False)
         is_(typ.sort_key_function, None)
 
     def test_pep435_enum_round_trip(self, connection):
@@ -2231,7 +2255,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(e1.adapt(Enum).name, "foo")
         eq_(e1.adapt(Enum).schema, "bar")
         is_(e1.adapt(Enum).metadata, e1.metadata)
-        e1 = Enum(self.SomeEnum)
+        e1 = Enum(self.SomeEnum, omit_aliases=False)
         eq_(e1.adapt(ENUM).name, "someenum")
         eq_(
             e1.adapt(ENUM).enums,
@@ -2365,6 +2389,34 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     def test_length_non_native(self):
         e = Enum("x", "y", "long", native_enum=False, length=42)
         eq_(e.length, 42)
+
+    def test_omit_aliases(self, connection):
+        table0 = self.tables["stdlib_enum_table"]
+        type0 = table0.c.someenum.type
+        eq_(type0.enums, ["one", "two", "three", "four", "AMember", "BMember"])
+
+        table = self.tables["stdlib_enum_table_no_alias"]
+
+        type_ = table.c.someenum.type
+        eq_(type_.enums, ["one", "two", "three", "AMember", "BMember"])
+
+        connection.execute(
+            table.insert(),
+            [
+                {"id": 1, "someenum": self.SomeEnum.three},
+                {"id": 2, "someenum": self.SomeEnum.four},
+            ],
+        )
+        eq_(
+            connection.execute(table.select().order_by(table.c.id)).fetchall(),
+            [(1, self.SomeEnum.three), (2, self.SomeEnum.three)],
+        )
+
+    def test_omit_warn(self):
+        with expect_deprecated_20(
+            r"The provided enum someenum contains the aliases \['four'\]"
+        ):
+            Enum(self.SomeEnum)
 
 
 MyPickleType = None

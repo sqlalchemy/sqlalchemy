@@ -80,6 +80,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
         """
         kw.setdefault("validate_strings", impl.validate_strings)
         kw.setdefault("values_callable", impl.values_callable)
+        kw.setdefault("omit_aliases", impl._omit_aliases)
         return cls(**kw)
 
     def _object_value_for_elem(self, elem):
