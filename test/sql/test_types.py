@@ -737,6 +737,17 @@ class UserDefinedTest(
             Float().dialect_impl(pg).__class__,
         )
 
+    @testing.combinations((Boolean,), (Enum,))
+    def test_typedecorator_schematype_constraint(self, typ):
+        class B(TypeDecorator):
+            impl = typ
+
+        t1 = Table("t1", MetaData(), Column("q", B(create_constraint=True)))
+        eq_(
+            len([c for c in t1.constraints if isinstance(c, CheckConstraint)]),
+            1,
+        )
+
     def test_type_decorator_repr(self):
         class MyType(TypeDecorator):
             impl = VARCHAR
