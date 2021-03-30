@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6099
+
+    Modified the ``is_disconnect()`` handler for the pg8000 dialect, which now
+    accommodates for a new ``InterfaceError`` emitted by pg8000 1.19.0. Pull
+    request courtesy Hamdi Burak Usul.
+
