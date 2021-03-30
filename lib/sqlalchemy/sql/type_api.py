@@ -1063,18 +1063,20 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
         return self.impl._type_affinity
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         super(TypeDecorator, self)._set_parent(column)
 
-        if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent(column)
+        if not outer and isinstance(self.impl, SchemaEventTarget):
+            self.impl._set_parent(column, outer=False, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""
 
-        super(TypeDecorator, self)._set_parent_with_dispatch(parent)
+        super(TypeDecorator, self)._set_parent_with_dispatch(
+            parent, outer=True
+        )
 
         if isinstance(self.impl, SchemaEventTarget):
             self.impl._set_parent_with_dispatch(parent)
@@ -1495,14 +1497,14 @@ class Variant(TypeDecorator):
         else:
             return self.impl
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         """Support SchemaEventTarget"""
 
         if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent(column)
+            self.impl._set_parent(column, **kw)
         for impl in self.mapping.values():
             if isinstance(impl, SchemaEventTarget):
-                impl._set_parent(column)
+                impl._set_parent(column, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""

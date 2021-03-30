@@ -2090,6 +2090,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_typedec_enclosing_schematype(self):
         # additional test for [ticket:2919] as part of test for
         # [ticket:3832]
+        # this also serves as the test for [ticket:6152]
 
         class MySchemaType(sqltypes.TypeEngine, sqltypes.SchemaType):
             pass
@@ -2100,7 +2101,7 @@ class SchemaTypeTest(fixtures.TestBase):
             impl = target_typ
 
         typ = MyType()
-        self._test_before_parent_attach(typ, target_typ, double=True)
+        self._test_before_parent_attach(typ, target_typ)
 
     def test_before_parent_attach_array_enclosing_schematype(self):
         # test for [ticket:4141] which is the same idea as [ticket:3832]
@@ -2124,7 +2125,7 @@ class SchemaTypeTest(fixtures.TestBase):
         typ = MyType()
         self._test_before_parent_attach(typ)
 
-    def _test_before_parent_attach(self, typ, evt_target=None, double=False):
+    def _test_before_parent_attach(self, typ, evt_target=None):
         canary = mock.Mock()
 
         if evt_target is None:
@@ -2133,8 +2134,8 @@ class SchemaTypeTest(fixtures.TestBase):
         orig_set_parent = evt_target._set_parent
         orig_set_parent_w_dispatch = evt_target._set_parent_with_dispatch
 
-        def _set_parent(parent):
-            orig_set_parent(parent)
+        def _set_parent(parent, **kw):
+            orig_set_parent(parent, **kw)
             canary._set_parent(parent)
 
         def _set_parent_w_dispatch(parent):
@@ -2149,27 +2150,14 @@ class SchemaTypeTest(fixtures.TestBase):
 
                 c = Column("q", typ)
 
-        if double:
-            # no clean way yet to fix this, inner schema type is called
-            # twice, but this is a very unusual use case.
-            eq_(
-                canary.mock_calls,
-                [
-                    mock.call._set_parent(c),
-                    mock.call.go(evt_target, c),
-                    mock.call._set_parent(c),
-                    mock.call._set_parent_with_dispatch(c),
-                ],
-            )
-        else:
-            eq_(
-                canary.mock_calls,
-                [
-                    mock.call.go(evt_target, c),
-                    mock.call._set_parent(c),
-                    mock.call._set_parent_with_dispatch(c),
-                ],
-            )
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.go(evt_target, c),
+                mock.call._set_parent(c),
+                mock.call._set_parent_with_dispatch(c),
+            ],
+        )
 
     def test_independent_schema(self):
         m = MetaData()
