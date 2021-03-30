@@ -36,6 +36,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
 
 
@@ -297,6 +298,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 "CREATE DOMAIN enumdomain AS testtype",
                 "CREATE DOMAIN arraydomain AS INTEGER[]",
                 'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
+                "CREATE DOMAIN nullable_domain AS TEXT CHECK "
+                "(VALUE IN('FOO', 'BAR'))",
+                "CREATE DOMAIN not_nullable_domain AS TEXT NOT NULL",
             ]:
                 try:
                     con.exec_driver_sql(ddl)
@@ -329,6 +333,11 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 "CREATE TABLE quote_test "
                 '(id integer, data "SomeSchema"."Quoted.Domain")'
             )
+            con.exec_driver_sql(
+                "CREATE TABLE nullable_domain_test "
+                "(not_nullable_domain_col nullable_domain not null,"
+                "nullable_local not_nullable_domain)"
+            )
 
     @classmethod
     def teardown_test_class(cls):
@@ -347,6 +356,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
             con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
+            con.exec_driver_sql("DROP TABLE nullable_domain_test")
+            con.exec_driver_sql("DROP DOMAIN nullable_domain")
+            con.exec_driver_sql("DROP DOMAIN not_nullable_domain")
+
     def test_table_is_reflected(self, connection):
         metadata = MetaData()
         table = Table("testtable", metadata, autoload_with=connection)
@@ -356,6 +369,14 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "Columns of reflected table didn't equal expected columns",
         )
         assert isinstance(table.c.answer.type, Integer)
+
+    def test_nullable_from_domain(self, connection):
+        metadata = MetaData()
+        table = Table(
+            "nullable_domain_test", metadata, autoload_with=connection
+        )
+        is_(table.c.not_nullable_domain_col.nullable, False)
+        is_(table.c.nullable_local.nullable, False)
 
     def test_domain_is_reflected(self, connection):
         metadata = MetaData()
