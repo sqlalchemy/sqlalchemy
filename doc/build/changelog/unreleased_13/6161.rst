@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql, reflection
-    :tickets: 6161
-    :versions: 1.4.4
-
-    Fixed issue in PostgreSQL reflection where a column expressing "NOT NULL"
-    will supersede the nullability of a corresponding domain.
