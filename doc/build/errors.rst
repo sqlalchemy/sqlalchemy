@@ -1137,16 +1137,16 @@ with a non compatible :term:`DBAPI`.
 MissingGreenlet
 ---------------
 
-A call to the async :term:`DBAPI` was initiated outside the greenlet spawn context
-usually setup by the SQLAlchemy AsyncIO proxy classes.
-Usually this error happens when an IO was attempted in an unexpected 
-place, without using the provided async api.
-When using the ORM this may be due to a lazy loading attempt, which
-is unsupported when using SQLAlchemy with AsyncIO dialects.
+A call to the async :term:`DBAPI` was initiated outside the greenlet spawn
+context usually setup by the SQLAlchemy AsyncIO proxy classes. Usually this
+error happens when an IO was attempted in an unexpected place, without using
+the provided async api. When using the ORM this may be due to a lazy loading
+attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
 
 .. seealso::
 
-    :ref:`_session_run_sync`
+    :ref:`asyncio_orm_avoid_lazyloads` - covers most ORM scenarios where
+    this problem can occur and how to mitigate.
 
 
 Core Exception Classes
