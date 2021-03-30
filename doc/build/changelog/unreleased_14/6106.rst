@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6106
+
+    The :class:`_postgresql.ENUM` datatype is PostgreSQL-native and therefore
+    should not be used with the ``native_enum=False`` flag. This flag is now
+    ignored if passed to the :class:`_postgresql.ENUM` datatype and a warning
+    is emitted; previously the flag would cause the type object to fail to
+    function correctly.
+
