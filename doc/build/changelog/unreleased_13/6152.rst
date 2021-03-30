@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, schema
     :tickets: 6152
+    :versions: 1.4.4
 
     Fixed bug first introduced in as some combination of :ticket:`2892`,
     :ticket:`2919` nnd :ticket:`3832` where the attachment events for a
