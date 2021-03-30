@@ -3213,8 +3213,9 @@ class PGDialect(default.DefaultDialect):
                 attype, is_array = _handle_array_type(attype)
                 # strip quotes from case sensitive enum or domain names
                 enum_or_domain_key = tuple(util.quoted_token_parser(attype))
-                # A table can't override whether the domain is nullable.
-                nullable = domain["nullable"]
+                # A table can't override a not null on the domain,
+                # but can override nullable
+                nullable = nullable and domain["nullable"]
                 if domain["default"] and not default:
                     # It can, however, override the default
                     # value, but can't set it to null.

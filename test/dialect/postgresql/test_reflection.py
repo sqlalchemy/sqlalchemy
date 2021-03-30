@@ -32,6 +32,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import is_
 
 
 class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
@@ -276,6 +277,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "CREATE DOMAIN enumdomain AS testtype",
             "CREATE DOMAIN arraydomain AS INTEGER[]",
             'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
+            "CREATE DOMAIN nullable_domain AS TEXT CHECK "
+            "(VALUE IN('FOO', 'BAR'))",
+            "CREATE DOMAIN not_nullable_domain AS TEXT NOT NULL",
         ]:
             try:
                 con.execute(ddl)
@@ -303,6 +307,11 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "CREATE TABLE quote_test "
             '(id integer, data "SomeSchema"."Quoted.Domain")'
         )
+        con.execute(
+            "CREATE TABLE nullable_domain_test "
+            "(not_nullable_domain_col nullable_domain not null,"
+            "nullable_local not_nullable_domain)"
+        )
 
     @classmethod
     def teardown_class(cls):
@@ -320,6 +329,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         con.execute("DROP DOMAIN arraydomain")
         con.execute('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
         con.execute('DROP SCHEMA "SomeSchema"')
+
+        con.execute("DROP TABLE nullable_domain_test")
+        con.execute("DROP DOMAIN nullable_domain")
+        con.execute("DROP DOMAIN not_nullable_domain")
 
     def test_table_is_reflected(self):
         metadata = MetaData(testing.db)
@@ -342,6 +355,12 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         assert (
             not table.columns.answer.nullable
         ), "Expected reflected column to not be nullable."
+
+    def test_nullable_from_domain(self):
+        metadata = MetaData(testing.db)
+        table = Table("nullable_domain_test", metadata, autoload=True)
+        is_(table.c.not_nullable_domain_col.nullable, False)
+        is_(table.c.nullable_local.nullable, False)
 
     def test_enum_domain_is_reflected(self):
         metadata = MetaData(testing.db)
