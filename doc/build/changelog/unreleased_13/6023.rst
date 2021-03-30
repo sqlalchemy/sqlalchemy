@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, types, postgresql
     :tickets: 6023
+    :versions: 1.4.3
 
     Adjusted the psycopg2 dialect to emit an explicit PostgreSQL-style cast for
     bound parameters that contain ARRAY elements. This allows the full range of
