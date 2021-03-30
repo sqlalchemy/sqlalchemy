@@ -11,6 +11,10 @@
         :start-line: 5
 
 .. changelog::
+    :version: 1.3.25
+    :include_notes_from: unreleased_13
+
+.. changelog::
     :version: 1.3.24
     :released: March 30, 2021
 
