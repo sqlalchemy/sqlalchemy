@@ -1976,8 +1976,6 @@ as well as to allow the use of "subtransactions", which are also removed in
 Session "subtransaction" behavior removed
 ------------------------------------------
 
-TODO: more detail
-
 See the section :ref:`session_subtransactions` for background on this
 change.
 
@@ -1987,8 +1985,6 @@ change.
 
 Dogpile cache recipe and Horizontal Sharding uses new Session API
 ------------------------------------------------------------------
-
-TODO: more detail
 
 As the :class:`_orm.Query` object becomes legacy, these two recipes
 which previously relied upon subclassing of the :class:`_orm.Query`
@@ -2000,8 +1996,6 @@ an example.
 
 Baked Query Extension Superseded by built-in caching
 -----------------------------------------------------
-
-TODO: more detail
 
 The baked query extension is superseded by the built in caching system and
 is no longer used by the ORM internals.
