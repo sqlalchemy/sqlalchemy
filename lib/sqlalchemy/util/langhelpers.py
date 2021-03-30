@@ -331,9 +331,7 @@ class PluginLoader(object):
                 self.impls[name] = loader
                 return loader()
 
-        for impl in compat.importlib_metadata.entry_points().get(
-            self.group, ()
-        ):
+        for impl in compat.importlib_metadata_get(self.group):
             if impl.name == name:
                 self.impls[name] = impl.load
                 return impl.load()
