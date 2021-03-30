@@ -1,5 +1,12 @@
 .. change::
     :tags: bug, schema
     :tickets: 6071
+    :versions: 1.4.3
 
-    Allow dropping a schema with a sequence shared by more than one table.
+    Adjusted the logic that emits DROP statements for :class:`_schema.Sequence`
+    objects among the dropping of multiple tables, such that all
+    :class:`_schema.Sequence` objects are dropped after all tables, even if the
+    given :class:`_schema.Sequence` is related only to a :class:`_schema.Table`
+    object and not directly to the overall :class:`_schema.MetaData` object.
+    The use case supports the same :class:`_schema.Sequence` being associated
+    with more than one :class:`_schema.Table` at a time.
