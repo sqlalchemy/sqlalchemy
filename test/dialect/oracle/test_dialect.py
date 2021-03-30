@@ -33,6 +33,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.suite import test_select
 from sqlalchemy.util import u
 from sqlalchemy.util import ue
 
@@ -1054,3 +1055,11 @@ END;
         fn = func.three_pairs().table_valued("string1", "string2")
         result = connection.execute(select(fn.c.string1, fn.c.string2)).all()
         eq_(result, [("a", "b"), ("c", "d"), ("e", "f")])
+
+
+class OptimizedFetchLimitOffsetTest(test_select.FetchLimitOffsetTest):
+    __only_on__ = "oracle"
+
+    @classmethod
+    def setup_bind(cls):
+        return engines.testing_engine(options={"optimize_limits": True})
