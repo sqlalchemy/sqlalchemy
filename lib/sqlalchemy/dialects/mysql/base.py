@@ -928,13 +928,13 @@ output::
 
 from array import array as _array
 from collections import defaultdict
+from itertools import compress
 import re
 
 from sqlalchemy import literal_column
 from sqlalchemy import text
 from sqlalchemy.sql import visitors
 from . import reflection as _reflection
-from .expression_enum import MatchExpressionModifier
 from .enumerated import ENUM
 from .enumerated import SET
 from .json import JSON
@@ -1588,24 +1588,50 @@ class MySQLCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
+    match_valid_flag_combinations = frozenset((
+        # (boolean_mode, natural_language, query_expansion)
+        (False, False, False),
+        (True, False, False),
+        (False, True, False),
+        (False, False, True),
+        (False, True, True),
+    ))
+
+    match_flag_expressions = (
+        'IN BOOLEAN MODE',
+        'IN NATURAL LANGUAGE MODE',
+        'WITH QUERY EXPANSION',
+    )
+
     def visit_match_op_binary(self, binary, operator, **kw):
-        modifier = kw.pop('modifier', MatchExpressionModifier.in_boolean_mode)
+        """
+        Note that `mysql_boolean_mode` is enabled by default because of
+        backward compatibility
+        """
 
-        match_clause = self.process(binary.left, **kw)
-        against_clause = self.process(binary.right, **kw)
+        boolean_mode = kw.pop('mysql_boolean_mode', True)
+        natural_language = kw.pop('mysql_natural_language', False)
+        query_expansion = kw.pop('mysql_query_expansion', False)
 
-        if modifier:
-            if not isinstance(modifier, MatchExpressionModifier):
-                raise exc.CompileError(
+        flag_combination = (boolean_mode, natural_language, query_expansion)
+
+        if flag_combination not in self.match_valid_flag_combinations:
+            raise exc.CompileError(
                     "The `modifier` keyword argument must be a member of "
                     "`sqlalchemy.mysql.expression_enum."
                     "MatchExpressionModifier` enum or `None`"
                 )
 
-            against_clause = ' '.join((
-                against_clause,
-                modifier.value,
-            ))
+        match_clause = self.process(binary.left, **kw)
+        against_clause = self.process(binary.right, **kw)
+
+        if any(flag_combination):
+            flag_expressions = compress(
+                self.match_flag_expressions,
+                flag_combination,
+            )
+            against_clause = (against_clause, *flag_expressions)
+            against_clause = ' '.join(against_clause)
 
         return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
 
