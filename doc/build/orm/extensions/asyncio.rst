@@ -10,10 +10,10 @@ included, using asyncio-compatible dialects.
 
 The asyncio extension requires at least Python version 3.6.
 
-
-.. note:: The asyncio should be regarded as **alpha level** for the
-   1.4 release of SQLAlchemy.  API details are **subject to change** at
-   any time.
+.. note:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
+   be **beta level** software. API details are subject to change however at this
+   point it is unlikely for there to be significant backwards-incompatible
+   changes.
 
 
 .. seealso::
