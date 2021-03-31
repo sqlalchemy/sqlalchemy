@@ -328,9 +328,9 @@ class PGDialect_pg8000(PGDialect):
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
-        if isinstance(
-            e, self.dbapi.InterfaceError
-        ) and "network  error" in str(e):
+        if isinstance(e, self.dbapi.InterfaceError) and "network error" in str(
+            e
+        ):
             # new as of pg8000 1.19.0 for broken connections
             return True
 
