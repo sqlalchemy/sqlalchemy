@@ -1116,6 +1116,83 @@ message for details.
     :ref:`error_bbf0`
 
 
+.. _error_qzyx:
+
+relationship X will copy column Q to column P, which conflicts with relationship(s): 'Y'
+----------------------------------------------------------------------------------------
+
+This warning refers to the case when two or more relationships will write data to the
+same columns on flush, but the ORM does not have any kind of back population configuration
+between the two relationships.  The fix is usually to install the correct
+:paramref:`_orm.back_populates` configuration.   Given the following mapping::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      children = relationship("Child")
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+      parent = relationship("Parent")
+
+The above mapping will generate warnings::
+
+  SAWarning: relationship 'Child.parent' will copy column parent.id to column child.parent_id,
+  which conflicts with relationship(s): 'Parent.children' (copies parent.id to child.parent_id).
+
+The relationships ``Child.parent`` and ``Parent.children`` appear to be in conflict.
+The solution is to apply :paramref:`_orm.relationship.back_populates`::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      children = relationship("Child", back_populates="parent")
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+      parent = relationship("Parent", back_populates="children")
+
+For more customized relationships where an "overlap" situation may be
+intentional and cannot be resolved, the :paramref:`_orm.relationship.overlaps`
+parameter may specify the names of relationships for which the warning should
+not take effect. This typically occurs for two or more relationships to the
+same underlying table that include custom
+:paramref:`_orm.relationship.primaryjoin` conditions that limit the related
+items in each case::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      c1 = relationship(
+          "Child",
+          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 0)",
+          backref="parent",
+          overlaps="c2, parent"
+      )
+      c2 = relationship(
+          "Child",
+          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 1)",
+          overlaps="c1, parent"
+      )
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+
+      flag = Column(Integer)
+
+
+Above, the ORM will know that the overlap between ``Parent.c1``,
+``Parent.c2`` and ``Child.parent`` is intentional.
+
 AsyncIO Exceptions
 ==================
 
