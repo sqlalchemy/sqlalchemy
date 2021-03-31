@@ -40,7 +40,33 @@ from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
 
 
-class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
+class ReflectionFixtures(object):
+    @testing.fixture(
+        params=[
+            ("engine", True),
+            ("connection", True),
+            ("engine", False),
+            ("connection", False),
+        ]
+    )
+    def inspect_fixture(self, request, metadata, testing_engine):
+        engine, future = request.param
+
+        eng = testing_engine(future=future)
+
+        conn = eng.connect()
+
+        if engine == "connection":
+            yield inspect(eng), conn
+        else:
+            yield inspect(conn), conn
+
+        conn.close()
+
+
+class ForeignTableReflectionTest(
+    ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
+):
     """Test reflection on foreign tables"""
 
     __requires__ = ("postgresql_test_dblink",)
@@ -90,8 +116,9 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             "Columns of reflected foreign table didn't equal expected columns",
         )
 
-    def test_get_foreign_table_names(self, connection):
-        inspector = inspect(connection)
+    def test_get_foreign_table_names(self, inspect_fixture):
+        inspector, conn = inspect_fixture
+
         ft_names = inspector.get_foreign_table_names()
         eq_(ft_names, ["test_foreigntable"])
 
@@ -179,7 +206,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
 
 
 class MaterializedViewReflectionTest(
-    fixtures.TablesTest, AssertsExecutionResults
+    ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
 ):
     """Test reflection on materialized views"""
 
@@ -233,8 +260,8 @@ class MaterializedViewReflectionTest(
         table = Table("test_mview", metadata, autoload_with=connection)
         eq_(connection.execute(table.select()).fetchall(), [(89, "d1")])
 
-    def test_get_view_names(self, connection):
-        insp = inspect(connection)
+    def test_get_view_names(self, inspect_fixture):
+        insp, conn = inspect_fixture
         eq_(set(insp.get_view_names()), set(["test_regview", "test_mview"]))
 
     def test_get_view_names_plain(self, connection):
@@ -471,7 +498,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             base.PGDialect.ischema_names = ischema_names
 
 
-class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
+class ReflectionTest(
+    ReflectionFixtures, AssertsCompiledSQL, fixtures.TestBase
+):
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -1302,12 +1331,17 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             ],
         )
 
-    def test_inspect_enums(self, metadata, connection):
+    def test_inspect_enums(self, metadata, inspect_fixture):
+
+        inspector, conn = inspect_fixture
+
         enum_type = postgresql.ENUM(
             "cat", "dog", "rat", name="pet", metadata=metadata
         )
-        enum_type.create(connection)
-        inspector = inspect(connection)
+
+        with conn.begin():
+            enum_type.create(conn)
+
         eq_(
             inspector.get_enums(),
             [
@@ -1319,6 +1353,15 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
                 }
             ],
         )
+
+    def test_get_table_oid(self, metadata, inspect_fixture):
+
+        inspector, conn = inspect_fixture
+
+        with conn.begin():
+            Table("some_table", metadata, Column("q", Integer)).create(conn)
+
+        assert inspector.get_table_oid("some_table") is not None
 
     def test_inspect_enums_case_sensitive(self, metadata, connection):
         sa.event.listen(

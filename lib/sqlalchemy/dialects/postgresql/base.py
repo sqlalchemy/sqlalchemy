@@ -2902,9 +2902,10 @@ class PGInspector(reflection.Inspector):
     def get_table_oid(self, table_name, schema=None):
         """Return the OID for the given table name."""
 
-        return self.dialect.get_table_oid(
-            self.bind, table_name, schema, info_cache=self.info_cache
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_table_oid(
+                conn, table_name, schema, info_cache=self.info_cache
+            )
 
     def get_enums(self, schema=None):
         """Return a list of ENUM objects.
@@ -2925,7 +2926,8 @@ class PGInspector(reflection.Inspector):
 
         """
         schema = schema or self.default_schema_name
-        return self.dialect._load_enums(self.bind, schema)
+        with self._operation_context() as conn:
+            return self.dialect._load_enums(conn, schema)
 
     def get_foreign_table_names(self, schema=None):
         """Return a list of FOREIGN TABLE names.
@@ -2939,7 +2941,8 @@ class PGInspector(reflection.Inspector):
 
         """
         schema = schema or self.default_schema_name
-        return self.dialect._get_foreign_table_names(self.bind, schema)
+        with self._operation_context() as conn:
+            return self.dialect._get_foreign_table_names(conn, schema)
 
     def get_view_names(self, schema=None, include=("plain", "materialized")):
         """Return all view names in `schema`.
@@ -2955,9 +2958,10 @@ class PGInspector(reflection.Inspector):
 
         """
 
-        return self.dialect.get_view_names(
-            self.bind, schema, info_cache=self.info_cache, include=include
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_view_names(
+                conn, schema, info_cache=self.info_cache, include=include
+            )
 
 
 class CreateEnumType(schema._CreateDropBase):
@@ -3481,7 +3485,11 @@ class PGDialect(default.DefaultDialect):
                 "JOIN pg_namespace n ON n.oid = c.relnamespace "
                 "WHERE n.nspname = :schema AND c.relkind = 'f'"
             ).columns(relname=sqltypes.Unicode),
-            schema=schema if schema is not None else self.default_schema_name,
+            dict(
+                schema=schema
+                if schema is not None
+                else self.default_schema_name
+            ),
         )
         return [name for name, in result]
 

@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6170
+
+    Fixed issue where the PostgreSQL :class:`.PGInspector`, when generated
+    against an :class:`_engine.Engine`, would fail for ``.get_enums()``,
+    ``.get_view_names()``, ``.get_foreign_table_names()`` and
+    ``.get_table_oid()`` when used against a "future" style engine and not the
+    connection directly.
