@@ -638,7 +638,6 @@ class UpdateDeleteTest(fixtures.MappedTest):
             .values({User.age: User.age - 10})
             .execution_options(synchronize_session="fetch")
         )
-        eq_(result.rowcount, 1)
         eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
         eq_(
             sess.query(User.age).order_by(User.id).all(),
@@ -876,11 +875,10 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 .where(User.age > 29)
                 .values({"age": User.age - 10})
             )
-            result = sess.execute(
+            sess.execute(
                 stmt, execution_options={"synchronize_session": "fetch"}
             )
 
-            eq_(result.rowcount, 2)
             # these are simple values, these are now evaluated even with
             # the "fetch" strategy, new in 1.4, so there is no expiry
             eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
@@ -1163,6 +1161,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
             .update({"age": User.age - 10})
         )
         eq_(rowcount, 2)
+
+        # test future
+        result = sess.execute(
+            update(User).where(User.age > 19).values({"age": User.age - 10})
+        )
+        eq_(result.rowcount, 4)
 
     @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     def test_delete_returns_rowcount(self):
