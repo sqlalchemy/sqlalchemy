@@ -15,7 +15,68 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.4
-    :include_notes_from: unreleased_14
+    :released: March 30, 2021
+
+    .. change::
+        :tags: bug, misc
+
+        Adjusted the usage of the ``importlib_metadata`` library for loading
+        setuptools entrypoints in order to accommodate for some deprecation
+        changes.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6099
+
+        Modified the ``is_disconnect()`` handler for the pg8000 dialect, which now
+        accommodates for a new ``InterfaceError`` emitted by pg8000 1.19.0. Pull
+        request courtesy Hamdi Burak Usul.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6139
+
+        Fixed critical issue in the new :meth:`_orm.PropComparator.and_` feature
+        where loader strategies that emit secondary SELECT statements such as
+        :func:`_orm.selectinload` and :func:`_orm.lazyload` would fail to
+        accommodate for bound parameters in the user-defined criteria in terms of
+        the current statement being executed, as opposed to the cached statement,
+        causing stale bound values to be used.
+
+        This also adds a warning for the case where an object that uses
+        :func:`_orm.lazyload` in conjunction with :meth:`_orm.PropComparator.and_`
+        is attempted to be serialized; the loader criteria cannot reliably
+        be serialized and deserialized and eager loading should be used for this
+        case.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6138
+
+        Repair wrong arguments to exception handling method
+        in CursorResult.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6144
+
+        Fixed missing method :meth:`_orm.Session.get` from the
+        :class:`_orm.ScopedSession` interface.
+
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 6155
+
+        Modified the context manager used by :class:`_engine.Transaction` so that
+        an "already detached" warning is not emitted by the ending of the context
+        manager itself, if the transaction were already manually rolled back inside
+        the block. This applies to regular transactions, savepoint transactions,
+        and legacy "marker" transactions. A warning is still emitted if the
+        ``.rollback()`` method is called explicitly more than once.
 
 .. changelog::
     :version: 1.4.3

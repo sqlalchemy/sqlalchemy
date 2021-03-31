@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 6138
-
-    Repair wrong arguments to exception handling method
-    in CursorResult.

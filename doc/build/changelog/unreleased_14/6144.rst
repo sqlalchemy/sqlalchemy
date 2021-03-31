@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, regression, orm
-    :tickets: 6144
-
-    Fixed missing method :meth:`_orm.Session.get` from the
-    :class:`_orm.ScopedSession` interface.
-
