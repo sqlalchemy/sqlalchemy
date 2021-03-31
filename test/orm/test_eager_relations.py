@@ -1000,6 +1000,36 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
+    @testing.combinations(
+        ("plain",), ("cte", testing.requires.ctes), ("subquery",), id_="s"
+    )
+    def test_map_to_cte_subq(self, type_):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        if type_ == "plain":
+            target = users
+        elif type_ == "cte":
+            target = select(users).cte()
+        elif type_ == "subquery":
+            target = select(users).subquery()
+
+        mapper(
+            User,
+            target,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(Address)
+            .options(joinedload(Address.user))
+            .order_by(Address.id)
+        )
+        eq_(q.all(), self.static.address_user_result)
+
     def test_no_false_hits(self):
         """Eager loaders don't interpret main table columns as
         part of their eager load."""

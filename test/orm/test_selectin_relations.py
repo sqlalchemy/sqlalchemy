@@ -1080,6 +1080,36 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         else:
             self.assert_sql_count(testing.db, go, 6)
 
+    @testing.combinations(
+        ("plain",), ("cte", testing.requires.ctes), ("subquery",), id_="s"
+    )
+    def test_map_to_cte_subq(self, type_):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        if type_ == "plain":
+            target = users
+        elif type_ == "cte":
+            target = select(users).cte()
+        elif type_ == "subquery":
+            target = select(users).subquery()
+
+        mapper(
+            User,
+            target,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(Address)
+            .options(selectinload(Address.user))
+            .order_by(Address.id)
+        )
+        eq_(q.all(), self.static.address_user_result)
+
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 

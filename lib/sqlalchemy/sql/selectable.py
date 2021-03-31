@@ -2057,6 +2057,12 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
             self._suffixes = _suffixes
         super(CTE, self)._init(selectable, name=name)
 
+    def _populate_column_collection(self):
+        if self._cte_alias is not None:
+            self._cte_alias._generate_fromclause_column_proxies(self)
+        else:
+            self.element._generate_fromclause_column_proxies(self)
+
     def alias(self, name=None, flat=False):
         """Return an :class:`_expression.Alias` of this
         :class:`_expression.CTE`.

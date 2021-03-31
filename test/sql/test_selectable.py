@@ -161,6 +161,46 @@ class SelectableTest(
             s1, "SELECT (SELECT table1.col1 FROM table1) AS foo"
         )
 
+    @testing.combinations(("cte",), ("subquery",), argnames="type_")
+    @testing.combinations(
+        ("onelevel",), ("twolevel",), ("middle",), argnames="path"
+    )
+    @testing.combinations((True,), (False,), argnames="require_embedded")
+    def test_subquery_cte_correspondence(self, type_, require_embedded, path):
+        stmt = select(table1)
+
+        if type_ == "cte":
+            cte1 = stmt.cte()
+        elif type_ == "subquery":
+            cte1 = stmt.subquery()
+
+        if path == "onelevel":
+            is_(
+                cte1.corresponding_column(
+                    table1.c.col1, require_embedded=require_embedded
+                ),
+                cte1.c.col1,
+            )
+        elif path == "twolevel":
+            cte2 = cte1.alias()
+
+            is_(
+                cte2.corresponding_column(
+                    table1.c.col1, require_embedded=require_embedded
+                ),
+                cte2.c.col1,
+            )
+
+        elif path == "middle":
+            cte2 = cte1.alias()
+
+            is_(
+                cte2.corresponding_column(
+                    cte1.c.col1, require_embedded=require_embedded
+                ),
+                cte2.c.col1,
+            )
+
     def test_labels_anon_w_separate_key(self):
         label = select(table1.c.col1).label(None)
         label.key = "bar"
