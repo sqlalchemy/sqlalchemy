@@ -43,6 +43,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -1475,6 +1476,36 @@ class CursorResultTest(fixtures.TablesTest):
 
             finally:
                 r.close()
+
+    @testing.requires.dbapi_lastrowid
+    def test_lastrowid(self, connection):
+        users = self.tables.users
+
+        r = connection.execute(
+            users.insert(), dict(user_id=1, user_name="Test")
+        )
+        eq_(r.lastrowid, r.context.get_lastrowid())
+
+    def test_raise_errors(self, connection):
+        users = self.tables.users
+
+        class Wrapper:
+            def __init__(self, context):
+                self.context = context
+
+            def __getattr__(self, name):
+                if name in ("rowcount", "get_lastrowid"):
+                    raise Exception("canary")
+                return getattr(self.context, name)
+
+        r = connection.execute(
+            users.insert(), dict(user_id=1, user_name="Test")
+        )
+        r.context = Wrapper(r.context)
+        with expect_raises_message(Exception, "canary"):
+            r.rowcount
+        with expect_raises_message(Exception, "canary"):
+            r.lastrowid
 
 
 class KeyTargetingTest(fixtures.TablesTest):
