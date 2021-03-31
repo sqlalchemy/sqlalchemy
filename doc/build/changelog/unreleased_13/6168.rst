@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, general
+    :tickets: 6168
+
+    Repaired an import for "typing" that is not supported in Python 3.4, which
+    is the bottom version supported by SQLAlchemy 1.3.
