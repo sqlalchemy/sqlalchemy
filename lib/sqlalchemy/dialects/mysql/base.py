@@ -1616,10 +1616,13 @@ class MySQLCompiler(compiler.SQLCompiler):
         flag_combination = (boolean_mode, natural_language, query_expansion)
 
         if flag_combination not in self.match_valid_flag_combinations:
+            flags = {
+                'mysql_boolean_mode': boolean_mode,
+                'mysql_natural_language': natural_language,
+                'mysql_query_expansion': query_expansion,
+            }
             raise exc.CompileError(
-                    "The `modifier` keyword argument must be a member of "
-                    "`sqlalchemy.mysql.expression_enum."
-                    "MatchExpressionModifier` enum or `None`"
+                    "Flag combination does not make sence: %s." % flags
                 )
 
         match_clause = self.process(binary.left, **kw)
