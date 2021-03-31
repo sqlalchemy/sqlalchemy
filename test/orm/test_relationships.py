@@ -802,6 +802,29 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
         configure_mappers()
 
+    def _fixture_four(self):
+        Base = declarative_base(metadata=self.metadata)
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+
+            c_id = Column(ForeignKey("c.id"))
+
+        class B1(A):
+            pass
+
+        class B2(A):
+            pass
+
+        class C(Base):
+            __tablename__ = "c"
+
+            id = Column(Integer, primary_key=True)
+            b1 = relationship(B1, backref="c")
+            b2 = relationship(B2, backref="c")
+
     @testing.provide_metadata
     def _test_fixture_one_run(self, **kw):
         A, AMember, B, BSub1, BSub2 = self._fixture_one(**kw)
@@ -852,6 +875,10 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             self._fixture_two,
             setup_backrefs=False,
         )
+
+    @testing.provide_metadata
+    def test_fixture_four(self):
+        self._fixture_four()
 
     @testing.provide_metadata
     def test_simple_backrefs_works(self):

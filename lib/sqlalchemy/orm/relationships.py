@@ -364,6 +364,10 @@ class RelationshipProperty(StrategizedProperty):
 
            .. versionadded:: 1.4
 
+           .. seealso::
+
+                :ref:`error_qzyx` - usage example
+
         :param bake_queries=True:
           Use the :class:`.BakedQuery` cache to cache the construction of SQL
           used in lazy loads.  True by default.   Set to False if the
@@ -3423,6 +3427,8 @@ class JoinCondition(object):
                         and self.prop.key not in pr._overlaps
                         and not self.prop.parent.is_sibling(pr.parent)
                         and not self.prop.mapper.is_sibling(pr.mapper)
+                        and not self.prop.parent.is_sibling(pr.mapper)
+                        and not self.prop.mapper.is_sibling(pr.parent)
                         and (
                             self.prop.key != pr.key
                             or not self.prop.parent.common_parent(pr.parent)
@@ -3453,7 +3459,8 @@ class JoinCondition(object):
                                 "'%s' (copies %s to %s)" % (pr, fr_, to_)
                                 for (pr, fr_) in other_props
                             ),
-                        )
+                        ),
+                        code="qzyx",
                     )
                 self._track_overlapping_sync_targets[to_][self.prop] = from_
 
