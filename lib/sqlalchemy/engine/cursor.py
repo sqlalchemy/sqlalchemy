@@ -1620,7 +1620,12 @@ class BaseCursorResult(object):
            * Statements that use RETURNING may not return a correct
              rowcount.
 
-        """
+        .. seealso::
+
+            :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
+
+        """  # noqa E501
+
         try:
             return self.context.rowcount
         except BaseException as e:

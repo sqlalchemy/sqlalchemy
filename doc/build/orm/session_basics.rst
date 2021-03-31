@@ -559,10 +559,16 @@ Core :class:`_sql.Update` construct::
     stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
         execution_options(synchronize_session="fetch")
 
-    session.execute(stmt)
+    result = session.execute(stmt)
 
 Above, the :meth:`_dml.Update.execution_options` method may be used to
 establish execution-time options such as "synchronize_session".
+
+The result object returned is an instance of :class:`_result.CursorResult`; to
+retrieve the number of rows matched by any UPDATE or DELETE statement, use
+:attr:`_result.CursorResult.rowcount`::
+
+    num_rows_matched = result.rowcount
 
 DELETEs work in the same way as UPDATE except there is no "values / set"
 clause established.  When synchronize_session is used, matching objects

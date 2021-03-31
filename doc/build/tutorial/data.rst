@@ -1933,6 +1933,8 @@ syntaxes, such as ``DELETE FROM..USING`` on MySQL::
   {opensql}DELETE FROM user_account USING user_account, address
   WHERE user_account.id = address.user_id AND address.email_address = %s
 
+.. _tutorial_update_delete_rowcount:
+
 Getting Affected Row Count from UPDATE, DELETE
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -618,25 +618,27 @@ class UpdateDeleteTest(fixtures.MappedTest):
             sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
-        sess.execute(
+        result = sess.execute(
             update(User)
             .where(User.age > 29)
             .values({"age": User.age - 10})
             .execution_options(synchronize_session="evaluate"),
         )
 
+        eq_(result.rowcount, 2)
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(
             sess.execute(select(User.age).order_by(User.id)).all(),
             list(zip([25, 37, 29, 27])),
         )
 
-        sess.execute(
+        result = sess.execute(
             update(User)
             .where(User.age > 29)
             .values({User.age: User.age - 10})
-            .execution_options(synchronize_session="evaluate")
+            .execution_options(synchronize_session="fetch")
         )
+        eq_(result.rowcount, 1)
         eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
         eq_(
             sess.query(User.age).order_by(User.id).all(),
@@ -874,10 +876,11 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 .where(User.age > 29)
                 .values({"age": User.age - 10})
             )
-            sess.execute(
+            result = sess.execute(
                 stmt, execution_options={"synchronize_session": "fetch"}
             )
 
+            eq_(result.rowcount, 2)
             # these are simple values, these are now evaluated even with
             # the "fetch" strategy, new in 1.4, so there is no expiry
             eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
