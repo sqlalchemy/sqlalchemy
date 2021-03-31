@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import tempfile
 
 from sqlalchemy import testing
@@ -36,8 +37,15 @@ class MypyPluginTest(fixtures.TestBase):
     def mypy_runner(self, cachedir):
         from mypy import api
 
-        def run(filename, use_plugin=True):
-            path = os.path.join(os.path.dirname(__file__), "files", filename)
+        def run(
+            filename, use_plugin=True, incremental=False, working_dir=None
+        ):
+            if working_dir:
+                path = os.path.join(working_dir, filename)
+            else:
+                path = os.path.join(
+                    os.path.dirname(__file__), "files", filename
+                )
 
             args = [
                 "--strict",
@@ -58,6 +66,55 @@ class MypyPluginTest(fixtures.TestBase):
             return api.run(args)
 
         return run
+
+    def _incremental_dirs():
+        path = os.path.join(os.path.dirname(__file__), "incremental")
+        return [
+            d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))
+        ]
+
+    @testing.combinations(
+        *[(dirname,) for dirname in _incremental_dirs()], argnames="dirname"
+    )
+    @testing.requires.patch_library
+    def test_incremental(self, mypy_runner, cachedir, dirname):
+        import patch
+
+        path = os.path.join(os.path.dirname(__file__), "incremental", dirname)
+        dest = os.path.join(cachedir, "mymodel")
+        os.mkdir(dest)
+
+        patches = set()
+
+        print("incremental test: %s" % dirname)
+
+        for fname in os.listdir(path):
+            if fname.endswith(".py"):
+                shutil.copy(
+                    os.path.join(path, fname), os.path.join(dest, fname)
+                )
+                print("copying to: %s" % os.path.join(dest, fname))
+            elif fname.endswith(".testpatch"):
+                patches.add(fname)
+
+        for patchfile in [None] + sorted(patches):
+            if patchfile is not None:
+                print("Applying patchfile %s" % patchfile)
+                patch_obj = patch.fromfile(os.path.join(path, patchfile))
+                patch_obj.apply(1, dest)
+            print("running mypy against %s/mymodel" % cachedir)
+            result = mypy_runner(
+                "mymodel",
+                use_plugin=True,
+                incremental=True,
+                working_dir=cachedir,
+            )
+            eq_(
+                result[2],
+                0,
+                msg="Failure after applying patch %s: %s"
+                % (patchfile, result[0]),
+            )
 
     def _file_combinations():
         path = os.path.join(os.path.dirname(__file__), "files")

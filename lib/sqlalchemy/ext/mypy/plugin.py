@@ -126,6 +126,7 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         # and "registry.as_declarative_base()" methods.
         # this seems like a bug in mypy that these decorators are otherwise
         # skipped.
+
         if (
             isinstance(decorator, nodes.CallExpr)
             and isinstance(decorator.callee, nodes.MemberExpr)
@@ -165,15 +166,34 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
                 )
 
 
+def _add_globals(ctx: ClassDefContext):
+    """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
+    for all class defs
+
+    """
+
+    util.add_global(
+        ctx,
+        "sqlalchemy.orm.decl_api",
+        "DeclarativeMeta",
+        "__sa_DeclarativeMeta",
+    )
+
+    util.add_global(ctx, "sqlalchemy.orm.attributes", "Mapped", "__sa_Mapped")
+
+
 def _cls_metadata_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
 def _base_cls_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
 def _cls_decorator_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     assert isinstance(ctx.reason, nodes.MemberExpr)
     expr = ctx.reason.expr
     assert names._type_id_for_named_node(expr.node.type.type) is names.REGISTRY
@@ -181,28 +201,8 @@ def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
-def _make_declarative_meta(
-    api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
-):
-    declarative_meta_sym: SymbolTableNode = api.modules[
-        "sqlalchemy.orm.decl_api"
-    ].names["DeclarativeMeta"]
-    declarative_meta_typeinfo: TypeInfo = declarative_meta_sym.node
-
-    declarative_meta_name: NameExpr = NameExpr("DeclarativeMeta")
-    declarative_meta_name.kind = GDEF
-    declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
-    declarative_meta_name.node = declarative_meta_typeinfo
-
-    target_cls.metaclass = declarative_meta_name
-
-    declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
-
-    info = target_cls.info
-    info.declared_metaclass = info.metaclass_type = declarative_meta_instance
-
-
 def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
 
     cls = ctx.cls
 
@@ -216,6 +216,8 @@ def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
 def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     """Generate a declarative Base class when the declarative_base() function
     is encountered."""
+
+    _add_globals(ctx)
 
     cls = ClassDef(ctx.name, Block([]))
     cls.fullname = ctx.api.qualified_name(ctx.name)
@@ -246,3 +248,25 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         info.fallback_to_any = True
 
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
+
+
+def _make_declarative_meta(
+    api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
+):
+
+    declarative_meta_name: NameExpr = NameExpr("__sa_DeclarativeMeta")
+    declarative_meta_name.kind = GDEF
+    declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
+
+    # installed by _add_globals
+    sym = api.lookup("__sa_DeclarativeMeta", target_cls)
+
+    declarative_meta_typeinfo = sym.node
+    declarative_meta_name.node = declarative_meta_typeinfo
+
+    target_cls.metaclass = declarative_meta_name
+
+    declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
+
+    info = target_cls.info
+    info.declared_metaclass = info.metaclass_type = declarative_meta_instance
