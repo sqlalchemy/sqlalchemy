@@ -6,16 +6,21 @@ from typing import Coroutine
 
 import greenlet
 
+from . import compat
 from .. import exc
 
-try:
-    from contextvars import copy_context as _copy_context
 
-    # If greenlet.gr_context is present in current version of greenlet,
-    # it will be set with a copy of the current context on creation.
-    # Refs: https://github.com/python-greenlet/greenlet/pull/198
-    getattr(greenlet.greenlet, "gr_context")
-except (ImportError, AttributeError):
+if compat.py37:
+    try:
+        from contextvars import copy_context as _copy_context
+
+        # If greenlet.gr_context is present in current version of greenlet,
+        # it will be set with a copy of the current context on creation.
+        # Refs: https://github.com/python-greenlet/greenlet/pull/198
+        getattr(greenlet.greenlet, "gr_context")
+    except (ImportError, AttributeError):
+        _copy_context = None
+else:
     _copy_context = None
 
 
