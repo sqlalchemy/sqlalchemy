@@ -2561,7 +2561,7 @@ def _schema_elements(schema):
         else:
             dbname = dbname.lstrip("[").rstrip("]")
 
-    elif len(push):
+    elif push:
         dbname, owner = None, push[0]
     else:
         dbname, owner = None, None

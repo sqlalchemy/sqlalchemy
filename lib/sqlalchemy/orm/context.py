@@ -1153,9 +1153,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # to all SQL constructs.
             adapters.append(
                 (
-                    False
-                    if self.compile_options._orm_only_from_obj_alias
-                    else True,
+                    not self.compile_options._orm_only_from_obj_alias,
                     self._from_obj_alias.replace,
                 )
             )

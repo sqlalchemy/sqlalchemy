@@ -106,9 +106,7 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
         pa_alias = with_polymorphic(Person, [Engineer], aliased=True)
 
         eq_(
-            [
-                row
-                for row in sess.query(
+            list(sess.query(
                     pa.name,
                     pa.Engineer.primary_language,
                     pa_alias.name,
@@ -126,8 +124,7 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
                         ),
                     ),
                 )
-                .order_by(pa.name, pa_alias.name)
-            ],
+                .order_by(pa.name, pa_alias.name)),
             [
                 ("dilbert", "java", "dilbert", "java"),
                 ("dogbert", None, "pointy haired boss", None),

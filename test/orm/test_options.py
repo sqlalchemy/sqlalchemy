@@ -108,7 +108,7 @@ class PathTest(object):
 
         assert_paths = [k[1] for k in attr]
         eq_(
-            set([p for p in assert_paths]),
+            set(list(assert_paths)),
             set([self._make_path(p) for p in paths]),
         )
 

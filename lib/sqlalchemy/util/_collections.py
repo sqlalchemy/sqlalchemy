@@ -475,7 +475,7 @@ class IdentitySet(object):
     """
 
     def __init__(self, iterable=None):
-        self._members = dict()
+        self._members = {}
         if iterable:
             self.update(iterable)
 

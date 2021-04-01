@@ -221,7 +221,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
         direct = obj.attr
-        control = list()
+        control = []
 
         def assert_eq():
             eq_(set(direct), canary.data)
@@ -525,7 +525,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         # slice objects (i.e. as in py3k)
         class ListLike(object):
             def __init__(self):
-                self.data = list()
+                self.data = []
 
             def append(self, item):
                 self.data.append(item)
@@ -581,7 +581,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
     def test_list_duck(self):
         class ListLike(object):
             def __init__(self):
-                self.data = list()
+                self.data = []
 
             def append(self, item):
                 self.data.append(item)
@@ -619,7 +619,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             __emulates__ = list
 
             def __init__(self):
-                self.data = list()
+                self.data = []
 
             def append(self, item):
                 self.data.append(item)
@@ -1081,7 +1081,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
         direct = obj.attr
-        control = dict()
+        control = {}
 
         def assert_eq():
             self.assert_(set(direct.values()) == canary.data)
@@ -1314,7 +1314,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
     def test_dict_duck(self):
         class DictLike(object):
             def __init__(self):
-                self.data = dict()
+                self.data = {}
 
             @collection.appender
             @collection.replaces(1)
@@ -1366,7 +1366,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             __emulates__ = dict
 
             def __init__(self):
-                self.data = dict()
+                self.data = {}
 
             @collection.appender
             @collection.replaces(1)
@@ -1591,7 +1591,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         obj = Foo()
         adapter = collections.collection_adapter(obj.attr)
         direct = obj.attr
-        control = list()
+        control = []
 
         def assert_eq():
             self.assert_(set(direct) == canary.data)
@@ -2215,7 +2215,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
     def test_list_no_setslice(self):
         class ListLike(object):
             def __init__(self):
-                self.data = list()
+                self.data = []
 
             def append(self, item):
                 self.data.append(item)
@@ -2278,7 +2278,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         )
         mapper(Child, someothertable)
 
-        control = list()
+        control = []
         p = Parent()
 
         o = Child()
@@ -2425,7 +2425,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         )
         mapper(Child, someothertable)
 
-        control = list()
+        control = []
         p1 = Parent()
 
         o = Child()

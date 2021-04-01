@@ -1129,9 +1129,7 @@ class Join(roles.DMLTableRole, FromClause):
     @util.preload_module("sqlalchemy.sql.util")
     def _populate_column_collection(self):
         sqlutil = util.preloaded.sql_util
-        columns = [c for c in self.left.columns] + [
-            c for c in self.right.columns
-        ]
+        columns = list(self.left.columns) + list(self.right.columns)
 
         self.primary_key.extend(
             sqlutil.reduce_columns(
@@ -4224,7 +4222,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                 not in _cloned_intersection(froms, implicit_correlate_froms)
             ]
 
-            if not len(froms):
+            if not froms:
                 raise exc.InvalidRequestError(
                     "Select statement '%r"
                     "' returned no FROM clauses "

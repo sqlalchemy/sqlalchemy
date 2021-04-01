@@ -3959,7 +3959,7 @@ class PGDialect(default.DefaultDialect):
             ) = m
 
             if deferrable is not None:
-                deferrable = True if deferrable == "DEFERRABLE" else False
+                deferrable = deferrable == "DEFERRABLE"
             constrained_columns = [
                 preparer._unquote_identifier(x)
                 for x in re.split(r"\s*,\s*", constrained_columns)

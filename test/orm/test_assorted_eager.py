@@ -764,7 +764,7 @@ class EagerTest5(fixtures.MappedTest):
         # Derived]
         d = sess.query(Derived).get("uid1")
         sess.expunge_all()
-        assert len([c for c in d.comments]) == 1
+        assert len(list(d.comments)) == 1
 
         # this eager load sets up an AliasedClauses for the "comment"
         # relationship, and should store it in clauses_by_lead_mapper[mapper
@@ -775,7 +775,7 @@ class EagerTest5(fixtures.MappedTest):
 
         # object is not in the session; therefore the lazy load cant trigger
         # here, eager load had to succeed
-        assert len([c for c in d2.comments]) == 1
+        assert len(list(d2.comments)) == 1
 
 
 class EagerTest6(fixtures.MappedTest):

@@ -6740,10 +6740,10 @@ class ExecutionOptionsTest(QueryTest):
         sess = fixture_session(autocommit=False)
 
         q1 = sess.query(User)
-        eq_(q1._execution_options, dict())
+        eq_(q1._execution_options, {})
         q2 = q1.execution_options(foo="bar", stream_results=True)
         # q1's options should be unchanged.
-        eq_(q1._execution_options, dict())
+        eq_(q1._execution_options, {})
         # q2 should have them set.
         eq_(q2._execution_options, dict(foo="bar", stream_results=True))
         q3 = q2.execution_options(foo="not bar", answer=42)

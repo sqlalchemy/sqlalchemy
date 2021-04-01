@@ -139,7 +139,7 @@ class LogParamsTest(fixtures.TestBase):
         eq_(
             repr(
                 sql_util._repr_params(
-                    [[i for i in range(300)], 5], batches=10, max_chars=80
+                    [list(range(300)), 5], batches=10, max_chars=80
                 )
             ),
             "[[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,  ... "
@@ -153,7 +153,7 @@ class LogParamsTest(fixtures.TestBase):
         eq_(
             repr(
                 sql_util._repr_params(
-                    [[i for i in range(300)], 5],
+                    [list(range(300)), 5],
                     batches=10,
                     max_chars=80,
                     ismulti=False,
@@ -202,9 +202,9 @@ class LogParamsTest(fixtures.TestBase):
             repr(
                 sql_util._repr_params(
                     [
-                        [[i for i in range(300)], 5],
-                        [[i for i in range(300)], 5],
-                        [[i for i in range(300)], 5],
+                        [list(range(300)), 5],
+                        [list(range(300)), 5],
+                        [list(range(300)), 5],
                     ],
                     batches=10,
                     max_chars=80,

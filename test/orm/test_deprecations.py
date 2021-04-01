@@ -3713,7 +3713,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
-            assert list(sess.query(User).values()) == list()
+            assert list(sess.query(User).values()) == []
 
         sel = users.select(User.id.in_([7, 8])).alias()
         q = sess.query(User)
@@ -3821,7 +3821,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
-            assert list(sess.query(User).values()) == list()
+            assert list(sess.query(User).values()) == []
 
         sel = users.select(User.id.in_([7, 8])).alias()
         q = sess.query(User)

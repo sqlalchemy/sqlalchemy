@@ -34,7 +34,7 @@ def _backend_specific_fk_args():
     ):
         fk_args = dict(deferrable=True, initially="deferred")
     elif not testing.requires.on_update_cascade.enabled:
-        fk_args = dict()
+        fk_args = {}
     else:
         fk_args = dict(onupdate="cascade")
     return fk_args

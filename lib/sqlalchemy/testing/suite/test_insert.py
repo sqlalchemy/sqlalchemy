@@ -168,7 +168,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
             )
         )
 
-        assert len(r.fetchall())
+        assert r.fetchall()
 
     @requirements.insert_from_select
     def test_insert_from_select_autoinc(self, connection):

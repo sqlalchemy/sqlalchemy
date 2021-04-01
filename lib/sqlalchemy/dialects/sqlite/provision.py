@@ -86,7 +86,7 @@ def _sqlite_drop_db(cfg, eng, ident):
         "%s_%s_test_schema.db" % (ident, eng.driver),
     ]:
         if os.path.exists(path):
-            log.info("deleting SQLite database file: %s" % path)
+            log.info("deleting SQLite database file: %s", path)
             os.remove(path)
 
 
@@ -138,5 +138,5 @@ def _reap_sqlite_dbs(url, idents):
                 ]
             ):
                 if os.path.exists(path):
-                    log.info("deleting SQLite database file: %s" % path)
+                    log.info("deleting SQLite database file: %s", path)
                     os.remove(path)
