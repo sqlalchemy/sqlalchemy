@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql, mssql
+    :tickets: 6163
+
+    Fixed a regression in MSSQL 2012+ that prevented the order by clause
+    to be rendered when ``offset=0`` is used in a subquery.

@@ -1784,7 +1784,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def limit_clause(self, cs, **kwargs):
         return ""
 
-    def _check_can_use_fetch_like(self, select):
+    def _check_can_use_fetch_limit(self, select):
         # to use ROW_NUMBER(), an ORDER BY is required.
         # OFFSET are FETCH are options of the ORDER BY clause
         if not select._order_by_clause.clauses:
@@ -1810,7 +1810,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         """
 
         if self.dialect._supports_offset_fetch and not self._use_top(select):
-            self._check_can_use_fetch_like(select)
+            self._check_can_use_fetch_limit(select)
 
             text = ""
 
@@ -1850,7 +1850,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             and not self._use_top(select)
             and not getattr(select, "_mssql_visit", None)
         ):
-            self._check_can_use_fetch_like(select)
+            self._check_can_use_fetch_limit(select)
 
             _order_by_clauses = [
                 sql_util.unwrap_label_reference(elem)
@@ -2031,7 +2031,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if (
             self.is_subquery()
             and not select._limit
-            and (not select._offset or not self.dialect._supports_offset_fetch)
+            and (
+                select._offset is None
+                or not self.dialect._supports_offset_fetch
+            )
         ):
             # avoid processing the order by clause if we won't end up
             # using it, because we don't want all the bind params tacked

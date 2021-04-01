@@ -440,7 +440,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
-    def test_noorderby_insubquery_offset_oldstyle(self):
+    @testing.combinations(10, 0)
+    def test_noorderby_insubquery_offset_oldstyle(self, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -454,7 +455,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             select(table1.c.myid)
             .order_by(table1.c.myid)
-            .offset(10)
+            .offset(offset)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
@@ -467,7 +468,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
-    def test_noorderby_insubquery_offset_newstyle(self, dialect_2012):
+    @testing.combinations(10, 0, argnames="offset")
+    def test_noorderby_insubquery_offset_newstyle(self, dialect_2012, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -481,7 +483,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             select(table1.c.myid)
             .order_by(table1.c.myid)
-            .offset(10)
+            .offset(offset)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid

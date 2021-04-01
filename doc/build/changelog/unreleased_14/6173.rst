@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, regression, oracle
+    :tickets: 6173
+
+    Fixed critical regression where the Oracle compiler would not maintain the
+    correct parameter values in the LIMIT/OFFSET for a select due to a caching
+    issue.
+

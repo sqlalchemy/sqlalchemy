@@ -561,7 +561,6 @@ from ...types import CHAR
 from ...types import CLOB
 from ...types import FLOAT
 from ...types import INTEGER
-from ...types import Integer
 from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import TIMESTAMP
@@ -1092,6 +1091,13 @@ class OracleCompiler(compiler.SQLCompiler):
             ):
                 limit_clause = select._limit_clause
                 offset_clause = select._offset_clause
+
+                if select._simple_int_clause(limit_clause):
+                    limit_clause = limit_clause._render_literal_execute()
+
+                if select._simple_int_clause(offset_clause):
+                    offset_clause = offset_clause._render_literal_execute()
+
                 # currently using form at:
                 # https://blogs.oracle.com/oraclemagazine/\
                 # on-rownum-and-limiting-results
@@ -1120,22 +1126,17 @@ class OracleCompiler(compiler.SQLCompiler):
                         is not None
                     ]
                 )
+
                 if (
                     limit_clause is not None
                     and self.dialect.optimize_limits
                     and select._simple_int_clause(limit_clause)
                 ):
-                    param = sql.bindparam(
-                        "_ora_frow",
-                        select._limit,
-                        type_=Integer,
-                        literal_execute=True,
-                        unique=True,
-                    )
                     limitselect = limitselect.prefix_with(
                         expression.text(
-                            "/*+ FIRST_ROWS(:_ora_frow) */"
-                        ).bindparams(param)
+                            "/*+ FIRST_ROWS(%s) */"
+                            % self.process(limit_clause, **kwargs)
+                        )
                     )
 
                 limitselect._oracle_visit = True
@@ -1155,19 +1156,14 @@ class OracleCompiler(compiler.SQLCompiler):
                         offset_clause is None
                         or select._simple_int_clause(offset_clause)
                     ):
-                        max_row = select._limit
+                        max_row = limit_clause
 
                         if offset_clause is not None:
-                            max_row += select._offset
-                        max_row = sql.bindparam(
-                            None,
-                            max_row,
-                            type_=Integer,
-                            literal_execute=True,
-                            unique=True,
-                        )
+                            max_row = max_row + offset_clause
+
                     else:
                         max_row = limit_clause
+
                         if offset_clause is not None:
                             max_row = max_row + offset_clause
                     limitselect = limitselect.where(
@@ -1213,15 +1209,6 @@ class OracleCompiler(compiler.SQLCompiler):
                         for_update.of = [
                             adapter.traverse(elem) for elem in for_update.of
                         ]
-
-                    if select._simple_int_clause(offset_clause):
-                        offset_clause = sql.bindparam(
-                            None,
-                            select._offset,
-                            Integer,
-                            literal_execute=True,
-                            unique=True,
-                        )
 
                     offsetselect = offsetselect.where(
                         sql.literal_column("ora_rn") > offset_clause
