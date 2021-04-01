@@ -1295,7 +1295,7 @@ class CollectionAttributeImpl(AttributeImpl):
                 collection._sa_linker(None)
 
     def __copy(self, item):
-        return [y for y in collections.collection_adapter(item)]
+        return list(collections.collection_adapter(item))
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         current = self.get(state, dict_, passive=passive)

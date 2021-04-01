@@ -870,7 +870,7 @@ def class_hierarchy(cls):
     """
     if compat.py2k:
         if isinstance(cls, types.ClassType):
-            return list()
+            return []
 
     hier = {cls}
     process = list(cls.__mro__)

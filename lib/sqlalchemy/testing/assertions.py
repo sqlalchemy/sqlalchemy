@@ -698,7 +698,7 @@ class AssertsExecutionResults(object):
 
     def sql_execution_asserter(self, db=None):
         if db is None:
-            from . import db as db
+            from . import db
 
         return assertsql.assert_engine(db)
 

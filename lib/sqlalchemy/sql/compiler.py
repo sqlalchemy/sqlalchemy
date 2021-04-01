@@ -3283,7 +3283,7 @@ class SQLCompiler(Compiled):
                 + self.positiontup
             )
         cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
-        cte_text += ", \n".join([txt for txt in self.ctes.values()])
+        cte_text += ", \n".join(self.ctes.values())
         cte_text += "\n "
         return cte_text
 

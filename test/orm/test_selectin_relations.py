@@ -1303,7 +1303,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
 
         o4, o5 = q.all()
-        assert len(o4.__dict__["address"])
+        assert o4.__dict__["address"]
         eq_(o5.__dict__["address"], [])
 
     def test_o2m_empty_list_present(self):

@@ -628,7 +628,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_alias_method_columns_two(self):
         expr = func.rows("foo").alias("bar")
-        assert len(expr.c)
+        assert expr.c
 
     def test_funcfilter_empty(self):
         self.assert_compile(func.count(1).filter(), "count(:count_1)")

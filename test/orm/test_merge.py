@@ -698,7 +698,7 @@ class MergeTest(_fixtures.FixtureTest):
         # merge persistent object into another session
         with fixture_session(expire_on_commit=False) as sess4:
             u = sess4.merge(u)
-            assert len(u.addresses)
+            assert u.addresses
             for a in u.addresses:
                 assert a.user is u
 
@@ -715,7 +715,7 @@ class MergeTest(_fixtures.FixtureTest):
         # test with "dontload" merge
         with fixture_session(expire_on_commit=False) as sess5:
             u = sess5.merge(u, load=False)
-            assert len(u.addresses)
+            assert u.addresses
             for a in u.addresses:
                 assert a.user is u
 

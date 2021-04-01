@@ -667,14 +667,14 @@ class IsolationLevelTest(fixtures.TestBase):
         conn.close()
 
     def test_default_level(self):
-        eng = testing_engine(options=dict())
+        eng = testing_engine(options={})
         isolation_level = eng.dialect.get_isolation_level(
             eng.connect().connection
         )
         eq_(isolation_level, self._default_isolation_level())
 
     def test_reset_level(self):
-        eng = testing_engine(options=dict())
+        eng = testing_engine(options={})
         conn = eng.connect()
         eq_(
             eng.dialect.get_isolation_level(conn.connection),

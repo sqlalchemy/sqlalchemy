@@ -358,7 +358,7 @@ def _is_mapped_class(entity):
 def _orm_columns(entity):
     insp = inspection.inspect(entity, False)
     if hasattr(insp, "selectable") and hasattr(insp.selectable, "c"):
-        return [c for c in insp.selectable.c]
+        return list(insp.selectable.c)
     else:
         return [entity]
 

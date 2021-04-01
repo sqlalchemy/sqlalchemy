@@ -338,8 +338,8 @@ class InheritTest3(fixtures.MappedTest):
                 return "Blub id %d, data %s, bars %s, foos %s" % (
                     self.id,
                     self.data,
-                    repr([b for b in self.bars]),
-                    repr([f for f in self.foos]),
+                    repr(list(self.bars)),
+                    repr(list(self.foos)),
                 )
 
         mapper(

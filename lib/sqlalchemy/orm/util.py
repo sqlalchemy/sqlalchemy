@@ -119,7 +119,7 @@ class CascadeOptions(frozenset):
         return self
 
     def __repr__(self):
-        return "CascadeOptions(%r)" % (",".join([x for x in sorted(self)]))
+        return "CascadeOptions(%r)" % (",".join(list(sorted(self))))
 
     @classmethod
     def from_string(cls, arg):

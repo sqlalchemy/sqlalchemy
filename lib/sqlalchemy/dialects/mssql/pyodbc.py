@@ -403,7 +403,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
         if (
             self._select_lastrowid
             and self.dialect.use_scope_identity
-            and len(self.parameters[0])
+            and self.parameters[0]
         ):
             self._embedded_scope_identity = True
 

@@ -673,9 +673,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 {"name": "s", "nullable": False, "default": current_timestamp},
                 {
                     "name": "t",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
+                    "nullable": bool(explicit_defaults_for_timestamp),
                     "default": None
                     if explicit_defaults_for_timestamp
                     else (
@@ -686,9 +684,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
                 },
                 {
                     "name": "u",
-                    "nullable": True
-                    if explicit_defaults_for_timestamp
-                    else False,
+                    "nullable": bool(explicit_defaults_for_timestamp),
                     "default": current_timestamp,
                 },
             ],
