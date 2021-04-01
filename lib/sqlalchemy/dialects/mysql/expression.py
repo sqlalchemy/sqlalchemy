@@ -56,9 +56,7 @@ class match(ColumnElement):
     used, but allows to pass multiple columns
 
     All positional arguments passed to :func:`.match`, typically should be a
-     :class:`_expression.ColumnElement` instances or alternatively a Python
-     scalar expression to be coerced into a column expression, serving as
-     the ``MATCH`` side of expression.
+     :class:`_expression.ColumnElement` instances
 
     :param against: typically scalar expression to be coerced into a ``str``,
      but may be a :class:`_expression.ColumnElement` instance

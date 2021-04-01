@@ -1616,14 +1616,17 @@ class MySQLCompiler(compiler.SQLCompiler):
         flag_combination = (boolean_mode, natural_language, query_expansion)
 
         if flag_combination not in self.match_valid_flag_combinations:
-            flags = {
-                'mysql_boolean_mode': boolean_mode,
-                'mysql_natural_language': natural_language,
-                'mysql_query_expansion': query_expansion,
-            }
+            flags = (
+                'mysql_boolean_mode=%s' % boolean_mode,
+                'mysql_natural_language=%s' % natural_language,
+                'mysql_query_expansion=%s' % query_expansion,
+            )
+
+            flags = ", ".join(flags)
+
             raise exc.CompileError(
-                    "Flag combination does not make sence: %s." % flags
-                )
+                "Flag combination does not make sence: %s" % flags
+            )
 
         match_clause = self.process(binary.left, **kw)
         against_clause = self.process(binary.right, **kw)
