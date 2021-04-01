@@ -3062,6 +3062,7 @@ class PGDeferrableConnectionCharacteristic(
 
 class PGDialect(default.DefaultDialect):
     name = "postgresql"
+    supports_statement_cache = True
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True

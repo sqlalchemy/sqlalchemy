@@ -28,6 +28,7 @@ from .psycopg2 import PGDialect_psycopg2
 class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     driver = "psycopg2cffi"
     supports_unicode_statements = True
+    supports_statement_cache = True
 
     # psycopg2cffi's first release is 2.5.0, but reports
     # __version__ as 2.4.4.  Subsequent releases seem to have

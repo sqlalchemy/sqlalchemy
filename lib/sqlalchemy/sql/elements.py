@@ -514,7 +514,7 @@ class ClauseElement(
         schema_translate_map=None,
         **kw
     ):
-        if compiled_cache is not None:
+        if compiled_cache is not None and dialect._supports_statement_cache:
             elem_cache_key = self._generate_cache_key()
         else:
             elem_cache_key = None
@@ -553,11 +553,13 @@ class ClauseElement(
                 schema_translate_map=schema_translate_map,
                 **kw
             )
-            cache_hit = (
-                dialect.CACHING_DISABLED
-                if compiled_cache is None
-                else dialect.NO_CACHE_KEY
-            )
+
+            if not dialect._supports_statement_cache:
+                cache_hit = dialect.NO_DIALECT_SUPPORT
+            elif compiled_cache is None:
+                cache_hit = dialect.CACHING_DISABLED
+            else:
+                cache_hit = dialect.NO_CACHE_KEY
 
         return compiled_sql, extracted_params, cache_hit
 
@@ -1428,6 +1430,34 @@ class BindParameter(roles.InElementRole, ColumnElement):
             return self.callable()
         else:
             return self.value
+
+    def render_literal_execute(self):
+        """Produce a copy of this bound parameter that will enable the
+        :paramref:`_sql.BindParameter.literal_execute` flag.
+
+        The :paramref:`_sql.BindParameter.literal_execute` flag will
+        have the effect of the parameter rendered in the compiled SQL
+        string using ``[POSTCOMPILE]`` form, which is a special form that
+        is converted to be a rendering of the literal value of the parameter
+        at SQL execution time.    The rationale is to support caching
+        of SQL statement strings that can embed per-statement literal values,
+        such as LIMIT and OFFSET parameters, in the final SQL string that
+        is passed to the DBAPI.   Dialects in particular may want to use
+        this method within custom compilation schemes.
+
+        .. versionadded:: 1.4.5
+
+        .. seealso::
+
+            :ref:`engine_thirdparty_caching`
+
+        """
+        return self.__class__(
+            self.key,
+            self.value,
+            type_=self.type,
+            literal_execute=True,
+        )
 
     def _with_binary_element_type(self, type_):
         c = ClauseElement._clone(self)

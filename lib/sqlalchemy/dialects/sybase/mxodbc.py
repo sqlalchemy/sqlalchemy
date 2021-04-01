@@ -28,6 +28,7 @@ class SybaseExecutionContext_mxodbc(SybaseExecutionContext):
 
 class SybaseDialect_mxodbc(MxODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_mxodbc
+    supports_statement_cache = True
 
 
 dialect = SybaseDialect_mxodbc

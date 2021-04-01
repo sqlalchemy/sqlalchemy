@@ -98,6 +98,7 @@ from ... import util
 
 class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
     driver = "pysqlcipher"
+    supports_statement_cache = True
 
     pragmas = ("kdf_iter", "cipher", "cipher_page_size", "cipher_use_hmac")
 

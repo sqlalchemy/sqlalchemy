@@ -3631,3 +3631,98 @@ class SetInputSizesTest(fixtures.TablesTest):
                 )
             ],
         )
+
+
+class DialectDoesntSupportCachingTest(fixtures.TestBase):
+    """test the opt-in caching flag added in :ticket:`6184`."""
+
+    __only_on__ = "sqlite+pysqlite"
+
+    __requires__ = ("sqlite_memory",)
+
+    @testing.fixture()
+    def sqlite_no_cache_dialect(self, testing_engine):
+        from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
+        from sqlalchemy.dialects.sqlite.base import SQLiteCompiler
+        from sqlalchemy.sql import visitors
+
+        class MyCompiler(SQLiteCompiler):
+            def translate_select_structure(self, select_stmt, **kwargs):
+                select = select_stmt
+
+                if not getattr(select, "_mydialect_visit", None):
+                    select = visitors.cloned_traverse(select_stmt, {}, {})
+                    if select._limit_clause is not None:
+                        # create a bindparam with a fixed name and hardcode
+                        # it to the given limit.  this breaks caching.
+                        select._limit_clause = bindparam(
+                            "limit", value=select._limit, literal_execute=True
+                        )
+
+                    select._mydialect_visit = True
+
+                return select
+
+        class MyDialect(SQLiteDialect_pysqlite):
+            statement_compiler = MyCompiler
+
+        from sqlalchemy.dialects import registry
+
+        def go(name):
+            return MyDialect
+
+        with mock.patch.object(registry, "load", go):
+            eng = testing_engine()
+            yield eng
+
+    @testing.fixture
+    def data_fixture(self, sqlite_no_cache_dialect):
+        m = MetaData()
+        t = Table("t1", m, Column("x", Integer))
+        with sqlite_no_cache_dialect.begin() as conn:
+            t.create(conn)
+            conn.execute(t.insert(), [{"x": 1}, {"x": 2}, {"x": 3}, {"x": 4}])
+
+        return t
+
+    def test_no_cache(self, sqlite_no_cache_dialect, data_fixture):
+        eng = sqlite_no_cache_dialect
+
+        def go(lim):
+            with eng.connect() as conn:
+                result = conn.execute(
+                    select(data_fixture).order_by(data_fixture.c.x).limit(lim)
+                )
+                return result
+
+        r1 = go(2)
+        r2 = go(3)
+
+        eq_(r1.all(), [(1,), (2,)])
+        eq_(r2.all(), [(1,), (2,), (3,)])
+
+    def test_it_caches(self, sqlite_no_cache_dialect, data_fixture):
+        eng = sqlite_no_cache_dialect
+        eng.dialect.__class__.supports_statement_cache = True
+        del eng.dialect.__dict__["_supports_statement_cache"]
+
+        def go(lim):
+            with eng.connect() as conn:
+                result = conn.execute(
+                    select(data_fixture).order_by(data_fixture.c.x).limit(lim)
+                )
+                return result
+
+        r1 = go(2)
+        r2 = go(3)
+
+        eq_(r1.all(), [(1,), (2,)])
+
+        # wrong answer
+        eq_(
+            r2.all(),
+            [
+                (1,),
+                (2,),
+            ],
+        )

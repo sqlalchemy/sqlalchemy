@@ -266,6 +266,7 @@ class AsyncAdapt_aiomysql_dbapi:
 
 class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     driver = "aiomysql"
+    supports_statement_cache = True
 
     supports_server_side_cursors = True
     _sscursor = AsyncAdapt_aiomysql_ss_cursor

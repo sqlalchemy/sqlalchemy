@@ -797,6 +797,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
 
 class OracleDialect_cx_oracle(OracleDialect):
+    supports_statement_cache = True
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
 

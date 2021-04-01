@@ -152,6 +152,24 @@ class Dialect(object):
 
     _has_events = False
 
+    supports_statement_cache = True
+    """indicates if this dialect supports caching.
+
+    All dialects that are compatible with statement caching should set this
+    flag to True directly on each dialect class and subclass that supports
+    it.  SQLAlchemy tests that this flag is locally present on each dialect
+    subclass before it will use statement caching.  This is to provide
+    safety for legacy or new dialects that are not yet fully tested to be
+    compliant with SQL statement caching.
+
+    .. versionadded:: 1.4.5
+
+    .. seealso::
+
+        :ref:`engine_thirdparty_caching`
+
+    """
+
     def create_connect_args(self, url):
         """Build DB-API compatible connection arguments.
 

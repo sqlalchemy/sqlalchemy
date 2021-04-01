@@ -252,6 +252,7 @@ class PGIdentifierPreparer_pg8000(PGIdentifierPreparer):
 
 class PGDialect_pg8000(PGDialect):
     driver = "pg8000"
+    supports_statement_cache = True
 
     supports_unicode_statements = True
 

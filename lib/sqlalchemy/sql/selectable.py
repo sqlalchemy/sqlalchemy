@@ -69,14 +69,6 @@ class _OffsetLimitParam(BindParameter):
     def _limit_offset_value(self):
         return self.effective_value
 
-    def _render_literal_execute(self):
-        return _OffsetLimitParam(
-            self.key,
-            self.value,
-            type_=self.type,
-            literal_execute=True,
-        )
-
 
 @util.deprecated(
     "1.4",

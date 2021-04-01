@@ -44,6 +44,7 @@ CACHE_HIT = util.symbol("CACHE_HIT")
 CACHE_MISS = util.symbol("CACHE_MISS")
 CACHING_DISABLED = util.symbol("CACHING_DISABLED")
 NO_CACHE_KEY = util.symbol("NO_CACHE_KEY")
+NO_DIALECT_SUPPORT = util.symbol("NO_DIALECT_SUPPORT")
 
 
 class DefaultDialect(interfaces.Dialect):
@@ -57,6 +58,7 @@ class DefaultDialect(interfaces.Dialect):
     supports_comments = False
     inline_comments = False
     use_setinputsizes = False
+    supports_statement_cache = True
 
     # the first value we'd get for an autoincrement
     # column.
@@ -215,6 +217,7 @@ class DefaultDialect(interfaces.Dialect):
     CACHE_MISS = CACHE_MISS
     CACHING_DISABLED = CACHING_DISABLED
     NO_CACHE_KEY = NO_CACHE_KEY
+    NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
 
     @util.deprecated_params(
         convert_unicode=(
@@ -318,6 +321,13 @@ class DefaultDialect(interfaces.Dialect):
             )(self.description_encoding)
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
+
+    @util.memoized_property
+    def _supports_statement_cache(self):
+        return (
+            self.__class__.__dict__.get("supports_statement_cache", False)
+            is True
+        )
 
     @util.memoized_property
     def _type_memos(self):
@@ -771,6 +781,8 @@ class StrCompileDialect(DefaultDialect):
     type_compiler = compiler.StrSQLTypeCompiler
     preparer = compiler.IdentifierPreparer
 
+    supports_statement_cache = True
+
     supports_sequences = True
     sequences_optional = True
     preexecute_autoincrement_sequences = False
@@ -1137,6 +1149,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return "generated in %.5fs" % (now - self.compiled._gen_time,)
         elif ch is CACHING_DISABLED:
             return "caching disabled %.5fs" % (now - self.compiled._gen_time,)
+        elif ch is NO_DIALECT_SUPPORT:
+            return "dialect %s+%s does not support caching %.5fs" % (
+                self.dialect.name,
+                self.dialect.driver,
+                now - self.compiled._gen_time,
+            )
         else:
             return "unknown"
 

@@ -443,6 +443,7 @@ class _SQLite_pysqliteDate(DATE):
 
 class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = "qmark"
+    supports_statement_cache = True
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,

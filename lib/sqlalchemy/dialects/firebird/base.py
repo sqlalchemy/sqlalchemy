@@ -623,6 +623,7 @@ class FBDialect(default.DefaultDialect):
     """Firebird dialect"""
 
     name = "firebird"
+    supports_statement_cache = True
 
     max_identifier_length = 31
 

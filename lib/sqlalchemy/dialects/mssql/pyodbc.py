@@ -431,6 +431,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
+    supports_statement_cache = True
 
     # mssql still has problems with this on Linux
     supports_sane_rowcount_returning = False

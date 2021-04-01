@@ -3,6 +3,7 @@ from .base import MySQLDialect
 
 class MariaDBDialect(MySQLDialect):
     is_mariadb = True
+    supports_statement_cache = True
     name = "mariadb"
 
 
@@ -18,5 +19,5 @@ def loader(driver):
             MariaDBDialect,
             driver_cls,
         ),
-        {},
+        {"supports_statement_cache": True},
     )

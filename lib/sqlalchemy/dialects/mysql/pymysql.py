@@ -35,6 +35,7 @@ from ...util import py3k
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = "pymysql"
+    supports_statement_cache = True
 
     description_encoding = None
 

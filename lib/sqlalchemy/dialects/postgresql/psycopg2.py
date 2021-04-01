@@ -634,6 +634,9 @@ EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
 
 class PGDialect_psycopg2(PGDialect):
     driver = "psycopg2"
+
+    supports_statement_cache = True
+
     if util.py2k:
         # turn off supports_unicode_statements for Python 2. psycopg2 supports
         # unicode statements in Py2K. But!  it does not support unicode *bound

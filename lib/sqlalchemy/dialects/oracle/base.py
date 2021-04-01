@@ -1093,10 +1093,10 @@ class OracleCompiler(compiler.SQLCompiler):
                 offset_clause = select._offset_clause
 
                 if select._simple_int_clause(limit_clause):
-                    limit_clause = limit_clause._render_literal_execute()
+                    limit_clause = limit_clause.render_literal_execute()
 
                 if select._simple_int_clause(offset_clause):
-                    offset_clause = offset_clause._render_literal_execute()
+                    offset_clause = offset_clause.render_literal_execute()
 
                 # currently using form at:
                 # https://blogs.oracle.com/oraclemagazine/\
@@ -1434,6 +1434,7 @@ class OracleExecutionContext(default.DefaultExecutionContext):
 
 class OracleDialect(default.DefaultDialect):
     name = "oracle"
+    supports_statement_cache = True
     supports_alter = True
     supports_unicode_statements = False
     supports_unicode_binds = False

@@ -2576,6 +2576,7 @@ def _schema_elements(schema):
 class MSDialect(default.DefaultDialect):
     # will assume it's at least mssql2005
     name = "mssql"
+    supports_statement_cache = True
     supports_default_values = True
     supports_empty_insert = False
     execution_ctx_cls = MSExecutionContext

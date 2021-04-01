@@ -299,6 +299,7 @@ class SQLiteExecutionContext_aiosqlite(SQLiteExecutionContext):
 
 class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
     driver = "aiosqlite"
+    supports_statement_cache = True
 
     is_async = True
 

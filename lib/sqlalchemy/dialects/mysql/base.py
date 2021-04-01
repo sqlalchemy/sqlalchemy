@@ -2511,6 +2511,8 @@ class MySQLDialect(default.DefaultDialect):
     """
 
     name = "mysql"
+    supports_statement_cache = True
+
     supports_alter = True
 
     # MySQL has no true "boolean" type; we

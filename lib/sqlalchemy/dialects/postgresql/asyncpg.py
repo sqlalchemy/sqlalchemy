@@ -850,6 +850,7 @@ _pg_types = {
 
 class PGDialect_asyncpg(PGDialect):
     driver = "asyncpg"
+    supports_statement_cache = True
 
     supports_unicode_statements = True
     supports_server_side_cursors = True

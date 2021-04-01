@@ -632,6 +632,7 @@ class SybaseDialect(default.DefaultDialect):
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
+    supports_statement_cache = True
 
     supports_native_boolean = False
     supports_unicode_binds = False

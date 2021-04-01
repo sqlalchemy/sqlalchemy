@@ -65,6 +65,7 @@ class MSIdentifierPreparer_pymssql(MSIdentifierPreparer):
 
 
 class MSDialect_pymssql(MSDialect):
+    supports_statement_cache = True
     supports_native_decimal = True
     driver = "pymssql"
 
