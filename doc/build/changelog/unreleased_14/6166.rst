@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 6166
+
+    Prevent loading contextvars in python 3.6 when the backport
+    library is installed.
