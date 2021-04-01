@@ -1,7 +1,5 @@
 # coding: utf-8
 
-from finctools import partial
-
 from sqlalchemy import BLOB
 from sqlalchemy import BOOLEAN
 from sqlalchemy import Boolean
@@ -432,30 +430,35 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             literal_binds=True,
         )
 
-    def test_match_compile_kw_mysql(self):
+    def test_match_compile_modifiers(self):
         matchtable = table("matchtable", column("title", String))
+        title = matchtable.c.title
+
         self.assert_compile(
-            matchtable.c.title.match("somstr", mysql_boolean_mode=False),
+            title.match("somstr", mysql_boolean_mode=False),
             "MATCH (matchtable.title) AGAINST (%s)",
         )
+
         self.assert_compile(
-            matchtable.c.title.match(
+            title.match(
                 "somstr",
                 mysql_boolean_mode=False,
                 mysql_natural_language=True,
             ),
             "MATCH (matchtable.title) AGAINST (%s IN NATURAL LANGUAGE MODE)",
         )
+
         self.assert_compile(
-            matchtable.c.title.match(
+            title.match(
                 "somstr",
                 mysql_boolean_mode=False,
                 mysql_query_expansion=True,
             ),
             "MATCH (matchtable.title) AGAINST (%s WITH QUERY EXPANSION)",
         )
+
         self.assert_compile(
-            matchtable.c.title.match(
+            title.match(
                 "somstr",
                 mysql_boolean_mode=False,
                 mysql_natural_language=True,
@@ -465,47 +468,37 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
         )
 
+    def test_match_compile_modifiers_fail(self):
+        matchtable = table("matchtable", column("title", String))
+        title = matchtable.c.title
+        msg = "Flag combination does not make sence: " \
+            "mysql_boolean_mode=%s, " \
+            "mysql_natural_language=%s, " \
+            "mysql_query_expansion=%s"
+
         assert_raises_message(
             exc.CompileError,
-            "Flag combination does not make sence: "
-            "mysql_boolean_mode=True, "
-            "mysql_natural_language=True, "
-            "mysql_query_expansion=True",
-            partial(
-                matchtable.c.title.match,
-                "somstr",
-                mysql_natural_language=True,
-                mysql_query_expansion=True,
-            ),
-            dialect=mysql.dialect(),
+            msg % (True, True, True),
+            title.match,
+            "somstr",
+            mysql_natural_language=True,
+            mysql_query_expansion=True,
         )
 
         assert_raises_message(
             exc.CompileError,
-            "Flag combination does not make sence: "
-            "mysql_boolean_mode=True, "
-            "mysql_natural_language=False, "
-            "mysql_query_expansion=True",
-            partial(
-                matchtable.c.title.match,
-                "somstr",
-                mysql_query_expansion=True,
-            ),
-            dialect=mysql.dialect(),
+            msg % (True, False, True),
+            title.match,
+            "somstr",
+            mysql_query_expansion=True,
         )
 
         assert_raises_message(
             exc.CompileError,
-            "Flag combination does not make sence: "
-            "mysql_boolean_mode=True, "
-            "mysql_natural_language=True, "
-            "mysql_query_expansion=False",
-            partial(
-                matchtable.c.title.match,
-                "somstr",
-                mysql_natural_language=True,
-            ),
-            dialect=mysql.dialect(),
+            msg % (True, True, False),
+            title.match,
+            "somstr",
+            mysql_natural_language=True,
         )
 
     def test_concat_compile_kw(self):

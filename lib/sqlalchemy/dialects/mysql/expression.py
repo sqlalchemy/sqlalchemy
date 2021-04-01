@@ -58,8 +58,7 @@ class match(ColumnElement):
     All positional arguments passed to :func:`.match`, typically should be a
      :class:`_expression.ColumnElement` instances
 
-    :param against: typically scalar expression to be coerced into a ``str``,
-     but may be a :class:`_expression.ColumnElement` instance
+    :param against: typically scalar expression to be coerced into a ``str``
 
     :param flags: optional ``dict``
 
