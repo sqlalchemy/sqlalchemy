@@ -2812,7 +2812,7 @@ class MySQLDialect(default.DefaultDialect):
 
         rs = connection.execute(
             text(
-                "SELECT * FROM information_schema.tables WHERE "
+                "SELECT COUNT(*) FROM information_schema.tables WHERE "
                 "table_schema = :table_schema AND "
                 "table_name = :table_name"
             ).bindparams(
