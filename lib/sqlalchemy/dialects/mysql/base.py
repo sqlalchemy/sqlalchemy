@@ -1609,9 +1609,11 @@ class MySQLCompiler(compiler.SQLCompiler):
         backward compatibility
         """
 
-        boolean_mode = kw.pop('mysql_boolean_mode', True)
-        natural_language = kw.pop('mysql_natural_language', False)
-        query_expansion = kw.pop('mysql_query_expansion', False)
+        modifiers = binary.modifiers
+
+        boolean_mode = modifiers.get('mysql_boolean_mode', True)
+        natural_language = modifiers.get('mysql_natural_language', False)
+        query_expansion = modifiers.get('mysql_query_expansion', False)
 
         flag_combination = (boolean_mode, natural_language, query_expansion)
 
