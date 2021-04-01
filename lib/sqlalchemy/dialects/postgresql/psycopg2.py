@@ -652,12 +652,17 @@ class PGCompiler_psycopg2(PGCompiler):
         )
         # note that if the type has a bind_expression(), we will get a
         # double compile here
-        if not skip_bind_expression and bindparam.type._is_array:
-            text += "::%s" % (
-                elements.TypeClause(bindparam.type)._compiler_dispatch(
-                    self, skip_bind_expression=skip_bind_expression, **kw
-                ),
-            )
+        if not skip_bind_expression and (
+            bindparam.type._is_array or bindparam.type._is_type_decorator
+        ):
+            typ = bindparam.type._unwrapped_dialect_impl(self.dialect)
+
+            if typ._is_array:
+                text += "::%s" % (
+                    elements.TypeClause(typ)._compiler_dispatch(
+                        self, skip_bind_expression=skip_bind_expression, **kw
+                    ),
+                )
         return text
 
 

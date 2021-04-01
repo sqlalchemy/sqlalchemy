@@ -50,6 +50,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql import type_coerce
+from sqlalchemy.sql.type_api import Variant
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
@@ -1740,12 +1742,18 @@ class ArrayRoundTripTest(object):
                 "data_2",
                 self.ARRAY(types.Enum("a", "b", "c", name="my_enum_2")),
             ),
+            Column(
+                "data_3",
+                self.ARRAY(
+                    types.Enum("a", "b", "c", name="my_enum_3")
+                ).with_variant(String(), "other"),
+            ),
         )
 
         t.create(testing.db)
         eq_(
             set(e["name"] for e in inspect(testing.db).get_enums()),
-            set(["my_enum_1", "my_enum_2"]),
+            set(["my_enum_1", "my_enum_2", "my_enum_3"]),
         )
         t.drop(testing.db)
         eq_(inspect(testing.db).get_enums(), [])
@@ -1888,6 +1896,7 @@ class ArrayRoundTripTest(object):
                 ],
                 testing.requires.hstore,
             ),
+            (postgresql.ENUM(AnEnum), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=True), enum_values),
             (
                 sqltypes.Enum(
@@ -1918,14 +1927,21 @@ class ArrayRoundTripTest(object):
 
         m.drop_all(testing.db)
 
-    @testing.fixture
-    def type_specific_fixture(self, metadata, connection, type_):
+    @testing.fixture(params=[True, False])
+    def type_specific_fixture(self, request, metadata, connection, type_):
+        use_variant = request.param
         meta = MetaData()
+
+        if use_variant:
+            typ = self.ARRAY(type_).with_variant(String(), "other")
+        else:
+            typ = self.ARRAY(type_)
+
         table = Table(
             "foo",
             meta,
             Column("id", Integer),
-            Column("bar", self.ARRAY(type_)),
+            Column("bar", typ),
         )
 
         meta.create_all(connection)
@@ -1975,10 +1991,14 @@ class ArrayRoundTripTest(object):
 
         new_gen = gen(3)
 
+        if isinstance(table.c.bar.type, Variant):
+            # this is not likely to occur to users but we need to just
+            # exercise this as far as we can
+            expr = type_coerce(table.c.bar, ARRAY(type_))[1:3]
+        else:
+            expr = table.c.bar[1:3]
         connection.execute(
-            table.update()
-            .where(table.c.id == 2)
-            .values({table.c.bar[1:3]: new_gen[1:4]})
+            table.update().where(table.c.id == 2).values({expr: new_gen[1:4]})
         )
 
         rows = connection.execute(

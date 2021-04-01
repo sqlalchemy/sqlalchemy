@@ -2047,6 +2047,12 @@ class SchemaTypeTest(fixtures.TestBase):
         typ = MyType()
         self._test_before_parent_attach(typ)
 
+    def test_before_parent_attach_variant_array_schematype(self):
+
+        target = Enum("one", "two", "three")
+        typ = ARRAY(target).with_variant(String(), "other")
+        self._test_before_parent_attach(typ, evt_target=target)
+
     def _test_before_parent_attach(self, typ, evt_target=None):
         canary = mock.Mock()
 

@@ -1642,7 +1642,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             return False
 
     def _on_table_create(self, target, bind, checkfirst=False, **kw):
-
         if (
             checkfirst
             or (

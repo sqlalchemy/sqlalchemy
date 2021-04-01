@@ -46,6 +46,7 @@ class TypeEngine(Visitable):
     _sqla_type = True
     _isnull = False
     _is_array = False
+    _is_type_decorator = False
 
     class Comparator(operators.ColumnOperators):
         """Base class for custom comparison operations defined at the
@@ -884,6 +885,8 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     __visit_name__ = "type_decorator"
 
+    _is_type_decorator = True
+
     def __init__(self, *args, **kwargs):
         """Construct a :class:`.TypeDecorator`.
 
@@ -1412,7 +1415,7 @@ class Variant(TypeDecorator):
         else:
             return self.impl
 
-    def _set_parent(self, column, **kw):
+    def _set_parent(self, column, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         if isinstance(self.impl, SchemaEventTarget):
