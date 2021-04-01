@@ -153,7 +153,7 @@ class MxODBCConnector(Connector):
             )
             # default to direct=True in all cases, is more generally
             # compatible especially with SQL Server
-            return not native_odbc_execute is True
+            return False if native_odbc_execute is True else True
         else:
             return True
 
