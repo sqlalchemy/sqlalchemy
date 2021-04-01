@@ -5,6 +5,7 @@ import datetime
 from sqlalchemy import and_
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import exc
@@ -1331,3 +1332,24 @@ class TableValuedRoundTripTest(fixtures.TestBase):
             connection.execute(stmt).all(),
             [(14, 1), (41, 2), (7, 3), (54, 4), (9, 5), (49, 6)],
         )
+
+    @testing.only_on(
+        "postgresql+psycopg2",
+        "I cannot get this to run at all on other drivers, "
+        "even selecting from a table",
+    )
+    def test_render_derived_quoting(self, connection):
+        fn = (
+            func.json_to_recordset(  # noqa
+                '[{"CaseSensitive":1,"the % value":"foo"}, '
+                '{"CaseSensitive":"2","the % value":"bar"}]'
+            )
+            .table_valued(
+                column("CaseSensitive", Integer), column("the % value", String)
+            )
+            .render_derived(with_types=True)
+        )
+
+        stmt = select(fn.c.CaseSensitive, fn.c["the % value"])
+
+        eq_(connection.execute(stmt).all(), [(1, "foo"), (2, "bar")])

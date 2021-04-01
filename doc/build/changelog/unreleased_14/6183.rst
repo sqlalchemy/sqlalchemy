@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql, postgresql
+    :tickets: 6183
+
+    Fixed bug in new :meth:`_functions.FunctionElement.render_derived` feature
+    where column names rendered out explicitly in the alias SQL would not have
+    proper quoting applied for case sensitive names and other non-alphanumeric
+    names.

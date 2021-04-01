@@ -2662,7 +2662,7 @@ class SQLCompiler(Compiled):
                     ", ".join(
                         "%s%s"
                         % (
-                            col.name,
+                            self.preparer.quote(col.name),
                             " %s"
                             % self.dialect.type_compiler.process(
                                 col.type, **kwargs
