@@ -3,5 +3,5 @@
     :tickets: 6099
 
     Fixed typo in the fix for :ticket:`6099` released in 1.4.4 that completely
-    prevented it from working correctly, i.e. the error message did not match
+    prevented this change from working correctly, i.e. the error message did not match
     what was actually emitted by pg8000.

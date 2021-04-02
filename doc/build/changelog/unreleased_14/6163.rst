@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, sql, mssql
+    :tags: bug, mssql
     :tickets: 6163
 
     Fixed a regression in MSSQL 2012+ that prevented the order by clause

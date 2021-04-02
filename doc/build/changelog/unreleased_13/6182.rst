@@ -1,6 +1,7 @@
 .. change::
     :tags: bug, postgresql, regression
     :tickets: 6182
+    :versions: 1.4.5
 
     Fixed regression caused by :ticket:`6023` where the PostgreSQL cast
     operator applied to elements within an :class:`_types.ARRAY` when using

@@ -1437,7 +1437,7 @@ class Enum(Emulated, String, SchemaType):
            A deprecation warning is raised if the enum has aliases and this
            flag was not set.
 
-           .. versionadded:: 1.4.4
+           .. versionadded:: 1.4.5
 
            .. deprecated:: 1.4  The default will be changed to ``True`` in
               SQLAlchemy 2.0.
