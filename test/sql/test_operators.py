@@ -1973,6 +1973,22 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             checkparams={"myid_1": [1, 2, 3]},
         )
 
+    def test_scalar_subquery_wo_type(self):
+        """ test for :ticket:`6181` """
+
+        m = MetaData()
+        t = Table("t", m, Column("a", Integer))
+
+        # the scalar subquery of this will have no type; coercions will
+        # want to call _with_binary_element_type(); that has to return
+        # a scalar select
+        req = select(column("scan"))
+
+        self.assert_compile(
+            select(t.c.a).where(t.c.a.in_(req)),
+            "SELECT t.a FROM t WHERE t.a IN (SELECT scan)",
+        )
+
 
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"

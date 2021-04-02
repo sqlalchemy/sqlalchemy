@@ -26,6 +26,7 @@ from sqlalchemy.sql.coercions import expect
 from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.selectable import FromGrouping
+from sqlalchemy.sql.selectable import ScalarSelect
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -144,6 +145,19 @@ class RoleTest(fixtures.TestBase):
                 literal(not_a_thing1).label(None)
             )
         )
+
+    def test_untyped_scalar_subquery(self):
+        """test for :ticket:`6181` """
+
+        c = column("q")
+        subq = select(c).scalar_subquery()
+
+        assert isinstance(
+            subq._with_binary_element_type(Integer()), ScalarSelect
+        )
+
+        expr = column("a", Integer) == subq
+        assert isinstance(expr.right, ScalarSelect)
 
     def test_no_clauseelement_in_bind(self):
         with testing.expect_raises_message(
