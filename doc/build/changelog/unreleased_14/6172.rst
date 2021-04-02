@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, regression, orm
-    :tickets: 6172
-
-    Fixed regression where the :func:`_orm.joinedload` loader strategy would
-    not successfully joinedload to a mapper that is mapper against a
-    :class:`.CTE` construct.

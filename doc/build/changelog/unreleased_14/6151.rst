@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mysql, regression
-    :tickets: 6163
-
-    Fixed regression in the MySQL dialect where the reflection query used to
-    detect if a table exists would fail on very old MySQL 5.0 and 5.1 versions.

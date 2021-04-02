@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, regression, sql
-    :tickets: 6181
-
-    Fixed regression where use of the :meth:`.Operators.in_` method with a
-    :class:`_sql.Select` object against a non-table-bound column would produce
-    an ``AttributeError``, or more generally using a :class:`_sql.ScalarSelect`
-    that has no datatype in a binary expression would produce invalid state.
-

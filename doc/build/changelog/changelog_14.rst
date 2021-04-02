@@ -15,7 +15,139 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.5
-    :include_notes_from: unreleased_14
+    :released: April 2, 2021
+
+    .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 6183
+
+        Fixed bug in new :meth:`_functions.FunctionElement.render_derived` feature
+        where column names rendered out explicitly in the alias SQL would not have
+        proper quoting applied for case sensitive names and other non-alphanumeric
+        names.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6172
+
+        Fixed regression where the :func:`_orm.joinedload` loader strategy would
+        not successfully joinedload to a mapper that is mapper against a
+        :class:`.CTE` construct.
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6181
+
+        Fixed regression where use of the :meth:`.Operators.in_` method with a
+        :class:`_sql.Select` object against a non-table-bound column would produce
+        an ``AttributeError``, or more generally using a :class:`_sql.ScalarSelect`
+        that has no datatype in a binary expression would produce invalid state.
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: sqlalchemy/sqlalchemy2-stubs/#14
+
+        Fixed issue in mypy plugin where newly added support for
+        :func:`_orm.as_declarative` needed to more fully add the
+        ``DeclarativeMeta`` class to the mypy interpreter's state so that it does
+        not result in a name not found error; additionally improves how global
+        names are setup for the plugin including the ``Mapped`` name.
+
+
+    .. change::
+        :tags: bug, mysql, regression
+        :tickets: 6163
+
+        Fixed regression in the MySQL dialect where the reflection query used to
+        detect if a table exists would fail on very old MySQL 5.0 and 5.1 versions.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6184
+
+        Added a new flag to the :class:`_engine.Dialect` class called
+        :attr:`_engine.Dialect.supports_statement_cache`. This flag now needs to be present
+        directly on a dialect class in order for SQLAlchemy's
+        :ref:`query cache <sql_caching>` to take effect for that dialect. The
+        rationale is based on discovered issues such as :ticket:`6173` revealing
+        that dialects which hardcode literal values from the compiled statement,
+        often the numerical parameters used for LIMIT / OFFSET, will not be
+        compatible with caching until these dialects are revised to use the
+        parameters present in the statement only. For third party dialects where
+        this flag is not applied, the SQL logging will show the message "dialect
+        does not support caching", indicating the dialect should seek to apply this
+        flag once they have verified that no per-statement literal values are being
+        rendered within the compilation phase.
+
+        .. seealso::
+
+          :ref:`engine_thirdparty_caching`
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6099
+
+        Fixed typo in the fix for :ticket:`6099` released in 1.4.4 that completely
+        prevented this change from working correctly, i.e. the error message did not match
+        what was actually emitted by pg8000.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6171
+
+        Scaled back the warning message added in :ticket:`5171` to not warn for
+        overlapping columns in an inheritance scenario where a particular
+        relationship is local to a subclass and therefore does not represent an
+        overlap.
+
+    .. change::
+        :tags: bug, regression, oracle
+        :tickets: 6173
+
+        Fixed critical regression where the Oracle compiler would not maintain the
+        correct parameter values in the LIMIT/OFFSET for a select due to a caching
+        issue.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6170
+
+        Fixed issue where the PostgreSQL :class:`.PGInspector`, when generated
+        against an :class:`_engine.Engine`, would fail for ``.get_enums()``,
+        ``.get_view_names()``, ``.get_foreign_table_names()`` and
+        ``.get_table_oid()`` when used against a "future" style engine and not the
+        connection directly.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 6146
+
+        Introduce a new parameter :paramref:`_types.Enum.omit_aliases` in
+        :class:`_types.Enum` type allow filtering aliases when using a pep435 Enum.
+        Previous versions of SQLAlchemy kept aliases in all cases, creating
+        database enum type with additional states, meaning that they were treated
+        as different values in the db. For backward compatibility this flag
+        defaults to ``False`` in the 1.4 series, but will be switched to ``True``
+        in a future version. A deprecation warning is raise if this flag is not
+        specified and the passed enum contains aliases.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 6163
+
+        Fixed a regression in MSSQL 2012+ that prevented the order by clause
+        to be rendered when ``offset=0`` is used in a subquery.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 6166
+
+
+        Fixed issue where the asyncio extension could not be loaded
+        if running Python 3.6 with the backport library of
+        ``contextvars`` installed.
 
 .. changelog::
     :version: 1.4.4

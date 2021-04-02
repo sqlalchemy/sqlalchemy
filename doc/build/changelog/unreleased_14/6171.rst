@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 6171
-
-    Scaled back the warning message added in :ticket:`5171` to not warn for
-    overlapping columns in an inheritance scenario where a particular
-    relationship is local to a subclass and therefore does not represent an
-    overlap.

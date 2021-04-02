@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 6166
-
-
-    Fixed issue where the asyncio extension could not be loaded
-    if running Python 3.6 with the backport library of
-    ``contextvars`` installed.
