@@ -1,5 +1,6 @@
 from functools import wraps
 
+from sqlalchemy import exc
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.elements import (
     ColumnElement,
@@ -58,9 +59,38 @@ class match(ColumnElement):
     All positional arguments passed to :func:`.match`, typically should be a
      :class:`_expression.ColumnElement` instances
 
-    :param against: typically scalar expression to be coerced into a ``str``
+    :param: against typically scalar expression to be coerced into a ``str``
 
-    :param flags: optional ``dict``
+    :param: flags optional ``dict``. Use properties ``in_boolean_mode``,
+     ``in_natural_language_mode`` and ``with_query_expansion`` to control it:
+
+        match_expr = match(
+            users_table.c.firstname,
+            users_table.c.lastname,
+            against="John Connor",
+        )
+
+        print(match_expr)
+
+        # MATCH(firstname, lastname) AGAINST (:param_1)
+
+        print(match_expr.in_boolean_mode)
+
+        # MATCH(firstname, lastname) AGAINST (:param_1 IN BOOLEAN MODE)
+
+        print(match_expr.in_natural_language_mode.with_query_expansion)
+
+        # MATCH(firstname, lastname) AGAINST
+        # (:param_1 IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
+
+    :property: ``in_boolean_mode`` returns new ``match`` object with
+     set to ``True`` the ``mysql_boolean_mode`` flag
+
+    :property: ``in_natural_language_mode`` returns new ``match`` object with
+     set to ``True`` the ``mysql_natural_language`` flag
+
+    :property: ``with_query_expansion`` returns new ``match`` object with
+     set to ``True`` the ``mysql_query_expansion`` flag
 
      .. versionadded:: 1.4.4
 
@@ -77,7 +107,10 @@ class match(ColumnElement):
     }
 
     def __init__(self, *clauselist, against, flags=None):
-        if len(clauselist) == 1:
+        clauselist_len = len(clauselist)
+        if clauselist_len == 0:
+            raise exc.CompileError("Can not match with no columns")
+        elif clauselist_len == 1:
             self.clause = clauselist[0]
         else:
             self.clause = ClauseElementBatch(*clauselist, group=False)

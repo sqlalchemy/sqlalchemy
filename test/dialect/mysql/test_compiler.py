@@ -433,12 +433,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_match_compile_modifiers(self):
         matchtable = table("matchtable", column("title", String))
         title = matchtable.c.title
-        dialect = mysql.dialect()
 
         self.assert_compile(
             title.match("somstr", mysql_boolean_mode=False),
             "MATCH (matchtable.title) AGAINST (%s)",
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
         self.assert_compile(
@@ -448,7 +447,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_natural_language=True,
             ),
             "MATCH (matchtable.title) AGAINST (%s IN NATURAL LANGUAGE MODE)",
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
         self.assert_compile(
@@ -458,7 +457,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_query_expansion=True,
             ),
             "MATCH (matchtable.title) AGAINST (%s WITH QUERY EXPANSION)",
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
         self.assert_compile(
@@ -470,13 +469,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "MATCH (matchtable.title) AGAINST "
             "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
     def test_match_compile_modifiers_fail(self):
         matchtable = table("matchtable", column("title", String))
         title = matchtable.c.title
-        dialect = mysql.dialect()
 
         msg = "Flag combination does not make sence: " \
             "mysql_boolean_mode=%s, " \
@@ -491,7 +489,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 mysql_natural_language=True,
                 mysql_query_expansion=True,
             ).compile,
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
         assert_raises_message(
@@ -501,7 +499,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "somstr",
                 mysql_query_expansion=True,
             ).compile,
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
         assert_raises_message(
@@ -511,7 +509,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 "somstr",
                 mysql_natural_language=True,
             ).compile,
-            dialect=dialect,
+            dialect=self.__dialect__,
         )
 
     def test_concat_compile_kw(self):
