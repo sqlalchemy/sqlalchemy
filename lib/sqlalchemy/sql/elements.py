@@ -3764,7 +3764,7 @@ class Grouping(GroupedElement, ColumnElement):
         self.type = getattr(element, "type", type_api.NULLTYPE)
 
     def _with_binary_element_type(self, type_):
-        return Grouping(self.element._with_binary_element_type(type_))
+        return self.__class__(self.element._with_binary_element_type(type_))
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
