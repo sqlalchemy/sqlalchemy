@@ -1880,6 +1880,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("metadata", impl.metadata)
         kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
+        kw.setdefault("omit_aliases", impl._omit_aliases)
         return cls(**kw)
 
     def create(self, bind=None, checkfirst=True):

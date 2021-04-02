@@ -41,6 +41,7 @@ from .. import processors
 from .. import util
 from ..util import compat
 from ..util import langhelpers
+from ..util import OrderedDict
 from ..util import pickle
 
 
@@ -1431,7 +1432,15 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.3.8
 
+        :param omit_aliases: A boolean that when true will remove aliases from
+           pep 435 enums. For backward compatibility it defaults to ``False``.
+           A deprecation warning is raised if the enum has aliases and this
+           flag was not set.
 
+           .. versionadded:: 1.4.4
+
+           .. deprecated:: 1.4  The default will be changed to ``True`` in
+              SQLAlchemy 2.0.
 
         """
         self._enum_init(enums, kw)
@@ -1456,6 +1465,7 @@ class Enum(Emulated, String, SchemaType):
         self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
+        self._omit_aliases = kw.pop("omit_aliases", NO_ARG)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1512,7 +1522,24 @@ class Enum(Emulated, String, SchemaType):
 
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class = enums[0]
-            members = self.enum_class.__members__
+
+            _members = self.enum_class.__members__
+
+            aliases = [n for n, v in _members.items() if v.name != n]
+            if self._omit_aliases is NO_ARG and aliases:
+                util.warn_deprecated_20(
+                    "The provided enum %s contains the aliases %s. The "
+                    "``omit_aliases`` will default to ``True`` in SQLAlchemy "
+                    "2.0. Specify a value to silence this warning."
+                    % (self.enum_class.__name__, aliases)
+                )
+            if self._omit_aliases is True:
+                # remove aliases
+                members = OrderedDict(
+                    (n, v) for n, v in _members.items() if v.name == n
+                )
+            else:
+                members = _members
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
             else:
@@ -1639,6 +1666,7 @@ class Enum(Emulated, String, SchemaType):
         kw.setdefault("values_callable", self.values_callable)
         kw.setdefault("create_constraint", self.create_constraint)
         kw.setdefault("length", self.length)
+        kw.setdefault("omit_aliases", self._omit_aliases)
         assert "_enums" in kw
         return impltype(**kw)
 
