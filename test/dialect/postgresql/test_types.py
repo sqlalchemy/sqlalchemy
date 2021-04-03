@@ -2510,7 +2510,7 @@ class UUIDTest(fixtures.TestBase):
         id_="iaaa",
         argnames="datatype, value1, value2",
     )
-    @testing.fails_on("postgresql+pg8000", "No support for UUID with ARRAY")
+    # passes pg8000 as of 1.19.1
     def test_uuid_array(self, datatype, value1, value2, connection):
         self.test_round_trip(datatype, value1, value2, connection)
 
