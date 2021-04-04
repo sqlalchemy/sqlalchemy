@@ -1350,16 +1350,47 @@ class BaseCursorResult(object):
 
     @property
     def inserted_primary_key_rows(self):
-        """Return a list of tuples, each containing the primary key for each row
-        just inserted.
+        """Return the value of :attr:`_engine.CursorResult.inserted_primary_key`
+        as a row contained within a list; some dialects may support a
+        multiple row form as well.
 
-        Usually, this method will return at most a list with a single
-        entry which is the same row one would get back from
-        :attr:`_engine.CursorResult.inserted_primary_key`.   To support
-        "executemany with INSERT" mode, multiple rows can be part of the
-        list returned.
+        .. note:: As indicated below, in current SQLAlchemy versions this
+           accessor is only useful beyond what's already supplied by
+           :attr:`_engine.CursorResult.inserted_primary_key` when using the
+           :ref:`postgresql_psycopg2` dialect.   Future versions hope to
+           generalize this feature to more dialects.
+
+        This accessor is added to support dialects that offer the feature
+        that is currently implemented by the :ref:`psycopg2_executemany_mode`
+        feature, currently **only the psycopg2 dialect**, which provides
+        for many rows to be INSERTed at once while still retaining the
+        behavior of being able to return server-generated primary key values.
+
+        * **When using the psycopg2 dialect, or other dialects that may support
+          "fast executemany" style inserts in upcoming releases** : When
+          invoking an INSERT statement while passing a list of rows as the
+          second argument to :meth:`_engine.Connection.execute`, this accessor
+          will then provide a list of rows, where each row contains the primary
+          key value for each row that was INSERTed.
+
+        * **When using all other dialects / backends that don't yet support
+          this feature**: This accessor is only useful for **single row INSERT
+          statements**, and returns the same information as that of the
+          :attr:`_engine.CursorResult.inserted_primary_key` within a
+          single-element list. When an INSERT statement is executed in
+          conjunction with a list of rows to be INSERTed, the list will contain
+          one row per row inserted in the statement, however it will contain
+          ``None`` for any server-generated values.
+
+        Future releases of SQLAlchemy will further generalize the
+        "fast execution helper" feature of psycopg2 to suit other dialects,
+        thus allowing this accessor to be of more general use.
 
         .. versionadded:: 1.4
+
+        .. seealso::
+
+            :attr:`_engine.CursorResult.inserted_primary_key`
 
         """
         if not self.context.compiled:
