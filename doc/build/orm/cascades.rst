@@ -89,7 +89,7 @@ object, ``address3`` to the ``user1.addresses`` collection, it
 becomes part of the state of that :class:`.Session`::
 
     >>> address3 = Address()
-    >>> user1.append(address3)
+    >>> user1.addresses.append(address3)
     >>> address3 in sess
     >>> True
 
