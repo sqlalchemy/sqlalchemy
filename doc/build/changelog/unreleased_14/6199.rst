@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, asyncio, postgresql
+    :tickets: 6199
+
+    Added accessors ``.sqlstate`` and synonym ``.pgcode`` to the ``.orig``
+    attribute of the SQLAlchemy exception class raised by the asyncpg DBAPI
+    adapter, that is, the intermediary exception object that wraps on top of
+    that raised by the asyncpg library itself, but below the level of the
+    SQLAlchemy dialect.

@@ -208,6 +208,30 @@ class DialectTest(fixtures.TestBase):
         eq_(cparams["host"], "hostA:portA,hostB,hostC")
 
 
+class PGCodeTest(fixtures.TestBase):
+    __only_on__ = "postgresql"
+
+    def test_error_code(self, metadata, connection):
+        t = Table("t", metadata, Column("id", Integer, primary_key=True))
+        t.create(connection)
+
+        errmsg = assert_raises(
+            exc.IntegrityError,
+            connection.execute,
+            t.insert(),
+            [{"id": 1}, {"id": 1}],
+        )
+
+        if testing.against("postgresql+pg8000"):
+            # TODO: is there another way we're supposed to see this?
+            eq_(errmsg.orig.args[0]["C"], "23505")
+        else:
+            eq_(errmsg.orig.pgcode, "23505")
+
+        if testing.against("postgresql+asyncpg"):
+            eq_(errmsg.orig.sqlstate, "23505")
+
+
 class ExecuteManyMode(object):
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
