@@ -52,6 +52,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import assert_raises_message_context_ok
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
@@ -1943,6 +1944,23 @@ class PKAutoIncrementTest(fixtures.TestBase):
         pk = PrimaryKeyConstraint(t3.c.a)
         t3.append_constraint(pk)
         is_(pk._autoincrement_column, t3.c.a)
+
+    def test_no_kw_args(self):
+        assert_raises_message_context_ok(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            Table,
+            name="foo",
+            metadata=MetaData(),
+        )
+
+        assert_raises_message_context_ok(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            Table,
+            "foo",
+            metadata=MetaData(),
+        )
 
 
 class SchemaTypeTest(fixtures.TestBase):
