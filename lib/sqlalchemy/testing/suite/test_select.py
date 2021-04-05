@@ -223,6 +223,20 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             [(1, 1, 2), (2, 2, 3), (3, 3, 4)],
         )
 
+    def test_limit_render_multiple_times(self, connection):
+        table = self.tables.some_table
+        stmt = select(table.c.id).limit(1).scalar_subquery()
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        self._assert_result(
+            connection,
+            u,
+            [
+                (1,),
+            ],
+        )
+
     @testing.requires.fetch_first
     def test_simple_fetch(self, connection):
         table = self.tables.some_table

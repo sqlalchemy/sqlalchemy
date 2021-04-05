@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql, oracle, mssql
+    :tickets: 6202
+
+    Fixed further issues in the same area as that of :ticket:`6173` released in
+    1.4.5, where a "postcompile" parameter, again most typically those used for
+    LIMIT/OFFSET rendering in Oracle and SQL Server, would fail to be processed
+    correctly if the same parameter rendered in multiple places in the
+    statement.
+
+

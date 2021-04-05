@@ -1137,7 +1137,9 @@ class SQLCompiler(Compiled):
         ):
             parameter = self.binds[name]
             if parameter in self.literal_execute_params:
-                value = parameters.pop(name)
+                if name not in replacement_expressions:
+                    value = parameters.pop(name)
+
                 replacement_expressions[name] = self.render_literal_bindparam(
                     parameter, render_literal_value=value
                 )

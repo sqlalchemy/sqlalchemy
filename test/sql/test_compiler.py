@@ -3964,6 +3964,91 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "(:param_1_2_1, :param_1_2_2)",
         )
 
+    def test_construct_params_repeated_postcompile_params_one(self):
+        """test for :ticket:`6202` one - name repeated in positiontup
+        (e.g. SQL Server using TOP)
+
+        """
+
+        t = table("t", column("x"))
+        stmt = (
+            select(1)
+            .where(t.c.x == bindparam(None, value="10", literal_execute=True))
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="format"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 FROM t "
+            "WHERE t.x = '10') AS anon_1 UNION SELECT "
+            "(SELECT 1 FROM t WHERE t.x = '10') AS anon_1) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10"})
+
+    def test_construct_params_repeated_postcompile_params_two(self):
+        """test for :ticket:`6202` two - same param name used twice
+        (e.g. Oracle LIMIT)
+
+        """
+        t = table("t", column("x"))
+
+        bp = bindparam(None, value="10")
+        stmt = (
+            select(1)
+            .where(t.c.x == bp.render_literal_execute())
+            .scalar_subquery()
+        )
+        stmt2 = (
+            select(1)
+            .where(t.c.x == bp.render_literal_execute())
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt2)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="named"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 "
+            "FROM t WHERE t.x = '10') AS anon_1 UNION SELECT "
+            "(SELECT 1 FROM t WHERE t.x = '10') AS anon_3) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10"})
+
+    def test_construct_params_positional_plain_repeated(self):
+        t = table("t", column("x"))
+        stmt = (
+            select(1)
+            .where(t.c.x == bindparam(None, value="10"))
+            .where(t.c.x == bindparam(None, value="12", literal_execute=True))
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="format"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 FROM t "
+            "WHERE t.x = %s AND t.x = '12') AS anon_1 "
+            "UNION SELECT (SELECT 1 FROM t WHERE t.x = %s AND t.x = '12') "
+            "AS anon_1) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10", "param_2": "12"})
+        eq_(compiled.positiontup, ["param_1", "param_1"])
+
     def test_tuple_clauselist_in(self):
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_(
