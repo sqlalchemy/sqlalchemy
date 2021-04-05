@@ -22,7 +22,6 @@ import itertools
 import operator
 import types
 
-from sqlalchemy.sql import visitors
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
@@ -48,10 +47,12 @@ from .. import log
 from .. import sql
 from .. import util
 from ..sql import coercions
+from ..sql import elements
 from ..sql import expression
 from ..sql import roles
 from ..sql import Select
 from ..sql import util as sql_util
+from ..sql import visitors
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -2167,6 +2168,8 @@ class Query(
                 (Item, Item.order_id == Order.id)
             )
 
+            session.query(User).join(Order, Item)
+
             # ... and several more forms actually
 
           **Why it's legacy**: being able to chain multiple ON clauses in one
@@ -2259,9 +2262,26 @@ class Query(
         if not legacy and onclause is None and not isinstance(target, tuple):
             # non legacy argument form
             _props = [(target,)]
-        elif not legacy and isinstance(
-            target,
-            (expression.Selectable, type, AliasedClass, types.FunctionType),
+        elif (
+            not legacy
+            and isinstance(
+                target,
+                (
+                    expression.Selectable,
+                    type,
+                    AliasedClass,
+                    types.FunctionType,
+                ),
+            )
+            and isinstance(
+                onclause,
+                (
+                    elements.ColumnElement,
+                    str,
+                    interfaces.PropComparator,
+                    types.FunctionType,
+                ),
+            )
         ):
             # non legacy argument form
             _props = [(target, onclause)]
