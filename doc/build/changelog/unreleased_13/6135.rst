@@ -1,0 +1,10 @@
+.. change::
+    :tags: sql, bug
+    :tickets: 6135
+    :versions: 1.4.6
+
+    The :class:`_sql.Table` object now raises an informative error message if
+    it is instantiated without passing at least the :paramref:`_sql.Table.name`
+    and :paramref:`_sql.Table.metadata` arguments positionally. Previously, if
+    these were passed as keyword arguments, the object would silently fail to
+    initialize correctly.

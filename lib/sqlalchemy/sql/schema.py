@@ -546,14 +546,17 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         ),
     )
     def __new__(cls, *args, **kw):
-        if not args:
+        if not args and not kw:
             # python3k pickle seems to call this
             return object.__new__(cls)
 
         try:
             name, metadata, args = args[0], args[1], args[2:]
         except IndexError:
-            raise TypeError("Table() takes at least two arguments")
+            raise TypeError(
+                "Table() takes at least two positional-only "
+                "arguments 'name' and 'metadata'"
+            )
 
         schema = kw.get("schema", None)
         if schema is None:
