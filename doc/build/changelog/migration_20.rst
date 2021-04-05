@@ -268,7 +268,7 @@ the SQLAlchemy project itself, the approach taken is as follows:
             r".*DefaultGenerator.execute\(\)",
         ]:
           warnings.filterwarnings(
-              "error", message=msg, category=sa_exc.RemovedIn20Warning,
+              "error", message=msg, category=exc.RemovedIn20Warning,
           )
 
         # for all other warnings, just log
