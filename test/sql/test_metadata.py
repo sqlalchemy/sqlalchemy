@@ -47,6 +47,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -2021,6 +2022,20 @@ class PKAutoIncrementTest(fixtures.TestBase):
         pk = PrimaryKeyConstraint(t3.c.a)
         t3.append_constraint(pk)
         is_(pk._autoincrement_column, t3.c.a)
+
+    def test_no_kw_args(self):
+        with expect_raises_message(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            check_context=False,
+        ):
+            Table(name="foo", metadata=MetaData())
+        with expect_raises_message(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            check_context=False,
+        ):
+            Table("foo", metadata=MetaData())
 
 
 class SchemaTypeTest(fixtures.TestBase):
